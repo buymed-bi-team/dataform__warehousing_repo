@@ -1,1 +1,3 @@
 node_modules/
+*.dataform.json
+*.workflow_settings.yaml

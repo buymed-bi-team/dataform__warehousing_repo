@@ -1,5 +1,5 @@
 defaultProject: lakehouse-prod-394907
 defaultLocation: asia-southeast1
-defaultDataset: dataform
+defaultDataset: gold_buymed_vn
 defaultAssertionDataset: dataform_assertions
 dataformCoreVersion: 3.0.0-beta.4
