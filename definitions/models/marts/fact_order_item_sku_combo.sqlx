@@ -1,3 +1,15 @@
+
+config {
+  type: "table",
+  bigquery: {
+    partitionBy: "date(created_at)",
+    clusterBy: ["order_id", "sku_code"]
+  },
+  name: "fact_order_item_sku_combo",
+  tags: ["6h00", "14h00"],
+  description: "PIC: anh.letam",
+}
+
 with cte_date as (
   select DATE_SUB(CURRENT_DATE(), INTERVAL 15 MONTH)  as start_date
   --select date_sub( timestamp( date_trunc( date_sub( current_date('+7'), interval 12 month) , month ) ) , interval 7 hour ) as start_date
