@@ -1,3 +1,4 @@
+
 config {
   type: "table",
   bigquery: {
@@ -5,52 +6,51 @@ config {
     clusterBy: ["order_id", "sku_code"]
   },
   name: "fact_order_item_sku_combo",
-  tags: ["6h00"],
+  tags: ["6h00", "14h00"],
   description: "PIC: anh.letam",
 }
 
-
 with cte_date as (
-  select DATE_TRUNC(CURRENT_DATE(), YEAR)  as start_date
-	--select date_sub( timestamp( date_trunc( date_sub( current_date('+7'), interval 12 month) , month ) ) , interval 7 hour ) as start_date
+  select DATE_SUB(CURRENT_DATE(), INTERVAL 15 MONTH)  as start_date
+  --select date_sub( timestamp( date_trunc( date_sub( current_date('+7'), interval 12 month) , month ) ) , interval 7 hour ) as start_date
   -- select date_sub( timestamp( date_trunc( current_date('+7'), month ) ) , interval 7 hour ) as start_date
 --   SELECT date_sub( timestamp( date_trunc( date_sub( current_date('+7'), interval 1 day) , day ) ) , interval 7 hour ) as start_date
 )
-
-select 
-        oi.mg_id
-        , oi.order_id
-        , oi.customer_id
-        -- , timestamp_add( oi.ingest_time, interval 7 hour ) as ingested_at
-        -- , timestamp_add( oi.created_time, interval 7 hour ) as created_at
-        -- , timestamp_add( current_timestamp, interval 7 hour ) as transformed_at
-        , FORMAT_TIMESTAMP("%Y%m%d%H", oi.created_time ) as created_timekey
-        , TIMESTAMP_ADD(oi.created_time, INTERVAL 7 HOUR) as created_at
-        , oi.ingest_time as ingested_at
-        , current_timestamp transformed_at
-        , oi.extra_props
-        , oi.product_id
-        , oi.sku as sku_code
-        , oi.item_code
-        , oi.seller_code
-        , oi.type as item_type
-        , oi.deal_code
-        , oi.quantity as demand_quantity
-        , oi.price as sales_price
-        , oi.charge_deal_fee_value
-        , oi.reserved_quantity
-        , oi.outbound_quantity
-        , oi.returned_quantity
-        , oi.seller_price
-        , oi.vat
-        , oi.none_vat
-        , to_json_string(oi.tags) as tag_code
-        , oi.sku_status
-    -- from `silver_buymed_vn.marketplace_prd_order_v2_order_item` as oi
-    FROM silver_buymed_vn.marketplace_prd_order_v2_order_item as oi
-    -- from lakehouse-prod-394907._513c4051a7d94cc5f16470b9da40e24c2a97913a.anonead9caf2a3c74fb9d5e5ba78d4d488556c3878ac0646f0bcb2b2556661745865 as oi
-    where
-        oi.ingest_time >=  TIMESTAMP_SUB(TIMESTAMP_TRUNC(CURRENT_TIMESTAMP(), YEAR), INTERVAL 2 DAY)
-        and ifnull( date(oi.created_time), current_date()) >= (select start_date from cte_date)
-    qualify row_number() over (_window) = 1 AND FIRST_VALUE(action) over(_window) <> 'd'
-    WINDOW _window AS (PARTITION BY oi.mg_id ORDER BY oi.synced_at DESC)
+select * from 
+  (select
+          oi.mg_id
+          , oi.order_id
+          , oi.customer_id
+          -- , timestamp_add( oi.ingest_time, interval 7 hour ) as ingested_at
+          -- , timestamp_add( oi.created_time, interval 7 hour ) as created_at
+          -- , timestamp_add( current_timestamp, interval 7 hour ) as transformed_at
+          , FORMAT_TIMESTAMP("%Y%m%d%H", oi.created_time ) as created_timekey
+          , TIMESTAMP_ADD(oi.created_time, INTERVAL 7 HOUR) as created_at
+          , oi.ingest_time as ingested_at
+          , current_timestamp transformed_at
+          , oi.extra_props
+          , oi.product_id
+          , oi.sku as sku_code
+          , oi.item_code
+          , oi.seller_code
+          , oi.type as item_type
+          , oi.deal_code
+          , oi.quantity as demand_quantity
+          , oi.price as sales_price
+          , oi.charge_deal_fee_value
+          , oi.reserved_quantity
+          , oi.outbound_quantity
+          , oi.returned_quantity
+          , oi.seller_price
+          , oi.vat
+          , oi.none_vat
+          , to_json_string(oi.tags) as tag_code
+          , oi.sku_status
+      -- from `silver_buymed_vn.marketplace_prd_order_v2_order_item` as oi
+      FROM silver_buymed_vn.marketplace_prd_order_v2_order_item as oi
+      -- from lakehouse-prod-394907._513c4051a7d94cc5f16470b9da40e24c2a97913a.anonead9caf2a3c74fb9d5e5ba78d4d488556c3878ac0646f0bcb2b2556661745865 as oi
+      where
+          oi.ingest_time >=  TIMESTAMP_SUB(TIMESTAMP_TRUNC(CURRENT_TIMESTAMP(), YEAR), INTERVAL 2 DAY)
+      qualify row_number() over (_window) = 1 AND FIRST_VALUE(action) over(_window) <> 'd'
+      WINDOW _window AS (PARTITION BY oi.mg_id ORDER BY oi.synced_at DESC))
+where date(created_at) >= (select start_date from cte_date)
