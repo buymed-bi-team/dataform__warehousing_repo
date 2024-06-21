@@ -1,0 +1,164 @@
+config {
+    type: "table",
+    description: "Action in product_management. Use for alert policy change field status of a sku",
+    tags: ["adhoc-office"],
+	columns: {
+	}
+}
+
+-- step 1: get necessary columns to create action column
+
+-- only this model get 1 day 
+with cte_date as (
+    select timestamp_sub(timestamp(current_date("+7")),interval 1 day ) as start_date,
+),
+
+stg_quotation_export as (  -- prepare: dedup, filter time
+    select 
+      sku,
+      warehouse_code,
+      vendor_expect_quantity,
+      quantity_expect,
+      version
+    from ${source_base.SILVER}.seller_prd_purchasing_quotation_export
+    where ingest_time >= (select start_date from cte_date) and 
+        (created_time >= (select start_date from cte_date) or created_time is null)
+    QUALIFY ROW_NUMBER() OVER(_window) = 1 AND FIRST_VALUE(action) over(_window) <> 'd'
+    WINDOW _window AS (PARTITION BY mg_id ORDER BY synced_at DESC, IF(action='d',3,IF(action='u',2,1)) DESC, last_updated_time DESC)
+),
+
+stg_admin_pushing_group as ( -- prepare: dedup
+    select 
+      group_id,
+      confirmed_time,
+      version 
+    from ${source_base.SILVER}.seller_prd_purchasing_admin_pushing_group
+    QUALIFY ROW_NUMBER() OVER(_window) = 1 AND FIRST_VALUE(action) over(_window) <> 'd'
+    WINDOW _window AS (PARTITION BY mg_id ORDER BY synced_at DESC, IF(action='d',3,IF(action='u',2,1)) DESC, last_updated_time DESC)
+),
+
+int_quotation as (  -- int: join and group
+    select
+        a.sku as sku_code,
+        a.warehouse_code,
+        case
+            when (sum(a.vendor_expect_quantity) = 0 or sum(a.vendor_expect_quantity) is Null) 
+            then sum(a.quantity_expect)                                  
+            when sum(a.vendor_expect_quantity) <> 0 
+            then sum(a.vendor_expect_quantity)
+        end as expected_quantity,
+        max(d.group_id) as qty_gen_session_id,
+        ARRAY_AGG(d.confirmed_time ORDER BY group_id DESC LIMIT 1)[OFFSET(0)] AS confirmed_time,
+
+        case 
+            when a.warehouse_code = "HN" then "MIENBAC"
+            when a.warehouse_code = "BD" then "MIENNAM"
+            when a.warehouse_code = "DN" then "MIENTRUNG"
+        end as sales_region_code
+    from stg_quotation_export a
+    left join stg_admin_pushing_group as d on a.version = d.version
+    -- where
+    --     d.confirmed_time is not null
+    --     and a.quantity_expect > 0
+    group by 1, a.warehouse_code
+),
+
+stg_purchase_order_item as ( -- int: join and group
+    SELECT 
+      expect_quantity,
+      po_id,
+      sku,
+      warehouse_code
+    FROM ${source_base.SILVER}.seller_prd_purchasing_purchase_order_item AS a
+    WHERE
+        a.ingest_time >= (SELECT start_date FROM cte_date)
+        AND (a.created_time>= (SELECT start_date FROM cte_date) or a.created_time is null )
+    -- QUALIFY ROW_NUMBER() OVER(_window) = 1 AND FIRST_VALUE(action) over(_window) <> 'd'
+    -- WINDOW _window AS (PARTITION BY mg_id ORDER BY synced_at DESC, IF(action='d',3,IF(action='u',2,1)) DESC, last_updated_time DESC)
+
+    -- cheat error
+    QUALIFY ROW_NUMBER() OVER(_window) = 1 AND FIRST_VALUE(action) over(_window) <> 'd'
+    WINDOW _window AS (PARTITION BY mg_id,po_code,sku ORDER BY synced_at DESC, IF(action='d',3,IF(action='u',2,1)) DESC, last_updated_time DESC)
+), 
+
+stg_purchase_order as (
+    SELECT 
+      po_id,
+      created_time,
+      created_by_system,
+      status
+    FROM ${source_base.SILVER}.seller_prd_purchasing_purchase_order AS a
+    WHERE
+        a.ingest_time >= (SELECT start_date FROM cte_date)
+        AND (a.created_time >= (SELECT start_date FROM cte_date) or a.created_time is null )
+    QUALIFY ROW_NUMBER() OVER(_window) = 1 AND FIRST_VALUE(action) over(_window) <> 'd'
+    WINDOW _window AS (PARTITION BY mg_id ORDER BY synced_at DESC, IF(action='d',3,IF(action='u',2,1)) ASC, last_updated_time DESC)
+),
+
+int_po as (
+    select
+        a.sku as sku_code,
+        a.warehouse_code,
+        max(b.po_id) as po_id,
+        min(b.created_time) as created_time,
+        min(b.created_by_system) as created_by_system,
+        sum(a.expect_quantity) as po_confirmed_quantity,
+        ARRAY_AGG(b.status ORDER BY b.po_id DESC LIMIT 1)[OFFSET(0)] AS status
+
+    from stg_purchase_order_item a
+    left join stg_purchase_order  b on a.po_id = b.po_id
+    where
+        b.created_time >= (SELECT start_date FROM cte_date)
+        -- and b.created_by_system <> 'INTERNAL_MEDX' 
+        -- and b.status <> 'CANCELED'
+    group by 1, a.warehouse_code
+),
+
+stg_adhoc_pm_master_sku as (
+  SELECT
+    sku_sales_region_code,
+    sku_system_status,
+    sku_system_active,
+    internal_transfer,
+    sales_region_code,
+    unstable,
+    purchase_status,
+    available_qty,
+    sku_code
+  FROM
+    lakehouse-prod-394907.gold_buymed_vn.adhoc_pm_master_sku
+)
+
+-- step 2: Action
+
+SELECT
+  TIMESTAMP_ADD(current_timestamp(), interval 7 hour) as transformed_at,
+  stg_adhoc_pm_master_sku.sku_sales_region_code,
+  int_quotation.sku_code,
+  int_quotation.qty_gen_session_id,
+  stg_adhoc_pm_master_sku.sku_system_status,
+  stg_adhoc_pm_master_sku.sku_system_active,
+  stg_adhoc_pm_master_sku.internal_transfer,
+  int_quotation.warehouse_code,
+  stg_adhoc_pm_master_sku.sales_region_code,
+  int_quotation.expected_quantity,
+  int_po.po_id,
+  int_po.po_confirmed_quantity,
+  int_po.created_time,
+  int_po.created_by_system,
+  int_po.status,
+  stg_adhoc_pm_master_sku.unstable,
+  stg_adhoc_pm_master_sku.purchase_status,
+  stg_adhoc_pm_master_sku.available_qty,
+  int_quotation.confirmed_time
+FROM
+  stg_adhoc_pm_master_sku
+LEFT JOIN int_quotation 
+  ON stg_adhoc_pm_master_sku.sku_code = int_quotation.sku_code
+  AND stg_adhoc_pm_master_sku.sales_region_code = int_quotation.sales_region_code
+LEFT JOIN int_po
+  ON int_po.sku_code = int_quotation.sku_code
+  AND int_po.warehouse_code = int_quotation.warehouse_code
+WHERE int_quotation.warehouse_code IN ("HN", "BD", "DN")
+
+
