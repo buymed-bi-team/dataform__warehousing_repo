@@ -1,0 +1,61 @@
+config {
+    description: "Action in product_management. Use for alert policy change field status of a sku"
+
+}
+WITH filter_time as (
+  select timestamp_sub(timestamp(current_date("+7")),interval 1 day ) as start_date
+), -- TODO: create include for filter_time named Filter day
+
+stg_order_item as (
+  Select 
+    order_id,
+    customer_id,
+    sku,
+    item_code,
+    price,
+    quantity,
+    created_time,
+    cart_item_created_time,
+    page,
+    event_source,
+    event_screen,
+    tags
+  FROM
+    lakehouse-prod-394907.silver_buymed_cam.marketplace_prd_order_v2_order_item
+  WHERE 
+    ingest_time > (SELECT start_date FROM filter_time) -- TODO: create include for filter_time named Filter day
+  QUALIFY ROW_NUMBER() OVER(_window) = 1 AND FIRST_VALUE(action) over(_window) <> 'd'
+  WINDOW _window AS (PARTITION BY mg_id ORDER BY synced_at DESC, IF(action='d',3,IF(action='u',2,1)) DESC, last_updated_time DESC)
+    -- TODO: dedup
+), -- TODO: get exists dedup
+
+stg_order as (
+  SELECT
+    order_id,
+    customer_province_code
+  FROM
+    lakehouse-prod-394907.silver_buymed_cam.marketplace_prd_order_v2_order
+  WHERE
+    ingest_time > ( SELECT start_date FROM filter_time)
+  QUALIFY ROW_NUMBER() OVER(_window) = 1 AND FIRST_VALUE(action) over(_window) <> 'd'
+  WINDOW _window AS (PARTITION BY mg_id ORDER BY synced_at DESC, IF(action='d',3,IF(action='u',2,1)) DESC, last_updated_time DESC)
+) -- TODO: Like above
+
+SELECT 
+  a.order_id,
+  a.customer_id,
+  a.sku,
+  a.item_code,
+  a.price,
+  a.quantity,
+  a.created_time,
+  a.cart_item_created_time,
+  a.page,
+  a.event_source,
+  a.event_screen,
+  a.tags,
+  b.customer_province_code
+FROM stg_order_item a
+LEFT JOIN stg_order b
+  ON a.order_id = b.order_id
+-- limit 10
