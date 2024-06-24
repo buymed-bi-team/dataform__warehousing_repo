@@ -1,0 +1,43 @@
+config {
+    description: "PIC: minh.luu",
+    name: "dim_order",
+    tags: ["6h00","9h00","12h00","15h00"]
+}
+-- TODO: 
+--  - Rewrite order_channel caused new_logic -> test
+--  - INDEX
+--  - INCREMENTAL
+--  - DEDUP FUNCTION
+
+WITH dedup_order_tbl as (
+  SELECT * FROM lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_order
+  QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'
+	WINDOW _window AS 
+    (PARTITION BY mg_id 
+     ORDER BY synced_at DESC, IF(action='d',3,IF(action='u',2,1)) DESC, last_updated_time DESC)
+)
+
+,order_tbl as (
+  SELECT 
+    order_id,
+    created_time,
+    source,
+    -- JSON_EXTRACT_SCALAR(extra_props,'$.brand_code') as brand_code,
+    JSON_EXTRACT_SCALAR(extra_props,'$.customer_tags') as customer_tags
+  FROM
+    dedup_order_tbl
+)
+
+
+SELECT
+  order_id,
+  DATETIME(created_time, 'Asia/Ho_Chi_Minh') as placed_at,
+  CASE 
+    WHEN customer_tags LIKE '%CIRCA%'  THEN 'CIRCA'
+    WHEN customer_tags LIKE '%TENDER%' THEN 'TENDER'
+    WHEN source = 'internal-portal' THEN 'CONSIGNMENT'
+    WHEN source in ('brand-portal', 'clinic-portal') THEN 'DISTRIBUTION'
+    ELSE 'MARKETPLACE'
+  end as  order_channel
+FROM
+  order_tbl
