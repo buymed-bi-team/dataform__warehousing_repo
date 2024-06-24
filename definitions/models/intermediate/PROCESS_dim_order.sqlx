@@ -9,6 +9,9 @@ config {
 --  - INDEX
 --  - INCREMENTAL
 --  - DEDUP FUNCTION
+-- Advance:
+--  - Writing comparison test
+--  - Checking if any column can be change over time
 
 WITH dedup_order_tbl as (
   SELECT * FROM lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_order
@@ -32,7 +35,7 @@ WITH dedup_order_tbl as (
 
 SELECT
   order_id,
-  DATETIME(created_time, 'Asia/Ho_Chi_Minh') as placed_at,
+  DATETIME(created_time, 'Asia/Ho_Chi_Minh') as created_time,
   CASE 
     WHEN customer_tags LIKE '%CIRCA%'  THEN 'CIRCA'
     WHEN customer_tags LIKE '%TENDER%' THEN 'TENDER'
@@ -42,3 +45,8 @@ SELECT
   end as  order_channel
 FROM
   order_tbl
+${
+  when(incremental(),
+   `WHERE created_time > (SELECT MAX(created_time) FROM ${self()})`,
+   ``)
+}

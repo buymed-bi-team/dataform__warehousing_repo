@@ -6,7 +6,7 @@ config {
 }
 select *,
 	   silver_buymed_vn.mongoid_to_timestamp(mg_id) as time_ingested_to_mongo 
-from ${source_base.SILVER}.marketplace_prd_cart_cart_item_deleted
+from silver_buymed_vn.marketplace_prd_cart_cart_item_deleted
 
 --from ${source_base.SILVER}.marketplace_prd_cart_cart_item_deleted_backup_2
 
