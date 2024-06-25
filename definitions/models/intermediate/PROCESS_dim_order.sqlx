@@ -1,5 +1,5 @@
 config {
-    type: "table",
+    type: "incremental",
     description: "PIC: minh.luu",
     name: "dim_order",
     tags: ["6h00","9h00","12h00","15h00"]

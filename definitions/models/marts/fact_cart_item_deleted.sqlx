@@ -1,13 +1,16 @@
 config { 
-    type: "table",
+    type: "incremental",
     description: "PIC: anh.letam",
-    tags: ['24HOUR'],
-	name: "fact_cart_item_deleted"
+    tags: ['14h30'],
+	name: "fact_cart_item_deleted",
+   
 }
-select *,
-	   silver_buymed_vn.mongoid_to_timestamp(mg_id) as time_ingested_to_mongo 
-from silver_buymed_vn.marketplace_prd_cart_cart_item_deleted
 
---from ${source_base.SILVER}.marketplace_prd_cart_cart_item_deleted_backup_2
 
---${ when(incremental(), `WHERE (SELECT time_ingested_to_mongo is null FROM ${self()})`)}
+
+select
+  * ,
+  silver_buymed_vn.mongoid_to_timestamp(mg_id) as time_ingested_to_mongo
+from
+  silver_buymed_vn.marketplace_prd_cart_cart_item_deleted
+${ when(incremental(), `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()})`) }
