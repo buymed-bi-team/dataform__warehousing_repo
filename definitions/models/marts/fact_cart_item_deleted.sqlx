@@ -12,5 +12,5 @@ select
   * ,
   silver_buymed_vn.mongoid_to_timestamp(mg_id) as time_ingested_to_mongo
 from
-  silver_buymed_vn.marketplace_prd_cart_cart_item_deleted
+  silver_buymed_vn.marketplace_prd_cart_cart_item_deleted_backup
 ${ when(incremental(), `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()})`) }
