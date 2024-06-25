@@ -33,7 +33,7 @@ WITH stg_order_item as (
     event_screen,
     tags
   FROM
-    lakehouse-prod-394907.silver_buymed_cam.marketplace_prd_order_v2_order_item
+    lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_order_item
   -- WHERE 
   --   ingest_time > (SELECT start_date FROM filter_time) -- TODO: create include for filter_time named Filter day
   QUALIFY ROW_NUMBER() OVER(_window) = 1 AND FIRST_VALUE(action) over(_window) <> 'd'
@@ -46,7 +46,7 @@ stg_order as (
     order_id,
     province_code
   FROM
-    lakehouse-prod-394907.silver_buymed_cam.marketplace_prd_order_v2_order
+    lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_order
   -- WHERE
   --   ingest_time > ( SELECT start_date FROM filter_time)
   QUALIFY ROW_NUMBER() OVER(_window) = 1 AND FIRST_VALUE(action) over(_window) <> 'd'
@@ -60,8 +60,8 @@ SELECT
   a.item_code,
   a.price,
   a.quantity,
-  a.created_time,
-  a.cart_item_created_time,
+  DATETIME(a.created_time, 'Asia/Ho_Chi_Minh') as created_time,
+  DATETIME(a.cart_item_created_time, 'Asia/Ho_Chi_Minh') as cart_item_created_time,
   a.page,
   a.event_source,
   a.event_screen,

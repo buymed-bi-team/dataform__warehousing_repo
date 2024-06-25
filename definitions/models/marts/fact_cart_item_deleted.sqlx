@@ -1,8 +1,11 @@
 config { 
     type: "incremental",
     description: "PIC: anh.letam",
-    tags: ['14h30'],
-	name: "fact_cart_item_deleted",
+	  name: "fact_cart_item_deleted",
+    bigquery: {
+    partitionBy: "date(time_ingested_to_mongo)",
+    clusterBy: ["cart_id"]
+  },
    
 }
 
@@ -10,7 +13,21 @@ config {
 
 select
   * ,
-  silver_buymed_vn.mongoid_to_timestamp(mg_id) as time_ingested_to_mongo
+  silver_buymed_vn.mongoid_to_timestamp(mg_id) as time_ingested_to_mongo,
+  date(created_time) as created_at
 from
-  silver_buymed_vn.marketplace_prd_cart_cart_item_deleted_backup
+  silver_buymed_vn.marketplace_prd_cart_cart_item_deleted
 ${ when(incremental(), `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()})`) }
+QUALIFY ROW_NUMBER() OVER (_window) = 1
+  AND FIRST_VALUE(action) OVER (_window) <> 'd'
+WINDOW
+  _window AS (
+  PARTITION BY
+    mg_id
+  ORDER BY
+    synced_at DESC,
+  IF
+    (action='d',3,
+    IF
+      (action='u',2,1)) DESC,
+    last_updated_time DESC)
