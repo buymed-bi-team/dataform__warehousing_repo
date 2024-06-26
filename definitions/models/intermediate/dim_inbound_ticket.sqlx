@@ -13,7 +13,7 @@ SELECT
       when i.external_type = 'TRANSFER' then 'TO'
       else 'OTHER'
   end as order_type,
-  i.created_time,
+  DATETIME(i.created_time, 'Asia/Ho_Chi_Minh') as created_time,
   i.status
   
 FROM ${source_base.GOLD}.dedup_warehouse_prd_inbound_inbound_ticket i
