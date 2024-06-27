@@ -7,6 +7,7 @@ config {
 SELECT
     sku,
     warehouse_code,
-    MAX(created_time) + INTERVAL 7 HOUR AS ts_latest_pick
+    MAX(created_time) + INTERVAL 7 HOUR AS ts_latest_pick,
+    TIMESTAMP_DIFF(CURRENT_TIMESTAMP(), MAX(created_time), DAY) AS aging_pick
 FROM ${ref("dedup_warehouse_prd_picking_pick_ticket_item")} o
 GROUP BY 1, 2

@@ -9,7 +9,30 @@ SELECT
     a.sku,
     a.warehouse_code,
     b.ts_latest_put,
-    c.ts_latest_pick
+    c.ts_latest_pick,
+    CASE
+        -- NORMAL cases
+        WHEN aging_pick IS NOT NULL AND aging_pick >= 0 AND aging_pick <= 14 AND (aging_put >= 0 AND aging_put <= 15 OR aging_put IS NULL) THEN '01/NORMAL-I: DE(<=14d) | IB(0-15d)'
+        WHEN aging_pick IS NOT NULL AND aging_pick >= 0 AND aging_pick <= 14 AND (aging_put >= 16 AND aging_put <= 30 OR aging_put IS NULL) THEN '01/NORMAL-II: DE(<=14d) | IB(16-30d)'
+        WHEN aging_pick IS NOT NULL AND aging_pick >= 0 AND aging_pick <= 14 AND (aging_put > 30 OR aging_put IS NULL) THEN '01/NORMAL-III: DE(<=14d) | IB(>30d)'
+        WHEN aging_pick IS NOT NULL AND aging_pick >= 0 AND aging_pick <= 14 AND (aging_put < 0 OR aging_put IS NULL) THEN '01/NORMAL-III: DE(<=14d) | IB(>30d)'
+
+        -- BLACK cases
+        WHEN aging_pick IS NOT NULL AND aging_pick > 14 AND (aging_put >= 0 AND aging_put <= 15 OR aging_put IS NULL) THEN '02/BLACK-I: DE(>14d) | IB(0-15d)'
+        WHEN aging_pick IS NOT NULL AND aging_pick > 14 AND (aging_put >= 16 AND aging_put <= 30 OR aging_put IS NULL) THEN '02/BLACK-II: DE(>14d) | IB(16-30d)'
+        WHEN aging_pick IS NOT NULL AND aging_pick > 14 AND (aging_put > 30 OR aging_put IS NULL) THEN '02/BLACK-III: DE(>14d) | IB(>30d)'
+        WHEN aging_pick IS NOT NULL AND aging_pick > 14 AND (aging_put < 0 OR aging_put IS NULL) THEN '02/BLACK-III: DE(>14d) | IB(>30d)'
+
+        -- DEAD cases (No-Demand)
+        WHEN aging_pick IS NULL AND (aging_put >= 0 AND aging_put <= 15 OR aging_put IS NULL) THEN '03/DEAD-I: No-Demand | IB(0-15d)'
+        WHEN aging_pick IS NULL AND (aging_put >= 16 AND aging_put <= 30 OR aging_put IS NULL) THEN '03/DEAD-II: No-Demand | IB(16-30d)'
+        WHEN aging_pick IS NULL AND (aging_put > 30 OR aging_put IS NULL) THEN '03/DEAD-III: No-Demand | IB(>30d)'
+        WHEN aging_pick IS NOT NULL AND (aging_put >= 0 AND aging_put <= 15 OR aging_put IS NULL) THEN '03/DEAD-I: No-Demand | IB(0-15d)'
+        WHEN aging_pick IS NOT NULL AND (aging_put >= 16 AND aging_put <= 30 OR aging_put IS NULL) THEN '03/DEAD-II: No-Demand | IB(16-30d)'
+        WHEN aging_pick IS NOT NULL AND (aging_put > 30 OR aging_put IS NULL) THEN '03/DEAD-III: No-Demand | IB(>30d)'
+        ELSE '03/DEAD-III: No-Demand | IB(>30d)'
+    END AS type_stock_aging
+    
 FROM ${ref("dedup_warehouse_prd_inventory_sku_merge")} a
 LEFT JOIN ${ref("agg_latest_put_by_sku_fc")} b
     ON a.sku = b.sku AND a.warehouse_code = b.warehouse_code
