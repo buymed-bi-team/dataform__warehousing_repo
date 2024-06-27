@@ -3,13 +3,16 @@ config {
     description: "PIC: dong.le",
     name: "dim_stock_classification",
     tags: ["12h00"],
+    columns: {
+
+    }
 }
 
 SELECT
     a.sku,
     a.warehouse_code,
-    b.ts_latest_put,
-    c.ts_latest_pick,
+    b.latest_put_time,
+    c.latest_pick_time,
     CASE
         -- NORMAL cases
         WHEN aging_pick >= 0 AND aging_pick <= 14 AND (aging_put >= 0 AND aging_put <= 15) THEN '01/NORMAL-I: DE(<=14d) | IB(0-15d)'
