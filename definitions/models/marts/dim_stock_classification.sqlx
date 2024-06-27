@@ -4,6 +4,8 @@ config {
     name: "dim_stock_classification",
     tags: ["12h00"],
     columns: {
+        latest_put_time: "Already converted to GMT+7 timezone",
+        latest_pick_time: "Already converted to GMT+7 timezone",
         type_stock_aging: "Categorizes inventory items based on latest pick (NORMAL: < 14 days, BLACK: > 14 days, DEAD: no demand) and put (I: < 15 days. II: 16-30 days. III: >30 days) aging."
     }
 }
@@ -11,8 +13,8 @@ config {
 SELECT
     a.sku,
     a.warehouse_code as fc_code,
-    b.latest_put_time,
-    c.latest_pick_time,
+    DATETIME(b.latest_put_time, 'Asia/Ho_Chi_Minh') latest_put_time,
+    DATETIME(c.latest_pick_time, 'Asia/Ho_Chi_Minh') latest_pick_time,
     CASE
         -- NORMAL cases
         WHEN aging_pick_days >= 0 AND aging_pick_days <= 14 AND (aging_put_days >= 0 AND aging_put_days <= 15) THEN '01/NORMAL-I: DE(<=14d) | IB(0-15d)'
