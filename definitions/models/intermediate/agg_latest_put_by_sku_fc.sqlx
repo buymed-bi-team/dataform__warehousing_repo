@@ -8,7 +8,7 @@ SELECT
     a.sku,
     a.warehouse_code,
     MAX(a.created_time) + INTERVAL 7 HOUR AS latest_put_time,
-    TIMESTAMP_DIFF(CURRENT_TIMESTAMP(), MAX(a.created_time), DAY) AS aging_put,
+    TIMESTAMP_DIFF(CURRENT_TIMESTAMP(), MAX(a.created_time), DAY) AS aging_put_days,
     MAX(b.code) AS latest_put_code,
     MAX(json_value(b.extra_props, "$.inbound_code")) AS latest_inbound_code
 FROM ${ref("dedup_warehouse_prd_inbound_put_ticket_item")} a
