@@ -9,4 +9,4 @@ SELECT
     warehouse_code,
     MAX(created_time) + INTERVAL 7 HOUR AS ts_latest_put,
 FROM ${ref("dedup_warehouse_prd_inbound_put_ticket_item")} o
-GROUP BY sku, warehouse_code
+GROUP BY 1, 2

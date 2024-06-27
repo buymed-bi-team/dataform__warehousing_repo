@@ -7,5 +7,6 @@ config {
 SELECT
     sku,
     warehouse_code,
-    created_time
+    MAX(created_time) + INTERVAL 7 HOUR AS ts_latest_pick
 FROM ${ref("dedup_warehouse_prd_picking_pick_ticket_item")} o
+GROUP BY 1, 2
