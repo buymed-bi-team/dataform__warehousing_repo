@@ -1,0 +1,79 @@
+config {
+    type: "table",
+    description: "SKU dim table. PIC: Minh.luu",
+    // tags: ["1HOUR","PRODUCT", "LISTING"],
+    columns: {
+        sku_code: "Primary key - Mã SKU. Lưu ý: Đã loại bỏ 2 SKU bị lỗi là MEDX.AGI-AGi-001 và MEDX.test.",
+        sku_created_at: "Thời gian tạo SKU.",
+        last_updated_time: "",
+        product_id: "Id của sản phẩm",
+        seller_code: "Mã của nhà bán hàng. Đã loại bỏ mã MEDX-HN", // MARKERTING, BUYMED
+        is_combo: "Là combo hay không? ", // True, False, Null?
+        sku_type: "Loại sản phẩm là 1 trong 3 NORMAL, COMBO, GIFT",
+        // sku_status: "", // NORMAL, NULL?
+        sku_active: "", // true, false, null?
+    }
+}
+/*
+TODO
+    - In research
+*/
+
+-- Select * except(row_num)
+-- from(
+WITH dedup_sku_main as -- 83MB
+( 
+    SELECT 
+        DATETIME(created_time,'Asia/Ho_Chi_Minh') sku_created_at,
+        code as sku_code,
+        product_id,
+        seller_code,
+        is_combo,
+        type as sku_type,           --huong.dang
+        status as sku_status,       --huong.dang
+        is_active as sku_active     --huong.dang
+
+    FROM silver_buymed_vn.marketplace_prd_product_v2_sku_main_v2 
+    QUALIFY ROW_NUMBER() OVER(_window) = 1 AND FIRST_VALUE(action) over(_window) <> 'd'
+    WINDOW _window AS (PARTITION BY mg_id ORDER BY synced_at DESC, IF(action='d',3,IF(action='u',2,1)) DESC)
+), 
+dedup_product as ( -- 11.64MB
+    SELECT
+        product_id,
+        name as product_name
+    FROM
+        silver_buymed_vn.marketplace_prd_product_v2_product 
+    QUALIFY ROW_NUMBER() OVER(_window) = 1 AND FIRST_VALUE(action) over(_window) <> 'd'
+    WINDOW _window AS (PARTITION BY mg_id ORDER BY synced_at DESC, IF(action='d',3,IF(action='u',2,1)) DESC)
+)
+SELECT
+    sku_created_at,
+    -- TIMESTAMP_ADD(sku_m.last_updated_time,INTERVAL 7 HOUR) AS sku_last_updated_at,--huong.dang
+    sku_m.code AS sku_code,
+    sku_m.product_id,
+    prd.name as product_name,
+    sku_m.seller_code,
+    sku_m.is_combo,
+    -- sku_m.type as sku_type, --huong.dang
+    -- sku_m.status as sku_status, -- huong.dang
+    -- sku_m.is_active as sku_active --huong.dang
+    FROM dedup_sku_main as sku_m
+    left join dedup_product as prd on sku_m.product_id = prd.product_id 
+    WHERE
+    sku_m.seller_code <> 'Med_NT' and
+    sku_m.code not in (
+        select code 
+        from dedup_sku_main
+        where upper(code) in (
+            select upper(code)
+            from dedup_sku_mainR
+            where REGEXP_CONTAINS(code, r'[a-z]')
+            INTERSECT distinct
+            select code
+            from dedup_sku_main
+            where NOT REGEXP_CONTAINS(code, r'[a-z]')
+        )
+        and REGEXP_CONTAINS(code, r'[a-z]')
+    )
+-- )
+-- where row_num = 1
