@@ -1,0 +1,99 @@
+config {
+    type: "table",
+    description: " PIC: minh.luu . key: date",
+    tags: ["0h30"],
+    columns: {
+        Date : "ngày-tháng-năm",
+        date_key: "Date nhưng không có dấu phân cách",
+        week_day: "Là thứ mấy trong tuần, week_day=1 tương ứng thứ 2",
+        sow: "Date đầu tuần",
+        eow: "Date cuối tuần",
+        year_month: "Tháng-Năm",
+        month_day: "Tháng-ngày",
+        som: "Date đầu tháng",
+        eom: "Date cuối tháng",
+        month: "tháng",
+        year: "năm",
+        quarter: "quý",
+        soq: "Date đầu quý",
+        eoq: "Date cuối quý",
+        past_now_future: "Là quá khứ, hiện tại hoặc tương lại",
+        month_name: "Tháng dưới dạng chữ",
+        day: "ngày",
+        week_number: "Tuần trong năm",
+        year_month_number: "là số tháng kể từ 0-0-0001",
+        date_sort: "",
+        aging_day: "là số ngày tính từ ngày đó tới hiện tại, nếu là tương lai thì số âm",
+        aging_month: "tương tự aging_day nhưng là theo tháng",
+        aging_year: "tương tự aging_day nhưng là theo năm",
+        year_week: "năm và tuần hiện tại trong năm theo format `<year>_W<week>`",
+        aging_week: "tương tự aging_day nhưng theo tuần",
+        againg_day_label: "là aging day nhưng theo format `D-<aging_day>`",
+        weekdayname: "Thứ mấy trong tuần",
+        holiday: "Là ngày lễ gì hay ngày thường `NORMAL`"
+
+    }
+}
+
+WITH calendar AS (
+  SELECT
+    *
+  FROM
+    UNNEST(GENERATE_DATE_ARRAY('2020-01-01', '2027-01-01', INTERVAL 1 DAY)) AS Date
+)
+
+, cte_main as (
+  SELECT
+    Date,
+    CAST( FORMAT_DATE("%Y%m%d", Date) AS INT64 ) AS date_key,
+    MOD(CAST(EXTRACT(DAYOFWEEK FROM Date) AS INT64) + 5, 7) + 1 AS week_day,
+    DATE_TRUNC(Date, WEEK(MONDAY)) AS sow,
+    DATE_ADD(DATE_TRUNC(Date, WEEK(MONDAY)), INTERVAL 6 DAY) AS eow,
+    CAST(FORMAT_DATE('%Y-%m', Date) AS STRING) AS year_month,
+    CAST(FORMAT_DATE('%m-%d', Date) AS STRING) AS month_day,
+    DATE_TRUNC(Date, MONTH) AS som,
+    LAST_DAY(Date) AS eom,
+    CAST(EXTRACT(MONTH FROM Date) AS INT64) AS month,
+    CAST(EXTRACT(YEAR FROM Date) AS INT64) AS year,
+    CAST(EXTRACT(QUARTER FROM Date) AS INT64) AS quarter,
+    DATE_TRUNC(Date, QUARTER) AS soq,
+    DATE_ADD(DATE_TRUNC(Date, QUARTER), INTERVAL 2 MONTH) AS eoq,
+    CASE
+      WHEN Date = CURRENT_DATE("+7") THEN 'Now'
+      WHEN Date > CURRENT_DATE("+7") THEN 'Future'
+      ELSE 'Past'
+    END AS past_now_future,
+    FORMAT_DATE('%B', Date) AS month_name,
+    CAST(EXTRACT(DAY FROM Date) AS INT64) AS day,
+    CAST(EXTRACT(WEEK FROM Date) AS INT64) AS week_number,
+    CAST(EXTRACT(YEAR FROM Date) * 12 + EXTRACT(MONTH FROM Date) - 1 AS INT64) AS year_month_number,
+    -CAST(EXTRACT(DAY FROM Date) AS INT64) AS date_sort,
+    DATE_DIFF(CURRENT_DATE("+7"), Date, DAY) AS aging_day,
+    DATE_DIFF(CURRENT_DATE("+7"), Date, Month) AS aging_month,
+    DATE_DIFF(CURRENT_DATE("+7"), Date, YEAR) AS aging_year,
+    Concat(
+      EXTRACT(YEAR FROM Date),"_W", 
+      IF(
+        EXTRACT(WEEK(MONDAY) FROM Date) >= 10, 
+        SAFE_CAST(EXTRACT(WEEK(MONDAY) FROM Date) as STRING), 
+        "0" || SAFE_CAST(EXTRACT(WEEK(MONDAY) FROM Date) as STRING)) 
+    ) year_week,
+    DATE_DIFF(CURRENT_DATE("+7"), Date, WEEK(MONDAY)) AS aging_week,
+    Concat("D-",DATE_DIFF(CURRENT_DATE("+7"), Date, DAY)) AS aging_day_label,
+    FORMAT_DATE('%A', Date) AS weekdayname
+  FROM calendar
+)
+
+SELECT
+  a.*
+  , CASE
+    WHEN a.month_day = "01-01" THEN "NEW YEAR'S DAY"
+    WHEN a.month_day = "04-30" THEN "DAY OF NATION REUNIFICATION"
+    WHEN a.month_day = "05-01" THEN "INTERNATIONAL WORKERS' DAY"
+    WHEN a.month_day = "09-02" THEN "NATIONAL DAY"
+    WHEN a.Date in ("2024-02-10", "2023-01-22", "2022-02-01", "2021-02-12", "2020-01-25", "2019-02-05") THEN "LUNAR NEW YEAR"
+    ELSE "NORMAL"
+  END AS holiday
+FROM cte_main as a
+-- WHERE
+--   a.Date in ("2024-02-18") 

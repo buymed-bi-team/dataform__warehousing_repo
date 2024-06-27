@@ -10,20 +10,15 @@ function dedup(table_name, col_name , interval_time = -1, incremental = false, l
     - interval_time : STRING : (Optional) The number of time before today for which you want to retrieve data up to the current day, For example:
         * interval_time = "interval 3 month"
         * interval_time = "interval 1 day"
-    - incremental: boolean : (Optional) to filter data in period of interval_time you want to update when implement incremental model
-        - for example if you implement incremental model, you want to update today data then set:
-            incremental = true, interval_time = "interval 1 day" 
+    \\ - incremental: boolean : (Optional) to filter data in period of interval_time you want to update when implement incremental model
+    \\     - for example if you implement incremental model, you want to update today data then set:
+    \\         incremental = true, interval_time = "interval 1 day" 
     - last_updated_time : Boolean : (Optional) Some having duplicate table doesn't have last_updated_time, if hasn't then set last_updated_time=false
   */
   condition = " "
   if(interval_time != -1){
     if(incremental != false){
-      condition.concat(
-      `
-      \${when(incremental(),
-      "where created_time > timestamp( current_datetime() - ${interval_time}) and ingest_time > timestamp( current_datetime() - ${interval_time})",
-      "")}`
-      )
+      condition.concat(`\${when(incremental(),"where created_time > timestamp( current_datetime() - ${interval_time}) and ingest_time > timestamp( current_datetime() - ${interval_time})","")}`)
     }
     else{
       condition.concat( `where created_time > timestamp( current_datetime() - ${interval_time})
