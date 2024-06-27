@@ -5,8 +5,13 @@ config {
 }
 
 SELECT
-    sku,
-    warehouse_code,
-    MAX(created_time) + INTERVAL 7 HOUR AS ts_latest_put,
-FROM ${ref("dedup_warehouse_prd_inbound_put_ticket_item")} o
-GROUP BY sku, warehouse_code
+    a.sku,
+    a.warehouse_code,
+    MAX(a.created_time) + INTERVAL 7 HOUR AS latest_put_time,
+    TIMESTAMP_DIFF(CURRENT_TIMESTAMP(), MAX(a.created_time), DAY) AS aging_put_days,
+    MAX(b.code) AS latest_put_code,
+    MAX(json_value(b.extra_props, "$.inbound_code")) AS latest_inbound_code
+FROM ${ref("dedup_warehouse_prd_inbound_put_ticket_item")} a
+JOIN ${ref("dedup_warehouse_prd_inbound_put_ticket")} b
+ON a.put_code = b.code
+GROUP BY 1, 2

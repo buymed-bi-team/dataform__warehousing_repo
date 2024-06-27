@@ -1,0 +1,20 @@
+config {
+    type: "table",
+    description: " PIC: minh.luu",
+    name: "dim_product",
+    tags: ["0h00"],
+    columns: {
+        product_id: "Primary key. ID sản phẩm",
+        product_name: "Tên sản phầm",
+        owner_code : "status trên hệ thống WMS",
+        owner_name : "status trên hệ thống ACCOUNTING",
+        unit : "",
+        volume : "",
+        product_report_category : "",
+
+    }
+}
+
+
+SELECT
+

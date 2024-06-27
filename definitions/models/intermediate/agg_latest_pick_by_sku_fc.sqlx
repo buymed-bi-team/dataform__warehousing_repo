@@ -5,7 +5,13 @@ config {
 }
 
 SELECT
-    sku,
-    warehouse_code,
-    created_time
-FROM ${ref("dedup_warehouse_prd_picking_pick_ticket_item")} o
+    a.sku,
+    a.warehouse_code,
+    MAX(a.created_time) + INTERVAL 7 HOUR AS latest_pick_time,
+    TIMESTAMP_DIFF(CURRENT_TIMESTAMP(), MAX(a.created_time), DAY) AS aging_pick_days,
+    MAX(a.ticket_id) as latest_pick_ticket_id,
+    MAX(b.so) as latest_so
+FROM ${ref("dedup_warehouse_prd_picking_pick_ticket_item")} a
+JOIN ${ref("dedup_warehouse_prd_picking_pick_ticket")} b
+ON a.ticket_id = b.ticket_id
+GROUP BY 1, 2

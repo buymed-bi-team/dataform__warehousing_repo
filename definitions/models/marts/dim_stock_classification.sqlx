@@ -3,13 +3,47 @@ config {
     description: "PIC: dong.le",
     name: "dim_stock_classification",
     tags: ["12h00"],
+    columns: {
+        type_stock_aging: "Categorizes inventory items based on latest pick (NORMAL: < 14 days, BLACK: > 14 days, DEAD: no demand) and put (I: < 15 days. II: 16-30 days. III: >30 days) aging."
+    }
 }
 
 SELECT
     a.sku,
-    a.warehouse_code,
-    b.ts_latest_put,
-    b.ts_latest_pick
+    a.warehouse_code as fc_code,
+    b.latest_put_time,
+    c.latest_pick_time,
+    CASE
+        -- NORMAL cases
+        WHEN aging_pick_days >= 0 AND aging_pick_days <= 14 AND (aging_put_days >= 0 AND aging_put_days <= 15) THEN '01/NORMAL-I: DE(<=14d) | IB(0-15d)'
+        WHEN aging_pick_days >= 0 AND aging_pick_days <= 14 AND (aging_put_days > 15 AND aging_put_days <= 30) THEN '01/NORMAL-II: DE(<=14d) | IB(16-30d)'
+        WHEN aging_pick_days >= 0 AND aging_pick_days <= 14 AND (aging_put_days > 30 OR aging_put_days IS NULL) THEN '01/NORMAL-III: DE(<=14d) | IB(>30d)'
+
+        -- BLACK cases
+        WHEN aging_pick_days > 14 AND (aging_put_days >= 0 AND aging_put_days <= 15) THEN '02/BLACK-I: DE(>14d) | IB(0-15d)'
+        WHEN aging_pick_days > 14 AND (aging_put_days > 15 AND aging_put_days <= 30) THEN '02/BLACK-II: DE(>14d) | IB(16-30d)'
+        WHEN aging_pick_days > 14 AND (aging_put_days > 30 OR aging_put_days IS NULL) THEN '02/BLACK-III: DE(>14d) | IB(>30d)'
+
+        -- DEAD cases (No-Demand)
+        WHEN aging_pick_days IS NULL AND (aging_put_days >= 0 AND aging_put_days <= 15) THEN '03/DEAD-I: No-Demand | IB(0-15d)'
+        WHEN aging_pick_days IS NULL AND (aging_put_days > 15 AND aging_put_days <= 30) THEN '03/DEAD-II: No-Demand | IB(16-30d)'
+        WHEN aging_pick_days IS NULL AND (aging_put_days > 30 OR aging_put_days IS NULL) THEN '03/DEAD-III: No-Demand | IB(>30d)'
+        ELSE '03/DEAD-III: No-Demand | IB(>30d)'
+    END AS type_stock_aging,
+    TO_JSON_STRING(
+        STRUCT(
+            IF(b.aging_put_days IS NOT NULL, b.aging_put_days, NULL) AS aging_put_days,
+            IF(c.aging_pick_days IS NOT NULL, c.aging_pick_days, NULL) AS aging_pick_days,
+            IF(b.latest_put_code IS NOT NULL, b.latest_put_code, NULL) AS latest_put_code,
+            IF(b.latest_inbound_code IS NOT NULL, b.latest_inbound_code, NULL) AS latest_inbound_code,
+            IF(c.latest_pick_ticket_id IS NOT NULL, c.latest_pick_ticket_id, NULL) AS latest_pick_ticket_id,
+            IF(c.latest_so IS NOT NULL, c.latest_so, NULL) AS latest_so
+        )
+    ) AS note
+    
 FROM ${ref("dedup_warehouse_prd_inventory_sku_merge")} a
 LEFT JOIN ${ref("agg_latest_put_by_sku_fc")} b
-    ${ref("agg_latest_pick_by_sku_fc")} c
+    ON a.sku = b.sku AND a.warehouse_code = b.warehouse_code
+LEFT JOIN ${ref("agg_latest_pick_by_sku_fc")} c
+    ON a.sku = c.sku AND a.warehouse_code = c.warehouse_code
+WHERE b.latest_put_time IS NOT NULL OR c.latest_pick_time IS NOT NULL

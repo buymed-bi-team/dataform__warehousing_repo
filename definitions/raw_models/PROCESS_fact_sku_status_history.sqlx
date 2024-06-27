@@ -2,19 +2,21 @@ config {
     type: "table",
     tags: ["adhoc-office"],
     description: "SKU status history by hours ( 1 day ). PIC: Minh",
-    name: "fact_sku_status_history"
+    name: "fact_sku_status_day_by_hour"
 //     bigquery: {
 //     partitionBy: "timestamp"
 //   }
 }
-WITH DateSeries AS (
+WITH timeseries AS (
   SELECT *
   FROM 
     UNNEST( 
-        GENERATE_TIMESTAMP_ARRAY( TIMESTAMP_SUB(CURRENT_TIMESTAMP() , INTERVAL 5 day), 
+        GENERATE_TIMESTAMP_ARRAY( TIMESTAMP_SUB(CURRENT_TIMESTAMP() , INTERVAL 1 day), 
         CURRENT_TIMESTAMP(), 
         INTERVAL 1 HOUR )
     ) AS timestamp
+),  DateSeries AS (
+  SELECT DATETIME(timestamp,'Asia/Ho_Chi_Minh') as date_time from timeseries
 ),
 -- step 1: lấy danh sách nhưng con item_code được ghi nhận có thay đổi status trong l90d
 sku_status AS (
@@ -23,7 +25,7 @@ sku_status AS (
     item_code,
     start_at,
     CASE
-      WHEN end_at IS NULL AND start_at IS NOT NULL AND status IS NOT NULL THEN TIMESTAMP(CURRENT_DATETIME())
+      WHEN end_at IS NULL AND start_at IS NOT NULL AND status IS NOT NULL THEN CURRENT_DATETIME("+7")
       ELSE end_at
     END AS end_at_custom,
     end_at,
@@ -34,8 +36,8 @@ sku_status AS (
     SELECT
       ss.sku,
       ss.item_code,
-      last_updated_time AS start_at,
-      LEAD(last_updated_time) OVER (PARTITION BY ss.sku, item_code, b.region_code ORDER BY last_updated_time ASC) AS end_at,
+      DATETIME(last_updated_time, 'Asia/Ho_Chi_Minh') AS start_at,
+      LEAD(DATETIME(last_updated_time, 'Asia/Ho_Chi_Minh')) OVER (PARTITION BY ss.sku, item_code, b.region_code ORDER BY last_updated_time ASC) AS end_at,
       status
       , b.region_code AS sales_region_code
       -- ,
@@ -64,31 +66,31 @@ sku_date AS (
 fill_backwwark_value AS (
   SELECT
     sd.item_code,
-    DATETIME(TIMESTAMP(CURRENT_DATETIME()), 'Asia/Ho_Chi_Minh') AS last_refreshed_at,
+    CURRENT_DATETIME("+7") AS last_refreshed_at,
     ss.sku,
-    sd.timestamp,
-    DATETIME(ss.start_at, 'Asia/Ho_Chi_Minh') AS start_at,
-    DATETIME(ss.end_at, 'Asia/Ho_Chi_Minh') AS end_at,
-    DATETIME(ss.end_at_custom, 'Asia/Ho_Chi_Minh') AS end_at_custom,
+    sd.date_time,
+    ss.start_at AS start_at,
+    ss.end_at AS end_at,
+    ss.end_at_custom AS end_at_custom,
     ss.status,
     ss.sales_region_code,
     sd.sub_sku_sales_region_code,
     LEFT(sd.item_code, INSTR(sd.item_code, '.', 1, 2) - 1) AS sku_code_bf,
     SUBSTR(sd.sub_sku_sales_region_code, INSTR(sd.sub_sku_sales_region_code, '_') + 1) AS sales_region_code_bf,
     CASE
-      WHEN ss.end_at_custom IS NULL THEN LEAD(DATETIME(ss.start_at, 'Asia/Ho_Chi_Minh'))
-        OVER (PARTITION BY sub_sku_sales_region_code ORDER BY sd.timestamp ASC)
-      -- last_value(ss.start_at IGNORE NULLS) over(partition by sub_sku_sales_region_code ORDER BY sd.timestamp ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING)
-      ELSE DATETIME(ss.end_at_custom, 'Asia/Ho_Chi_Minh')
+      WHEN ss.end_at_custom IS NULL THEN LEAD(ss.start_at)
+        OVER (PARTITION BY sub_sku_sales_region_code ORDER BY sd.date_time ASC)
+      -- last_value(ss.start_at IGNORE NULLS) over(partition by sub_sku_sales_region_code ORDER BY sd.date_time ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING)
+      ELSE ss.end_at_custom
     END AS end_at_custom_v2,
     CASE
-      WHEN ss.start_at IS NULL THEN DATETIME_SUB(DATETIME(TIMESTAMP(CURRENT_DATETIME()), 'Asia/Ho_Chi_Minh'), INTERVAL 3 MONTH)
-      ELSE DATETIME(ss.start_at, 'Asia/Ho_Chi_Minh')
+      WHEN ss.start_at IS NULL THEN DATETIME_SUB(CURRENT_DATETIME("+7"), INTERVAL 1 DAY)
+      ELSE ss.start_at
     END AS start_at_v2,
     -- , s.sku_system_active
-    FIRST_VALUE(ss.status IGNORE NULLS) OVER (partition by sd.sub_sku_sales_region_code ORDER BY sd.timestamp ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS contrast_first_status
+    FIRST_VALUE(ss.status IGNORE NULLS) OVER (partition by sd.sub_sku_sales_region_code ORDER BY sd.date_time ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS contrast_first_status
     from sku_date as sd 
-    left join sku_status as ss on sd.item_code = ss.item_code and sd.sales_region_code = ss.sales_region_code and sd.timestamp between ss.start_at and ss.end_at_custom
+    left join sku_status as ss on sd.item_code = ss.item_code and sd.sales_region_code = ss.sales_region_code and sd.date_time between ss.start_at and ss.end_at_custom
     -- left join 'gold_buymed_vn.dim_sku' s on ss.sku = s.sku_code
     -- left join `gold_buymed_vn.adhoc_pm_master_sku` s on ss.sku = s.sku_code
 )
@@ -98,7 +100,7 @@ select
     c.last_refreshed_at
     , c.item_code
     , c.sku as sku_code
-    , c.timestamp
+    , c.date_time
     , s.sku_system_active
     , c.sales_region_code_bf as sales_region_code
     , c.sub_sku_sales_region_code
@@ -109,7 +111,7 @@ select
         when contrast_first_status not in ("OUT_OF_STOCK") and status is null then "UNKNOWN"
         else contrast_first_status
       end as status
-    , first_value(c.end_at_custom_v2 IGNORE NULLS) over(partition by sub_sku_sales_region_code ORDER BY c.timestamp ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) as end_at_custom_v3
+    , first_value(c.end_at_custom_v2 IGNORE NULLS) over(partition by sub_sku_sales_region_code ORDER BY c.date_time ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) as end_at_custom_v3
     , c.end_at_custom_v2
     , c.end_at_custom
     ,c.end_at
@@ -118,7 +120,7 @@ select
     -- else '' end as oos_check
 from fill_backwwark_value c
 left join gold_buymed_vn.adhoc_pm_master_sku s on c.sku = s.sku_code and c.sales_region_code_bf = s.sales_region_code
-where c.timestamp > TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 5 DAY)
+where c.date_time > CURRENT_DATETIME("+7") - INTERVAL 1 day
 )
 
 -- step 3: listing toàn bộ những con sku không được ghi nhân có sự thay đổi status in L90D
@@ -133,9 +135,9 @@ where c.timestamp > TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 5 DAY)
         , ms.sku_code || "_" || ms.sales_region_code as sku_sales_region_code
         , ms.sub_sku_code || "_" || ms.sales_region_code as sub_sku_sales_region_code
         , ms.sku_system_status as status
-        , DATETIME(TIMESTAMP(CURRENT_DATETIME() - INTERVAL 5 DAY),'Asia/Ho_Chi_Minh') as start_at
-        , DATETIME(TIMESTAMP(CURRENT_DATETIME()) ,'Asia/Ho_Chi_Minh') as end_at_custom
-        , DATETIME(TIMESTAMP(CURRENT_DATETIME()) ,'Asia/Ho_Chi_Minh') as end_at
+        , CURRENT_DATETIME("+7") - INTERVAL 1 day as start_at
+        , CURRENT_DATETIME("+7") as end_at_custom
+        , CURRENT_DATETIME("+7") as end_at
         -- , DATEtime(current_date() - INTERVAL 3 MONTH)
     from gold_buymed_vn.adhoc_pm_master_sku ms
     left join sku_list sl on ms.sub_sku_code = sl.item_code and ms.sales_region_code = sl.sales_region_code
@@ -152,7 +154,7 @@ where c.timestamp > TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 5 DAY)
     -- WHERE ss.sales_region_code IS NOT NULL
     QUALIFY ROW_NUMBER() OVER (PARTITION BY ss.sku_code, sales_region_code) = 1
 )
-, sku_remaining_timestamp as
+, sku_remaining_date_time as
 (
   select *
   from sku_remaining_list,DateSeries
@@ -160,10 +162,10 @@ where c.timestamp > TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 5 DAY)
 
 , sku_remaining_final as (
     select
-        DATETIME(TIMESTAMP(CURRENT_DATETIME()), 'Asia/Ho_Chi_Minh') AS last_refreshed_at
+        CURRENT_DATETIME("+7") AS last_refreshed_at
         , sr.item_code
         , md.sku_code
-        , md.timestamp
+        , md.date_time
         , sr.sku_system_active
         , md.sales_region_code
         , sr.sub_sku_sales_region_code
@@ -172,10 +174,10 @@ where c.timestamp > TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 5 DAY)
         , sr.start_at
         , sr.end_at_custom
         , sr.end_at
-    from sku_remaining_timestamp md
-    left join sku_remaining sr on md.sku_sales_region_code = sr.sku_sales_region_code and md.timestamp between timestamp(sr.start_at) and timestamp(sr.end_at_custom)
+    from sku_remaining_date_time md
+    left join sku_remaining sr on md.sku_sales_region_code = sr.sku_sales_region_code and md.date_time between sr.start_at and sr.end_at_custom
     -- order by md.sku_sales_region_code, md.timestamp
-    where md.timestamp > TIMESTAMP_SUB( CURRENT_TIMESTAMP(), INTERVAL 5 DAY)
+    where md.date_time > CURRENT_DATETIME("+7") - INTERVAL 1 day
     qualify row_number() over()= 1
 )
 , union_all as 
@@ -184,7 +186,7 @@ SELECT
     a.last_refreshed_at
     , a.item_code
     , a.sku_code
-    , a.timestamp
+    , a.date_time
     , a.sku_system_active
     , a.sales_region_code
     , a.sub_sku_sales_region_code
@@ -199,7 +201,7 @@ select
       c.last_refreshed_at
     , c.item_code
     , c.sku_code
-    , c.timestamp
+    , c.date_time
     , c.sku_system_active
     , c.sales_region_code
     , c.sub_sku_sales_region_code
