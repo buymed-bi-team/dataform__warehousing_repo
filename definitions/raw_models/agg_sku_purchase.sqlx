@@ -109,8 +109,8 @@ int_po as (
     left join stg_purchase_order  b on a.po_id = b.po_id
     where
         b.created_time >= (SELECT start_date FROM cte_date)
-        -- and b.created_by_system <> 'INTERNAL_MEDX' 
-        -- and b.status <> 'CANCELED'
+        and b.created_by_system <> 'INTERNAL_MEDX' 
+        and b.status <> 'CANCELED'
     group by 1, a.warehouse_code
 ),
 

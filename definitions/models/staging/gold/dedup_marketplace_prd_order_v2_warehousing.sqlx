@@ -55,7 +55,8 @@ SELECT
   total_discount,
   system_display,
   source_detail,
-  payment_method_percentage
+  payment_method_percentage,
+  ingest_time
 FROM
   lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_order o 
   QUALIFY ROW_NUMBER() OVER (_window) = 1

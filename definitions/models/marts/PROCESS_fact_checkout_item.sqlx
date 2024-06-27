@@ -1,13 +1,15 @@
 config {
     type: "incremental",
-    description: "Action in product_management. Use for alert policy change field status of a sku",
+    description: " 6 months| PIC: minh.luu",
     tags: ["12h00"],
     name: "fact_checkout_item",
+    bigquery: {
+        partitionBy: "DATE(order_item_created_time)"
+    }
 }
 
 -- TODO:
 -- - dedup function
--- - Index 
 -- - Setup primary key
 -- - Setup fact key
 -- - column type and description
@@ -19,36 +21,38 @@ config {
 -- ), -- TODO: create include for filter_time named Filter day
 
 WITH stg_order_item as (
-  Select 
-    order_id,
-    customer_id,
-    sku, 
-    item_code,
-    price,
-    quantity,
-    created_time,
-    cart_item_created_time,
-    page,
-    event_source,
-    event_screen,
-    tags
-  FROM
-    lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_order_item
-  -- WHERE 
-  --   ingest_time > (SELECT start_date FROM filter_time) -- TODO: create include for filter_time named Filter day
-  QUALIFY ROW_NUMBER() OVER(_window) = 1 AND FIRST_VALUE(action) over(_window) <> 'd'
-  WINDOW _window AS (PARTITION BY mg_id ORDER BY synced_at DESC, IF(action='d',3,IF(action='u',2,1)) DESC, last_updated_time DESC)
-    -- TODO: dedup
-), -- TODO: get exists dedup
-
+    select 
+      mg_id,
+      synced_at,
+      last_updated_time, 
+      order_id,
+      customer_id,
+      sku,
+      item_code,
+      price,
+      quantity,
+      DATETIME(created_time, 'Asia/Ho_Chi_Minh') as order_item_created_time,
+      DATETIME(cart_item_created_time, 'Asia/Ho_Chi_Minh') as cart_item_created_time,
+      page,
+      event_source,
+      event_screen,
+      tags
+    from lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_order_item 
+    ${when(incremental(),
+      "where created_time > timestamp( current_datetime() - interval 1 day) and ingest_time > timestamp( current_datetime() - interval 1 day)",
+      "")}
+     QUALIFY ROW_NUMBER() OVER(_window) = 1 AND FIRST_VALUE(action) over(_window) <> 'd'
+      WINDOW _window AS (PARTITION BY mg_id ORDER BY synced_at DESC, IF(action='d',3,IF(action='u',2,1)) DESC, last_updated_time DESC)
+),
 stg_order as (
   SELECT
     order_id,
     province_code
   FROM
     lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_order
-  -- WHERE
-  --   ingest_time > ( SELECT start_date FROM filter_time)
+  ${when(incremental(),
+      "where created_time > timestamp( current_datetime() - interval 1 day) and ingest_time > timestamp( current_datetime() - interval 1 day)",
+      "")}
   QUALIFY ROW_NUMBER() OVER(_window) = 1 AND FIRST_VALUE(action) over(_window) <> 'd'
   WINDOW _window AS (PARTITION BY mg_id ORDER BY synced_at DESC, IF(action='d',3,IF(action='u',2,1)) DESC, last_updated_time DESC)
 ) -- TODO: Like above
@@ -60,8 +64,8 @@ SELECT
   a.item_code,
   a.price,
   a.quantity,
-  DATETIME(a.created_time, 'Asia/Ho_Chi_Minh') as created_time,
-  DATETIME(a.cart_item_created_time, 'Asia/Ho_Chi_Minh') as cart_item_created_time,
+  a.order_item_created_time,
+  a.cart_item_created_time,
   a.page,
   a.event_source,
   a.event_screen,
@@ -73,6 +77,6 @@ LEFT JOIN stg_order b
 
 ${
   when(incremental(),
-   `WHERE created_time > (SELECT MAX(created_time) FROM ${self()})`,
-   ``)
+   `WHERE order_item_created_time > (SELECT MAX(order_item_created_time) FROM ${self()})`,
+   `WHERE order_item_created_time > DATE_TRUNC(CURRENT_DATETIME('+7') - INTERVAL 6 MONTH,  MONTH)`)
 }

@@ -1,0 +1,15 @@
+config {
+    type: "table",
+    description: "PIC: dong.le",
+    name: "dim_stock_classification",
+    tags: ["12h00"],
+}
+
+SELECT
+    a.sku,
+    a.warehouse_code,
+    b.ts_latest_put,
+    b.ts_latest_pick
+FROM ${ref("dedup_warehouse_prd_inventory_sku_merge")} a
+LEFT JOIN ${ref("agg_latest_put_by_sku_fc")} b
+    ${ref("agg_latest_pick_by_sku_fc")} c

@@ -1,0 +1,22 @@
+config {
+    type: "table",
+    description: " PIC: dong.le",
+    name: "dim_inbound_ticket",
+    tags: ["12h00"],
+    bigquery: {
+        partitionBy: "DATETIME_TRUNC((created_at),day)",
+    }
+}
+
+SELECT
+  i.po_code,
+  i.code as inbound_code,
+  case when i.external_type = 'PURCHASE_SYS' then 'PO'
+      when i.external_type = 'SELLER' then 'PGH'
+      when i.external_type = 'TRANSFER' then 'TO'
+      else 'OTHER'
+  end as order_type,
+  DATETIME(i.created_time, 'Asia/Ho_Chi_Minh') as created_time,
+  i.status
+  
+FROM ${source_base.GOLD}.dedup_warehouse_prd_inbound_inbound_ticket i

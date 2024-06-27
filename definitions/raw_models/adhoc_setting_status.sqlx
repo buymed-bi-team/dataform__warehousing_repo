@@ -1,0 +1,58 @@
+config {
+    type: "view",
+    description: "Action in product_management. Use for alert policy change field status of a sku (clone version of adhoc_pm_setting_normal_oos). PIC:Tu.dang"
+}
+
+
+select 
+ a.*
+ , a.expected_quantity - coalesce(po_confirmed_quantity) as diff_qty
+ ,safe_divide(po_confirmed_quantity,expected_quantity) as pct_confirm
+ , if ( unstable is null
+         AND sku_system_status IN ("LIMIT", "OUT_OF_STOCK", "SUSPENDED") 
+         AND upper(purchase_status) = "ON" 
+         AND coalesce(po_confirmed_quantity,0) > 0 
+         AND expected_quantity - coalesce(po_confirmed_quantity,0) <= 0 ,
+        IF(
+            sku_system_active,
+            "NORMAL",
+            "ACTIVE + NORMAL"
+        ),
+        null
+    ) AS setting_normal_action,
+    If (
+            ( internal_transfer = 'INTERNAL_TRANSFER'
+                AND (warehouse_code <> 'HN'
+                    OR FORMAT_DATE('%a', CURRENT_DATE("+7")) = 'Tue'
+                    OR FORMAT_DATE('%a', CURRENT_DATE("+7")) = 'Thu'
+                )
+            )
+            OR coalesce(internal_transfer,"") <> 'INTERNAL_TRANSFER',
+            "LISTING",
+            "NO-LISTING"
+        ) as condition_action_OOS
+    , 
+    IF(
+        unstable is null 
+        AND upper(purchase_status) = "ON" 
+        AND expected_quantity - coalesce(po_confirmed_quantity,0) > 0
+        AND (
+            (internal_transfer = 'INTERNAL_TRANSFER'
+                AND (warehouse_code <> 'HN'
+                    OR FORMAT_DATE('%a', CURRENT_DATE("+7")) = 'Tue'
+                    OR FORMAT_DATE('%a', CURRENT_DATE("+7")) = 'Thu'
+                )
+            )
+           OR coalesce(internal_transfer,"") <> 'INTERNAL_TRANSFER'
+        ),
+        case
+            when available_qty <= 0 and sku_system_status not in ("OUT_OF_STOCK","SUSPENDED")
+                then "OUT_OF_STOCK"
+            when available_qty > 0 and sku_system_status not in ("LIMIT","SUSPENDED") -- xét theo tồn kho
+                then "LIMIT"
+        end,
+        null
+    ) AS setting_oos_action
+  
+from `gold_buymed_vn2.agg_sku_purchase` a
+-- where sku_code = 'MEDX.DMTS-JAN-NIZ-004'

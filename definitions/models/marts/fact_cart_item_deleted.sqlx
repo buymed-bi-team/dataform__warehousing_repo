@@ -9,8 +9,6 @@ config {
    
 }
 
-
-
 select
   * ,
   silver_buymed_vn.mongoid_to_timestamp(mg_id) as time_ingested_to_mongo,

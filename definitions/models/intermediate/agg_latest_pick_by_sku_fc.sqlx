@@ -1,0 +1,11 @@
+config {
+    type: "view",
+    description: " PIC: dong.le",
+    name: "agg_latest_pick_by_sku_fc"
+}
+
+SELECT
+    sku,
+    warehouse_code,
+    created_time
+FROM ${ref("dedup_warehouse_prd_picking_pick_ticket_item")} o
