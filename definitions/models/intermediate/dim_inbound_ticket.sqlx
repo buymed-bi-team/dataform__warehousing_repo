@@ -2,7 +2,10 @@ config {
     type: "table",
     description: " PIC: dong.le",
     name: "dim_inbound_ticket",
-    tags: ["0h00"]
+    tags: ["12h00"],
+    bigquery: {
+        partitionBy: "DATETIME_TRUNC((created_at),day)",
+    }
 }
 
 SELECT
