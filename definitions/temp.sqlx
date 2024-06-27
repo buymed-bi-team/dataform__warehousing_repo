@@ -1,0 +1,2 @@
+
+SELECT * FROM ${dedup.dedup("silver_buymed_vn.marketplace_prd_order_v2_order","order_id,status",interval_time = "interval 1 month",)}

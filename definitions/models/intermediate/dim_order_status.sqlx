@@ -1,0 +1,50 @@
+config {
+    type: "table",
+    description: " PIC: minh.luu",
+    name: "dim_order_status",
+    tags: ["0h00","9h00","12h00","15h00"]
+}
+/*
+TODO:
+    - stg_order_WMS have SO, RO, SOBD, SOHN in sale_order_code. Is it necessary to get it? Or the status has it's meaning
+    - Some WMS_status is null but CRM has completed, what is it mean?
+    - Accounting and WMS which one have first?
+*/ 
+
+WITH stg_order_CRM AS (
+    SELECT order_id,status AS CRM_status
+    FROM ${dedup.dedup(
+        "silver_buymed_vn.marketplace_prd_order_v2_order",
+        "order_id,status"
+    )}
+), 
+
+stg_order_WMS AS (
+    SELECT 
+        CAST( REGEXP_EXTRACT(sale_order_code, r'(\d+)') AS INT64 ) AS order_id, 
+        REGEXP_REPLACE(sale_order_code, r'\d+', '') AS warehouse_order_code,
+        status as WMS_status
+    FROM ${dedup.dedup(
+        "silver_buymed_vn.warehouse_prd_core_sale_order",
+        "sale_order_code,status"
+    )}
+),
+
+stg_order_ACCOUNTING AS (
+    SELECT order_id, status as ACCOUNTING_status
+    FROM ${dedup.dedup(
+        "silver_buymed_vn.accounting_prd_invoice_order",
+        "order_id,status"
+    )}
+)
+SELECT
+    a.order_id,
+    -- b.sale_order_code,
+    a.CRM_status,
+    b.WMS_status,
+    c.ACCOUNTING_status
+FROM stg_order_CRM a
+LEFT JOIN stg_order_WMS b
+    ON a.order_id = b.order_id
+LEFT JOIN stg_order_ACCOUNTING c
+    ON a.order_id = c.order_id

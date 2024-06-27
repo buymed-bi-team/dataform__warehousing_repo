@@ -1,6 +1,6 @@
 config {
     type: "incremental",
-    description: "PIC: minh.luu",
+    description: " PIC: minh.luu",
     name: "dim_order",
     tags: ["6h00","9h00","12h00","15h00"]
 }
@@ -15,6 +15,10 @@ config {
 
 WITH dedup_order_tbl as (
   SELECT * FROM lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_order
+  ${ // because we ensure that old will not change, we just get new one, So that We can consider filtering data from staging step
+    when(incremental(),
+   `WHERE created_time > (SELECT timestamp(MAX(created_time)) FROM ${self()})`,
+   ``)}
   QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'
 	WINDOW _window AS 
     (PARTITION BY mg_id 
@@ -24,7 +28,7 @@ WITH dedup_order_tbl as (
 ,order_tbl as (
   SELECT 
     order_id,
-    created_time,
+    DATETIME(created_time, 'Asia/Ho_Chi_Minh') as created_time,
     source,
     -- JSON_EXTRACT_SCALAR(extra_props,'$.brand_code') as brand_code,
     JSON_EXTRACT_SCALAR(extra_props,'$.customer_tags') as customer_tags
@@ -35,7 +39,7 @@ WITH dedup_order_tbl as (
 
 SELECT
   order_id,
-  DATETIME(created_time, 'Asia/Ho_Chi_Minh') as created_time,
+  created_time,
   CASE 
     WHEN customer_tags LIKE '%CIRCA%'  THEN 'CIRCA'
     WHEN customer_tags LIKE '%TENDER%' THEN 'TENDER'
@@ -49,4 +53,5 @@ ${
   when(incremental(),
    `WHERE created_time > (SELECT MAX(created_time) FROM ${self()})`,
    ``)
+   
 }
