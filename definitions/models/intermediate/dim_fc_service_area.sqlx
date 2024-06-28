@@ -1,0 +1,17 @@
+config {
+    type: "table",
+    description: "PIC: dong.le",
+    tags: ["24HOUR"],
+    columns: {
+        fc_code: "primary-key", 
+        service_area_code: "location_code - currently province code"
+    }
+}
+
+select
+    fc.fc_code
+    , json_extract_scalar(unnested_value) as service_area_code
+    , fc.sales_region_code
+from 
+    ${ ref('dim_fc') } as fc,
+    unnest( (json_extract_array(fc.service_areas, '$'))) as unnested_value
