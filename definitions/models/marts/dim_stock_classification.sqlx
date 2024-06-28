@@ -4,15 +4,19 @@ config {
     name: "dim_stock_classification",
     tags: ["12h00"],
     columns: {
+        sku_fc_code: "primary-key, concatenation of sku and fc code",
+        latest_put_time: "Already converted to GMT+7 timezone",
+        latest_pick_time: "Already converted to GMT+7 timezone",
         type_stock_aging: "Categorizes inventory items based on latest pick (NORMAL: < 14 days, BLACK: > 14 days, DEAD: no demand) and put (I: < 15 days. II: 16-30 days. III: >30 days) aging."
     }
 }
 
-SELECT
+SELECT DISTINCT
+    CONCAT(a.sku, "_", a.warehouse_code) as sku_fc_code,
     a.sku,
     a.warehouse_code as fc_code,
-    b.latest_put_time,
-    c.latest_pick_time,
+    DATETIME(b.latest_put_time, 'Asia/Ho_Chi_Minh') latest_put_time,
+    DATETIME(c.latest_pick_time, 'Asia/Ho_Chi_Minh') latest_pick_time,
     CASE
         -- NORMAL cases
         WHEN aging_pick_days >= 0 AND aging_pick_days <= 14 AND (aging_put_days >= 0 AND aging_put_days <= 15) THEN '01/NORMAL-I: DE(<=14d) | IB(0-15d)'
@@ -30,15 +34,15 @@ SELECT
         WHEN aging_pick_days IS NULL AND (aging_put_days > 30 OR aging_put_days IS NULL) THEN '03/DEAD-III: No-Demand | IB(>30d)'
         ELSE '03/DEAD-III: No-Demand | IB(>30d)'
     END AS type_stock_aging,
-    TO_JSON_STRING(
-        STRUCT(
-            IF(b.aging_put_days IS NOT NULL, b.aging_put_days, NULL) AS aging_put_days,
-            IF(c.aging_pick_days IS NOT NULL, c.aging_pick_days, NULL) AS aging_pick_days,
-            IF(b.latest_put_code IS NOT NULL, b.latest_put_code, NULL) AS latest_put_code,
-            IF(b.latest_inbound_code IS NOT NULL, b.latest_inbound_code, NULL) AS latest_inbound_code,
-            IF(c.latest_pick_ticket_id IS NOT NULL, c.latest_pick_ticket_id, NULL) AS latest_pick_ticket_id,
-            IF(c.latest_so IS NOT NULL, c.latest_so, NULL) AS latest_so
-        )
+    CONCAT(
+      '{',
+      IF(b.aging_put_days IS NOT NULL, CONCAT('"aging_put_days":', b.aging_put_days, ','), ''),
+      IF(c.aging_pick_days IS NOT NULL, CONCAT('"aging_pick_days":', c.aging_pick_days, ','), ''),
+      IF(b.latest_put_code IS NOT NULL, CONCAT('"latest_put_code":"', b.latest_put_code, '",'), ''),
+      IF(b.latest_inbound_code IS NOT NULL, CONCAT('"latest_inbound_code":"', b.latest_inbound_code, '",'), ''),
+      IF(c.latest_pick_ticket_id IS NOT NULL, CONCAT('"latest_pick_ticket_id":"', c.latest_pick_ticket_id, '",'), ''),
+      IF(c.latest_so IS NOT NULL, CONCAT('"latest_so":"', c.latest_so, '"'), ''),
+      '}'
     ) AS note
     
 FROM ${ref("dedup_warehouse_prd_inventory_sku_merge")} a

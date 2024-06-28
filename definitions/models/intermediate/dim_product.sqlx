@@ -5,16 +5,74 @@ config {
     tags: ["0h00"],
     columns: {
         product_id: "Primary key. ID sản phẩm",
-        product_name: "Tên sản phầm",
-        owner_code : "status trên hệ thống WMS",
-        owner_name : "status trên hệ thống ACCOUNTING",
-        unit : "",
-        volume : "",
-        product_report_category : "",
+        product_name: "Tên sản phẩm",
+        owner_code : "Code của seller trên sàn",
+        owner_name : "Tên của seller",
+        unit : "Đơn vị của sản phẩm",
+        volume : "Số lượng và thể tích của sản phẩm",
+        product_report_category : "Danh mục báo cáo sản phẩm (DENX, TECH, MARKETING, COMBO, PROMOTION, NORMAL) WHEN owner_name LIKE '%[Tech]%' THEN 'TECH' WHEN owner_code LIKE 'MARKETING' then 'MARKETING' WHEN owner_code LIKE 'DENX' then 'DENX' WHEN UPPER( COALESCE( unit, volumes ) ) = 'COMBO' then 'COMBO' WHEN REGEXP_CONTAINS( LOWER(product_name), r'combo|quà|tặng|khuyến mãi|khuyến mại|hóa đơn|bảo hiểm|thẻ cào|mua|gift 1|gift 2|tờ rơi|áo blouse|poster|ưu đãi|trưng bày' ) OR LOWER(product_name) LIKE '% circa %' OR LOWER(product_name) LIKE '% thuocsi %' then 'PROMOTION' ELSE 'NORMAL'",
 
     }
 }
 
+/*
+Chú thích chi tiết:
+    Product_report_category:
+        DENX : Từ tất cả sản phẩm đến từ nhà bán DENX
+        TECH : các sản phẩm được tạo ra để kiểm thử phần mềm, hệ thống internal
+        MARKETING : các sản phẩm chủ yếu để quảng bá có campaign
+        COMBO     : Tất cả các sản phẩm là bán theo 1 combo, tuy nhiên có 1 số sản phẩm tuy bán combo 
+                        nhưng thật ra combo đó để khuyến mãi PROMOTION mà th
+        PROMOTION : Tất cả các sản phẩm khuyến mãi
+        NORMAL    : Các Sản phẩm không theo nhóm trên
+*/
+
+
+WITH stg_product as (
+  select 
+    product_id,
+    name as product_name,
+    owner as owner_code,
+    unit,
+    volumes
+  FROM 
+  silver_buymed_vn.marketplace_prd_product_v2_product
+  QUALIFY ROW_NUMBER() OVER(_window) = 1 AND FIRST_VALUE(action) over(_window) <> 'd'
+  WINDOW _window AS (PARTITION BY mg_id ORDER BY synced_at DESC, IF(action='d',3,IF(action='u',2,1)) DESC)
+)
+,
+stg_seller as (
+  select 
+    code,
+    seller_id,
+    name as owner_name
+  FROM
+    silver_buymed_vn.seller_prd_core_seller
+  QUALIFY ROW_NUMBER() OVER(_window) = 1 AND FIRST_VALUE(action) over(_window) <> 'd'
+  WINDOW _window AS (PARTITION BY mg_id ORDER BY synced_at DESC, IF(action='d',3,IF(action='u',2,1)) DESC)
+)
 
 SELECT
+  product_id,
+  product_name,
+  owner_code,
+  owner_name,
+  unit,
+  volumes,
+
+  CASE
+    WHEN owner_name LIKE '%[Tech]%' THEN 'TECH'
+    WHEN owner_code LIKE 'MARKETING' then 'MARKETING'
+    WHEN owner_code LIKE 'DENX' then 'DENX'
+    WHEN UPPER( COALESCE( unit, volumes ) ) = 'COMBO' then 'COMBO'
+    WHEN REGEXP_CONTAINS(
+          LOWER(product_name),
+          r'combo|quà|tặng|khuyến mãi|khuyến mại|hóa đơn|bảo hiểm|thẻ cào|mua|gift 1|gift 2|tờ rơi|áo blouse|poster|ưu đãi|trưng bày'
+        ) OR LOWER(product_name) LIKE '% circa %' OR LOWER(product_name) LIKE '% thuocsi %' 
+        then 'PROMOTION'
+    ELSE 'NORMAL'
+  END product_report_category
+FROM 
+  stg_product p
+LEFT JOIN  stg_seller s on p.owner_code = s.code
 

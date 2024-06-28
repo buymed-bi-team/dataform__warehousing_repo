@@ -1,0 +1,26 @@
+config {
+    type: "table",
+    description: "Fulfillment Center (FC)",
+    columns: {
+        fc_code: "primary-key",
+        fc_report_category: "Note: filter FC for actual fulfillment center"
+    }
+}
+
+select 
+    wh.code as fc_code
+    , wh.name as fc_name
+    , wh.status
+    , CASE
+        when json_value(wh.extra_props, "$.group_code") = "CIRCA" then "CIRCA"
+        when json_value(wh.extra_props, "$.group_code") = "BUYMED" and wh.status = "ACTIVE" then "FC"
+        when json_value(wh.extra_props, "$.group_code") = "BUYMED" and wh.status = "INACTIVE" then "FC-INACTIVE"
+        else NULL
+    end as fc_report_category
+    , wh.areas as service_areas
+    , CASE
+        when wh.code = 'HN' THEN 'MIENBAC'
+        when wh.code = 'BD' THEN 'MIENNAM'
+        when wh.code = 'DN' THEN 'MIENTRUNG'
+    end as sales_region_code
+FROM ${ref("dedup_warehouse_prd_core_warehouse")} as wh

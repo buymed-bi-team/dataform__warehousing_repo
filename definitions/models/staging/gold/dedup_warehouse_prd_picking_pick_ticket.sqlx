@@ -13,7 +13,7 @@ SELECT
   *
 FROM
   lakehouse-prod-394907.silver_buymed_vn.warehouse_prd_picking_pick_ticket o 
-WHERE ingest_time > (select date_scan from cte_date)
+-- WHERE ingest_time > (select date_scan from cte_date)
   QUALIFY ROW_NUMBER() OVER (_window) = 1
   AND FIRST_VALUE(action) OVER (_window) <> 'd'
 WINDOW
