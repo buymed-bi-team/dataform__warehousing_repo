@@ -1,7 +1,7 @@
 config {
-    type: "table",
-    description: "Action in product_management. Use for alert policy change field status of a sku",
-    tags: ["7h00","10h00","13h00","16h00","19h00"],
+    type: "view",
+    description: "PIC: minh.luu",
+    // tags: ["7h00","10h00","13h00","16h00","19h00"],
 	columns: {
 	}
 }

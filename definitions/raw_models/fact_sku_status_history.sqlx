@@ -3,6 +3,7 @@ config {
     tags: ["adhoc-office"],
     description: "SKU status history by hours ( 1 day ). PIC: Minh",
     name: "fact_sku_status_history2"
+    // columns:
 }
 WITH DateSeries AS (
   SELECT *

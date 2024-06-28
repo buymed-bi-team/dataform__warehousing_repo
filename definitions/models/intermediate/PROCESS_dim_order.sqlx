@@ -2,6 +2,11 @@ config {
     type: "incremental",
     description: " PIC: minh.luu",
     name: "dim_order",
+    assertions: {
+        uniqueKey: ["order_id"],
+        // nullable : seller_class vì một số seller_code không có trong seller_prd_core_seller table
+        //nonNull: ["created_time","order_channel"]
+    },
     tags: ["6h00","9h00","12h00","15h00"]
 }
 -- TODO: 
@@ -41,10 +46,10 @@ SELECT
   order_id,
   created_time,
   CASE 
+    WHEN source in ('brand-portal', 'clinic-portal') THEN 'DISTRIBUTION'
+    WHEN source = 'internal-portal' THEN 'CONSIGNMENT'
     WHEN customer_tags LIKE '%CIRCA%'  THEN 'CIRCA'
     WHEN customer_tags LIKE '%TENDER%' THEN 'TENDER'
-    WHEN source = 'internal-portal' THEN 'CONSIGNMENT'
-    WHEN source in ('brand-portal', 'clinic-portal') THEN 'DISTRIBUTION'
     ELSE 'MARKETPLACE'
   end as  order_channel
 FROM
