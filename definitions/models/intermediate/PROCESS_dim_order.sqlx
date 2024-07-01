@@ -1,18 +1,24 @@
 config {
     type: "incremental",
-    description: " PIC: minh.luu",
+    description: "PIC: minh.luu; model_type: incremental; Schedule: 6h00, 9h00, 12h00, 15h00",
     name: "dim_order",
-    assertions: {
-        uniqueKey: ["order_id"],
-        // nullable : seller_class vì một số seller_code không có trong seller_prd_core_seller table
-        //nonNull: ["created_time","order_channel"]
-    },
-    tags: ["6h00","9h00","12h00","15h00"]
+    // assertions: {
+    //     uniqueKey: ["order_id"],
+    //     // nullable : seller_class vì một số seller_code không có trong seller_prd_core_seller table
+    //     // nonNull: ["created_time","order_channel"]
+    // },
+    tags: ["6h00","9h00","12h00","15h00"],
+    columns: {
+      order_id:"Unique identifier for each order",
+      created_time: "Timestamp indicating when the order was created. The time zone is set to 'Asia/Ho_Chi_Minh'",
+      order_channel: "Category of the order based on the tags and source.  'TENDER' if customer_tags contains 'TENDER', 'CIRCA' if customer_tags contains 'CIRCA', 'DISTRIBUTION' if source is 'brand-portal' or 'clinic-portal', 'CONSIGNMENT' if source is 'internal-portal', otherwise 'MARKETPLACE'",
+      province_code: "A standardized code used to identify provinces within a country"
+    }
 }
 -- TODO: 
 --  - Rewrite order_channel caused new_logic -> test
 --  - INDEX
---  - INCREMENTAL
+
 --  - DEDUP FUNCTION
 -- Advance:
 --  - Writing comparison test
@@ -22,8 +28,9 @@ WITH dedup_order_tbl as (
   SELECT * FROM lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_order
   ${ // because we ensure that old will not change, we just get new one, So that We can consider filtering data from staging step
     when(incremental(),
-   `WHERE created_time > (SELECT timestamp(MAX(created_time)) FROM ${self()})`,
-   ``)}
+   `WHERE ingest_time > TIMESTAMP(current_datetime() - INTERVAL 3 DAY )`,
+   ``
+  )}
   QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'
 	WINDOW _window AS 
     (PARTITION BY mg_id 
@@ -35,8 +42,8 @@ WITH dedup_order_tbl as (
     order_id,
     DATETIME(created_time, 'Asia/Ho_Chi_Minh') as created_time,
     source,
-    -- JSON_EXTRACT_SCALAR(extra_props,'$.brand_code') as brand_code,
-    JSON_EXTRACT_SCALAR(extra_props,'$.customer_tags') as customer_tags
+    province_code,
+    TO_JSON_STRING(JSON_VALUE_ARRAY(extra_props, '$.customer_tags')) as customer_tags
   FROM
     dedup_order_tbl
 )
@@ -45,13 +52,14 @@ WITH dedup_order_tbl as (
 SELECT
   order_id,
   created_time,
-  CASE 
-    WHEN source in ('brand-portal', 'clinic-portal') THEN 'DISTRIBUTION'
-    WHEN source = 'internal-portal' THEN 'CONSIGNMENT'
-    WHEN customer_tags LIKE '%CIRCA%'  THEN 'CIRCA'
+  CASE
     WHEN customer_tags LIKE '%TENDER%' THEN 'TENDER'
+    WHEN customer_tags LIKE '%CIRCA%'  THEN 'CIRCA'
+    WHEN source in ('brand-portal', 'clinic-portal') THEN 'DISTRIBUTION'
+    WHEN source = 'internal-portal' THEN 'CONSIGNMENT' 
     ELSE 'MARKETPLACE'
-  end as  order_channel
+  END as order_channel,
+  province_code
 FROM
   order_tbl
 ${
