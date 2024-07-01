@@ -13,29 +13,25 @@ config {
       created_time: "Timestamp indicating when the order was created. The time zone is set to 'Asia/Ho_Chi_Minh'",
       order_channel: "Category of the order based on the tags and source.  'TENDER' if customer_tags contains 'TENDER', 'CIRCA' if customer_tags contains 'CIRCA', 'DISTRIBUTION' if source is 'brand-portal' or 'clinic-portal', 'CONSIGNMENT' if source is 'internal-portal', otherwise 'MARKETPLACE'",
       province_code: "A standardized code used to identify provinces within a country"
+    },
+    bigquery: {
+      partitionBy: "DATE(created_time)"
     }
 }
--- TODO: 
---  - Rewrite order_channel caused new_logic -> test
---  - INDEX
 
---  - DEDUP FUNCTION
 -- Advance:
 --  - Writing comparison test
 --  - Checking if any column can be change over time
 
-WITH dedup_order_tbl as (
-  SELECT * FROM lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_order
-  ${ // because we ensure that old will not change, we just get new one, So that We can consider filtering data from staging step
-    when(incremental(),
-   `WHERE ingest_time > TIMESTAMP(current_datetime() - INTERVAL 3 DAY )`,
-   ``
-  )}
-  QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'
-	WINDOW _window AS 
-    (PARTITION BY mg_id 
-     ORDER BY synced_at DESC, IF(action='d',3,IF(action='u',2,1)) DESC, last_updated_time DESC)
-)
+WITH dedup_order_tbl as ${
+  dedup.dedup(
+    `silver_buymed_vn.marketplace_prd_order_v2_order`,
+    `order_id, created_time, source, province_code, extra_props`,
+    start_timestamp= when(incremental(),
+              ` TIMESTAMP(current_datetime() - INTERVAL 3 DAY )`, // Nếu incremental thì mình chỉ lấy 3 ngày trở lại
+              ` TIMESTAMP_SECONDS(0)`)                            // tránh cho việc dedup phải thực hiện window function cả bảng
+                                                                  // Điều này giúp nâng performance cụ thể là 1.32GB thành 37MB mỗi lần chạy incremental
+)}
 
 ,order_tbl as (
   SELECT 
@@ -47,7 +43,6 @@ WITH dedup_order_tbl as (
   FROM
     dedup_order_tbl
 )
-
 
 SELECT
   order_id,
@@ -68,3 +63,15 @@ ${
    ``)
    
 }
+
+-- Bước thực hiện add primary key, nhưng chỉ trong lần đầu full-refresh, nếu thực hiện incremental sau thì k cần làm gì
+post_operations {                
+  ${
+    when(incremental(),
+      "",
+      `ALTER TABLE ${self()} ADD PRIMARY KEY (order_id) NOT ENFORCED;`
+    )
+  }
+}
+
+

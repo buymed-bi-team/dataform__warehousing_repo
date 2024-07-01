@@ -20,13 +20,10 @@ TODO:
     - Áp dụng SCD với những order trong nửa tháng trở lại đây
 */ 
 
-WITH stg_order_CRM AS (
-    SELECT order_id,status AS CRM_status
-    FROM ${dedup.dedup(
+WITH stg_order_CRM AS ${dedup.dedup(
         "silver_buymed_vn.marketplace_prd_order_v2_order",
-        "order_id,status"
-    )}
-), 
+        "order_id,status as CRM_status"
+)}, 
 
 stg_order_WMS AS (
     SELECT 
@@ -57,3 +54,12 @@ LEFT JOIN stg_order_WMS b
     ON a.order_id = b.order_id
 LEFT JOIN stg_order_ACCOUNTING d
     ON a.order_id = d.order_id
+
+post_operations {                
+  ${
+    when(incremental(),
+      "",
+      `ALTER TABLE ${self()} ADD PRIMARY KEY (product_id) NOT ENFORCED;`
+    )
+  }
+}
