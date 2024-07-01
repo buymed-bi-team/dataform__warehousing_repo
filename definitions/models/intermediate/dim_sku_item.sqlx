@@ -66,6 +66,7 @@ SELECT
     sku_fc_code,
     sku,
     sales_region_code,
+    fc_code,
     product_id
 FROM
     cte_ranked
