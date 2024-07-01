@@ -2,7 +2,8 @@ config {
     type: "table",
     tags: ["adhoc-office"],
     description: "SKU status history by hours ( 1 day ). PIC: Minh",
-    name: "fact_sku_status_day_by_hour"
+    name: "fact_sku_status_day_by_hour",
+    tags: ["HOURLY"]
 //     bigquery: {
 //     partitionBy: "timestamp"
 //   }
