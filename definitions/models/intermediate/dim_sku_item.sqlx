@@ -7,3 +7,65 @@ config {
        
     }
 }
+
+WITH cte_sku AS (
+  SELECT
+    product_id,
+    sku,
+    STRING(codes) AS location_code
+  FROM silver_buymed_vn.marketplace_prd_product_v2_sku_merge s,
+  UNNEST(JSON_EXTRACT_ARRAY(s.location_codes)) codes
+),
+
+cte_sku_sr_code AS (
+  SELECT
+    a.*,
+    CASE
+      WHEN LENGTH(a.location_code) = 2 THEN b.sales_region_code
+      WHEN a.location_code IN ("MIENBAC", "MIENTRUNG", "MIENNAM") THEN a.location_code
+    END AS sales_region_code
+  FROM cte_sku a
+  LEFT JOIN gold_buymed_vn2.dim_fc_service_area b
+  ON a.location_code = b.service_area_code
+  WHERE a.location_code NOT IN ("MN_ADM", "MB_ADM")
+
+  UNION ALL
+
+  SELECT
+    a.*,
+    "MIENTRUNG" AS sales_region_code
+  FROM cte_sku a
+  WHERE a.location_code IN ("MN_ADM", "MB_ADM")
+
+  UNION ALL
+
+  SELECT
+    a.*,
+    CASE
+      WHEN a.location_code = "MN_ADM" THEN "MIENNAM"
+      WHEN a.location_code = "MB_ADM" THEN "MIENBAC"
+    END AS sales_region_code
+  FROM cte_sku a
+  WHERE a.location_code IN ("MN_ADM", "MB_ADM")
+),
+
+cte_ranked AS (
+    SELECT 
+        CONCAT(sku, "_", sales_region_code) AS sku_sales_region_code,
+        sku,
+        sales_region_code,
+        product_id,
+        ROW_NUMBER() OVER (PARTITION BY sku, sales_region_code ORDER BY product_id) AS row_num
+    FROM cte_sku_sr_code
+    WHERE sales_region_code IS NOT NULL
+)
+
+SELECT
+    sku_sales_region_code,
+    sku,
+    sales_region_code,
+    product_id
+FROM
+    cte_ranked
+WHERE
+    row_num = 1
