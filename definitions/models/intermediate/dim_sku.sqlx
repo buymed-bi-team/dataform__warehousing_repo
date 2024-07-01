@@ -1,6 +1,6 @@
 config {
     type: "table",
-    description: "SKU dim table. PIC: Minh.luu",
+    description: "PIC: Minh.luu; Model_Type: table; Schedule: hourly",
     //assertions: {
     //    uniqueKey: ["sku_key"],
     //    // nullable : seller_class vì một số seller_code không có trong seller_prd_core_seller table
@@ -61,3 +61,7 @@ WHERE
     --     )
     --     and REGEXP_CONTAINS(sku_code, r'[a-z]')
     -- )
+
+post_operations {                
+    ALTER TABLE ${self()} ADD PRIMARY KEY (product_id) NOT ENFORCED
+}
