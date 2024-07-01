@@ -54,6 +54,7 @@ cte_ranked AS (
         CONCAT(s.sku, "_", f.fc_code) AS sku_fc_code,
         s.sku,
         s.sales_region_code,
+        f.fc_code,
         s.product_id,
         ROW_NUMBER() OVER (PARTITION BY s.sku, s.sales_region_code ORDER BY s.product_id) AS row_num
     FROM cte_sku_sr_code s
