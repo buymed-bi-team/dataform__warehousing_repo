@@ -4,7 +4,7 @@ config {
     name: "dim_sku_item",
     tags: ["0h00"],
     columns: {
-       
+       sku_fc_code: "primary-key, concatenation of sku and fc code"
     }
 }
 
@@ -51,17 +51,18 @@ cte_sku_sr_code AS (
 
 cte_ranked AS (
     SELECT 
-        CONCAT(sku, "_", sales_region_code) AS sku_sales_region_code,
-        sku,
-        sales_region_code,
-        product_id,
-        ROW_NUMBER() OVER (PARTITION BY sku, sales_region_code ORDER BY product_id) AS row_num
-    FROM cte_sku_sr_code
-    WHERE sales_region_code IS NOT NULL
+        CONCAT(s.sku, "_", f.fc_code) AS sku_fc_code,
+        s.sku,
+        s.sales_region_code,
+        s.product_id,
+        ROW_NUMBER() OVER (PARTITION BY s.sku, s.sales_region_code ORDER BY s.product_id) AS row_num
+    FROM cte_sku_sr_code s
+    JOIN ${ref("dim_fc")} f on s.sales_region_code = f.sales_region_code
+    WHERE s.sales_region_code IS NOT NULL
 )
 
 SELECT
-    sku_sales_region_code,
+    sku_fc_code,
     sku,
     sales_region_code,
     product_id
