@@ -11,6 +11,8 @@ config {
 WITH cte_sku AS (
   SELECT
     product_id,
+    seller_code,
+    item_code,
     sku,
     STRING(codes) AS location_code
   FROM silver_buymed_vn.marketplace_prd_product_v2_sku_merge s,
@@ -49,18 +51,23 @@ cte_sku_sr_code AS (
   WHERE a.location_code IN ("MN_ADM", "MB_ADM")
 ),
 
-cte_ranked AS (
-    SELECT 
-        CONCAT(s.sku, "_", f.fc_code) AS sku_fc_code,
-        s.sku,
-        s.sales_region_code,
-        f.fc_code,
-        s.product_id,
-        ROW_NUMBER() OVER (PARTITION BY s.sku, s.sales_region_code ORDER BY s.product_id) AS row_num
-    FROM cte_sku_sr_code s
-    JOIN ${ref("dim_fc")} f on s.sales_region_code = f.sales_region_code
-    WHERE s.sales_region_code IS NOT NULL
+cte_sku_ranked AS (
+  SELECT 
+    CONCAT(s.sku, "_", f.fc_code) AS sku_fc_code,
+    s.sku,
+    s.sales_region_code,
+    f.fc_code,
+    s.product_id,
+    ROW_NUMBER() OVER (PARTITION BY s.sku, s.sales_region_code ORDER BY s.product_id) AS row_num
+  FROM cte_sku_sr_code s
+  JOIN ${ref("dim_fc")} f on s.sales_region_code = f.sales_region_code
+  WHERE s.sales_region_code IS NOT NULL
 )
+
+-- cte_sku_fc AS (
+--   SELECT
+
+-- )
 
 SELECT
     sku_fc_code,
@@ -69,6 +76,6 @@ SELECT
     fc_code,
     product_id
 FROM
-    cte_ranked
+    cte_sku_ranked
 WHERE
     row_num = 1
