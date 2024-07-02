@@ -9,7 +9,6 @@ config {
 }
 
 -- TODO:
--- - dedup function
 -- - Setup primary key
 -- - Setup fact key
 -- - column type and description
@@ -36,22 +35,20 @@ WITH stg_order_item as   ${dedup.dedup(
       event_screen,
       tags
       `,
-      "interval 1 day",
-      true
-      )}
+      start_timestamp= when(incremental(),
+              ` TIMESTAMP(current_datetime() - INTERVAL 2 DAY )`,
+              ` TIMESTAMP_SECONDS(0)`)                           
+
+)}
 ,
-stg_order as (
-  SELECT
-    order_id,
-    province_code
-  FROM
-    lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_order
-  ${when(incremental(),
-      "where created_time > timestamp( current_datetime() - interval 1 day) and ingest_time > timestamp( current_datetime() - interval 1 day)",
-      "")}
-  QUALIFY ROW_NUMBER() OVER(_window) = 1 AND FIRST_VALUE(action) over(_window) <> 'd'
-  WINDOW _window AS (PARTITION BY mg_id ORDER BY synced_at DESC, IF(action='d',3,IF(action='u',2,1)) DESC, last_updated_time DESC)
-) -- TODO: Like above
+
+stg_order as ${dedup.dedup(
+  "lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_order",
+  "order_id, province_code",
+  start_timestamp= when(incremental(),
+            ` TIMESTAMP(current_datetime() - INTERVAL 2 DAY )`, 
+            ` TIMESTAMP_SECONDS(0)`)
+)}
 
 SELECT 
   a.order_id,
@@ -76,3 +73,12 @@ ${
    `WHERE order_item_created_time > (SELECT MAX(order_item_created_time) FROM ${self()})`,
    `WHERE order_item_created_time > DATE_TRUNC(CURRENT_DATETIME('+7') - INTERVAL 6 MONTH,  MONTH)`)
 }
+
+-- post_operations {
+--   ${
+--     when(incremental(),
+--       "",
+--       `ALTER TABLE ${self()} ADD PRIMARY KEY (product_id) NOT ENFORCED;`
+--     )
+--   }
+-- }

@@ -1,12 +1,24 @@
 config {
     type: "table",
     tags: ["adhoc-office"],
-    description: "SKU status history by hours ( 1 day ). PIC: Minh",
+    description: "SKU status history by hours ( 1 day ) || PIC: Minh.luu;  model_type: table; schedule: hourly",
     name: "fact_sku_status_day_by_hour",
-    tags: ["HOURLY"]
-//     bigquery: {
-//     partitionBy: "timestamp"
-//   }
+    tags: ["HOURLY"],
+    columns: {
+        last_refreshed_at: "The timestamp indicating the last time the data was refreshed, adjusted to the +7 timezone.",
+        // item_code : "A unique identifier for each item,",
+        // sku_code  : "A unique identifier for the SKU, representing a specific product variant",
+        // date_time : "The datetime value representing each hour in the generated timestamp array",
+        // sku_system_active : "A boolean indicating whether the SKU system is active or not",
+        // sales_region_code : "The code representing the sales region associated with the SKU",
+        // sub_sku_sales_region_code : "A concatenation of item_code and sales_region_code to form a unique identifier for the item-region pair",
+        // sku_sales_region_code : "A concatenation of sku_code and sales_region_code to form a unique identifier for the SKU-region pair.",
+        // status : "The status of the SKU, indicating its availability or other conditions",
+        // start_at : "The timestamp indicating when the status period for the SKU started, adjusted to the "+7" timezone",
+        // end_at_custom : "The custom end timestamp for the status period, adjusted to the "+7" timezone",
+        // end_at : "The original end timestamp for the status period, adjusted to the "+7" timezone"
+
+    }
 }
 WITH timeseries AS (
   SELECT *
