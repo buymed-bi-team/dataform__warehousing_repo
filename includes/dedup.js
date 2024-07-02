@@ -21,13 +21,17 @@ function dedup(table_name, col_name , start_timestamp = null, last_updated_time 
   if (last_updated_time == true){
     updated_time_consider = ", last_updated_time DESC";
   }
+  if (col_name.trim() == '*'){
+    cols = '*'
+  }
+  else { 
+    cols = `mg_id,synced_at,last_updated_time
+        ${col_name} ` 
+    }
 
   return `(
     select 
-        mg_id,
-        synced_at,
-        last_updated_time, 
-        ${col_name}
+        ${cols}
     from ${table_name} 
     `.concat(
       condition , 
