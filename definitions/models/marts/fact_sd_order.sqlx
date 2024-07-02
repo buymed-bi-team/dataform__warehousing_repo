@@ -4,7 +4,7 @@ config {
     name: "fact_sd_order",
     tags: ["30min"],
     bigquery: {
-        partitionBy: "DATETIME_TRUNC((created_at),month)",
+        partitionBy: "DATETIME_TRUNC((created_time),month)",
         clusterBy: ["order_id"]
     }
 }
