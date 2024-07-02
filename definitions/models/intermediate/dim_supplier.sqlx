@@ -1,0 +1,44 @@
+config {
+    type: "table",
+    description: "PIC: minh.luu; model_type: table; Schedule: 0h00 ",
+    name: "dim_supplier",
+    tags: ["0h00"],
+    columns: {
+        supplier_code:"uniquely identifying each supplier",
+        supplier_type:"It categorizes suppliers into different types: Enterprise, Individual and so on",
+        supplier_class:"Seller-External, Seller-Internal, or Vendor",
+        supplier_name:"It assigns the supplier's name based on their class; if the class is 'INTERNAL' or 'PURCHASER', the code is used as the name, otherwise, the name field is used."
+    }
+}
+
+/*
+    supplier_type:
+        - INDIVIDUAL:
+        - TRADING :
+        - ENTERPRISE :
+        - NON-TRADING :
+        - BIZ_HOUSEHOLD :
+        - MARKET : 
+        - `null` : unknow
+*/
+
+
+SELECT 
+    code AS supplier_code,          -- primary key, 
+    seller_type AS supplier_type,   -- 310 null,  6 unique value
+    seller_class AS supplier_class, -- not null,  4 unique value
+    CASE
+        WHEN seller_class in ("INTERNAL", "PURCHASER") THEN code
+        ELSE name
+    END as supplier_name
+FROM
+    ${dedup.dedup(
+        'silver_buymed_vn.seller_prd_core_seller',
+        "*"
+    )}
+
+post_operations {                
+    ALTER TABLE ${self()} ADD PRIMARY KEY (supplier_code) NOT ENFORCED;
+    ALTER TABLE ${self()} ALTER COLUMN supplier_type SET DEFAULT "UNKNOWN";
+}
+
