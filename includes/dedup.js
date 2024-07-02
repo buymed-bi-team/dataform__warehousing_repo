@@ -25,21 +25,18 @@ function dedup(table_name, col_name , start_timestamp = null, last_updated_time 
     cols = '*'
   }
   else { 
-    cols = `mg_id,synced_at,last_updated_time
+    cols = `mg_id,synced_at,last_updated_time,
         ${col_name} ` 
     }
 
   return `(
-    select 
-        ${cols}
+    select ${cols}
     from ${table_name} 
-    `.concat(
-      condition , 
-      `QUALIFY ROW_NUMBER() OVER(_window) = 1 AND FIRST_VALUE(action) over(_window) <> 'd'
-      WINDOW _window AS (PARTITION BY mg_id ORDER BY synced_at DESC, IF(action='d',3,IF(action='u',2,1)) DESC`,
-      updated_time_consider,
-      `))`
-  );
+    ${condition} 
+    QUALIFY ROW_NUMBER() OVER(_window) = 1 AND FIRST_VALUE(action) over(_window) <> 'd'
+    WINDOW _window AS (PARTITION BY mg_id ORDER BY synced_at DESC, IF(action='d',3,IF(action='u',2,1)) DESC
+    ${updated_time_consider})
+  )`
 }
 module.exports = { dedup };
 
