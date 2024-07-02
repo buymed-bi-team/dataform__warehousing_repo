@@ -44,6 +44,7 @@ WITH
   WHERE type ="RETURN"
   GROUP BY 1 ),
 
+
   invoice_amount AS(
   SELECT order_id, SUM(total_order_amount) AS invoice_amount
   FROM ${source_base.GOLD}.dedup_accounting_prd_core_bill
