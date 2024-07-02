@@ -3,8 +3,6 @@ config {
     uniqueKey: ["mg_id"],
     name: "fact_sd_order",
     tags: ["30min"],
-    dependencies: ["dedup_marketplace_prd_order_v2_warehousing"],
-
     bigquery: {
         partitionBy: "DATETIME_TRUNC((created_at),month)",
         clusterBy: ["order_id"]
