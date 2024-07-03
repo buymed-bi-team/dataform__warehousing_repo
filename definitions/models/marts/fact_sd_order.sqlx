@@ -1,0 +1,176 @@
+config {
+    type: "table",
+    uniqueKey: ["mg_id"],
+    name: "fact_sd_order",
+    tags: ["30min"],
+    bigquery: {
+        partitionBy: "DATETIME_TRUNC((created_time),month)",
+        clusterBy: ["order_id"]
+    }
+}
+
+WITH
+
+   dedup_credit_note AS ${dedup.dedup(
+  "lakehouse-prod-394907.silver_buymed_vn.accounting_prd_core_credit_note",
+  "order_id, amount, type"
+     
+)},
+
+  return_amount AS (
+  SELECT order_id, SUM(amount) AS return_amount
+  FROM dedup_credit_note
+  WHERE type ="RETURN"
+  GROUP BY 1 ),
+
+  dedup_bill AS ${dedup.dedup(
+  "lakehouse-prod-394907.silver_buymed_vn.accounting_prd_core_bill",
+  "order_id, total_order_amount, status",
+  start_timestamp= ` TIMESTAMP(current_datetime() - INTERVAL 11 DAY )`         
+)},
+
+  invoice_amount AS(
+  SELECT order_id, SUM(total_order_amount) AS invoice_amount
+  FROM dedup_bill
+  WHERE status <> "CANCEL"
+  GROUP BY 1 ),
+
+--   order_channel AS ${dedup.dedup(
+--   "lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_brand_sales_sales_type",
+--   "name, code, type",
+--   start_timestamp= ` TIMESTAMP(current_datetime() - INTERVAL 10 DAY )`         
+-- )},
+  
+  dedup_order_v2 AS ${dedup.dedup(
+  "lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_order",
+  "*",
+  start_timestamp= ` TIMESTAMP(current_datetime() - INTERVAL 11 DAY )`         
+)},
+
+  fact_order AS(
+    SELECT
+      DATETIME(a.created_time, 'Asia/Ho_Chi_Minh') AS created_at,
+      DATETIME(a.last_updated_time, 'Asia/Ho_Chi_Minh') AS last_updated_time,
+      DATETIME(a.confirmation_date,'Asia/Ho_Chi_Minh' ) AS confirmed_time,
+      a.customer_id,
+      a.customer_name, -- Không được xóa, vì name này là shipping_name khác với customer_name trong dim_customer
+      a.customer_phone,-- Không được xóa, vì phone này là shipping_phone khác với customer_phone trong dim_customer
+      a.order_id,
+      a.sale_order_code AS so_code,
+      a.status AS order_status,
+      a.total_item AS ordered_line_items,
+      a.total_quantity AS ordered_quantity,
+      a.price AS ordered_amount,
+      a.total_price AS ordered_amount_aft_discount,
+      a.total_notional_price AS notional_amount,
+      a.has_deal,
+      a.payment_method,
+      a.payment_method_percentage,
+      a.customer_shipping_address AS shipping_address,
+      a.customer_district_code AS shiping_district_code,
+      -- CASE
+      --   WHEN SAFE_CAST(a.customer_ward_code AS integer) > 1 THEN a.customer_ward_code
+      --   ELSE
+      --     a.customer_district_code
+      -- END
+      COALESCE(a.customer_ward_code, a.customer_district_code)  AS shipping_ward_code,
+      a.customer_ward_code AS original_shipping_ward_code,
+      a.customer_province_code AS shipping_province_code,
+      a.customer_order_index,
+      CASE
+        WHEN (a.warehouse_code IS NULL) OR (a.warehouse_code ="") THEN "BD" -- huong.dang add
+        ELSE a.warehouse_code
+      END
+        AS fc_code,
+      a.sale_order_status AS so_status,
+      JSON_VALUE(a.extra_props, '$.note') AS note,
+      JSON_VALUE(a.extra_props, '$.auto_cancel_overdue_transfer') AS auto_cancel_overdue_transfer,
+      a.system_display,
+      JSON_VALUE(a.source_detail, '$.platform') AS source_detail_platform,
+      a.source,
+      CASE
+        WHEN TO_JSON_STRING(a.tags) LIKE '%MULTIPLE_DELIVERY_ORDER%' THEN 'split_order'
+        ELSE
+          'normal_order'
+      END
+        AS order_type,
+      CASE
+        WHEN TO_JSON_STRING(a.tags) LIKE '%ORDER_ASSIST%' THEN TRUE
+        ELSE
+          FALSE
+      END
+      AS assist_order,
+      r.type,
+      JSON_VALUE(a.extra_props,"$.confirm_type") AS confirm_type,-- tung.vu added
+      JSON_VALUE(a.extra_props,"$.note") AS customer_note,
+      JSON_VALUE(a.invoice, '$.invoice_request') AS invoice_request,-- tung.vu added
+      JSON_VALUE(a.invoice, '$.company_address') AS company_invoice_address,
+      JSON_VALUE(a.invoice, '$.company_name') AS company_invoice_name,-- nguyen.tran added
+      r.point,
+      r.feedback,
+      DATETIME(TIMESTAMP(JSON_VALUE(a.extra_props, '$.cancel_time')),'Asia/Ho_Chi_Minh') AS cancel_time,
+      DATETIME(TIMESTAMP(JSON_VALUE(a.extra_props, '$.completed_time')),'Asia/Ho_Chi_Minh') AS completed_time,
+      DATETIME(a.outbound_date, 'Asia/Ho_Chi_Minh') AS outbound_time,
+      JSON_VALUE(a.extra_props, "$.employee_id") AS employee_id,
+      --For order which is created by an employee instead of customer (order_assist)
+      DATETIME(a.delivery_date,'Asia/Ho_Chi_Minh') AS expected_delivery_time,
+      DATETIME(a.delivered_time,'Asia/Ho_Chi_Minh') AS delivered_time,
+      JSON_VALUE(a.extra_props, "$.brand_code") AS brand_code,
+      created_by_account_id,
+      is_split_delivery_order,
+      total_discount,
+      b.return_amount,
+      c.invoice_amount,
+      COALESCE(a.status, a.sale_order_status) AS sales_status,
+      e.carrier_name,
+      a.province_code,
+      a.redeem_code,
+
+    FROM dedup_order_v2 AS a
+    LEFT JOIN ${source_base.GOLD}.dedup_marketplace_prd_customer_customer_rating r ON a.order_id=r.order_id
+    LEFT JOIN return_amount AS b ON a.order_id = b.order_id
+    LEFT JOIN invoice_amount AS c ON a.order_id = c.order_id
+    LEFT JOIN (
+      SELECT
+        order_id, carrier_name
+      FROM ${source_base.GOLD}.fact_outbound_ticket
+      WHERE
+        REGEXP_CONTAINS(reference_code, r'-F|-P1') 
+      QUALIFY ROW_NUMBER() OVER(PARTITION BY order_id, reference_code ) = 1
+    ) e ON e.order_id = a.order_id
+    WHERE
+      a.status <> 'REVERTING'  and a.created_time >= TIMESTAMP(current_datetime() - INTERVAL 10 DAY )
+  )
+
+SELECT
+  a.created_at as created_time,
+  date(a.created_at) as created_date,
+  a.confirmed_time,
+  date(a.confirmed_time) as confirmed_date,
+  a.completed_time,
+  a.outbound_time,
+  a.delivered_time,
+  a.customer_id,
+  a.order_id,
+  a.order_status,
+  a.so_code,
+  a.so_status,
+  a.total_discount,
+  a.redeem_code,
+  a.ordered_amount as gmv,
+  a.ordered_amount_aft_discount as gmv_after_discount,
+  a.invoice_amount,
+  a.return_amount,
+  (coalesce(a.invoice_amount ,0) - coalesce(a.return_amount,0) ) as actual_received_amount,
+  cast(a.shiping_district_code as int64) as shipping_district_code,
+  cast(a.shipping_ward_code as int64) as shipping_ward_code,
+  cast(a.shipping_province_code as int64) as shipping_province_code,
+  a.fc_code,
+  a.has_deal,
+  case when a.payment_method in ('MOMO', 'QR_CODE', 'PAYMENT_METHOD_BANK', 'MASTERCARD', 'PAYMENT_METHOD_CREDIT', 'ATM_BANK_ACCOUNT', 'PAYMENT_METHOD_BANK_1', 'VISA', 'ZALOPAY') then 'BANK'
+       when a.payment_method is null then 'CASH'
+       when a.payment_method = 'PAYMENT_METHOD_NORMAL' then 'CASH'
+       else 'NEED CHECK'
+  end as payment_method
+FROM fact_order a
+
