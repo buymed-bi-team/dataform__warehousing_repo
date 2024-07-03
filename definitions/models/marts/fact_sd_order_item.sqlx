@@ -20,7 +20,8 @@ config {
         promotion_amount: "Amount of discount or promotion applied to the order item, derived from charge_deal_fee_value or extra_props",
         seller_code: "Code representing the seller of the item",
         seller_class: "Classification of the seller"
-    }
+    },
+    tags:["30min"]
 }
 
 
