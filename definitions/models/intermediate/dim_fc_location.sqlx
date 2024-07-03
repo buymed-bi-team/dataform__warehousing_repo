@@ -13,11 +13,22 @@ WITH
   "lakehouse-prod-394907.silver_buymed_vn.warehouse_prd_inventory_location",
   "warehouse_code, code, type, parent_order, shelf_type, width, length, height"
 )}
+,
+
+cte_main as (
+  select 
+    a.warehouse_code
+    , a.location_code
+    from ${dedup.dedup("lakehouse-prod-394907.silver_buymed_vn.warehouse_prd_inventory_sku_location_merge",
+    "warehouse_code, location_code, stock_quantity")} as a
+    where a.stock_quantity > 0 and a.warehouse_code IN ("HN", "BD", "DN") and a.location_code IS NOT NULL
+    group by 1, 2
+)
 
 SELECT
-    CONCAT(a.code, "_", a.warehouse_code) as location_fc_code,
-    a.code as location_code,
-    a.warehouse_code as fc_code,
+    CONCAT(m.location_code, "_", m.warehouse_code) as location_fc_code,
+    m.location_code as location_code,
+    m.warehouse_code as fc_code,
     a.type,
     a.shelf_type,
     a.width,
@@ -41,4 +52,6 @@ SELECT
     end AS location_number,
     a.parent_order,
     json_value_array( a.parent_order )[offset(array_length(json_value_array( a.parent_order )) - 1)] as parent_location_code
-FROM dedup_inventory_location a
+FROM cte_main m
+LEFT JOIN dedup_inventory_location a
+ON m.warehouse_code = a.warehouse_code AND m.location_code = a.code
