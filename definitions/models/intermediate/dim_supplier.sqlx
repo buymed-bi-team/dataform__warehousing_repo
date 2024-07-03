@@ -25,7 +25,7 @@ config {
 
 SELECT 
     code AS supplier_code,          -- primary key, 
-    seller_type AS supplier_type,   -- 310 null,  6 unique value
+    IF(seller_type is null, "UNKNOWN",seller_type) AS supplier_type,   -- 310 null,  6 unique value
     seller_class AS supplier_class, -- not null,  4 unique value
     CASE
         WHEN seller_class in ("INTERNAL", "PURCHASER") THEN code
@@ -37,8 +37,9 @@ FROM
         "*"
     )}
 
-post_operations {                
-    ALTER TABLE ${self()} ADD PRIMARY KEY (supplier_code) NOT ENFORCED;
+post_operations {
     ALTER TABLE ${self()} ALTER COLUMN supplier_type SET DEFAULT "UNKNOWN";
+    ALTER TABLE ${self()} ADD PRIMARY KEY (supplier_code) NOT ENFORCED;
 }
+
 
