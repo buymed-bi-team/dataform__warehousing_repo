@@ -12,7 +12,7 @@ config {
 }
 
 SELECT DISTINCT
-    CONCAT(a.sku, "_", a.warehouse_code) as sku_fc_code,
+    CONCAT(a.product_id, "_", a.seller_code, "_", a.warehouse_code) as sku_fc_code,
     a.sku,
     a.warehouse_code as fc_code,
     DATETIME(b.latest_put_time, 'Asia/Ho_Chi_Minh') latest_put_time,
