@@ -20,7 +20,8 @@ cte_main as (
     a.warehouse_code
     , a.location_code
     from ${dedup.dedup("lakehouse-prod-394907.silver_buymed_vn.warehouse_prd_inventory_sku_location_merge",
-    "warehouse_code, location_code")} as a
+    "warehouse_code, location_code, stock_quantity")} as a
+    where a.stock_quantity > 0 and a.warehouse_code IN ("HN", "BD", "DN") and a.location_code IS NOT NULL
     group by 1, 2
 )
 
