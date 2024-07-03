@@ -1,7 +1,7 @@
 config {
     name: "fact_sd_order_item",
     type: "table",
-    description: "fact_order_item from the last 10 days, refreshing every 30 minutes || PIC: Minh.luu; model_type: table; schedule: every 30m from 7h am to 9h pm",
+    description: "fact_order_item from the last 15 days, refreshing every 30 minutes || PIC: Minh.luu; model_type: table; schedule: every 30m from 7h am to 9h pm",
     columns:{
         order_id: "Unique identifier for the order",
         customer_id: "Unique identifier for the customer who placed the order", 
@@ -46,7 +46,7 @@ WITH stg_order_item as ${dedup.dedup(
     oi.seller_code,
     oi.seller_class
     `,
-    `TIMESTAMP(CURRENT_DATE() - INTERVAL 10 DAY)`
+    `TIMESTAMP(CURRENT_DATE() - INTERVAL 15 DAY)`
 
 )},
 
@@ -57,7 +57,7 @@ stg_order as ${dedup.dedup(
     warehouse_code as fc_code,
     total_quantity as demand_quantity
     `,
-    `TIMESTAMP(CURRENT_DATE() - INTERVAL 10 DAY)`
+    `TIMESTAMP(CURRENT_DATE() - INTERVAL 15 DAY)`
 )}
 
 SELECT 
@@ -77,7 +77,12 @@ SELECT
     oi.promotion_code,
     oi.promotion_amount,
     oi.seller_code,
-    oi.seller_class
+    s.supplier_class as seller_class  
 FROM stg_order_item oi
 LEFT JOIN stg_order o
     ON oi.order_id = o.order_id
+LEFT JOIN ${ref(`dim_supplier`)} s
+    ON oi.seller_code = s.supplier_code
+WHERE created_at > CURRENT_DATE() - INTERVAL 15 DAY
+AND seller_class in ("EXTERNAL","INTERNAL")
+
