@@ -4,6 +4,7 @@ config {
     name: "fact_stock_sku_item",
     tags: ["0h00"],
     columns: {
+      
     }
 }
 

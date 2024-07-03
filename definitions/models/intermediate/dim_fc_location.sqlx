@@ -4,6 +4,7 @@ config {
     name: "dim_fc_location",
     tags: ["0h00"],
     columns: {
+      
     }
 }
 
