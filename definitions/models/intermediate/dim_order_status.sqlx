@@ -1,8 +1,8 @@
 config {
     type: "table",
-    description: " PIC: minh.luu",
+    description: " PIC: minh.luu; model_type: table; schedule 0h00, 12h00",
     name: "dim_order_status",
-    tags: ["0h00"],
+    tags: ["0h00","12h00"],
     columns: {
         order_id : "Id của order",
         CRM_status : "status trên hệ thống CRM",
@@ -59,7 +59,7 @@ post_operations {
   ${
     when(incremental(),
       "",
-      `ALTER TABLE ${self()} ADD PRIMARY KEY (product_id) NOT ENFORCED;`
+      `ALTER TABLE ${self()} ADD PRIMARY KEY (order_id) NOT ENFORCED;`
     )
   }
 }
