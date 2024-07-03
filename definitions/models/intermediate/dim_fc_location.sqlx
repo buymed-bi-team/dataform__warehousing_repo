@@ -1,0 +1,44 @@
+config {
+    type: "table",
+    description: " PIC: dong.le",
+    name: "dim_fc_location",
+    tags: ["0h00"],
+    columns: {
+      
+    }
+}
+
+WITH
+  dedup_inventory_location AS ${dedup.dedup(
+  "lakehouse-prod-394907.silver_buymed_vn.warehouse_prd_inventory_location",
+  "warehouse_code, code, type, parent_order, shelf_type, width, length, height"
+)}
+
+SELECT
+    CONCAT(a.code, "_", a.warehouse_code) as location_fc_code,
+    a.code as location_code,
+    a.warehouse_code as fc_code,
+    a.type,
+    a.shelf_type,
+    a.width,
+    a.length,
+    a.height,
+    case
+    when a.shelf_type is null then code
+    else SUBSTR(code, 1, 2) 
+    end AS zone_code
+    , case
+    when a.shelf_type is null then code
+    else SUBSTR(code, 3, 3)  
+    end AS shelf_code
+    , case
+    when a.shelf_type is null then code
+    else SUBSTR(code, 6, 1)  
+    end AS shelf_level
+    , case
+    when a.shelf_type is null then code
+    else SUBSTR(code, 7)  
+    end AS location_number,
+    a.parent_order,
+    json_value_array( a.parent_order )[offset(array_length(json_value_array( a.parent_order )) - 1)] as parent_location_code
+FROM dedup_inventory_location a
