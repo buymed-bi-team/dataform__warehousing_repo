@@ -1,0 +1,82 @@
+config {
+    name: "fact_sd_order_item",
+    type: "table",
+    description: "fact_order_item from the last 10 days, refreshing every 30 minutes || PIC: Minh.luu; model_type: table; schedule: every 30m from 7h am to 9h pm",
+    columns:{
+        order_id: "Unique identifier for the order",
+        customer_id: "Unique identifier for the customer who placed the order", 
+        created_at: "Timestamp indicating when the order item was created. The time zone is set to 'Asia/Ho_Chi_Minh'",
+        product_id: "Unique identifier for the product associated with the order item",
+        sku_code: "The unique identifier for each SKU",
+        item_code: "Code representing the specific item in the order",
+        fc_code: "Code for the fulfillment center (warehouse) from which the order is processed",
+        item_type: "Type of the item in the order",
+        demand_quantity: "Total quantity of the item demanded in the order",
+        reserved_quantity: "Quantity of the item reserved for the order",
+        outbound_quantity: "Quantity of the item that has been shipped out",
+        returned_quantity: "Quantity of the item that has been returned by the customer",
+        unit_price: "Price per unit of the item in the order",
+        promotion_code: "Code for the promotion applied to the order item, derived from deal_code or extra_props",
+        promotion_amount: "Amount of discount or promotion applied to the order item, derived from charge_deal_fee_value or extra_props",
+        seller_code: "Code representing the seller of the item",
+        seller_class: "Classification of the seller"
+    }
+}
+
+
+WITH stg_order_item as ${dedup.dedup(
+    "lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_order_item oi",
+    `
+    oi.order_id,
+    oi.customer_id,
+    DATETIME(oi.created_time,"+7") as created_at,
+    oi.product_id,
+    oi.sku as sku_code,
+    oi.item_code,
+    -- oi.warehouse_code as fc_code, --from order table
+    oi.type as item_type,
+    -- oi.total_quantity as demand_quantity, -- from order table
+    oi.reserved_quantity,
+    oi.outbound_quantity,
+    oi.returned_quantity,
+    oi.price as unit_price,
+    coalesce(deal_code, json_value(extra_props, '$.campaign_code') ) as promotion_code,
+    coalesce(charge_deal_fee_value,cast(json_value(extra_props, '$.campaign_fee_value') as int64)) as promotion_amount,
+    oi.seller_code,
+    oi.seller_class
+    `,
+    `TIMESTAMP(CURRENT_DATE() - INTERVAL 10 DAY)`
+
+)},
+
+stg_order as ${dedup.dedup(
+    "lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_order",
+    `
+    order_id,
+    warehouse_code as fc_code,
+    total_quantity as demand_quantity
+    `,
+    `TIMESTAMP(CURRENT_DATE() - INTERVAL 10 DAY)`
+)}
+
+SELECT 
+    oi.order_id,
+    oi.customer_id,
+    oi.created_at,
+    oi.product_id,
+    oi.sku_code,
+    oi.item_code,
+    o .fc_code,
+    oi.item_type,
+    o .demand_quantity,
+    oi.reserved_quantity,
+    oi.outbound_quantity,
+    oi.returned_quantity,
+    oi.unit_price,
+    oi.promotion_code,
+    oi.promotion_amount,
+    oi.seller_code,
+    oi.seller_class
+FROM stg_order_item oi
+LEFT JOIN stg_order o
+    ON oi.order_id = o.order_id
