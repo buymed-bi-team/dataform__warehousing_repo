@@ -59,7 +59,7 @@ post_operations {
   ${
     when(incremental(),
       "",
-      `ALTER TABLE ${self()} ADD PRIMARY KEY (product_id) NOT ENFORCED;`
+      `ALTER TABLE ${self()} ADD PRIMARY KEY (order_id) NOT ENFORCED;`
     )
   }
 }
