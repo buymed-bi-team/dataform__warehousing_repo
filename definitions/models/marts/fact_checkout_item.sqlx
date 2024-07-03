@@ -1,0 +1,96 @@
+config {
+    type: "incremental",
+    description: " 6 months| PIC: minh.luu; model_type: incremetal ;schedule: 12h00",
+    tags: ["12h00"],
+    name: "fact_checkout_item",
+    columns: {
+        order_id: docs.order_id,
+        customer_id: "The unique identifier for each customer",
+        sku: docs.sku,
+        item_code: docs.item_code,
+        price: "The cost of the item. This field indicates the selling price of the product at the time of the order",
+        quantity: "The number of units of the item ordered. This field shows the amount of product ordered by the customer",
+        order_item_created_time: "The datetime when the order item was created, adjusted to the 'Asia/Ho_Chi_Minh' timezone",
+        cart_item_created_time: "The datetime when the item was added to the cart, adjusted to the 'Asia/Ho_Chi_Minh' timezone. This helps in understanding customer behavior before purchase",
+        page: "The webpage where the item was ordered from. This field is used for tracking the source page of the order",
+        event_source: "The source of the event, indicating how the item was ordered. This can help identify whether the order was placed via promotion, same-seller or something else",
+        event_screen: "The screen on which the event occurred. This provides additional context on the user interface interaction",
+        tags: "Tags associated with the order item. These tags can be used for categorization and analysis purposes",
+        sku_key: docs.sku_key,
+        province_code: docs.province_code
+    },
+    bigquery: {
+        partitionBy: "DATETIME_TRUNC((order_item_created_time),MONTH)"
+    }
+}
+
+WITH stg_order_item as   ${dedup.dedup(
+      "lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_order_item",
+      `
+      order_id,
+      customer_id,
+      sku,
+      item_code,
+      price,
+      quantity,
+      DATETIME(created_time, 'Asia/Ho_Chi_Minh') as order_item_created_time,
+      DATETIME(cart_item_created_time, 'Asia/Ho_Chi_Minh') as cart_item_created_time,
+      page,
+      event_source,
+      event_screen,
+      tags,
+      product_id || "_" || seller_code as sku_key
+      `,
+      start_timestamp= when(incremental(),
+              ` TIMESTAMP(current_datetime() - INTERVAL 2 DAY )`,
+              ` TIMESTAMP_SECONDS(0)`)                           
+
+)}
+,
+
+stg_order as ${dedup.dedup(
+  "lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_order",
+  "order_id, province_code",
+  start_timestamp= when(incremental(),
+            ` TIMESTAMP(current_datetime() - INTERVAL 2 DAY )`, 
+            ` TIMESTAMP_SECONDS(0)`)
+)}
+
+SELECT 
+  a.order_id,
+  a.customer_id,
+  a.sku,
+  a.item_code,
+  a.price,
+  a.quantity,
+  a.order_item_created_time,
+  a.cart_item_created_time,
+  a.page,
+  a.event_source,
+  a.event_screen,
+  a.tags,
+  b.province_code,
+  a.sku_key
+FROM stg_order_item a
+LEFT JOIN stg_order b
+  ON a.order_id = b.order_id
+
+${
+  when(incremental(),
+   `WHERE order_item_created_time > (SELECT MAX(order_item_created_time) FROM ${self()})`,
+   `WHERE order_item_created_time > DATE_TRUNC(CURRENT_DATETIME('+7') - INTERVAL 6 MONTH,  MONTH)`)
+}
+
+post_operations {
+  ${
+    when(incremental(),
+      "",
+      `
+      ALTER TABLE ${self()} 
+      ADD FOREIGN KEY(order_id) references ${ref(`dim_order`)}(order_id) NOT ENFORCED,
+      ADD FOREIGN KEY(sku_key) references ${ref(`dim_sku`)}(sku_key) NOT ENFORCED;
+      `
+    )
+  }
+}
+
