@@ -84,4 +84,5 @@ LEFT JOIN stg_order o
 LEFT JOIN ${ref(`dim_supplier`)} s
     ON oi.seller_code = s.supplier_code
 WHERE created_at > CURRENT_DATE() - INTERVAL 15 DAY
+AND seller_class in ("EXTERNAL","INTERNAL")
 
