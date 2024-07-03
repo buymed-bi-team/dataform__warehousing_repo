@@ -1,13 +1,13 @@
 config {
     type: "incremental",
-    description: "PIC: minh.luu; model_type: incremental; Schedule: 6h00, 9h00, 12h00, 15h00",
+    description: "PIC: minh.luu; model_type: incremental; Schedule: each 5 min from 9 to 18 and each 1h from 18 to 9 am",
     name: "dim_order",
     // assertions: {
     //     uniqueKey: ["order_id"],
     //     // nullable : seller_class vì một số seller_code không có trong seller_prd_core_seller table
     //     // nonNull: ["created_time","order_channel"]
     // },
-    tags: ["6h00","9h00","12h00","15h00"],
+    tags: ["custom_5min_9to18","custom_1h_18to9"],
     columns: {
       order_id:"Unique identifier for each order",
       created_time: "Timestamp indicating when the order was created. The time zone is set to 'Asia/Ho_Chi_Minh'",
@@ -20,6 +20,7 @@ config {
       partitionBy: "DATE(created_time)"
     }
 }
+-- 4.92 GB / day
 
 -- Advance:
 --  - Writing comparison test
@@ -30,7 +31,7 @@ WITH dedup_order_tbl as ${
     `silver_buymed_vn.marketplace_prd_order_v2_order`,
     `order_id, created_time, confirmation_date, source, province_code, extra_props`,
     start_timestamp= when(incremental(),
-              ` TIMESTAMP(current_datetime() - INTERVAL 3 DAY )`, // Nếu incremental thì mình chỉ lấy 3 ngày trở lại
+              ` TIMESTAMP(current_datetime() - INTERVAL 1 DAY )`, // Nếu incremental thì mình chỉ lấy 3 ngày trở lại
               ` TIMESTAMP_SECONDS(0)`)                            // tránh cho việc dedup phải thực hiện window function cả bảng
                                                                   // Điều này giúp nâng performance cụ thể là 1.32GB thành 37MB mỗi lần chạy incremental
 )}
