@@ -1,0 +1,34 @@
+config {
+    type: "table",
+    name: "fact_sd_po",
+    description: "PIC: minh.luu; model_type:table, schedule:  every 30m from 7h am to 9h pm",
+    columns: {
+        po_id: "",
+        type: "NORMAL, HEDGING, REPLENISHMENT, RECEIPTGIFTPRODUCTS, IT",
+    },
+    tags: ["30min"],
+    bigquery: {
+        partitionBy: "MONTH(po_created_ts)"
+    }
+}
+
+select 
+    po.po_id,
+    po.po_code,
+    po.status,
+    po.type,
+    po.total_price,
+    datetime(po.created_time,'+7') as po_created_ts,
+    date(datetime(po.created_time, '+7')) po_created_date,
+    datetime(po.confirmed_time,'+7') as po_confirmed_ts,
+    po.fulfillment_percent,
+    po.over_fulfill,
+    po.warehouse_code as fc_code,
+    po.seller_code,
+    po.vendor_code,
+    po.vendor_name,
+    po.bill_status
+from ${dedup.dedup(
+    `silver_buymed_vn.seller_prd_purchasing_purchase_order`,
+    `*`
+)} po
