@@ -1,0 +1,27 @@
+config {
+    type: "table",
+    description: " PIC: dong.le",
+    name: "fact_stock_sku_item",
+    tags: ["0h00"],
+    columns: {
+    }
+}
+
+WITH
+  dedup_inventory_sku_location AS ${dedup.dedup(
+  "lakehouse-prod-394907.silver_buymed_vn.warehouse_prd_inventory_sku_location_merge",
+  "sku, warehouse_code, location_code, stock_quantity"
+)}
+
+SELECT
+  b.sku_fc_code,
+  a.sku as sku_code,
+  CONCAT(a.location_code, "_", a.warehouse_code) as location_fc_code,
+  a.warehouse_code as fc_code,
+  a.location_code,
+  a.stock_quantity
+FROM dedup_inventory_sku_location a
+LEFT JOIN ${ref("dim_sku_item")} b ON a.sku = b.sku_code AND a.warehouse_code = b.fc_code
+WHERE stock_quantity > 0 AND fc_code IN (
+  SELECT fc_code FROM ${ref("dim_fc")} WHERE fc_report_category = "FC"
+)
