@@ -29,7 +29,7 @@ config {
 WITH dedup_order_tbl as ${
   dedup.dedup(
     `silver_buymed_vn.marketplace_prd_order_v2_order`,
-    `order_id, created_time, confirmation_date, source, province_code, extra_props`,
+    `order_id, created_time, confirmation_date, source, province_code, extra_props, customer_id`,
     start_timestamp= when(incremental(),
               ` TIMESTAMP(current_datetime() - INTERVAL 1 DAY )`, // Nếu incremental thì mình chỉ lấy 3 ngày trở lại
               ` TIMESTAMP_SECONDS(0)`)                            // tránh cho việc dedup phải thực hiện window function cả bảng
@@ -43,7 +43,8 @@ WITH dedup_order_tbl as ${
     confirmation_date,
     source,
     province_code,
-    TO_JSON_STRING(JSON_VALUE_ARRAY(extra_props, '$.customer_tags')) as customer_tags
+    TO_JSON_STRING(JSON_VALUE_ARRAY(extra_props, '$.customer_tags')) as customer_tags,
+    customer_id
   FROM
     dedup_order_tbl
 )
@@ -57,6 +58,7 @@ SELECT
     WHEN customer_tags LIKE '%CIRCA%'  THEN 'CIRCA'
     WHEN source in ('brand-portal', 'clinic-portal') THEN 'DISTRIBUTION'
     WHEN source = 'internal-portal' THEN 'CONSIGNMENT' 
+    WHEN customer_id = 241098 THEN 'CONSIGNMENT'
     ELSE 'MARKETPLACE'
   END as order_channel,
   province_code
