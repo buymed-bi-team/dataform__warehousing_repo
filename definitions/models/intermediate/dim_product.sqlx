@@ -55,8 +55,8 @@ SELECT
   owner_name,
   unit,
   volumes,
-  is_fragile,
-  is_frozen,
+  IF(is_fragile = TRUE,"FRAGILE","NORMAL") is_fragile,
+  IF(is_frozen = TRUE, "FROZEN","NORMAL") is_frozen,
   CASE
     WHEN owner_name LIKE '%[Tech]%' THEN 'TECH'
     WHEN owner_code LIKE 'MARKETING' then 'MARKETING'
