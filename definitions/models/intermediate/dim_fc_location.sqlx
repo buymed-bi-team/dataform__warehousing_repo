@@ -4,7 +4,7 @@ config {
     name: "dim_fc_location",
     tags: ["0h00"],
     columns: {
-      
+      location_fc_code: "concatenation of location and fc code"
     }
 }
 
@@ -55,3 +55,7 @@ SELECT
 FROM cte_main m
 LEFT JOIN dedup_inventory_location a
 ON m.warehouse_code = a.warehouse_code AND m.location_code = a.code
+
+post_operations {                
+    ALTER TABLE ${self()} ADD PRIMARY KEY (location_fc_code) NOT ENFORCED;
+}
