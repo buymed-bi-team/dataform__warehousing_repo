@@ -25,11 +25,29 @@ config {
 -- Advance:
 --  - Writing comparison test
 --  - Checking if any column can be change over time
+js {
+  function choose_new(column_name){
+    /*
+      Because in real time, we allow user to fix order, this make order_id have 2 created time
+      So that to ensure order_id is unique, we will group by it and get all new data along with new created_time
+    */
+    return `ARRAY_AGG( ${column_name} ORDER BY created_time DESC)[0] AS ${column_name}`
+  }
+}
 
 WITH dedup_order_tbl as ${
   dedup.dedup(
     `silver_buymed_vn.marketplace_prd_order_v2_order`,
-    `order_id, created_time, confirmation_date, source, province_code, extra_props, customer_id`,
+    `
+    order_id, 
+    DATETIME(created_time, 'Asia/Ho_Chi_Minh') as created_time, 
+    confirmation_date, 
+    source, 
+    province_code, 
+    extra_props, 
+    TO_JSON_STRING(JSON_VALUE_ARRAY(extra_props, '$.customer_tags')) as customer_tags,
+    customer_id
+    `,
     start_timestamp= when(incremental(),
               ` TIMESTAMP(current_datetime() - INTERVAL 1 DAY )`, // Nếu incremental thì mình chỉ lấy 3 ngày trở lại
               ` TIMESTAMP_SECONDS(0)`)                            // tránh cho việc dedup phải thực hiện window function cả bảng
@@ -39,14 +57,16 @@ WITH dedup_order_tbl as ${
 ,order_tbl as (
   SELECT 
     order_id,
-    DATETIME(created_time, 'Asia/Ho_Chi_Minh') as created_time,
-    confirmation_date,
-    source,
-    province_code,
-    TO_JSON_STRING(JSON_VALUE_ARRAY(extra_props, '$.customer_tags')) as customer_tags,
-    customer_id
+    max(created_time) created_time,
+    ${choose_new(`confirmation_date`)},
+    ${choose_new(`source`)},
+    ${choose_new(`province_code`)},
+    ${choose_new(`customer_tags`)},
+    ${choose_new(`customer_id`)}
   FROM
     dedup_order_tbl
+  GROUP BY
+    order_id
 )
 
 SELECT
@@ -69,6 +89,20 @@ ${
    `WHERE created_time > (SELECT MAX(created_time) FROM ${self()})`,
    ``)
    
+}
+
+pre_operations {
+  -- If user change order more than 5 minutes, incremental model will duplicate that order cause this model just
+  -- append row, not update it
+  -- so that I will remove order that created about 45 minute ago, then add the new one, also the new changed order
+  ${
+    when(
+      incremental(),
+      `DELETE ${self()}
+      WHERE created_time > CURRENT_DATETIME("+7") - INTERVAL 45 MINUTE `,
+      ``
+    )
+  }
 }
 
 -- Bước thực hiện add primary key, nhưng chỉ trong lần đầu full-refresh, nếu thực hiện incremental sau thì k cần làm gì
