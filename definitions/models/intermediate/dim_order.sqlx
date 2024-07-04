@@ -3,7 +3,7 @@ config {
     description: "PIC: minh.luu; model_type: incremental; Schedule: each 5 min from 9 to 18 and each 1h from 18 to 9 am",
     name: "dim_order",
     assertions: {
-        uniqueKey: ["order_id"]
+        uniqueKey: ["order_id","created_time"]
     //     // nullable : seller_class vì một số seller_code không có trong seller_prd_core_seller table
     //     // nonNull: ["created_time","order_channel"]
     },
