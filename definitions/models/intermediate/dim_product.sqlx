@@ -9,7 +9,7 @@ config {
         owner_code : "Code representing the owner (seller) of the product",
         owner_name : "Name of the owner (seller) of the product",
         unit : "Unit of measure for the product",
-        volume : "Volume information for the product",
+        volumes : "Volume information for the product",
         is_fragile: "Indicates whether the product is easily breakable",
         is_frozen : "Indicates whether the product requires freezing",
         product_report_category : "Category of the product based on certain criteria and logic: If owner_name contains '[Tech]', then 'TECH'; If owner_code is 'MARKETING', then 'MARKETING'; If owner_code is 'DENX', then 'DENX'; If unit or volumes is 'COMBO', then 'COMBO'; If product_name contains certain keywords, then 'PROMOTION'; Otherwise, 'NORMAL' "
