@@ -1,6 +1,6 @@
 config {
     type: "table",
-    description: " PIC: dong.le",
+    description: "refresh schedule: daily at 12am, silver_source: warehouse_prd_inventory_location, warehouse_prd_inventory_sku_location_merge || PIC: dong.le",
     name: "dim_fc_location",
     tags: ["0h00"],
     columns: {
