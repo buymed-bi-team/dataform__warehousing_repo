@@ -34,9 +34,8 @@ WITH stg_order_item as ${dedup.dedup(
     oi.product_id,
     oi.sku as sku_code,
     oi.item_code,
-    -- oi.warehouse_code as fc_code, --from order table
     oi.type as item_type,
-    oi.quantity as demand_quantity, -- from order table
+    oi.quantity as demand_quantity, 
     oi.reserved_quantity,
     oi.outbound_quantity,
     oi.returned_quantity,
