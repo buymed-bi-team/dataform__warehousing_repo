@@ -60,7 +60,7 @@ SELECT
     WHEN customer_id = 241098 THEN 'CONSIGNMENT'
     WHEN customer_tags LIKE '%CIRCA%'  THEN 'CIRCA'
     ELSE 'MARKETPLACE'
-  END AS order_channel2,
+  END AS order_channel,
   province_code
 FROM
   order_tbl
