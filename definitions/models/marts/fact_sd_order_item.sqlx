@@ -36,7 +36,7 @@ WITH stg_order_item as ${dedup.dedup(
     oi.item_code,
     -- oi.warehouse_code as fc_code, --from order table
     oi.type as item_type,
-    -- oi.total_quantity as demand_quantity, -- from order table
+    oi.quantity as demand_quantity, -- from order table
     oi.reserved_quantity,
     oi.outbound_quantity,
     oi.returned_quantity,
@@ -46,7 +46,7 @@ WITH stg_order_item as ${dedup.dedup(
     oi.seller_code,
     oi.seller_class
     `,
-    `TIMESTAMP(CURRENT_DATE() - INTERVAL 15 DAY)`
+    `TIMESTAMP(CURRENT_DATE("+7") - INTERVAL 14 DAY)`
 
 )},
 
@@ -55,9 +55,9 @@ stg_order as ${dedup.dedup(
     `
     order_id,
     warehouse_code as fc_code,
-    total_quantity as demand_quantity
+
     `,
-    `TIMESTAMP(CURRENT_DATE() - INTERVAL 15 DAY)`
+    `TIMESTAMP(CURRENT_DATE("+7") - INTERVAL 14 DAY)`
 )}
 
 SELECT 
@@ -69,7 +69,7 @@ SELECT
     oi.item_code,
     o .fc_code,
     oi.item_type,
-    o .demand_quantity,
+    oi.demand_quantity,
     oi.reserved_quantity,
     oi.outbound_quantity,
     oi.returned_quantity,
@@ -83,6 +83,6 @@ LEFT JOIN stg_order o
     ON oi.order_id = o.order_id
 LEFT JOIN ${ref(`dim_supplier`)} s
     ON oi.seller_code = s.supplier_code
-WHERE created_at > CURRENT_DATE() - INTERVAL 15 DAY
+WHERE created_at > CURRENT_DATE("+7") - INTERVAL 14 DAY
 AND seller_class in ("EXTERNAL","INTERNAL")
 
