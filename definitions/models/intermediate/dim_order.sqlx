@@ -2,17 +2,17 @@ config {
     type: "incremental",
     description: "PIC: minh.luu; model_type: incremental; Schedule: each 5 min from 9 to 18 and each 1h from 18 to 9 am",
     name: "dim_order",
-    // assertions: {
-    //     uniqueKey: ["order_id"],
+    assertions: {
+        uniqueKey: ["order_id"]
     //     // nullable : seller_class vì một số seller_code không có trong seller_prd_core_seller table
     //     // nonNull: ["created_time","order_channel"]
-    // },
+    },
     tags: ["custom_5min_9to18","custom_1h_18to9"],
     columns: {
       order_id:"Unique identifier for each order",
       created_time: "Timestamp indicating when the order was created. The time zone is set to 'Asia/Ho_Chi_Minh'",
       confirmation_date: "order confirmation time",
-      order_channel: "Category of the order based on the tags and source.  'TENDER' if customer_tags contains 'TENDER', 'CIRCA' if customer_tags contains 'CIRCA', 'DISTRIBUTION' if source is 'brand-portal' or 'clinic-portal', 'CONSIGNMENT' if source is 'internal-portal', otherwise 'MARKETPLACE'",
+      order_channel: "Category of the order based on the tags and source.  'TENDER' if customer_tags contains 'TENDER', 'DISTRIBUTION' if source is 'brand-portal' or 'clinic-portal', 'CONSIGNMENT' if source is 'internal-portal','CIRCA' if customer_tags contains 'CIRCA', otherwise 'MARKETPLACE'",
       province_code: "A standardized code used to identify provinces within a country",
 
     },
@@ -55,12 +55,12 @@ SELECT
   confirmation_date,
   CASE
     WHEN customer_tags LIKE '%TENDER%' THEN 'TENDER'
-    WHEN customer_tags LIKE '%CIRCA%'  THEN 'CIRCA'
     WHEN source in ('brand-portal', 'clinic-portal') THEN 'DISTRIBUTION'
     WHEN source = 'internal-portal' THEN 'CONSIGNMENT' 
     WHEN customer_id = 241098 THEN 'CONSIGNMENT'
+    WHEN customer_tags LIKE '%CIRCA%'  THEN 'CIRCA'
     ELSE 'MARKETPLACE'
-  END as order_channel,
+  END AS order_channel,
   province_code
 FROM
   order_tbl
