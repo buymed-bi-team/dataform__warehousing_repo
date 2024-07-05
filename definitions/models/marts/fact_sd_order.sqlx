@@ -26,7 +26,7 @@ WITH
   dedup_bill AS ${dedup.dedup(
   "lakehouse-prod-394907.silver_buymed_vn.accounting_prd_core_bill",
   "order_id, total_order_amount, status",
-  start_timestamp= ` TIMESTAMP(current_datetime() - INTERVAL 16 DAY )`         
+  start_timestamp= ` TIMESTAMP(current_datetime() - INTERVAL 32 DAY )`         
 )},
 
   invoice_amount AS(
@@ -44,7 +44,7 @@ WITH
   dedup_order_v2 AS ${dedup.dedup(
   "lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_order",
   "*",
-  start_timestamp= ` TIMESTAMP(current_datetime() - INTERVAL 16 DAY )`         
+  start_timestamp= ` TIMESTAMP(current_datetime() - INTERVAL 32 DAY )`         
 )},
 
   fact_order AS(
@@ -139,7 +139,7 @@ WITH
       QUALIFY ROW_NUMBER() OVER(PARTITION BY order_id, reference_code ) = 1
     ) e ON e.order_id = a.order_id
     WHERE
-      a.status <> 'REVERTING'  and a.created_time >= TIMESTAMP(current_datetime() - INTERVAL 15 DAY )
+      a.status <> 'REVERTING'  and a.created_time >= TIMESTAMP(current_datetime() - INTERVAL 31 DAY )
   )
 
 SELECT
