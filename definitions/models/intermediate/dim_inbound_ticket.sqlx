@@ -6,7 +6,8 @@ config {
     columns: {
         inbound_code: "Unique identifier for each inbound ticket",
         po_code: "Reference for the related purchase order",
-        order_type: "Classifies orders as 'PURCHASE', 'PGH', 'TRANSFER', or 'OTHER' based on external_type",
+        order_type: "Classifies orders as 'PO', 'PGH', 'TO' based on external_type",
+        inbound_type: "Classifies orders as 'PURCHASE' or 'TRANSFER' based on external_type",
         created_time: "Already converted to Asia/HCMC timezone",
         status: "Status of the inbound ticket"
     },
