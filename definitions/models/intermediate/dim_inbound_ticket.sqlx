@@ -1,5 +1,6 @@
 config {
     type: "incremental",
+    protected: true,
     description: " PIC: dong.le",
     name: "dim_inbound_ticket",
     tags: ["0h00"],
