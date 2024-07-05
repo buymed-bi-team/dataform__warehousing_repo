@@ -26,7 +26,12 @@ config {
 SELECT 
     code AS supplier_code,          -- primary key, 
     IF ( seller_type IS NULL , "UNKNOWN", seller_type ) AS supplier_type,  -- 310 null,  6 unique value
-    IF ( UPPER(name) LIKE "%[TECH]%" , "TECH" ,seller_class ) AS supplier_class, -- not null,  4 unique value
+    IF ( 
+        REGEXP_CONTAINS( UPPER(name), r'TECH SELLER|TEST|TECH-QC|TS-TECH|\[TECH\]|\(TECH\)|DEMO|QC|TECH MONITOR|TECH 2')
+        AND NOT name LIKE "Abbott  test- Sang Pharma" , 
+        "TECH" ,
+        seller_class ) 
+    AS supplier_class, -- not null,  4 unique value
     CASE
         WHEN seller_class in ("INTERNAL", "PURCHASER") THEN code
         ELSE name
