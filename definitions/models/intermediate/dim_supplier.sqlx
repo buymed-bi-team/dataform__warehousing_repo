@@ -6,7 +6,7 @@ config {
     columns: {
         supplier_code:"uniquely identifying each supplier",
         supplier_type:"It categorizes suppliers into different types: Enterprise, Individual and so on",
-        supplier_class:"Seller-External, Seller-Internal, or Vendor",
+        supplier_class:"TẸCH,Seller-External, Seller-Internal, or Vendor",
         supplier_name:"It assigns the supplier's name based on their class; if the class is 'INTERNAL' or 'PURCHASER', the code is used as the name, otherwise, the name field is used."
     }
 }
@@ -25,8 +25,8 @@ config {
 
 SELECT 
     code AS supplier_code,          -- primary key, 
-    IF(seller_type is null, "UNKNOWN",seller_type) AS supplier_type,   -- 310 null,  6 unique value
-    seller_class AS supplier_class, -- not null,  4 unique value
+    IF ( seller_type IS NULL , "UNKNOWN", seller_type ) AS supplier_type,  -- 310 null,  6 unique value
+    IF ( UPPER(name) LIKE "%[TECH]%" , "TECH" ,seller_class ) AS supplier_class, -- not null,  4 unique value
     CASE
         WHEN seller_class in ("INTERNAL", "PURCHASER") THEN code
         ELSE name
