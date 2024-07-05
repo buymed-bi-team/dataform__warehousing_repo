@@ -5,7 +5,7 @@ config {
     tags: ["0h00"],
     columns: {
         supplier_code:"uniquely identifying each supplier",
-        supplier_type:"It categorizes suppliers into different types: Enterprise, Individual and so on",
+        supplier_type:"It categorizes suppliers into different types: TẸCH, Enterprise, Individual and so on",
         supplier_class:"Seller-External, Seller-Internal, or Vendor",
         supplier_name:"It assigns the supplier's name based on their class; if the class is 'INTERNAL' or 'PURCHASER', the code is used as the name, otherwise, the name field is used."
     }
@@ -25,12 +25,17 @@ config {
 
 SELECT 
     code AS supplier_code,          -- primary key, 
-    IF(seller_type is null, "UNKNOWN",seller_type) AS supplier_type,   -- 310 null,  6 unique value
+    CASE
+        WHEN UPPER(name) like "%[TECH]%" THEN "TECH"
+        WHEN seller_type is null THEN "UNKNOWN"
+        ELSE seller_type 
+    END AS supplier_type,   -- 310 null,  6 unique value
     seller_class AS supplier_class, -- not null,  4 unique value
     CASE
         WHEN seller_class in ("INTERNAL", "PURCHASER") THEN code
         ELSE name
-    END as supplier_name
+    END as supplier_name,
+
 FROM
     ${dedup.dedup(
         'silver_buymed_vn.seller_prd_core_seller',
