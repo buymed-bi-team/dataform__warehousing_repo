@@ -30,8 +30,7 @@ SELECT
     CASE
         WHEN seller_class in ("INTERNAL", "PURCHASER") THEN code
         ELSE name
-    END as supplier_name,
-
+    END as supplier_name
 FROM
     ${dedup.dedup(
         'silver_buymed_vn.seller_prd_core_seller',
