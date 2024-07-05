@@ -1,7 +1,7 @@
 config {
     type: "table",
     description: "PIC: dong.le",
-    tags: ["24HOUR"],
+    tags: ["0h00"],
     columns: {
         fc_code: "primary-key", 
         service_area_code: "location_code - currently province code"

@@ -94,6 +94,9 @@ cte_sku_item AS (
 
 SELECT
   a.*,
+  b.latest_put_time,
+  b.latest_pick_time,
+  b.note,
   b.type_stock_aging
 FROM cte_sku_item a
 JOIN ${ref("dim_stock_classification")} b ON a.sku_fc_code = b.sku_fc_code
