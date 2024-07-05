@@ -9,9 +9,9 @@ config {
         owner_code : "Code representing the owner (seller) of the product",
         owner_name : "Name of the owner (seller) of the product",
         unit : "Unit of measure for the product",
-        volume : "Volume information for the product",
-        is_fragile: "",
-        is_frozen : "",
+        volumes : "Volume information for the product",
+        is_fragile: "Indicates whether the product is easily breakable",
+        is_frozen : "Indicates whether the product requires freezing",
         product_report_category : "Category of the product based on certain criteria and logic: If owner_name contains '[Tech]', then 'TECH'; If owner_code is 'MARKETING', then 'MARKETING'; If owner_code is 'DENX', then 'DENX'; If unit or volumes is 'COMBO', then 'COMBO'; If product_name contains certain keywords, then 'PROMOTION'; Otherwise, 'NORMAL' "
     }
 }
@@ -55,8 +55,8 @@ SELECT
   owner_name,
   unit,
   volumes,
-  is_fragile,
-  is_frozen,
+  IF(is_fragile = TRUE,"FRAGILE","NORMAL") is_fragile,
+  IF(is_frozen = TRUE, "FROZEN","NORMAL") is_frozen,
   CASE
     WHEN owner_name LIKE '%[Tech]%' THEN 'TECH'
     WHEN owner_code LIKE 'MARKETING' then 'MARKETING'
@@ -74,6 +74,6 @@ FROM
 LEFT JOIN  stg_seller s on p.owner_code = s.code
 
 
--- post_operations {                
---   ALTER TABLE ${self()} ADD PRIMARY KEY (product_id) NOT ENFORCED;
--- }
+post_operations {                
+  ALTER TABLE ${self()} ADD PRIMARY KEY (product_id) NOT ENFORCED;
+}
