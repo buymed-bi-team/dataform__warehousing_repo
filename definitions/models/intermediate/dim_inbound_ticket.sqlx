@@ -18,11 +18,16 @@ config {
 SELECT
   i.code as inbound_code,
   i.po_code,
-  case when i.external_type = 'PURCHASE_SYS' then 'PURCHASE'
+  case when i.external_type = 'PURCHASE_SYS' then 'PO'
       when i.external_type = 'SELLER' then 'PGH'
-      when i.external_type = 'TRANSFER' then 'TRANSFER'   
+      when i.external_type = 'TRANSFER' then 'TO'   
       else 'OTHER'
   end as order_type,
+  case when i.external_type = 'PURCHASE_SYS' then 'PURCHASE'
+      when i.external_type = 'SELLER' then 'PURCHASE'
+      when i.external_type = 'TRANSFER' then 'TRANSFER'   
+      else 'OTHER'
+  end as inbound_type,
   DATETIME(i.created_time, 'Asia/Ho_Chi_Minh') as created_time,
   i.status
   
@@ -35,5 +40,10 @@ ${
 }
 
 post_operations {                
-    ALTER TABLE ${self()} ADD PRIMARY KEY (inbound_code) NOT ENFORCED;
+  ${
+    when(incremental(),
+      "",
+      `ALTER TABLE ${self()} ADD PRIMARY KEY (inbound_code) NOT ENFORCED;`
+    )
+  }
 }
