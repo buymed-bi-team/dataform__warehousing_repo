@@ -4,7 +4,8 @@ config {
     name: "dim_sku_item",
     tags: ["0h00"],
     columns: {
-       sku_fc_code: "primary-key, concatenation of sku and fc code"
+       sku_fc_code: "primary-key, concatenation of sku and fc code",
+       sku_sr_code: "concatenation of sku and sales region code"
     }
 }
 
@@ -15,7 +16,7 @@ WITH cte_sku AS (
     item_code,
     sku,
     STRING(codes) AS location_code
-  FROM silver_buymed_vn.marketplace_prd_product_v2_sku_merge s,
+  FROM gold_buymed_vn2.dedup_marketplace_prd_product_v2_sku_merge s,
   UNNEST(JSON_EXTRACT_ARRAY(s.location_codes)) codes
 ),
 
@@ -52,12 +53,12 @@ cte_sku_sr_code AS (
 ),
 
 cte_sku_ranked AS (
-  SELECT 
+  SELECT DISTINCT
     s.sku,
     s.sales_region_code,
     f.fc_code,
     s.product_id,
-    s.item_code
+    s.item_code,
     ROW_NUMBER() OVER (PARTITION BY s.sku, s.sales_region_code ORDER BY s.product_id) AS row_num
   FROM cte_sku_sr_code s
   JOIN ${ref("dim_fc")} f on s.sales_region_code = f.sales_region_code
@@ -73,19 +74,33 @@ cte_sku_fc AS (
     f.sales_region_code
   FROM ${ref("dim_sku")} s
   CROSS JOIN ${ref("dim_fc")} f
+  WHERE f.fc_report_category = "FC"
+),
+
+cte_sku_item AS ( 
+  SELECT
+    CONCAT(sf.product_id, "_", sf.seller_code, "_", sf.fc_code) AS sku_fc_code,
+    CONCAT(sf.product_id, "_", sf.seller_code, "_", sf.sales_region_code) AS sku_sr_code,
+    sf.sku_code,
+    sf.product_id,
+    sf.sales_region_code,
+    sf.fc_code,
+    sf.seller_code as supplier_code,
+    sr.item_code
+  FROM cte_sku_fc sf
+  LEFT JOIN cte_sku_ranked sr
+  ON sf.sku_code = sr.sku AND sf.fc_code = sr.fc_code AND sr.row_num = 1
 )
 
 SELECT
-  CONCAT(sf.product_id, "_", sf.seller_code, "_", sf.sales_region_code) AS sku_sr_code,
-  CONCAT(sf.product_id, "_", sf.seller_code, "_", sf.fc_code) AS sku_fc_code,
-  sf.sku_code,
-  sf.product_id,
-  sf.sales_region_code,
-  sf.fc_code,
-  sf.seller_code,
-  sr.item_code
-FROM cte_sku_fc sf
-LEFT JOIN cte_sku_ranked sr
-ON sf.sku_code = sr.sku AND sf.fc_code = sf.fc_code
-WHERE
-    sr.row_num = 1
+  a.*,
+  b.latest_put_time,
+  b.latest_pick_time,
+  b.note,
+  b.type_stock_aging
+FROM cte_sku_item a
+JOIN ${ref("dim_stock_classification")} b ON a.sku_fc_code = b.sku_fc_code
+
+post_operations {                
+    ALTER TABLE ${self()} ADD PRIMARY KEY (sku_fc_code) NOT ENFORCED;
+}

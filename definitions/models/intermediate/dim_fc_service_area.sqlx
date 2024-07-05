@@ -1,7 +1,7 @@
 config {
     type: "table",
     description: "PIC: dong.le",
-    tags: ["24HOUR"],
+    tags: ["0h00"],
     columns: {
         fc_code: "primary-key", 
         service_area_code: "location_code - currently province code"
@@ -15,3 +15,24 @@ select
 from 
     ${ ref('dim_fc') } as fc,
     unnest( (json_extract_array(fc.service_areas, '$'))) as unnested_value
+
+UNION ALL
+
+SELECT 
+    'BD' AS fc_code,
+    '00' AS service_area_code,
+    'MIENNAM' AS sales_region_code
+
+UNION ALL
+
+SELECT 
+    'DN' AS fc_code,
+    '00' AS service_area_code,
+    'MIENTRUNG' AS sales_region_code
+
+UNION ALL
+
+SELECT 
+    'HN' AS fc_code,
+    '00' AS service_area_code,
+    'MIENBAC' AS sales_region_code

@@ -2,7 +2,7 @@ config {
     type: "table",
     description: "PIC: dong.le",
     name: "dim_stock_classification",
-    tags: ["12h00"],
+    tags: ["0h00"],
     columns: {
         sku_fc_code: "primary-key, concatenation of sku and fc code",
         latest_put_time: "Already converted to GMT+7 timezone",
@@ -12,7 +12,7 @@ config {
 }
 
 SELECT DISTINCT
-    CONCAT(a.sku, "_", a.warehouse_code) as sku_fc_code,
+    CONCAT(a.product_id, "_", a.seller_code, "_", a.warehouse_code) as sku_fc_code,
     a.sku,
     a.warehouse_code as fc_code,
     DATETIME(b.latest_put_time, 'Asia/Ho_Chi_Minh') latest_put_time,

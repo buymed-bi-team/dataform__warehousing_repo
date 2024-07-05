@@ -8,7 +8,7 @@ config {
     },
     tags: ["30min"],
     bigquery: {
-        partitionBy: "MONTH(po_created_ts)"
+        partitionBy: "DATETIME_TRUNC((po_created_ts),MONTH)"
     }
 }
 
@@ -32,3 +32,4 @@ from ${dedup.dedup(
     `silver_buymed_vn.seller_prd_purchasing_purchase_order`,
     `*`
 )} po
+

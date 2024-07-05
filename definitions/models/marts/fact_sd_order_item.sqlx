@@ -1,7 +1,7 @@
 config {
     name: "fact_sd_order_item",
     type: "table",
-    description: "fact_order_item from the last 10 days, refreshing every 30 minutes || PIC: Minh.luu; model_type: table; schedule: every 30m from 7h am to 9h pm",
+    description: "fact_order_item from the last 15 days, refreshing every 30 minutes || PIC: Minh.luu; model_type: table; schedule: every 30m from 7h am to 9h pm",
     columns:{
         order_id: "Unique identifier for the order",
         customer_id: "Unique identifier for the customer who placed the order", 
@@ -24,19 +24,17 @@ config {
     tags:["30min"]
 }
 
-
-WITH stg_order_item as ${dedup.dedup(
-    "lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_order_item oi",
-    `
+WITH stg_order_item as (
+    select mg_id,synced_at,last_updated_time,
+ 
     oi.order_id,
     oi.customer_id,
     DATETIME(oi.created_time,"+7") as created_at,
     oi.product_id,
     oi.sku as sku_code,
     oi.item_code,
-    -- oi.warehouse_code as fc_code, --from order table
     oi.type as item_type,
-    -- oi.total_quantity as demand_quantity, -- from order table
+    oi.quantity as demand_quantity,
     oi.reserved_quantity,
     oi.outbound_quantity,
     oi.returned_quantity,
@@ -45,22 +43,29 @@ WITH stg_order_item as ${dedup.dedup(
     coalesce(charge_deal_fee_value,cast(json_value(extra_props, '$.campaign_fee_value') as int64)) as promotion_amount,
     oi.seller_code,
     oi.seller_class
-    `,
-    `TIMESTAMP(CURRENT_DATE() - INTERVAL 10 DAY)`
-
-)},
-
-stg_order as ${dedup.dedup(
-    "lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_order",
-    `
+ 
+    from lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_order_item oi
+    where TIMESTAMP_ADD(ingest_time, interval 7 hour) > TIMESTAMP(CURRENT_DATE("+7") - INTERVAL 31 DAY)  
+    QUALIFY ROW_NUMBER() OVER(_window) = 1 AND FIRST_VALUE(action) over(_window) <> 'd'
+    WINDOW _window AS (PARTITION BY mg_id ORDER BY synced_at DESC, IF(action='d',3,IF(action='u',2,1)) DESC
+    , last_updated_time DESC)
+  ),
+ 
+stg_order as (
+    select mg_id,synced_at,last_updated_time,
+ 
     order_id,
     warehouse_code as fc_code,
-    total_quantity as demand_quantity
-    `,
-    `TIMESTAMP(CURRENT_DATE() - INTERVAL 10 DAY)`
-)}
-
-SELECT 
+ 
+ 
+    from lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_order
+    where TIMESTAMP_ADD(ingest_time, interval 7 hour) > TIMESTAMP(CURRENT_DATE("+7") - INTERVAL 31 DAY)  
+    QUALIFY ROW_NUMBER() OVER(_window) = 1 AND FIRST_VALUE(action) over(_window) <> 'd'
+    WINDOW _window AS (PARTITION BY mg_id ORDER BY synced_at DESC, IF(action='d',3,IF(action='u',2,1)) DESC
+    , last_updated_time DESC)
+  )
+ 
+SELECT
     oi.order_id,
     oi.customer_id,
     oi.created_at,
@@ -69,7 +74,7 @@ SELECT
     oi.item_code,
     o .fc_code,
     oi.item_type,
-    o .demand_quantity,
+    oi.demand_quantity,
     oi.reserved_quantity,
     oi.outbound_quantity,
     oi.returned_quantity,
@@ -77,7 +82,11 @@ SELECT
     oi.promotion_code,
     oi.promotion_amount,
     oi.seller_code,
-    oi.seller_class
+    s.supplier_class as seller_class  
 FROM stg_order_item oi
 LEFT JOIN stg_order o
     ON oi.order_id = o.order_id
+LEFT JOIN `lakehouse-prod-394907.gold_buymed_vn2.dim_supplier` s
+    ON oi.seller_code = s.supplier_code
+WHERE created_at > CURRENT_DATE("+7") - INTERVAL 31 DAY
+AND seller_class in ("EXTERNAL","INTERNAL")
