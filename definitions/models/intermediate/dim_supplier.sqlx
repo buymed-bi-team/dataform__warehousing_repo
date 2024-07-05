@@ -6,7 +6,7 @@ config {
     columns: {
         supplier_code:"uniquely identifying each supplier",
         supplier_type:"It categorizes suppliers into different types: Enterprise, Individual and so on",
-        supplier_class:"TẸCH,Seller-External, Seller-Internal, or Vendor",
+        supplier_class:"Seller-External, Seller-Internal, or Vendor",
         supplier_name:"It assigns the supplier's name based on their class; if the class is 'INTERNAL' or 'PURCHASER', the code is used as the name, otherwise, the name field is used."
     }
 }
