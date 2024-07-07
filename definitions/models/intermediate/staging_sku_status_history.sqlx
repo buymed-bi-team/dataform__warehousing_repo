@@ -104,7 +104,7 @@ post_operations {
           SELECT 
             key,
             status,
-            LAG(status) OVER (PARTITION BY item_code ORDER BY ingest_time) AS prev_status
+            LAG(status) OVER (PARTITION BY item_code,sales_region_code ORDER BY ingest_time) AS prev_status
           FROM ${self()}
         ) 
         WHERE status = prev_status
