@@ -22,6 +22,8 @@ config {
     }
 }
 
+
+
 -- get unique item_code
 WITH sku_list as (SELECT
     ss.sku,
@@ -32,7 +34,6 @@ WITH sku_list as (SELECT
   WHERE ss.sales_region_code IS NOT NULL
   QUALIFY ROW_NUMBER() OVER (PARTITION BY ss.item_code, sales_region_code) = 1)
 ,
-
 
 timeseries AS (
   SELECT *

@@ -10,19 +10,22 @@ config {
     
 }
 
--- extract sku, item_code and status
+-- extract sku, item_code and status, and filter the time status of item_cod changed
 WITH status_history AS (
   SELECT
     JSON_VALUE(extra_props, "$.sku") AS sku,
     JSON_VALUE(extra_props, "$.item_code") AS item_code,
     created_time,
     JSON_VALUE(next, "$.status") AS status,
-    ingest_time
+    ingest_time,
+    key
   FROM
     `lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_product_v2_history_update_price` a
   ${ when(incremental(), `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()})`,
   `where ingest_time >= TIMESTAMP(current_datetime() - INTERVAL 91 DAY)`)}
- 
+  QUALIFY
+    status != LAG(status) OVER (PARTITION BY item_code ORDER BY ingest_time) OR
+    LAG(status) OVER (PARTITION BY item_code ORDER BY ingest_time) IS NULL
 ),
 
 
@@ -47,7 +50,8 @@ status_history_location AS (
     a.status,
     a.created_time,
     b.sales_region_code as location_code,
-    a.ingest_time
+    a.ingest_time,
+    a.key
   FROM
     status_history a
   left join lakehouse-prod-394907.gold_buymed_vn.dim_sku_sales_region_current b on a.item_code = b.sub_sku_code  
@@ -68,7 +72,8 @@ SELECT
     end_at,
     status,
     sales_region_code,
-    ingest_time
+    ingest_time,
+    key
     -- , active
   FROM (
     SELECT
@@ -82,7 +87,30 @@ SELECT
       -- CASE WHEN status = "OUT_OF_STOCK" THEN "OFF"
       -- ELSE "ON"
       -- END AS active
-      ingest_time
+      ingest_time,
+      key
     FROM status_history_location ss
     LEFT JOIN gold_buymed_vn.dim_sales_region_service_area AS b ON b.service_area_code = ss.location_code
     where item_code in (select item_code from gold_buymed_vn.dedup_marketplace_prd_product_v2_sku_status_historical))
+
+
+post_operations {
+  ${
+    when(incremental(),
+      `
+      DELETE FROM ${self()}
+      WHERE key IN (
+        SELECT key FROM (
+          SELECT 
+            key,
+            status,
+            LAG(status) OVER (PARTITION BY item_code ORDER BY ingest_time) AS prev_status
+          FROM ${self()}
+        ) 
+        WHERE status = prev_status
+      );
+      `,
+      ``
+    )
+  }
+}
