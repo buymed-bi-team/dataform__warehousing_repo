@@ -208,7 +208,6 @@ where sl.sub_sku_sales_region_code is null and ms.sku_system_active = true )
 from sku_remaining_date_time md
 left join sku_remaining sr on md.sku_sales_region_code = sr.sku_sales_region_code and md.date_time between sr.start_at and sr.end_at_custom
 where md.date_time > CURRENT_DATETIME("+7") - INTERVAL 1 day
-qualify row_number() over()= 1
 union all
 select 
       c.last_refreshed_at
