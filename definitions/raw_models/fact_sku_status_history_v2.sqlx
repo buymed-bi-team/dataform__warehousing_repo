@@ -31,6 +31,7 @@ WITH status_history_location AS (
     a.sku,
     a.item_code,
     a.status,
+    a.is_active,
     a.created_time,
     b.sales_region_code as location_code,
     a.ingest_time,
@@ -66,6 +67,7 @@ SELECT
     END AS end_at_custom,
     end_at,
     status,
+    is_active,
     sales_region_code,
     -- , active
   FROM (
@@ -74,7 +76,8 @@ SELECT
       ss.item_code,
       DATETIME(ss.created_time, 'Asia/Ho_Chi_Minh') AS start_at,
       LEAD(DATETIME(ss.created_time, 'Asia/Ho_Chi_Minh')) OVER (PARTITION BY ss.sku, ss.item_code, b.region_code ORDER BY ss.created_time ASC) AS end_at,
-      ss.status
+      ss.status,
+      ss.is_active
       , b.region_code AS sales_region_code,
       -- ,
       -- CASE WHEN status = "OUT_OF_STOCK" THEN "OFF"
@@ -114,6 +117,7 @@ fill_backwwark_value AS (SELECT
     ss.end_at,
     ss.end_at_custom,
     ss.status,
+    cast(ss.is_active as string),
     ss.sales_region_code,
     sd.sub_sku_sales_region_code,
     LEFT(sd.item_code, INSTR(sd.item_code, '.', 1, 2) - 1) AS sku_code_bf,
@@ -129,7 +133,8 @@ fill_backwwark_value AS (SELECT
       ELSE ss.start_at
     END AS start_at_v2,
     -- , s.sku_system_active
-    FIRST_VALUE(ss.status IGNORE NULLS) OVER (partition by sd.sub_sku_sales_region_code ORDER BY sd.date_time ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS contrast_first_status
+    FIRST_VALUE(ss.status IGNORE NULLS) OVER (partition by sd.sub_sku_sales_region_code ORDER BY sd.date_time ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS contrast_first_status,
+    FIRST_VALUE(cast(ss.is_active as string) IGNORE NULLS) OVER (partition by sd.sub_sku_sales_region_code ORDER BY sd.date_time ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS contrast_first_active
     from sku_date as sd 
     left join  sku_status as ss on sd.item_code = ss.item_code and sd.sales_region_code = ss.sales_region_code and sd.date_time between ss.start_at and ss.end_at_custom)
 
@@ -138,7 +143,6 @@ fill_backwwark_value AS (SELECT
     , c.item_code
     , c.sku as sku_code
     , c.date_time
-    , s.sku_system_active
     , c.sales_region_code_bf as sales_region_code
     , c.sub_sku_sales_region_code
     , c.start_at_v2
@@ -147,7 +151,11 @@ fill_backwwark_value AS (SELECT
         when contrast_first_status = "OUT_OF_STOCK" and status is null then "NORMAL"
         when contrast_first_status not in ("OUT_OF_STOCK") and status is null then "UNKNOWN"
         else contrast_first_status
-      end as status
+      end as status,
+      case 
+        when c.contrast_first_active is null then "UNKNOWN"
+        else c.contrast_first_active
+      end as is_active
     , first_value(c.end_at_custom_v2 IGNORE NULLS) over(partition by sub_sku_sales_region_code ORDER BY c.date_time ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) as end_at_custom_v3
     , c.end_at_custom_v2
     , c.end_at_custom
@@ -197,7 +205,7 @@ where sl.sub_sku_sales_region_code is null and ms.sku_system_active = true )
     , sr.item_code
     , md.sku_code
     , md.date_time
-    , sr.sku_system_active
+    , cast(sr.sku_system_active as string) as is_active
     , md.sales_region_code
     , sr.sub_sku_sales_region_code
     , md.sku_sales_region_code
@@ -214,7 +222,7 @@ select
     , c.item_code
     , c.sku_code
     , c.date_time
-    , c.sku_system_active
+    , c.is_active
     , c.sales_region_code
     , c.sub_sku_sales_region_code
     , c.sku_code ||"_"|| c.sales_region_code as sku_sales_region_code
