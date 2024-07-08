@@ -25,16 +25,20 @@ config {
 
 
 -- get unique item_code
-WITH sku_list as (SELECT
-    ss.sku,
-    ss.item_code,
-    ss.sales_region_code,
-    CONCAT(ss.item_code, "_", ss.sales_region_code) AS sub_sku_sales_region_code
-  FROM ${ref("staging_sku_status_history")} ss
-  WHERE ss.sales_region_code IS NOT NULL
-  QUALIFY ROW_NUMBER() OVER (PARTITION BY ss.item_code, sales_region_code) = 1)
-,
 
+WITH status_history_location AS (
+  SELECT
+    a.sku,
+    a.item_code,
+    a.status,
+    a.created_time,
+    b.sales_region_code as location_code,
+    a.ingest_time,
+    a.key
+  FROM
+    ${ref("staging_sku_status_history")} a
+  left join lakehouse-prod-394907.gold_buymed_vn.dim_sku_sales_region_current b on a.item_code = b.sub_sku_code  
+),
 timeseries AS (
   SELECT *
   FROM 
@@ -46,6 +50,49 @@ timeseries AS (
 ),  DateSeries AS (
   SELECT DATETIME(timestamp,'Asia/Ho_Chi_Minh') as date_time from timeseries
 ),
+sku_status as (
+SELECT
+    sku,
+    item_code,
+    start_at,
+    CASE
+      WHEN end_at IS NULL AND start_at IS NOT NULL AND status IS NOT NULL THEN CURRENT_DATETIME("+7")
+      ELSE end_at
+    END AS end_at_custom,
+    end_at,
+    status,
+    sales_region_code,
+    -- , active
+  FROM (
+    SELECT
+      ss.sku,
+      ss.item_code,
+      DATETIME(ss.created_time, 'Asia/Ho_Chi_Minh') AS start_at,
+      LEAD(DATETIME(ss.created_time, 'Asia/Ho_Chi_Minh')) OVER (PARTITION BY ss.sku, ss.item_code, b.region_code ORDER BY ss.created_time ASC) AS end_at,
+      ss.status
+      , b.region_code AS sales_region_code,
+      -- ,
+      -- CASE WHEN status = "OUT_OF_STOCK" THEN "OFF"
+      -- ELSE "ON"
+      -- END AS active
+      ingest_time,
+      key
+    FROM status_history_location ss
+    LEFT JOIN gold_buymed_vn.dim_sales_region_service_area AS b ON b.service_area_code = ss.location_code
+    where item_code in (select item_code from gold_buymed_vn.dedup_marketplace_prd_product_v2_sku_status_historical))
+
+),
+
+sku_list as (SELECT
+    ss.sku,
+    ss.item_code,
+    ss.sales_region_code,
+    CONCAT(ss.item_code, "_", ss.sales_region_code) AS sub_sku_sales_region_code
+  FROM sku_status ss
+  WHERE ss.sales_region_code IS NOT NULL
+  QUALIFY ROW_NUMBER() OVER (PARTITION BY ss.item_code, sales_region_code) = 1)
+,
+
 sku_date AS (
   SELECT *
   FROM sku_list, DateSeries
@@ -78,7 +125,7 @@ fill_backwwark_value AS (SELECT
     -- , s.sku_system_active
     FIRST_VALUE(ss.status IGNORE NULLS) OVER (partition by sd.sub_sku_sales_region_code ORDER BY sd.date_time ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS contrast_first_status
     from sku_date as sd 
-    left join  ${ref("staging_sku_status_history")} as ss on sd.item_code = ss.item_code and sd.sales_region_code = ss.sales_region_code and sd.date_time between ss.start_at and ss.end_at_custom)
+    left join  sku_status as ss on sd.item_code = ss.item_code and sd.sales_region_code = ss.sales_region_code and sd.date_time between ss.start_at and ss.end_at_custom)
 
 , in_historical as (select 
     c.last_refreshed_at
