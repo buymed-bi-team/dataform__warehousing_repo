@@ -17,6 +17,7 @@ config {
     JSON_VALUE(extra_props, "$.item_code") AS item_code,
     created_time,
     JSON_VALUE(next, "$.status") AS status,
+    JSON_VALUE(next, "$.is_active") AS is_active,
     ingest_time,
     key
   FROM
