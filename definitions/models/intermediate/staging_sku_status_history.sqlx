@@ -24,8 +24,8 @@ config {
     `lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_product_v2_history_update_price` a
  ${ when(incremental(), `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()})`)}
   QUALIFY
-    (status != LAG(status) OVER (PARTITION BY item_code ORDER BY ingest_time)) OR
-    (LAG(status) OVER (PARTITION BY item_code ORDER BY ingest_time) IS NULL)
+    (status != LAG(status) OVER (PARTITION BY item_code ORDER BY created_time)) OR
+    (LAG(status) OVER (PARTITION BY item_code ORDER BY created_time) IS NULL)
 
 
 post_operations {
@@ -38,7 +38,7 @@ post_operations {
           SELECT 
             key,
             status,
-            LAG(status) OVER (PARTITION BY item_code ORDER BY ingest_time) AS prev_status
+            LAG(status) OVER (PARTITION BY item_code ORDER BY created_time) AS prev_status
           FROM ${self()}
         ) 
         WHERE status = prev_status
