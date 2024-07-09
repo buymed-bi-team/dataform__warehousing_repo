@@ -1,8 +1,8 @@
 config {
     type: "table",
-    description: " PIC: dong.le",
+    description: "Source: warehouse_prd_inventory_sku_location_merge | Schedule: every 30 mins from 9am to 6pm | PIC: dong.le",
     name: "fact_stock_sku_item",
-    tags: ["0h00"],
+    tags: ["custom_30min_9to18"],
     columns: {
       
     }
