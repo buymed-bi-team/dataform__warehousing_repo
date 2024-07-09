@@ -6,20 +6,28 @@ config {
     //     nonNull: ["employee_status","fullname"]
     // },
     description:"PIC: minh.luu; model type: table; schedule: 0h00 ",
+    dependencies:["dim_supplier","dim_fc","dim_supplier_fc_person_in_charge"],
     columns: {
+        supplier_fc_code: docs.supplier_fc_code,
         supplier_code: docs.supplier_code,
         supplier_type:"It categorizes suppliers into different types: Enterprise, Individual and so on",
         supplier_class:"Seller-External, Seller-Internal, or Vendor",
         supplier_name:"It assigns the supplier's name based on their class; if the class is 'INTERNAL' or 'PURCHASER', the code is used as the name, otherwise, the name field is used.",
         
-        fc_code: "primary-key",
-        fc_report_category: "Note: filter FC for actual fulfillment center",
+        fc_code: docs.fc_code,
+        fc_name:"The name of each warehouse",
+        fc_report_category: `Categorizes the warehouse into reporting groups: "CIRCA", "FC", or "FC-INACTIVE" based on group code and status. Note: filter FC for actual fulfillment center`,
+        status:"The current operational status of each warehouse (ACTIVE, INACTIVE)",
+        sales_region_code: "Identifies the sales region code for each warehouse, translated from warehouse code. (MIENBAC, MIENNAM, MIENTRUNG)",
+        purchaser_code: `Identifies the purchaser code for each warehouse, derived from warehouse code. (PUR_HN, PUR_HCM, PUR_DN)`,
 
-        
-
-        
+        pic_purchase_id : `${docs.pic_purchase_id} | source: dim_supplier_fc_person_in_charge`,
+        cic_category_id : `${docs.cic_category_id} | source: dim_supplier_fc_person_in_charge`,
+        pic_purchase_name: "Name of the employee who is related to pic | source: dim_supplier_fc_person_in_charge",
+        cic_category_name: "Name of the employee who is related to cic | source: dim_supplier_fc_person_in_charge",
     },
-    tags: ["0h00"]
+    tags: ["0h00"],
+
 }
 
 SELECT 
@@ -34,7 +42,6 @@ SELECT
     dim_supplier.supplier_type,
     dim_supplier.supplier_class,
     dim_supplier.supplier_name,
-
     -- pic.supplier_code,
     -- pic.fc_code,
     pic.pic_purchase_id,
@@ -47,12 +54,22 @@ FROM ${ref(`dim_fc`)} dim_fc , ${ref(`dim_supplier`)} dim_supplier
 ON dim_fc.fc_code = pic.fc_code
 AND dim_supplier.supplier_code = pic.supplier_code
 
+post_operations {                
+    ALTER TABLE ${self()} 
+        ADD PRIMARY KEY (supplier_fc_code) NOT ENFORCED,
+        ADD FOREIGN KEY (fc_code) references ${ref(`dim_fc`)}(fc_code) NOT ENFORCED,
+        ADD FOREIGN KEY (supplier_code) references ${ref(`dim_supplier`)}(supplier_code) NOT ENFORCED;
+
+}
+
+
 /*
-supplier_code,fc_code
-R2OQEM8DN9,DN
-R2OQEM8DN9,BD
-YODDN9F1YA,HCM
-1HU4OQEM8D,BD
-R2OQEM8DN9,HN
-UYV5PWOQEM,BD
+    Những row có trong dim_supplier mà không có trong 
+    supplier_code,fc_code
+    R2OQEM8DN9,DN
+    R2OQEM8DN9,BD
+    YODDN9F1YA,HCM
+    1HU4OQEM8D,BD
+    R2OQEM8DN9,HN
+    UYV5PWOQEM,BD
 */
