@@ -4,18 +4,20 @@ config {
     dependencies: ["staging_sku_status_history"],
     name: "fact_sku_status_day_by_date",
     description: "SKU status history by date (3 months). PIC: Anh.LeTam,Tu.Dang",
+    tags: ["sku_status_change"],
     bigquery: {
     partitionBy: "date"
   }
 }
 
-
+--generate datetime interval 3 month series
 WITH DateSeries AS (
   SELECT *
   FROM UNNEST(GENERATE_DATE_ARRAY(DATE(DATE_TRUNC(current_date(), MONTH) - INTERVAL 3 MONTH), DATE(current_date()))) AS date
 ),
 -- step 1: lấy danh sách nhưng con item_code được ghi nhận có thay đổi status trong l90d
 
+-- -- get location_code from dim_sku_sales_region_current
 status_history_location AS (
   SELECT
     a.sku,
@@ -30,6 +32,8 @@ status_history_location AS (
   left join lakehouse-prod-394907.gold_buymed_vn.dim_sku_sales_region_current b on a.item_code = b.sub_sku_code  
 ),
 
+-- join with dim_sales_region_service_area to map location_code with sales_region_code
+-- maybe no need to join dim_sales_region_service_area  because we already get location_code from dim_sku_sales_region_current
 sku_status AS (
   SELECT
     sku,
@@ -59,6 +63,8 @@ sku_status AS (
     LEFT JOIN gold_buymed_vn.dim_sales_region_service_area AS b ON b.service_area_code = ss.location_code
   ) a
 ),
+
+-- get list unique item_code
 sku_list AS (
   SELECT
     ss.sku,
@@ -69,6 +75,8 @@ sku_list AS (
   WHERE ss.sales_region_code IS NOT NULL
   QUALIFY ROW_NUMBER() OVER (PARTITION BY ss.item_code, sales_region_code) = 1
 ),
+
+-- generate 3 months date for each item_code
 sku_date AS (
   SELECT *
   FROM sku_list, DateSeries
@@ -79,7 +87,7 @@ sku_date AS (
 -- start_at_v2 fill bằng current_datetime - 3 months
 -- end_at_custom_v2 fill null date cuối (trước ngày start_at) để lấy data cho làm bước đệm cho bước tiếp theo sẽ fill data theo date cuối
 -- end_at_custom_v3 fill null cho toàn bộ những date còn lại không có data.
--- contract_first_status fill null bằng cách lấy status của ngày sau đó.
+-- contract_first_status fill null bằng cách lấy status của ngày sau đó (fill null cho những date trước đó không có status changed).
 fill_backwwark_value AS (
   SELECT
     sd.item_code,
@@ -110,6 +118,8 @@ fill_backwwark_value AS (
     left join sku_status as ss on sd.item_code = ss.item_code and sd.sales_region_code = ss.sales_region_code and sd.date between date(ss.start_at) and date(ss.end_at_custom)
     
 )
+
+-- apply logic fillter for status, join with adhoc_pm_master_sku to get system active
 , in_historical as 
 (
 select 
@@ -135,7 +145,9 @@ from fill_backwwark_value c
 left join gold_buymed_vn.adhoc_pm_master_sku s on c.sku = s.sku_code and c.sales_region_code_bf = s.sales_region_code
 where c.date > DATE(DATE_TRUNC(current_date(), MONTH) - INTERVAL 3 MONTH)
 )
--- step 3: listing toàn bộ những con sku không được ghi nhân có sự thay đổi status in L90D
+-- step 3: listing toàn bộ những con sku không được ghi nhân có sự thay đổi status in L90D và join với historical
+
+-- join with adhoc_pm_master_sku to get filter sku_system_active = true and system status
 , sku_remaining as 
 (
   select 
@@ -156,6 +168,8 @@ left join sku_list sl on ms.sku_code = sl.sku and ms.sales_region_code = sl.sale
 where sl.sub_sku_sales_region_code is null and ms.sku_system_active = true
 -- qualify row_number() over(order by 1,2,3,4,5,6) = 1
 )
+
+-- get a list unique sku that from sku_remaining to merge with 3 month date
 , sku_remaining_list as 
 (
    SELECT
@@ -166,11 +180,15 @@ where sl.sub_sku_sales_region_code is null and ms.sku_system_active = true
   -- WHERE ss.sales_region_code IS NOT NULL
   QUALIFY ROW_NUMBER() OVER (PARTITION BY ss.sku_code, sales_region_code) = 1
 )
+
+-- merge with 3 month date
 , sku_remaining_date as
 (
   select *
   from sku_remaining_list,DateSeries
 )
+
+-- union những con item_code không có trong historical data và union với hisrorical_data
 , union_all as 
 (select
     DATETIME(TIMESTAMP(CURRENT_DATETIME()), 'Asia/Ho_Chi_Minh') AS last_refreshed_at
