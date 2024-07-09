@@ -2,8 +2,13 @@ config {
     type: "table",
     description: "Fulfillment Center (FC)",
     columns: {
-        fc_code: "primary-key",
-        fc_report_category: "Note: filter FC for actual fulfillment center"
+        fc_code: docs.fc_code,
+        fc_name:"The name of each warehouse",
+        fc_report_category: `Categorizes the warehouse into reporting groups: "CIRCA", "FC", or "FC-INACTIVE" based on group code and status. Note: filter FC for actual fulfillment center`,
+        status:"The current operational status of each warehouse (ACTIVE, INACTIVE)",
+        sales_region_code: "Identifies the sales region code for each warehouse, translated from warehouse code. (MIENBAC, MIENNAM, MIENTRUNG)",
+        purchaser_code: `Identifies the purchaser code for each warehouse, derived from warehouse code. (PUR_HN, PUR_HCM, PUR_DN)`
+        
     }
 }
 
@@ -29,3 +34,8 @@ select
         when wh.code = 'DN' THEN 'PUR_DN'
     end as purchaser_code
 FROM ${ref("dedup_warehouse_prd_core_warehouse")} as wh
+
+
+post_operations {                
+    ALTER TABLE ${self()} ADD PRIMARY KEY (fc_code) NOT ENFORCED;
+}
