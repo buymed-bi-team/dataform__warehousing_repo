@@ -1,0 +1,18 @@
+config {
+    type: "view",
+    description: "Source: seller_prd_purchasing_pic | PIC: dong.le",
+    name: "dim_sku_item_person_in_charge",
+    columns: {
+
+    }
+}
+
+WITH
+  dedup_pic AS ${dedup.dedup(
+  "lakehouse-prod-394907.silver_buymed_vn.seller_prd_purchasing_pic",
+  "object_code, object_type, warehouse_code, pic_account_id, cic_account_id"
+)}
+
+SELECT
+  *
+FROM dedup_pic
