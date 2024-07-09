@@ -1,0 +1,23 @@
+config {
+    type: "view",
+    description: "Source: seller_prd_purchasing_initial_stock_draft_unique. PIC: dong.le",
+    name: "dim_sku_item_stock_config",
+    columns: {
+
+    }
+}
+
+WITH
+  dedup_stock_draft_unique AS ${dedup.dedup(
+  "lakehouse-prod-394907.silver_buymed_vn.seller_prd_purchasing_initial_stock_draft_unique",
+  "sku, warehouse_code, origin_initial_stock, extra_props"
+)}
+
+SELECT
+  CONCAT(a.sku, "_", a.warehouse_code) as sku_fc_code,
+  a.sku as sku_code,
+  a.warehouse_code as fc_code,
+  a.origin_initial_stock as initial_stock,
+  json_value(a.extra_props, "$.leadtime") as sku_leadtime,
+  json_value(a.extra_props, "$.stock_day") as sku_stockday
+FROM dedup_stock_draft_unique a
