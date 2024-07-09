@@ -3,7 +3,6 @@ config {
     tags: ["adhoc-office"],
     description: "SKU status history by hours ( 1 day ) || PIC: Minh.luu;  model_type: table; schedule: hourly",
     name: "fact_sku_status_day_by_hour",
-    tags: ["HOURLY"],
     columns: {
         last_refreshed_at: "The timestamp indicating the last time the data was refreshed, adjusted to the +7 timezone.",
         // item_code : "A unique identifier for each item,",
@@ -119,10 +118,12 @@ select
     , c.start_at_v2
     , c.start_at
     , case 
-        when contrast_first_status = "OUT_OF_STOCK" and status is null then "NORMAL"
-        when contrast_first_status not in ("OUT_OF_STOCK") and status is null then "UNKNOWN"
+        when contrast_first_status = "OUT_OF_STOCK" and status is null and c.date_time >= date(s.sku_approved_at) then "NORMAL"
+        when contrast_first_status not in ("OUT_OF_STOCK") and status is null and c.date_time >= date(s.sku_approved_at) then "UNKNOWN"
+        when c.date_time < date(s.sku_approved_at) and status is null then null
         else contrast_first_status
-      end as status
+      end as status,
+      s.sku_approved_at
     , first_value(c.end_at_custom_v2 IGNORE NULLS) over(partition by sub_sku_sales_region_code ORDER BY c.date_time ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) as end_at_custom_v3
     , c.end_at_custom_v2
     , c.end_at_custom
@@ -145,7 +146,8 @@ where c.date_time > CURRENT_DATETIME("+7") - INTERVAL 1 day
         , ms.sku_system_status as status
         , CURRENT_DATETIME("+7") - INTERVAL 1 day as start_at
         , CURRENT_DATETIME("+7") as end_at_custom
-        , CURRENT_DATETIME("+7") as end_at
+        , CURRENT_DATETIME("+7") as end_at,
+        ms.sku_approved_at
       -- , DATEtime(current_date() - INTERVAL 3 MONTH)
   from gold_buymed_vn.adhoc_pm_master_sku ms
 left join sku_list sl on ms.sku_code = sl.sku and ms.sales_region_code = sl.sales_region_code
@@ -177,7 +179,8 @@ where sl.sub_sku_sales_region_code is null and ms.sku_system_active = true
     , md.sales_region_code
     , sr.sub_sku_sales_region_code
     , md.sku_sales_region_code
-    , sr.status
+    , sr.status,
+      sr.sku_approved_at
     , sr.start_at
     , sr.end_at_custom
     , sr.end_at
@@ -195,11 +198,12 @@ select
     , c.sales_region_code
     , c.sub_sku_sales_region_code
     , c.sku_code ||"_"|| c.sales_region_code as sku_sales_region_code
-    , c.status
+    , c.status,
+      c.sku_approved_at 
     , c.start_at_v2  as start_at
     , c.end_at_custom_v3 as end_at_custom
     , c.end_at
 from in_historical c)
 
-select * from union_all
+select * from union_all where status is not null
 -- where s.sku_active = true
