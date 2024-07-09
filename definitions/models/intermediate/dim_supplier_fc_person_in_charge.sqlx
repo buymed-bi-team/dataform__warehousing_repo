@@ -3,12 +3,12 @@ config {
     name: "dim_supplier_fc_person_in_charge",
     description: "PIC: minh,luu; model_type: view",
     columns: {
-        supplier_code   : "",
-        fc_code         : "",
-        pic_purchase_id : "",
-        cic_purchase_id : "",
-        pic_purchase_name: "",
-        cic_purchase_name: "",
+        supplier_code   : docs.supplier_code,
+        fc_code         : docs.fc_code,
+        pic_purchase_id : docs.pic_purchase_id,
+        cic_category_id : docs.cic_category_id,
+        pic_purchase_name: "Name of the employee who is related to pic",
+        cic_category_name: "Name of the employee who is related to cic",
     }
 }
 
@@ -57,3 +57,10 @@ LEFT JOIN ${ref(`dim_employee`)} dim_employee_1
     ON pic_purchase_id = dim_employee_1.employee_id
 LEFT JOIN ${ref(`dim_employee`)} dim_employee_2
     ON cic_category_id = dim_employee_2.employee_id
+
+-- post_operations {                
+--     ALTER VIEW ${self()} 
+--         ADD FOREIGN KEY (fc_code) references ${ref(`dim_fc`)}(fc_code) NOT ENFORCED,
+--         ADD FOREIGN KEY (supplier_code) references ${ref(`dim_supplier`)}(supplier_code) NOT ENFORCED;
+
+-- }
