@@ -23,4 +23,9 @@ select
         when wh.code = 'BD' THEN 'MIENNAM'
         when wh.code = 'DN' THEN 'MIENTRUNG'
     end as sales_region_code
+    , CASE
+        when wh.code = 'HN' THEN 'PUR_HN'
+        when wh.code = 'BD' THEN 'PUR_HCM'
+        when wh.code = 'DN' THEN 'PUR_DN'
+    end as purchaser_code
 FROM ${ref("dedup_warehouse_prd_core_warehouse")} as wh

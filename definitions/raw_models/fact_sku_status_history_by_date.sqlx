@@ -1,0 +1,249 @@
+config {
+    type: "table",
+    tags: ["adhoc-office"],
+    dependencies: ["staging_sku_status_history"],
+    name: "fact_sku_status_day_by_date",
+    description: "SKU status history by date (3 months). PIC: Anh.LeTam,Tu.Dang",
+    tags: ["sku_status_change"],
+    bigquery: {
+    partitionBy: "date"
+  }
+}
+
+--generate datetime interval 3 month series
+WITH DateSeries AS (
+  SELECT *
+  FROM UNNEST(GENERATE_DATE_ARRAY(DATE(DATE_TRUNC(current_date(), MONTH) - INTERVAL 3 MONTH), DATE(current_date()))) AS date
+),
+-- step 1: lấy danh sách nhưng con item_code được ghi nhận có thay đổi status trong l90d
+
+-- -- get location_code from dim_sku_sales_region_current
+status_history_location AS (
+  SELECT
+    a.sku,
+    a.item_code,
+    a.status,
+    a.created_time,
+    b.sales_region_code as location_code,
+    a.ingest_time,
+    a.key
+  FROM
+    ${ref("staging_sku_status_history")} a
+  left join lakehouse-prod-394907.gold_buymed_vn.dim_sku_sales_region_current b on a.item_code = b.sub_sku_code  
+),
+
+-- join with dim_sales_region_service_area to map location_code with sales_region_code
+-- maybe no need to join dim_sales_region_service_area  because we already get location_code from dim_sku_sales_region_current
+sku_status AS (
+  SELECT
+    sku,
+    item_code,
+    start_at,
+    CASE
+      WHEN end_at IS NULL AND start_at IS NOT NULL AND status IS NOT NULL THEN TIMESTAMP(CURRENT_DATETIME())
+      ELSE end_at
+    END AS end_at_custom,
+    end_at,
+    status,
+    sales_region_code
+    -- , active
+  FROM (
+    SELECT
+      ss.sku,
+      ss.item_code,
+      created_time AS start_at,
+      LEAD(created_time) OVER (PARTITION BY ss.sku, item_code, b.region_code ORDER BY created_time ASC) AS end_at,
+      status
+      , b.region_code AS sales_region_code
+      -- ,
+      -- CASE WHEN status = "OUT_OF_STOCK" THEN "OFF"
+      -- ELSE "ON"
+      -- END AS active
+    FROM status_history_location ss
+    LEFT JOIN gold_buymed_vn.dim_sales_region_service_area AS b ON b.service_area_code = ss.location_code
+  ) a
+),
+
+-- get list unique item_code
+sku_list AS (
+  SELECT
+    ss.sku,
+    ss.item_code,
+    ss.sales_region_code,
+    CONCAT(ss.item_code, "_", ss.sales_region_code) AS sub_sku_sales_region_code
+  FROM sku_status ss
+  WHERE ss.sales_region_code IS NOT NULL
+  QUALIFY ROW_NUMBER() OVER (PARTITION BY ss.item_code, sales_region_code) = 1
+),
+
+-- generate 3 months date for each item_code
+sku_date AS (
+  SELECT *
+  FROM sku_list, DateSeries
+),
+
+
+-- step 2: fill missing value
+-- start_at_v2 fill bằng current_datetime - 3 months
+-- end_at_custom_v2 fill null date cuối (trước ngày start_at) để lấy data cho làm bước đệm cho bước tiếp theo sẽ fill data theo date cuối
+-- end_at_custom_v3 fill null cho toàn bộ những date còn lại không có data.
+-- contract_first_status fill null bằng cách lấy status của ngày sau đó (fill null cho những date trước đó không có status changed).
+fill_backwwark_value AS (
+  SELECT
+    sd.item_code,
+    DATETIME(TIMESTAMP(CURRENT_DATETIME()), 'Asia/Ho_Chi_Minh') AS last_refreshed_at,
+    sd.sku,
+    sd.date,
+    DATETIME(ss.start_at, 'Asia/Ho_Chi_Minh') AS start_at,
+    DATETIME(ss.end_at, 'Asia/Ho_Chi_Minh') AS end_at,
+    DATETIME(ss.end_at_custom, 'Asia/Ho_Chi_Minh') AS end_at_custom,
+    ss.status,
+    ss.sales_region_code,
+    sd.sub_sku_sales_region_code,
+    LEFT(sd.item_code, INSTR(sd.item_code, '.', 1, 2) - 1) AS sku_code_bf,
+    SUBSTR(sd.sub_sku_sales_region_code, INSTR(sd.sub_sku_sales_region_code, '_') + 1) AS sales_region_code_bf,
+    CASE
+      WHEN ss.end_at_custom IS NULL THEN LEAD(DATETIME(ss.start_at, 'Asia/Ho_Chi_Minh'))
+        OVER (PARTITION BY sub_sku_sales_region_code ORDER BY sd.date ASC)
+      -- last_value(ss.start_at IGNORE NULLS) over(partition by sub_sku_sales_region_code ORDER BY sd.date ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING)
+      ELSE DATETIME(ss.end_at_custom, 'Asia/Ho_Chi_Minh')
+    END AS end_at_custom_v2,
+    CASE
+      WHEN ss.start_at IS NULL THEN DATETIME_ADD(DATETIME(TIMESTAMP(CURRENT_DATETIME()), 'Asia/Ho_Chi_Minh'), INTERVAL -3 MONTH)
+      ELSE DATETIME(ss.start_at, 'Asia/Ho_Chi_Minh')
+    END AS start_at_v2,
+    -- , s.sku_system_active
+    FIRST_VALUE(ss.status IGNORE NULLS) OVER (partition by sd.sub_sku_sales_region_code ORDER BY sd.date ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS contrast_first_status
+    from sku_date as sd 
+    left join sku_status as ss on sd.item_code = ss.item_code and sd.sales_region_code = ss.sales_region_code and sd.date between date(ss.start_at) and date(ss.end_at_custom)
+    
+)
+
+-- apply logic fillter for status, join with adhoc_pm_master_sku to get system active
+, in_historical as 
+(
+select 
+    c.last_refreshed_at
+    , c.item_code
+    , c.sku as sku_code
+    , c.date
+    , s.sku_system_active
+    , c.sales_region_code_bf as sales_region_code
+    , c.sub_sku_sales_region_code
+    , c.start_at_v2
+    , c.start_at
+    , case 
+        when contrast_first_status = "OUT_OF_STOCK" and status is null then "NORMAL"
+        when contrast_first_status not in ("OUT_OF_STOCK") and status is null then "UNKNOWN"
+        else contrast_first_status
+      end as status
+    , first_value(c.end_at_custom_v2 IGNORE NULLS) over(partition by sub_sku_sales_region_code ORDER BY c.date ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) as end_at_custom_v3
+    , c.end_at_custom_v2
+    , c.end_at_custom
+    ,c.end_at
+from fill_backwwark_value c
+left join gold_buymed_vn.adhoc_pm_master_sku s on c.sku = s.sku_code and c.sales_region_code_bf = s.sales_region_code
+where c.date > DATE(DATE_TRUNC(current_date(), MONTH) - INTERVAL 3 MONTH)
+)
+-- step 3: listing toàn bộ những con sku không được ghi nhân có sự thay đổi status in L90D và join với historical
+
+-- join with adhoc_pm_master_sku to get filter sku_system_active = true and system status
+, sku_remaining as 
+(
+  select 
+      -- DATETIME(TIMESTAMP(CURRENT_DATETIME()), 'Asia/Ho_Chi_Minh') AS last_refreshed_at,
+       ms.sub_sku_code as item_code
+      , ms.sku_code
+      , ms.sku_system_active
+      , ms.sales_region_code
+      , ms.sku_code || "_" || ms.sales_region_code as sku_sales_region_code
+      , ms.sub_sku_code || "_" || ms.sales_region_code as sub_sku_sales_region_code
+      , ms.sku_system_status as status
+      , DATETIME(TIMESTAMP(CURRENT_DATETIME() - INTERVAL 3 MONTH),'Asia/Ho_Chi_Minh') as start_at
+      , DATETIME(TIMESTAMP(CURRENT_DATETIME()) ,'Asia/Ho_Chi_Minh') as end_at_custom
+      , DATETIME(TIMESTAMP(CURRENT_DATETIME()) ,'Asia/Ho_Chi_Minh') as end_at
+      -- , DATEtime(current_date() - INTERVAL 3 MONTH)
+  from gold_buymed_vn.adhoc_pm_master_sku ms
+left join sku_list sl on ms.sku_code = sl.sku and ms.sales_region_code = sl.sales_region_code
+where sl.sub_sku_sales_region_code is null and ms.sku_system_active = true
+-- qualify row_number() over(order by 1,2,3,4,5,6) = 1
+)
+
+-- get a list unique sku that from sku_remaining to merge with 3 month date
+, sku_remaining_list as 
+(
+   SELECT
+    ss.sku_code,
+    ss.sales_region_code,
+    CONCAT(ss.sku_code, "_", ss.sales_region_code) AS sku_sales_region_code
+  FROM sku_remaining ss
+  -- WHERE ss.sales_region_code IS NOT NULL
+  QUALIFY ROW_NUMBER() OVER (PARTITION BY ss.sku_code, sales_region_code) = 1
+)
+
+-- merge with 3 month date
+, sku_remaining_date as
+(
+  select *
+  from sku_remaining_list,DateSeries
+)
+
+-- union những con item_code không có trong historical data và union với hisrorical_data
+, union_all as 
+(select
+    DATETIME(TIMESTAMP(CURRENT_DATETIME()), 'Asia/Ho_Chi_Minh') AS last_refreshed_at
+    , sr.item_code
+    , md.sku_code
+    , md.date
+    , md.sales_region_code
+    , sr.sub_sku_sales_region_code
+    , md.sku_sales_region_code
+    , sr.status
+    , sr.start_at
+    , sr.end_at_custom
+    , sr.end_at
+from sku_remaining_date md
+left join sku_remaining sr on md.sku_sales_region_code = sr.sku_sales_region_code and md.date between date(sr.start_at) and date(sr.end_at_custom)
+where md.date > DATE(DATE_TRUNC(current_date(), MONTH) - INTERVAL 3 MONTH)
+-- qualify row_number() over()= 1
+union all
+select 
+      c.last_refreshed_at
+    , c.item_code
+    , c.sku_code
+    , c.date
+    , c.sales_region_code
+    , c.sub_sku_sales_region_code
+    , c.sku_code ||"_"|| c.sales_region_code as sku_sales_region_code
+    , c.status
+    , c.start_at_v2  as start_at
+    , c.end_at_custom_v3 as end_at_custom
+    , c.end_at
+from in_historical c)
+
+select * from union_all
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- where s.sku_active = true

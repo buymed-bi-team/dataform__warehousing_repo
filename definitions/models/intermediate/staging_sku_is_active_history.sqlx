@@ -1,0 +1,54 @@
+config {
+    type: "incremental",
+    tags: ["adhoc-office"],
+    description: "SKU is_active change history|| PIC: anh.letam;  model_type: table; schedule: hourly",
+    name: "staging_sku_is_active_history",
+    bigquery: {
+        partitionBy: "DATE(created_time)",
+        clusterBy: ["item_code"]
+    }
+    
+}
+
+-- extract sku, item_code and status, and filter the time status of item_cod changed
+
+
+
+SELECT
+JSON_VALUE(extra_props, "$.sku") AS sku,
+JSON_VALUE(extra_props, "$.item_code") AS item_code,
+created_time,
+JSON_VALUE(next, "$.status") AS status,
+cast(JSON_VALUE(next, "$.is_active") as boolean ) as is_active,
+ingest_time,
+key
+FROM
+`lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_product_v2_history_update_price` a
+${ when(incremental(), `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()})`)}
+QUALIFY
+(is_active != LAG(is_active) OVER (PARTITION BY item_code ORDER BY ingest_time)) OR
+(LAG(is_active) OVER (PARTITION BY item_code ORDER BY ingest_time) IS NULL)
+
+
+
+
+post_operations {
+  ${
+    when(incremental(),
+      `
+      DELETE FROM ${self()}
+      WHERE key IN (
+        SELECT key FROM (
+          SELECT 
+            key,
+            is_active,
+            LAG(is_active) OVER (PARTITION BY item_code ORDER BY ingest_time) AS prev_is_active
+          FROM ${self()}
+        ) 
+        WHERE is_active = prev_is_active
+      );
+      `,
+      ``
+    )
+  }
+}

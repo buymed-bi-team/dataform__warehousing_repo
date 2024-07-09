@@ -1,0 +1,33 @@
+config {
+  type: "table",
+  description: "Source: seller_prd_purchasing_quotation_export, seller_prd_purchasing_admin_pushing_group | Extracts data with confirmed date from the last 15 days | Schedule: 9am, daily | PIC: dong.le",
+  name: "fact_inventory_sys_requiring",
+  tags: ["9h00"],
+  columns: {
+    
+  },
+  bigquery: {
+    partitionBy: "confirmation_date",
+  }
+}
+
+WITH dedup_purchasing_quotation AS ${dedup.dedup(
+  "lakehouse-prod-394907.silver_buymed_vn.seller_prd_purchasing_quotation_export",
+  "sku, warehouse_code, quantity_expect, version"
+)},
+
+dedup_purchasing_pushing_group AS ${dedup.dedup(
+  "lakehouse-prod-394907.silver_buymed_vn.seller_prd_purchasing_admin_pushing_group",
+  "version, group_id, confirmed_time"
+)}
+
+SELECT
+  CONCAT(q.sku, "_", q.warehouse_code) as sku_fc_code,
+  q.sku as sku_code,
+  q.warehouse_code as fc_code,
+  q.quantity_expect as sys_required_quantity,
+  DATE(DATETIME(p.confirmed_time, 'Asia/Ho_Chi_Minh')) as confirmation_date,
+  p.group_id
+FROM dedup_purchasing_quotation q
+LEFT JOIN dedup_purchasing_pushing_group p ON q.version = p.version
+WHERE DATE(DATETIME(p.confirmed_time, 'Asia/Ho_Chi_Minh')) >= DATE_SUB(CURRENT_DATE(), INTERVAL 15 DAY)

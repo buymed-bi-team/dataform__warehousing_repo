@@ -1,97 +1,31 @@
 config {
     type: "incremental",
     tags: ["adhoc-office"],
-    description: "SKU status history by hours ( 1 day ) || PIC: anh.letam;  model_type: table; schedule: hourly",
+    description: "SKU status change history || PIC: anh.letam;  model_type: table; schedule: hourly",
     name: "staging_sku_status_history",
     bigquery: {
-        partitionBy: "DATE(start_at)",
+        partitionBy: "DATE(created_time)",
         clusterBy: ["item_code"]
     }
     
 }
 
 -- extract sku, item_code and status, and filter the time status of item_cod changed
-WITH status_history AS (
+
   SELECT
     JSON_VALUE(extra_props, "$.sku") AS sku,
     JSON_VALUE(extra_props, "$.item_code") AS item_code,
     created_time,
     JSON_VALUE(next, "$.status") AS status,
+    cast(JSON_VALUE(next, "$.is_active") as boolean ) as is_active,
     ingest_time,
     key
   FROM
     `lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_product_v2_history_update_price` a
-  ${ when(incremental(), `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()})`,
-  `where ingest_time >= TIMESTAMP(current_datetime() - INTERVAL 91 DAY)`)}
+ ${ when(incremental(), `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()})`)}
   QUALIFY
-    status != LAG(status) OVER (PARTITION BY item_code ORDER BY ingest_time) OR
-    LAG(status) OVER (PARTITION BY item_code ORDER BY ingest_time) IS NULL
-),
-
-
--- get 24 hours time sereris with timezone HoChiMinh
-timeseries AS (
-  SELECT *
-  FROM 
-    UNNEST( 
-        GENERATE_TIMESTAMP_ARRAY( TIMESTAMP_SUB(CURRENT_TIMESTAMP() , INTERVAL 1 day), 
-        CURRENT_TIMESTAMP(), 
-        INTERVAL 1 HOUR )
-    ) AS timestamp
-),  DateSeries AS (
-  SELECT DATETIME(timestamp,'Asia/Ho_Chi_Minh') as date_time from timeseries
-),
- 
- -- get location_code
-status_history_location AS (
-  SELECT
-    a.sku,
-    a.item_code,
-    a.status,
-    a.created_time,
-    b.sales_region_code as location_code,
-    a.ingest_time,
-    a.key
-  FROM
-    status_history a
-  left join lakehouse-prod-394907.gold_buymed_vn.dim_sku_sales_region_current b on a.item_code = b.sub_sku_code  
-)
- 
--- step 1: lấy danh sách nhưng con item_code được ghi nhận có thay đổi status trong l90d
--- dim_sales_region_service_area to get all of the sales_region_code (like 58, 49,...) and convert to region codes (MIENNAM)
--- scd type 2 to track all status change of item_code in a sku
--- 1 item_code will be sold in three different region (MIENNAM, MIENBAC, MIENTRUNG)
-SELECT
-    sku,
-    item_code,
-    start_at,
-    CASE
-      WHEN end_at IS NULL AND start_at IS NOT NULL AND status IS NOT NULL THEN CURRENT_DATETIME("+7")
-      ELSE end_at
-    END AS end_at_custom,
-    end_at,
-    status,
-    sales_region_code,
-    ingest_time,
-    key
-    -- , active
-  FROM (
-    SELECT
-      ss.sku,
-      ss.item_code,
-      DATETIME(ss.created_time, 'Asia/Ho_Chi_Minh') AS start_at,
-      LEAD(DATETIME(ss.created_time, 'Asia/Ho_Chi_Minh')) OVER (PARTITION BY ss.sku, ss.item_code, b.region_code ORDER BY ss.created_time ASC) AS end_at,
-      ss.status
-      , b.region_code AS sales_region_code,
-      -- ,
-      -- CASE WHEN status = "OUT_OF_STOCK" THEN "OFF"
-      -- ELSE "ON"
-      -- END AS active
-      ingest_time,
-      key
-    FROM status_history_location ss
-    LEFT JOIN gold_buymed_vn.dim_sales_region_service_area AS b ON b.service_area_code = ss.location_code
-    where item_code in (select item_code from gold_buymed_vn.dedup_marketplace_prd_product_v2_sku_status_historical))
+    (status != LAG(status) OVER (PARTITION BY item_code ORDER BY ingest_time)) OR
+    (LAG(status) OVER (PARTITION BY item_code ORDER BY ingest_time) IS NULL)
 
 
 post_operations {
@@ -104,7 +38,7 @@ post_operations {
           SELECT 
             key,
             status,
-            LAG(status) OVER (PARTITION BY item_code,sales_region_code ORDER BY ingest_time) AS prev_status
+            LAG(status) OVER (PARTITION BY item_code ORDER BY ingest_time) AS prev_status
           FROM ${self()}
         ) 
         WHERE status = prev_status

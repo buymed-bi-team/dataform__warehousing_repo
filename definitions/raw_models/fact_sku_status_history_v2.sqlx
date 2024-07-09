@@ -4,7 +4,6 @@ config {
     description: "SKU status history by hours ( 1 day ) || PIC: anh.letam;  model_type: table; schedule: hourly",
     name: "fact_sku_status_day_by_hour_v2",
     dependencies: ["staging_sku_status_history"],
-    tags: ["sku_status_change"],
     columns: {
         last_refreshed_at: "The timestamp indicating the last time the data was refreshed, adjusted to the +7 timezone.",
         // item_code : "A unique identifier for each item,",
@@ -24,17 +23,24 @@ config {
 
 
 
--- get unique item_code
-WITH sku_list as (SELECT
-    ss.sku,
-    ss.item_code,
-    ss.sales_region_code,
-    CONCAT(ss.item_code, "_", ss.sales_region_code) AS sub_sku_sales_region_code
-  FROM ${ref("staging_sku_status_history")} ss
-  WHERE ss.sales_region_code IS NOT NULL
-  QUALIFY ROW_NUMBER() OVER (PARTITION BY ss.item_code, sales_region_code) = 1)
-,
+-- get location_code from dim_sku_sales_region_current
 
+WITH status_history_location AS (
+  SELECT
+    a.sku,
+    a.item_code,
+    a.status,
+    a.is_active,
+    a.created_time,
+    b.sales_region_code as location_code,
+    a.ingest_time,
+    a.key
+  FROM
+    ${ref("staging_sku_status_history")} a
+  left join lakehouse-prod-394907.gold_buymed_vn.dim_sku_sales_region_current b on a.item_code = b.sub_sku_code  
+),
+
+--generate 24 hours datetime series
 timeseries AS (
   SELECT *
   FROM 
@@ -46,6 +52,55 @@ timeseries AS (
 ),  DateSeries AS (
   SELECT DATETIME(timestamp,'Asia/Ho_Chi_Minh') as date_time from timeseries
 ),
+
+-- join with dim_sales_region_service_area to map location_code with sales_region_code
+-- maybe no need to join dim_sales_region_service_area  because we already get location_code from dim_sku_sales_region_current
+sku_status as (
+SELECT
+    sku,
+    item_code,
+    start_at,
+    CASE
+      WHEN end_at IS NULL AND start_at IS NOT NULL AND status IS NOT NULL THEN CURRENT_DATETIME("+7")
+      ELSE end_at
+    END AS end_at_custom,
+    end_at,
+    status,
+    is_active,
+    sales_region_code,
+    -- , active
+  FROM (
+    SELECT
+      ss.sku,
+      ss.item_code,
+      DATETIME(ss.created_time, 'Asia/Ho_Chi_Minh') AS start_at,
+      LEAD(DATETIME(ss.created_time, 'Asia/Ho_Chi_Minh')) OVER (PARTITION BY ss.sku, ss.item_code, b.region_code ORDER BY ss.created_time ASC) AS end_at,
+      ss.status,
+      ss.is_active
+      , b.region_code AS sales_region_code,
+      -- ,
+      -- CASE WHEN status = "OUT_OF_STOCK" THEN "OFF"
+      -- ELSE "ON"
+      -- END AS active
+      ingest_time,
+      key
+    FROM status_history_location ss
+    LEFT JOIN gold_buymed_vn.dim_sales_region_service_area AS b ON b.service_area_code = ss.location_code)
+
+),
+
+
+--get list of unique item_code and add datetime column
+sku_list as (SELECT
+    ss.sku,
+    ss.item_code,
+    ss.sales_region_code,
+    CONCAT(ss.item_code, "_", ss.sales_region_code) AS sub_sku_sales_region_code
+  FROM sku_status ss
+  WHERE ss.sales_region_code IS NOT NULL
+  QUALIFY ROW_NUMBER() OVER (PARTITION BY ss.item_code, sales_region_code) = 1)
+,
+
 sku_date AS (
   SELECT *
   FROM sku_list, DateSeries
@@ -61,6 +116,7 @@ fill_backwwark_value AS (SELECT
     ss.end_at,
     ss.end_at_custom,
     ss.status,
+    cast(ss.is_active as string),
     ss.sales_region_code,
     sd.sub_sku_sales_region_code,
     LEFT(sd.item_code, INSTR(sd.item_code, '.', 1, 2) - 1) AS sku_code_bf,
@@ -76,16 +132,16 @@ fill_backwwark_value AS (SELECT
       ELSE ss.start_at
     END AS start_at_v2,
     -- , s.sku_system_active
-    FIRST_VALUE(ss.status IGNORE NULLS) OVER (partition by sd.sub_sku_sales_region_code ORDER BY sd.date_time ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS contrast_first_status
+    FIRST_VALUE(ss.status IGNORE NULLS) OVER (partition by sd.sub_sku_sales_region_code ORDER BY sd.date_time ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS contrast_first_status,
+    FIRST_VALUE(cast(ss.is_active as string) IGNORE NULLS) OVER (partition by sd.sub_sku_sales_region_code ORDER BY sd.date_time ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS contrast_first_active
     from sku_date as sd 
-    left join  ${ref("staging_sku_status_history")} as ss on sd.item_code = ss.item_code and sd.sales_region_code = ss.sales_region_code and sd.date_time between ss.start_at and ss.end_at_custom)
+    left join  sku_status as ss on sd.item_code = ss.item_code and sd.sales_region_code = ss.sales_region_code and sd.date_time between ss.start_at and ss.end_at_custom)
 
 , in_historical as (select 
     c.last_refreshed_at
     , c.item_code
     , c.sku as sku_code
     , c.date_time
-    , s.sku_system_active
     , c.sales_region_code_bf as sales_region_code
     , c.sub_sku_sales_region_code
     , c.start_at_v2
@@ -94,7 +150,11 @@ fill_backwwark_value AS (SELECT
         when contrast_first_status = "OUT_OF_STOCK" and status is null then "NORMAL"
         when contrast_first_status not in ("OUT_OF_STOCK") and status is null then "UNKNOWN"
         else contrast_first_status
-      end as status
+      end as status,
+      case 
+        when c.contrast_first_active is null then "UNKNOWN"
+        else c.contrast_first_active
+      end as is_active
     , first_value(c.end_at_custom_v2 IGNORE NULLS) over(partition by sub_sku_sales_region_code ORDER BY c.date_time ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) as end_at_custom_v3
     , c.end_at_custom_v2
     , c.end_at_custom
@@ -103,7 +163,7 @@ from fill_backwwark_value c
 left join gold_buymed_vn.adhoc_pm_master_sku s on c.sku = s.sku_code and c.sales_region_code_bf = s.sales_region_code
 where c.date_time > CURRENT_DATETIME("+7") - INTERVAL 1 day),
 
--- step 3: listing toàn bộ những con sku được ghi nhân có sự thay đổi status in L90D
+-- step 3: listing toàn bộ những con sku không được ghi nhân có sự thay đổi status in L90D và join với historical
 
 -- join with adhoc_pm_master_sku to get filter sku_system_active = true
 sku_remaining as (select 
@@ -124,7 +184,7 @@ left join sku_list sl on ms.sku_code = sl.sku and ms.sales_region_code = sl.sale
 where sl.sub_sku_sales_region_code is null and ms.sku_system_active = true )
 
 
--- get unique sku
+-- get unique sku that from sku_remaining
 , sku_remaining_list as (SELECT
     ss.sku_code,
     ss.sales_region_code,
@@ -133,16 +193,18 @@ where sl.sub_sku_sales_region_code is null and ms.sku_system_active = true )
   -- WHERE ss.sales_region_code IS NOT NULL
   QUALIFY ROW_NUMBER() OVER (PARTITION BY ss.sku_code, sales_region_code) = 1),
 
+
+-- merge with 24 timestamp
    sku_remaining_date_time as (select *
   from sku_remaining_list,DateSeries)
 
-
+-- union những con item_code không có trong historical data và union với hisrorical_data
   , union_all as (select
     CURRENT_DATETIME("+7") AS last_refreshed_at
     , sr.item_code
     , md.sku_code
     , md.date_time
-    , sr.sku_system_active
+    , cast(sr.sku_system_active as string) as is_active
     , md.sales_region_code
     , sr.sub_sku_sales_region_code
     , md.sku_sales_region_code
@@ -153,14 +215,13 @@ where sl.sub_sku_sales_region_code is null and ms.sku_system_active = true )
 from sku_remaining_date_time md
 left join sku_remaining sr on md.sku_sales_region_code = sr.sku_sales_region_code and md.date_time between sr.start_at and sr.end_at_custom
 where md.date_time > CURRENT_DATETIME("+7") - INTERVAL 1 day
-qualify row_number() over()= 1
 union all
 select 
       c.last_refreshed_at
     , c.item_code
     , c.sku_code
     , c.date_time
-    , c.sku_system_active
+    , c.is_active
     , c.sales_region_code
     , c.sub_sku_sales_region_code
     , c.sku_code ||"_"|| c.sales_region_code as sku_sales_region_code
