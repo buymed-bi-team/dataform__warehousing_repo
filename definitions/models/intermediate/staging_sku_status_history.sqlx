@@ -1,7 +1,7 @@
 config {
     type: "incremental",
     tags: ["adhoc-office"],
-    description: "SKU status history by hours ( 1 day ) || PIC: anh.letam;  model_type: table; schedule: hourly",
+    description: "SKU status change history || PIC: anh.letam;  model_type: table; schedule: hourly",
     name: "staging_sku_status_history",
     bigquery: {
         partitionBy: "DATE(created_time)",
@@ -17,16 +17,16 @@ config {
     JSON_VALUE(extra_props, "$.item_code") AS item_code,
     created_time,
     JSON_VALUE(next, "$.status") AS status,
-    JSON_VALUE(next, "$.is_active") AS is_active,
+    cast(JSON_VALUE(next, "$.is_active") as boolean ) as is_active,
     ingest_time,
     key
   FROM
     `lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_product_v2_history_update_price` a
-  ${ when(incremental(), `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()})`,
-  `where ingest_time >= TIMESTAMP(current_datetime() - INTERVAL 91 DAY)`)}
+ ${ when(incremental(), `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()})`)}
   QUALIFY
-    status != LAG(status) OVER (PARTITION BY item_code ORDER BY ingest_time) OR
-    LAG(status) OVER (PARTITION BY item_code ORDER BY ingest_time) IS NULL
+    (status != LAG(status) OVER (PARTITION BY item_code ORDER BY ingest_time)) OR
+    (LAG(status) OVER (PARTITION BY item_code ORDER BY ingest_time) IS NULL)
+
 
 post_operations {
   ${
