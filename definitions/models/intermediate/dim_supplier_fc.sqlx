@@ -1,0 +1,58 @@
+config {
+    type: "table",
+    name: "dim_supplier_fc",
+    // assertions: {
+    //     uniqueKey: ["employee_id"],
+    //     nonNull: ["employee_status","fullname"]
+    // },
+    description:"PIC: minh.luu; model type: table; schedule: 0h00 ",
+    columns: {
+        supplier_code: docs.supplier_code,
+        supplier_type:"It categorizes suppliers into different types: Enterprise, Individual and so on",
+        supplier_class:"Seller-External, Seller-Internal, or Vendor",
+        supplier_name:"It assigns the supplier's name based on their class; if the class is 'INTERNAL' or 'PURCHASER', the code is used as the name, otherwise, the name field is used.",
+        
+        fc_code: "primary-key",
+        fc_report_category: "Note: filter FC for actual fulfillment center",
+
+        
+
+        
+    },
+    tags: ["0h00"]
+}
+
+SELECT 
+    dim_supplier.supplier_code || '_' || dim_fc.fc_code  as supplier_fc_code,
+    dim_fc.fc_code,
+    dim_fc.fc_name,
+    dim_fc.status,
+    dim_fc.fc_report_category,
+    dim_fc.service_areas,
+    dim_fc.sales_region_code,
+    dim_supplier.supplier_code,
+    dim_supplier.supplier_type,
+    dim_supplier.supplier_class,
+    dim_supplier.supplier_name,
+
+    -- pic.supplier_code,
+    -- pic.fc_code,
+    pic.pic_purchase_id,
+    pic.cic_category_id,
+    pic.pic_purchase_name,
+    pic.cic_category_name
+    
+FROM ${ref(`dim_fc`)} dim_fc , ${ref(`dim_supplier`)} dim_supplier
+ JOIN ${ref(`dim_supplier_fc_person_in_charge`)} pic
+ON dim_fc.fc_code = pic.fc_code
+AND dim_supplier.supplier_code = pic.supplier_code
+
+/*
+supplier_code,fc_code
+R2OQEM8DN9,DN
+R2OQEM8DN9,BD
+YODDN9F1YA,HCM
+1HU4OQEM8D,BD
+R2OQEM8DN9,HN
+UYV5PWOQEM,BD
+*/

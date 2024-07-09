@@ -1,0 +1,59 @@
+config {
+    type: "view",
+    name: "dim_supplier_fc_person_in_charge",
+    description: "PIC: minh,luu; model_type: view",
+    columns: {
+        supplier_code   : "",
+        fc_code         : "",
+        pic_purchase_id : "",
+        cic_purchase_id : "",
+        pic_purchase_name: "",
+        cic_purchase_name: "",
+    }
+}
+
+WITH purchasing_pic AS (
+    SELECT
+        mg_id,synced_at,last_updated_time,action,
+        object_code as supplier_code,
+        warehouse_code as fc_code,
+        pic_account_id AS pic_purchase_id,
+        cic_account_id AS cic_category_id
+    FROM silver_buymed_vn.seller_prd_purchasing_pic
+    WHERE object_type IN ("VENDOR")
+), core_pic AS (
+    SELECT
+        mg_id,synced_at,last_updated_time,action,
+        object_code as supplier_code,
+        warehouse_code as fc_code,
+        pic_account_id AS pic_purchase_id,
+        cic_account_id AS cic_category_id
+    FROM silver_buymed_vn.seller_prd_core_pic
+    WHERE object_type IN ("SELLER")
+), dedup_pic AS ${dedup.dedup(
+    `(
+        SELECT * FROM purchasing_pic
+        UNION ALL 
+        SELECT * FROM core_pic
+    )`,
+    `*`
+)}
+/*
+    UYV5PWOQEM
+    R2OQEM8DN9
+    YODDN9F1YA
+*/
+
+SELECT
+    supplier_code,
+    fc_code,
+    pic_purchase_id,
+    cic_category_id,
+    dim_employee_1.fullname as pic_purchase_name,
+    dim_employee_2.fullname as cic_category_name
+FROM
+    dedup_pic
+LEFT JOIN ${ref(`dim_employee`)} dim_employee_1
+    ON pic_purchase_id = dim_employee_1.employee_id
+LEFT JOIN ${ref(`dim_employee`)} dim_employee_2
+    ON cic_category_id = dim_employee_2.employee_id
