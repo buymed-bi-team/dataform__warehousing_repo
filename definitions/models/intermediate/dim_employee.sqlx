@@ -10,6 +10,8 @@ config {
         employee_id:"The unique identifier for the employee. This ID is branch_account_id field within the user_branch_infos JSON array",
         email:"The email address of the employee",
         fullname: " The full name of the employee",
+        department: "department of employee",
+        job_title: "employee position",
         employee_status: "The current employment status of the employee. This indicates whether the employee is ACTIVE, TERMINATED"
     },
     tags: ["0h00"]
@@ -21,6 +23,8 @@ WITH dedup_human_resource AS ${dedup.dedup(
     email,
     full_name as fullname,
     status as employee_status,
+    employee_department as department,
+    employee_position as job_title,
     user_branch_infos
     `
 )}
@@ -29,6 +33,8 @@ SELECT
     CAST(json_value(branch.branch_account_id) AS INTEGER) AS employee_id,
     email,
     fullname,
+    department,
+    job_title,
     employee_status
 FROM dedup_human_resource,
     UNNEST(JSON_EXTRACT_ARRAY(user_branch_infos)) as branch
