@@ -1,6 +1,6 @@
 config {
     type: "view",
-    description: "Source: seller_prd_purchasing_sku_config. PIC: dong.le",
+    description: "Source: seller_prd_purchasing_sku_config | PIC: dong.le",
     name: "dim_sku_item_vendors",
     columns: {
     }
