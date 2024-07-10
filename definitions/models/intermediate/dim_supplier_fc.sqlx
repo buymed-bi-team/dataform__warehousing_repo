@@ -5,7 +5,7 @@ config {
     //     uniqueKey: ["employee_id"],
     //     nonNull: ["employee_status","fullname"]
     // },
-    description:"PIC: minh.luu; model type: table; schedule: 0h00 ",
+    description:"PIC: minh.luu; model type: table; schedule: 0h00\nSource: dim_supplier, dim_fc, dim_supplier_fc_person_in_charge ",
     dependencies:["dim_supplier","dim_fc","dim_supplier_fc_person_in_charge"],
     columns: {
         supplier_fc_code: docs.supplier_fc_code,
@@ -13,11 +13,12 @@ config {
         supplier_type:"It categorizes suppliers into different types: Enterprise, Individual and so on",
         supplier_class:"Seller-External, Seller-Internal, or Vendor",
         supplier_name:"It assigns the supplier's name based on their class; if the class is 'INTERNAL' or 'PURCHASER', the code is used as the name, otherwise, the name field is used.",
-        
+        supplier_status:`Status of supplier, can be one of (ACTIVE, STOP_COOPERATING, DRAFT, INACTIVE)`,
+
         fc_code: docs.fc_code,
         fc_name:"The name of each warehouse",
         fc_report_category: `Categorizes the warehouse into reporting groups: "CIRCA", "FC", or "FC-INACTIVE" based on group code and status. Note: filter FC for actual fulfillment center`,
-        status:"The current operational status of each warehouse (ACTIVE, INACTIVE)",
+        fc_status:"The current operational status of each warehouse (ACTIVE, INACTIVE)",
         sales_region_code: "Identifies the sales region code for each warehouse, translated from warehouse code. (MIENBAC, MIENNAM, MIENTRUNG)",
         purchaser_code: `Identifies the purchaser code for each warehouse, derived from warehouse code. (PUR_HN, PUR_HCM, PUR_DN)`,
 
@@ -34,14 +35,19 @@ SELECT
     dim_supplier.supplier_code || '_' || dim_fc.fc_code  as supplier_fc_code,
     dim_fc.fc_code,
     dim_fc.fc_name,
-    dim_fc.status,
+    dim_fc.fc_status,
     dim_fc.fc_report_category,
     dim_fc.service_areas,
     dim_fc.sales_region_code,
+    dim_fc.fc_extra_props,
+
     dim_supplier.supplier_code,
     dim_supplier.supplier_type,
     dim_supplier.supplier_class,
     dim_supplier.supplier_name,
+    dim_supplier.supplier_status,
+    dim_supplier.supplier_extra_props,
+
     -- pic.supplier_code,
     -- pic.fc_code,
     pic.pic_purchase_id,
@@ -50,7 +56,7 @@ SELECT
     pic.cic_category_name
     
 FROM ${ref(`dim_fc`)} dim_fc , ${ref(`dim_supplier`)} dim_supplier
- JOIN ${ref(`dim_supplier_fc_person_in_charge`)} pic
+LEFT JOIN ${ref(`dim_supplier_fc_person_in_charge`)} pic
 ON dim_fc.fc_code = pic.fc_code
 AND dim_supplier.supplier_code = pic.supplier_code
 
