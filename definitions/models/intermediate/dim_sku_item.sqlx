@@ -4,8 +4,8 @@ config {
     name: "dim_sku_item",
     tags: ["0h00"],
     columns: {
-       sku_fc_code: "primary-key, concatenation of sku and fc code",
-       sku_sr_code: "concatenation of sku and sales region code"
+       sku_fc_key: "primary-key, concatenation of product_id, seller_code, and fc_code",
+       sku_sr_key: "concatenation of sku and sales region code"
     }
 }
 
@@ -79,8 +79,8 @@ cte_sku_fc AS (
 
 cte_sku_item AS ( 
   SELECT
-    CONCAT(sf.product_id, "_", sf.seller_code, "_", sf.fc_code) AS sku_fc_code,
-    CONCAT(sf.product_id, "_", sf.seller_code, "_", sf.sales_region_code) AS sku_sr_code,
+    CONCAT(sf.product_id, "_", sf.seller_code, "_", sf.fc_code) AS sku_fc_key,
+    CONCAT(sf.product_id, "_", sf.seller_code, "_", sf.sales_region_code) AS sku_sr_key,
     sf.sku_code,
     sf.product_id,
     sf.sales_region_code,
@@ -99,8 +99,8 @@ SELECT
   b.note,
   b.type_stock_aging
 FROM cte_sku_item a
-JOIN ${ref("dim_stock_classification")} b ON a.sku_fc_code = b.sku_fc_code
+JOIN ${ref("dim_stock_classification")} b ON a.sku_fc_key = b.sku_fc_key
 
 post_operations {                
-    ALTER TABLE ${self()} ADD PRIMARY KEY (sku_fc_code) NOT ENFORCED;
+    ALTER TABLE ${self()} ADD PRIMARY KEY (sku_fc_key) NOT ENFORCED;
 }

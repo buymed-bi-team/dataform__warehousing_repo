@@ -4,7 +4,20 @@ config {
     name: "dim_fc_location",
     tags: ["0h00"],
     columns: {
-      location_fc_code: "concatenation of location and fc code"
+      location_fc_code: "concatenation of location and warehouse code",
+      location_code: "location identifier",
+      fc_code: "warehouse code",
+      type: "type of item",
+      shelf_type: "type of shelf",
+      width: "width of the shelf",
+      length: "length of the shelf",
+      height: "height of the shelf",
+      zone_code: "zone code extracted from the first 2 characters of code or the entire code if shelf_type is null",
+      shelf_code: "shelf code extracted from characters 3 to 5 of code or the entire code if shelf_type is null",
+      shelf_level: "shelf level extracted from the 6th character of code or the entire code if shelf_type is null",
+      location_number: "location number extracted from the 7th character onward of code or the entire code if shelf_type is null",
+      parent_order: "parent order value",
+      parent_location_code: "last value in the parent order array"
     }
 }
 

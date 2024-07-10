@@ -1,0 +1,35 @@
+config {
+  type: "table",
+  description: "Source: warehouse_prd_picking_pick_ticket, warehouse_prd_picking_pick_ticket_item | Schedule: 9am, daily | PIC: dong.le",
+  name: "fact_stock_outgoing",
+  tags: ["9h00"],
+  columns: {
+    
+  },
+  bigquery: {
+    partitionBy: "created_date",
+  }
+}
+
+WITH dedup_pick_ticket AS ${dedup.dedup(
+  "lakehouse-prod-394907.silver_buymed_vn.warehouse_prd_picking_pick_ticket",
+  "ticket_id, so, warehouse_code as fc_code, status, created_time"
+)},
+
+dedup_pick_ticket_item AS ${dedup.dedup(
+  "lakehouse-prod-394907.silver_buymed_vn.warehouse_prd_picking_pick_ticket_item",
+  "ticket_id, sku as sku_code, order_quantity"
+)}
+
+SELECT 
+    a.so as ob_code
+    , a.status as ob_status
+    , DATE(a.created_time) as created_date
+    , CONCAT(b.sku_code, "_", a.fc_code) as sku_fc_code
+    , b.sku_code
+    , a.fc_code
+    , b.order_quantity as outgoing_quantity
+FROM dedup_pick_ticket_item as b
+LEFT JOIN dedup_pick_ticket as a on b.ticket_id = a.ticket_id
+WHERE
+    a.status IN ("ONHOLD", "PICKING", "WAIT_CS", "WAIT_TO_ADD", "WAIT_TO_PICK")
