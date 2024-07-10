@@ -1,9 +1,9 @@
 config {
     type: "view",
-    description: "Source: seller_prd_purchasing_initial_stock_draft_unique. PIC: dong.le",
+    description: "Source: seller_prd_purchasing_initial_stock_draft_unique | PIC: dong.le",
     name: "dim_sku_item_stock_config",
     columns: {
-
+        sku_fc_key: "concatenation of SKU key and warehouse code", sku_code: "SKU identifier", fc_code: "warehouse code", initial_stock: "initial stock quantity", sku_leadtime: "lead time extracted from extra properties", sku_stockday: "stock day value extracted from extra properties"
     }
 }
 
@@ -14,10 +14,11 @@ WITH
 )}
 
 SELECT
-  CONCAT(a.sku, "_", a.warehouse_code) as sku_fc_code,
+  CONCAT(b.sku_key, "_", a.warehouse_code) as sku_fc_key,
   a.sku as sku_code,
   a.warehouse_code as fc_code,
   a.origin_initial_stock as initial_stock,
   json_value(a.extra_props, "$.leadtime") as sku_leadtime,
   json_value(a.extra_props, "$.stock_day") as sku_stockday
 FROM dedup_stock_draft_unique a
+LEFT JOIN ${ref("dim_sku")} b ON a.sku = b.sku_code

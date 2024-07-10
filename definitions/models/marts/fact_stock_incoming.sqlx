@@ -1,0 +1,41 @@
+config {
+  type: "table",
+  description: "Source: warehouse_prd_inbound_inbound_ticket, warehouse_prd_inbound_inbound_ticket_item | Schedule: 9am, daily | PIC: dong.le",
+  name: "fact_stock_incoming",
+  tags: ["9h00"],
+  columns: {
+    
+  },
+  bigquery: {
+    partitionBy: "created_date",
+  }
+}
+
+WITH dedup_inbound_ticket AS ${dedup.dedup(
+  "lakehouse-prod-394907.silver_buymed_vn.warehouse_prd_inbound_inbound_ticket",
+  "ticket_id, po_code, status, created_time"
+)},
+
+dedup_inbound_ticket_item AS ${dedup.dedup(
+  "lakehouse-prod-394907.silver_buymed_vn.warehouse_prd_inbound_inbound_ticket_item",
+  "ticket_id, sku as sku_code, warehouse_code as fc_code, demand_quantity, inbound_quantity"
+)}
+
+SELECT
+    a.po_code
+    , a.status as ib_status
+    , DATE(a.created_time) as created_date
+    , CASE
+        WHEN a.status = "WAITING" THEN "IN-PARTNER"
+        WHEN a.status = "IN_TRANSIT" THEN "IN-HUB"
+        ELSE "IN-FC"
+    END as incoming_type
+    , CONCAT(b.sku_code, "_", b.fc_code) as sku_fc_code
+    , b.sku_code
+    , b.fc_code
+    , b.demand_quantity
+    , b.inbound_quantity
+
+FROM dedup_inbound_ticket_item b
+LEFT JOIN dedup_inbound_ticket a on b.ticket_id = a.ticket_id
+WHERE a.status NOT IN ("CANCEL", "COMPLETED")

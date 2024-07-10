@@ -1,0 +1,69 @@
+config {
+    type: "incremental",
+    name: "staging_marketplace_prd_customer_customer_rating",
+    bigquery: {
+        
+        clusterBy: ["mg_id"]
+    }
+}
+
+
+SELECT
+   r.key,
+   r.mg_id,
+    r.type,
+    r.point,
+    r.feedback,
+    r.order_id,
+    r.ingest_time,
+    r.synced_at,
+    r.action,
+    r.last_updated_time,
+    r.created_time
+FROM
+  lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_customer_customer_rating r 
+  ${ when(incremental(), `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()})`)}
+  QUALIFY ROW_NUMBER() OVER (_window) = 1
+  AND FIRST_VALUE(action) OVER (_window) <> 'd'
+WINDOW
+  _window AS (
+  PARTITION BY
+    mg_id
+  ORDER BY
+    synced_at DESC,
+  IF
+    (action='d',3,
+    IF
+      (action='u',2,1)) DESC,
+    last_updated_time DESC)
+
+
+
+post_operations {
+  ${
+    when(incremental(),
+      `
+     delete
+FROM ${self()} where (DATE(ingest_time), mg_id, key) in(
+         SELECT
+            (DATE(ingest_time), mg_id, key)
+         FROM
+             ${self()}
+         QUALIFY ROW_NUMBER() OVER(_window) > 1
+             or FIRST_VALUE(action) OVER(_window) = "d"
+         WINDOW
+             _window AS (
+                     PARTITION
+                         BY
+                         mg_id
+                     ORDER
+                         BY
+                         synced_at
+                         DESC,
+                         IF(action='d',3,IF(action='u',2,1)) DESC, last_updated_time DESC))
+--where DATE_TRUNC(created_time, DAY) = '2024-01-10' order by mg_id
+      `,
+      ``
+    )
+  }
+}
