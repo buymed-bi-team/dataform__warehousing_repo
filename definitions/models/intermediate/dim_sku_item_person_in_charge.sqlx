@@ -1,9 +1,15 @@
 config {
     type: "view",
-    description: "Source: seller_prd_purchasing_pic, where object | PIC: dong.le",
+    description: "Source: seller_prd_purchasing_pic, where object_type is SKU | PIC: dong.le",
     name: "dim_sku_item_person_in_charge",
     columns: {
-
+      sku_fc_key: "concatenation of sku key and warehouse code",
+      sku_code: "unique sku identifier",
+      fc_code: "warehouse code",
+      pic_purchase_id: "PIC account ID for purchasing",
+      pic_purchase_name: "full name of the PIC for purchasing",
+      pic_category_id: "CIC account ID for category management",
+      pic_category_name: "full name of the PIC for category management"
     }
 }
 
@@ -14,7 +20,7 @@ WITH
 )}
 
 SELECT
-  CONCAT(p.object_code, "_", p.warehouse_code) as sku_fc_code,
+  CONCAT(s.sku_key, "_", p.warehouse_code) as sku_fc_key,
   p.object_code as sku_code,
   p.warehouse_code as fc_code,
   p.pic_account_id as pic_purchase_id,
@@ -24,4 +30,5 @@ SELECT
 FROM dedup_pic p
 LEFT JOIN ${ref("dim_employee")} pic ON p.pic_account_id = pic.employee_id
 LEFT JOIN ${ref("dim_employee")} cic ON p.cic_account_id = pic.employee_id
+LEFT JOIN ${ref("dim_sku")} s ON p.object_code = s.sku_code
 WHERE p.object_type = "SKU"
