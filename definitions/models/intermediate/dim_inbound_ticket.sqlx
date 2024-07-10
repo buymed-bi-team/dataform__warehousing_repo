@@ -1,7 +1,7 @@
 config {
     type: "incremental",
     protected: true,
-    description: " PIC: dong.le",
+    description: " Source: warehouse_prd_inbound_inbound_ticket | Schedule: 12am, daily | PIC: dong.le",
     name: "dim_inbound_ticket",
     tags: ["0h00"],
     columns: {
@@ -17,6 +17,12 @@ config {
     }
 }
 
+WITH
+  dedup_inbound_ticket AS ${dedup.dedup(
+  "lakehouse-prod-394907.silver_buymed_vn.warehouse_prd_inbound_inbound_ticket",
+  "code, po_code, external_type, created_time"
+)}
+
 SELECT
   i.code as inbound_code,
   i.po_code,
@@ -31,9 +37,8 @@ SELECT
       else 'OTHER'
   end as inbound_type,
   DATETIME(i.created_time, 'Asia/Ho_Chi_Minh') as created_time,
-  i.status
   
-FROM ${source_base.GOLD}.dedup_warehouse_prd_inbound_inbound_ticket i
+FROM dedup_inbound_ticket i
 
 ${
   when(incremental(),

@@ -1,6 +1,6 @@
 config {
     type: "view",
-    description: "Source: seller_prd_purchasing_pic | PIC: dong.le",
+    description: "Source: seller_prd_purchasing_pic, where object | PIC: dong.le",
     name: "dim_sku_item_person_in_charge",
     columns: {
 
@@ -14,5 +14,14 @@ WITH
 )}
 
 SELECT
-  *
-FROM dedup_pic
+  CONCAT(p.object_code, "_", p.warehouse_code) as sku_fc_code,
+  p.object_code as sku_code,
+  p.warehouse_code as fc_code,
+  p.pic_account_id as pic_purchase_id,
+  pic.fullname as pic_purchase_name,
+  p.cic_account_id as pic_category_id,
+  cic.fullname as pic_category_name
+FROM dedup_pic p
+LEFT JOIN ${ref("dim_employee")} pic ON p.pic_account_id = pic.employee_id
+LEFT JOIN ${ref("dim_employee")} cic ON p.cic_account_id = pic.employee_id
+WHERE p.object_type = "SKU"
