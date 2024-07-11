@@ -1,6 +1,6 @@
 config {
     type: "table",
-    tags: ["adhoc-office"],
+    tags: ["sku_history_change"],
     description: "SKU status history by hours ( 1 day ) || PIC: anh.letam;  model_type: table; schedule: hourly",
     name: "fact_sku_status_day_by_hour_v2",
     dependencies: ["staging_sku_status_history"],
@@ -147,14 +147,12 @@ fill_backwwark_value AS (SELECT
     , c.start_at_v2
     , c.start_at
     , case 
-        when contrast_first_status = "OUT_OF_STOCK" and status is null then "NORMAL"
-        when contrast_first_status not in ("OUT_OF_STOCK") and status is null then "UNKNOWN"
+        when contrast_first_status = "OUT_OF_STOCK" and status is null and c.date_time >= date(s.sku_approved_at) then "NORMAL"
+        when contrast_first_status not in ("OUT_OF_STOCK") and status is null and c.date_time >= date(s.sku_approved_at) then "UNKNOWN"
+        when c.date_time < date(s.sku_approved_at) and status is null then null
         else contrast_first_status
       end as status,
-      case 
-        when c.contrast_first_active is null then "UNKNOWN"
-        else c.contrast_first_active
-      end as is_active
+      s.sku_approved_at
     , first_value(c.end_at_custom_v2 IGNORE NULLS) over(partition by sub_sku_sales_region_code ORDER BY c.date_time ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) as end_at_custom_v3
     , c.end_at_custom_v2
     , c.end_at_custom
@@ -170,7 +168,8 @@ sku_remaining as (select
         -- DATETIME(TIMESTAMP(CURRENT_DATETIME()), 'Asia/Ho_Chi_Minh') AS last_refreshed_at,
         ms.sub_sku_code as item_code
         , ms.sku_code
-        , ms.sku_system_active
+        , ms.sku_system_active,
+        ms.sku_approved_at
         , ms.sales_region_code
         , ms.sku_code || "_" || ms.sales_region_code as sku_sales_region_code
         , ms.sub_sku_code || "_" || ms.sales_region_code as sub_sku_sales_region_code
@@ -204,10 +203,10 @@ where sl.sub_sku_sales_region_code is null and ms.sku_system_active = true )
     , sr.item_code
     , md.sku_code
     , md.date_time
-    , cast(sr.sku_system_active as string) as is_active
     , md.sales_region_code
     , sr.sub_sku_sales_region_code
-    , md.sku_sales_region_code
+    , md.sku_sales_region_code,
+      sr.sku_approved_at
     , sr.status
     , sr.start_at
     , sr.end_at_custom
@@ -221,17 +220,17 @@ select
     , c.item_code
     , c.sku_code
     , c.date_time
-    , c.is_active
     , c.sales_region_code
     , c.sub_sku_sales_region_code
-    , c.sku_code ||"_"|| c.sales_region_code as sku_sales_region_code
+    , c.sku_code ||"_"|| c.sales_region_code as sku_sales_region_code,
+      c.sku_approved_at
     , c.status
     , c.start_at_v2  as start_at
     , c.end_at_custom_v3 as end_at_custom
     , c.end_at
 from in_historical c)
 
-select * from union_all 
+select * from union_all where status is not null
 
 
 
