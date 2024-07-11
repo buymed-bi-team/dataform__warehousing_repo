@@ -96,9 +96,13 @@ SELECT
   b.latest_put_time,
   b.latest_pick_time,
   b.note,
-  b.type_stock_aging
+  b.type_stock_aging,
+  c.catm as catm_group
 FROM cte_sku_item a
-JOIN ${ref("dim_stock_classification")} b ON a.sku_fc_key = b.sku_fc_key
+LEFT JOIN ${ref("dim_stock_classification")} b
+ON a.sku_fc_key = b.sku_fc_key
+LEFT JOIN ${ref("dim_product_fc_catm")} c
+ON a.product_id = c.product_id AND a.fc_code = c.fc_code
 
 post_operations {                
     ALTER TABLE ${self()} ADD PRIMARY KEY (sku_fc_key) NOT ENFORCED;
