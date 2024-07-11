@@ -74,7 +74,6 @@ cte_sku_fc AS (
     f.sales_region_code
   FROM ${ref("dim_sku")} s
   CROSS JOIN ${ref("dim_fc")} f
-  WHERE f.fc_report_category = "FC"
 ),
 
 cte_sku_item AS ( 

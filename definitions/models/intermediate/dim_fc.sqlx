@@ -4,7 +4,6 @@ config {
     columns: {
         fc_code: docs.fc_code,
         fc_name:"The name of each warehouse",
-        fc_report_category: `Categorizes the warehouse into reporting groups: "CIRCA", "FC", or "FC-INACTIVE" based on group code and status. Note: filter FC for actual fulfillment center`,
         fc_status:"The current operational status of each warehouse (ACTIVE, INACTIVE)",
         sales_region_code: "Identifies the sales region code for each warehouse, translated from warehouse code. (MIENBAC, MIENNAM, MIENTRUNG)",
         purchaser_code: `Identifies the purchaser code for each warehouse, derived from warehouse code. (PUR_HN, PUR_HCM, PUR_DN)`
@@ -16,12 +15,6 @@ select
     wh.code as fc_code
     , wh.name as fc_name
     , wh.status as fc_status
-    , CASE
-        when json_value(wh.extra_props, "$.group_code") = "CIRCA" then "CIRCA"
-        when json_value(wh.extra_props, "$.group_code") = "BUYMED" and wh.status = "ACTIVE" then "FC"
-        when json_value(wh.extra_props, "$.group_code") = "BUYMED" and wh.status = "INACTIVE" then "FC-INACTIVE"
-        else NULL
-    end as fc_report_category
     , wh.areas as service_areas
     , CASE
         when wh.code = 'HN' THEN 'MIENBAC'
@@ -35,7 +28,7 @@ select
     end as purchaser_code
     , extra_props as fc_extra_props
 FROM ${ref("dedup_warehouse_prd_core_warehouse")} as wh
-
+WHERE json_value(wh.extra_props, "$.group_code") = "BUYMED" and wh.status = "ACTIVE"
 
 post_operations {                
     ALTER TABLE ${self()} ADD PRIMARY KEY (fc_code) NOT ENFORCED;
