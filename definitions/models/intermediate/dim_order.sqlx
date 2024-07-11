@@ -49,7 +49,7 @@ WITH dedup_order_tbl as ${
     customer_id
     `,
     start_timestamp= when(incremental(),
-              ` TIMESTAMP(current_datetime() - INTERVAL 1 DAY )`, // Nếu incremental thì mình chỉ lấy 3 ngày trở lại
+              ` TIMESTAMP(current_datetime() - INTERVAL 2 DAY )`, // Nếu incremental thì mình chỉ lấy 3 ngày trở lại
               ` TIMESTAMP_SECONDS(0)`)                            // tránh cho việc dedup phải thực hiện window function cả bảng
                                                                   // Điều này giúp nâng performance cụ thể là 1.32GB thành 37MB mỗi lần chạy incremental
 )}
@@ -86,7 +86,9 @@ FROM
   order_tbl
 ${
   when(incremental(),
-   `WHERE created_time > (SELECT MAX(created_time) FROM ${self()})`,
+   `
+   WHERE created_time > (SELECT MAX(created_time) FROM ${self()})
+   `,
    ``)
    
 }
@@ -98,19 +100,24 @@ pre_operations {
   ${
     when(
       incremental(),
-      `DELETE ${self()}
-      WHERE created_time > CURRENT_DATETIME("+7") - INTERVAL 45 MINUTE `,
+      `
+      DELETE ${self()}
+      WHERE created_time > CURRENT_DATETIME("+7") - INTERVAL 1 DAY 
+      `,
       ``
     )
   }
 }
 
--- Bước thực hiện add primary key, nhưng chỉ trong lần đầu full-refresh, nếu thực hiện incremental sau thì k cần làm gì
+
 post_operations {                
   ${
     when(incremental(),
       "",
-      `ALTER TABLE ${self()} ADD PRIMARY KEY (order_id) NOT ENFORCED;`
+      `
+      -- Bước thực hiện add primary key, nhưng chỉ trong lần đầu full-refresh, nếu thực hiện incremental sau thì k cần làm gì
+      ALTER TABLE ${self()} ADD PRIMARY KEY (order_id) NOT ENFORCED;
+      `
     )
   }
 }

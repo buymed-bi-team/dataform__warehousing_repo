@@ -15,7 +15,7 @@ WITH
 
 SELECT
   s.item_code,
-  i.sku_fc_code,
+  i.sku_fc_key,
   s.retail_price_value as setting_price,
   s.purchase_price,
   CASE
