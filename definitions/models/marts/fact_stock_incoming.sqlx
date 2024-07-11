@@ -40,7 +40,7 @@ SELECT
         WHEN a.status = "IN_TRANSIT" THEN "IN-HUB"
         ELSE "IN-FC"
     END as incoming_type
-    , CONCAT(c.sku_key, "_", b.fc_code) as sku_fc_code
+    , CONCAT(c.sku_key, "_", b.fc_code) as sku_fc_key
     , b.sku_code
     , b.fc_code
     , b.demand_quantity

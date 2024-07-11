@@ -33,7 +33,7 @@ SELECT
     a.so as so_code
     , a.status as ob_status
     , DATE(a.created_time) as created_date
-    , CONCAT(c.sku_key, "_", a.fc_code) as sku_fc_code
+    , CONCAT(c.sku_key, "_", a.fc_code) as sku_fc_key
     , b.sku_code
     , a.fc_code
     , b.order_quantity as outgoing_quantity
