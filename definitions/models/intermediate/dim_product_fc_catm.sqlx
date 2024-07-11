@@ -25,7 +25,7 @@ unnest_product_catm AS (
   LEFT JOIN UNNEST(JSON_EXTRACT_ARRAY(c.category_management_data)) cm
 )
 
-SELECT
+SELECT DISTINCT
   p.product_id,
   f.fc_code,
   COALESCE(upc.fc_catm, upc2.catm) as catm

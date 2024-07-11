@@ -22,7 +22,7 @@ dedup_purchasing_pushing_group AS ${dedup.dedup(
 )}
 
 SELECT
-  CONCAT(q.sku, "_", q.warehouse_code) as sku_fc_code,
+  CONCAT(s.product_id, "_", s.seller_code, "_", q.warehouse_code) as sku_fc_key,
   q.sku as sku_code,
   q.warehouse_code as fc_code,
   q.quantity_expect as sys_required_quantity,
@@ -30,4 +30,5 @@ SELECT
   p.group_id
 FROM dedup_purchasing_quotation q
 LEFT JOIN dedup_purchasing_pushing_group p ON q.version = p.version
+LEFT JOIN ${ref("dim_sku")} s ON q.sku = s.sku_code
 WHERE DATE(DATETIME(p.confirmed_time, 'Asia/Ho_Chi_Minh')) >= DATE_SUB(CURRENT_DATE(), INTERVAL 15 DAY)

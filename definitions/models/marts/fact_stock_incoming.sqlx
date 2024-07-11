@@ -8,7 +8,7 @@ config {
     ib_status: "status of the pick ticket",
     created_date: "date the ticket was created",
     incoming_type: "categorized as IN-PARTNER if status is WAITING, IN-HUB if status is IN_TRANSIT, else IN-FC",
-    sku_fc_code: "concatenation of sku key and warehouse code",
+    sku_fc_key: "concatenation of sku key and warehouse code",
     sku_code: "unique sku identifier",
     fc_code: "warehouse code",
     demand_quantity: "demand quantity from ticket item",
