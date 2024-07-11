@@ -7,7 +7,7 @@ config {
     so_code: "sales order code",
     ob_status: "status of pick ticket",
     created_date: "date the pick ticket was created",
-    sku_fc_code: "concatenation of sku key and warehouse code",
+    sku_fc_key: "concatenation of sku key and warehouse code",
     sku_code: "unique sku identifier",
     fc_code: "warehouse code",
     outgoing_quantity: "quantity of order quantity from pick ticket item"
