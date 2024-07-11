@@ -1,8 +1,8 @@
 config {
     type: "table",
-    description: " PIC: dong.le",
+    description: "Schedule: daily at 12am, 12pm | PIC: dong.le",
     name: "dim_sku_item",
-    tags: ["0h00"],
+    tags: ["0h00", "12h00"],
     columns: {
        sku_fc_key: "primary-key, concatenation of product_id, seller_code, and fc_code",
        sku_sr_key: "concatenation of sku and sales region code"
@@ -97,12 +97,15 @@ SELECT
   b.latest_pick_time,
   b.note,
   b.type_stock_aging,
-  c.catm as catm_group
+  c.catm as catm_group,
+  d.avg_demand_l15d
 FROM cte_sku_item a
 LEFT JOIN ${ref("dim_stock_classification")} b
 ON a.sku_fc_key = b.sku_fc_key
 LEFT JOIN ${ref("dim_product_fc_catm")} c
 ON a.product_id = c.product_id AND a.fc_code = c.fc_code
+LEFT JOIN ${ref("agg_avg_demand_sku_item_l15d")} d
+ON a.sku_fc_key = d.sku_fc_key
 
 post_operations {                
     ALTER TABLE ${self()} ADD PRIMARY KEY (sku_fc_key) NOT ENFORCED;
