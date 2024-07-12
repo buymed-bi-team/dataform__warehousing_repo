@@ -120,7 +120,11 @@ fill_backwwark_value AS (SELECT
     ss.sales_region_code,
     sd.sub_sku_sales_region_code,
     LEFT(sd.item_code, INSTR(sd.item_code, '.', 1, 2) - 1) AS sku_code_bf,
-    SUBSTR(sd.sub_sku_sales_region_code, INSTR(sd.sub_sku_sales_region_code, '_') + 1) AS sales_region_code_bf,
+   CASE
+      WHEN CONTAINS_SUBSTR(sd.sub_sku_sales_region_code, 'MIENBAC') IS TRUE THEN "MIENBAC"
+      WHEN CONTAINS_SUBSTR(sd.sub_sku_sales_region_code, 'MIENNAM') IS TRUE THEN "MIENNAM"
+      WHEN CONTAINS_SUBSTR(sd.sub_sku_sales_region_code, 'MIENTRUNG') IS TRUE THEN "MIENTRUNG"
+    END AS sales_region_code_bf,
     CASE
       WHEN ss.end_at_custom IS NULL THEN LEAD(ss.start_at)
         OVER (PARTITION BY sub_sku_sales_region_code ORDER BY sd.date_time ASC)
@@ -139,7 +143,8 @@ fill_backwwark_value AS (SELECT
 
 , in_historical as (select 
     c.last_refreshed_at
-    , c.item_code
+    , c.item_code,
+      s.product_id
     , c.sku as sku_code
     , c.date_time
     , c.sales_region_code_bf as sales_region_code
@@ -166,7 +171,8 @@ where c.date_time > CURRENT_DATETIME("+7") - INTERVAL 1 day),
 -- join with adhoc_pm_master_sku to get filter sku_system_active = true
 sku_remaining as (select 
         -- DATETIME(TIMESTAMP(CURRENT_DATETIME()), 'Asia/Ho_Chi_Minh') AS last_refreshed_at,
-        ms.sub_sku_code as item_code
+        ms.sub_sku_code as item_code,
+          ms.product_id
         , ms.sku_code
         , ms.sku_system_active,
         ms.sku_approved_at
@@ -200,7 +206,8 @@ where sl.sub_sku_sales_region_code is null and ms.sku_system_active = true )
 -- union những con item_code không có trong historical data và union với hisrorical_data
   , union_all as (select
     CURRENT_DATETIME("+7") AS last_refreshed_at
-    , sr.item_code
+    , sr.item_code,
+      sr.product_id
     , md.sku_code
     , md.date_time
     , md.sales_region_code
@@ -217,7 +224,8 @@ where md.date_time > CURRENT_DATETIME("+7") - INTERVAL 1 day
 union all
 select 
       c.last_refreshed_at
-    , c.item_code
+    , c.item_code,
+      c.product_id
     , c.sku_code
     , c.date_time
     , c.sales_region_code
