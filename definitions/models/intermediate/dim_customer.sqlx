@@ -1,0 +1,50 @@
+config {
+    type: "table",
+    description: `PIC: minh.luu; model_type: table; schedule 0h00
+    Source: 
+        silver_buymed_vn.core_prd_master_data_district
+        silver_buymed_vn.core_prd_master_data_ward
+        silver_buymed_vn.core_prd_master_data_province
+        silver_buymed_vn.core_prd_master_data_region`,
+    // assertions:{
+    //     nonNull: ["district_code","province_code",'region_code'],
+    //     uniqueKey: ["location_code"]
+    // },
+    name: "dim_customer",
+    tags: ["0h00"],
+    columns: {
+        
+    }
+}
+
+WITH dedup_order AS ${dedup.dedup('silver_buymed_vn.marketplace_prd_order_v2_order','*')}  ,
+    order_customer as (
+        SELECT
+            DISTINCT
+            customer_id,
+            order_channel
+        FROM
+            dedup_order
+        LEFT JOIN ${ref(`dim_order`)} AS dim_order USING ( order_id )
+)
+
+SELECT
+    order_id,
+    dedup_customer.customer_id,
+    dedup_customer.name AS customer_name,
+    dedup_customer.email AS customer_email,
+    dedup_customer.address AS customer_address,
+    CASE
+        WHEN REGEXP_CONTAINS( UPPER(name), r'TECH SELLER|TEST|TECH-QC|TS-TECH|\[TECH\]|\(TECH\)|DEMO|QC|TECH MONITOR|TECH 2') THEN "TECH"
+        -- WHEN dedup_customer.tags LIKE '%TENDER%' THEN 'TENDER'
+        -- WHEN dedup_customer.tags LIKE '%CIRCA%'  THEN 'CIRCA'
+        -- ELSE 'MARKETPLACE'
+        ELSE order_channel
+    END AS customer_report_category 
+    
+FROM 
+    ${dedup.dedup('silver_buymed_vn.marketplace_prd_customer_customer','*')} dedup_customer
+LEFT JOIN  order_customer
+    ON order_customer.customer_id = dedup_customer.customer_id
+
+
