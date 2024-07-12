@@ -100,7 +100,11 @@ fill_backwwark_value AS (
     ss.sales_region_code,
     sd.sub_sku_sales_region_code,
     LEFT(sd.item_code, INSTR(sd.item_code, '.', 1, 2) - 1) AS sku_code_bf,
-    SUBSTR(sd.sub_sku_sales_region_code, INSTR(sd.sub_sku_sales_region_code, '_') + 1) AS sales_region_code_bf,
+    CASE
+      WHEN CONTAINS_SUBSTR(sd.sub_sku_sales_region_code, 'MIENBAC') IS TRUE THEN "MIENBAC"
+      WHEN CONTAINS_SUBSTR(sd.sub_sku_sales_region_code, 'MIENNAM') IS TRUE THEN "MIENNAM"
+      WHEN CONTAINS_SUBSTR(sd.sub_sku_sales_region_code, 'MIENTRUNG') IS TRUE THEN "MIENTRUNG"
+    END AS sales_region_code_bf,
     CASE
       WHEN ss.end_at_custom IS NULL THEN LEAD(DATETIME(ss.start_at, 'Asia/Ho_Chi_Minh'))
         OVER (PARTITION BY sub_sku_sales_region_code ORDER BY sd.date ASC)
@@ -123,7 +127,8 @@ fill_backwwark_value AS (
 (
 select 
     c.last_refreshed_at
-    , c.item_code
+    , c.item_code,
+      s.product_id
     , c.sku as sku_code
     , c.date
     , s.sku_system_active
@@ -156,7 +161,8 @@ where c.date > DATE(DATE_TRUNC(current_date(), MONTH) - INTERVAL 3 MONTH)
        ms.sub_sku_code as item_code
       , ms.sku_code
       , ms.sku_system_active
-      , ms.sales_region_code
+      , ms.sales_region_code,
+        ms.product_id
       , ms.sku_code || "_" || ms.sales_region_code as sku_sales_region_code
       , ms.sub_sku_code || "_" || ms.sales_region_code as sub_sku_sales_region_code
       , ms.sku_system_status as status,
@@ -194,7 +200,8 @@ where sl.sub_sku_sales_region_code is null and ms.sku_system_active = true
 , union_all as 
 (select
     DATETIME(TIMESTAMP(CURRENT_DATETIME()), 'Asia/Ho_Chi_Minh') AS last_refreshed_at
-    , sr.item_code
+    , sr.item_code,
+      sr.product_id
     , md.sku_code
     , md.date
     , md.sales_region_code
@@ -212,7 +219,8 @@ where md.date > DATE(DATE_TRUNC(current_date(), MONTH) - INTERVAL 3 MONTH)
 union all
 select 
       c.last_refreshed_at
-    , c.item_code
+    , c.item_code,
+      c.product_id
     , c.sku_code
     , c.date
     , c.sales_region_code

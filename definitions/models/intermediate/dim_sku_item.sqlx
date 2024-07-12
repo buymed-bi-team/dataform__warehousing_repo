@@ -108,7 +108,7 @@ ON a.product_id = c.product_id AND a.fc_code = c.fc_code
 LEFT JOIN ${ref("agg_avg_demand_sku_item_l15d")} d
 ON a.sku_code = d.sku_code AND a.fc_code = d.fc_code
 LEFT JOIN ${ref("dim_sku_item_fv_vendor")} e
-ON a.sku_code = d.sku_code AND a.fc_code = e.fc_code
+ON a.sku_code = e.sku_code AND a.fc_code = e.fc_code
 
 post_operations {                
     ALTER TABLE ${self()} ADD PRIMARY KEY (sku_fc_key) NOT ENFORCED;
