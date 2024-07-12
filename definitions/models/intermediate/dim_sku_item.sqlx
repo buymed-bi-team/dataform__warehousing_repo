@@ -101,11 +101,11 @@ SELECT
   d.avg_demand_l15d
 FROM cte_sku_item a
 LEFT JOIN ${ref("dim_stock_classification")} b
-ON a.sku_fc_key = b.sku_fc_key
+ON a.sku_code = b.sku_code AND a.fc_code = b.fc_code
 LEFT JOIN ${ref("dim_product_fc_catm")} c
 ON a.product_id = c.product_id AND a.fc_code = c.fc_code
 LEFT JOIN ${ref("agg_avg_demand_sku_item_l15d")} d
-ON a.sku_fc_key = d.sku_fc_key
+ON a.sku_code = d.sku_code AND a.fc_code = d.fc_code
 
 post_operations {                
     ALTER TABLE ${self()} ADD PRIMARY KEY (sku_fc_key) NOT ENFORCED;

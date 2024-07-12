@@ -22,7 +22,6 @@ dedup_pick_ticket_item AS ${dedup.dedup(
 
 filtered_data AS (
     SELECT 
-        CONCAT(c.sku_key, "_", a.fc_code) as sku_fc_key,
         b.sku_code,
         a.fc_code,
         b.order_quantity AS outgoing_quantity,
@@ -35,18 +34,20 @@ filtered_data AS (
 
 daily_outgoing AS (
     SELECT
-        sku_fc_key,
+        sku_code,
+        fc_code,
         created_date,
         SUM(outgoing_quantity) AS total_daily_outgoing
     FROM filtered_data
-    GROUP BY sku_fc_key, created_date
+    GROUP BY sku_code, fc_code, created_date
 )
 
 SELECT
-    sku_fc_key,
+    sku_code,
+    fc_code,
     AVG(total_daily_outgoing) AS avg_demand_l15d
 FROM daily_outgoing
-GROUP BY sku_fc_key
+GROUP BY sku_code, fc_code
 
 
   
