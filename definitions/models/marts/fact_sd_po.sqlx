@@ -6,7 +6,7 @@ config {
         po_id: "",
         type: "NORMAL, HEDGING, REPLENISHMENT, RECEIPTGIFTPRODUCTS, IT",
     },
-    tags: ["custom_30min_9to18","custom_1h_18to9"],
+    tags: ["custom_30min_9to18","custom_1h_18to9","Weekend"],
     bigquery: {
         partitionBy: "DATETIME_TRUNC((po_created_ts),MONTH)"
     }

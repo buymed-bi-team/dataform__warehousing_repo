@@ -13,38 +13,32 @@ config {
     name: "dim_customer",
     tags: ["0h00"],
     columns: {
-        
+        customer_id: "",
+        customer_name: "Not Null",
+        customer_email: "Nullable",
+        customer_address: "Nullable",
+        customer_report_category: "Not Null | Is one of TECH, TENDER, MARKETPLACE, or CIRCA? TECH means testing by the tech team"
+
     }
 }
 
-WITH dedup_order AS ${dedup.dedup('silver_buymed_vn.marketplace_prd_order_v2_order','*')}  ,
-    order_customer as (
-        SELECT
-            DISTINCT
-            customer_id,
-            order_channel
-        FROM
-            dedup_order
-        LEFT JOIN ${ref(`dim_order`)} AS dim_order USING ( order_id )
-)
-
 SELECT
-    order_id,
     dedup_customer.customer_id,
     dedup_customer.name AS customer_name,
     dedup_customer.email AS customer_email,
     dedup_customer.address AS customer_address,
     CASE
         WHEN REGEXP_CONTAINS( UPPER(name), r'TECH SELLER|TEST|TECH-QC|TS-TECH|\[TECH\]|\(TECH\)|DEMO|QC|TECH MONITOR|TECH 2') THEN "TECH"
-        -- WHEN dedup_customer.tags LIKE '%TENDER%' THEN 'TENDER'
-        -- WHEN dedup_customer.tags LIKE '%CIRCA%'  THEN 'CIRCA'
-        -- ELSE 'MARKETPLACE'
-        ELSE order_channel
+        WHEN TO_JSON_STRING( dedup_customer.tags ) LIKE '%TENDER%' THEN 'TENDER'
+        WHEN TO_JSON_STRING( dedup_customer.tags ) LIKE '%\"TERMINATE_CIRCA\"%'  THEN 'MARKETPLACE'
+        WHEN TO_JSON_STRING( dedup_customer.tags ) LIKE '%CIRCA%'  THEN 'CIRCA' -- Một số terminate circa vẫn được gán nhãn là circa ví dụ customer_id in (252404,358259,369079)
+        ELSE 'MARKETPLACE' -- Một số order trong dim_order bị xếp loại vào Marketplace trong khi vốn tên có là FC-CIRCA
     END AS customer_report_category 
-    
 FROM 
     ${dedup.dedup('silver_buymed_vn.marketplace_prd_customer_customer','*')} dedup_customer
-LEFT JOIN  order_customer
-    ON order_customer.customer_id = dedup_customer.customer_id
 
 
+
+post_operations {
+    ALTER TABLE ${self()} ADD PRIMARY KEY (customer_id) NOT ENFORCED;
+}
