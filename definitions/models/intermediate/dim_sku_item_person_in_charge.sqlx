@@ -3,7 +3,6 @@ config {
     description: "Source: seller_prd_purchasing_pic, where object_type is SKU | PIC: dong.le",
     name: "dim_sku_item_person_in_charge",
     columns: {
-      sku_fc_key: "concatenation of sku key and warehouse code",
       sku_code: "unique sku identifier",
       fc_code: "warehouse code",
       pic_purchase_id: "PIC account ID for purchasing",
@@ -20,7 +19,6 @@ WITH
 )}
 
 SELECT
-  CONCAT(s.sku_key, "_", p.warehouse_code) as sku_fc_key,
   p.object_code as sku_code,
   p.warehouse_code as fc_code,
   p.pic_account_id as pic_purchase_id,

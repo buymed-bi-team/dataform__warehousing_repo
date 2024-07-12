@@ -20,11 +20,9 @@ SELECT
   CONCAT(a.location_code, "_", a.warehouse_code) as location_fc_code,
   a.warehouse_code as fc_code,
   a.location_code,
-  a.stock_quantity,
-  COALESCE(c.inventory_price, 999) as inventory_price
+  a.stock_quantity
 FROM dedup_inventory_sku_location a
 LEFT JOIN ${ref("dim_sku_item")} b ON a.sku = b.sku_code AND a.warehouse_code = b.fc_code
-LEFT JOIN ${ref("dim_sku_item_pricing")} c ON b.sku_fc_key = c.sku_fc_key
 WHERE stock_quantity > 0 AND fc_code IN (
-  SELECT fc_code FROM ${ref("dim_fc")} WHERE fc_report_category = "FC"
+  SELECT fc_code FROM ${ref("dim_fc")}
 )

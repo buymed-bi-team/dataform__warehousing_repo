@@ -8,14 +8,15 @@ config {
     ib_status: "status of the pick ticket",
     created_date: "date the ticket was created",
     incoming_type: "categorized as IN-PARTNER if status is WAITING, IN-HUB if status is IN_TRANSIT, else IN-FC",
-    sku_fc_code: "concatenation of sku key and warehouse code",
+    sku_fc_key: "concatenation of sku key and warehouse code",
     sku_code: "unique sku identifier",
     fc_code: "warehouse code",
     demand_quantity: "demand quantity from ticket item",
-    inbound_quantity: "inbound quantity from ticket item"
+    inbound_quantity: "inbound quantity from ticket item",
+    incoming_quantity: "= demand_quantity - inbound_quantity"
   },
   bigquery: {
-    partitionBy: "created_date",
+    partitionBy: "created_date"
   }
 }
 
@@ -45,6 +46,7 @@ SELECT
     , b.fc_code
     , b.demand_quantity
     , b.inbound_quantity
+    , b.demand_quantity - b.inbound_quantity as incoming_quantity
 
 FROM dedup_inbound_ticket_item b
 LEFT JOIN dedup_inbound_ticket a on b.ticket_id = a.ticket_id

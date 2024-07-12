@@ -4,7 +4,6 @@ config {
     dependencies: ["staging_sku_status_history"],
     name: "fact_sku_status_day_by_date",
     description: "SKU status history by date (3 months). PIC: Tu.Dang, Anh.LeTam",
-    tags: ["sku_history_change"],
     bigquery: {
     partitionBy: "date"
   }

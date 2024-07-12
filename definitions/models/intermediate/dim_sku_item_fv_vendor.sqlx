@@ -3,7 +3,7 @@ config {
     description: "Source: dim_sku_item_vendors. Extracts the vendor code with lowest priority score for each sku item. PIC: dong.le",
     name: "dim_sku_item_fv_vendor",
     columns: {
-      sku_code: "sku identifier", fc_code: "warehouse code", vendor_code: "code of the vendor"
+      sku_code: "unique sku identifier", fc_code: "warehouse code", vendor_code: "the vendor code with lowest priority score for the sku"
     }
 }
 

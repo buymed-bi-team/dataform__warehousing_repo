@@ -64,7 +64,6 @@ FROM ${self()} where (DATE(ingest_time), mg_id, key) in(
                          synced_at
                          DESC,
                          IF(action='d',3,IF(action='u',2,1)) DESC, last_updated_time DESC))
---where DATE_TRUNC(created_time, DAY) = '2024-01-10' order by mg_id
       `,
       ``
     )
