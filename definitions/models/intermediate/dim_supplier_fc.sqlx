@@ -36,7 +36,6 @@ SELECT
     dim_fc.fc_code,
     dim_fc.fc_name,
     dim_fc.fc_status,
-    dim_fc.fc_report_category,
     dim_fc.service_areas,
     dim_fc.sales_region_code,
     dim_fc.fc_extra_props,
@@ -65,7 +64,6 @@ post_operations {
         ADD PRIMARY KEY (supplier_fc_code) NOT ENFORCED,
         ADD FOREIGN KEY (fc_code) references ${ref(`dim_fc`)}(fc_code) NOT ENFORCED,
         ADD FOREIGN KEY (supplier_code) references ${ref(`dim_supplier`)}(supplier_code) NOT ENFORCED;
-
 }
 
 
