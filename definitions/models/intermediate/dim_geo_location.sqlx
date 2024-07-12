@@ -1,0 +1,67 @@
+config {
+    type: "table",
+    description: `PIC: minh.luu; model_type: table; schedule 0h00
+    Source: 
+        silver_buymed_vn.core_prd_master_data_district
+        silver_buymed_vn.core_prd_master_data_ward
+        silver_buymed_vn.core_prd_master_data_province
+        silver_buymed_vn.core_prd_master_data_region`,
+    assertions:{
+        nonNull: ["district_code","province_code",'region_code'],
+        uniqueKey: ["location_code"]
+    },
+    name: "dim_geo_location",
+    tags: ["0h00"],
+    columns: {
+        location_code: "Mã vị trí.",
+        location_name: 'Tên vị trí nếu không có phường thì sẽ là tên huyện',
+        ward_code: "Mã xã/phường",
+        ward_name: "Tên xã/phường",
+        district_code: "Mã huyện",
+        district_name: "Tên huyện",
+        province_code: "Mã tỉnh",
+        province_name: "Tên tỉnh",
+        region_code: "Mã vùng",
+        region_name: "Tên vùng",
+
+    }
+}
+
+
+WITH 
+    dedup_district AS ${dedup.dedup('silver_buymed_vn.core_prd_master_data_district','*')},
+    dedup_ward AS ${dedup.dedup('silver_buymed_vn.core_prd_master_data_ward','*')},
+    dedup_province AS ${dedup.dedup('silver_buymed_vn.core_prd_master_data_province','*')},
+    dedup_region AS ${dedup.dedup('silver_buymed_vn.core_prd_master_data_region','*')}
+
+
+SELECT 
+    CASE
+        WHEN dedup_ward.code IS NULL THEN dedup_district.code
+        ELSE dedup_ward.code
+    END AS location_code,
+    CASE
+        WHEN dedup_ward.name IS NULL THEN dedup_district.name 
+        ELSE dedup_ward.name
+    END AS location_name,
+    dedup_ward.code as ward_code, -- nullable
+    dedup_ward.name as ward_name, -- nullable
+    dedup_district.code as district_code,
+    dedup_district.name as district_name,
+    dedup_province.code as province_code,
+    dedup_province.name as province_name,
+    dedup_region.code as region_code,
+    dedup_region.name as region_name
+
+FROM dedup_district
+LEFT JOIN dedup_ward
+    ON dedup_district.code = dedup_ward.district_code
+LEFT JOIN dedup_province
+    ON dedup_district.province_code = dedup_province.code
+LEFT JOIN dedup_region
+    ON dedup_district.region_code=dedup_region.code
+
+post_operations {
+    -- writesomething
+    ALTER TABLE ${self()} ADD PRIMARY KEY (location_code) NOT ENFORCED;
+}
