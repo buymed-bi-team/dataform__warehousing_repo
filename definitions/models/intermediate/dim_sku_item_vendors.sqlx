@@ -3,7 +3,6 @@ config {
     description: "Source: seller_prd_purchasing_sku_config | PIC: dong.le",
     name: "dim_sku_item_vendors",
     columns: {
-      sku_fc_key: "concatenation of product_id, seller_code, and and fc_code",
       sku_code: "sku identifier", fc_code: "warehouse code", purchaser_code: "code of the purchaser",
       vendor_code: "unique identifier of associated vendor for the product",
       priority: "score indicating vendor favoriteness; lower values indicate higher priority"
@@ -17,7 +16,6 @@ WITH
 )}
 
 SELECT
-  CONCAT(s.product_id, "_", s.seller_code, "_", f.fc_code) AS sku_fc_key,
   s.sku AS sku_code,
   f.fc_code,
   s.purchaser_code,
