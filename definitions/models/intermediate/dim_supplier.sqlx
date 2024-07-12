@@ -6,6 +6,7 @@ config {
     columns: {
         supplier_code: docs.supplier_code,
         supplier_type:"It categorizes suppliers into different types: Enterprise, Individual and so on",
+        supplier_sku_trading_type: "Categorizes as NON-TRADING if the supplier is not the favorite vendor of any sku item, otherwise equals to seller_type",
         supplier_class:"Seller-External, Seller-Internal, or Vendor",
         supplier_name:"It assigns the supplier's name based on their class; if the class is 'INTERNAL' or 'PURCHASER', the code is used as the name, otherwise, the name field is used.",
         supplier_status:`Status of supplier, can be one of (ACTIVE, STOP_COOPERATING, DRAFT, INACTIVE)`
@@ -25,25 +26,29 @@ config {
 
 
 SELECT 
-    code AS supplier_code,          -- primary key, 
-    IF ( seller_type IS NULL , "UNKNOWN", seller_type ) AS supplier_type,  -- 310 null,  6 unique value
+    s.code AS supplier_code,          -- primary key, 
+    IF ( s.seller_type IS NULL , "UNKNOWN", s.seller_type ) AS supplier_type,  -- 310 null,  6 unique value
     IF ( 
-        REGEXP_CONTAINS( UPPER(name), r'TECH SELLER|TEST|TECH-QC|TS-TECH|\[TECH\]|\(TECH\)|DEMO|QC|TECH MONITOR|TECH 2')
+        REGEXP_CONTAINS( UPPER(s.name), r'TECH SELLER|TEST|TECH-QC|TS-TECH|\[TECH\]|\(TECH\)|DEMO|QC|TECH MONITOR|TECH 2')
         AND NOT name LIKE "Abbott  test- Sang Pharma" , 
         "TECH" ,
-        seller_class ) 
+        s.seller_class ) 
     AS supplier_class, -- not null,  4 unique value
     CASE
-        WHEN seller_class in ("INTERNAL", "PURCHASER") THEN code
+        WHEN s.seller_class in ("INTERNAL", "PURCHASER") THEN code
         ELSE name
     END as supplier_name,
-    status AS supplier_status,
-    extra_props as supplier_extra_props
+    s.status AS supplier_status,
+    s.extra_props as supplier_extra_props,
+    IF (v.sku_code IS NULL, "NON-TRADING", s.seller_type) AS supplier_sku_trading_type
+
 FROM
     ${dedup.dedup(
         'silver_buymed_vn.seller_prd_core_seller',
         "*"
-    )}
+    )} s
+LEFT JOIN ${ref("dim_sku_item_fv_vendor")} v
+ON s.code = v.vendor_code
 
 post_operations {
     ALTER TABLE ${self()} ALTER COLUMN supplier_type SET DEFAULT "UNKNOWN";
