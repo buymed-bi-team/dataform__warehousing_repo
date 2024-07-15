@@ -7,7 +7,7 @@ config {
     //     // nullable : seller_class vì một số seller_code không có trong seller_prd_core_seller table
     //     // nonNull: ["created_time","order_channel"]
     },
-    tags: ["custom_5min_9to18","custom_1h_18to9"],
+    tags: ["custom_5min_9to18","custom_1h_18to9","Weekend"],
     columns: {
       order_id:"Unique identifier for each order",
       created_time: "Timestamp indicating when the order was created. The time zone is set to 'Asia/Ho_Chi_Minh'",

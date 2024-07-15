@@ -2,7 +2,7 @@ config {
     type: "table",
     description: "Source: warehouse_prd_inventory_sku_location_merge | Schedule: every 30 mins from 9am to 6pm | PIC: dong.le",
     name: "fact_stock_sku_item",
-    // tags: ["custom_30min_9to18"],
+    tags: ["custom_30min_9to18"],
     columns: {
       
     }
@@ -15,14 +15,16 @@ WITH
 )}
 
 SELECT
-  b.sku_fc_key,
+  CONCAT(b.sku_key, "_", a.warehouse_code) as sku_fc_key,
   a.sku as sku_code,
   CONCAT(a.location_code, "_", a.warehouse_code) as location_fc_code,
   a.warehouse_code as fc_code,
   a.location_code,
-  a.stock_quantity
+  a.stock_quantity,
+  datetime(current_timestamp(), "Asia/Ho_Chi_Minh") as last_updated_time
 FROM dedup_inventory_sku_location a
-LEFT JOIN ${ref("dim_sku_item")} b ON a.sku = b.sku_code AND a.warehouse_code = b.fc_code
-WHERE stock_quantity > 0 AND fc_code IN (
+LEFT JOIN ${ref("dim_sku")} b
+ON a.sku = b.sku_code
+WHERE stock_quantity > 0 AND a.warehouse_code IN (
   SELECT fc_code FROM ${ref("dim_fc")}
 )

@@ -15,6 +15,9 @@ WITH cte_sku AS (
     seller_code,
     item_code,
     sku,
+    status,
+    is_active,
+    JSON_EXTRACT_SCALAR(extra_props, "$.demand_classification_code") as demand_classification_code,
     STRING(codes) AS location_code
   FROM gold_buymed_vn2.dedup_marketplace_prd_product_v2_sku_merge s,
   UNNEST(JSON_EXTRACT_ARRAY(s.location_codes)) codes
@@ -59,6 +62,9 @@ cte_sku_ranked AS (
     f.fc_code,
     s.product_id,
     s.item_code,
+    s.status,
+    s.is_active,
+    s.demand_classification_code,
     ROW_NUMBER() OVER (PARTITION BY s.sku, s.sales_region_code ORDER BY s.product_id) AS row_num
   FROM cte_sku_sr_code s
   JOIN ${ref("dim_fc")} f on s.sales_region_code = f.sales_region_code
@@ -85,7 +91,10 @@ cte_sku_item AS (
     sf.sales_region_code,
     sf.fc_code,
     sf.seller_code as supplier_code,
-    sr.item_code
+    sr.item_code,
+    sr.status as item_status,
+    sr.is_active as item_is_active,
+    sr.demand_classification_code
   FROM cte_sku_fc sf
   LEFT JOIN cte_sku_ranked sr
   ON sf.sku_code = sr.sku AND sf.fc_code = sr.fc_code AND sr.row_num = 1
@@ -99,7 +108,12 @@ SELECT
   b.type_stock_aging,
   c.catm as catm_group,
   d.avg_demand_l15d,
-  e.vendor_code as fv_vendor_code
+  e.vendor_code as fv_vendor_code,
+  IF (e.vendor_code IS NULL, "NON-TRADING", "TRADING") as trading_type,
+  f.pic_purchase_id,
+  f.pic_purchase_name,
+  f.pic_category_id,
+  f.pic_category_name
 FROM cte_sku_item a
 LEFT JOIN ${ref("dim_stock_classification")} b
 ON a.sku_code = b.sku_code AND a.fc_code = b.fc_code
@@ -108,7 +122,9 @@ ON a.product_id = c.product_id AND a.fc_code = c.fc_code
 LEFT JOIN ${ref("agg_avg_demand_sku_item_l15d")} d
 ON a.sku_code = d.sku_code AND a.fc_code = d.fc_code
 LEFT JOIN ${ref("dim_sku_item_fv_vendor")} e
-ON a.sku_code = d.sku_code AND a.fc_code = e.fc_code
+ON a.sku_code = e.sku_code AND a.fc_code = e.fc_code
+LEFT JOIN ${ref("dim_sku_item_person_in_charge")} f
+ON a.sku_code = f.sku_code AND a.fc_code = f.fc_code
 
 post_operations {                
     ALTER TABLE ${self()} ADD PRIMARY KEY (sku_fc_key) NOT ENFORCED;
