@@ -277,7 +277,6 @@ case
 from union_all cf
 left join product_seller ps on cf.product_id= ps.product_id and cf.sales_region_code= ps.sales_region_code 
 left join product_seller_oos po on cf.product_id= po.product_id and cf.date_time= po.date_time and cf.sales_region_code= po.sales_region_code
--- where sku_system_active = true
 
 
 
