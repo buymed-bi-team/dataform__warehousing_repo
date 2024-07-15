@@ -93,7 +93,7 @@ cte_sku_item AS (
     sf.seller_code as supplier_code,
     sr.item_code,
     sr.status as item_status,
-    sr.is_active as item_active,
+    sr.is_active as item_is_active,
     sr.demand_classification_code
   FROM cte_sku_fc sf
   LEFT JOIN cte_sku_ranked sr

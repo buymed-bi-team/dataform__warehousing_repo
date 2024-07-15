@@ -35,7 +35,8 @@ dedup_inbound_ticket_item AS ${dedup.dedup(
 SELECT
     a.po_code
     , a.status as ib_status
-    , DATE(a.created_time) as created_date
+    , DATE(a.created_time, "Asia/Ho_Chi_Minh") as created_date
+    , DATETIME(a.created_time, "Asia/Ho_Chi_Minh") as created_time
     , CASE
         WHEN a.status = "WAITING" THEN "IN-PARTNER"
         WHEN a.status = "IN_TRANSIT" THEN "IN-HUB"
