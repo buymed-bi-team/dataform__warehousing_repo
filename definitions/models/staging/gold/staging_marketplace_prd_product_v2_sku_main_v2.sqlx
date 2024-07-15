@@ -13,7 +13,7 @@ pre_operations {
       `
       CREATE OR REPLACE TEMP TABLE range_created_time_table AS
       SELECT MIN(DATE(created_time)) AS min_created_date, MAX(DATE(created_time)) AS max_created_date
-      FROM lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_product_v2
+      FROM lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_product_v2_sku_main_v2
       WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()});
       `,
       ``
