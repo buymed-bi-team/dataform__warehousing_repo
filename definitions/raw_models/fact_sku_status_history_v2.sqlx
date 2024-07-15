@@ -37,16 +37,16 @@ WITH status_history_location AS (
     a.key
   FROM
     ${ref("staging_sku_status_history")} a
-  left join lakehouse-prod-394907.gold_buymed_vn.dim_sku_sales_region_current b on a.item_code = b.sub_sku_code  
+  left join lakehouse-prod-394907.gold_buymed_vn.dim_sku_sales_region_current b on a.item_code = b.sub_sku_code
 ),
 
 --generate 24 hours datetime series
 timeseries AS (
   SELECT *
-  FROM 
-    UNNEST( 
-        GENERATE_TIMESTAMP_ARRAY( TIMESTAMP_SUB(CURRENT_TIMESTAMP() , INTERVAL 1 day), 
-        CURRENT_TIMESTAMP(), 
+  FROM
+    UNNEST(
+        GENERATE_TIMESTAMP_ARRAY( TIMESTAMP_SUB(CURRENT_TIMESTAMP() , INTERVAL 1 day),
+        CURRENT_TIMESTAMP(),
         INTERVAL 1 HOUR )
     ) AS timestamp
 ),  DateSeries AS (
@@ -138,10 +138,10 @@ fill_backwwark_value AS (SELECT
     -- , s.sku_system_active
     FIRST_VALUE(ss.status IGNORE NULLS) OVER (partition by sd.sub_sku_sales_region_code ORDER BY sd.date_time ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS contrast_first_status,
     FIRST_VALUE(cast(ss.is_active as string) IGNORE NULLS) OVER (partition by sd.sub_sku_sales_region_code ORDER BY sd.date_time ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS contrast_first_active
-    from sku_date as sd 
+    from sku_date as sd
     left join  sku_status as ss on sd.item_code = ss.item_code and sd.sales_region_code = ss.sales_region_code and sd.date_time between ss.start_at and ss.end_at_custom)
 
-, in_historical as (select 
+, in_historical as (select
     c.last_refreshed_at
     , c.item_code,
       s.product_id
@@ -151,13 +151,15 @@ fill_backwwark_value AS (SELECT
     , c.sub_sku_sales_region_code
     , c.start_at_v2
     , c.start_at
-    , case 
+    , case
         when contrast_first_status = "OUT_OF_STOCK" and status is null and c.date_time >= date(s.sku_approved_at) then "NORMAL"
         when contrast_first_status not in ("OUT_OF_STOCK") and status is null and c.date_time >= date(s.sku_approved_at) then "UNKNOWN"
         when c.date_time < date(s.sku_approved_at) and status is null then null
         else contrast_first_status
       end as status,
-      s.sku_approved_at
+      s.sku_approved_at,
+      s.seller_code -- tu.dang
+    , s.sku_system_active
     , first_value(c.end_at_custom_v2 IGNORE NULLS) over(partition by sub_sku_sales_region_code ORDER BY c.date_time ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) as end_at_custom_v3
     , c.end_at_custom_v2
     , c.end_at_custom
@@ -169,7 +171,7 @@ where c.date_time > CURRENT_DATETIME("+7") - INTERVAL 1 day),
 -- step 3: listing toàn bộ những con sku không được ghi nhân có sự thay đổi status in L90D và join với historical
 
 -- join with adhoc_pm_master_sku to get filter sku_system_active = true
-sku_remaining as (select 
+sku_remaining as (select
         -- DATETIME(TIMESTAMP(CURRENT_DATETIME()), 'Asia/Ho_Chi_Minh') AS last_refreshed_at,
         ms.sub_sku_code as item_code,
           ms.product_id
@@ -177,6 +179,7 @@ sku_remaining as (select
         , ms.sku_system_active,
         ms.sku_approved_at
         , ms.sales_region_code
+        , ms.seller_code -- tu.dang
         , ms.sku_code || "_" || ms.sales_region_code as sku_sales_region_code
         , ms.sub_sku_code || "_" || ms.sales_region_code as sub_sku_sales_region_code
         , ms.sku_system_status as status
@@ -209,6 +212,8 @@ where sl.sub_sku_sales_region_code is null and ms.sku_system_active = true )
     , sr.item_code,
       sr.product_id
     , md.sku_code
+    , sr.seller_code -- tu.dang
+    , sr.sku_system_active -- tu.dang
     , md.date_time
     , md.sales_region_code
     , sr.sub_sku_sales_region_code
@@ -222,11 +227,13 @@ from sku_remaining_date_time md
 left join sku_remaining sr on md.sku_sales_region_code = sr.sku_sales_region_code and md.date_time between sr.start_at and sr.end_at_custom
 where md.date_time > CURRENT_DATETIME("+7") - INTERVAL 1 day
 union all
-select 
+select
       c.last_refreshed_at
     , c.item_code,
       c.product_id
     , c.sku_code
+    , c.seller_code -- tu.dang
+    , c.sku_system_active -- tu.dang
     , c.date_time
     , c.sales_region_code
     , c.sub_sku_sales_region_code
@@ -238,7 +245,39 @@ select
     , c.end_at
 from in_historical c)
 
-select * from union_all where status is not null
+/* pic: tu.dang */
+-- check list product OOS real
+, product_seller as -- get all seller of product,condition: only sku active
+(
+    select
+        sr.product_id,
+        safe_cast (count(distinct sr.seller_code) as string) as no_seller,
+        string_agg( sr.seller_code,", ") as list_seller_in_product
+    from gold_buymed_vn.adhoc_pm_master_sku as sr
+    where sr.sku_system_active = true and sku_system_status is not null
+    group by all
+)
+, product_seller_oos as -- get all seller of product, condition: only sku active and status sku = oos
+          (
+select
+    sr.product_id,date_time,
+    safe_cast (count(distinct sr.seller_code) as string) as no_seller_oos, string_agg( sr.seller_code, ", ") as list_seller_oos_in_product
+from union_all as sr
+where sr.sku_system_active = true and sr.status = "OUT_OF_STOCK" and status is not null
+group by all
+    )
+
+select cf.*,
+case
+  when cf.sku_system_active = true then ps.no_seller -- pic:tu.dang
+  else '' end as no_seller,
+case 
+  when cf.sku_system_active = true then po.no_seller_oos -- pic:tu.dang
+  else '' end as no_seller_oos
+from union_all cf
+left join product_seller ps on cf.product_id= ps.product_id 
+left join product_seller_oos po on cf.product_id= po.product_id and cf.date_time= po.date_time
+-- where sku_system_active = true
 
 
 
