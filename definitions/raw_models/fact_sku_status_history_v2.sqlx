@@ -40,18 +40,28 @@ WITH status_history_location AS (
   left join lakehouse-prod-394907.gold_buymed_vn.dim_sku_sales_region_current b on a.item_code = b.sub_sku_code
 ),
 
---generate 24 hours datetime series
-timeseries AS (
+--generate 24 hours datetime series from currrent date and current date last week
+ timeseries_last_week AS (
+  SELECT *
+  FROM
+    UNNEST(
+        GENERATE_TIMESTAMP_ARRAY( TIMESTAMP_SUB(CURRENT_TIMESTAMP() , INTERVAL 7 day),
+         TIMESTAMP_SUB(CURRENT_TIMESTAMP() , INTERVAL 6 day),
+        INTERVAL 1 HOUR )
+    ) AS timestamp
+) ,DateSeries_last_week AS (
+  SELECT DATETIME(timestamp,'Asia/Ho_Chi_Minh') as date_time from timeseries_last_week
+),timeseries_current AS (
   SELECT *
   FROM
     UNNEST(
         GENERATE_TIMESTAMP_ARRAY( TIMESTAMP_SUB(CURRENT_TIMESTAMP() , INTERVAL 1 day),
-        CURRENT_TIMESTAMP(),
+         CURRENT_TIMESTAMP(),
         INTERVAL 1 HOUR )
     ) AS timestamp
-),  DateSeries AS (
-  SELECT DATETIME(timestamp,'Asia/Ho_Chi_Minh') as date_time from timeseries
-),
+) ,DateSeries_current AS (
+  SELECT DATETIME(timestamp,'Asia/Ho_Chi_Minh') as date_time from timeseries_current
+) , DateSeries as (SELECT * from DateSeries_last_week UNION ALL SELECT * from DateSeries_current order by date_time),
 
 -- join with dim_sales_region_service_area to map location_code with sales_region_code
 -- maybe no need to join dim_sales_region_service_area  because we already get location_code from dim_sku_sales_region_current
@@ -165,8 +175,8 @@ fill_backwwark_value AS (SELECT
     , c.end_at_custom
     ,c.end_at
 from fill_backwwark_value c
-left join gold_buymed_vn.adhoc_pm_master_sku s on c.sku = s.sku_code and c.sales_region_code_bf = s.sales_region_code
-where c.date_time > CURRENT_DATETIME("+7") - INTERVAL 1 day),
+left join gold_buymed_vn.adhoc_pm_master_sku s on c.sku = s.sku_code and c.sales_region_code_bf = s.sales_region_code),
+--where c.date_time > CURRENT_DATETIME("+7") - INTERVAL 1 day),
 
 -- step 3: listing toàn bộ những con sku không được ghi nhân có sự thay đổi status in L90D và join với historical
 
