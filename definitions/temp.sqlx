@@ -1,2 +1,13 @@
-
-SELECT * FROM ${dedup.dedup("silver_buymed_vn.marketplace_prd_order_v2_order","order_id,status",interval_time = "interval 1 month",)}
+SELECT
+        sku,warehouse_code, name, seller_code, ARRAY_AGG(available_quantity order by last_updated_time desc)[0] available_quantity
+    FROM 
+        (
+    select mg_id,synced_at,last_updated_time,
+        sku,warehouse_code, name, seller_code, available_quantity, last_updated_time 
+    from silver_buymed_vn.warehouse_prd_inventory_sku 
+      
+    QUALIFY ROW_NUMBER() OVER(_window) = 1 AND FIRST_VALUE(action) over(_window) <> 'd'
+    WINDOW _window AS (PARTITION BY mg_id ORDER BY synced_at DESC, IF(action='d',3,IF(action='u',2,1)) DESC
+    , last_updated_time DESC)
+  )
+    GROUP BY 1,2,3,4

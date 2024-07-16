@@ -1,0 +1,52 @@
+config {
+    type: 'table',
+    name: 'adhoc_item_fc'
+
+}
+
+WITH put_ticket_item AS ${dedup.dedup(
+    `silver_buymed_vn.warehouse_prd_inbound_put_ticket_item`,
+    `warehouse_code,ticket_id,sku, created_time`
+)}, put_ticket AS ${dedup.dedup(
+    `silver_buymed_vn.warehouse_prd_inbound_put_ticket`,
+    `warehouse_code,ticket_id, start_put_time, end_put_time`
+)}, sku_lastest_put_time AS (
+    SELECT put_ticket_item.warehouse_code, put_ticket_item.sku, ARRAY_AGG(put_ticket_item.ticket_id order by created_time desc)[0] as ticket_id,DATETIME(max(end_put_time),'+7') AS latest_put_done_at
+    FROM put_ticket_item
+    INNER JOIN put_ticket
+        ON put_ticket_item.ticket_id = put_ticket.ticket_id
+        AND put_ticket_item.warehouse_code = put_ticket.warehouse_code
+    GROUP BY 1,2
+), dedup_sku AS (
+    SELECT DISTINCT sku,  seller_class, ARRAY_AGG(retail_price_value order by last_updated_time desc)[0] retail_price_value
+    FROM ${dedup.dedup(
+    'silver_buymed_vn.marketplace_prd_product_v2_sku',
+    'sku,  seller_class,retail_price_value')}
+    GROUP BY 1,2
+), inventory_sku as (
+    SELECT
+        sku,warehouse_code, name, seller_code, ARRAY_AGG(available_quantity order by last_updated_time desc)[0] available_quantity
+    FROM 
+        ${dedup.dedup(`silver_buymed_vn.warehouse_prd_inventory_sku`,
+        'sku,warehouse_code, name, seller_code, available_quantity')}
+    GROUP BY 1,2,3,4
+)
+
+SELECT 
+  inventory_sku.sku as sku_code, 
+  inventory_sku.name as product_name, 
+  inventory_sku.seller_code, 
+  dim_supplier.supplier_id as seller_id,
+  dim_supplier.supplier_name as seller_name,
+  inventory_sku.warehouse_code as fc_code, 
+  dedup_sku.retail_price_value as display_price,
+  inventory_sku.available_quantity,
+  sku_lastest_put_time.ticket_id,
+  sku_lastest_put_time.latest_put_done_at,
+  DATE_DIFF(CURRENT_DATETIME('+7') , sku_lastest_put_time.latest_put_done_at, DAY ) AS latest_put_done_aging_day
+FROM inventory_sku
+LEFT JOIN dedup_sku ON inventory_sku.sku = dedup_sku.sku
+LEFT JOIN sku_lastest_put_time ON inventory_sku.sku = sku_lastest_put_time.sku AND inventory_sku.warehouse_code = sku_lastest_put_time.warehouse_code
+LEFT JOIN ${ref(`dim_supplier`)} dim_supplier ON inventory_sku.seller_code = dim_supplier.supplier_code
+-- WHERE latest_put_done_at >= CURRENT_DATETIME('+7') - INTERVAL 90 DAY
+WHERE seller_class <> 'INTERNAL'
