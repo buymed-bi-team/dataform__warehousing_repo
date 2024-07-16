@@ -15,13 +15,16 @@ WITH
 )}
 
 SELECT
-  CONCAT(a.sku, "_", a.warehouse_code) as sku_fc_key,
+  CONCAT(b.sku_key, "_", a.warehouse_code) as sku_fc_key,
   a.sku as sku_code,
   CONCAT(a.location_code, "_", a.warehouse_code) as location_fc_code,
   a.warehouse_code as fc_code,
   a.location_code,
-  a.stock_quantity
+  a.stock_quantity,
+  datetime(current_timestamp(), "Asia/Ho_Chi_Minh") as last_updated_time
 FROM dedup_inventory_sku_location a
+LEFT JOIN ${ref("dim_sku")} b
+ON a.sku = b.sku_code
 WHERE stock_quantity > 0 AND a.warehouse_code IN (
   SELECT fc_code FROM ${ref("dim_fc")}
 )
