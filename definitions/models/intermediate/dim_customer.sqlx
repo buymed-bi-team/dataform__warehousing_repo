@@ -17,7 +17,7 @@ config {
         customer_name: "Not Null",
         customer_email: "Nullable",
         customer_address: "Nullable",
-        customer_report_category: "Not Null | Is one of TECH, TENDER, MARKETPLACE, or CIRCA? TECH means testing by the tech team"
+        customer_report_category: "Not Null | Is one of TECH, TENDER, MARKETPLACE, or CIRCA? Category assigned to the customer based on specific conditions: TECH: If the customer's name contains keywords like 'TECH SELLER', 'TEST', 'TECH-QC', etc. TENDER: If the customer's tags contain 'TENDER'. MARKETPLACE: If the customer's tags contain 'TERMINATE_CIRCA' or as a default category. CIRCA: If the customer's tags contain 'CIRCA'."
 
     }
 }
