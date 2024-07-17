@@ -72,6 +72,7 @@ WITH
       DATETIME(a.created_time, 'Asia/Ho_Chi_Minh') AS created_at,
       DATETIME(a.last_updated_time, 'Asia/Ho_Chi_Minh') AS last_updated_time,
       DATETIME(a.confirmation_date,'Asia/Ho_Chi_Minh' ) AS confirmed_time,
+     
       a.customer_id,
       a.customer_name, -- Không được xóa, vì name này là shipping_name khác với customer_name trong dim_customer
       a.customer_phone,-- Không được xóa, vì phone này là shipping_phone khác với customer_phone trong dim_customer
@@ -195,10 +196,11 @@ WITH
     LEFT JOIN order_channel AS oc ON oc.code = JSON_VALUE(a.extra_props, "$.brand_code")
     WHERE
       a.status <> 'REVERTING' 
-  )
+  ),
 
-SELECT
+fact_order_v2 as (SELECT
   a.*,
+  CONCAT(CAST(FORMAT_DATE('%m-%Y', date(created_at)) AS STRING), "_", customer_id) as month_id,
   CASE
     WHEN sales_status IN ("CANCEL", "REVERTING") THEN 0
     WHEN sales_status IN ("RETURN","RETURNING","RETURNED","REFUNDED") THEN actual_sales_amount
@@ -213,4 +215,48 @@ END AS sales_amount,
         ELSE ordered_amount END ELSE NULL
   END AS gmv
 FROM
-  fact_order AS a
+  fact_order AS a),
+
+Orders as (select
+  date(created_at) as created_date,
+  customer_id,
+  FORMAT_DATE('%m-%Y', date(created_at)) as created_month,
+  EXTRACT(YEAR FROM DATE(created_at)) AS year,
+  EXTRACT(MONTH FROM DATE(created_at)) AS month,
+from  fact_order_v2
+where order_status != "CANCEL" 
+QUALIFY
+  ROW_NUMBER() OVER (PARTITION BY customer_id, FORMAT_DATE('%m-%Y', date(created_at)) ORDER BY created_at DESC) = 1
+order by created_date),
+
+Orders_prev as (SELECT
+    
+    customer_id,
+    created_month,
+    year,
+    month,
+    LAG(created_month) OVER (PARTITION BY customer_id ORDER BY year, month) AS prev_created_month,
+    LAG(year) OVER (PARTITION BY customer_id ORDER BY year, month) AS prev_year,
+    LAG(month) OVER (PARTITION BY customer_id ORDER BY year, month) AS prev_month
+  FROM Orders),
+
+OrderCustomerType as (SELECT
+    CONCAT(cast(created_month as string), "_", customer_id) as month_id,
+    customer_id,
+    created_month,
+    year,
+    month,
+    prev_created_month,
+    prev_year,
+    prev_month,
+    CASE
+      WHEN prev_created_month IS NULL THEN 'New Customer' 
+      ELSE
+        CASE
+          WHEN (year - prev_year) * 12 + (month - prev_month) > 1 THEN 'Reacquire Customer' --caculate the period of prev month and curent row month to find out customer type 
+          ELSE 'Repeat Customer'
+        END
+    END AS customer_type
+  FROM Orders_prev)
+
+select a.*, b.customer_type from fact_order_v2 a left join OrderCustomerType as b on a.month_id = b.month_id
