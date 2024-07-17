@@ -21,7 +21,7 @@ config {
         seller_code: "Code representing the seller of the item",
         seller_class: "Classification of the seller"
     },
-    tags: ["custom_30min_6_to21"]
+    tags: ["custom_30min_6to24"]
 }
 
 WITH stg_order_item as (
