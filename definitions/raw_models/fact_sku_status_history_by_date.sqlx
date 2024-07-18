@@ -142,7 +142,8 @@ select
         when c.date < date(s.sku_approved_at) and status is null then null
         else contrast_first_status
       end as status,
-    s.sku_approved_at
+    s.sku_approved_at,
+    s.seller_code -- tu.dang
     , first_value(c.end_at_custom_v2 IGNORE NULLS) over(partition by sub_sku_sales_region_code ORDER BY c.date ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) as end_at_custom_v3
     , c.end_at_custom_v2
     , c.end_at_custom
@@ -162,7 +163,8 @@ where c.date > DATE(DATE_TRUNC(current_date(), MONTH) - INTERVAL 3 MONTH)
       , ms.sku_code
       , ms.sku_system_active
       , ms.sales_region_code,
-        ms.product_id
+        ms.seller_code -- tu.dang
+       , ms.product_id
       , ms.sku_code || "_" || ms.sales_region_code as sku_sales_region_code
       , ms.sub_sku_code || "_" || ms.sales_region_code as sub_sku_sales_region_code
       , ms.sku_system_status as status,
@@ -203,6 +205,8 @@ where sl.sub_sku_sales_region_code is null and ms.sku_system_active = true
     , sr.item_code,
       sr.product_id
     , md.sku_code
+    , sr.seller_code -- tu.dang
+    , sr.sku_system_active -- tu.dang
     , md.date
     , md.sales_region_code
     , sr.sub_sku_sales_region_code
@@ -221,7 +225,9 @@ select
       c.last_refreshed_at
     , c.item_code,
       c.product_id
-    , c.sku_code
+    , c.sku_code, 
+      c.seller_code -- tu.dang
+    , c.sku_system_active -- tu.dang
     , c.date
     , c.sales_region_code
     , c.sub_sku_sales_region_code
@@ -234,28 +240,38 @@ select
 from in_historical c)
 
 -- filter all days that not has status changeed
-select * from union_all where status is not null
+/* pic: tu.dang */
+-- check list product OOS real
+, product_seller as -- get all seller of product,condition: only sku active
+(
+    select
+        sr.product_id, sr.sales_region_code,
+        safe_cast (count(distinct sr.seller_code) as string) as no_seller,
+        string_agg( sr.seller_code,", ") as list_seller_in_product
+    from gold_buymed_vn.adhoc_pm_master_sku as sr
+    where sr.sku_system_active = true and sku_system_status is not null
+    group by all
+)
+, product_seller_oos as -- get all seller of product, condition: only sku active and status sku = oos
+          (
+select
+    sr.product_id, sr.sales_region_code,date,
+    safe_cast (count(distinct sr.seller_code) as string) as no_seller_oos, string_agg( sr.seller_code, ", ") as list_seller_oos_in_product
+from union_all as sr
+where sr.sku_system_active = true and sr.status = "OUT_OF_STOCK" and status is not null
+group by all
+    )
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+select cf.*,
+case
+  when cf.sku_system_active = true then ps.no_seller -- pic:tu.dang
+  else '' end as no_seller,
+case 
+  when cf.sku_system_active = true then po.no_seller_oos -- pic:tu.dang
+  else '' end as no_seller_oos
+from union_all cf
+left join product_seller ps on cf.product_id= ps.product_id and cf.sales_region_code= ps.sales_region_code 
+left join product_seller_oos po on cf.product_id= po.product_id and cf.date= po.date and cf.sales_region_code= po.sales_region_code
 
 
 
