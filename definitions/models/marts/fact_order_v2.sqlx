@@ -2,7 +2,7 @@ config {
     type: "table",
     uniqueKey: ["mg_id"],
     name: "fact_order_v2",
-    tags: ["8h30", "14h30"],
+    tags: ["8h30", "14h30", "18h00"],
     dependencies: ["dedup_marketplace_prd_order_v2_warehousing"],
     columns: {
         created_at: "The date and time when the order was placed, timezone +7",
