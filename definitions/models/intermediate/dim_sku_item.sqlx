@@ -8,7 +8,8 @@ config {
     tags: ["0h00", "12h00"],
     columns: {
        sku_fc_key: "primary-key, concatenation of product_id, seller_code, and fc_code",
-       sku_sr_key: "concatenation of sku and sales region code"
+       sku_sr_key: "concatenation of sku and sales region code",
+       item_system_active: "the status of sku_item in system ( ACTIVE or INACTIVE )"
     }
 }
 
@@ -101,7 +102,7 @@ cte_sku_item AS (
       sr.status IN ('NORMAL', 'LIMIT') AND sr.is_active IS TRUE,
       'ACTIVE',
       'INACTIVE'
-    ) AS item_system_status,
+    ) AS item_system_active,
     sr.demand_classification_code
   FROM cte_sku_fc sf
   LEFT JOIN cte_sku_ranked sr
