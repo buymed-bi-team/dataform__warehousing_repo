@@ -27,7 +27,8 @@ pre_operations {
 }
 
 SELECT
- *
+ *,
+ DATE(created_time) AS created_date
 FROM
   lakehouse-prod-394907.silver_buymed_vn.tender_prd_core_tender_orders 
   ${ when(incremental(), `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()})`)}

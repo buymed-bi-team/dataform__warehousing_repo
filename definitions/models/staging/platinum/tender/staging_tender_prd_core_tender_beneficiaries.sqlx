@@ -1,6 +1,6 @@
 config {
     type: 'incremental',
-    name: "tender_prd_core_tender_beneficiaries",
+    name: "staging_tender_prd_core_tender_beneficiaries",
     schema: "platinum_buymed_vn",
     assertions: {
         uniqueKey: 'mg_id'
@@ -26,7 +26,8 @@ pre_operations {
 }
 
 SELECT
- *
+ *,
+ DATE(created_time) AS created_date
 FROM
   lakehouse-prod-394907.silver_buymed_vn.tender_prd_core_tender_beneficiaries 
   ${ when(incremental(), `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()})`)}
