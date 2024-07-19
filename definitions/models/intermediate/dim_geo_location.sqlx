@@ -15,7 +15,7 @@ config {
     columns: {
         location_code: "NonNull",
         location_name: "NonNull",
-        location_tag : "NonNull | It can be WARD, DISTRICT, PROVINCE, REGION ",
+        location_tag : "NonNull | It must be one of the following: WARD, DISTRICT, PROVINCE, REGION ",
         parent_location_code: "Nullable | null if location_tag = REGION",
         child_location_code: "Nullable | null if location_tag = WARD OR location_code in ('318','471','498','536','755') /* Because there are islands */ OR location_code in ('MB_ADM', 'MN_ADM', 'MIENBAC', 'MIENNAM', 'MIENTRUNG')"
     }
