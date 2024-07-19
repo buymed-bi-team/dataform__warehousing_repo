@@ -2,7 +2,7 @@
 -- new
 config {
     type: "incremental",
-    name: "staging_accounting_prd_core_credit_note",
+    name: "staging_accounting_prd_core_credit_notel",
     schema: "platinum_buymed_vn",
     assertions: {
         uniqueKey: 'mg_id'
