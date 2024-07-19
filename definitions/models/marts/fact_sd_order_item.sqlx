@@ -66,6 +66,7 @@ stg_order as (
   )
  
 SELECT
+    current_datetime('+7') as current_time,
     oi.order_id,
     oi.customer_id,
     oi.created_at,

@@ -13,6 +13,7 @@ config {
 }
 
 select 
+    current_datetime('+7') as current_time,
     po.po_id,
     po.po_code,
     po.status,
