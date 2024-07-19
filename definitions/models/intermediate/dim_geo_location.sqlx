@@ -7,61 +7,109 @@ config {
         silver_buymed_vn.core_prd_master_data_province
         silver_buymed_vn.core_prd_master_data_region`,
     assertions:{
-        nonNull: ["district_code","province_code",'region_code'],
+        nonNull: ["location_code"],
         uniqueKey: ["location_code"]
     },
     name: "dim_geo_location",
     tags: ["0h00"],
     columns: {
-        location_code: "Mã vị trí.",
-        location_name: 'Tên vị trí nếu không có phường thì sẽ là tên huyện',
-        ward_code: "Mã xã/phường",
-        ward_name: "Tên xã/phường",
-        district_code: "Mã huyện",
-        district_name: "Tên huyện",
-        province_code: "Mã tỉnh",
-        province_name: "Tên tỉnh",
-        region_code: "Mã vùng",
-        region_name: "Tên vùng",
-
+        location_code: "NonNull",
+        location_name: "NonNull",
+        location_tag : "NonNull | It can be WARD, DISTRICT, PROVINCE, REGION ",
+        parent_location_code: "Nullable | null if location_tag = REGION",
+        child_location_code: "Nullable | null if location_tag = WARD OR location_code in ('318','471','498','536','755') /* Because there are islands */ OR location_code in ('MB_ADM', 'MN_ADM', 'MIENBAC', 'MIENNAM', 'MIENTRUNG')"
     }
 }
+-- location code can be every level code: ward, district, province, region
+-- The categorized way is location_tags
+-- when I am do adhoc, I use join with this table. How can I drill up and down location with smallest change?
 
 
 WITH 
-    dedup_district AS ${dedup.dedup('silver_buymed_vn.core_prd_master_data_district','*')},
-    dedup_ward AS ${dedup.dedup('silver_buymed_vn.core_prd_master_data_ward','*')},
-    dedup_province AS ${dedup.dedup('silver_buymed_vn.core_prd_master_data_province','*')},
-    dedup_region AS ${dedup.dedup('silver_buymed_vn.core_prd_master_data_region','*')}
-
+    dedup_district AS ${dedup.dedup(
+        'silver_buymed_vn.core_prd_master_data_district',
+        `
+        CAST(code AS STRING) as location_code,
+        name as location_name,
+        'DISTRICT' as location_tag,
+        CAST(province_code AS STRING) as parent_location_code
+        `
+    )},
+    dedup_ward AS ${dedup.dedup(
+        'silver_buymed_vn.core_prd_master_data_ward',
+        `
+        CAST(code AS STRING) as location_code,
+        name as location_name,
+        'WARD' as location_tag,
+        CAST(district_code AS STRING) as parent_location_code
+        `
+    )},
+    dedup_province AS ${dedup.dedup(
+        'silver_buymed_vn.core_prd_master_data_province',
+        `
+        CAST(code AS STRING) as location_code,
+        name as location_name,
+        'PROVINCE' as location_tag,
+        CAST(region_code AS STRING) as parent_location_code
+        `
+    )},
+    dedup_region AS ${dedup.dedup(
+        'silver_buymed_vn.core_prd_master_data_region',
+        `
+        CAST(code AS STRING) as location_code,
+        name as location_name,
+        'REGION' as location_tag,
+        CAST(null AS STRING) as parent_location_code
+        `
+    )},
+    int_location AS (
+        SELECT location_code,location_name,location_tag,parent_location_code FROM dedup_ward
+        UNION ALL
+        SELECT location_code,location_name,location_tag,parent_location_code FROM dedup_district
+        UNION ALL
+        SELECT location_code,location_name,location_tag,parent_location_code FROM dedup_province
+        UNION ALL
+        SELECT location_code,location_name,location_tag,parent_location_code FROM dedup_region
+    )
 
 SELECT 
-    CASE
-        WHEN dedup_ward.code IS NULL THEN dedup_district.code
-        ELSE dedup_ward.code
-    END AS location_code,
-    CASE
-        WHEN dedup_ward.name IS NULL THEN dedup_district.name 
-        ELSE dedup_ward.name
-    END AS location_name,
-    dedup_ward.code as ward_code, -- nullable
-    dedup_ward.name as ward_name, -- nullable
-    dedup_district.code as district_code,
-    dedup_district.name as district_name,
-    dedup_province.code as province_code,
-    dedup_province.name as province_name,
-    dedup_region.code as region_code,
-    dedup_region.name as region_name
+    a.location_code,
+    a.location_name,
+    a.location_tag,
+    a.parent_location_code,
+    TO_JSON(ARRAY_AGG( b.location_code )) as child_location_code
+FROM int_location a
+LEFT JOIN int_location b ON a.location_code = b.parent_location_code
+GROUP BY 
+    a.location_code,
+    a.location_name,
+    a.location_tag,
+    a.parent_location_code
 
-FROM dedup_district
-LEFT JOIN dedup_ward
-    ON dedup_district.code = dedup_ward.district_code
-LEFT JOIN dedup_province
-    ON dedup_district.province_code = dedup_province.code
-LEFT JOIN dedup_region
-    ON dedup_district.region_code=dedup_region.code
+    -- recursive_location AS (
+    --     SELECT location_code, location_name,location_tag, parent_location_code,1 pos 
+    --     FROM int_location
+        
+    --     UNION ALL
+        
+    --     SELECT a.location_code, a.location_name, a.location_tag, r.parent_location_code, pos + 1
+    --     FROM  int_location a
+    --     JOIN recursive_location r ON r.location_code = a.parent_location_code
+    -- ),
+
+-- SELECT 
+--     r1.location_code, 
+--     r1.location_name,
+--     r1.location_tag, 
+--     TO_JSON(ARRAY_AGG( r1.parent_location_code IGNORE NULLS order by r1.pos asc) ) parent_location_code,
+
+
+-- FROM recursive_location r1
+-- LEFT JOIN recursive_location r2 ON r1.location_code = r2.parent_location_code
+-- GROUP BY 1,2,3
+
+
 
 post_operations {
-    -- writesomething
     ALTER TABLE ${self()} ADD PRIMARY KEY (location_code) NOT ENFORCED;
 }
