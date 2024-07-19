@@ -6,7 +6,7 @@ config {
     clusterBy: ["order_id", "sku_code"]
   },
   name: "fact_order_item_sku_combo",
-  tags: ["6h00", "14h00"],
+  tags: ["8h30", "14h30", "18h00"],
   description: "PIC: anh.letam",
 }
 

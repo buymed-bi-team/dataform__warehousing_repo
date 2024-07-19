@@ -3,7 +3,7 @@ config {
     description: "PIC: Anh.le; model_type:table; schedule: every 30m from 9h am to 18h pm and every 1h otherwise",
     uniqueKey: ["mg_id"],
     name: "fact_sd_order",
-    tags:["custom_30min_9to18","custom_1h_18to9","Weekend"],
+    tags: ["custom_30min_6to24"],
     bigquery: {
         partitionBy: "DATETIME_TRUNC((created_time),month)",
         clusterBy: ["order_id"]
