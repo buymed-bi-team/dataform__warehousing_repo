@@ -9,10 +9,11 @@ config {
   }
 }
 
---generate datetime interval 3 month series
+--generate datetime interval 3 month series, get current timestamp by Ho Chi Minh time and get date
+-- use truncate for extract month will result in the first date of the month (for ex: 2024-04-01 but the result we want is 2024-04-20 if run in 2024-07-20)
 WITH DateSeries AS (
   SELECT *
-  FROM UNNEST(GENERATE_DATE_ARRAY(DATE(DATE_TRUNC(current_date(), MONTH) - INTERVAL 3 MONTH), DATE(current_date()))) AS date
+  FROM UNNEST(GENERATE_DATE_ARRAY(DATE(DATETIME(CURRENT_TIMESTAMP(), 'Asia/Ho_Chi_Minh') - INTERVAL 3 MONTH), DATE(current_date()))) AS date
 ),
 -- step 1: lấy danh sách nhưng con item_code được ghi nhận có thay đổi status trong l90d
 
@@ -118,7 +119,10 @@ fill_backwwark_value AS (
     -- , s.sku_system_active
     FIRST_VALUE(ss.status IGNORE NULLS) OVER (partition by sd.sub_sku_sales_region_code ORDER BY sd.date ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS contrast_first_status
     from sku_date as sd 
-    left join sku_status as ss on sd.item_code = ss.item_code and sd.sales_region_code = ss.sales_region_code and sd.date between date(ss.start_at) and date(ss.end_at_custom)
+    left join sku_status as ss on sd.item_code = ss.item_code and sd.sales_region_code = ss.sales_region_code and sd.date between DATE(DATETIME(ss.start_at, 'Asia/Ho_Chi_Minh')) 
+    and DATETIME(ss.end_at_custom, 'Asia/Ho_Chi_Minh') 
+    -- first, carefully handle condition for join here, we need to convert all of the time column to one timezone 
+    -- second, we need to compate between date and date not date and datetime because for example date 2024-04-25 will not between 2024-04-25 07:00:00 
     
 )
 
