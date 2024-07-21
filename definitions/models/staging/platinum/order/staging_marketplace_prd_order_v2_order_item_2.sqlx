@@ -4,7 +4,7 @@ config {
     name: "staging_marketplace_prd_order_v2_order_item_2",
     schema: "platinum_buymed_vn",
     
-    tags:["custom_1h_past5"],
+   
     bigquery: {
         partitionBy: "created_date",
         clusterBy: ["order_id"]
