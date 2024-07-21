@@ -20,14 +20,14 @@ pre_operations {
       FROM lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_order_item
       WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()});
 
-      CREATE OR REPLACE TEMP TABLE range_created_time_delete_table AS
-      SELECT MIN(DATE(created_time)) AS min_created_date, MAX(DATE(created_time)) AS max_created_date
-      FROM lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_order_item 
-      WHERE mg_id IN (
-        SELECT mg_id 
-        FROM lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_order_item
-        WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) AND action = 'd'
-      )
+      -- CREATE OR REPLACE TEMP TABLE range_created_time_delete_table AS
+      -- SELECT MIN(DATE(created_time)) AS min_created_date, MAX(DATE(created_time)) AS max_created_date
+      -- FROM lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_order_item 
+      -- WHERE mg_id IN (
+      --   SELECT mg_id 
+      --   FROM lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_order_item
+      --   WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) AND action = 'd'
+      -- )
       `,
       ``
     )
@@ -74,8 +74,7 @@ post_operations {
         IF(action = 'd', 3, IF(action = 'u', 2, 1)) DESC,
         last_updated_time DESC
       )
-      )) or ( created_date BETWEEN (SELECT min_created_date FROM range_created_time_delete_table) 
-        AND (SELECT max_created_date FROM range_created_time_delete_table) and mg_id in (select mg_id from ${self()} where action = "d")) ;
+      )) or mg_id in (select mg_id from ${self()} where action = "d") ;
       `,
       ``
     )
