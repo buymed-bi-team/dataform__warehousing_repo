@@ -6,8 +6,10 @@ config {
     assertions: {
         uniqueKey: 'mg_id'
     },
+    tags:["custom_1h_past5"],
     bigquery: {
-        partitionBy: "created_date"
+        partitionBy: "created_date",
+        clusterBy: ["order_id"]
     }
 }
 
@@ -19,6 +21,15 @@ pre_operations {
       SELECT MIN(DATE(created_time)) AS min_created_date, MAX(DATE(created_time)) AS max_created_date
       FROM lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_order_item
       WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()});
+
+      CREATE OR REPLACE TEMP TABLE range_created_time_delete_table AS
+      SELECT MIN(DATE(created_time)) AS min_created_date, MAX(DATE(created_time)) AS max_created_date
+      FROM lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_order_item 
+      WHERE mg_id IN (
+        SELECT mg_id 
+        FROM lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_order_item
+        WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) AND action = 'd'
+      )
       `,
       ``
     )
@@ -32,7 +43,7 @@ FROM
   lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_order_item o 
   ${ when(incremental(), `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()})`)}
   QUALIFY ROW_NUMBER() OVER (_window) = 1
-  AND FIRST_VALUE(action) OVER (_window) <> 'd'
+ -- AND FIRST_VALUE(action) OVER (_window) <> 'd'
 WINDOW
   _window AS (
   PARTITION BY
@@ -51,21 +62,22 @@ post_operations {
       `
       -- Delete rows using the temporary table
       DELETE FROM ${self()}
-      WHERE created_date BETWEEN (SELECT min_created_date FROM range_created_time_table) 
+      WHERE (created_date BETWEEN (SELECT min_created_date FROM range_created_time_table) 
         AND (SELECT max_created_date FROM range_created_time_table)
           and 
          (key) IN (
         SELECT (key) FROM ${self()} where created_date BETWEEN (SELECT min_created_date FROM range_created_time_table) 
         AND (SELECT max_created_date FROM range_created_time_table) 
         QUALIFY ROW_NUMBER() OVER (_window) > 1
-        OR FIRST_VALUE(action) OVER (_window) = "d"
+        --OR FIRST_VALUE(action) OVER (_window) = "d"
       WINDOW _window AS (
         PARTITION BY mg_id
         ORDER BY synced_at DESC,
         IF(action = 'd', 3, IF(action = 'u', 2, 1)) DESC,
         last_updated_time DESC
       )
-      ) ;
+      )) or ( created_date BETWEEN (SELECT min_created_date FROM range_created_time_delete_table) 
+        AND (SELECT max_created_date FROM range_created_time_delete_table) and mg_id in (select mg_id from ${self()} where action = "d")) ;
       `,
       ``
     )
