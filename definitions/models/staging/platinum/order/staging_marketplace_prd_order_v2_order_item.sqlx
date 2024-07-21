@@ -3,9 +3,7 @@ config {
     type: "incremental",
     name: "staging_marketplace_prd_order_v2_order_item",
     schema: "platinum_buymed_vn",
-    assertions: {
-        uniqueKey: 'mg_id'
-    },
+    
     tags:["custom_1h_past5"],
     bigquery: {
         partitionBy: "created_date",
