@@ -1,6 +1,7 @@
 config {
     type: "incremental",
     name: "staging_marketplace_prd_order_v2_order",
+    schema: "gold_buymed_vn",
     bigquery: {
         partitionBy: "DATE(created_time)",
         clusterBy: ["mg_id"]
