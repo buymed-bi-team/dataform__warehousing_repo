@@ -16,7 +16,9 @@ pre_operations {
     when(incremental(),
       `
       CREATE OR REPLACE TEMP TABLE range_created_time_table AS
-      SELECT MIN(DATE(created_time)) AS min_created_date, MAX(DATE(created_time)) AS max_created_date
+      SELECT 
+        min(date(created_time)) AS min_created_date, 
+        MAX(CASE WHEN created_time IS NOT NULL THEN DATE(created_time) ELSE DATE("2999-01-01") END) AS max_created_date
       FROM lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_cart_cart_item
       WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()});
       `,
@@ -27,7 +29,10 @@ pre_operations {
 
 SELECT
  *,
- date(created_time) as created_date
+ CASE 
+    WHEN created_time is not null then date(created_time)
+    ELSE DATE("2999-01-01")
+  END AS created_date,
 FROM
   lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_cart_cart_item o 
   ${
