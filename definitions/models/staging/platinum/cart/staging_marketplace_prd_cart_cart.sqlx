@@ -37,7 +37,8 @@ FROM
   lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_cart_cart o 
   ${
     when(incremental(), 
-      `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) 
+      `WHERE ingest_time > (SELECT MAX(ingest_time) and (
+      created_time is not null and last_updated_time is not null and action != 'd') FROM ${self()}) 
       QUALIFY ROW_NUMBER() OVER (_window) = 1`,
       `QUALIFY ROW_NUMBER() OVER (_window) = 1
        AND FIRST_VALUE(action) OVER (_window) <> 'd'`
