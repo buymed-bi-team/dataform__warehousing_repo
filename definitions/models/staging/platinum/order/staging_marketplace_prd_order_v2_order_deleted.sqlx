@@ -6,6 +6,7 @@ config {
     assertions: {
         uniqueKey: 'mg_id'
     },
+    tags:["custom_1h_past5"],
     bigquery: {
         partitionBy: "created_date"
     }
