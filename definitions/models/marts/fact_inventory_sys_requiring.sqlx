@@ -2,7 +2,7 @@ config {
   type: "table",
   description: "Source: seller_prd_purchasing_quotation_export, seller_prd_purchasing_admin_pushing_group | Extracts data with confirmed date from the last 15 days | Schedule: 9am, daily | PIC: dong.le",
   name: "fact_inventory_sys_requiring",
-  tags: ["9h00"],
+  tags: ["8h30"],
   columns: {
     
   },
