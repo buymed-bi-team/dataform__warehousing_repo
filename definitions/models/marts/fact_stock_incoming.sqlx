@@ -21,13 +21,13 @@ config {
 }
 
 WITH dedup_inbound_ticket AS ${dedup.dedup(
-  "lakehouse-prod-394907.silver_buymed_vn.warehouse_prd_inbound_inbound_ticket",
+  source.silver + `.warehouse_prd_inbound_inbound_ticket`,
   "ticket_id, po_code, status, created_time",
   "timestamp(date_sub(current_date(),interval 1 month))"
 )},
 
 dedup_inbound_ticket_item AS ${dedup.dedup(
-  "lakehouse-prod-394907.silver_buymed_vn.warehouse_prd_inbound_inbound_ticket_item",
+  source.silver + `.warehouse_prd_inbound_inbound_ticket_item`,
   "ticket_id, sku as sku_code, warehouse_code as fc_code, demand_quantity, inbound_quantity",
   "timestamp(date_sub(current_date(),interval 1 month))"
 )}

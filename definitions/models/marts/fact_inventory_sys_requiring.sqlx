@@ -12,12 +12,12 @@ config {
 }
 
 WITH dedup_purchasing_quotation AS ${dedup.dedup(
-  "lakehouse-prod-394907.silver_buymed_vn.seller_prd_purchasing_quotation_export",
+  source.silver + `.seller_prd_purchasing_quotation_export`,
   "sku, warehouse_code, quantity_expect, version"
 )},
 
 dedup_purchasing_pushing_group AS ${dedup.dedup(
-  "lakehouse-prod-394907.silver_buymed_vn.seller_prd_purchasing_admin_pushing_group",
+  source.silver + `.seller_prd_purchasing_admin_pushing_group`,
   "version, group_id, confirmed_time"
 )}
 
