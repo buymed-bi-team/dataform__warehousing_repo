@@ -4,9 +4,14 @@ config {
     name: "staging_marketplace_prd_cart_cart",
     schema: "platinum_buymed_vn",
     assertions: {
-        uniqueKey: 'mg_id',
-        nonNull: ['created_date']
-    },
+         uniqueKey: 'mg_id',
+         nonNull: ['created_date'],
+         rowConditions: [
+        '(created_time is not null and last_updated_time is not null) or (created_time is null and last_updated_time is not null) or (created_time is not null and last_updated_time is null)',
+        'action != "d"'
+        
+    ]
+     },
     bigquery: {
         partitionBy: "created_date"
     }
@@ -29,7 +34,8 @@ pre_operations {
         FROM lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_cart_cart
         WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) AND 
         ((created_time IS NOT NULL AND last_updated_time IS NOT NULL) OR 
-        (created_time IS NULL AND last_updated_time IS NOT NULL))
+        (created_time IS NULL AND last_updated_time IS NOT NULL) OR 
+        (created_time IS NOT NULL AND last_updated_time IS NULL)) AND action = "u"
       )
       `
     )
