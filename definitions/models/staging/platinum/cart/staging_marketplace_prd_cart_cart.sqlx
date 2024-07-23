@@ -41,51 +41,47 @@ pre_operations {
         AND action = "u"
       );
 
-      -- for marketplace_prd_cart only
-      
+    
       `
     )
   }
 }
 
  -- for marketplace_prd_cart only
-with deleted_records_table as (
-SELECT mg_id
-      FROM lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_cart_cart
-      WHERE action = 'd'
-        AND date(ingest_time) > current_date();
-
+WITH deleted_records_table AS (
+  SELECT mg_id
+  FROM lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_cart_cart
+  WHERE action = 'd'
+    AND date(ingest_time) > current_date()
 )
-select *, 
- CASE 
-    WHEN created_time is not null then date(created_time)
-    WHEN created_time is null and last_updated_time is not null then DATE(last_updated_time)
-    ELSE null
-  END AS created_date, from (
-SELECT
- *
-FROM ${source.silver}.marketplace_prd_cart_cart o 
+SELECT *, 
+  CASE 
+    WHEN created_time IS NOT NULL THEN DATE(created_time)
+    WHEN created_time IS NULL AND last_updated_time IS NOT NULL THEN DATE(last_updated_time)
+    ELSE NULL
+  END AS created_date
+FROM (
+  SELECT *
+  FROM ${source.silver}.marketplace_prd_cart_cart o 
   ${
     when(incremental(), 
       `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) 
-      QUALIFY ROW_NUMBER() OVER (_window) = 1`,
+       QUALIFY ROW_NUMBER() OVER (_window) = 1`,
       `QUALIFY ROW_NUMBER() OVER (_window) = 1
        AND FIRST_VALUE(action) OVER (_window) <> 'd'`
     )
   }
-WINDOW
-  _window AS (
-  PARTITION BY
-    mg_id
-  ORDER BY
-    synced_at DESC,
-    IF(action = 'd', 3, IF(action = 'u', 2, 1)) DESC,
-    last_updated_time DESC
+  WINDOW _window AS (
+    PARTITION BY mg_id
+    ORDER BY synced_at DESC,
+      IF(action = 'd', 3, IF(action = 'u', 2, 1)) DESC,
+      last_updated_time DESC
   )
-)
-where (action = 'd' OR (created_time IS NOT NULL AND last_updated_time IS NOT NULL AND mg_id not in (select mg_id from deleted_records_table))
- OR 
-      (created_time IS NULL AND last_updated_time IS NOT NULL AND mg_id not in (select mg_id from deleted_records_table)) OR (action = "i" AND mg_id not in (select mg_id from deleted_records_table)))
+) 
+WHERE action = 'd' 
+  OR (created_time IS NOT NULL AND last_updated_time IS NOT NULL AND mg_id NOT IN (SELECT mg_id FROM deleted_records_table))
+  OR (created_time IS NULL AND last_updated_time IS NOT NULL AND mg_id NOT IN (SELECT mg_id FROM deleted_records_table))
+  OR (action = 'i' AND mg_id NOT IN (SELECT mg_id FROM deleted_records_table))
 
 post_operations {
   ${
