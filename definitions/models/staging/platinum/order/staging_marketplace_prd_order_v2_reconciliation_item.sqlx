@@ -4,7 +4,8 @@ config {
     name: "staging_marketplace_prd_order_v2_reconciliation_item",
     schema: "platinum_buymed_vn",
     assertions: {
-        uniqueKey: 'mg_id'
+        uniqueKey: 'mg_id',
+        nonNull: ['created_date']
     },
     tags:["custom_1h_past5"],
     bigquery: {
@@ -14,21 +15,36 @@ config {
 
 pre_operations {
   ${
-    when(incremental(),
+    when(incremental(), 
       `
       CREATE OR REPLACE TEMP TABLE range_created_time_table AS
-      SELECT MIN(DATE(created_time)) AS min_created_date, MAX(DATE(created_time)) AS max_created_date
-      FROM lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_reconciliation_item
-      WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()});
-      `,
-      ``
+      SELECT 
+        MIN(created_date) AS min_created_date, 
+        MAX(created_date) AS max_created_date 
+      FROM (
+        SELECT  
+          CASE 
+            WHEN created_time IS NOT NULL THEN DATE(created_time) 
+            ELSE DATE(last_updated_time) 
+          END AS created_date
+        FROM lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_reconciliation_item
+        WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) AND 
+        ((created_time IS NOT NULL AND last_updated_time IS NOT NULL) OR 
+        (created_time IS NULL AND last_updated_time IS NOT NULL))
+      )
+      `
     )
   }
 }
 
+select *, 
+ CASE 
+    WHEN created_time is not null then date(created_time)
+    WHEN created_time is null and last_updated_time is not null then DATE(last_updated_time)
+    ELSE null
+  END AS created_date, from (
 SELECT
- *,
- date(created_time) as created_date
+ *
 FROM
   lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_reconciliation_item o 
   ${
@@ -48,6 +64,10 @@ WINDOW
     IF(action = 'd', 3, IF(action = 'u', 2, 1)) DESC,
     last_updated_time DESC
   )
+)
+where (action = 'd' OR (created_time IS NOT NULL AND last_updated_time IS NOT NULL)
+ OR 
+      (created_time IS NULL AND last_updated_time IS NOT NULL) OR action = "i")
 
 post_operations {
   ${
