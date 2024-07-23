@@ -2,10 +2,10 @@ config {
     type: "table",
     description: `PIC: minh.luu; model_type: table; schedule 0h00
     Source: 
-        ${source.silver}.core_prd_master_data_district  
-        ${source.silver}.core_prd_master_data_district  
-        ${source.silver}.core_prd_master_data_district  
-        ${source.silver}.core_prd_master_data_district `,
+        ${source.silver}.core_prd_master_data_district
+        ${source.silver}.core_prd_master_data_ward
+        ${source.silver}.core_prd_master_data_province
+        ${source.silver}.core_prd_master_data_region`,
     assertions:{
         nonNull: ["location_code"],
         uniqueKey: ["location_code"]

@@ -10,9 +10,11 @@ config {
 }
 
 select
-  * , ${source.silver}.mongoid_to_timestamp (mg_id) as time_ingested_to_mongo,
+  * , `${source.silver}.mongoid_to_timestamp` (mg_id) as time_ingested_to_mongo,
   date(created_time) as created_at
-from ${source.silver}.mongoid_to_timestamp ${ when(incremental(), `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()})`) }
+from
+  ${source.silver}.marketplace_prd_cart_cart_item_deleted
+${ when(incremental(), `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()} )`) }
 QUALIFY ROW_NUMBER() OVER (_window) = 1
   AND FIRST_VALUE(action) OVER (_window) <> 'd'
 WINDOW
