@@ -13,32 +13,37 @@ config {
 
 pre_operations {
   ${
-    when(incremental(),
+    when(incremental(), 
       `
       CREATE OR REPLACE TEMP TABLE range_created_time_table AS
       SELECT 
-        min(date(created_time)) AS min_created_date, 
-        MAX(CASE WHEN created_time IS NOT NULL THEN DATE(created_time) ELSE DATE("2999-01-01") END) AS max_created_date
-      FROM lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_cart_cart
-      WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()});
-      `,
-      ``
+        MIN(DATE(created_time)) AS min_created_date, 
+        MAX(CASE 
+              WHEN created_time IS NOT NULL THEN DATE(created_time) 
+              ELSE DATE(last_updated_time) 
+            END) AS max_created_date
+      FROM lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_cart_cart_item
+      WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) AND 
+      ((created_time IS NOT NULL AND last_updated_time IS NOT NULL) OR 
+      (created_time IS NULL AND last_updated_time IS NOT NULL));
+      `
     )
   }
 }
 
-SELECT
- *,
+select *, 
  CASE 
     WHEN created_time is not null then date(created_time)
-    ELSE DATE("2999-01-01")
-  END AS created_date,
+    WHEN created_time is null and last_updated_time is not null then DATE(last_updated_time)
+    ELSE null
+  END AS created_date, from (
+SELECT
+ *
 FROM
   lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_cart_cart o 
-   ${
+  ${
     when(incremental(), 
-      `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) and (
-      created_time is not null and last_updated_time is not null and action != 'd') 
+      `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) 
       QUALIFY ROW_NUMBER() OVER (_window) = 1`,
       `QUALIFY ROW_NUMBER() OVER (_window) = 1
        AND FIRST_VALUE(action) OVER (_window) <> 'd'`
@@ -53,6 +58,8 @@ WINDOW
     IF(action = 'd', 3, IF(action = 'u', 2, 1)) DESC,
     last_updated_time DESC
   )
+)
+where (action = 'd' OR (created_time IS NOT NULL AND last_updated_time IS NOT NULL) OR action = "i")
 
 post_operations {
   ${
