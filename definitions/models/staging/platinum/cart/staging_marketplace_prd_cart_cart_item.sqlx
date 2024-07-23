@@ -36,6 +36,13 @@ pre_operations {
         ((created_time IS NOT NULL AND last_updated_time IS NOT NULL) OR 
         (created_time IS NULL AND last_updated_time IS NOT NULL) OR 
         (created_time IS NOT NULL AND last_updated_time IS NULL)) AND action = "u"
+
+      -- for marketplace_prd_cart only
+      CREATE OR REPLACE TEMP TABLE deleted_records_table AS
+      SELECT mg_id
+      FROM lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_cart_cart_item
+      WHERE action = 'd'
+        AND date(ingest_time) > current_date();
       )
       `
     )
@@ -72,7 +79,7 @@ WINDOW
 )
 where (action = 'd' OR (created_time IS NOT NULL AND last_updated_time IS NOT NULL)
  OR 
-      (created_time IS NULL AND last_updated_time IS NOT NULL) OR action = "i")
+      (created_time IS NULL AND last_updated_time IS NOT NULL) OR action = "i") AND mg_id not in (select mg_id from deleted_records_table)
 
 post_operations {
   ${
