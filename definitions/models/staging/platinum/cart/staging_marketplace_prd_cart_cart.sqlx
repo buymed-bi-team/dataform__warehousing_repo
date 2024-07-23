@@ -52,7 +52,7 @@ WITH deleted_records_table AS (
   SELECT mg_id
   FROM lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_cart_cart
   WHERE action = 'd'
-    AND date(ingest_time) > current_date()
+    AND date(ingest_time) >= current_date()
 )
 SELECT *, 
   CASE 
