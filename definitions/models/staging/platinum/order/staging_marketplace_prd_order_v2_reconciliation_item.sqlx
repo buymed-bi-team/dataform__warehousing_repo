@@ -19,15 +19,19 @@ pre_operations {
       `
       CREATE OR REPLACE TEMP TABLE range_created_time_table AS
       SELECT 
-        MIN(DATE(created_time)) AS min_created_date, 
-        MAX(CASE 
-              WHEN created_time IS NOT NULL THEN DATE(created_time) 
-              ELSE DATE(last_updated_time) 
-            END) AS max_created_date
-      FROM lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_reconciliation_item
-      WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) AND 
-      ((created_time IS NOT NULL AND last_updated_time IS NOT NULL) OR 
-      (created_time IS NULL AND last_updated_time IS NOT NULL));
+        MIN(created_date) AS min_created_date, 
+        MAX(created_date) AS max_created_date 
+      FROM (
+        SELECT  
+          CASE 
+            WHEN created_time IS NOT NULL THEN DATE(created_time) 
+            ELSE DATE(last_updated_time) 
+          END AS created_date
+        FROM lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_reconciliation_item
+        WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) AND 
+        ((created_time IS NOT NULL AND last_updated_time IS NOT NULL) OR 
+        (created_time IS NULL AND last_updated_time IS NOT NULL))
+      )
       `
     )
   }
