@@ -1,8 +1,15 @@
 config {
     type: "table",
-    description: "refresh schedule: daily at 12am, silver_source: warehouse_prd_inventory_location, warehouse_prd_inventory_sku_location_merge || PIC: dong.le",
+    description: `PIC: dong.le & minh.luu; model_type: table; schedule daily at 12am
+    SOURCE:
+        ${source.silver}.warehouse_prd_inventory_location
+        ${source.silver}.warehouse_prd_inventory_sku_location_merge`,
     name: "dim_fc_location",
     tags: ["0h00"],
+    assertions: {
+      uniqueKey: ['location_fc_code'],
+      nonNull: ['location_fc_code']
+    },
     columns: {
       location_fc_code: "concatenation of location and warehouse code",
       location_code: "location identifier",
@@ -23,7 +30,7 @@ config {
 
 WITH
   dedup_inventory_location AS ${dedup.dedup(
-  "lakehouse-prod-394907.silver_buymed_vn.warehouse_prd_inventory_location",
+  source.silver + `.warehouse_prd_inventory_location`,
   "warehouse_code, code, type, parent_order, shelf_type, width, length, height"
 )}
 ,
@@ -32,9 +39,11 @@ cte_main as (
   select 
     a.warehouse_code
     , a.location_code
-    from ${dedup.dedup("lakehouse-prod-394907.silver_buymed_vn.warehouse_prd_inventory_sku_location_merge",
-    "warehouse_code, location_code, stock_quantity")} as a
-    where a.stock_quantity > 0 and a.warehouse_code IN ("HN", "BD", "DN") and a.location_code IS NOT NULL
+    from ${dedup.dedup(
+      source.silver + `.warehouse_prd_inventory_sku_location_merge`,
+      "warehouse_code, location_code, stock_quantity")} 
+      as a
+    where a.warehouse_code IN ("HN", "BD", "DN") and a.location_code IS NOT NULL
     group by 1, 2
 )
 

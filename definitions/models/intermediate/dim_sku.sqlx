@@ -22,7 +22,7 @@ config {
 
 WITH dedup_sku_main as -- 83MB
 ${dedup.dedup(
-    `silver_buymed_vn.marketplace_prd_product_v2_sku_main_v2`,
+    source.silver + `.marketplace_prd_product_v2_sku_main_v2`,
     `
     code as sku_code,
     product_id,
@@ -31,7 +31,7 @@ ${dedup.dedup(
 )}
 , dedup_seller AS
 ${dedup.dedup(
-    `silver_buymed_vn.seller_prd_core_seller`,
+    source.silver + `.seller_prd_core_seller`,
     `
     seller_class,
     code seller_code
@@ -39,7 +39,7 @@ ${dedup.dedup(
 )}
 , dedup_product AS 
 ${dedup.dedup(
-    `silver_buymed_vn.marketplace_prd_product_v2_product`,
+    source.silver + `.marketplace_prd_product_v2_product`,
     `
     product_id,
     name as product_name

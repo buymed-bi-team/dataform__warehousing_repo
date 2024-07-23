@@ -31,8 +31,7 @@ pre_operations {
             WHEN created_time IS NOT NULL THEN DATE(created_time) 
             ELSE DATE(last_updated_time) 
           END AS created_date
-        FROM lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_cart_cart
-        WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) AND 
+        FROM ${source.silver}.marketplace_prd_cart_cart WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) AND 
         ((created_time IS NOT NULL AND last_updated_time IS NOT NULL) OR 
         (created_time IS NULL AND last_updated_time IS NOT NULL) OR 
         (created_time IS NOT NULL AND last_updated_time IS NULL)) AND action = "u"
@@ -57,8 +56,7 @@ select *,
   END AS created_date, from (
 SELECT
  *
-FROM
-  lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_cart_cart o 
+FROM ${source.silver}.marketplace_prd_cart_cart o 
   ${
     when(incremental(), 
       `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) 

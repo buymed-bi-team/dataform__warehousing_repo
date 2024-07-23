@@ -23,7 +23,7 @@ cast(JSON_VALUE(next, "$.is_active") as boolean ) as is_active,
 ingest_time,
 key
 FROM
-`lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_product_v2_history_update_price` a
+ ${source.silver}.marketplace_prd_product_v2_history_update_price  a
 ${ when(incremental(), `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()})`)}
 QUALIFY
 (is_active != LAG(is_active) OVER (PARTITION BY item_code ORDER BY created_time)) OR

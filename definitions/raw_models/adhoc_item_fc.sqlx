@@ -5,10 +5,10 @@ config {
 }
 
 WITH put_ticket_item AS ${dedup.dedup(
-    `silver_buymed_vn.warehouse_prd_inbound_put_ticket_item`,
+    source.silver + `.warehouse_prd_inbound_put_ticket_item`,
     `warehouse_code,ticket_id,sku, created_time`
 )}, put_ticket AS ${dedup.dedup(
-    `silver_buymed_vn.warehouse_prd_inbound_put_ticket`,
+    source.silver + `.warehouse_prd_inbound_put_ticket`,
     `warehouse_code,ticket_id, start_put_time, end_put_time`
 )}, sku_lastest_put_time AS (
     SELECT put_ticket_item.warehouse_code, put_ticket_item.sku, ARRAY_AGG(put_ticket_item.ticket_id order by created_time desc)[0] as ticket_id,DATETIME(max(end_put_time),'+7') AS latest_put_done_at
@@ -20,14 +20,14 @@ WITH put_ticket_item AS ${dedup.dedup(
 ), dedup_sku AS (
     SELECT DISTINCT sku,  seller_class, ARRAY_AGG(retail_price_value order by last_updated_time desc)[0] retail_price_value
     FROM ${dedup.dedup(
-    'silver_buymed_vn.marketplace_prd_product_v2_sku',
+    source.silver + `.marketplace_prd_product_v2_sku`,
     'sku,  seller_class,retail_price_value')}
     GROUP BY 1,2
 ), inventory_sku as (
     SELECT
         sku,warehouse_code, name, seller_code, ARRAY_AGG(available_quantity order by last_updated_time desc)[0] available_quantity
     FROM 
-        ${dedup.dedup(`silver_buymed_vn.warehouse_prd_inventory_sku`,
+        ${dedup.dedup(source.silver + `.warehouse_prd_inventory_sku`,
         'sku,warehouse_code, name, seller_code, available_quantity')}
     GROUP BY 1,2,3,4
 )

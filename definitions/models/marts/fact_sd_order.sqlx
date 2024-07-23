@@ -13,7 +13,7 @@ config {
 WITH
 
    dedup_credit_note AS ${dedup.dedup(
-  "lakehouse-prod-394907.silver_buymed_vn.accounting_prd_core_credit_note",
+  source.silver + `.accounting_prd_core_credit_note`,
   "order_id, amount, type"
      
 )},
@@ -25,7 +25,7 @@ WITH
   GROUP BY 1 ),
 
   dedup_bill AS ${dedup.dedup(
-  "lakehouse-prod-394907.silver_buymed_vn.accounting_prd_core_bill",
+  source.silver + `.accounting_prd_core_bill`,
   "order_id, total_order_amount, status",
   start_timestamp= ` TIMESTAMP(current_datetime() - INTERVAL 32 DAY )`         
 )},
@@ -37,13 +37,13 @@ WITH
   GROUP BY 1 ),
 
 --   order_channel AS ${dedup.dedup(
---   "lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_brand_sales_sales_type",
+--   source.silver + `.marketplace_prd_brand_sales_sales_type`,
 --   "name, code, type",
 --   start_timestamp= ` TIMESTAMP(current_datetime() - INTERVAL 10 DAY )`         
 -- )},
   
   dedup_order_v2 AS ${dedup.dedup(
-  "lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_order",
+  source.silver + `.marketplace_prd_order_v2_order`,
   "*",
   start_timestamp= ` TIMESTAMP(current_datetime() - INTERVAL 32 DAY )`         
 )},

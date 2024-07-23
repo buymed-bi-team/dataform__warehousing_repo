@@ -25,7 +25,7 @@ config {
 }
 
 WITH stg_order_item as   ${dedup.dedup(
-      "lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_order_item",
+      source.silver + `.marketplace_prd_order_v2_order_item`,
       `
       order_id,
       customer_id,
@@ -49,7 +49,7 @@ WITH stg_order_item as   ${dedup.dedup(
 ,
 
 stg_order as ${dedup.dedup(
-  "lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_order",
+  source.silver + `.marketplace_prd_order_v2_order`,
   "order_id, province_code",
   start_timestamp= when(incremental(),
             ` TIMESTAMP(current_datetime() - INTERVAL 2 DAY )`, 

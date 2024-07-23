@@ -43,8 +43,8 @@ cte_order_item as (
         , to_json_string(oi.tags) as tag_code
         , oi.sku_status
         , DATETIME(oi.cart_item_created_time, "Asia/Ho_Chi_Minh") AS incart_at
-    -- from `silver_buymed_vn.marketplace_prd_order_v2_order_item` as oi
-    FROM `silver_buymed_vn.marketplace_prd_order_v2_order_item` as oi
+    -- from  ${source.silver}.marketplace_prd_order_v2_order_item  as oi
+    FROM  ${source.silver}.marketplace_prd_order_v2_order_item  as oi
     -- from lakehouse-prod-394907._513c4051a7d94cc5f16470b9da40e24c2a97913a.anonead9caf2a3c74fb9d5e5ba78d4d488556c3878ac0646f0bcb2b2556661745865 as oi
     where
        oi.ingest_time >= (select start_date from cte_date)

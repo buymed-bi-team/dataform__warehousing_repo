@@ -19,7 +19,7 @@ config {
 
 WITH
   dedup_inbound_ticket AS ${dedup.dedup(
-  "lakehouse-prod-394907.silver_buymed_vn.warehouse_prd_inbound_inbound_ticket",
+  source.silver + `.warehouse_prd_inbound_inbound_ticket`,
   "code, po_code, external_type, created_time"
 )}
 

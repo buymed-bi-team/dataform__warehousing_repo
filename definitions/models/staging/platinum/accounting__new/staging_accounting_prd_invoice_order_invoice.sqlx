@@ -18,8 +18,7 @@ pre_operations {
       `
       CREATE OR REPLACE TEMP TABLE range_created_time_table AS
       SELECT MIN(DATE(created_time)) AS min_created_date, MAX(DATE(created_time)) AS max_created_date
-      FROM lakehouse-prod-394907.silver_buymed_vn.accounting_prd_invoice_order_invoice
-      WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()});
+      FROM ${source.silver}.accounting_prd_invoice_order_invoice WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()});
       `,
       ``
     )
@@ -29,8 +28,7 @@ pre_operations {
 SELECT
  *,
  date(created_time) as created_date
-FROM
-  lakehouse-prod-394907.silver_buymed_vn.accounting_prd_invoice_order_invoice o 
+FROM ${source.silver}.accounting_prd_invoice_order_invoice o 
   ${ when(incremental(), `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()})`)}
   QUALIFY ROW_NUMBER() OVER (_window) = 1
   AND FIRST_VALUE(action) OVER (_window) <> 'd'

@@ -10,7 +10,7 @@ config {
 
 WITH
   dedup_inventory_sku_location AS ${dedup.dedup(
-  "lakehouse-prod-394907.silver_buymed_vn.warehouse_prd_inventory_sku_location_merge",
+  source.silver + `.warehouse_prd_inventory_sku_location_merge`,
   "sku, warehouse_code, location_code, stock_quantity"
 )}
 

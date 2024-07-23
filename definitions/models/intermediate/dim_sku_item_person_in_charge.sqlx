@@ -14,7 +14,7 @@ config {
 
 WITH
   dedup_pic AS ${dedup.dedup(
-  "lakehouse-prod-394907.silver_buymed_vn.seller_prd_purchasing_pic",
+  source.silver + `.seller_prd_purchasing_pic`,
   "object_code, object_type, warehouse_code, pic_account_id, cic_account_id"
 )}
 

@@ -13,7 +13,7 @@ config {
 
 WITH
   dedup_stock_draft_unique AS ${dedup.dedup(
-  "lakehouse-prod-394907.silver_buymed_vn.seller_prd_purchasing_initial_stock_draft_unique",
+  source.silver + `.seller_prd_purchasing_initial_stock_draft_unique`,
   "sku, warehouse_code, origin_initial_stock, extra_props"
 )}
 

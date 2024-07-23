@@ -47,7 +47,7 @@ SELECT
 
 FROM
     ${dedup.dedup(
-        'silver_buymed_vn.seller_prd_core_seller',
+        source.silver + `.seller_prd_core_seller`,
         "*"
     )} s
 

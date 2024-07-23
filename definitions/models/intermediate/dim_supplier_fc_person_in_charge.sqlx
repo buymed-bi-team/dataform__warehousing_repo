@@ -19,8 +19,7 @@ WITH purchasing_pic AS (
         warehouse_code as fc_code,
         pic_account_id AS pic_purchase_id,
         cic_account_id AS cic_category_id
-    FROM silver_buymed_vn.seller_prd_purchasing_pic
-    WHERE object_type IN ("VENDOR")
+    FROM ${source.silver}.seller_prd_purchasing_pic WHERE object_type IN ("VENDOR")
 ), core_pic AS (
     SELECT
         mg_id,synced_at,last_updated_time,action,
@@ -28,8 +27,7 @@ WITH purchasing_pic AS (
         warehouse_code as fc_code,
         pic_account_id AS pic_purchase_id,
         cic_account_id AS cic_category_id
-    FROM silver_buymed_vn.seller_prd_core_pic
-    WHERE object_type IN ("SELLER")
+    FROM ${source.silver}.seller_prd_purchasing_pic WHERE object_type IN ("SELLER")
 ), dedup_pic AS ${dedup.dedup(
     `(
         SELECT * FROM purchasing_pic

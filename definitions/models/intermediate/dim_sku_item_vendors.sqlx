@@ -11,7 +11,7 @@ config {
 
 WITH
   dedup_marketplace_sku AS ${dedup.dedup(
-  "lakehouse-prod-394907.silver_buymed_vn.seller_prd_purchasing_sku_config",
+  source.silver + `.seller_prd_purchasing_sku_config`,
   "sku, seller_code, product_id, purchaser_code, vendors"
 )}
 
