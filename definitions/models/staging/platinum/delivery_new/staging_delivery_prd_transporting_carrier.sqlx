@@ -1,5 +1,4 @@
 
--- new
 config {
     type: "incremental",
     name: "staging_delivery_prd_transporting_carrier",
@@ -18,8 +17,7 @@ pre_operations {
       `
       CREATE OR REPLACE TEMP TABLE range_created_time_table AS
       SELECT MIN(DATE(created_time)) AS min_created_date, MAX(DATE(created_time)) AS max_created_date
-      FROM lakehouse-prod-394907.silver_buymed_vn.delivery_prd_transporting_carrier
-      WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()});
+      FROM ${source.silver}.delivery_prd_transporting_carrier WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()});
       `,
       ``
     )
@@ -29,8 +27,7 @@ pre_operations {
 SELECT
  *,
  date(created_time) as created_date
-FROM
-  lakehouse-prod-394907.silver_buymed_vn.delivery_prd_transporting_carrier o 
+FROM ${source.silver}.delivery_prd_transporting_carrier o 
   ${ when(incremental(), `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()})`)}
   QUALIFY ROW_NUMBER() OVER (_window) = 1
   AND FIRST_VALUE(action) OVER (_window) <> 'd'

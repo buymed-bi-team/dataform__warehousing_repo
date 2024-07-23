@@ -2,10 +2,10 @@ config {
     type: "table",
     description: `PIC: minh.luu; model_type: table; schedule 0h00
     Source: 
-        silver_buymed_vn.core_prd_master_data_district
-        silver_buymed_vn.core_prd_master_data_ward
-        silver_buymed_vn.core_prd_master_data_province
-        silver_buymed_vn.core_prd_master_data_region`,
+        ${source.silver}.core_prd_master_data_district  
+        ${source.silver}.core_prd_master_data_district  
+        ${source.silver}.core_prd_master_data_district  
+        ${source.silver}.core_prd_master_data_district `,
     assertions:{
         nonNull: ["location_code"],
         uniqueKey: ["location_code"]
@@ -27,7 +27,7 @@ config {
 
 WITH 
     dedup_district AS ${dedup.dedup(
-        'silver_buymed_vn.core_prd_master_data_district',
+        source.silver + `.core_prd_master_data_district`,
         `
         CAST(code AS STRING) as location_code,
         name as location_name,
@@ -36,7 +36,7 @@ WITH
         `
     )},
     dedup_ward AS ${dedup.dedup(
-        'silver_buymed_vn.core_prd_master_data_ward',
+        source.silver + `.core_prd_master_data_ward`,
         `
         CAST(code AS STRING) as location_code,
         name as location_name,
@@ -45,7 +45,7 @@ WITH
         `
     )},
     dedup_province AS ${dedup.dedup(
-        'silver_buymed_vn.core_prd_master_data_province',
+        source.silver + `.core_prd_master_data_province`,
         `
         CAST(code AS STRING) as location_code,
         name as location_name,
@@ -54,7 +54,7 @@ WITH
         `
     )},
     dedup_region AS ${dedup.dedup(
-        'silver_buymed_vn.core_prd_master_data_region',
+        source.silver + `.core_prd_master_data_region`,
         `
         CAST(code AS STRING) as location_code,
         name as location_name,

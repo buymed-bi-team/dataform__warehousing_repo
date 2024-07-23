@@ -2,10 +2,10 @@ config {
     type: "table",
     description: `PIC: minh.luu; model_type: table; schedule 0h00
     Source: 
-        silver_buymed_vn.core_prd_master_data_district
-        silver_buymed_vn.core_prd_master_data_ward
-        silver_buymed_vn.core_prd_master_data_province
-        silver_buymed_vn.core_prd_master_data_region`,
+        ${source.silver}.core_prd_master_data_district  
+        ${source.silver}.core_prd_master_data_district  
+        ${source.silver}.core_prd_master_data_district  
+        ${source.silver}.core_prd_master_data_district `,
     // assertions:{
     //     nonNull: ["district_code","province_code",'region_code'],
     //     uniqueKey: ["location_code"]
@@ -35,7 +35,7 @@ SELECT
         ELSE 'MARKETPLACE' -- Một số order trong dim_order bị xếp loại vào Marketplace trong khi vốn tên có là FC-CIRCA
     END AS customer_report_category 
 FROM 
-    ${dedup.dedup('silver_buymed_vn.marketplace_prd_customer_customer','*')} dedup_customer
+    ${dedup.dedup(source.silver + `.marketplace_prd_customer_customer`,'*')} dedup_customer
 
 
 
