@@ -17,16 +17,13 @@ pre_operations {
       `
       CREATE OR REPLACE TEMP TABLE range_created_time_table AS
       SELECT MIN(DATE(created_time)) AS min_created_date, MAX(DATE(created_time)) AS max_created_date
-      FROM lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_order_item
-      WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()});
+      FROM ${source.silver}.marketplace_prd_order_v2_order_item WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()});
 
       CREATE OR REPLACE TEMP TABLE range_created_time_delete_table AS
       SELECT MIN(DATE(created_time)) AS min_created_date, MAX(DATE(created_time)) AS max_created_date
-      FROM lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_order_item 
-      WHERE mg_id IN (
+      FROM ${source.silver}.marketplace_prd_order_v2_order_item WHERE mg_id IN (
         SELECT mg_id 
-        FROM lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_order_item
-        WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) AND action = 'd'
+        FROM ${source.silver}.marketplace_prd_order_v2_order_item WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) AND action = 'd'
       )
       `,
       ``
@@ -37,8 +34,7 @@ pre_operations {
 SELECT
   *,
   DATE(created_time) AS created_date
-FROM
-  lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_order_item o 
+FROM ${source.silver}.marketplace_prd_order_v2_order_item o 
   ${
     when(incremental(), 
       `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) 

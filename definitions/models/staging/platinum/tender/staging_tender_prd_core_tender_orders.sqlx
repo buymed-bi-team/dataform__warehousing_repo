@@ -18,8 +18,7 @@ pre_operations {
       `
       CREATE OR REPLACE TEMP TABLE range_created_time_table AS
       SELECT MIN(DATE(created_time)) AS min_created_date, MAX(DATE(created_time)) AS max_created_date
-      FROM lakehouse-prod-394907.silver_buymed_vn.tender_prd_core_tender_orders
-      WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()});
+      FROM ${source.silver}.tender_prd_core_tender_orders WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()});
       `,
       ``
     )
@@ -29,9 +28,7 @@ pre_operations {
 SELECT
  *,
  DATE(created_time) AS created_date
-FROM
-  lakehouse-prod-394907.silver_buymed_vn.tender_prd_core_tender_orders 
-  ${
+FROM ${source.silver}.tender_prd_core_tender_orders ${
     when(incremental(), 
       `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) 
       QUALIFY ROW_NUMBER() OVER (_window) = 1`,
