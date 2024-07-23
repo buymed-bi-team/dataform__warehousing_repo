@@ -8,7 +8,7 @@ config {
 
 WITH
   dedup_marketplace_sku AS ${dedup.dedup(
-  "lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_product_v2_sku_merge",
+  source.silver + `.marketplace_prd_product_v2_sku_merge`,
   "sku, status, is_active, extra_props"
 )}
 

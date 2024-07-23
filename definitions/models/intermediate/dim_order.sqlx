@@ -38,7 +38,7 @@ js {
 
 WITH dedup_order_tbl as ${
   dedup.dedup(
-    `silver_buymed_vn.marketplace_prd_order_v2_order`,
+    source.silver + `.marketplace_prd_order_v2_order`,
     `
     order_id, 
     DATETIME(created_time, 'Asia/Ho_Chi_Minh') as created_time, 

@@ -33,7 +33,7 @@ Chú thích chi tiết:
 */
 
 WITH stg_product as ${dedup.dedup(
-  "silver_buymed_vn.marketplace_prd_product_v2_product",
+  source.silver + `.marketplace_prd_product_v2_product`,
   ` product_id,
     name as product_name,
     owner as owner_code,
@@ -45,7 +45,7 @@ WITH stg_product as ${dedup.dedup(
 )}
 ,
 stg_seller as ${dedup.dedup(
-  `silver_buymed_vn.seller_prd_core_seller`,
+  source.silver + `.seller_prd_core_seller`,
   ` code,
     seller_id,
     name as owner_name`

@@ -18,7 +18,7 @@ config {
 }
 
 WITH dedup_human_resource AS ${dedup.dedup(
-    `silver_buymed_vn.platform_human_resource_prd_employee_employee_info`,
+    source.silver + `.platform_human_resource_prd_employee_employee_info`,
     `               
     email,
     full_name as fullname,

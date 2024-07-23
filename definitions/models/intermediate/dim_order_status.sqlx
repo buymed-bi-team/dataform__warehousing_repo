@@ -21,7 +21,7 @@ TODO:
 */ 
 
 WITH stg_order_CRM AS ${dedup.dedup(
-        "silver_buymed_vn.marketplace_prd_order_v2_order",
+        source.silver + `.marketplace_prd_order_v2_order`,
         "order_id,status as CRM_status"
 )}, 
 
@@ -31,7 +31,7 @@ stg_order_WMS AS (
         REGEXP_REPLACE(sale_order_code, r'\d+', '') AS warehouse_order_code,
         status as WMS_status
     FROM ${dedup.dedup(
-        "silver_buymed_vn.warehouse_prd_core_sale_order",
+        source.silver + `.warehouse_prd_core_sale_order`,
         "sale_order_code,status"
     )}
 ),
@@ -39,7 +39,7 @@ stg_order_WMS AS (
 stg_order_ACCOUNTING AS (
     SELECT order_id, status as ACCOUNTING_status
     FROM ${dedup.dedup(
-        "silver_buymed_vn.accounting_prd_core_bill",
+        source.silver + `.accounting_prd_core_bill`,
         "order_id,status"
     )}
 )
