@@ -40,14 +40,14 @@ config {
 WITH
   return_amount AS (
   SELECT order_id, SUM(amount) AS return_amount
-  FROM ${source_base.GOLD}.dedup_accounting_prd_core_credit_note
+  FROM ${source.gold}.dedup_accounting_prd_core_credit_note
   WHERE type ="RETURN"
   GROUP BY 1 ),
 
 
   invoice_amount AS(
   SELECT order_id, SUM(total_order_amount) AS invoice_amount
-  FROM ${source_base.GOLD}.dedup_accounting_prd_core_bill
+  FROM ${source.gold}.dedup_accounting_prd_core_bill
   WHERE status <> "CANCEL"
   GROUP BY 1 ),
 
@@ -62,7 +62,7 @@ WITH
             name,
             code,
             type
-        FROM ${source_base.SILVER}.marketplace_prd_brand_sales_sales_type
+        FROM ${source.silver}.marketplace_prd_brand_sales_sales_type
         QUALIFY ROW_NUMBER() over (_window) = 1 AND FIRST_VALUE(action) over (_window) <> 'd'
         WINDOW _window AS (PARTITION BY mg_id ORDER BY synced_at DESC, IF(action = 'd', 3, IF(action= 'u', 2, 1)) DESC )
   ),
@@ -181,14 +181,14 @@ WITH
         END AS order_status_seq
 
     FROM ${ref("dedup_marketplace_prd_order_v2_warehousing")} AS a
-    LEFT JOIN ${source_base.GOLD}.dedup_marketplace_prd_customer_customer_rating r ON a.order_id=r.order_id
+    LEFT JOIN ${source.gold}.dedup_marketplace_prd_customer_customer_rating r ON a.order_id=r.order_id
     LEFT JOIN return_amount AS b ON a.order_id = b.order_id
     LEFT JOIN invoice_amount AS c ON a.order_id = c.order_id
     LEFT JOIN actual_sales_amount AS d ON a.order_id = d.order_id
     LEFT JOIN (
       SELECT
         order_id, carrier_name
-      FROM ${source_base.GOLD}.fact_outbound_ticket
+      FROM ${source.gold}.fact_outbound_ticket
       WHERE
         REGEXP_CONTAINS(reference_code, r'-F|-P1')
       QUALIFY ROW_NUMBER() OVER(PARTITION BY order_id, reference_code ) = 1

@@ -20,7 +20,7 @@ stg_quotation_export as (  -- prepare: dedup, filter time
       vendor_expect_quantity,
       quantity_expect,
       version
-    from ${source_base.SILVER}.seller_prd_purchasing_quotation_export
+    from ${source.silver}.seller_prd_purchasing_quotation_export
     where ingest_time >= (select start_date from cte_date) and 
         (created_time >= (select start_date from cte_date) or created_time is null)
     QUALIFY ROW_NUMBER() OVER(_window) = 1 AND FIRST_VALUE(action) over(_window) <> 'd'
@@ -32,7 +32,7 @@ stg_admin_pushing_group as ( -- prepare: dedup
       group_id,
       confirmed_time,
       version 
-    from ${source_base.SILVER}.seller_prd_purchasing_admin_pushing_group
+    from ${source.silver}.seller_prd_purchasing_admin_pushing_group
     QUALIFY ROW_NUMBER() OVER(_window) = 1 AND FIRST_VALUE(action) over(_window) <> 'd'
     WINDOW _window AS (PARTITION BY mg_id ORDER BY synced_at DESC, IF(action='d',3,IF(action='u',2,1)) DESC, last_updated_time DESC)
 ),
@@ -69,7 +69,7 @@ stg_purchase_order_item as ( -- int: join and group
       po_id,
       sku,
       warehouse_code
-    FROM ${source_base.SILVER}.seller_prd_purchasing_purchase_order_item AS a
+    FROM ${source.silver}.seller_prd_purchasing_purchase_order_item AS a
     WHERE
         a.ingest_time >= (SELECT start_date FROM cte_date)
         AND (a.created_time>= (SELECT start_date FROM cte_date) or a.created_time is null )
@@ -87,7 +87,7 @@ stg_purchase_order as (
       created_time,
       created_by_system,
       status
-    FROM ${source_base.SILVER}.seller_prd_purchasing_purchase_order AS a
+    FROM ${source.silver}.seller_prd_purchasing_purchase_order AS a
     WHERE
         a.ingest_time >= (SELECT start_date FROM cte_date)
         AND (a.created_time >= (SELECT start_date FROM cte_date) or a.created_time is null )

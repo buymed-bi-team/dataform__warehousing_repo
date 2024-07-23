@@ -129,13 +129,13 @@ WITH
       a.redeem_code,
 
     FROM dedup_order_v2 AS a
-    LEFT JOIN ${source_base.GOLD}.dedup_marketplace_prd_customer_customer_rating r ON a.order_id=r.order_id
+    LEFT JOIN ${source.gold}.dedup_marketplace_prd_customer_customer_rating r ON a.order_id=r.order_id
     LEFT JOIN return_amount AS b ON a.order_id = b.order_id
     LEFT JOIN invoice_amount AS c ON a.order_id = c.order_id
     LEFT JOIN (
       SELECT
         order_id, carrier_name
-      FROM ${source_base.GOLD}.fact_outbound_ticket
+      FROM ${source.gold}.fact_outbound_ticket
       WHERE
         REGEXP_CONTAINS(reference_code, r'-F|-P1') 
       QUALIFY ROW_NUMBER() OVER(PARTITION BY order_id, reference_code ) = 1
