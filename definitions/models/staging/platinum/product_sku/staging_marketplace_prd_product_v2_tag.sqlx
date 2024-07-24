@@ -4,6 +4,7 @@ config {
     schema: "platinum_buymed_vn",
     assertions: {
          uniqueKey: 'mg_id',
+         nonNull: ['created_date'],
      },
     bigquery: {
         partitionBy: "created_date"
@@ -29,6 +30,8 @@ pre_operations {
 --   WHERE action = 'd'
 --     AND date(ingest_time) >= current_date() - 1
 -- )
+
+-- tag has one record that not has created_time and last_updated_time but still exists in mongo
 SELECT *, 
   CASE 
     WHEN created_time IS NOT NULL THEN DATE(created_time)
