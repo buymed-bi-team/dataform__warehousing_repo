@@ -16,7 +16,7 @@ pre_operations {
       `
       CREATE OR REPLACE TEMP TABLE range_created_time_table AS
       SELECT MIN(DATE(created_time)) AS min_created_date, MAX(DATE(created_time)) AS max_created_date
-      FROM ${source.silver}.marketplace_prd_product_v2_sku WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()});
+      FROM ${source.silver}.marketplace_prd_product_v2_tag WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()});
       `,
       ``
     )
