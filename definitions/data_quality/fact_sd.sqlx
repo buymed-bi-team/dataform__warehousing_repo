@@ -1,0 +1,55 @@
+SELECT
+    dataset_id, table_id, DATETIME(TIMESTAMP_MILLIS(creation_time), '+7') AS creation_time, DATETIME(TIMESTAMP_MILLIS(last_modified_time), '+7') AS last_modified_time
+FROM
+    lakehouse-prod-394907.silver_buymed_vn.__TABLES__
+WHERE
+    table_id in (
+        "marketplace_prd_order_v2_order_item",
+        "marketplace_prd_order_v2_order",
+        "accounting_prd_core_credit_note",
+        "accounting_prd_core_bill",
+        "marketplace_prd_customer_customer_rating",
+        'warehouse_prd_picking_pick_ticket_item',
+        'warehouse_prd_core_sale_order',
+        'marketplace_prd_order_v2_order',
+        ''
+    )
+
+UNION ALL
+
+SELECT
+    dataset_id, table_id, DATETIME(TIMESTAMP_MILLIS(creation_time), '+7') AS creation_time, DATETIME(TIMESTAMP_MILLIS(last_modified_time), '+7') AS last_modified_time
+FROM gold_buymed_vn2.__TABLES__
+WHERE
+    table_id in (
+        "dim_supplier"
+    )
+
+UNION ALL
+
+SELECT
+    dataset_id, table_id, DATETIME(TIMESTAMP_MILLIS(creation_time), '+7') AS creation_time, DATETIME(TIMESTAMP_MILLIS(last_modified_time), '+7') AS last_modified_time
+FROM gold_buymed_vn.__TABLES__
+WHERE
+    table_id in (
+        "fact_outbound_ticket"
+    )
+/*
+
+Fact_sd_po
+    - seller_prd_purchasing_purchase_order
+
+fact_sd_order_item
+    - marketplace_prd_order_v2_order_item
+    - marketplace_prd_order_v2_order
+    - gold_buymed_vn2.dim_supplier
+
+fact_sd_order
+    - accounting_prd_core_credit_note
+    - accounting_prd_core_bill
+    - marketplace_prd_customer_customer_rating
+    - marketplace_prd_order_v2_order
+    
+    - order fact_outbound_ticket
+    - 
+*/

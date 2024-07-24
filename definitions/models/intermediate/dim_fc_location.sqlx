@@ -15,11 +15,11 @@ config {
       location_code: "location identifier",
       fc_code: "warehouse code",
       type: "type of item",
-      shelf_type: "type of shelf",
-      width: "width of the shelf",
-      length: "length of the shelf",
-      height: "height of the shelf",
-      zone_code: "zone code extracted from the first 2 characters of code or the entire code if shelf_type is null",
+      shelf_type: "nullable | type of shelf",
+      width: "nullable | width of the shelf",
+      length: "nullable | length of the shelf",
+      height: "nullable | height of the shelf",
+      zone_code: "nonNull |zone code extracted from the first 2 characters of code or the entire code if shelf_type is null",
       shelf_code: "shelf code extracted from characters 3 to 5 of code or the entire code if shelf_type is null",
       shelf_level: "shelf level extracted from the 6th character of code or the entire code if shelf_type is null",
       location_number: "location number extracted from the 7th character onward of code or the entire code if shelf_type is null",
@@ -27,6 +27,8 @@ config {
       parent_location_code: "last value in the parent order array"
     }
 }
+
+/*Check zone_code, Check layout_key, Check hard_config, Check Res, Check res_2, check self_key*/
 
 WITH
   dedup_inventory_location AS ${dedup.dedup(
@@ -58,19 +60,19 @@ SELECT
     a.height,
     case
     when a.shelf_type is null then code
-    else SUBSTR(code, 1, 2) 
+    else SUBSTR(m.location_code, 1, 2) 
     end AS zone_code
     , case
     when a.shelf_type is null then code
-    else SUBSTR(code, 3, 3)  
+    else SUBSTR(m.location_code, 3, 3)  
     end AS shelf_code
     , case
     when a.shelf_type is null then code
-    else SUBSTR(code, 6, 1)  
+    else SUBSTR(m.location_code, 6, 1)  
     end AS shelf_level
     , case
     when a.shelf_type is null then code
-    else SUBSTR(code, 7)  
+    else SUBSTR(m.location_code, 7)  
     end AS location_number,
     a.parent_order,
     json_value_array( a.parent_order )[offset(array_length(json_value_array( a.parent_order )) - 1)] as parent_location_code
