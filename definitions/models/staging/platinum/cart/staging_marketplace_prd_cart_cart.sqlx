@@ -52,7 +52,7 @@ WITH deleted_records_table AS (
   SELECT mg_id
   FROM lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_cart_cart
   WHERE action = 'd'
-    AND date(ingest_time) >= current_date()
+    AND date(ingest_time) >= current_date() - 1
 )
 SELECT *, 
   CASE 
@@ -78,7 +78,7 @@ FROM (
       last_updated_time DESC
   )
 ) 
-WHERE action = 'd' 
+WHERE created_time is null and last_updated_time is null -- all record deleted include action "d"
   OR (created_time IS NOT NULL AND last_updated_time IS NOT NULL AND mg_id NOT IN (SELECT mg_id FROM deleted_records_table))
   OR (created_time IS NULL AND last_updated_time IS NOT NULL AND mg_id NOT IN (SELECT mg_id FROM deleted_records_table))
   OR (action = 'i' AND mg_id NOT IN (SELECT mg_id FROM deleted_records_table))
@@ -103,7 +103,7 @@ post_operations {
         IF(action = 'd', 3, IF(action = 'u', 2, 1)) DESC,
         last_updated_time DESC
       )
-      )) or mg_id in (select mg_id from ${self()} where action = "d") ;
+      )) or mg_id in (select mg_id from ${self()} where created_time is null and last_updated_time is null ) ;
       `,
       ``
     )
