@@ -4,7 +4,6 @@ config {
     schema: "platinum_buymed_vn",
     assertions: {
          uniqueKey: 'mg_id',
-         nonNull: ['created_date'],
      },
     bigquery: {
         partitionBy: "created_date"
@@ -17,45 +16,34 @@ pre_operations {
       `
       CREATE OR REPLACE TEMP TABLE range_created_time_table AS
       SELECT MIN(DATE(created_time)) AS min_created_date, MAX(DATE(created_time)) AS max_created_date
-      FROM ${source.silver}.marketplace_prd_product_v2_tag WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()});
+      FROM ${source.silver}.marketplace_prd_product_v2_sku WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()});
       `,
       ``
     )
   }
 }
 
--- WITH deleted_records_table AS (
---   SELECT mg_id
---   FROM ${source.silver}.marketplace_prd_order_v2_order_item
---   WHERE action = 'd'
---     AND date(ingest_time) >= current_date() - 1
--- )
-
--- tag has one record that not has created_time and last_updated_time but still exists in mongo
-SELECT *, 
-  CASE 
-    WHEN created_time IS NOT NULL THEN DATE(created_time)
-    WHEN created_time IS NULL AND last_updated_time IS NOT NULL THEN DATE(last_updated_time)
-    ELSE date("2099-01-01")
-  END AS created_date
-FROM (
-  SELECT *
-  FROM ${source.silver}.marketplace_prd_order_v2_order_item o 
+SELECT
+ *,
+ date(created_time) as created_date
+FROM ${source.silver}.marketplace_prd_product_v2_tag o 
   ${
     when(incremental(), 
       `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) 
-       QUALIFY ROW_NUMBER() OVER (_window) = 1`,
+      QUALIFY ROW_NUMBER() OVER (_window) = 1`,
       `QUALIFY ROW_NUMBER() OVER (_window) = 1
        AND FIRST_VALUE(action) OVER (_window) <> 'd'`
     )
   }
-  WINDOW _window AS (
-    PARTITION BY mg_id
-    ORDER BY synced_at DESC,
-      IF(action = 'd', 3, IF(action = 'u', 2, 1)) DESC,
-      last_updated_time DESC
+WINDOW
+  _window AS (
+  PARTITION BY
+    mg_id
+  ORDER BY
+    synced_at DESC,
+    IF(action = 'd', 3, IF(action = 'u', 2, 1)) DESC,
+    last_updated_time DESC
   )
-) 
 
 post_operations {
   ${
