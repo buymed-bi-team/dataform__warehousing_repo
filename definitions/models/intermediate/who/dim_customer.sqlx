@@ -1,10 +1,10 @@
 config {
     type: "table",
     description: `PIC: minh.luu; model_type: table; schedule 0h00`,
-    // assertions:{
-    //     nonNull: ["district_code","province_code",'region_code'],
-    //     uniqueKey: ["location_code"]
-    // },
+    assertions:{
+        nonNull: ["customer_id"],
+        uniqueKey: ["customer_id"]
+    },
     name: "dim_customer",
     tags: ["0h00"],
     columns: {
