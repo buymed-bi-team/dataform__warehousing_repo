@@ -14,8 +14,11 @@ config {
         customer_name: "Not Null",
         customer_email: "Nullable",
         customer_address: "Nullable",
-        customer_report_category: "Not Null | Is one of TECH, TENDER, MARKETPLACE, or CIRCA? Category assigned to the customer based on specific conditions: TECH: If the customer's name contains keywords like 'TECH SELLER', 'TEST', 'TECH-QC', etc. TENDER: If the customer's tags contain 'TENDER'. MARKETPLACE: If the customer's tags contain 'TERMINATE_CIRCA' or as a default category. CIRCA: If the customer's tags contain 'CIRCA'."
-
+        customer_report_category: "NonNull | Is one of TECH, TENDER, MARKETPLACE, or CIRCA? Category assigned to the customer based on specific conditions: TECH: If the customer's name contains keywords like 'TECH SELLER', 'TEST', 'TECH-QC', etc. TENDER: If the customer's tags contain 'TENDER'. MARKETPLACE: If the customer's tags contain 'TERMINATE_CIRCA' or as a default category. CIRCA: If the customer's tags contain 'CIRCA'.",
+        business_scope: "Nullable | Null means UNKNOWN scope",
+        province_code: "", // expect là NonNull
+        district_code: "", // expect là NonNull
+        ward_code: "", // expect là NonNull
     }
 }
 
@@ -32,7 +35,9 @@ SELECT
         WHEN TO_JSON_STRING( dedup_customer.tags ) LIKE '%\"TERMINATE_CIRCA\"%'  THEN 'MARKETPLACE'
         WHEN TO_JSON_STRING( dedup_customer.tags ) LIKE '%CIRCA%'  THEN 'CIRCA' -- Một số terminate circa vẫn được gán nhãn là circa ví dụ customer_id in (252404,358259,369079)
         ELSE 'MARKETPLACE' -- Một số order trong dim_order bị xếp loại vào Marketplace trong khi vốn tên có là FC-CIRCA
-    END AS customer_report_category 
+    END AS customer_report_category,
+    dedup_customer.scope  AS business_scope
+
 FROM 
     ${dedup.dedup(source.silver + `.marketplace_prd_customer_customer`,'*')} dedup_customer
 
