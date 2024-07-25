@@ -102,8 +102,8 @@ post_operations {
       `
       -- Bước thực hiện add primary key, nhưng chỉ trong lần đầu full-refresh, nếu thực hiện incremental sau thì k cần làm gì
       ALTER TABLE ${self()} 
-        ADD PRIMARY KEY (order_id) NOT ENFORCED
-        -- ADD FOREIGN KEY(customer_id) references ${source.ref}.dim_customer(customer_id) NOT ENFORCED
+        ADD PRIMARY KEY (order_id) NOT ENFORCED,
+        ADD FOREIGN KEY(customer_id) references \`${source.ref}.dim_customer\` (customer_id) NOT ENFORCED;
       `
     )
   }
