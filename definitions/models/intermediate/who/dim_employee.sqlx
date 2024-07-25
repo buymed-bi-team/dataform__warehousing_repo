@@ -1,0 +1,46 @@
+config {
+    type: "table",
+    name: "dim_employee",
+    assertions: {
+        uniqueKey: ["employee_id"],
+        nonNull: ["employee_status","fullname"]
+    },
+    description:"Employee table within VN branch | PIC: minh.luu; model type: table; schedule: 0h00\nSource: platform_human_resource_prd_employee_employee_info",
+    columns: {
+        employee_id:"The unique identifier for the employee. This ID is branch_account_id field within the user_branch_infos JSON array",
+        email:"The email address of the employee",
+        fullname: " The full name of the employee",
+        department: "department of employee",
+        job_title: "employee position",
+        employee_status: "The current employment status of the employee. This indicates whether the employee is ACTIVE, TERMINATED"
+    },
+    tags: ["0h00"]
+}
+
+WITH dedup_human_resource AS ${dedup.dedup(
+    source.silver + `.platform_human_resource_prd_employee_employee_info`,
+    `               
+    email,
+    full_name as fullname,
+    status as employee_status,
+    employee_department as department,
+    employee_position as job_title,
+    user_branch_infos
+    `
+)}
+
+SELECT 
+    CAST(json_value(branch.branch_account_id) AS INTEGER) AS employee_id,
+    email,
+    fullname,
+    department,
+    job_title,
+    employee_status
+FROM dedup_human_resource,
+    UNNEST(JSON_EXTRACT_ARRAY(user_branch_infos)) as branch
+WHERE JSON_VALUE(branch,'$.branch') LIKE "VN"
+AND NOT REGEXP_CONTAINS(UPPER(fullname),"TEST|DEMO|/[TECH/]|AP CHECKL")
+
+post_operations {
+    ALTER TABLE ${self()} ADD PRIMARY KEY (employee_id) NOT ENFORCED;
+}

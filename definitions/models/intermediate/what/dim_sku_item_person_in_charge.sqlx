@@ -1,0 +1,46 @@
+config {
+    type: "view",
+    description: "Source: seller_prd_purchasing_pic, where object_type is SKU | PIC: dong.le",
+    name: "dim_sku_item_person_in_charge",
+    columns: {
+      sku_code: "unique sku identifier",
+      fc_code: "warehouse code",
+      pic_purchase_id: "PIC account ID for purchasing",
+      pic_purchase_name: "full name of the PIC for purchasing",
+      pic_category_id: "CIC account ID for category management",
+      pic_category_name: "full name of the PIC for category management"
+    }
+}
+
+WITH
+  dedup_pic AS ${dedup.dedup(
+  source.silver + `.seller_prd_purchasing_pic`,
+  "object_code, object_type, warehouse_code, pic_account_id, cic_account_id"
+)}
+
+, ranked_data AS (
+  SELECT
+    p.object_code AS sku_code,
+    p.warehouse_code AS fc_code,
+    p.pic_account_id AS pic_purchase_id,
+    pic.fullname AS pic_purchase_name,
+    COALESCE(seller_pic.cic_account_id, p.cic_account_id) AS pic_category_id,
+    COALESCE(seller_cic.fullname, cic.fullname) AS pic_category_name,
+    ROW_NUMBER() OVER (PARTITION BY p.object_code, p.warehouse_code ORDER BY p.object_code, p.warehouse_code) AS rn
+  FROM dedup_pic p
+  LEFT JOIN ${ref("dim_employee")} pic ON p.pic_account_id = pic.employee_id
+  LEFT JOIN ${ref("dim_employee")} cic ON p.cic_account_id = cic.employee_id
+  LEFT JOIN ${ref("dim_sku_item_fv_vendor")} v ON p.object_code = v.sku_code AND p.warehouse_code = v.fc_code
+  LEFT JOIN dedup_pic seller_pic ON v.vendor_code = seller_pic.object_code AND seller_pic.object_type = "VENDOR"
+  LEFT JOIN ${ref("dim_employee")} seller_cic ON seller_pic.cic_account_id = seller_cic.employee_id
+  WHERE p.object_type = "SKU"
+)
+SELECT
+  sku_code,
+  fc_code,
+  pic_purchase_id,
+  pic_purchase_name,
+  pic_category_id,
+  pic_category_name
+FROM ranked_data
+WHERE rn = 1

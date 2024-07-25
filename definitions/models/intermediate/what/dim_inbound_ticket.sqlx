@@ -1,0 +1,56 @@
+config {
+    type: "incremental",
+    protected: true,
+    description: " Source: warehouse_prd_inbound_inbound_ticket | Schedule: 12am, daily | PIC: dong.le",
+    name: "dim_inbound_ticket",
+    tags: ["0h00"],
+    columns: {
+        inbound_code: "Unique identifier for each inbound ticket",
+        po_code: "Reference for the related purchase order",
+        order_type: "Classifies orders as 'PO', 'PGH', 'TO' based on external_type",
+        inbound_type: "Classifies orders as 'PURCHASE' or 'TRANSFER' based on external_type",
+        created_time: "Already converted to Asia/HCMC timezone",
+        status: "Status of the inbound ticket"
+    },
+    bigquery: {
+        partitionBy: "DATE(created_time)",
+    }
+}
+
+WITH
+  dedup_inbound_ticket AS ${dedup.dedup(
+  source.silver + `.warehouse_prd_inbound_inbound_ticket`,
+  "code, po_code, external_type, created_time"
+)}
+
+SELECT
+  i.code as inbound_code,
+  i.po_code,
+  case when i.external_type = 'PURCHASE_SYS' then 'PO'
+      when i.external_type = 'SELLER' then 'PGH'
+      when i.external_type = 'TRANSFER' then 'TO'   
+      else 'OTHER'
+  end as order_type,
+  case when i.external_type = 'PURCHASE_SYS' then 'PURCHASE'
+      when i.external_type = 'SELLER' then 'PURCHASE'
+      when i.external_type = 'TRANSFER' then 'TRANSFER'   
+      else 'OTHER'
+  end as inbound_type,
+  DATETIME(i.created_time, 'Asia/Ho_Chi_Minh') as created_time,
+  
+FROM dedup_inbound_ticket i
+
+${
+  when(incremental(),
+   `WHERE DATETIME(created_time) > (SELECT MAX(created_time) FROM ${self()})`,
+   ``)
+}
+
+post_operations {                
+  ${
+    when(incremental(),
+      "",
+      `ALTER TABLE ${self()} ADD PRIMARY KEY (inbound_code) NOT ENFORCED;`
+    )
+  }
+}

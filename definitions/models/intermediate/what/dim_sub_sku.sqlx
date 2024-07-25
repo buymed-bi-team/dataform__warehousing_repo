@@ -1,0 +1,20 @@
+config {
+    type: "view",
+    description: "Source: marketplace_prd_product_v2_sku_merge. PIC: dong.le",
+    name: "dim_sub_sku",
+    columns: {
+    }
+}
+
+WITH
+  dedup_marketplace_sku AS ${dedup.dedup(
+  source.silver + `.marketplace_prd_product_v2_sku_merge`,
+  "sku, status, is_active, extra_props"
+)}
+
+SELECT
+  a.sku,
+  a.status,
+  a.is_active,
+  JSON_EXTRACT_SCALAR(a.extra_props, "$.demand_classification_code") as demand_classification_code
+FROM dedup_marketplace_sku a

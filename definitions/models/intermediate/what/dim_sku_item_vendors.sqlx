@@ -1,0 +1,29 @@
+config {
+    type: "view",
+    description: "Source: seller_prd_purchasing_sku_config | PIC: dong.le",
+    name: "dim_sku_item_vendors",
+    columns: {
+      sku_code: "sku identifier", fc_code: "warehouse code", purchaser_code: "code of the purchaser",
+      vendor_code: "unique identifier of associated vendor for the product",
+      priority: "score indicating vendor favoriteness; lower values indicate higher priority"
+    }
+}
+
+WITH
+  dedup_marketplace_sku AS ${dedup.dedup(
+  source.silver + `.seller_prd_purchasing_sku_config`,
+  "sku, seller_code, product_id, purchaser_code, vendors"
+)}
+
+SELECT
+  s.sku AS sku_code,
+  f.fc_code,
+  s.purchaser_code,
+  JSON_VALUE(vendor, "$.vendor_code") AS vendor_code,
+  JSON_VALUE(vendor, "$.priority") AS vendor_priority
+FROM
+  dedup_marketplace_sku s
+LEFT JOIN
+  UNNEST(JSON_EXTRACT_ARRAY(s.vendors)) AS vendor
+LEFT JOIN
+  ${ref("dim_fc")} f ON s.purchaser_code = f.purchaser_code

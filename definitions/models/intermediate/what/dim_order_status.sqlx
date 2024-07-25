@@ -1,0 +1,65 @@
+config {
+    type: "table",
+    description: " PIC: minh.luu; model_type: table; schedule 0h00, 12h00",
+    name: "dim_order_status",
+    tags: ["0h00","12h00"],
+    columns: {
+        order_id : "Id của order",
+        CRM_status : "status trên hệ thống CRM",
+        WMS_status : "status trên hệ thống WMS",
+        ACCOUNTING_status : "status trên hệ thống ACCOUNTING"
+    }
+}
+/*
+TODO:
+    - stg_order_WMS have SO, RO, SOBD, SOHN in sale_order_code. Is it necessary to get it? Or the status has it's meaning
+    - Some WMS_status is null but CRM has completed, what is it mean?
+    - Accounting and WMS which one have first?
+
+
+    - Áp dụng SCD với những order trong nửa tháng trở lại đây
+*/ 
+
+WITH stg_order_CRM AS ${dedup.dedup(
+        source.silver + `.marketplace_prd_order_v2_order`,
+        "order_id,status as CRM_status"
+)}, 
+
+stg_order_WMS AS (
+    SELECT 
+        CAST( REGEXP_EXTRACT(sale_order_code, r'(\d+)') AS INT64 ) AS order_id, 
+        REGEXP_REPLACE(sale_order_code, r'\d+', '') AS warehouse_order_code,
+        status as WMS_status
+    FROM ${dedup.dedup(
+        source.silver + `.warehouse_prd_core_sale_order`,
+        "sale_order_code,status"
+    )}
+),
+
+stg_order_ACCOUNTING AS (
+    SELECT order_id, status as ACCOUNTING_status
+    FROM ${dedup.dedup(
+        source.silver + `.accounting_prd_core_bill`,
+        "order_id,status"
+    )}
+)
+SELECT
+    a.order_id,
+    -- b.sale_order_code,
+    a.CRM_status,
+    b.WMS_status,
+    d.ACCOUNTING_status
+FROM stg_order_CRM a
+LEFT JOIN stg_order_WMS b
+    ON a.order_id = b.order_id
+LEFT JOIN stg_order_ACCOUNTING d
+    ON a.order_id = d.order_id
+
+post_operations {                
+  ${
+    when(incremental(),
+      "",
+      `ALTER TABLE ${self()} ADD PRIMARY KEY (order_id) NOT ENFORCED;`
+    )
+  }
+}

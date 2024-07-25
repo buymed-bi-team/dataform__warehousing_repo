@@ -1,0 +1,27 @@
+config {
+    type: "view",
+    description: "PIC: dong.le",
+    name: "dim_sku_item_pricing",
+    columns: {
+        inventory_price: "WHEN supplier_class = “EXTERNAL” THEN setting_price, WHEN supplier_class = “INTERNAL” THEN purchase_price"
+    }
+}
+
+WITH
+  dedup_marketplace_sku AS ${dedup.dedup(
+  source.silver + `.marketplace_prd_product_v2_sku_merge`,
+  "item_code, retail_price_value, purchase_price, seller_class"
+)}
+
+SELECT
+  s.item_code,
+  i.sku_fc_key,
+  s.retail_price_value as setting_price,
+  s.purchase_price,
+  CASE
+    WHEN s.seller_class = "EXTERNAL" THEN retail_price_value
+    WHEN s.seller_class = "INTERNAL" THEN purchase_price
+  END AS inventory_price,
+  s.seller_class as supplier_class
+FROM dedup_marketplace_sku s
+JOIN ${ref("dim_sku_item")} i ON s.item_code = i.item_code
