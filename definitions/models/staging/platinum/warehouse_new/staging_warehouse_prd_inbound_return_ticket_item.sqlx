@@ -3,7 +3,7 @@
 -- new
 config {
     type: "incremental",
-    name: "staging_warehouse_prd_inbound_return_ticket",
+    name: "staging_warehouse_prd_inbound_return_ticket_item",
     schema: "platinum_buymed_vn",
     assertions: {
         uniqueKey: 'mg_id',
@@ -20,7 +20,7 @@ pre_operations {
       `
       CREATE OR REPLACE TEMP TABLE range_created_time_table AS
       SELECT MIN(DATE(created_time)) AS min_created_date, MAX(DATE(created_time)) AS max_created_date
-      FROM ${source.silver}.warehouse_prd_inbound_return_ticket WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()});
+      FROM ${source.silver}.warehouse_prd_inbound_return_ticket_item WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()});
       `,
       ``
     )
@@ -30,7 +30,7 @@ pre_operations {
 SELECT
  *,
  date(created_time) as created_date
-FROM ${source.silver}.warehouse_prd_inbound_return_ticket o 
+FROM ${source.silver}.warehouse_prd_inbound_return_ticket_item o 
  ${
     when(incremental(), 
       `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) 
