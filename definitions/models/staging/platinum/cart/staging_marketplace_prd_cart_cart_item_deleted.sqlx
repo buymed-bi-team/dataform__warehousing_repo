@@ -25,7 +25,7 @@ SELECT
  *,
  date(created_time) as created_date
 FROM ${source.silver}.marketplace_prd_cart_cart_item_deleted o 
-  ${ when(incremental(), `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()})`)}
+  ${ when(incremental(), `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) and  mg_id not in (select mg_id from ${self()})` )}
   QUALIFY ROW_NUMBER() OVER (_window) = 1
   AND FIRST_VALUE(action) OVER (_window) <> 'd'
 WINDOW
@@ -38,7 +38,7 @@ WINDOW
     (action='d',3,
     IF
       (action='u',2,1)) DESC,
-    last_updated_time DESC)
+    last_updated_time DESC) 
 
 -- post_operations {
 --   ${
