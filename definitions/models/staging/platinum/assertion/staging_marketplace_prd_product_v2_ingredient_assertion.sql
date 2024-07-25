@@ -10,7 +10,7 @@ with count_silver as
          SELECT
              mg_id, action, synced_at, ingest_time, last_updated_time, created_time
          FROM
-             lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_product_v2_ingredient
+             ${source.silver}.marketplace_prd_product_v2_ingredient
          where ingest_time <= (select max(ingest_time) as max_ingested_time from ${ref("staging_marketplace_prd_product_v2_ingredient")})
          QUALIFY ROW_NUMBER() OVER(_window) = 1
              AND FIRST_VALUE(action) OVER(_window) <> "d"
