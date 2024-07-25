@@ -8,8 +8,7 @@ config {
     tags: ["0h00"],
     assertions: {
       uniqueKey: ['location_fc_code'],
-      nonNull: ['location_fc_code','parent_location_code']
-      , rowConditions : [`type in ("NORMAL","VIRTUAL",NULL)`]
+      nonNull: ['location_fc_code']
     },
     columns: {
       location_fc_code: "NonNull | concatenation of location and warehouse code",

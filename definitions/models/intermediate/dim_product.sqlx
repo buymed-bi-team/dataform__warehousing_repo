@@ -1,6 +1,6 @@
 config {
     type: "table",
-    description: " PIC: minh.luu; model_type: table; orchestration: 0h00 daily",
+    description: " PIC: minh.luu & dong.le; model_type: table; orchestration: 0h00 daily",
     name: "dim_product",
     tags: ["0h00"],
     assertions: {
@@ -16,6 +16,9 @@ config {
         volumes : "Volume information for the product",
         is_fragile: "Indicates whether the product is easily breakable",
         is_frozen : "Indicates whether the product requires freezing",
+        height: "Product height",
+        length: "Product length",
+        width: "Product width",
         product_report_category : "Category of the product based on certain criteria and logic: If owner_name contains '[Tech]', then 'TECH'; If owner_code is 'MARKETING', then 'MARKETING'; If owner_code is 'DENX', then 'DENX'; If unit or volumes is 'COMBO', then 'COMBO'; If product_name contains certain keywords, then 'PROMOTION'; Otherwise, 'NORMAL' "
     }
 }
@@ -40,7 +43,10 @@ WITH stg_product as ${dedup.dedup(
     unit,
     volumes,
     is_fragile,
-    is_frozen`,
+    is_frozen,
+    height,
+    length,
+    width`
 
 )}
 ,
@@ -60,6 +66,9 @@ SELECT
   volumes,
   IF(is_fragile = TRUE,"FRAGILE","NORMAL") is_fragile,
   IF(is_frozen = TRUE, "FROZEN","NORMAL") is_frozen,
+  height,
+  length,
+  width,
   CASE
     WHEN owner_name LIKE '%[Tech]%' THEN 'TECH'
     WHEN owner_code LIKE 'MARKETING' then 'MARKETING'

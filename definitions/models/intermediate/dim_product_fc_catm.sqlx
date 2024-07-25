@@ -27,6 +27,9 @@ unnest_product_catm AS (
 
 SELECT DISTINCT
   p.product_id,
+  p.height,
+  p.length,
+  p.width,
   f.fc_code,
   COALESCE(upc.fc_catm, upc2.catm) as catm
 FROM ${ref("dim_product")} p

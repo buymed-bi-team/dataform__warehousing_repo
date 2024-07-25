@@ -5,7 +5,7 @@ config {
 
 WITH unittest AS (
   SELECT
-    'E1A01A01' AS location_code, 'MEDIUM_GRAY' AS shelf_type, 'E1' AS zone_code, 'A01' AS shelf_code, 'A' AS shelf_level, '01' AS location_number, 'E1A01' AS layout_key, 'A01' AS location_key UNION ALL
+    'E1A01A01' AS location_code, 'MEDIUM_GRAY' AS shelf_type, 'E1' AS zone_key, 'A01' AS shelf_key, 'A' AS shelf_level, '01' AS location_number_key, 'E1A01' AS layout_key, 'A01' AS location_key UNION ALL
   SELECT
     'E1A01A02', 'MEDIUM_GRAY', 'E1', 'A01', 'A', '02', 'E1A01', 'A02' UNION ALL
   SELECT
@@ -29,14 +29,14 @@ WITH unittest AS (
 )
 
 SELECT 
-  DISTINCT t.*, h.location_code, h.shelf_type, h.zone_code, h.shelf_code, h.shelf_level, h.location_number, h.layout_key, h.location_key
+  DISTINCT t.*, h.location_code, h.shelf_type, h.zone_key, h.shelf_key, h.shelf_level, h.location_number_key, h.layout_key, h.location_key
 FROM ${ref(`dim_fc_location`)} h
 RIGHT JOIN unittest t ON h.location_code = t.location_code
 WHERE 
   t.shelf_type != h.shelf_type OR
-  t.zone_code != h.zone_code OR
-  t.shelf_code != h.shelf_code OR
+  t.zone_key != h.zone_key OR
+  t.shelf_key != h.shelf_key OR
   t.shelf_level != h.shelf_level OR
-  t.location_number != h.location_number OR
+  t.location_number_key != h.location_number_key OR
   t.layout_key != h.layout_key OR
   t.location_key != h.location_key
