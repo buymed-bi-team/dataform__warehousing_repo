@@ -16,31 +16,59 @@ config {
         customer_address: "Nullable",
         customer_report_category: "NonNull | Is one of TECH, TENDER, MARKETPLACE, or CIRCA? Category assigned to the customer based on specific conditions: TECH: If the customer's name contains keywords like 'TECH SELLER', 'TEST', 'TECH-QC', etc. TENDER: If the customer's tags contain 'TENDER'. MARKETPLACE: If the customer's tags contain 'TERMINATE_CIRCA' or as a default category. CIRCA: If the customer's tags contain 'CIRCA'.",
         business_scope: "Nullable | Null means UNKNOWN scope",
-        province_code: "", // expect là NonNull
-        district_code: "", // expect là NonNull
-        ward_code: "", // expect là NonNull
+        customer_location_code: "Nullable | if customer table doesn't has then get last order from dim_order"
     }
 }
 
+WITH stg_customer AS (
+    SELECT
+        dedup_customer.customer_id,
+        dedup_customer.name AS customer_name,
+        dedup_customer.email AS customer_email,
+        dedup_customer.address AS customer_address,
+        CASE
+            WHEN REGEXP_CONTAINS( UPPER(name), r'TECH SELLER|TEST|TECH-QC|TS-TECH|\[TECH\]|\(TECH\)|DEMO|QC|TECH MONITOR|TECH 2') THEN "TECH"
+            WHEN customer_id = 241098 THEN "CONSIGNMENT"
+            WHEN customer_id = 360299 THEN "OPV"
+            WHEN TO_JSON_STRING( dedup_customer.tags ) LIKE '%TENDER%' THEN 'TENDER'
+            WHEN TO_JSON_STRING( dedup_customer.tags ) LIKE '%\"TERMINATE_CIRCA\"%'  THEN 'MARKETPLACE'
+            WHEN TO_JSON_STRING( dedup_customer.tags ) LIKE '%CIRCA%'  THEN 'CIRCA' -- Một số terminate circa vẫn được gán nhãn là circa ví dụ customer_id in (252404,358259,369079)
+            ELSE 'MARKETPLACE' -- Một số order trong dim_order bị xếp loại vào Marketplace trong khi vốn tên có là FC-CIRCA
+        END AS customer_report_category,
+        dedup_customer.scope  AS business_scope,
+        CASE
+            WHEN province_code IS NOT NULL THEN province_code
+            WHEN district_code IS NOT NULL THEN district_code
+            WHEN ward_code IS NOT NULL THEN ward_code
+            ELSE NULL
+        END AS customer_location_code
+
+    FROM 
+        ${dedup.dedup(source.silver + `.marketplace_prd_customer_customer`,'*')} dedup_customer
+)
+, stg_customer_order AS (
+    SELECT 
+        customer_id,
+        ARRAY_AGG( customer_location_code ORDER BY created_time DESC)[0] AS customer_location_code
+    FROM ${ref(`dim_order_customer`)}  doc
+    LEFT JOIN ${ref(`dim_order_status`)} dos ON doc.order_id = dos.order_id
+    GROUP BY customer_id
+)
+
 SELECT
-    dedup_customer.customer_id,
-    dedup_customer.name AS customer_name,
-    dedup_customer.email AS customer_email,
-    dedup_customer.address AS customer_address,
+    stg_customer.* EXCEPT( customer_location_code),
+
     CASE
-        WHEN REGEXP_CONTAINS( UPPER(name), r'TECH SELLER|TEST|TECH-QC|TS-TECH|\[TECH\]|\(TECH\)|DEMO|QC|TECH MONITOR|TECH 2') THEN "TECH"
-        WHEN customer_id = 241098 THEN "CONSIGNMENT"
-        WHEN customer_id = 360299 THEN "OPV"
-        WHEN TO_JSON_STRING( dedup_customer.tags ) LIKE '%TENDER%' THEN 'TENDER'
-        WHEN TO_JSON_STRING( dedup_customer.tags ) LIKE '%\"TERMINATE_CIRCA\"%'  THEN 'MARKETPLACE'
-        WHEN TO_JSON_STRING( dedup_customer.tags ) LIKE '%CIRCA%'  THEN 'CIRCA' -- Một số terminate circa vẫn được gán nhãn là circa ví dụ customer_id in (252404,358259,369079)
-        ELSE 'MARKETPLACE' -- Một số order trong dim_order bị xếp loại vào Marketplace trong khi vốn tên có là FC-CIRCA
-    END AS customer_report_category,
-    dedup_customer.scope  AS business_scope
-
-FROM 
-    ${dedup.dedup(source.silver + `.marketplace_prd_customer_customer`,'*')} dedup_customer
-
+        WHEN dgl2.location_priority_level is null and dgl1.location_priority_level is null THEN NULL
+        WHEN dgl1.location_priority_level is null THEN dgl2.location_code
+        WHEN dgl2.location_priority_level is null THEN dgl1.location_code
+        WHEN dgl1.location_priority_level >= dgl2.location_priority_level THEN dgl1.location_code
+    END AS customer_location_code
+FROM
+    stg_customer
+LEFT JOIN stg_customer_order ON stg_customer.customer_id = stg_customer_order.customer_id
+LEFT JOIN ${ref(`dim_geo_location`)} dgl1 ON stg_customer.customer_location_code = dgl1.location_code
+LEFT JOIN ${ref(`dim_geo_location`)} dgl2 ON stg_customer_order.customer_location_code = dgl2.location_code
 
 
 post_operations {

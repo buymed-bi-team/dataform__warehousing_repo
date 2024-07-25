@@ -1,0 +1,10 @@
+config {
+  type: "assertion"
+}
+
+SELECT customer_id, province_code, district_code, ward_code
+FROM lakehouse-prod-394907._91738ee0a1da14ade8eb3b92de64944b6394c38d.anon90e0ab128994783c613692b0a583e2d693ea226ffbe3a13b176899908e4665c1
+WHERE
+    province_code is null
+    OR district_code is null
+    OR ward_code is null

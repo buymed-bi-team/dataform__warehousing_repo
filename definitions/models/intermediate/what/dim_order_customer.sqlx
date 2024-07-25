@@ -3,7 +3,7 @@ config {
     description: `PIC: minh.luu; model_type: incremental; Schedule: each 5 min from 9 to 18 and each 1h from 18 to 9 am
     Source:
       ${source.silver}.marketplace_prd_order_v2_order`,
-    name: "dim_order",
+    name: "dim_order_customer",
     assertions: {
         uniqueKey: ["order_id"],
         nonNull:["order_id"]
@@ -12,22 +12,16 @@ config {
     },
     tags: ["custom_5min_9to18","custom_1h_18to9","Weekend"],
     columns: {
-      order_id:"Unique identifier for each order",
-      created_time: "Timestamp indicating when the order was created. The time zone is set to 'Asia/Ho_Chi_Minh'",
-      confirmation_date: "order confirmation time",
-      order_channel: "Category of the order based on the tags and source.  'TENDER' if customer_tags contains 'TENDER', 'DISTRIBUTION' if source is 'brand-portal' or 'clinic-portal', 'CONSIGNMENT' if source is 'internal-portal','CIRCA' if customer_tags contains 'CIRCA', otherwise 'MARKETPLACE'",
-      province_code: "A standardized code used to identify provinces within a country",
-
+        order_id:"Unique identifier for each order",
+        customer_id: "",
+        location_code: "",
+        customer_location_code: ""
     },
     bigquery: {
       partitionBy: "DATE(created_time)"
     }
 }
--- 4.92 GB / day
 
--- Advance:
---  - Writing unit test
---  - Checking if any column can be change over time
 js {
   function choose_new(column_name){
     /*
@@ -44,12 +38,21 @@ WITH dedup_order_tbl as ${
     `
     order_id, 
     DATETIME(created_time, 'Asia/Ho_Chi_Minh') as created_time, 
-    confirmation_date, 
-    source, 
-    province_code, 
-    extra_props, 
-    TO_JSON_STRING(JSON_VALUE_ARRAY(extra_props, '$.customer_tags')) as customer_tags,
-    customer_id
+    customer_id,
+    CASE
+        WHEN province_code IS NOT NULL THEN province_code
+        WHEN district_code IS NOT NULL THEN district_code
+        WHEN ward_code IS NOT NULL THEN ward_code
+        WHEN region_code IS NOT NULL THEN region_code
+        ELSE NULL
+    END AS location_code,
+    CASE
+        WHEN customer_province_code IS NOT NULL THEN customer_province_code
+        WHEN customer_district_code IS NOT NULL THEN customer_district_code
+        WHEN customer_ward_code IS NOT NULL THEN customer_ward_code
+        WHEN customer_region_code IS NOT NULL THEN customer_region_code
+        ELSE NULL
+    END AS customer_location_code
     `,
     start_timestamp= when(incremental(),
               ` TIMESTAMP(current_datetime() - INTERVAL 2 DAY )`, // Nếu incremental thì mình chỉ lấy 3 ngày trở lại
@@ -57,36 +60,14 @@ WITH dedup_order_tbl as ${
                                                                   // Điều này giúp nâng performance cụ thể là 1.32GB thành 37MB mỗi lần chạy incremental
 )}
 
-,order_tbl as (
-  SELECT 
+SELECT 
     order_id,
     max(created_time) created_time,
-    ${choose_new(`confirmation_date`)},
-    ${choose_new(`source`)},
-    ${choose_new(`province_code`)},
-    ${choose_new(`customer_tags`)},
-    ${choose_new(`customer_id`)}
-  FROM
-    dedup_order_tbl
-  GROUP BY
-    order_id
-)
-
-SELECT
-  order_id,
-  created_time,
-  confirmation_date,
-  CASE
-    WHEN customer_tags LIKE '%TENDER%' THEN 'TENDER'
-    WHEN source in ('brand-portal', 'clinic-portal') THEN 'DISTRIBUTION'
-    WHEN source = 'internal-portal' THEN 'CONSIGNMENT' 
-    WHEN customer_id = 241098 THEN 'CONSIGNMENT'
-    WHEN customer_tags LIKE '%CIRCA%'  THEN 'CIRCA'
-    ELSE 'MARKETPLACE'
-  END AS order_channel,
-  province_code
+    ${choose_new(`customer_id`)},
+    ${choose_new(`location_code`)} ,
+    ${choose_new(`customer_location_code`)} 
 FROM
-  order_tbl
+    dedup_order_tbl
 ${
   when(incremental(),
    `
@@ -95,6 +76,8 @@ ${
    ``)
    
 }
+GROUP BY
+    order_id
 
 pre_operations {
   -- If user change order more than 5 minutes, incremental model will duplicate that order cause this model just
@@ -112,17 +95,19 @@ pre_operations {
   }
 }
 
-
 post_operations {                
   ${
     when(incremental(),
       "",
       `
       -- Bước thực hiện add primary key, nhưng chỉ trong lần đầu full-refresh, nếu thực hiện incremental sau thì k cần làm gì
-      ALTER TABLE ${self()} ADD PRIMARY KEY (order_id) NOT ENFORCED;
+      ALTER TABLE ${self()} 
+        ADD PRIMARY KEY (order_id) NOT ENFORCED
+        -- ADD FOREIGN KEY(customer_id) references ${source.ref}.dim_customer(customer_id) NOT ENFORCED
       `
     )
   }
 }
+
 
 
