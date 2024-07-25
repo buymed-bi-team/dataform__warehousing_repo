@@ -1,6 +1,10 @@
 config {
     type: "table",
-    description: " PIC: minh.luu & dong.le; model_type: table; orchestration: 0h00 daily",
+    description: `PIC: minh.luu & dong.le; model_type: table; orchestration: 0h00 daily
+    Source:
+      ${source.silver}.marketplace_prd_product_v2_product
+      ${source.silver}.seller_prd_core_seller
+    `,
     name: "dim_product",
     tags: ["0h00"],
     assertions: {
