@@ -11,24 +11,26 @@ config {
       nonNull: ['location_fc_code']
     },
     columns: {
-      location_fc_code: "concatenation of location and warehouse code",
-      location_code: "location identifier",
-      fc_code: "warehouse code",
-      type: "type of item",
-      shelf_type: "nullable | type of shelf",
-      width: "nullable | width of the shelf",
-      length: "nullable | length of the shelf",
-      height: "nullable | height of the shelf",
-      zone_code: "nonNull |zone code extracted from the first 2 characters of code or the entire code if shelf_type is null",
-      shelf_code: "shelf code extracted from characters 3 to 5 of code or the entire code if shelf_type is null",
-      shelf_level: "shelf level extracted from the 6th character of code or the entire code if shelf_type is null",
-      location_number: "location number extracted from the 7th character onward of code or the entire code if shelf_type is null",
-      parent_order: "parent order value",
-      parent_location_code: "last value in the parent order array"
+      location_fc_code: "NonNull | concatenation of location and warehouse code",
+      location_code: "NonNull | location identifier",
+      fc_code: "NonNull | warehouse code",
+      type: "Nullable | type of item",
+      shelf_type: "Nullable | type of shelf",
+      width: "Nullable | width of the shelf",
+      length: "Nullable | length of the shelf",
+      height: "Nullable | height of the shelf",
+      zone_key: "Nullable | The first 2,3 characters of Location_code or the entire code if shelf_type is null or null if location code contains 'TULANH' ",
+      shelf_key: "Nullable | The next 2,3 characters after zone_key of Location_code or the entire code if shelf_type is null or null if location code contains 'TULANH'",
+      shelf_level: "Nullable | The next 1,2 characters after shelf_key of Location_code or the entire code if shelf_type is null or null if location code contains 'TULANH'",
+      location_number_key: "Nullable | The final 1,2 character onward of code or the entire code if shelf_type is null or null if location code contains 'TULANH'",
+      parent_order: "NonNull | parent order value",
+      parent_location_code: "NonNull | last value in the parent order array",
+      location_key: `Nullable | Only exists for fc in BD \n | This is a concatenation of shelf level and location number key if not a pallet or hard_config. Otherwise, it is null.\n | pallet is true if shelf type in ("PA", "PALLET", "PALLET_3_SKU", "BIG_GROUND", "SMALL_GROUND", "GROUND_NI", "MEDIUM_GROUND") hard_config is True if zone_key is "I3" and shelves in ("A16", "A17", "A18", "A19", "A20"), otherwise false.`,
+      layout_key : `Nullable | Only exists for fc in BD \n | This is a concatenation of shelf level and location number key if not a pallet or hard_config. Otherwise, it is null.\n | for pallet and hard_config, please read location_key description`
     }
 }
 
-/*Check zone_code, Check layout_key, Check hard_config, Check Res, Check res_2, check self_key*/
+/*Check zone_key, Check layout_key, Check hard_config, Check Res, Check res_2, check self_key*/
 
 WITH
   dedup_inventory_location AS ${dedup.dedup(
@@ -39,46 +41,90 @@ WITH
 
 cte_main as (
   select 
-    a.warehouse_code
-    , a.location_code
-    from ${dedup.dedup(
-      source.silver + `.warehouse_prd_inventory_sku_location_merge`,
-      "warehouse_code, location_code, stock_quantity")} 
-      as a
+    warehouse_code, location_code
+    from ${dedup.dedup( source.silver + `.warehouse_prd_inventory_sku_location_merge`, "*")} a
     where a.warehouse_code IN ("HN", "BD", "DN") and a.location_code IS NOT NULL
     group by 1, 2
+),
+
+int_fc_location AS (
+  SELECT
+      CONCAT(m.location_code, "_", m.warehouse_code) as location_fc_code,
+      m.location_code as location_code,
+      m.warehouse_code as fc_code,
+      a.type,
+      a.shelf_type,
+      a.width,
+      a.length,
+      a.height,
+      CASE
+        WHEN a.shelf_type IS NULL THEN code
+        WHEN REGEXP_CONTAINS(code,"TULANH") then NULL
+        WHEN CHAR_LENGTH(code) BETWEEN 8 AND 10 THEN REGEXP_EXTRACT(code, r'^([A-Z]+[0-9]*)')
+        ELSE NULL
+        END AS zone_key,
+      CASE
+        WHEN a.shelf_type IS NULL THEN code
+        WHEN REGEXP_CONTAINS(code,"TULANH") then NULL
+        WHEN CHAR_LENGTH(code) BETWEEN 8 AND 10 THEN REGEXP_EXTRACT(code, r'^[A-Z]+[0-9]+([A-Z]+[0-9]+)')
+        ELSE NULL
+        END AS shelf_key, 
+      CASE
+        WHEN a.shelf_type IS NULL THEN code
+        WHEN REGEXP_CONTAINS(code,"TULANH") then NULL
+        WHEN CHAR_LENGTH(code) BETWEEN 8 AND 10 THEN REGEXP_EXTRACT(code, r'^[A-Z]+[0-9]+[A-Z]+[0-9]+([A-Z]+)[0-9]+')
+        ELSE NULL
+      END AS shelf_level, 
+      CASE
+        WHEN a.shelf_type IS NULL THEN code
+        WHEN REGEXP_CONTAINS(code,"TULANH") then NULL
+        WHEN CHAR_LENGTH(code) BETWEEN 8 AND 10 THEN REGEXP_EXTRACT(code, r'^[A-Z]+[0-9]+[A-Z]+[0-9]+[A-Z]+([0-9]+)')
+        ELSE NULL
+      END AS location_number_key,
+      a.parent_order,
+      json_value_array( a.parent_order )[offset(array_length(json_value_array( a.parent_order )) - 1)] as parent_location_code
+  FROM cte_main m
+  LEFT JOIN dedup_inventory_location a
+  ON m.warehouse_code = a.warehouse_code AND m.location_code = a.code
+  WHERE REGEXP_CONTAINS(m.location_code,"TECH") = FALSE
+  AND type in ("NORMAL","VIRTUAL",NULL)
+),
+
+int_fc_location_2 AS (
+
+  SELECT
+    * EXCEPT (parent_location_code),
+    CASE
+      WHEN parent_location_code IS NULL THEN 'WH-MAIN'
+      ELSE parent_location_code
+    END AS parent_location_code,
+    CASE
+      WHEN  shelf_type in ("PA", "PALLET", "PALLET_3_SKU", "BIG_GROUND", "SMALL_GROUND", "GROUND_NI", "MEDIUM_GROUND") THEN TRUE
+      ELSE FALSE
+    END AS is_pallet,
+    CASE
+      WHEN zone_key in ("I3")
+        AND shelf_key in ("A16", "A17", "A18", "A19", "A20")
+        THEN TRUE
+      ELSE FALSE
+    END AS hard_config
+  FROM int_fc_location
 )
 
-SELECT
-    CONCAT(m.location_code, "_", m.warehouse_code) as location_fc_code,
-    m.location_code as location_code,
-    m.warehouse_code as fc_code,
-    a.type,
-    a.shelf_type,
-    a.width,
-    a.length,
-    a.height,
-    case
-    when a.shelf_type is null then code
-    else SUBSTR(m.location_code, 1, 2) 
-    end AS zone_code
-    , case
-    when a.shelf_type is null then code
-    else SUBSTR(m.location_code, 3, 3)  
-    end AS shelf_code
-    , case
-    when a.shelf_type is null then code
-    else SUBSTR(m.location_code, 6, 1)  
-    end AS shelf_level
-    , case
-    when a.shelf_type is null then code
-    else SUBSTR(m.location_code, 7)  
-    end AS location_number,
-    a.parent_order,
-    json_value_array( a.parent_order )[offset(array_length(json_value_array( a.parent_order )) - 1)] as parent_location_code
-FROM cte_main m
-LEFT JOIN dedup_inventory_location a
-ON m.warehouse_code = a.warehouse_code AND m.location_code = a.code
+SELECT 
+  * EXCEPT(is_pallet, hard_config),
+  CASE 
+    WHEN fc_code LIKE "BD" AND ( is_pallet = TRUE OR hard_config = TRUE ) THEN location_code
+    WHEN fc_code LIKE "BD" THEN CONCAT( zone_key, shelf_key )
+    ELSE NULL
+  END AS layout_key,
+  CASE
+    WHEN fc_code LIKE "BD" AND ( is_pallet = TRUE OR hard_config = TRUE ) THEN NULL
+    WHEN fc_code LIKE "BD" THEN CONCAT( shelf_level, location_number_key )
+    ELSE NULL
+  END AS location_key
+FROM
+  int_fc_location_2
 
 post_operations {                
     ALTER TABLE ${self()} ADD PRIMARY KEY (location_fc_code) NOT ENFORCED;
