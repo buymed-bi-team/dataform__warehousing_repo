@@ -24,6 +24,8 @@ SELECT
     dedup_customer.address AS customer_address,
     CASE
         WHEN REGEXP_CONTAINS( UPPER(name), r'TECH SELLER|TEST|TECH-QC|TS-TECH|\[TECH\]|\(TECH\)|DEMO|QC|TECH MONITOR|TECH 2') THEN "TECH"
+        WHEN customer_id = 241098 THEN "CONSIGNMENT"
+        WHEN customer_id = 360299 THEN "OPV"
         WHEN TO_JSON_STRING( dedup_customer.tags ) LIKE '%TENDER%' THEN 'TENDER'
         WHEN TO_JSON_STRING( dedup_customer.tags ) LIKE '%\"TERMINATE_CIRCA\"%'  THEN 'MARKETPLACE'
         WHEN TO_JSON_STRING( dedup_customer.tags ) LIKE '%CIRCA%'  THEN 'CIRCA' -- Một số terminate circa vẫn được gán nhãn là circa ví dụ customer_id in (252404,358259,369079)
