@@ -13,6 +13,8 @@ config {
 SELECT DISTINCT
     a.sku as sku_code,
     a.warehouse_code as fc_code,
+    aging_put_days,
+    aging_pick_days,
     DATETIME(b.latest_put_time, 'Asia/Ho_Chi_Minh') latest_put_time,
     DATETIME(c.latest_pick_time, 'Asia/Ho_Chi_Minh') latest_pick_time,
     CASE
