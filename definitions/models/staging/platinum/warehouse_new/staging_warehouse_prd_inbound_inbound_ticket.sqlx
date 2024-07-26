@@ -29,7 +29,7 @@ pre_operations {
 SELECT
  *,
  date(created_time) as created_date
-FROM ${source.silver}.marketplace_prd_product_v2_product o 
+FROM ${source.silver}.warehouse_prd_inbound_inbound_ticket o 
   ${
     when(incremental(), 
       `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) 
