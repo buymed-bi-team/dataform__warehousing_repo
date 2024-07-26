@@ -4,16 +4,16 @@ config {
     Source:
         ${source.silver}.monitoring_prd_collector_user_stats_*`,
     columns: {
-        event: "NonNull |",
+        event: `NonNull | IN ("SUGGESTION_SELLING_UPDATE_PRODUCT", "SUGGESTION_SELLING_CREATE_PRODUCT", "SUGGESTION_SELLING_CTA_CLICK") `,
         account_id: "NonNull |",
-        account_type: "NonNull |",
-        created_time: "NonNull |",
+        account_type: "NonNull | IN (SELLER, USER)",
+        created_time: "NonNull | Started time: 2024-06-28",
         product_id: "NonNull |",
         product_code: "NonNull |",
-        product_status: "Nullable | ",
+        product_status: "Nullable | Null means Unknown ",
         seller_code: "NonNull |",
-        has_ever_sold: "Nullable |",
-        action_key: "NonNull |",
+        has_ever_sold: "Nullable | Null means Unknown", // product has_ever_sold is Null still exists in order_v2_order_item
+        action_key: "Nullable | IN ('INITIAL_UPDATE_PRODUCT','INITIAL_LISTING_PRODUCT','CONFIRM_UPDATE_PRODUCT','CONFIRM_LISTING_PRODUCT')",
         sequence_id : "NonNull | the dense ranking sorted by the group (seller code, created date, product_code) and ordered ascending by created_time",
     }
 }
