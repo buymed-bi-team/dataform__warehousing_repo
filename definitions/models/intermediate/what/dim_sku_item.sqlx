@@ -112,7 +112,9 @@ cte_sku_item AS (
 SELECT
   a.*,
   b.latest_put_time,
+  b.aging_put_days,
   b.latest_pick_time,
+  b.aging_pick_days,
   b.note,
   b.type_stock_aging,
   c.catm as catm_group,
