@@ -1,0 +1,64 @@
+config {
+    type: "view",
+    description: `PIC: minh.luu
+    Source:
+        ${source.silver}.marketplace_prd_order_v2_order`
+}
+
+js {
+  function choose_new(column_name){
+    /*
+      Because in real time, we allow user to fix order, this make order_id have 2 created time
+      So that to ensure order_id is unique, we will group by it and get all new data along with new created_time
+    */
+    return `ARRAY_AGG( ${column_name} ORDER BY created_time DESC)[0] AS ${column_name}`
+  }
+}
+
+
+WITH 
+    dedup_order_tbl AS ${dedup.dedup(source.silver + `.marketplace_prd_order_v2_order`,`
+        order_id, 
+        customer_id,
+        ward_code,
+        district_code,
+        province_code,
+
+        customer_ward_code,
+        customer_district_code,
+        customer_province_code,
+
+        JSON_VALUE_ARRAY(flatten_location,'\$') flatten_location ,
+        ARRAY_LENGTH(JSON_VALUE_ARRAY(flatten_location,'\$')) flatten_location_len,
+        customer_shipping_address,
+        created_time
+    `)},
+    order_tbl AS (
+        SELECT
+            *,
+            IF(flatten_location_len >=1, ARRAY_REVERSE(flatten_location)[0], NULL) AS ward_code_json,
+            IF(flatten_location_len >=2, ARRAY_REVERSE(flatten_location)[1], NULL) AS district_code_json,
+            IF(flatten_location_len = 3, ARRAY_REVERSE(flatten_location)[2], NULL) AS province_code_json
+        FROM dedup_order_tbl
+    )
+
+SELECT
+    customer_id,
+
+    ${choose_new(`ward_code`)} ,
+    ${choose_new(`district_code`)} ,
+    ${choose_new(`province_code`)} ,
+    
+    ${choose_new(`customer_ward_code`)} ,
+    ${choose_new(`customer_district_code`)} ,
+    ${choose_new(`customer_province_code`)} ,
+
+    ${choose_new(`ward_code_json`)} ,
+    ${choose_new(`district_code_json`)} ,
+    ${choose_new(`province_code_json`)} ,
+
+    ARRAY_AGG( customer_shipping_address ORDER BY created_time DESC)[0] AS customer_address
+    
+FROM 
+    order_tbl
+GROUP BY customer_id

@@ -7,7 +7,7 @@ config {
         nonNull: ["customer_id"],
         uniqueKey: ["customer_id"]
     },
-    name: "dim_customer",
+    name: "dim_customer_test",
     tags: ["0h00"],
     columns: {
         customer_id: "",
@@ -42,10 +42,13 @@ WITH stg_customer AS (
         --     WHEN province_code IS NOT NULL THEN province_code
         --     ELSE NULL
         -- END AS customer_location_code
-        -- ward_code AS customer_ward_code,
-        -- district_code AS customer_district_code,
-        -- province_code AS customer_province_code,
-        province_code AS customer_province_code
+        ward_code AS customer_ward_code,
+        district_code AS customer_district_code,
+        province_code AS customer_province_code,
+
+        ward_name AS customer_ward_name,
+        district_code_name AS customer_district_name,
+        province_code_name AS customer_province_name
 
 
     FROM 
@@ -61,35 +64,57 @@ WITH stg_customer AS (
 
     SELECT
         customer_id,
-        ARRAY_AGG( customer_province_code ORDER BY created_time DESC)[0] AS customer_province_code
+        ARRAY_AGG( customer_ward_code ORDER BY created_time DESC)[0] AS customer_ward_code,
+        ARRAY_AGG( customer_ward_name ORDER BY created_time DESC)[0] AS customer_ward_name,
+        ARRAY_AGG( customer_district_code ORDER BY created_time DESC)[0] AS customer_district_code,
+        ARRAY_AGG( customer_district_name ORDER BY created_time DESC)[0] AS customer_district_name,
+        ARRAY_AGG( customer_province_code ORDER BY created_time DESC)[0] AS customer_province_code,
+        ARRAY_AGG( customer_province_name ORDER BY created_time DESC)[0] AS customer_province_name
+
     FROM ${source.silver}.marketplace_prd_order_v2_order
     GROUP BY customer_id
 )
 
-SELECT
-    stg_customer.* EXCEPT( customer_province_code),
+js {
+    function when_case(column_name){
+        return `WHEN ${column_name} IS NOT NULL AND ${column_name} NOT LIKE '0' THEN ${column_name}`
+    }
+}
 
-    -- CASE
-    --     WHEN dgl2.location_priority_level is null and dgl1.location_priority_level is null THEN NULL
-    --     WHEN dgl1.location_priority_level is null THEN dgl2.location_code
-    --     WHEN dgl2.location_priority_level is null THEN dgl1.location_code
-    --     WHEN dgl1.location_priority_level >= dgl2.location_priority_level THEN dgl1.location_code
-    -- END AS customer_location_code,
-    -- stg_customer.customer_location_code,
-    -- stg_customer_order.customer_location_code
+SELECT
+    c.customer_id,
+
     CASE
-        WHEN stg_customer.customer_province_code is NULL then stg_customer_order.customer_province_code
-        ELSE stg_customer.customer_province_code
-    END AS customer_province_code
-    -- stg_customer.customer_province_code,
-    -- stg_customer_order.customer_province_code
+        ${when_case(`c.customer_ward_code     `)}
+        ${when_case(`co.customer_ward_code    `)}
+        ${when_case(`c.customer_district_code `)}
+        ${when_case(`co.customer_district_code`)}
+        ${when_case(`c.customer_province_code `)}
+        ${when_case(`co.customer_province_code`)}
+        ELSE NULL
+    END AS customer_location_code,
+
+    c.customer_ward_code as c_ward_code,
+    co.customer_ward_code as co_ward_code,
+    c.customer_district_code as c_district_code,
+    co.customer_district_code as co_district_code,
+    c.customer_province_code as c_province_code,
+    co.customer_province_code as co_province_code,
+
+    c.customer_ward_name as c_ward_name,
+    co.customer_ward_name as co_ward_name,
+    c.customer_district_name as c_district_name,
+    co.customer_district_name as co_district_name,
+    c.customer_province_name as c_province_name,
+    co.customer_province_name as co_province_name
+
 FROM
-    stg_customer
-LEFT JOIN stg_customer_order ON stg_customer.customer_id = stg_customer_order.customer_id
+    stg_customer c
+LEFT JOIN stg_customer_order co ON c.customer_id = co.customer_id
 -- LEFT JOIN ${ref(`dim_geo_location`)} dgl1 ON stg_customer.customer_location_code = dgl1.location_code
 -- LEFT JOIN ${ref(`dim_geo_location`)} dgl2 ON stg_customer_order.customer_location_code = dgl2.location_code
 
 
-post_operations {
-    ALTER TABLE ${self()} ADD PRIMARY KEY (customer_id) NOT ENFORCED;
-}
+-- post_operations {
+--     ALTER TABLE ${self()} ADD PRIMARY KEY (customer_id) NOT ENFORCED;
+-- }

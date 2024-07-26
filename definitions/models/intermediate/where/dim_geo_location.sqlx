@@ -76,12 +76,12 @@ SELECT
     a.location_code,
     a.location_name,
     a.location_class,
-    CASE
-        WHEN a.location_class LIKE "PROVINCE" THEN 4
-        WHEN a.location_class LIKE "DISTRINCT" THEN 3
-        WHEN a.location_class LIKE "WARD" THEN 2
-        ELSE 1
-    END AS location_priority_level,
+    -- CASE
+    --     WHEN a.location_class LIKE "WARD"  THEN 4
+    --     WHEN a.location_class LIKE "DISTRINCT" THEN 3
+    --     WHEN a.location_class LIKE "PROVINCE" THEN 2
+    --     ELSE 1
+    -- END AS location_priority_level,
     a.parent_location_code,
     TO_JSON(ARRAY_AGG( b.location_code )) as child_location_code
 FROM int_location a

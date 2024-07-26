@@ -1,0 +1,24 @@
+config {
+    type: "view",
+    description: `PIC: minh.luu
+    Source:
+        ${source.silver}.marketplace_prd_customer_customer`
+}
+
+SELECT
+    dedup_customer.customer_id,
+
+    dedup_customer.address AS customer_address,
+
+    -- CASE
+    --     WHEN ward_code IS NOT NULL THEN ward_code
+    --     WHEN district_code IS NOT NULL THEN district_code
+    --     WHEN province_code IS NOT NULL THEN province_code
+    --     ELSE NULL
+    -- END AS customer_location_code
+    ward_code AS customer_ward_code,
+    district_code AS customer_district_code,
+    province_code AS customer_province_code
+FROM 
+    ${dedup.dedup(source.silver + `.marketplace_prd_customer_customer`,'*')} dedup_customer
+

@@ -1,0 +1,36 @@
+config {
+    type: "view",
+    description: `PIC: minh.luu`
+}
+
+js {
+    function to_geo_location_structure(  column_name, table_name ) {
+        return `
+            SELECT ${column_name}_code, upper( \'${column_name}\' ) as location_class, customer_address,\'${table_name}\' as source
+            FROM ${source.ref}.${table_name}
+        `
+    }
+}
+js {
+    function to_geo_location_structure_for_json(  column_name, table_name ) {
+        return `
+            SELECT ${column_name}_code_json, upper( \'${column_name}\' ) as location_class, customer_address, \'${table_name}  JSON \' as source
+            FROM ${source.ref}.${table_name}
+        `
+    }
+}
+
+
+${to_geo_location_structure( 'customer_ward','staging_customer_location')}
+UNION ALL ${to_geo_location_structure( 'customer_district','staging_customer_location')}
+UNION ALL ${to_geo_location_structure( 'customer_province','staging_customer_location')}
+
+UNION ALL ${to_geo_location_structure( 'customer_ward','staging_customer_location_order')}
+UNION ALL ${to_geo_location_structure( 'customer_district','staging_customer_location_order')}
+UNION ALL ${to_geo_location_structure( 'customer_province','staging_customer_location_order')}
+
+UNION ALL ${to_geo_location_structure_for_json( 'ward','staging_customer_location_order')}
+UNION ALL ${to_geo_location_structure_for_json( 'district','staging_customer_location_order')}
+UNION ALL ${to_geo_location_structure_for_json( 'province','staging_customer_location_order')}
+
+
