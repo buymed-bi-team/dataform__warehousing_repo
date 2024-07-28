@@ -15,6 +15,7 @@ config {
   SELECT
     JSON_VALUE(extra_props, "$.sku") AS sku,
     JSON_VALUE(extra_props, "$.item_code") AS item_code,
+    JSON_VALUE(next, "$.seller_class") AS seller_class,
     created_time,
     JSON_VALUE(next, "$.status") AS status,
     cast(JSON_VALUE(next, "$.is_active") as boolean ) as is_active,
