@@ -10,7 +10,8 @@ config {
     sku_fc_key: "concatenation of sku key and warehouse code",
     sku_code: "unique sku identifier",
     fc_code: "warehouse code",
-    outgoing_quantity: "quantity of order quantity from pick ticket item"
+    outgoing_quantity: "order quantity from pick ticket item",
+    reserved_quantity: "quantity from pick ticket item"
   },
   bigquery: {
     partitionBy: "created_date",
