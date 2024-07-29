@@ -10,7 +10,8 @@ config {
     sku_fc_key: "concatenation of sku key and warehouse code",
     sku_code: "unique sku identifier",
     fc_code: "warehouse code",
-    outgoing_quantity: "quantity of order quantity from pick ticket item"
+    outgoing_quantity: "order quantity from pick ticket item",
+    reserved_quantity: "quantity from pick ticket item"
   },
   bigquery: {
     partitionBy: "created_date",
@@ -25,7 +26,7 @@ WITH dedup_pick_ticket AS ${dedup.dedup(
 
 dedup_pick_ticket_item AS ${dedup.dedup(
   source.silver + `.warehouse_prd_picking_pick_ticket_item`,
-  "ticket_id, sku as sku_code, order_quantity",
+  "ticket_id, sku as sku_code, order_quantity, quantity",
   "timestamp(date_sub(current_date(),interval 5 day))"
 )}
 
@@ -38,6 +39,7 @@ SELECT
     , b.sku_code
     , a.fc_code
     , b.order_quantity as outgoing_quantity
+    , b.quantity as reserved_quantity
 FROM dedup_pick_ticket_item as b
 LEFT JOIN dedup_pick_ticket as a on b.ticket_id = a.ticket_id
 LEFT JOIN ${ref("dim_sku")} c on b.sku_code = c.sku_code
