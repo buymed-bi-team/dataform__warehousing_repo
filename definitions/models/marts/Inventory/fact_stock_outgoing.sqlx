@@ -32,6 +32,7 @@ dedup_pick_ticket_item AS ${dedup.dedup(
 
 SELECT 
     a.so as so_code
+    , b.ticket_id
     , a.status as ob_status
     , DATE(a.created_time, "Asia/Ho_Chi_Minh") as created_date
     , DATETIME(a.created_time, "Asia/Ho_Chi_Minh") as created_time
