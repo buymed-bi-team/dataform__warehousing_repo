@@ -1,0 +1,83 @@
+config {
+    type: "incremental", // table , incremental
+    name: "example_incremental",
+    description: `PIC: <name> , model_type: incremental ; schedule: hourly
+    Source:
+        ${source.silver}.<table_name>
+        ${source.silver}.<table2_name>`,
+    columns:{
+        ele_id: "NonNull | <more description if required> | <When it is reference column from silver or platinum, you can write which source here>",
+        ele_name: "Nullable | <Null Reason> | <more desciption if required>",
+        current_datetime: "NonNull | Datetime is in +7 timezone",
+        Logic_column : "Nullable | Reason for this column | if a = b then Wrong, if a = a then Right, else Null",
+        Nullable_Column : "Nullable | < When is it Null? > ",
+        Source_insure_NonNull : "NonNull | <more desciption if required>",
+        NonNull_Column : "NonNull | <more desciption if required>"
+    },
+    assertions: {
+        // guaranteed columns: primary key, Source_insure_NonNull
+        uniqueKey : "ele_id",
+        nonNull : ("ele_id" , "Source_insure_NonNull")
+    }
+}
+
+pre_operations {
+  -- Because some system have duplicate record except created_time, such as order allow user to cancel, fix order in 30 minutes
+  -- So that, in silver, there are 2 different mg_id with same order_id in small time, that will make incremental table broken
+  -- if we update this table in real-time
+  -- To solve this, we will first remove the old data in 1 DAY, then add new data. This will ensure order_id will have
+  -- new record
+  ${
+    when(
+      incremental(),
+      `
+      DELETE ${self()}
+      WHERE created_time > CURRENT_DATETIME("+7") - INTERVAL 1 DAY 
+      `,
+      ``
+    )
+  }
+}
+
+
+WITH 
+    dedup_table AS (
+    SELECT 
+        customer_id,
+        flatten_location
+    FROM ${ref(`staging_marketplace_prd_cart_cart`)}
+    ${
+        when(
+            incremental(),
+            `WHERE created_time > CURRENT_DATETIME("+7") - INTERVAL 2 DAY`
+        )
+    }
+)
+
+SELECT
+    "1b2c" AS ele_id,
+    "Hello World" AS ele_name,
+    CURRENT_DATETIME("+7") AS current_datetime,
+    CASE
+        WHEN "a" = "b" THEN "WRONG"
+        WHEN "a" = "a" THEN "RIGHT"
+        ELSE NULL
+    END AS Logic_column,
+    NULL AS Nullable_Column,
+    "NonNull" AS Source_insure_NonNull,
+    CASE
+        WHEN "Nullable_Column" IS NOT NULL THEN "Column_value"
+        ELSE "Default_Value"
+    END AS NonNull_Column
+
+post_operations { 
+    ${
+        when(incremental()),
+        '',
+        `    
+        ALTER TABLE ${self()} 
+            ADD PRIMARY KEY (ele_id) NOT ENFORCED,
+            ALTER COLUMN NonNull_Column SET DEFAULT "Default_Value";
+        `
+    }
+}
