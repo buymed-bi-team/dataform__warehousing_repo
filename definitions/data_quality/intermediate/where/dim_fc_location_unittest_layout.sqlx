@@ -3,6 +3,21 @@ config {
   tags: "weekly_assertion"
 }
 
+/*
+    Columns: location_code, shelf_type, zone_key, shelf_key, shelf_level, location_number_key, layout_key, location_key
+    What is the case to test:
+        There are several columns that extract from location_code.
+        The stituation are sometime location_code are 8,9,10 characters
+        so that some columns have many case
+
+    Reference:
+        Jira: https://buymed.atlassian.net/browse/DATA-1979
+        Jira: 
+        Dashboard: 
+        
+*/
+
+
 WITH unittest AS (
   SELECT
     'E1A01A01' AS location_code_test, 'MEDIUM_GRAY' AS shelf_type_test, 'E1' AS zone_key_test, 'A01' AS shelf_key_test, 'A' AS shelf_level_test, '01' AS location_number_key_test, 'E1A01' AS layout_key_test, 'A01' AS location_key_test UNION ALL
