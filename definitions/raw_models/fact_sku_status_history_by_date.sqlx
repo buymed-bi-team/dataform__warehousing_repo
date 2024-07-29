@@ -45,7 +45,8 @@ sku_status AS (
     END AS end_at_custom,
     end_at,
     status,
-    sales_region_code
+    sales_region_code,
+    seller_class
     -- , active
   FROM (
     SELECT
@@ -54,13 +55,15 @@ sku_status AS (
       created_time AS start_at,
       LEAD(created_time) OVER (PARTITION BY ss.sku, item_code, b.region_code ORDER BY created_time ASC) AS end_at,
       status
-      , b.region_code AS sales_region_code
+      , b.region_code AS sales_region_code,
+      a.seller_class
       -- ,
       -- CASE WHEN status = "OUT_OF_STOCK" THEN "OFF"
       -- ELSE "ON"
       -- END AS active
     FROM status_history_location ss
     LEFT JOIN gold_buymed_vn.dim_sales_region_service_area AS b ON b.service_area_code = ss.location_code
+    LEFT JOIN gold_buymed_vn.adhoc_pm_master_sku a on ss.item_code = a.sub_sku_code
   ) a
 ),
 
@@ -76,6 +79,18 @@ sku_list AS (
   QUALIFY ROW_NUMBER() OVER (PARTITION BY ss.item_code, sales_region_code) = 1
 ),
 
+previous_item_status AS (
+  SELECT 
+    CONCAT(SPLIT(item_code, '.')[SAFE_ORDINAL(1)], '.', SPLIT(item_code, '.')[SAFE_ORDINAL(2)]) AS previous_item_code,
+    sku,
+    status as previous_external_status,
+    start_at,
+    end_at,
+    end_at_custom,
+    sales_region_code
+  FROM sku_status
+  WHERE SPLIT(item_code, '.')[SAFE_ORDINAL(3)] = "1"  and seller_class = "EXTERNAL"
+),
 -- generate 3 months date for each item_code
 sku_date AS (
   SELECT *
@@ -94,6 +109,7 @@ fill_backwwark_value AS (
     DATETIME(TIMESTAMP(CURRENT_DATETIME()), 'Asia/Ho_Chi_Minh') AS last_refreshed_at,
     sd.sku,
     sd.date,
+    FIRST_VALUE(ss.seller_class IGNORE NULLS) OVER (partition by sd.sub_sku_sales_region_code ORDER BY sd.date ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS seller_class,
     DATETIME(ss.start_at, 'Asia/Ho_Chi_Minh') AS start_at,
     DATETIME(ss.end_at, 'Asia/Ho_Chi_Minh') AS end_at,
     DATETIME(ss.end_at_custom, 'Asia/Ho_Chi_Minh') AS end_at_custom,
@@ -139,11 +155,14 @@ select
     , c.sales_region_code_bf as sales_region_code
     , c.sub_sku_sales_region_code
     , c.start_at_v2
-    , c.start_at
+    , c.start_at,
+      c.seller_class
     , case 
         when contrast_first_status = "OUT_OF_STOCK" and status is null and c.date >= date(s.sku_approved_at) then "NORMAL"
+        when  previous_external_status is not null and contrast_first_status not in ("OUT_OF_STOCK") and SPLIT(c.item_code, '.')[SAFE_ORDINAL(3)] != "1" and c.date >= date(s.sku_approved_at) and c.seller_class = "EXTERNAL" then previous_external_status
         when contrast_first_status not in ("OUT_OF_STOCK") and status is null and c.date >= date(s.sku_approved_at) then "UNKNOWN"
         when c.date < date(s.sku_approved_at) and status is null then null
+        --when s.seller_class = "EXTERNAL" and status is null 
         else contrast_first_status
       end as status,
     s.sku_approved_at,
@@ -154,6 +173,7 @@ select
     ,c.end_at
 from fill_backwwark_value c
 left join gold_buymed_vn.adhoc_pm_master_sku s on c.sku = s.sku_code and c.sales_region_code_bf = s.sales_region_code
+left join previous_item_status as p on CONCAT(SPLIT(c.item_code, '.')[SAFE_ORDINAL(1)], '.', SPLIT(c.item_code, '.')[SAFE_ORDINAL(2)]) = previous_item_code
 where c.date > DATE(DATE_TRUNC(current_date(), MONTH) - INTERVAL 3 MONTH)
 )
 -- step 3: listing toàn bộ những con sku không được ghi nhân có sự thay đổi status in L90D và join với historical
@@ -172,7 +192,8 @@ where c.date > DATE(DATE_TRUNC(current_date(), MONTH) - INTERVAL 3 MONTH)
       , ms.sku_code || "_" || ms.sales_region_code as sku_sales_region_code
       , ms.sub_sku_code || "_" || ms.sales_region_code as sub_sku_sales_region_code
       , ms.sku_system_status as status,
-        ms.sku_approved_at
+        ms.sku_approved_at,
+        ms.seller_class
       , DATETIME(TIMESTAMP(CURRENT_DATETIME() - INTERVAL 3 MONTH),'Asia/Ho_Chi_Minh') as start_at
       , DATETIME(TIMESTAMP(CURRENT_DATETIME()) ,'Asia/Ho_Chi_Minh') as end_at_custom
       , DATETIME(TIMESTAMP(CURRENT_DATETIME()) ,'Asia/Ho_Chi_Minh') as end_at
@@ -214,7 +235,8 @@ where sl.sub_sku_sales_region_code is null and ms.sku_system_active = true
     , md.date
     , md.sales_region_code
     , sr.sub_sku_sales_region_code
-    , md.sku_sales_region_code
+    , md.sku_sales_region_code,
+      sr.seller_class
     , sr.status,
       sr.sku_approved_at
     , sr.start_at
@@ -235,7 +257,8 @@ select
     , c.date
     , c.sales_region_code
     , c.sub_sku_sales_region_code
-    , c.sku_code ||"_"|| c.sales_region_code as sku_sales_region_code
+    , c.sku_code ||"_"|| c.sales_region_code as sku_sales_region_code,
+      c.seller_class
     , c.status,
       c.sku_approved_at
     , c.start_at_v2  as start_at
