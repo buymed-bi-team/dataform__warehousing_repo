@@ -41,8 +41,13 @@ SELECT
     , a.fc_code
     , b.order_quantity as outgoing_quantity
     , b.quantity as reserved_quantity
+    , IF(quantity = 0, 0, 1) as no_reserved_sku
+    , SUM(b.order_quantity) OVER (PARTITION BY b.ticket_id) AS total_qty
+    , SUM(b.order_quantity * d.inventory_price) OVER (PARTITION BY b.ticket_id) AS total_amt
+    , COUNT(DISTINCT b.sku_code) OVER (PARTITION BY b.ticket_id) AS total_sku
 FROM dedup_pick_ticket_item as b
 LEFT JOIN dedup_pick_ticket as a on b.ticket_id = a.ticket_id
 LEFT JOIN ${ref("dim_sku")} c on b.sku_code = c.sku_code
+LEFT JOIN ${ref("dim_sku_item_pricing")} d on CONCAT(c.sku_key, "_", a.fc_code) = d.sku_fc_key
 WHERE
     a.status IN ("ONHOLD", "PICKING", "WAIT_CS", "WAIT_TO_ADD", "WAIT_TO_PICK")
