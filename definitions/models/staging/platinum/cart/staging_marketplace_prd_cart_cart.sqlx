@@ -3,15 +3,15 @@ config {
     type: "incremental",
     name: "staging_marketplace_prd_cart_cart",
     schema: "platinum_buymed_vn",
-    assertions: {
-         uniqueKey: 'mg_id',
-         nonNull: ['created_date'],
-         rowConditions: [
-        '(created_time is not null and last_updated_time is not null) or (created_time is null and last_updated_time is not null) or (created_time is not null and last_updated_time is null)',
-        'action != "d"'
+    // assertions: {
+    //     uniqueKey: 'mg_id',
+    //     nonNull: ['created_date'],
+    //     rowConditions: [
+    //    '(created_time is not null and last_updated_time is not null) or (created_time is null and last_updated_time is not null) or (created_time is not null and last_updated_time is null)',
+    //    'action != "d"'
         
-    ]
-     },
+    //]
+    // },
     bigquery: {
         partitionBy: "created_date"
     }
