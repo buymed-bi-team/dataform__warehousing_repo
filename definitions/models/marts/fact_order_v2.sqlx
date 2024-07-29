@@ -207,7 +207,6 @@ fact_order_v2 as (SELECT
     WHEN sales_status IN ("COMPLETED", "DELIVERED") AND return_amount > 0 THEN actual_sales_amount
   ELSE ordered_amount_aft_discount
 END AS sales_amount,
-  
     CASE
         WHEN ordered_amount + 50001 <= ordered_amount_aft_discount THEN ordered_amount_aft_discount
         ELSE ordered_amount 
