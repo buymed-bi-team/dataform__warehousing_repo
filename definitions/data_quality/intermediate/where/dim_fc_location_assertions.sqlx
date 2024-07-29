@@ -41,9 +41,9 @@ WHERE
 UNION ALL
 
 SELECT
-  location_fc_code, 'zone_code is NULL' AS reason, zone_code AS value
+  location_fc_code, 'zone_key is NULL' AS reason, zone_key AS value
 FROM
   ${ref(`dim_fc_location`)}
 WHERE
-  zone_code is NULL
+  zone_key is NULL
   AND location_fc_code not like "TULANH%"
