@@ -214,7 +214,7 @@ END AS sales_amount,
   -- END AS gmv
   
   -- new logic
-  -- some order_id have order_amount = 0 so = > get from ordered_amount_aft_discount
+  -- some order_id have order_amount = 0 so = > get from ordered_amount_aft_discount to match with fact_sku_order_item_combo
     CASE
         WHEN ordered_amount =0 THEN ordered_amount_aft_discount
         ELSE ordered_amount 
