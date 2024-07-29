@@ -114,16 +114,16 @@ int_fc_location_2 AS (
 
 SELECT 
   * EXCEPT(is_pallet, hard_config),
---   CASE 
---     WHEN fc_code LIKE "BD" AND ( is_pallet = TRUE OR hard_config = TRUE ) THEN location_code
---     WHEN fc_code LIKE "BD" THEN CONCAT( zone_key, shelf_key )
---     ELSE NULL
---   END AS layout_key,
---   CASE
---     WHEN fc_code LIKE "BD" AND ( is_pallet = TRUE OR hard_config = TRUE ) THEN NULL
---     WHEN fc_code LIKE "BD" THEN CONCAT( shelf_level, location_number_key )
---     ELSE NULL
---   END AS location_key
+  CASE 
+    WHEN fc_code LIKE "BD" AND ( is_pallet = TRUE OR hard_config = TRUE ) THEN location_code
+    WHEN fc_code LIKE "BD" THEN CONCAT( zone_key, shelf_key )
+    ELSE NULL
+  END AS layout_key,
+  CASE
+    WHEN fc_code LIKE "BD" AND ( is_pallet = TRUE OR hard_config = TRUE ) THEN NULL
+    WHEN fc_code LIKE "BD" THEN CONCAT( shelf_level, location_number_key )
+    ELSE NULL
+  END AS location_key
 FROM
   int_fc_location_2
 
