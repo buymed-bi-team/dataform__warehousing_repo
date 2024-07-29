@@ -34,6 +34,19 @@ WHERE
     table_id in (
         "fact_outbound_ticket"
     )
+
+UNION ALL
+
+SELECT
+    dataset_id, table_id, DATETIME(TIMESTAMP_MILLIS(creation_time), '+7') AS creation_time, DATETIME(TIMESTAMP_MILLIS(last_modified_time), '+7') AS last_modified_time
+FROM gold_buymed_vn.__TABLES__
+WHERE
+    REGEXP_CONTAINS(table_id,"fact_sd")
+
+UNION ALL
+
+SELECT 
+    "current_datetime","current_datetime", current_datetime("+7"), current_datetime("+7")
 /*
 
 Fact_sd_po
