@@ -8,7 +8,6 @@ config {
         uniqueKey: ["customer_id"]
     },
     name: "dim_customer_test",
-    tags: ["0h00"],
     columns: {
         customer_id: "",
         customer_name: "Not Null",
