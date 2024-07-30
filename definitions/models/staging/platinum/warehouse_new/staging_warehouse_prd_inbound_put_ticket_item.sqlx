@@ -61,7 +61,7 @@ post_operations {
       DECLARE min_created_date DATE;
 DECLARE max_created_date DATE;
 
--- Set the variables with the min and max created_date values
+-- Set the variables with the min and max created_date values because when use table in delete statement big query can not get the partition for optimize
       DECLARE min_created_date DATE;
       DECLARE max_created_date DATE;
       SET min_created_date = (SELECT min_created_date FROM range_created_time_table );
