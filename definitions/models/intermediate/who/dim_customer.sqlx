@@ -42,7 +42,7 @@ WITH stg_customer AS (
         --     WHEN province_code IS NOT NULL THEN province_code
         --     ELSE NULL
         -- END AS customer_location_code
-        -- ward_code AS customer_ward_code,
+        ward_code AS customer_ward_code,
         -- district_code AS customer_district_code,
         -- province_code AS customer_province_code,
         province_code AS customer_province_code
@@ -61,13 +61,14 @@ WITH stg_customer AS (
 
     SELECT
         customer_id,
+        ARRAY_AGG( customer_ward_code ORDER BY created_time DESC)[0] AS customer_ward_code,
         ARRAY_AGG( customer_province_code ORDER BY created_time DESC)[0] AS customer_province_code
     FROM ${source.silver}.marketplace_prd_order_v2_order
     GROUP BY customer_id
 )
 
 SELECT
-    stg_customer.* EXCEPT( customer_province_code),
+    stg_customer.* EXCEPT( customer_province_code,customer_ward_code),
 
     -- CASE
     --     WHEN dgl2.location_priority_level is null and dgl1.location_priority_level is null THEN NULL
@@ -80,7 +81,12 @@ SELECT
     CASE
         WHEN stg_customer.customer_province_code is NULL then stg_customer_order.customer_province_code
         ELSE stg_customer.customer_province_code
-    END AS customer_province_code
+    END AS customer_province_code,
+    CASE
+        WHEN stg_customer.customer_ward_code is NULL then stg_customer_order.customer_ward_code
+        ELSE stg_customer.customer_ward_code
+    END AS customer_ward_code
+
     -- stg_customer.customer_province_code,
     -- stg_customer_order.customer_province_code
 FROM

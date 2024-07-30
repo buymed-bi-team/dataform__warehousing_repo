@@ -45,9 +45,9 @@ WITH stg_customer AS (
         district_code AS customer_district_code,
         province_code AS customer_province_code,
 
-        ward_name AS customer_ward_name,
-        district_code_name AS customer_district_name,
-        province_code_name AS customer_province_name
+        -- ward_name AS customer_ward_name,
+        -- district_code_name AS customer_district_name,
+        -- province_code_name AS customer_province_name
 
 
     FROM 
@@ -64,11 +64,11 @@ WITH stg_customer AS (
     SELECT
         customer_id,
         ARRAY_AGG( customer_ward_code ORDER BY created_time DESC)[0] AS customer_ward_code,
-        ARRAY_AGG( customer_ward_name ORDER BY created_time DESC)[0] AS customer_ward_name,
+        -- ARRAY_AGG( customer_ward_name ORDER BY created_time DESC)[0] AS customer_ward_name,
         ARRAY_AGG( customer_district_code ORDER BY created_time DESC)[0] AS customer_district_code,
-        ARRAY_AGG( customer_district_name ORDER BY created_time DESC)[0] AS customer_district_name,
+        -- ARRAY_AGG( customer_district_name ORDER BY created_time DESC)[0] AS customer_district_name,
         ARRAY_AGG( customer_province_code ORDER BY created_time DESC)[0] AS customer_province_code,
-        ARRAY_AGG( customer_province_name ORDER BY created_time DESC)[0] AS customer_province_name
+        -- ARRAY_AGG( customer_province_name ORDER BY created_time DESC)[0] AS customer_province_name
 
     FROM ${source.silver}.marketplace_prd_order_v2_order
     GROUP BY customer_id
@@ -86,26 +86,24 @@ SELECT
     CASE
         ${when_case(`c.customer_ward_code     `)}
         ${when_case(`co.customer_ward_code    `)}
-        ${when_case(`c.customer_district_code `)}
-        ${when_case(`co.customer_district_code`)}
-        ${when_case(`c.customer_province_code `)}
-        ${when_case(`co.customer_province_code`)}
+        -- ${when_case(`c.customer_district_code `)}
+        -- ${when_case(`co.customer_district_code`)}
         ELSE NULL
-    END AS customer_location_code,
+    END AS customer_location_code
 
     c.customer_ward_code as c_ward_code,
-    co.customer_ward_code as co_ward_code,
-    c.customer_district_code as c_district_code,
-    co.customer_district_code as co_district_code,
-    c.customer_province_code as c_province_code,
-    co.customer_province_code as co_province_code,
+    co.customer_ward_code as co_ward_code
+    -- c.customer_district_code as c_district_code,
+    -- co.customer_district_code as co_district_code,
+    -- c.customer_province_code as c_province_code,
+    -- co.customer_province_code as co_province_code
 
-    c.customer_ward_name as c_ward_name,
-    co.customer_ward_name as co_ward_name,
-    c.customer_district_name as c_district_name,
-    co.customer_district_name as co_district_name,
-    c.customer_province_name as c_province_name,
-    co.customer_province_name as co_province_name
+    -- c.customer_ward_name as c_ward_name,
+    -- co.customer_ward_name as co_ward_name,
+    -- c.customer_district_name as c_district_name,
+    -- co.customer_district_name as co_district_name,
+    -- c.customer_province_name as c_province_name,
+    -- co.customer_province_name as co_province_name
 
 FROM
     stg_customer c
