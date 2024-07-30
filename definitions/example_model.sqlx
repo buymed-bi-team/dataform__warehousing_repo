@@ -28,7 +28,7 @@ WITH dedup_full_table AS ${dedup.dedup(
     SELECT 
         customer_id,
         flatten_location
-    FROM ${ref(`staging_marketplace_prd_cart_cart`)}
+    FROM ${source.silver}.marketplace_prd_cart_cart
 )
 
 SELECT

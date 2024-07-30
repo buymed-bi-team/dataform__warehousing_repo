@@ -42,9 +42,9 @@ SELECT
     , b.order_quantity as outgoing_quantity
     , b.quantity as reserved_quantity
     , IF(quantity = 0, 0, 1) as no_reserved_sku
-    , d.inventory_price
+    , COALESCE(d.inventory_price, 999) AS inventory_price
     , SUM(b.order_quantity) OVER (PARTITION BY b.ticket_id) AS total_qty
-    , SUM(b.order_quantity * d.inventory_price) OVER (PARTITION BY b.ticket_id) AS total_amt
+    , SUM(b.order_quantity *  COALESCE(d.inventory_price, 999)) OVER (PARTITION BY b.ticket_id) AS total_amt
     , COUNT(DISTINCT b.sku_code) OVER (PARTITION BY b.ticket_id) AS total_sku
 FROM dedup_pick_ticket_item as b
 LEFT JOIN dedup_pick_ticket as a on b.ticket_id = a.ticket_id
