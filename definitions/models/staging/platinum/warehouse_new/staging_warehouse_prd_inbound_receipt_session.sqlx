@@ -5,7 +5,8 @@ config {
     name: "staging_warehouse_prd_inbound_receipt_session",
     schema: "platinum_buymed_vn",
     assertions: {
-        uniqueKey: 'mg_id'
+        uniqueKey: 'mg_id',
+        nonNull : ["created_date"]
     },
     bigquery: {
         partitionBy: "created_date"
@@ -18,7 +19,7 @@ pre_operations {
       `
       CREATE OR REPLACE TEMP TABLE range_created_time_table AS
       SELECT MIN(DATE(created_time)) AS min_created_date, MAX(DATE(created_time)) AS max_created_date
-      FROM ${source.silver}.warehouse_prd_inbound_receipt_session WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()});
+      FROM ${source.silver}.warehouse_prd_inbound_receipt_session WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) and action = "u";
       `,
       ``
     )
@@ -29,9 +30,14 @@ SELECT
  *,
  date(created_time) as created_date
 FROM ${source.silver}.warehouse_prd_inbound_receipt_session o 
-  ${ when(incremental(), `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()})`)}
-  QUALIFY ROW_NUMBER() OVER (_window) = 1
-  AND FIRST_VALUE(action) OVER (_window) <> 'd'
+ ${
+    when(incremental(), 
+      `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) 
+      QUALIFY ROW_NUMBER() OVER (_window) = 1`,
+      `QUALIFY ROW_NUMBER() OVER (_window) = 1
+       AND FIRST_VALUE(action) OVER (_window) <> 'd'`
+    )
+  }
 WINDOW
   _window AS (
   PARTITION BY
@@ -49,22 +55,32 @@ post_operations {
     when(incremental(),
       `
       -- Delete rows using the temporary table
+      IF EXISTS (SELECT * from range_created_time_table where min_created_date is not null and max_created_date is not null)
+      then
       DELETE FROM ${self()}
-      WHERE created_date BETWEEN (SELECT min_created_date FROM range_created_time_table) 
+      WHERE (created_date BETWEEN (SELECT min_created_date FROM range_created_time_table) 
         AND (SELECT max_created_date FROM range_created_time_table)
           and 
          (key) IN (
         SELECT (key) FROM ${self()} where created_date BETWEEN (SELECT min_created_date FROM range_created_time_table) 
         AND (SELECT max_created_date FROM range_created_time_table) 
         QUALIFY ROW_NUMBER() OVER (_window) > 1
-        OR FIRST_VALUE(action) OVER (_window) = "d"
+        --OR FIRST_VALUE(action) OVER (_window) = "d"
       WINDOW _window AS (
         PARTITION BY mg_id
         ORDER BY synced_at DESC,
         IF(action = 'd', 3, IF(action = 'u', 2, 1)) DESC,
         last_updated_time DESC
       )
-      ) ;
+      ));
+      end if;
+     
+      if EXISTS (SELECT mg_id as action_d
+      FROM ${self()} where action = "d" )
+      then
+      delete from  ${self()} where mg_id in (select mg_id from ${self()} where action = "d");
+      end if;
+      
       `,
       ``
     )
