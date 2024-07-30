@@ -46,8 +46,9 @@ WITH stg_customer AS (
 , stg_customer_order AS (
     SELECT
         customer_id,
+        ARRAY_AGG( customer_shipping_address ORDER BY created_time DESC)[0] AS customer_address,
         ARRAY_AGG( customer_ward_code ORDER BY created_time DESC)[0] AS customer_ward_code,
-        ARRAY_AGG( customer_district_code ORDER BY created_time DESC)[0] AS customer_district_code
+        ARRAY_AGG( customer_district_code ORDER BY created_time DESC)[0] AS customer_district_code 
     FROM ${source.silver}.marketplace_prd_order_v2_order
     GROUP BY customer_id
 )
@@ -57,17 +58,31 @@ js {
         return  `WHEN ${column_name} IS NOT NULL AND ${column_name} NOT LIKE '0' THEN ${column_name}`
     }
 }
+js {
+    function when_case_address (column_name) {
+        const table = column_name.split('.')[0]
+        return  `WHEN ${column_name} IS NOT NULL AND ${column_name} NOT LIKE '0' THEN ${table}.customer_address`
+    }
+}
+
 
 SELECT
-    stg_customer.* EXCEPT(  customer_district_code, customer_ward_code),
+    stg_customer.* EXCEPT(  customer_address, customer_ward_code,customer_district_code ),
 
     CASE
         ${when_case ('stg_customer.customer_ward_code')}
         ${when_case ('stg_customer_order.customer_ward_code')}
-        ${when_case ('stg_customer.customer_district_code')}  -- cho trường hợp là đảo
+        ${when_case ('stg_customer.customer_district_code')}  -- cho trường hợp là đảo, hoặc là user chỉ điền district code
         ${when_case ('stg_customer_order.customer_district_code')}
         ELSE NULL
-    END AS customer_ward_code
+    END AS customer_ward_code,
+    CASE
+        ${when_case_address ('stg_customer.customer_ward_code')}
+        ${when_case_address ('stg_customer_order.customer_ward_code')}
+        ${when_case_address ('stg_customer.customer_district_code')}  
+        ${when_case_address ('stg_customer_order.customer_district_code')}
+        ELSE NULL
+    END AS customer_address
 FROM
     stg_customer
 LEFT JOIN stg_customer_order ON stg_customer.customer_id = stg_customer_order.customer_id
