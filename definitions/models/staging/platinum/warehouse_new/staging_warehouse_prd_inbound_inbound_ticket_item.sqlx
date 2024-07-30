@@ -102,7 +102,7 @@ post_operations {
         last_updated_time DESC
       )
       ));
-      END IF 
+      END IF;
 
       if EXISTS (SELECT mg_id as action_d
       FROM ${self()} where created_time is null and last_updated_time is null )
