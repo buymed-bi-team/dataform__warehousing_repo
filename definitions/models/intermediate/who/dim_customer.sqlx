@@ -2,7 +2,8 @@ config {
     type: "table",
     description: `PIC: minh.luu; model_type: table; schedule 0h00
     Source:
-        ${source.silver}.marketplace_prd_customer_customer`,
+        ${source.silver}.marketplace_prd_customer_customer customer
+        ${source.silver}.marketplace_prd_order_v2_order order`,
     assertions:{
         nonNull: ["customer_id"],
         uniqueKey: ["customer_id"]
@@ -10,13 +11,13 @@ config {
     name: "dim_customer",
     tags: ["0h00"],
     columns: {
-        customer_id: "",
-        customer_name: "Not Null",
+        customer_id: "NonNull",
+        customer_name: "NonNull",
         customer_email: "Nullable",
         customer_address: "Nullable",
         customer_report_category: "NonNull | Is one of TECH, TENDER, MARKETPLACE, or CIRCA? Category assigned to the customer based on specific conditions: TECH: If the customer's name contains keywords like 'TECH SELLER', 'TEST', 'TECH-QC', etc. TENDER: If the customer's tags contain 'TENDER'. MARKETPLACE: If the customer's tags contain 'TERMINATE_CIRCA' or as a default category. CIRCA: If the customer's tags contain 'CIRCA'.",
         business_scope: "Nullable | Null means UNKNOWN scope",
-        customer_location_code: "Nullable | if customer table doesn't has then get last order from dim_order"
+        customer_ward_code: "Nullable | If the customer doesn't have a ward_code, then get ward_code of last order of customer from the order table. Otherwise, return null."
     }
 }
 
@@ -36,66 +37,45 @@ WITH stg_customer AS (
             ELSE 'MARKETPLACE' -- Một số order trong dim_order bị xếp loại vào Marketplace trong khi vốn tên có là FC-CIRCA
         END AS customer_report_category,
         dedup_customer.scope  AS business_scope,
-        -- CASE
-        --     WHEN ward_code IS NOT NULL THEN ward_code
-        --     WHEN district_code IS NOT NULL THEN district_code
-        --     WHEN province_code IS NOT NULL THEN province_code
-        --     ELSE NULL
-        -- END AS customer_location_code
         ward_code AS customer_ward_code,
-        -- district_code AS customer_district_code,
-        -- province_code AS customer_province_code,
-        province_code AS customer_province_code
-
+        district_code AS customer_district_code
 
     FROM 
         ${dedup.dedup(source.silver + `.marketplace_prd_customer_customer`,'*')} dedup_customer
 )
 , stg_customer_order AS (
-    -- SELECT 
-    --     customer_id,
-    --     ARRAY_AGG( customer_location_code ORDER BY created_time DESC)[0] AS customer_location_code
-    -- FROM ${ref(`dim_order_customer`)}  doc
-    -- LEFT JOIN ${ref(`dim_order_status`)} dos ON doc.order_id = dos.order_id
-    -- GROUP BY customer_id
-
     SELECT
         customer_id,
         ARRAY_AGG( customer_ward_code ORDER BY created_time DESC)[0] AS customer_ward_code,
-        ARRAY_AGG( customer_province_code ORDER BY created_time DESC)[0] AS customer_province_code
+        ARRAY_AGG( customer_district_code ORDER BY created_time DESC)[0] AS customer_district_code
     FROM ${source.silver}.marketplace_prd_order_v2_order
     GROUP BY customer_id
 )
 
+js {
+    function when_case (column_name) {
+        return  `WHEN ${column_name} IS NOT NULL AND ${column_name} NOT LIKE '0' THEN ${column_name}`
+    }
+}
+
 SELECT
-    stg_customer.* EXCEPT( customer_province_code,customer_ward_code),
+    stg_customer.* EXCEPT(  customer_district_code, customer_ward_code),
 
-    -- CASE
-    --     WHEN dgl2.location_priority_level is null and dgl1.location_priority_level is null THEN NULL
-    --     WHEN dgl1.location_priority_level is null THEN dgl2.location_code
-    --     WHEN dgl2.location_priority_level is null THEN dgl1.location_code
-    --     WHEN dgl1.location_priority_level >= dgl2.location_priority_level THEN dgl1.location_code
-    -- END AS customer_location_code,
-    -- stg_customer.customer_location_code,
-    -- stg_customer_order.customer_location_code
     CASE
-        WHEN stg_customer.customer_province_code is NULL then stg_customer_order.customer_province_code
-        ELSE stg_customer.customer_province_code
-    END AS customer_province_code,
-    CASE
-        WHEN stg_customer.customer_ward_code is NULL then stg_customer_order.customer_ward_code
-        ELSE stg_customer.customer_ward_code
+        ${when_case ('stg_customer.customer_ward_code')}
+        ${when_case ('stg_customer_order.customer_ward_code')}
+        ${when_case ('stg_customer.customer_district_code')}  -- cho trường hợp là đảo
+        ${when_case ('stg_customer_order.customer_district_code')}
+        ELSE NULL
     END AS customer_ward_code
-
-    -- stg_customer.customer_province_code,
-    -- stg_customer_order.customer_province_code
 FROM
     stg_customer
 LEFT JOIN stg_customer_order ON stg_customer.customer_id = stg_customer_order.customer_id
--- LEFT JOIN ${ref(`dim_geo_location`)} dgl1 ON stg_customer.customer_location_code = dgl1.location_code
--- LEFT JOIN ${ref(`dim_geo_location`)} dgl2 ON stg_customer_order.customer_location_code = dgl2.location_code
+
 
 
 post_operations {
-    ALTER TABLE ${self()} ADD PRIMARY KEY (customer_id) NOT ENFORCED;
+    ALTER TABLE ${self()} 
+        ADD PRIMARY KEY (customer_id) NOT ENFORCED,
+        ADD FOREIGN KEY (customer_ward_code) references ${ref(`dim_geo_location`)}(location_code) NOT ENFORCED;
 }
