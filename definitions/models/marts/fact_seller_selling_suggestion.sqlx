@@ -15,7 +15,8 @@ config {
         has_ever_sold: "Nullable | Null means Unknown", // product has_ever_sold is Null still exists in order_v2_order_item
         action_key: "Nullable | IN ('INITIAL_UPDATE_PRODUCT','INITIAL_LISTING_PRODUCT','CONFIRM_UPDATE_PRODUCT','CONFIRM_LISTING_PRODUCT')",
         sequence_id : "NonNull | the dense ranking sorted by the group (seller code, created date, product_code) and ordered ascending by created_time",
-    }
+    },
+    tags:['0h00']
 }
 /*
     product_status:
