@@ -35,8 +35,8 @@ config {
 
 
 WITH cte_date AS (
---   select date_sub( timestamp( date_trunc( date_sub( current_date('+7'), interval 1 month) , month ) ) , interval 7 hour ) as start_date
-  SELECT date_sub( timestamp( date_trunc( date_sub( current_date('+7'), interval 1 day) , day ) ) , interval 7 hour ) as start_date
+  select date_sub( timestamp( date_trunc( date_sub( current_date('+7'), interval 1 month) , month ) ) , interval 7 hour ) as start_date
+  -- SELECT date_sub( timestamp( date_trunc( date_sub( current_date('+7'), interval 1 day) , day ) ) , interval 7 hour ) as start_date
 )
 
 SELECT
