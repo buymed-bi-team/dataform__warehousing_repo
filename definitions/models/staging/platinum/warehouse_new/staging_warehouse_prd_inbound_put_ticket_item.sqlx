@@ -1,6 +1,6 @@
 config {
     type: "incremental",
-    name: "staging_warehouse_prd_inbound_put_ticket_item",
+    name: "warehouse_prd_inbound_put_ticket_item",
     schema: "platinum_buymed_vn",
     assertions: {
         uniqueKey: 'mg_id',
