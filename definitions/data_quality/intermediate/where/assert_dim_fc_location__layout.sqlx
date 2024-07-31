@@ -1,0 +1,19 @@
+config {
+  type: "assertion",
+  tags: "weekly_assertion"
+}
+
+SELECT
+  location_fc_code, 'fc_code LIKE "BD" AND location_key IS NULL AND layout_key IS NULL' AS reason,
+  CONCAT(
+    'location_key = ',
+    CAST ( location_key  AS STRING ),
+    ' | ',
+    'layout_key = ',
+    CAST ( layout_key AS STRING )
+  ) AS value
+FROM
+  ${ref(`dim_fc_location`)}
+WHERE
+  fc_code LIKE "BD" AND location_key IS NULL AND layout_key IS NULL
+  AND location_fc_code not like "TULANH%"

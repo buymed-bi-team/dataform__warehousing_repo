@@ -1,0 +1,12 @@
+config {
+  type: "assertion",
+  tags: "weekly_assertion"
+}
+
+SELECT
+  location_fc_code, type AS value
+FROM
+  ${ref(`dim_fc_location`)}
+WHERE
+  type not in ("NORMAL","VIRTUAL",NULL)
+  AND location_fc_code not like "TULANH%"

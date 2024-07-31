@@ -1,0 +1,24 @@
+config {
+    type: "assertion",
+    // tags: "weekly_assertion",
+    description: `PIC: <name> , model_type: incremental 
+      Source:
+          ${source.ref}.<name of table need assertions>`,
+}
+
+/*
+    This SQL script return fail data
+    When workflow run, you need to insure this return Null, Else dataform will alerting
+
+    File names: assert_[table_name]__[entity].sql
+
+    Example: assert_dim_fc_location__*.sqlx
+*/
+
+SELECT
+  location_fc_code
+FROM
+  ${ref(`dim_fc_location`)}
+WHERE
+  parent_location_code IS NULL
+  AND location_fc_code not like "TULANH%"
