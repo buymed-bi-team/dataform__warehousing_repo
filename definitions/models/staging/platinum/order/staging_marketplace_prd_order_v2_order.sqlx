@@ -23,7 +23,7 @@ pre_operations {
 
 
       CREATE OR REPLACE TEMP TABLE range_created_time_table AS (
-       SELECT MIN(DATE(created_time)) AS min_created_date, MAX(DATE(created_time)) AS min_created_date
+       SELECT MIN(DATE(created_time)) AS min_created_date, MAX(DATE(created_time)) AS max_created_date
         FROM ${source.silver}.marketplace_prd_order_v2_order 
         WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) AND action = "u"
       );
