@@ -2,7 +2,10 @@ config {
     type: "view",
     description: `PIC: minh.luu
     Source:
-        ${source.silver}.marketplace_prd_customer_customer`
+        ${source.silver}.marketplace_prd_customer_customer`,
+    assertions: {
+        rowConditions: []
+    }
 }
 
 SELECT

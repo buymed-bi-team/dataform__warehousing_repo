@@ -1,5 +1,5 @@
 config {
-    type: "view", // table , incremental
+    type: "table", // table , incremental
     name: "example_model",
     description: `PIC: <name> , model_type: <view, material_view, table, incremental> ; schedule: 0h00 daily
     Source:
@@ -8,17 +8,35 @@ config {
     columns:{
         ele_id: "NonNull | <more description if required> | <When it is reference column from silver or platinum, you can write which source here>",
         ele_name: "Nullable | <Null Reason> | <more desciption if required>",
-        current_datetime: "NonNull | Datetime is in +7 timezone",
+        created_time: "NonNull | Datetime is in +7 timezone",
         Logic_column : "Nullable | Reason for this column | if a = b then Wrong, if a = a then Right, else Null",
         Nullable_Column : "Nullable | < When is it Null? > ",
         Source_insure_NonNull : "NonNull | <more desciption if required>",
         NonNull_Column : "NonNull | <more desciption if required>"
     },
-    assertions: {
-        // guaranteed columns: primary key, Source_insure_NonNull
+    tags: ["example"], // 0h00, 1h00, ..., you can go to workflow to track or request Minhluu to add new tags
+    bigquery: { /* except view */
+        partitionBy: "DATE(created_time)",
+        // clusterBy: ["cart_id"] // Optional
+    },
+    assertions: { /* guaranteed columns: primary key, Source_insure_NonNull */
         uniqueKey : "ele_id",
-        nonNull : ("ele_id" , "Source_insure_NonNull")
-    }
+        /* uniqueKeys : [["order_id","item_id"]] // For if composite primary key */
+
+        nonNull : ("ele_id" , "Source_insure_NonNull"),
+        rowConditions : [
+            `created_time BETWEEN ( CURRENT_DATETIME("+7") - 1 MONTH ) AND CURRENT_DATETIME("+7")`, // snapshot
+            `email like "%@%.%"`, // format
+            `Source_insure_NonNull in ("AAAA","BBBB","CCCC")` // Source system insure data in cases 
+        ]
+        /* For more detail read: https://cloud.google.com/dataform/docs/assertions */
+    },
+    dependencies: [
+        /* 
+        
+        */
+        {"name":"4_assertions__assertions","includeDependentAssertions":false}
+    ]
 }
 
 WITH dedup_full_table AS ${dedup.dedup(
@@ -34,7 +52,8 @@ WITH dedup_full_table AS ${dedup.dedup(
 SELECT
     "1b2c" AS ele_id,
     "Hello World" AS ele_name,
-    CURRENT_DATETIME("+7") AS current_datetime,
+    "minh.luu@buymed.com" AS email,
+    CURRENT_DATETIME("+7") AS created_time,
     CASE
         WHEN "a" = "b" THEN "WRONG"
         WHEN "a" = "a" THEN "RIGHT"

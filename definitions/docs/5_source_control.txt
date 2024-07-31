@@ -1,4 +1,3 @@
-
 # How to write meaningful commit?
 
 1. Start with an uppercase imperative verb, Such As: Add, Drop, Fix, Refactor, Bump

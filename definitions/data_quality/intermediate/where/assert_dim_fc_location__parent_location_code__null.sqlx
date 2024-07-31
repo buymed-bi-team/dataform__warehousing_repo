@@ -1,0 +1,12 @@
+config {
+  type: "assertion",
+  tags: "weekly_assertion"
+}
+
+SELECT
+  location_fc_code, 'parent_location_code IS NULL' AS reason, parent_location_code AS value
+FROM
+  ${ref(`dim_fc_location`)}
+WHERE
+  parent_location_code IS NULL
+  AND location_fc_code not like "TULANH%"

@@ -1,0 +1,26 @@
+config {
+  type: "assertion",
+  // tags: "weekly_assertion",
+  description: `PIC: <name> , model_type: incremental 
+    Source:
+        ${source.ref}.<name of table need assertions>`,
+}
+
+/*
+    There can be many unittest for a table, so It is better if you add a tail for file name.
+    That tail can be:
+        - main column that you want to test
+        - 1 to 3 word about your task
+    Or you can link your jira task here for easier traceable
+*/
+
+${tfunction.csvToSQL(
+    `
+    col_1, col_2, col_3, col_4
+    v1 , v2 , v3 , v4
+    v5, v6, v7 , v8
+    v9 , v10 , v11 , v12
+    `,
+    real_table_name = `${source.ref}.<name of table need assertions>`,
+    using_columns = `col_1, col_2`
+)}
