@@ -1,7 +1,7 @@
 
 config {
     type: "incremental",
-    name: "staging_marketplace_prd_order_v2_reconciliation_item",
+    name: "marketplace_prd_order_v2_reconciliation_item",
     schema: "platinum_buymed_vn",
     assertions: {
          uniqueKey: 'mg_id',
@@ -12,7 +12,6 @@ config {
         
     ]
      },
-    tags:["custom_1h_past5"],
     bigquery: {
         partitionBy: "created_date"
     }
@@ -22,32 +21,53 @@ pre_operations {
   ${
     when(incremental(), 
       `
-      CREATE OR REPLACE TEMP TABLE range_created_time_table AS
-      SELECT 
-        MIN(created_date) AS min_created_date, 
-        MAX(created_date) AS max_created_date 
-      FROM (
-        SELECT  
-          CASE 
-            WHEN created_time IS NOT NULL THEN DATE(created_time) 
-            ELSE DATE(last_updated_time) 
-          END AS created_date
-        FROM ${source.silver}.marketplace_prd_order_v2_reconciliation_item
-        WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) 
-        AND (
-          (created_time IS NOT NULL AND last_updated_time IS NOT NULL) OR 
-          (created_time IS NULL AND last_updated_time IS NOT NULL) OR 
-          (created_time IS NOT NULL AND last_updated_time IS NULL)
-        ) 
-        AND action = "u"
+      DECLARE min_created_date DATE;
+      DECLARE max_created_date DATE;
+
+      SET min_created_date = (
+        SELECT MIN(created_date) AS min_created_date
+        FROM (
+          SELECT  
+            CASE 
+              WHEN created_time IS NOT NULL THEN DATE(created_time) 
+              ELSE DATE(last_updated_time) 
+            END AS created_date
+          FROM ${source.silver}.marketplace_prd_order_v2_reconciliation_item 
+          WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()})
+            AND (
+              (created_time IS NOT NULL AND last_updated_time IS NOT NULL) 
+              OR (created_time IS NULL AND last_updated_time IS NOT NULL) 
+              OR (created_time IS NOT NULL AND last_updated_time IS NULL)
+            )
+            AND action = "u"
+        )
       );
 
-    
+      SET max_created_date = (
+        SELECT MAX(created_date) AS max_created_date 
+        FROM (
+          SELECT  
+            CASE 
+              WHEN created_time IS NOT NULL THEN DATE(created_time) 
+              ELSE DATE(last_updated_time) 
+            END AS created_date
+          FROM ${source.silver}.marketplace_prd_order_v2_reconciliation_item 
+          WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()})
+            AND (
+              (created_time IS NOT NULL AND last_updated_time IS NOT NULL) 
+              OR (created_time IS NULL AND last_updated_time IS NOT NULL) 
+              OR (created_time IS NOT NULL AND last_updated_time IS NULL)
+            )
+            AND action = "u"
+        )
+      );
       `
     )
   }
 }
 
+
+-- for marketplace_prd_cart only
 WITH deleted_records_table AS (
   SELECT mg_id
   FROM ${source.silver}.marketplace_prd_order_v2_reconciliation_item
@@ -82,19 +102,20 @@ WHERE created_time is null and last_updated_time is null -- all record deleted i
   OR (created_time IS NOT NULL AND last_updated_time IS NOT NULL AND mg_id NOT IN (SELECT mg_id FROM deleted_records_table))
   OR (created_time IS NULL AND last_updated_time IS NOT NULL AND mg_id NOT IN (SELECT mg_id FROM deleted_records_table))
   OR (action = 'i' AND mg_id NOT IN (SELECT mg_id FROM deleted_records_table))
-
+  
 post_operations {
   ${
     when(incremental(),
       `
       -- Delete rows using the temporary table
+      IF min_created_date IS NOT NULL AND max_created_date IS NOT NULL THEN
       DELETE FROM ${self()}
-      WHERE (created_date BETWEEN (SELECT min_created_date FROM range_created_time_table) 
-        AND (SELECT max_created_date FROM range_created_time_table)
+      WHERE (created_date BETWEEN min_created_date
+        AND max_created_date
           and 
          (key) IN (
-        SELECT (key) FROM ${self()} where created_date BETWEEN (SELECT min_created_date FROM range_created_time_table) 
-        AND (SELECT max_created_date FROM range_created_time_table) 
+        SELECT (key) FROM ${self()} where created_date BETWEEN min_created_date
+        AND max_created_date 
         QUALIFY ROW_NUMBER() OVER (_window) > 1
         --OR FIRST_VALUE(action) OVER (_window) = "d"
       WINDOW _window AS (
@@ -103,7 +124,14 @@ post_operations {
         IF(action = 'd', 3, IF(action = 'u', 2, 1)) DESC,
         last_updated_time DESC
       )
-      )) or mg_id in (select mg_id from ${self()} where created_time is null and last_updated_time is null) ;
+      ));
+      END IF;
+
+      if EXISTS (SELECT mg_id as action_d
+      FROM ${self()} where created_time is null and last_updated_time is null )
+      then
+      delete from  ${self()} where mg_id in (select mg_id from ${self()} where created_time is null and last_updated_time is null);
+      end if;
       `,
       ``
     )
