@@ -8,7 +8,7 @@ config {
     columns:{
         ele_id: "NonNull | <more description if required> | <When it is reference column from silver or platinum, you can write which source here>",
         ele_name: "Nullable | <Null Reason> | <more desciption if required>",
-        current_datetime: "NonNull | Datetime is in +7 timezone",
+        created_time: "NonNull | Datetime is in +7 timezone",
         Logic_column : "Nullable | Reason for this column | if a = b then Wrong, if a = a then Right, else Null",
         Nullable_Column : "Nullable | < When is it Null? > ",
         Source_insure_NonNull : "NonNull | <more desciption if required>",
@@ -32,7 +32,7 @@ pre_operations {
       incremental(),
       `
       DELETE ${self()}
-      WHERE created_time > CURRENT_DATETIME("+7") - INTERVAL 1 DAY 
+      WHERE created_time > TIMESTAMP(CURRENT_DATETIME("+7") - INTERVAL 1 DAY) 
       `,
       ``
     )
@@ -57,7 +57,7 @@ WITH
 SELECT
     "1b2c" AS ele_id,
     "Hello World" AS ele_name,
-    CURRENT_DATETIME("+7") AS current_datetime,
+    TIMESTAMP_ADD(CURRENT_TIMESTAMP(),INTERVAL 7 HOUR) AS current_datetime,
     CASE
         WHEN "a" = "b" THEN "WRONG"
         WHEN "a" = "a" THEN "RIGHT"
@@ -72,14 +72,14 @@ SELECT
 
 post_operations { 
     ${
-        when(incremental()),
+        when(incremental(),
         '',
         `    
         ALTER TABLE ${self()} 
             ADD PRIMARY KEY (ele_id) NOT ENFORCED,
             ALTER COLUMN NonNull_Column SET DEFAULT "Default_Value";
         `
-    }
+    )}
 }
 
 
