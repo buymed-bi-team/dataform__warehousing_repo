@@ -12,7 +12,6 @@ config {
         
     ]
      },
-    tags:["custom_1h_past5"],
     bigquery: {
         partitionBy: "created_date"
     }
@@ -24,7 +23,8 @@ pre_operations {
       `
       DECLARE min_created_date DATE;
       DECLARE max_created_date DATE;
-      
+      DECLARE check_deleted_action INT64;
+
       -- Define the range of created times
       CREATE OR REPLACE TEMP TABLE range_created_time_table AS (
         SELECT 
@@ -47,10 +47,18 @@ pre_operations {
         )
       );
 
+      CREATE OR REPLACE TEMP TABLE check_deleted_action AS (
+       SELECT 1 as check
+        FROM ${source.silver}.marketplace_prd_cart_cart_item 
+        WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) AND created_time IS NULL and last_updated_time IS NULL
+      );
+
       -- Set the minimum and maximum created dates
      SET min_created_date = (SELECT min_created_date FROM range_created_time_table);
       -- Assign the maximum created date
      SET max_created_date = (SELECT max_created_date FROM range_created_time_table);
+
+     SET check_deleted_action = (SELECT check FROM check_deleted_action);
       `
     )
   }
@@ -116,10 +124,8 @@ post_operations {
       ));
       END IF;
 
-      if EXISTS (SELECT mg_id as action_d
-      FROM ${self()} where created_time is null and last_updated_time is null )
-      then
-      delete from  ${self()} where mg_id in (select mg_id from ${self()} where created_time is null and last_updated_time is null);
+      if check_deleted_action IS NOT NULL THEN
+      delete from  ${self()} where mg_id in (select mg_id from ${self()} where created_date = "2099-01-01" and created_time is null and last_updated_time is null);
       end if;
       `,
       ``
