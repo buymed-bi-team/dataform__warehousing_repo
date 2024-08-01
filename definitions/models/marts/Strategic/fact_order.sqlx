@@ -12,7 +12,7 @@ config {
         created_date : "NonNull",
         order_amount: "NonNull | The total valuation, the original valuation of all product in the order",
         order_status: "Nullable | Null means unknown",
-        gmv: "NonNull | If status isn't cancel then return ordered_amount, else return 0"
+        gmv: "Nullable | If status isn't cancel then return ordered_amount, else return 0"
     },
     assertions: {
         uniqueKey: "order_id",
@@ -80,10 +80,7 @@ SELECT
     ordered_amount,
     ordered_amount_aft_discount,
     CASE
-        WHEN order_status <> "CANCEL" THEN CASE
-            WHEN ordered_amount + 50001 <= ordered_amount_aft_discount 
-                AND source_name = "marketplace" THEN ordered_amount_aft_discount
-            ELSE ordered_amount END ELSE NULL
+        WHEN order_status <> "CANCEL" THEN ordered_amount ELSE NULL
     END AS gmv
 FROM 
     dedup_order_tbl
