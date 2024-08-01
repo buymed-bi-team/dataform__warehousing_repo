@@ -50,7 +50,7 @@ SELECT
     WHEN created_time IS NOT NULL THEN DATE(created_time)
     ELSE "2099-01-01"
   END AS created_date
-FROM ${source.silver}.warehouse_prd_picking_tasko 
+FROM ${source.silver}.warehouse_prd_picking_task
  ${
     when(incremental(), 
       `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) 
