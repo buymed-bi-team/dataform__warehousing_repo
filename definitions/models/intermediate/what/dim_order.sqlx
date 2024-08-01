@@ -38,7 +38,7 @@ js {
   }
 }
 
-WITH dedup_order_tbl as ${
+WITH dedup_order as ${
   dedup.dedup(
     source.silver + `.marketplace_prd_order_v2_order`,
     `
@@ -47,7 +47,6 @@ WITH dedup_order_tbl as ${
     confirmation_date, 
     source, 
     province_code, 
-    extra_props, 
     TO_JSON_STRING(JSON_VALUE_ARRAY(extra_props, '$.customer_tags')) as customer_tags,
     customer_id
     `,
@@ -57,7 +56,7 @@ WITH dedup_order_tbl as ${
                                                                   // Điều này giúp nâng performance cụ thể là 1.32GB thành 37MB mỗi lần chạy incremental
 )}
 
-,order_tbl as (
+,order_tbl as ( -- dedup order
   SELECT 
     order_id,
     max(created_time) created_time,
@@ -67,9 +66,38 @@ WITH dedup_order_tbl as ${
     ${choose_new(`customer_tags`)},
     ${choose_new(`customer_id`)}
   FROM
-    dedup_order_tbl
+    dedup_order
   GROUP BY
     order_id
+)
+
+, dedup_tender_order AS ${ // tender system
+  dedup.dedup(
+    source.silver + `.tender_prd_core_tender_orders`,
+    `
+    order_id,
+    DATETIME(created_time, 'Asia/Ho_Chi_Minh') as created_time, 
+    confirmation_date, 
+    province_code, 
+    "TENDER" AS order_channel
+    `,
+    start_timestamp = when ( incremental(),
+              ` TIMESTAMP(current_datetime() - INTERVAL 2 DAY )`,
+              ` TIMESTAMP_SECONDS(0)`)                           
+  
+)}
+
+, tender_order_tbl AS (
+  SELECT 
+    order_id,
+    max(created_time) created_time,
+    ${choose_new(`confirmation_date`)},
+    ${choose_new(`province_code`)},
+    order_channel
+  FROM
+    dedup_tender_order
+  GROUP BY
+    order_id,order_channel
 )
 
 SELECT
@@ -87,6 +115,24 @@ SELECT
   province_code
 FROM
   order_tbl
+${
+  when(incremental(),
+   `
+   WHERE created_time > (SELECT MAX(created_time) FROM ${self()})
+   `,
+   ``)
+   
+}
+
+UNION ALL
+
+SELECT 
+  order_id,
+  created_time,
+  confirmation_date,
+  order_channel,
+  province_code
+FROM dedup_tender_order
 ${
   when(incremental(),
    `
