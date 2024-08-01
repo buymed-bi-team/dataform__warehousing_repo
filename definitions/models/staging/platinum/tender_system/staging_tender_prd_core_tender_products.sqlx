@@ -9,7 +9,7 @@ config {
     bigquery: {
         partitionBy: "created_date"
     },
-    tags:["custom_1h_past5"]
+    
 }
 
 pre_operations {
@@ -18,7 +18,7 @@ pre_operations {
       `
       DECLARE min_created_date DATE;
       DECLARE max_created_date DATE;
-
+      DECLARE check_deleted_action INT64;
       -- Setting the min_created_date
 
 
@@ -27,9 +27,18 @@ pre_operations {
         FROM ${source.silver}.tender_prd_core_tender_products 
         WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) AND action = "u"
       );
+
+      CREATE OR REPLACE TEMP TABLE check_deleted_action AS (
+       SELECT 1 as check
+        FROM ${source.silver}.tender_prd_core_tender_products 
+        WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) AND action = "d"
+      );
+
      SET min_created_date = (SELECT min_created_date FROM range_created_time_table);
       -- Assign the maximum created date
      SET max_created_date = (SELECT max_created_date FROM range_created_time_table);
+
+     SET check_deleted_action = (SELECT check FROM check_deleted_action);
       `,
       ``
     )
@@ -87,7 +96,7 @@ post_operations {
 
       END IF;
 
-      IF EXISTS (SELECT mg_id FROM ${self()} WHERE action = "d") THEN
+      IF check_deleted_action IS NOT NULL THEN
         DELETE FROM ${self()} WHERE mg_id IN (SELECT mg_id FROM ${self()} WHERE action = "d");
       END IF;
 
