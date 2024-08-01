@@ -39,7 +39,7 @@ pre_operations {
 SELECT
  *,
  date(created_time) as created_date
-FROM ${source.silver}.tender_prd_core_tender_order o 
+FROM ${source.silver}.tender_prd_core_tender_orders o 
  ${
     when(incremental(), 
       `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) 
