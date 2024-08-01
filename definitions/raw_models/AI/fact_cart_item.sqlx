@@ -1,5 +1,6 @@
 config {
     type: 'table',
+    name: "fact_addcart_item",
     description: `Started time: 20240601 | PIC: tu.dang; schhedule: 0h00 daily; model type: table
     Source:
         ${source.silver}.monitoring_prd_collector_user_stats_*`,
