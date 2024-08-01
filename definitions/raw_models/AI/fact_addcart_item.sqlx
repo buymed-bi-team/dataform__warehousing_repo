@@ -55,7 +55,7 @@ SELECT
   SOURCE,
   quantity,
   seller_id,
-  CAST( product_id AS integer) product_id,
+  product_id,
   sku_code,
   DENSE_RANK() OVER(PARTITION BY seller_id, DATE(created_time),
     product_id
