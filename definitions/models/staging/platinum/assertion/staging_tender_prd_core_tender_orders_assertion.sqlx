@@ -11,7 +11,7 @@ with count_silver as
              mg_id, action, synced_at, ingest_time, last_updated_time, created_time
          FROM
              ${source.silver}.tender_prd_core_tender_orders
-         where ingest_time <= (select max(ingest_time) as max_ingested_time from ${ref("staging_tender_prd_core_tender_orders")})
+         where ingest_time <= (select max(ingest_time) as max_ingested_time from ${ref("tender_prd_core_tender_orders")})
          QUALIFY ROW_NUMBER() OVER(_window) = 1
              AND FIRST_VALUE(action) OVER(_window) <> "d"
          WINDOW
@@ -29,5 +29,5 @@ with count_silver as
 )
 
 select 1 as check_equal from
-(select count(mg_id) as count_distinct_platinum from ${ref("staging_tender_prd_core_tender_orders")})
+(select count(mg_id) as count_distinct_platinum from ${ref("tender_prd_core_tender_orders")})
 where count_distinct_platinum != (select * from count_silver)
