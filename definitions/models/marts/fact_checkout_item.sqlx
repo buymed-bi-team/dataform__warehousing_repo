@@ -50,7 +50,7 @@ WITH stg_order_item as   ${dedup.dedup(
 
 stg_order as ${dedup.dedup(
   source.silver + `.marketplace_prd_order_v2_order`,
-  "order_id, province_code",
+  "order_id, province_code, status",
   start_timestamp= when(incremental(),
             ` TIMESTAMP(current_datetime() - INTERVAL 2 DAY )`, 
             ` TIMESTAMP_SECONDS(0)`)
@@ -58,6 +58,7 @@ stg_order as ${dedup.dedup(
 
 SELECT 
   a.order_id,
+  b.status as order_status,
   a.customer_id,
   a.sku,
   a.item_code,

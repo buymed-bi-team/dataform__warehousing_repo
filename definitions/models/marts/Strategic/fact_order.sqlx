@@ -1,0 +1,96 @@
+config {
+    type: "table",
+    description: `PIC: minh.luu, model_type: table, schedule: daily
+    Source
+        ${source.ref}.marketplace_prd_order_v2_order
+        ${source.ref}.tender_prd_core_tender_orders`,
+    tags: ["0h00"],
+    columns: {
+        order_id : "NonNull",
+        // ordered_quantity: "The total quantity of items ordered"
+        created_time : "NonNull",
+        created_date : "NonNull",
+        order_amount: "NonNull | The total valuation, the original valuation of all product in the order",
+        order_status: "Nullable | Null means unknown",
+        gmv: "NonNull | If status isn't cancel then return ordered_amount, else return 0"
+    },
+    assertions: {
+        uniqueKey: "order_id",
+        nonNull: ["order_id","order_amount"]
+    }
+}
+
+WITH dedup_order_tbl as ( 
+${dedup.dedup(
+    source.silver + `.marketplace_prd_order_v2_order`,
+    `
+    order_id, 
+    DATETIME(created_time, 'Asia/Ho_Chi_Minh') as created_time, 
+    status as order_status,
+    price as ordered_amount,
+    total_price as ordered_amount_aft_discount,
+    "marketplace" as source_name
+    `
+    // ,
+    // start_timestamp= when(incremental(),
+    //           ` TIMESTAMP(current_datetime() - INTERVAL 2 DAY )`, // Nếu incremental thì mình chỉ lấy 3 ngày trở lại
+    //           ` TIMESTAMP_SECONDS(0)`)                            // tránh cho việc dedup phải thực hiện window function cả bảng
+    //                                                               // Điều này giúp nâng performance cụ thể là 1.32GB thành 37MB mỗi lần chạy incremental
+)} 
+UNION ALL
+${dedup.dedup(
+    source.silver + `.tender_prd_core_tender_orders`,
+    `
+    order_id, 
+    DATETIME(created_time, 'Asia/Ho_Chi_Minh') as created_time, 
+    status as order_status,
+    total_amount as ordered_amount,
+    total_amount as ordered_amount_aft_discount,
+    "tender" as source_name
+    `
+    // ,
+    // start_timestamp = when ( incremental(),
+    //         ` TIMESTAMP(current_datetime() - INTERVAL 2 DAY )`,
+    //         ` TIMESTAMP_SECONDS(0)`)      
+)})
+
+js {
+  function choose_new(column_name){
+    return `ARRAY_AGG( ${column_name} ORDER BY created_time DESC)[0] AS ${column_name}`
+  }
+}
+, order_table as (
+    SELECT
+        order_id,
+        source_name,
+        max(created_time) created_time,
+        ${choose_new(`order_status`)},
+        ${choose_new(`ordered_amount`)},
+        ${choose_new(`ordered_amount_aft_discount`)}
+    FROM 
+        dedup_order_tbl
+    GROUP BY 1,2
+)
+
+SELECT
+    order_id,
+    created_time,
+    DATE(created_time) AS created_date,
+    order_status,
+    ordered_amount,
+    ordered_amount_aft_discount,
+    CASE
+        WHEN order_status <> "CANCEL" THEN CASE
+            WHEN ordered_amount + 50001 <= ordered_amount_aft_discount 
+                AND source_name = "marketplace" THEN ordered_amount_aft_discount
+            ELSE ordered_amount END ELSE NULL
+    END AS gmv
+FROM 
+    dedup_order_tbl
+
+post_operations {
+    ALTER TABLE ${self()} 
+        ADD FOREIGN KEY (order_id) references ${ref(`dim_order`)}(order_id) NOT ENFORCED,
+        ADD FOREIGN KEY (created_date) references ${ref(`dim_calendar`)}(Date) NOT ENFORCED;
+
+}
