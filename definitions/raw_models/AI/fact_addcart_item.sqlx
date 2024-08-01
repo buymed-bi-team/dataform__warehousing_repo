@@ -26,7 +26,7 @@ WITH
   stg AS (
   SELECT
     event,
-    account_id,
+    customer_id,
     account_type,
     -- TIMESTAMP_add(TIMESTAMP(created_time), INTERVAL 7 hour) AS created_time,
     created_time,
@@ -47,7 +47,7 @@ WITH
       "SKU_DETAIL_VIEW"))
 SELECT
   event,
-  account_id,
+  customer_id,
   account_type,
   created_time,
   province_code,
