@@ -6,15 +6,15 @@ config {
         ${source.ref}.dim_calendar
         ${source.ref}.fact_order`,
     columns: {
-        eom: "NonNull | End of month",
-        order_channel: "NonNull | Source from dim_order",
-        gmv: "NonNull |"
+        metric_code: "NonNull | Concat of order_channel and metric lv2 column",
+        date: "NonNull | End of month",
+        value: "NonNull | gmv"
     }
 }
 SELECT
-    dim_calendar.eom,
-    dim_order.order_channel,
-    SUM(fact_order.gmv) as gmv
+    dim_calendar.eom as date,
+    "GMV_" || dim_order.order_channel AS metric_code,
+    IF(SUM(fact_order.gmv) = 0, NULL,SUM(fact_order.gmv))  as value
 
 FROM `lakehouse-prod-394907.gold_buymed_vn2.fact_order` fact_order
 LEFT JOIN `lakehouse-prod-394907.gold_buymed_vn2.dim_order` dim_order
