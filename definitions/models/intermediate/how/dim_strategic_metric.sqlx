@@ -13,6 +13,15 @@ ${cfunction.csvToSQL(`
     GMV_MIENBAC,MIENBAC,GMV,
     GMV_MIENTRUNG,MIENTRUNG,GMV,
     GMV_MIENNAM,MIENNAM,GMV,
+    GMV_NULL_REGION,UNKNOWN REGION,GMV,
+    #_Orders_MIENBAC,MIENBAC,#_Orders,
+    #_Orders_MIENTRUNG,MIENTRUNG,#_Orders,
+    #_Orders_MIENNAM,MIENNAM,#_Orders,
+    #_Orders_NULL_REGION,UNKNOWN REGION,#_Orders,
+    #_Delivers_MIENBAC,MIENBAC,#_Delivers,
+    #_Delivers_MIENTRUNG,MIENTRUNG,#_Delivers,
+    #_Delivers_MIENNAM,MIENNAM,#_Delivers,
+    #_Delivers_NULL_REGION,UNKNOWN REGION,#_Delivers,
 `)}
 
 
