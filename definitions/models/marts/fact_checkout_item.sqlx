@@ -81,8 +81,9 @@ SELECT
     WHEN EXISTS (
       SELECT 1
       FROM stg_order_item AS sub
+      LEFT JOIN stg_order AS sub_2 ON sub.order_id = sub_2.order_id
       WHERE sub.customer_id = a.customer_id
-        AND sub.order_status like "COMPLETED"
+        AND sub_2.status like "COMPLETED"
         AND sub.sku_key = a.sku_key
         AND sub.order_item_created_time BETWEEN
           DATETIME_SUB(a.order_item_created_time, INTERVAL 30 DAY)
