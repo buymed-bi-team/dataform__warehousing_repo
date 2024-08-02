@@ -21,7 +21,7 @@ config {
         tags: "Nullable | Tags associated with the order item. These tags can be used for categorization and analysis purposes",
         sku_key: "NonNull | " + docs.sku_key,
         province_code: "Nullable | " + docs.province_code,
-        is_newly_sku: "NonNull | True if the customer has not purchased the SKU within the past 30 days "
+        is_newly_sku_in_l30d: "NonNull | True if the customer has not purchased the SKU within the past 30 days "
     },
     bigquery: {
         partitionBy: "DATETIME_TRUNC((order_item_created_time),MONTH)"
@@ -87,9 +87,9 @@ SELECT
           DATETIME_SUB(a.order_item_created_time, INTERVAL 30 DAY)
           AND a.order_item_created_time
         AND sub.order_item_created_time != a.order_item_created_time
-    ) THEN TRUE
-    ELSE FALSE
-  END AS is_newly_sku
+    ) THEN FALSE
+    ELSE TRUE
+  END AS is_newly_sku_in_l30d
 
 FROM stg_order_item a
 LEFT JOIN stg_order b
