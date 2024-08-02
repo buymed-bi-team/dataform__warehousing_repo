@@ -1,4 +1,5 @@
 
+
 config {
     type: "incremental",
     name: "warehouse_prd_picking_pick_ticket_item",
@@ -9,7 +10,6 @@ config {
          rowConditions: [
         '(created_time is not null and last_updated_time is not null) or (created_time is null and last_updated_time is not null) or (created_time is not null and last_updated_time is null)',
         'action != "d"'
-        
     ]
      },
     bigquery: {
@@ -48,22 +48,19 @@ pre_operations {
       );
 
       CREATE OR REPLACE TEMP TABLE check_deleted_action AS (
-       SELECT 1 as check
+        SELECT COUNT(1) as check
         FROM ${source.silver}.warehouse_prd_picking_pick_ticket_item 
         WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) AND created_time IS NULL and last_updated_time IS NULL
       );
 
       -- Set the minimum and maximum created dates
-     SET min_created_date = (SELECT min_created_date FROM range_created_time_table);
-      -- Assign the maximum created date
-     SET max_created_date = (SELECT max_created_date FROM range_created_time_table);
-
-     SET check_deleted_action = (SELECT check FROM check_deleted_action);
+      SET min_created_date = (SELECT min_created_date FROM range_created_time_table);
+      SET max_created_date = (SELECT max_created_date FROM range_created_time_table);
+      SET check_deleted_action = (SELECT check FROM check_deleted_action);
       `
     )
   }
 }
-
 
 -- for marketplace_prd_cart only
 WITH deleted_records_table AS (
@@ -99,7 +96,7 @@ WHERE created_time is null and last_updated_time is null -- all record deleted i
   OR (created_time IS NOT NULL AND last_updated_time IS NOT NULL AND mg_id NOT IN (SELECT mg_id FROM deleted_records_table))
   OR (created_time IS NULL AND last_updated_time IS NOT NULL AND mg_id NOT IN (SELECT mg_id FROM deleted_records_table))
   OR (action = 'i' AND mg_id NOT IN (SELECT mg_id FROM deleted_records_table))
-  
+
 post_operations {
   ${
     when(incremental(),
@@ -124,9 +121,11 @@ post_operations {
       ));
       END IF;
 
-      if check_deleted_action IS NOT NULL THEN
-      delete from  ${self()} where mg_id in (select mg_id from ${self()} where created_date = "2099-01-01" and created_time is null and last_updated_time is null);
-      end if;
+      IF check_deleted_action > 0 THEN
+        DELETE FROM ${self()} WHERE mg_id IN (
+          SELECT mg_id FROM ${self()} WHERE created_date = "2099-01-01" AND created_time IS NULL AND last_updated_time IS NULL
+        );
+      END IF;
       `,
       ``
     )
