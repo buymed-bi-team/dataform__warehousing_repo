@@ -11,4 +11,15 @@ config {
         value: "NonNull | gmv"
     }
 }
+SELECT
+    dim_calendar.eom as date,
+    "GMV_" || dim_order.sales_region_code AS metric_code,
+    IF(SUM(fact_order.gmv) = 0, NULL,SUM(fact_order.gmv))  as value
 
+FROM `lakehouse-prod-394907.gold_buymed_vn2.fact_order` fact_order
+LEFT JOIN `lakehouse-prod-394907.gold_buymed_vn2.dim_order` dim_order
+    ON fact_order.order_id = dim_order.order_id
+LEFT JOIN `lakehouse-prod-394907.gold_buymed_vn2.dim_calendar` dim_calendar
+    ON fact_order.created_date = dim_calendar.date
+GROUP BY 1,2
+ORDER BY eom

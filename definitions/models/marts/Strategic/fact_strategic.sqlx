@@ -17,6 +17,15 @@ SELECT
 FROM
     ${ref(`agg_strategic_monthly_GMV`)}
 
+UNION ALL
+
+SELECT
+    date, 
+    metric_code,
+    value
+FROM
+    ${ref(`agg_strategic_monthly_GMV_by_SalesRegion`)}
+
 post_operations {
     ALTER TABLE ${self()} 
         ADD FOREIGN KEY (date) references ${ref(`dim_calendar`)}(date) NOT ENFORCED,
