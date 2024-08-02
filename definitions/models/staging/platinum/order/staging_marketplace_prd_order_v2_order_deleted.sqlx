@@ -1,7 +1,7 @@
 
 config {
     type: "incremental",
-    name: "staging_marketplace_prd_order_v2_order_deleted",
+    name: "marketplace_prd_order_v2_order_deleted",
     schema: "platinum_buymed_vn",
     assertions: {
         uniqueKey: 'mg_id'

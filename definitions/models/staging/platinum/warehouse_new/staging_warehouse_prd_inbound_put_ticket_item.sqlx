@@ -1,6 +1,8 @@
+
+
 config {
     type: "incremental",
-    name: "staging_warehouse_prd_inbound_put_ticket_item",
+    name: "warehouse_prd_inbound_put_ticket_item",
     schema: "platinum_buymed_vn",
     assertions: {
         uniqueKey: 'mg_id',
@@ -17,20 +19,27 @@ pre_operations {
       `
       DECLARE min_created_date DATE;
       DECLARE max_created_date DATE;
-
+      DECLARE check_deleted_action INT64;
       -- Setting the min_created_date
-      SET min_created_date = (
-        SELECT MIN(DATE(created_time)) AS min_created_date
+
+
+      CREATE OR REPLACE TEMP TABLE range_created_time_table AS (
+       SELECT MIN(DATE(created_time)) AS min_created_date, MAX(DATE(created_time)) AS max_created_date
         FROM ${source.silver}.warehouse_prd_inbound_put_ticket_item 
         WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) AND action = "u"
       );
 
-      -- Setting the max_created_date
-      SET max_created_date = (
-        SELECT MAX(DATE(created_time)) AS max_created_date
+      CREATE OR REPLACE TEMP TABLE check_deleted_action AS (
+       SELECT count(1) as check
         FROM ${source.silver}.warehouse_prd_inbound_put_ticket_item 
-        WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) AND action = "u"
+        WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) AND action = "d"
       );
+
+     SET min_created_date = (SELECT min_created_date FROM range_created_time_table);
+      -- Assign the maximum created date
+     SET max_created_date = (SELECT max_created_date FROM range_created_time_table);
+
+     SET check_deleted_action = (SELECT check FROM check_deleted_action);
       `,
       ``
     )
@@ -88,7 +97,7 @@ post_operations {
 
       END IF;
 
-      IF EXISTS (SELECT mg_id FROM ${self()} WHERE action = "d") THEN
+      IF check_deleted_action >0 THEN
         DELETE FROM ${self()} WHERE mg_id IN (SELECT mg_id FROM ${self()} WHERE action = "d");
       END IF;
 
@@ -97,3 +106,4 @@ post_operations {
     )
   }
 }
+

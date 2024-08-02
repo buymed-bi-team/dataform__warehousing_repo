@@ -39,7 +39,7 @@ WITH calendar AS (
   SELECT
     *
   FROM
-    UNNEST(GENERATE_DATE_ARRAY('2020-01-01', '2027-01-01', INTERVAL 1 DAY)) AS Date
+    UNNEST(GENERATE_DATE_ARRAY('2017-01-01', '2027-01-01', INTERVAL 1 DAY)) AS Date
 )
 
 , cte_main as (
@@ -97,3 +97,7 @@ SELECT
 FROM cte_main as a
 -- WHERE
 --   a.Date in ("2024-02-18") 
+
+post_operations {
+  ALTER TABLE ${self()} ADD PRIMARY KEY (Date) NOT ENFORCED;
+}

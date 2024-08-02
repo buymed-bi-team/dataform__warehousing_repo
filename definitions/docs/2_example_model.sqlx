@@ -1,5 +1,5 @@
 config {
-    type: "view", // table , incremental
+    type: "table", // view, table , incremental
     name: "example_model",
     description: `PIC: <name> , model_type: <view, material_view, table, incremental> ; schedule: 0h00 daily
     Source:
@@ -8,17 +8,34 @@ config {
     columns:{
         ele_id: "NonNull | <more description if required> | <When it is reference column from silver or platinum, you can write which source here>",
         ele_name: "Nullable | <Null Reason> | <more desciption if required>",
-        current_datetime: "NonNull | Datetime is in +7 timezone",
+        created_time: "NonNull | Datetime is in +7 timezone", // Timestamp_add + 7 rather than datetime(col, "+7") 
         Logic_column : "Nullable | Reason for this column | if a = b then Wrong, if a = a then Right, else Null",
         Nullable_Column : "Nullable | < When is it Null? > ",
         Source_insure_NonNull : "NonNull | <more desciption if required>",
         NonNull_Column : "NonNull | <more desciption if required>"
     },
-    assertions: {
-        // guaranteed columns: primary key, Source_insure_NonNull
+    tags: ["example"], // 0h00, 1h00, ..., you can go to workflow to track or request Minhluu to add new tags
+    bigquery: { /* except view */
+        partitionBy: "DATE(created_time)",
+        // clusterBy: ["cart_id"] // Optional
+    },
+    assertions: { /* guaranteed columns: primary key, Source_insure_NonNull */
         uniqueKey : "ele_id",
-        nonNull : ("ele_id" , "Source_insure_NonNull")
-    }
+        /* uniqueKeys : [["order_id","item_id"]] // For if composite primary key */
+
+        nonNull : ("ele_id" , "Source_insure_NonNull"),
+        rowConditions : [
+            `created_time BETWEEN ( TIMESTAMP(CURRENT_DATETIME("+7") - INTERVAL 1 MONTH) ) AND TIMESTAMP(CURRENT_DATETIME("+7"))`, // snapshot
+            `email like "%@%.%"`, // format
+            `Source_insure_NonNull in ("AAAA","BBBB","CCCC")` // Source system insure data in cases 
+        ]
+        /* For more detail read: https://cloud.google.com/dataform/docs/assertions */
+    },
+    dependencies: [
+        /* 
+        */
+        {"name":"4_assertions__assertions","includeDependentAssertions":false}
+    ]
 }
 
 WITH dedup_full_table AS ${dedup.dedup(
@@ -28,13 +45,14 @@ WITH dedup_full_table AS ${dedup.dedup(
     SELECT 
         customer_id,
         flatten_location
-    FROM ${ref(`staging_marketplace_prd_cart_cart`)}
+    FROM ${source.silver}.marketplace_prd_cart_cart
 )
 
 SELECT
     "1b2c" AS ele_id,
     "Hello World" AS ele_name,
-    CURRENT_DATETIME("+7") AS current_datetime,
+    "minh.luu@buymed.com" AS email,
+    Timestamp_add(current_timestamp(), interval +7 hour) AS created_time,
     CASE
         WHEN "a" = "b" THEN "WRONG"
         WHEN "a" = "a" THEN "RIGHT"
@@ -63,7 +81,7 @@ post_operations {
         Ref-page : https://cloud.google.com/blog/products/data-analytics/join-optimizations-with-bigquery-primary-and-foreign-keys#:~:text=Why%20create%20Primary,and%20Join%20Reordering.
     */
     ALTER TABLE ${self()} 
-        ADD PRIMARY KEY (ele_id) NOT ENFORCED,
+        ADD PRIMARY KEY (ele_id) NOT ENFORCED;
         -- ADD FOREIGN KEY (ele_id) references ${ref(`temp`)}(order_id) NOT ENFORCED;
 
         /*
@@ -77,5 +95,6 @@ post_operations {
         > bellow is example
         */
         -- ADD FOREIGN KEY (ele_id) references ${source.ref}.temp (order_id) NOT ENFORCED, 
-        ALTER COLUMN NonNull_Column SET DEFAULT "Default_Value";
+    ALTER TABLE ${self()}
+        ALTER COLUMN NonNull_Column SET DEFAULT "Default_Value"; -- Optional
 }

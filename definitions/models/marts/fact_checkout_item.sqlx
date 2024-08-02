@@ -1,23 +1,27 @@
 config {
     type: "incremental",
-    description: " 6 months| PIC: minh.luu; model_type: incremetal ;schedule: 12h00",
+    description: ` 6 months| PIC: minh.luu; model_type: incremetal ;schedule: 12h00
+    Source:
+      ${source.silver}.marketplace_prd_order_v2_order_item
+      ${source.silver}.marketplace_prd_order_v2_order`,
     tags: ["12h00"],
     name: "fact_checkout_item",
     columns: {
-        order_id: docs.order_id,
-        customer_id: "The unique identifier for each customer",
-        sku: docs.sku,
-        item_code: docs.item_code,
+        order_id: "NonNull |" + docs.order_id,
+        customer_id: "NonNull | The unique identifier for each customer",
+        sku: "NonNull |" | docs.sku,
+        item_code: "NonNull |" | docs.item_code,
         price: "The cost of the item. This field indicates the selling price of the product at the time of the order",
         quantity: "The number of units of the item ordered. This field shows the amount of product ordered by the customer",
-        order_item_created_time: "The datetime when the order item was created, adjusted to the 'Asia/Ho_Chi_Minh' timezone",
-        cart_item_created_time: "The datetime when the item was added to the cart, adjusted to the 'Asia/Ho_Chi_Minh' timezone. This helps in understanding customer behavior before purchase",
-        page: "The webpage where the item was ordered from. This field is used for tracking the source page of the order",
-        event_source: "The source of the event, indicating how the item was ordered. This can help identify whether the order was placed via promotion, same-seller or something else",
-        event_screen: "The screen on which the event occurred. This provides additional context on the user interface interaction",
-        tags: "Tags associated with the order item. These tags can be used for categorization and analysis purposes",
-        sku_key: docs.sku_key,
-        province_code: docs.province_code
+        order_item_created_time: "NonNull | The datetime when the order item was created, adjusted to the 'Asia/Ho_Chi_Minh' timezone",
+        cart_item_created_time: "NonNull | The datetime when the item was added to the cart, adjusted to the 'Asia/Ho_Chi_Minh' timezone. This helps in understanding customer behavior before purchase",
+        page: "Nullable | The webpage where the item was ordered from. This field is used for tracking the source page of the order",
+        event_source: "Nullable | The source of the event, indicating how the item was ordered. This can help identify whether the order was placed via promotion, same-seller or something else",
+        event_screen: "Nullable | The screen on which the event occurred. This provides additional context on the user interface interaction",
+        tags: "Nullable | Tags associated with the order item. These tags can be used for categorization and analysis purposes",
+        sku_key: "NonNull | " + docs.sku_key,
+        province_code: "Nullable | " + docs.province_code,
+        is_newly_sku_in_l30d: "NonNull | True if the customer has not purchased the SKU within the past 30 days "
     },
     bigquery: {
         partitionBy: "DATETIME_TRUNC((order_item_created_time),MONTH)"
@@ -50,14 +54,16 @@ WITH stg_order_item as   ${dedup.dedup(
 
 stg_order as ${dedup.dedup(
   source.silver + `.marketplace_prd_order_v2_order`,
-  "order_id, province_code",
+  "order_id, province_code, status",
   start_timestamp= when(incremental(),
             ` TIMESTAMP(current_datetime() - INTERVAL 2 DAY )`, 
             ` TIMESTAMP_SECONDS(0)`)
 )}
 
+
 SELECT 
   a.order_id,
+  b.status as order_status,
   a.customer_id,
   a.sku,
   a.item_code,
@@ -70,7 +76,21 @@ SELECT
   a.event_screen,
   a.tags,
   b.province_code,
-  a.sku_key
+  a.sku_key,
+  CASE
+    WHEN EXISTS (
+      SELECT 1
+      FROM stg_order_item AS sub
+      WHERE sub.customer_id = a.customer_id
+        AND sub.sku_key = a.sku_key
+        AND sub.order_item_created_time BETWEEN
+          DATETIME_SUB(a.order_item_created_time, INTERVAL 30 DAY)
+          AND a.order_item_created_time
+        AND sub.order_item_created_time != a.order_item_created_time
+    ) THEN FALSE
+    ELSE TRUE
+  END AS is_newly_sku_in_l30d
+
 FROM stg_order_item a
 LEFT JOIN stg_order b
   ON a.order_id = b.order_id

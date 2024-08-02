@@ -1,0 +1,30 @@
+# Some helpful commit example
+
+Before reading: 
+  * [content] : content is optional
+  * [ A/ B ] : A or B based on your choice, but also this is optional
+
+1. Create Model track ...
+
+2. Create assertions to check ... [ , <who> require / JIRA  ]
+
+3. Create unittest to check ... [ , <who> require / JIRA ]
+
+4. Add <Logic> to solve ... [ , JIRA DATA-1928 ]
+
+5. Fix logic of <column_name> to solve ... [ , JIRA]
+
+6. Fix unittest because ...
+
+7. Drop logic of <column_name> [ , who require ]
+
+8. Refactor script to Optimize performance
+
+9. Refactor script to more readable
+
+
+# Better Case
+
+If you commit a lot of features, it will be difficult to solve issues when one of them breaks
+
+If there are assertions to test a feature, let's commit both of them with the feature.

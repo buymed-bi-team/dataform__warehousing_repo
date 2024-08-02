@@ -1,0 +1,109 @@
+
+
+config {
+    type: "incremental",
+    name: "tender_prd_core_tender_products",
+    schema: "platinum_buymed_vn",
+    assertions: {
+        uniqueKey: 'mg_id',
+        nonNull: ["created_date"]
+    },
+    bigquery: {
+        partitionBy: "created_date"
+    }
+}
+
+pre_operations {
+  ${
+    when(incremental(),
+      `
+      DECLARE min_created_date DATE;
+      DECLARE max_created_date DATE;
+      DECLARE check_deleted_action INT64;
+      -- Setting the min_created_date
+
+
+      CREATE OR REPLACE TEMP TABLE range_created_time_table AS (
+       SELECT MIN(DATE(created_time)) AS min_created_date, MAX(DATE(created_time)) AS max_created_date
+        FROM ${source.silver}.tender_prd_core_tender_products 
+        WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) AND action = "u"
+      );
+
+      CREATE OR REPLACE TEMP TABLE check_deleted_action AS (
+       SELECT count(1) as check
+        FROM ${source.silver}.tender_prd_core_tender_products 
+        WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) AND action = "d"
+      );
+
+     SET min_created_date = (SELECT min_created_date FROM range_created_time_table);
+      -- Assign the maximum created date
+     SET max_created_date = (SELECT max_created_date FROM range_created_time_table);
+
+     SET check_deleted_action = (SELECT check FROM check_deleted_action);
+      `,
+      ``
+    )
+  }
+}
+
+SELECT
+ *,
+ date(created_time) as created_date
+FROM ${source.silver}.tender_prd_core_tender_products o 
+ ${
+    when(incremental(), 
+      `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) 
+      QUALIFY ROW_NUMBER() OVER (_window) = 1`,
+      `QUALIFY ROW_NUMBER() OVER (_window) = 1
+       AND FIRST_VALUE(action) OVER (_window) <> 'd'`
+    )
+  }
+WINDOW
+  _window AS (
+  PARTITION BY
+    mg_id
+  ORDER BY
+    synced_at DESC,
+  IF
+    (action='d',3,
+    IF
+      (action='u',2,1)) DESC,
+    last_updated_time DESC)
+
+post_operations {
+  ${
+    when(incremental(),
+      `
+      -- Variable declarations and assignments at the start of the block
+      
+
+      IF min_created_date IS NOT NULL AND max_created_date IS NOT NULL THEN
+
+        -- Delete rows using the temporary table
+        DELETE FROM ${self()}
+        WHERE created_date BETWEEN min_created_date AND max_created_date
+          AND (key) IN (
+            SELECT (key)
+            FROM ${self()}
+            WHERE created_date BETWEEN min_created_date AND max_created_date
+            QUALIFY ROW_NUMBER() OVER (_window) > 1
+            WINDOW _window AS (
+              PARTITION BY mg_id
+              ORDER BY synced_at DESC,
+              IF(action = 'd', 3, IF(action = 'u', 2, 1)) DESC,
+              last_updated_time DESC
+            )
+          );
+
+      END IF;
+
+      IF check_deleted_action >0 THEN
+        DELETE FROM ${self()} WHERE mg_id IN (SELECT mg_id FROM ${self()} WHERE action = "d");
+      END IF;
+
+      `,
+      ``
+    )
+  }
+}
+

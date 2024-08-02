@@ -1,0 +1,28 @@
+config {
+    type: "view",
+    description: `PIC: minh.luu, model_type: view, schedule: daily
+    Source
+        ${source.ref}.dim_order
+        ${source.ref}.dim_calendar
+        ${source.ref}.fact_order`,
+    columns: {
+        eom: "NonNull | End of month",
+        order_channel: "NonNull | Source from dim_order",
+        gmv: "NonNull |"
+    }
+}
+SELECT
+    dim_calendar.eom,
+    dim_order.order_channel,
+    SUM(fact_order.gmv) as gmv
+
+FROM `lakehouse-prod-394907.gold_buymed_vn2.fact_order` fact_order
+LEFT JOIN `lakehouse-prod-394907.gold_buymed_vn2.dim_order` dim_order
+    ON fact_order.order_id = dim_order.order_id
+LEFT JOIN `lakehouse-prod-394907.gold_buymed_vn2.dim_calendar` dim_calendar
+    ON fact_order.created_date = dim_calendar.Date
+GROUP BY 1,2
+ORDER BY eom
+-- post_operations {
+--     ALTER VIEW ${self()} ADD PRIMARY KEY (year_month) NOT ENFORCED
+-- }
