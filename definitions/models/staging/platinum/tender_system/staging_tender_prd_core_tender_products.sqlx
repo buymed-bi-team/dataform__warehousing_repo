@@ -1,3 +1,5 @@
+
+
 config {
     type: "incremental",
     name: "tender_prd_core_tender_products",
@@ -8,8 +10,7 @@ config {
     },
     bigquery: {
         partitionBy: "created_date"
-    },
-    
+    }
 }
 
 pre_operations {
@@ -29,7 +30,7 @@ pre_operations {
       );
 
       CREATE OR REPLACE TEMP TABLE check_deleted_action AS (
-       SELECT 1 as check
+       SELECT count(1) as check
         FROM ${source.silver}.tender_prd_core_tender_products 
         WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) AND action = "d"
       );
@@ -96,7 +97,7 @@ post_operations {
 
       END IF;
 
-      IF check_deleted_action IS NOT NULL THEN
+      IF check_deleted_action >0 THEN
         DELETE FROM ${self()} WHERE mg_id IN (SELECT mg_id FROM ${self()} WHERE action = "d");
       END IF;
 
@@ -105,3 +106,4 @@ post_operations {
     )
   }
 }
+
