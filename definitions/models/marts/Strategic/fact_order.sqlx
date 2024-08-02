@@ -16,7 +16,7 @@ config {
     },
     assertions: {
         uniqueKey: "order_id",
-        nonNull: ["order_id","order_amount"]
+        nonNull: ["order_id","ordered_amount"]
     }
 }
 
