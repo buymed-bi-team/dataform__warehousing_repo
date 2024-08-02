@@ -1,3 +1,5 @@
+
+
 config {
     type: "incremental",
     name: "marketplace_prd_order_v2_reconciliation",
@@ -9,7 +11,7 @@ config {
     bigquery: {
         partitionBy: "created_date"
     },
-    tags:["custom_1h_past5"],
+    tags:["custom_1h_past5"]
 }
 
 pre_operations {
@@ -29,7 +31,7 @@ pre_operations {
       );
 
       CREATE OR REPLACE TEMP TABLE check_deleted_action AS (
-       SELECT 1 as check
+       SELECT count(1) as check
         FROM ${source.silver}.marketplace_prd_order_v2_reconciliation 
         WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) AND action = "d"
       );
@@ -47,10 +49,7 @@ pre_operations {
 
 SELECT
  *,
- CASE 
-    WHEN created_time IS NOT NULL THEN DATE(created_time)
-    ELSE "2099-01-01"
-  END AS created_date
+ date(created_time) as created_date
 FROM ${source.silver}.marketplace_prd_order_v2_reconciliation o 
  ${
     when(incremental(), 
@@ -99,8 +98,8 @@ post_operations {
 
       END IF;
 
-      IF check_deleted_action IS NOT NULL THEN
-        DELETE FROM ${self()} WHERE mg_id IN (SELECT mg_id FROM ${self()} WHERE created_date = "2099-01-01" and action = "d");
+      IF check_deleted_action >0 THEN
+        DELETE FROM ${self()} WHERE mg_id IN (SELECT mg_id FROM ${self()} WHERE action = "d");
       END IF;
 
       `,
@@ -108,3 +107,4 @@ post_operations {
     )
   }
 }
+
