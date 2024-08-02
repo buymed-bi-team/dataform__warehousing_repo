@@ -1,3 +1,5 @@
+
+
 config {
     type: "incremental",
     name: "warehouse_prd_inbound_put_ticket",
@@ -28,7 +30,7 @@ pre_operations {
       );
 
       CREATE OR REPLACE TEMP TABLE check_deleted_action AS (
-       SELECT 1 as check
+       SELECT count(1) as check
         FROM ${source.silver}.warehouse_prd_inbound_put_ticket 
         WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) AND action = "d"
       );
@@ -46,10 +48,7 @@ pre_operations {
 
 SELECT
  *,
- CASE 
-    WHEN created_time IS NOT NULL THEN DATE(created_time)
-    ELSE "2099-01-01"
-  END AS created_date
+ date(created_time) as created_date
 FROM ${source.silver}.warehouse_prd_inbound_put_ticket o 
  ${
     when(incremental(), 
@@ -98,8 +97,8 @@ post_operations {
 
       END IF;
 
-      IF check_deleted_action IS NOT NULL THEN
-        DELETE FROM ${self()} WHERE mg_id IN (SELECT mg_id FROM ${self()} WHERE created_date = "2099-01-01" and action = "d");
+      IF check_deleted_action >0 THEN
+        DELETE FROM ${self()} WHERE mg_id IN (SELECT mg_id FROM ${self()} WHERE action = "d");
       END IF;
 
       `,
@@ -107,3 +106,4 @@ post_operations {
     )
   }
 }
+

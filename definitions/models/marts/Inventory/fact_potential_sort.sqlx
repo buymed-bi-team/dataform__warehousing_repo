@@ -1,0 +1,84 @@
+config {
+  type: "table",
+  description: "Source: marketplace_prd_order_v2_order, marketplace_prd_order_v2_order_item | Schedule: every day at 12am | PIC: dong.le",
+  name: "fact_potential_sort",
+  tags: ["0h00"],
+  columns: {
+    "sale_order_code": "sales order code",
+    "created_date": "date the sale order was created",
+    "created_time": "timestamp the sale order was created",
+    "status": "status of the sale order",
+    "sku_fc_key": "SKU key combined with FC code",
+    "sku_code": "SKU code of the item",
+    "unit_price": "unit price of from sale_order_item",
+    "order_quantity": "order quantity from sale_order_item",
+    "reserved_quantity": "reserved quantity from sale_order_item",
+    "no_reserved_skus": "indicator if the reserved quantity of order item is greater than 0",
+    "order_amount": "= unit_price * order_quantity",
+    "reserved_amount": "= unit_price * reserved_quantity",
+    "total_qty": "sum of order_quantity for the whole sale order",
+    "total_amt": "sum of unit_price * order_quantity for the whole sale order",
+    "total_sku": "total distinct SKU count for the whole sale order",
+    "expected_sort": "= 50% order_quantity / total_qty + 25% order_amount / total_amt + 25% / total_sku",
+    "actual_sort": "= 50% order_quantity / total_qty + 25% order_amount / total_amt + 25% no_reserved_skus / total_sku",
+    "potential_sort": "expected_sort - actual_sort for in-progress statuses (CHECKING, WAIT_TO_DELIVERY, DRAFT, WAIT_TO_PICK, RESERVING, PACKING, WAIT_TO_CHECK, DELIVERING, CONFIRM, WAIT_TO_PACK, PICKING)",
+    "unFF_sort": "expected_sort - actual_sort for completed or canceled statuses (DELIVERED, RETURNING, RETURNED, COMPLETED, RETURN, LOST, CANCEL)"
+  },
+  bigquery: {
+    partitionBy: "created_date",
+  }
+}
+
+WITH dedup_sale_order AS ${dedup.dedup(
+  source.silver + `.warehouse_prd_core_sale_order`,
+  "sale_order_code, warehouse_code as fc_code, status, created_time",
+  "timestamp(date_sub(current_date(),interval 1 month))"
+)},
+
+dedup_sale_order_item AS ${dedup.dedup(
+  source.silver + `.warehouse_prd_core_sale_order_item`,
+  "sale_order_code, sku as sku_code, reserved_quantity, order_quantity, unit_price",
+  "timestamp(date_sub(current_date(),interval 1 month))"
+)},
+
+agg_sale_order_item AS (
+    SELECT
+    a.sale_order_code,
+    DATE(b.created_time, "Asia/Ho_Chi_Minh") as created_date,
+    DATETIME(b.created_time, "Asia/Ho_Chi_Minh") as created_time,
+    b.status,
+    CONCAT(c.sku_key, "_", b.fc_code) as sku_fc_key,
+    a.unit_price,
+    a.order_quantity,
+    a.reserved_quantity,
+    IF(reserved_quantity > 0, 1, 0) as no_reserved_skus,
+    a.unit_price * a.order_quantity as order_amount,
+    a.unit_price * a.reserved_quantity as reserved_amount,
+    SUM(a.order_quantity) OVER (PARTITION BY a.sale_order_code) AS total_qty,
+    SUM(a.order_quantity *  a.unit_price) OVER (PARTITION BY a.sale_order_code) AS total_amt,
+    COUNT(DISTINCT a.sku_code) OVER (PARTITION BY a.sale_order_code) AS total_sku
+    FROM dedup_sale_order_item a
+    LEFT JOIN dedup_sale_order b
+    ON a.sale_order_code = b.sale_order_code
+    LEFT JOIN ${ref("dim_sku")} c on a.sku_code = c.sku_code
+    WHERE a.sale_order_code LIKE "%SO%"
+),
+
+agg_sale_order_item_sort AS (
+  SELECT
+    *,
+      COALESCE(50 * order_quantity / NULLIF(total_qty, 0), 0) 
+      + COALESCE(25 * order_amount / NULLIF(total_amt, 0), 0) 
+      + COALESCE(25 * 1 / NULLIF(total_sku, 0), 0) AS expected_sort,
+      COALESCE(50 * reserved_quantity / NULLIF(total_qty, 0), 0) 
+      + COALESCE(25 * reserved_amount / NULLIF(total_amt, 0), 0) 
+      + COALESCE(25 * no_reserved_skus / NULLIF(total_sku, 0), 0) AS actual_sort
+  FROM agg_sale_order_item
+)
+
+SELECT
+  *,
+  IF(status IN ("CHECKING", "WAIT_TO_DELIVERY", "DRAFT", "WAIT_TO_PICK", "RESERVING", "PACKING", "WAIT_TO_CHECK", "DELIVERING", "CONFIRM", "WAIT_TO_PACK", "PICKING"), expected_sort - actual_sort, 0) AS potential_sort,
+  IF(status IN ("DELIVERED", "RETURNING", "RETURNED", "COMPLETED", "RETURN", "LOST", "CANCEL"), expected_sort - actual_sort, 0) AS unFF_sort
+FROM agg_sale_order_item_sort
+
