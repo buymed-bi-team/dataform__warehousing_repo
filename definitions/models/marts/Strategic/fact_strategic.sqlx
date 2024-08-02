@@ -1,0 +1,24 @@
+config {
+    type: "table",
+    description: `PIC: minh.luu, model_type: view, schedule: daily
+    Source
+        ${source.ref}.agg_strategic_monthly_GMV`,
+    columns: {
+        date: "NonNull |",
+        metric_code : "NonNull | ",
+        value : "NonNull | "
+    }
+}
+
+SELECT
+    date, 
+    metric_code,
+    value
+FROM
+    ${ref(`agg_strategic_monthly_GMV`)}
+
+post_operations {
+    ALTER TABLE ${self()} 
+        ADD FOREIGN KEY (date) references ${ref(`dim_calendar`)}(date) NOT ENFORCED,
+        ADD FOREIGN KEY (metric_code) references ${ref(`dim_strategic_metric`)}(metric_code) NOT ENFORCED;
+}
