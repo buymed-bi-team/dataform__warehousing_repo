@@ -3,9 +3,13 @@ config {
     description: "PIC: dong.le",
     tags: ["0h00"],
     columns: {
-        fc_code: "primary-key", 
-        service_area_code: "location_code - currently province code"
+        fc_code: "NonNull", 
+        service_area_code: "NonNull | location_code - currently province code"
     }
+    // assertions: {
+    //     uniqueKey : ['service_area_code'],
+    //     nonNull : ["fc_code","service_area_code"]
+    // }
 }
 
 select

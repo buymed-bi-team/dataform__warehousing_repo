@@ -49,7 +49,8 @@ WITH dedup_order as ${
     source, 
     province_code, 
     TO_JSON_STRING(JSON_VALUE_ARRAY(extra_props, '$.customer_tags')) as customer_tags,
-    customer_id
+    customer_id,
+    warehouse_code
     `,
     start_timestamp= when(incremental(),
               ` TIMESTAMP(current_datetime() - INTERVAL 2 DAY )`, // Nếu incremental thì mình chỉ lấy 3 ngày trở lại
@@ -65,7 +66,8 @@ WITH dedup_order as ${
     ${choose_new(`source`)},
     ${choose_new(`province_code`)},
     ${choose_new(`customer_tags`)},
-    ${choose_new(`customer_id`)}
+    ${choose_new(`customer_id`)},
+    ${choose_new(`warehouse_code`)}
   FROM
     dedup_order
   GROUP BY
@@ -86,7 +88,16 @@ WITH dedup_order as ${
               ` TIMESTAMP(current_datetime() - INTERVAL 2 DAY )`,
               ` TIMESTAMP_SECONDS(0)`)                           
   
-)}
+)},
+
+dedup_tender_order_with_warehouse_code AS (
+    SELECT 
+        * ,
+        fc_code as warehouse_code
+    FROM dedup_tender_order
+    LEFT JOIN ${ref(`dim_fc_service_area`)} dim_fc_service_area
+        ON dedup_tender_order.province_code = dim_fc_service_area.service_area_code
+)
 
 , tender_order_tbl AS (
   SELECT 
@@ -94,9 +105,10 @@ WITH dedup_order as ${
     max(created_time) created_time,
     ${choose_new(`confirmation_date`)},
     ${choose_new(`province_code`)},
+    ${choose_new(`warehouse_code`)},
     order_channel
   FROM
-    dedup_tender_order
+    dedup_tender_order_with_warehouse_code
   GROUP BY
     order_id,order_channel
 )
@@ -108,14 +120,17 @@ SELECT
   CASE
     WHEN customer_tags LIKE '%TENDER%' THEN 'TENDER'
     WHEN source in ('brand-portal', 'clinic-portal') THEN 'DISTRIBUTION'
-    WHEN source = 'internal-portal' THEN 'CONSIGNMENT' 
-    WHEN customer_id = 241098 THEN 'CONSIGNMENT'
+    WHEN created_time >= "2023-10-01" AND source = 'internal-portal' THEN 'CONSIGNMENT' 
+    WHEN created_time >= "2023-10-01" AND customer_id = 241098 THEN 'CONSIGNMENT'
     WHEN customer_tags LIKE '%CIRCA%'  THEN 'CIRCA'
     ELSE 'MARKETPLACE'
   END AS order_channel,
-  province_code
-FROM
-  order_tbl
+  province_code,
+  dim_fc.sales_region_code
+FROM order_tbl
+LEFT JOIN ${ref(`dim_fc`)} dim_fc
+    ON order_tbl.warehouse_code = dim_fc.fc_code
+
 ${
   when(incremental(),
    `
@@ -132,8 +147,11 @@ SELECT
   created_time,
   confirmation_date,
   order_channel,
-  province_code
-FROM dedup_tender_order
+  province_code,
+  dim_fc.sales_region_code
+FROM tender_order_tbl
+LEFT JOIN ${ref(`dim_fc`)} dim_fc
+    ON tender_order_tbl.warehouse_code = dim_fc.fc_code
 ${
   when(incremental(),
    `
