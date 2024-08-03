@@ -32,7 +32,7 @@ pre_operations {
 
       CREATE OR REPLACE TEMP TABLE get_deleted_record AS (
           SELECT mg_id 
-          FROM ${source.silver}.warehouse_prd_picking_pick_ticket_item 
+          FROM ${source.silver}.marketplace_prd_product_v2_category 
           WHERE  ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) and 
           created_time IS NULL AND last_updated_time IS NULL
         );
