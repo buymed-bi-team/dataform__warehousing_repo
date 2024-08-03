@@ -51,7 +51,7 @@ pre_operations {
 
       CREATE OR REPLACE TEMP TABLE get_deleted_record AS (
           SELECT mg_id 
-          FROM ${source.silver}.marketplace_prd_order_ve_order 
+          FROM ${source.silver}.marketplace_prd_order_v2_order 
           WHERE  ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) and 
           created_time IS NULL AND last_updated_time IS NULL
         );
@@ -69,7 +69,7 @@ pre_operations {
 -- for marketplace_prd_cart only
 WITH deleted_records_table AS (
   SELECT mg_id
-  FROM ${source.silver}.marketplace_prd_order_ve_order
+  FROM ${source.silver}.marketplace_prd_order_v2_order
   WHERE action = 'd'
     AND date(ingest_time) >= current_date() - 1
 )
@@ -80,7 +80,7 @@ SELECT *,
   END AS created_date
 FROM (
   SELECT *
-  FROM ${source.silver}.marketplace_prd_order_ve_order o 
+  FROM ${source.silver}.marketplace_prd_order_v2_order o 
   ${
     when(incremental(), 
       `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) 
