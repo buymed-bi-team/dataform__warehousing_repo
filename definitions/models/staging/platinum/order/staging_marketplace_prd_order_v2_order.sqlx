@@ -1,6 +1,6 @@
 config {
     type: "incremental",
-    name: "marketplace_prd_order_ve_order",
+    name: "marketplace_prd_order_v2_order",
     schema: "platinum_buymed_vn",
     assertions: {
          uniqueKey: 'mg_id',
@@ -38,7 +38,7 @@ pre_operations {
               WHEN created_time IS NOT NULL THEN DATE(created_time) 
               ELSE DATE("2099-01-01") 
             END AS created_date
-          FROM ${source.silver}.marketplace_prd_order_ve_order 
+          FROM ${source.silver}.marketplace_prd_order_v2_order 
           WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) 
             AND (
               (created_time IS NOT NULL AND last_updated_time IS NOT NULL) 
