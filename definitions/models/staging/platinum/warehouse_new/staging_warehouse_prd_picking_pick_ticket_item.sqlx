@@ -95,10 +95,16 @@ FROM (
       last_updated_time DESC
   )
 ) 
-WHERE created_time is null and last_updated_time is null -- all record deleted include action "d"
+${
+    when(incremental(), 
+      `WHERE created_time is null and last_updated_time is null -- all record deleted include action "d"
   OR (created_time IS NOT NULL AND last_updated_time IS NOT NULL AND mg_id NOT IN (SELECT mg_id FROM deleted_records_table))
   OR (created_time IS NULL AND last_updated_time IS NOT NULL AND mg_id NOT IN (SELECT mg_id FROM deleted_records_table))
-  OR (action = 'i' AND mg_id NOT IN (SELECT mg_id FROM deleted_records_table))
+  OR (action = 'i' AND mg_id NOT IN (SELECT mg_id FROM deleted_records_table))`,
+      `WHERE (created_time IS NOT NULL OR last_updated_time IS NOT NULL )`
+    )
+  }
+
 
 post_operations {
   ${
