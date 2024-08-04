@@ -3,7 +3,7 @@ config {
     description: " PIC: minh.luu; model_type: table; schedule: 0h01",
     tags: ["e0h01"],
     columns: {
-        Date : "ngày-tháng-năm",
+        date : "ngày-tháng-năm",
         date_key: "Date nhưng không có dấu phân cách",
         week_day: "Là thứ mấy trong tuần, week_day=1 tương ứng thứ 2",
         sow: "Date đầu tuần",
@@ -44,7 +44,7 @@ WITH calendar AS (
 
 , cte_main as (
   SELECT
-    Date,
+    date,
     CAST( FORMAT_DATE("%Y%m%d", Date) AS INT64 ) AS date_key,
     MOD(CAST(EXTRACT(DAYOFWEEK FROM Date) AS INT64) + 5, 7) + 1 AS week_day,
     DATE_TRUNC(Date, WEEK(MONDAY)) AS sow,
@@ -99,5 +99,5 @@ FROM cte_main as a
 --   a.Date in ("2024-02-18") 
 
 post_operations {
-  ALTER TABLE ${self()} ADD PRIMARY KEY (Date) NOT ENFORCED;
+  ALTER TABLE ${self()} ADD PRIMARY KEY (date) NOT ENFORCED;
 }

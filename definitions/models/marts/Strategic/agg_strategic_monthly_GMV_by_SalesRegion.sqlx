@@ -1,19 +1,22 @@
 config {
     type: "view",
-    description: `PIC: minh.luu, model_type: view
+    description: `PIC: minh.luu, model_type: view"
     Source
         ${source.ref}.dim_order
         ${source.ref}.dim_calendar
         ${source.ref}.fact_order`,
     columns: {
-        metric_code: "NonNull | Concat of order_channel and metric lv2 column",
+        metric_code: "NonNull | Concat of SalesRegion and metric lv2 column",
         date: "NonNull | End of month",
         value: "NonNull | gmv"
     }
 }
 SELECT
     dim_calendar.eom as date,
-    "GMV_" || dim_order.order_channel AS metric_code,
+    CASE
+        WHEN dim_order.sales_region_code IS NULL then "GMV_NULL_REGION"
+        ELSE "GMV_" || dim_order.sales_region_code
+    END AS metric_code,
     IF(SUM(fact_order.gmv) = 0, NULL,SUM(fact_order.gmv))  as value
 
 FROM `lakehouse-prod-394907.gold_buymed_vn2.fact_order` fact_order
@@ -23,7 +26,3 @@ LEFT JOIN `lakehouse-prod-394907.gold_buymed_vn2.dim_calendar` dim_calendar
     ON fact_order.created_date = dim_calendar.date
 GROUP BY 1,2
 ORDER BY eom
-
--- post_operations {
---     ALTER VIEW ${self()} ADD PRIMARY KEY (year_month) NOT ENFORCED
--- }

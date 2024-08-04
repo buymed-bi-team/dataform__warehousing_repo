@@ -34,7 +34,7 @@ function csvToSQL (sample_csv) {
             else {
                 value = `'${value}'`
             }
-            sql_line += `${value} as ${header[col_i]}_t ${col_i < header.length - 1 ? ',':''}`  
+            sql_line += `${value} as ${header[col_i]} ${col_i < header.length - 1 ? ',':''}`  
         });
 
         sql += `  SELECT ${sql_line}${row_i < lines.length - 2 ? ' UNION ALL' : ''}\n`;

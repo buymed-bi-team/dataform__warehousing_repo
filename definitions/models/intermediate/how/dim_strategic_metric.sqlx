@@ -1,0 +1,30 @@
+config {
+    type: "table",
+    description: "PIC: minhluu; model_type: table; schedule: Manual"
+}
+
+${cfunction.csvToSQL(`
+    metric_code,lv1,lv2,desciption
+    GMV_TENDER,TENDER,GMV, 
+    GMV_MARKETPLACE,MARKETPLACE,GMV, 
+    GMV_DISTRIBUTION,DISTRIBUTION,GMV, 
+    GMV_CONSIGNMENT,CONSIGNMENT,GMV, 
+    GMV_CIRCA,CIRCA,GMV, 
+    GMV_MIENBAC,MIENBAC,GMV,
+    GMV_MIENTRUNG,MIENTRUNG,GMV,
+    GMV_MIENNAM,MIENNAM,GMV,
+    GMV_NULL_REGION,UNKNOWN REGION,GMV,
+    #_Orders_MIENBAC,MIENBAC,#_Orders,
+    #_Orders_MIENTRUNG,MIENTRUNG,#_Orders,
+    #_Orders_MIENNAM,MIENNAM,#_Orders,
+    #_Orders_NULL_REGION,UNKNOWN REGION,#_Orders,
+    #_Delivers_MIENBAC,MIENBAC,#_Delivers,
+    #_Delivers_MIENTRUNG,MIENTRUNG,#_Delivers,
+    #_Delivers_MIENNAM,MIENNAM,#_Delivers,
+    #_Delivers_NULL_REGION,UNKNOWN REGION,#_Delivers,
+`)}
+
+
+post_operations {
+    ALTER TABLE ${self()} ADD PRIMARY KEY (metric_code) NOT ENFORCED;
+}
