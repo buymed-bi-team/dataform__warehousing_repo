@@ -1,6 +1,6 @@
 config {
     type: 'table',
-    name: "fact_addcart_item",
+    name: "fact_user_event_tracking",
     description: `Started time: 20240601 | PIC: tu.dang; schhedule: 0h00 daily; model type: table
     Source:
         ${source.silver}.monitoring_prd_collector_user_stats_*`,
@@ -57,10 +57,23 @@ SELECT
   seller_id,
   product_id,
   sku_code,
-  DENSE_RANK() OVER(PARTITION BY seller_id, DATE(created_time),
-    product_id
-  ORDER BY
-    created_time ASC ) sequence_id
+   case when STRPOS(sku_code,".") > 0 then  LEFT(sku_code,STRPOS(sku_code,".")-1)
+ else sku_code end as seller_code,
+  DENSE_RANK() OVER(PARTITION BY seller_id, DATE(created_time),  product_id  ORDER BY  created_time ASC ) sequence_id,
+  CASE
+    WHEN EXISTS (
+      SELECT 1
+      FROM stg AS sub
+      WHERE sub.customer_id = stg.customer_id
+        AND sub.sku_code = stg.sku_code
+        AND sub.event = stg.event
+        AND sub.created_time BETWEEN
+          DATETIME_SUB(stg.created_time, INTERVAL 30 DAY)
+          AND stg.created_time
+        AND sub.created_time != stg.created_time
+    ) THEN FALSE
+    ELSE TRUE
+  END AS is_sku_customer_first_interaction_in_30_days	
 FROM
   stg
 
