@@ -13,7 +13,6 @@ config {
         province_code: "Nullable |",
         product_status: "Nullable | Null means Unknown ",
         seller_id: "NonNull |",
-        has_ever_sold: "Nullable | Null means Unknown", // product has_ever_sold is Null still exists in order_v2_order_item
         screen: "NonNull |",
         source: "NonNull |",
         sku_code: "NonNull |",
