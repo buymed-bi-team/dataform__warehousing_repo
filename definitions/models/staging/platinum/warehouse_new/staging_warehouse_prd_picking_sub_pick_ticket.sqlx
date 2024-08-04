@@ -1,5 +1,6 @@
 
 
+
 config {
     type: "incremental",
     name: "warehouse_prd_picking_sub_pick_ticket",
@@ -51,7 +52,10 @@ pre_operations {
 
 SELECT
  *,
- date(created_time) as created_date
+ CASE 
+    WHEN created_time IS NOT NULL THEN DATE(created_time)
+    ELSE "2099-01-01"
+  END AS created_date
 FROM ${source.silver}.warehouse_prd_picking_sub_pick_ticket o 
  ${
     when(incremental(), 
@@ -130,4 +134,5 @@ post_operations {
     )
   }
 }
+
 
