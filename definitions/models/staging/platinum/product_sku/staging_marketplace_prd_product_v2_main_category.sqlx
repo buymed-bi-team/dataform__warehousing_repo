@@ -36,7 +36,7 @@ pre_operations {
           SELECT mg_id 
           FROM ${source.silver}.marketplace_prd_product_v2_main_category 
           WHERE  ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) and 
-          created_time IS NULL AND last_updated_time IS NULL
+          action = "d"
         );
 
      SET min_created_date = (SELECT min_created_date FROM range_created_time_table);
@@ -74,8 +74,7 @@ WINDOW
   IF
     (action='d',3,
     IF
-      (action='u',2,1)) DESC,
-    last_updated_time DESC)
+      (action='u',2,1)) DESC)
 
 post_operations {
   ${
@@ -97,8 +96,7 @@ post_operations {
             WINDOW _window AS (
               PARTITION BY mg_id
               ORDER BY synced_at DESC,
-              IF(action = 'd', 3, IF(action = 'u', 2, 1)) DESC,
-              last_updated_time DESC
+              IF(action = 'd', 3, IF(action = 'u', 2, 1)) DESC
             )
           );
 
