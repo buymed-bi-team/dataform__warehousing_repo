@@ -13,8 +13,10 @@ WITH LatestPut AS (
     JOIN ${ref("dedup_warehouse_prd_inbound_put_ticket")} b
         ON a.put_code = b.code
     LEFT JOIN ${ref("dim_inbound_ticket")} c
-        ON json_value(b.extra_props, "$.inbound_code") = c.po_code AND c.inbound_type = "PURCHASE"
-    GROUP BY a.sku, a.warehouse_code
+        ON json_value(b.extra_props, "$.inbound_code") = c.po_code
+    WHERE c.inbound_type = "PURCHASE"
+    GROUP BY 1, 2
+    
 )
 
 SELECT
