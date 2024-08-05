@@ -1,0 +1,32 @@
+config {
+    type: "view",
+    description: `PIC: minh.luu, model_type: view"
+    Source
+        ${source.ref}.dim_order
+        ${source.ref}.dim_calendar
+        ${source.ref}.fact_order`,
+    columns: {
+        metric_code: "NonNull | Concat of SalesRegion and metric lv2 column",
+        date: "NonNull | End of month",
+        value: "NonNull | gmv"
+    }
+}
+SELECT
+    dim_calendar.eom as date,
+    CASE
+        WHEN dim_order.sales_region_code IS NULL then "outbound_backlog_NULL_REGION"
+        ELSE "Outbound_Backlog_" || dim_order.sales_region_code
+    END AS metric_code,
+        SUM(
+        IF( order_status IN ('CONFIRMED', 'PROCESSING', 'WAIT_TO_DELIVER'),
+        1,
+        0)
+    )  as value
+
+FROM `lakehouse-prod-394907.gold_buymed_vn2.fact_order` fact_order
+LEFT JOIN `lakehouse-prod-394907.gold_buymed_vn2.dim_order` dim_order
+    ON fact_order.order_id = dim_order.order_id
+LEFT JOIN `lakehouse-prod-394907.gold_buymed_vn2.dim_calendar` dim_calendar
+    ON fact_order.created_date = dim_calendar.date
+GROUP BY 1,2
+ORDER BY eom
