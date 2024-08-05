@@ -4,46 +4,42 @@ config {
     Source
         ${source.ref}.agg_strategic_monthly_GMV`,
     columns: {
-        date: "NonNull |",
+        source: "NonNull | view name",
+        date: "NonNull | ",
         metric_code : "NonNull | ",
         value : "NonNull | "
-    }
+    },
+    tags: ['0h00']
 }
 
+js {
+    const source_list = [
+        'agg_strategic_monthly_GMV',
+        'agg_strategic_monthly_GMV_by_SalesRegion',
+        'agg_strategic_orders_by_Sales_Region',
+        'agg_strategic_delivers_by_Sales_Region',
+        'agg_strategic_item_sold_by_Sales_Region',
+        'agg_strategic_fulfilled_amount_by_SalesRegion',
+        'agg_strategic_unfulfilled_amount_by_SalesRegion',
+        'agg_strategic_cancelation_amount_by_SalesRegion',
+        'agg_strategic_backorder_amount_by_SalesRegion',
+        'agg_strategic_outbound_backlog_by_SalesRegion']
+}
+
+${
+    source_list.map((source,i) =>`
 SELECT
+    "${source}" as source,
     date, 
     metric_code,
     value
 FROM
-    ${ref(`agg_strategic_monthly_GMV`)}
-
-UNION ALL
-
-SELECT
-    date, 
-    metric_code,
-    value
-FROM
-    ${ref(`agg_strategic_monthly_GMV_by_SalesRegion`)}
-
-UNION ALL
-
-SELECT
-    date, 
-    metric_code,
-    value
-FROM
-    ${ref(`agg_strategic_orders_by_Sales_Region`)}
-
-UNION ALL
-
-SELECT
-    date, 
-    metric_code,
-    value
-FROM
-    ${ref(`agg_strategic_delivers_by_Sales_Region`)}
-
+    ${ref(source)}
+WHERE date > "2019-01-01"
+${i < source_list.length - 1 ? 'UNION ALL':''}
+`
+    ).join('')
+}
 
 post_operations {
     ALTER TABLE ${self()} 
