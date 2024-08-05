@@ -21,9 +21,12 @@ pre_operations {
   ${
     when(incremental(), 
       `
+      
       DECLARE min_created_date DATE;
       DECLARE max_created_date DATE;
       DECLARE check_deleted_action INT64;
+      DECLARE min_created_date_deleted DATE;
+      DECLARE max_created_date_deleted DATE; 
 
       -- Define the range of created times
       CREATE OR REPLACE TEMP TABLE range_created_time_table AS (
@@ -43,20 +46,22 @@ pre_operations {
               OR (created_time IS NULL AND last_updated_time IS NOT NULL) 
               OR (created_time IS NOT NULL AND last_updated_time IS NULL)
             ) 
-            AND action = "u"
+            AND action != "d"
         )
       );
 
-      CREATE OR REPLACE TEMP TABLE check_deleted_action AS (
-        SELECT COUNT(1) as check
-        FROM ${source.silver}.warehouse_prd_inbound_inbound_ticket_item 
-        WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) AND created_time IS NULL and last_updated_time IS NULL
-      );
+      CREATE OR REPLACE TEMP TABLE get_deleted_record AS (
+          SELECT mg_id 
+          FROM ${source.silver}.warehouse_prd_inbound_inbound_ticket_item 
+          WHERE  ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) and 
+          created_time IS NULL AND last_updated_time IS NULL
+        );
 
       -- Set the minimum and maximum created dates
       SET min_created_date = (SELECT min_created_date FROM range_created_time_table);
       SET max_created_date = (SELECT max_created_date FROM range_created_time_table);
-      SET check_deleted_action = (SELECT check FROM check_deleted_action);
+      --SET check_deleted_action = (SELECT check FROM check_deleted_action);
+      
       `
     )
   }
@@ -92,39 +97,63 @@ FROM (
       last_updated_time DESC
   )
 ) 
-WHERE created_time is null and last_updated_time is null -- all record deleted include action "d"
+${
+    when(incremental(), 
+      `WHERE created_time is null and last_updated_time is null -- all record deleted include action "d"
   OR (created_time IS NOT NULL AND last_updated_time IS NOT NULL AND mg_id NOT IN (SELECT mg_id FROM deleted_records_table))
   OR (created_time IS NULL AND last_updated_time IS NOT NULL AND mg_id NOT IN (SELECT mg_id FROM deleted_records_table))
-  OR (action = 'i' AND mg_id NOT IN (SELECT mg_id FROM deleted_records_table))
+  OR (action = 'i' AND mg_id NOT IN (SELECT mg_id FROM deleted_records_table))`,
+      `WHERE (created_time IS NOT NULL OR last_updated_time IS NOT NULL )`
+    )
+  }
+
 
 post_operations {
   ${
     when(incremental(),
       `
+      
       -- Delete rows using the temporary table
       IF min_created_date IS NOT NULL AND max_created_date IS NOT NULL THEN
       DELETE FROM ${self()}
-      WHERE (created_date BETWEEN min_created_date
-        AND max_created_date
-          and 
-         (key) IN (
-        SELECT (key) FROM ${self()} where created_date BETWEEN min_created_date
-        AND max_created_date 
-        QUALIFY ROW_NUMBER() OVER (_window) > 1
-        --OR FIRST_VALUE(action) OVER (_window) = "d"
-      WINDOW _window AS (
-        PARTITION BY mg_id
-        ORDER BY synced_at DESC,
-        IF(action = 'd', 3, IF(action = 'u', 2, 1)) DESC,
-        last_updated_time DESC
-      )
-      ));
+      WHERE (created_date BETWEEN min_created_date AND max_created_date)
+        AND (key) IN (
+          SELECT (key) FROM ${self()} 
+          WHERE created_date BETWEEN min_created_date AND max_created_date 
+          QUALIFY ROW_NUMBER() OVER (_window) > 1
+          --OR FIRST_VALUE(action) OVER (_window) = "d"
+          WINDOW _window AS (
+            PARTITION BY mg_id
+            ORDER BY synced_at DESC,
+            IF(action = 'd', 3, IF(action = 'u', 2, 1)) DESC,
+            last_updated_time DESC
+          )
+        );
       END IF;
 
-      IF check_deleted_action > 0 THEN
-        DELETE FROM ${self()} WHERE mg_id IN (
-          SELECT mg_id FROM ${self()} WHERE created_date = "2099-01-01" AND created_time IS NULL AND last_updated_time IS NULL
+      IF EXISTS(select * from get_deleted_record limit 1) THEN
+
+        CREATE OR REPLACE TEMP TABLE get_range_deleted AS (
+          SELECT 
+            MIN(created_date) AS min_created_date_deleted, 
+            MAX(created_date) AS max_created_date_deleted 
+          FROM ${self()} 
+          WHERE mg_id IN (SELECT mg_id FROM get_deleted_record) 
+            AND created_date != "2099-01-01" 
         );
+        
+        SET min_created_date_deleted = (SELECT min_created_date_deleted FROM get_range_deleted);
+        SET max_created_date_deleted = (SELECT max_created_date_deleted FROM get_range_deleted);
+        IF min_created_date_deleted is not null and max_created_date_deleted is not null THEN
+          DELETE FROM ${self()} 
+          WHERE created_date BETWEEN min_created_date_deleted AND max_created_date_deleted 
+            AND mg_id IN (SELECT mg_id FROM get_deleted_record);
+        END IF;
+
+        DELETE FROM ${self()} 
+        WHERE created_date = "2099-01-01" 
+          AND created_time IS NULL 
+          AND last_updated_time IS NULL;
       END IF;
       `,
       ``

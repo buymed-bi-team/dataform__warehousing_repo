@@ -37,17 +37,18 @@ WITH dedup_sale_order AS ${dedup.dedup(
 
 dedup_sale_order_item AS ${dedup.dedup(
   source.silver + `.warehouse_prd_core_sale_order_item`,
-  "sale_order_code, sku as sku_code, reserved_quantity, order_quantity, unit_price",
+  "sale_order_code, sku as sku_code, reserved_quantity, order_quantity, unit_price, created_time",
   "timestamp(date_sub(current_date(),interval 1 month))"
 )},
 
 agg_sale_order_item AS (
     SELECT
     a.sale_order_code,
-    DATE(b.created_time, "Asia/Ho_Chi_Minh") as created_date,
-    DATETIME(b.created_time, "Asia/Ho_Chi_Minh") as created_time,
+    DATE(a.created_time, "Asia/Ho_Chi_Minh") as created_date,
+    DATETIME(a.created_time, "Asia/Ho_Chi_Minh") as created_time,
     b.status,
     CONCAT(c.sku_key, "_", b.fc_code) as sku_fc_key,
+    a.sku_code,
     a.unit_price,
     a.order_quantity,
     a.reserved_quantity,
@@ -61,7 +62,7 @@ agg_sale_order_item AS (
     LEFT JOIN dedup_sale_order b
     ON a.sale_order_code = b.sale_order_code
     LEFT JOIN ${ref("dim_sku")} c on a.sku_code = c.sku_code
-    WHERE a.sale_order_code LIKE "%SO%"
+    WHERE a.sale_order_code LIKE "%SO%" AND a.created_time >= timestamp(date_sub(current_date(),interval 1 month))
 ),
 
 agg_sale_order_item_sort AS (
