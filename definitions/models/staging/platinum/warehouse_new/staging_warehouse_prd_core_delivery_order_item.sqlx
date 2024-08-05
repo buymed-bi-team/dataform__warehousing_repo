@@ -111,8 +111,8 @@ post_operations {
         
         CREATE OR REPLACE TEMP TABLE get_range_deleted AS (
           SELECT 
-            MAX(created_date) AS min_created_date_deleted, 
-            MIN(created_date) AS max_created_date_deleted 
+            MIN(created_date) AS min_created_date_deleted, 
+            MAX(created_date) AS max_created_date_deleted 
           FROM ${self()} 
           WHERE mg_id IN (SELECT mg_id FROM get_deleted_record) 
             AND created_date != "2099-01-01" 
