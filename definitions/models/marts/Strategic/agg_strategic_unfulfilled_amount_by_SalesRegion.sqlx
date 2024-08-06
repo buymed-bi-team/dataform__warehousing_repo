@@ -18,10 +18,10 @@ SELECT
         ELSE "Unfulfilled_Amount_" || dim_order.sales_region_code
     END AS metric_code,
     SUM(
-        IF( order_status IN ('CONFIRMED', 'PROCESSING', 'WAIT_TO_DELIVER'),
+        IF( order_status IN ('WAIT_TO_CONFIRM','CONFIRMED', 'PROCESSING', 'WAIT_TO_DELIVER') OR order_status is NULL,
         fact_order.gmv,
         0)
-    )  as value
+    )  as value 
 
 FROM `lakehouse-prod-394907.gold_buymed_vn2.fact_order` fact_order
 LEFT JOIN `lakehouse-prod-394907.gold_buymed_vn2.dim_order` dim_order
