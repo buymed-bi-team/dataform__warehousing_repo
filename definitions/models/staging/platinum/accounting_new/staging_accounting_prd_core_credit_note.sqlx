@@ -3,7 +3,7 @@
 
 config {
     type: "incremental",
-    name: "marketplace_prd_promotion_gamification_detail",
+    name: "accounting_prd_core_credit_note",
     schema: "platinum_buymed_vn",
     assertions: {
         uniqueKey: 'mg_id',
@@ -29,13 +29,13 @@ pre_operations {
 
       CREATE OR REPLACE TEMP TABLE range_created_time_table AS (
        SELECT MIN(DATE(created_time)) AS min_created_date, MAX(DATE(created_time)) AS max_created_date
-        FROM ${source.silver}.marketplace_prd_promotion_gamification_detail 
+        FROM ${source.silver}.accounting_prd_core_credit_note 
         WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) AND action != "d"
       );
 
       CREATE OR REPLACE TEMP TABLE get_deleted_record AS (
           SELECT mg_id 
-          FROM ${source.silver}.marketplace_prd_promotion_gamification_detail 
+          FROM ${source.silver}.accounting_prd_core_credit_note 
           WHERE  ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) and 
           created_time IS NULL AND last_updated_time IS NULL
         );
@@ -57,7 +57,7 @@ SELECT
     WHEN created_time IS NOT NULL THEN DATE(created_time)
     ELSE "2099-01-01"
   END AS created_date
-FROM ${source.silver}.marketplace_prd_promotion_gamification_detail o 
+FROM ${source.silver}.accounting_prd_core_credit_note o 
  ${
     when(incremental(), 
       `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) 
