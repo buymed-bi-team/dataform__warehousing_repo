@@ -2,8 +2,8 @@ config {
     type: "table",
     description: `PIC: minh.luu & dong.le; model_type: table; orchestration: 0h00 daily
     Source:
-      ${source.silver}.marketplace_prd_product_v2_product
-      ${source.silver}.seller_prd_core_seller
+      ${source.platinum}.marketplace_prd_product_v2_product
+      ${source.platinum}.seller_prd_core_seller
     `,
     name: "dim_product",
     tags: ["0h00"],
@@ -12,18 +12,19 @@ config {
         nonNull: ["product_id","owner_code"]
     },
     columns: {
-        product_id: "Unique identifier for each product",
-        product_name: "Name of the product",
-        owner_code : "Code representing the owner (seller) of the product",
-        owner_name : "Name of the owner (seller) of the product",
-        unit : "Unit of measure for the product",
-        volumes : "Volume information for the product",
-        is_fragile: "Indicates whether the product is easily breakable",
-        is_frozen : "Indicates whether the product requires freezing",
-        height: "Product height",
-        length: "Product length",
-        width: "Product width",
-        product_report_category : "Category of the product based on certain criteria and logic: If owner_name contains '[Tech]', then 'TECH'; If owner_code is 'MARKETING', then 'MARKETING'; If owner_code is 'DENX', then 'DENX'; If unit or volumes is 'COMBO', then 'COMBO'; If product_name contains certain keywords, then 'PROMOTION'; Otherwise, 'NORMAL' "
+        product_id: "NonNull | Unique identifier for each product",
+        product_name: "NonNull | Name of the product",
+        owner_code : "NonNull | Code representing the owner (seller) of the product",
+        owner_name : "NonNull | Name of the owner (seller) of the product",
+        unit : "Nullable | Unit of measure for the product",
+        volumes : "Nullable | Volume information for the product",
+        is_prescription: "NonNull | Indicates whether the product is drug",
+        is_fragile: "NonNull | Indicates whether the product is easily breakable",
+        is_frozen : "NonNull | Indicates whether the product requires freezing",
+        height: "NonNull | Product height",
+        length: "NonNull | Product length",
+        width: "NonNull | Product width",
+        product_report_category : "NonNull | Category of the product based on certain criteria and logic: If owner_name contains '[Tech]', then 'TECH'; If owner_code is 'MARKETING', then 'MARKETING'; If owner_code is 'DENX', then 'DENX'; If unit or volumes is 'COMBO', then 'COMBO'; If product_name contains certain keywords, then 'PROMOTION'; Otherwise, 'NORMAL' "
     }
 }
 
@@ -39,27 +40,29 @@ Chú thích chi tiết:
         NORMAL    : Các Sản phẩm không theo nhóm trên
 */
 
-WITH stg_product as ${dedup.dedup(
-  source.silver + `.marketplace_prd_product_v2_product`,
-  ` product_id,
+WITH stg_product as (
+  SELECT
+    product_id,
     name as product_name,
     owner as owner_code,
     unit,
     volumes,
+    is_prescription,
     is_fragile,
     is_frozen,
     height,
     length,
-    width`
-
-)}
+    width
+  FROM ${source.platinum}.marketplace_prd_product_v2_product
+)
 ,
-stg_seller as ${dedup.dedup(
-  source.silver + `.seller_prd_core_seller`,
-  ` code,
+stg_seller as (
+  SELECT
+    code,
     seller_id,
-    name as owner_name`
-)}
+    name as owner_name
+  FROM ${source.platinum}.seller_prd_core_seller
+)
 
 SELECT
   product_id,
@@ -68,6 +71,7 @@ SELECT
   owner_name,
   unit,
   volumes,
+  IF(is_prescription = TRUE, "DRUG","NON-DRUG") is_prescription,
   IF(is_fragile = TRUE,"FRAGILE","NORMAL") is_fragile,
   IF(is_frozen = TRUE, "FROZEN","NORMAL") is_frozen,
   height,
