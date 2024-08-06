@@ -87,7 +87,7 @@ LEFT JOIN dedup_ward
 LEFT JOIN dedup_province
     ON dedup_province.code = dedup_district.province_code
 LEFT JOIN dedup_region
-    ON dedup_region.code = dedup_province.code
+    ON dedup_region.code = dedup_province.region_code
 
 
 
