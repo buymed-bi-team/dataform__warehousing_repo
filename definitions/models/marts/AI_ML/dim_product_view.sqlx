@@ -27,3 +27,5 @@ config {
 
 select * 
 from gold_buymed_vn2.dim_product
+
+
