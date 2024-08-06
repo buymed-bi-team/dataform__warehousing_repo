@@ -13,11 +13,17 @@ config {
     name: "dim_geo_location",
     tags: ["0h00"],
     columns: {
-        location_code: "NonNull",
-        location_name: "NonNull",
-        location_class : "NonNull | It must be one of the following: WARD, DISTRICT, PROVINCE, REGION ",
-        parent_location_code: "Nullable | null if location_class = REGION",
-        child_location_code: "Nullable | null if location_class = WARD OR location_code in ('318','471','498','536','755') /* Because there are islands */ OR location_code in ('MB_ADM', 'MN_ADM', 'MIENBAC', 'MIENNAM', 'MIENTRUNG')"
+        location_code: "NonNull | Can be district code if island else ward code",
+        location_name: "NonNull | ",
+        location_class : "NonNull | It must be one of the following: WARD, DISTRICT",
+        ward_code : "Nullable | Null if island",
+        ward_name : "Nullable | Null if island",
+        district_code : "NonNull | ",
+        district_name : "NonNull | ",
+        province_code : "NonNull | ",
+        province_name : "NonNull | ",
+        region_code : "NonNull | ",
+        region_name : "NonNull | ",
     }
 }
 -- location code can be every level code: ward, district, province, region
@@ -29,85 +35,59 @@ WITH
     dedup_district AS ${dedup.dedup(
         source.silver + `.core_prd_master_data_district`,
         `
-        CAST(code AS STRING) as location_code,
-        name as location_name,
-        'DISTRICT' as location_class,
-        CAST(province_code AS STRING) as parent_location_code
+        code,
+        name as district_name,
+        province_code
         `
     )},
     dedup_ward AS ${dedup.dedup(
         source.silver + `.core_prd_master_data_ward`,
         `
-        CAST(code AS STRING) as location_code,
-        name as location_name,
-        'WARD' as location_class,
-        CAST(district_code AS STRING) as parent_location_code
+        code,
+        name as ward_name,
+        district_code
         `
     )},
     dedup_province AS ${dedup.dedup(
         source.silver + `.core_prd_master_data_province`,
         `
-        CAST(code AS STRING) as location_code,
-        name as location_name,
-        'PROVINCE' as location_class,
-        CAST(region_code AS STRING) as parent_location_code
+        code,
+        name as province_name,
+        region_code
         `
     )},
     dedup_region AS ${dedup.dedup(
         source.silver + `.core_prd_master_data_region`,
         `
-        CAST(code AS STRING) as location_code,
-        name as location_name,
-        'REGION' as location_class,
-        CAST(null AS STRING) as parent_location_code
+        code,
+        name as region_name
         `
-    )},
-    int_location AS (
-        SELECT location_code,location_name,location_class,parent_location_code FROM dedup_ward
-        UNION ALL
-        SELECT location_code,location_name,location_class,parent_location_code FROM dedup_district
-        UNION ALL
-        SELECT location_code,location_name,location_class,parent_location_code FROM dedup_province
-        UNION ALL
-        SELECT location_code,location_name,location_class,parent_location_code FROM dedup_region
-    )
+    )}
 
-SELECT 
-    a.location_code,
-    a.location_name,
-    a.location_class,
-    a.parent_location_code,
-    TO_JSON(ARRAY_AGG( b.location_code )) as child_location_code
-FROM int_location a
-LEFT JOIN int_location b ON a.location_code = b.parent_location_code
-GROUP BY 
-    a.location_code,
-    a.location_name,
-    a.location_class,
-
-    a.parent_location_code
-
-    -- recursive_location AS (
-    --     SELECT location_code, location_name,location_class, parent_location_code,1 pos 
-    --     FROM int_location
-        
-    --     UNION ALL
-        
-    --     SELECT a.location_code, a.location_name, a.location_class, r.parent_location_code, pos + 1
-    --     FROM  int_location a
-    --     JOIN recursive_location r ON r.location_code = a.parent_location_code
-    -- ),
-
--- SELECT 
---     r1.location_code, 
---     r1.location_name,
---     r1.location_class, 
---     TO_JSON(ARRAY_AGG( r1.parent_location_code IGNORE NULLS order by r1.pos asc) ) parent_location_code,
-
-
--- FROM recursive_location r1
--- LEFT JOIN recursive_location r2 ON r1.location_code = r2.parent_location_code
--- GROUP BY 1,2,3
+SELECT
+    CASE
+        WHEN dedup_ward.code IS NULL THEN dedup_district.code
+    ELSE dedup_ward.code
+    END AS location_code,
+    CASE
+        WHEN dedup_ward.code IS NULL THEN 'DISTRICT'
+    ELSE 'WARD'
+    END AS location_class,
+    dedup_ward.code as ward_code,
+    dedup_ward.ward_name,
+    dedup_district.code as district_code,
+    dedup_district.district_name,
+    dedup_province.code as province_code,
+    dedup_province.province_name,
+    dedup_region.code as region_code,
+    dedup_region.region_name
+FROM dedup_district 
+LEFT JOIN dedup_ward
+    ON dedup_district.code = dedup_ward.district_code
+LEFT JOIN dedup_province
+    ON dedup_province.code = dedup_district.province_code
+LEFT JOIN dedup_region
+    ON dedup_region.code = dedup_province.code
 
 
 
