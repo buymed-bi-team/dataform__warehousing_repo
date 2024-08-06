@@ -17,11 +17,7 @@ SELECT
         WHEN dim_order.sales_region_code IS NULL then "Fulfilled_Amount_NULL_REGION"
         ELSE "Fulfilled_Amount_" || dim_order.sales_region_code
     END AS metric_code,
-    SUM(
-        IF( order_status IN ('DELIVERING', 'DELIVERED', 'COMPLETED'),
-        fact_order.gmv,
-        0)
-    )  as value
+    IF ( SUM(notion_amount)  = 0, Null, SUM(notion_amount)) as value
 
 FROM `lakehouse-prod-394907.gold_buymed_vn2.fact_order` fact_order
 LEFT JOIN `lakehouse-prod-394907.gold_buymed_vn2.dim_order` dim_order
