@@ -24,8 +24,8 @@ WITH
   SELECT
     event,
     customer_id,
-    -- TIMESTAMP_add(TIMESTAMP(created_time), INTERVAL 7 hour) AS created_time,
-    created_time,
+    TIMESTAMP_add(TIMESTAMP(created_time), INTERVAL 7 hour) AS created_time,
+    -- created_time,
     JSON_EXTRACT_SCALAR(extra_props, '$.user_metadata.LOCATION') AS province_code,
     JSON_EXTRACT_SCALAR(extra_props, '$.metadata.screen') AS screen,
     JSON_EXTRACT_SCALAR(extra_props, '$.metadata.source') AS SOURCE,
