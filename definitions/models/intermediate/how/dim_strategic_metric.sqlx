@@ -27,9 +27,18 @@ ${cfunction.csvToSQL(`
     "GMV_By_Region_MIENTRUNG"           ,"MIENTRUNG"        ,"GMV By Region","GMV calculated from orders in the MIENBAC region"
     "GMV_By_Region_MIENNAM"             ,"MIENNAM"          ,"GMV By Region","GMV calculated from orders in the MIENBAC region"
     "GMV_By_Region_NULL_REGION"         ,"UNKNOWN REGION"   ,"GMV By Region","GMV calculated from orders without assigned region"
+    
 `, value_prediction='"')}
 
 /*
+    "Fulfilled_Amount_MIENBAC"          ,"MIENBAC"          ,"Fulfilled_Amount","The total amount based on fulfilled orders in the MIENBAC region. The fulfilled orders must be one of following status: DELIVERING or DELIVERED or COMPLETED "
+    "Fulfilled_Amount_MIENTRUNG"        ,"MIENTRUNG"        ,"Fulfilled_Amount","The total amount based on fulfilled orders in the MIENTRUNG region"
+    "Fulfilled_Amount_MIENNAM"          ,"MIENNAM"          ,"Fulfilled_Amount","The total amount based on fulfilled orders in the MIENNAM region"
+    "Fulfilled_Amount_NULL_REGION"      ,"UNKNOWN REGION"   ,"Fulfilled_Amount","The total amount based on fulfilled orders without assigned region"
+    "Unfulfilled_Amount_MIENBAC"        ,"MIENBAC"          ,"Unfulfilled_Amount","The total amount based on unfulfilled orders in the MIENBAC region. The unfulfilled orders must be one of following status: CONFIRMED or PROCESSING or WAIT_TO_DELIVER "
+    "Unfulfilled_Amount_MIENTRUNG"      ,"MIENTRUNG"        ,"Unfulfilled_Amount","The total amount based on unfulfilled orders in the MIENTRUNG region"
+    "Unfulfilled_Amount_MIENNAM"        ,"MIENNAM"          ,"Unfulfilled_Amount","The total amount based on unfulfilled orders in the MIENNAM region"
+    "Unfulfilled_Amount_NULL_REGION"    ,"UNKNOWN REGION"   ,"Unfulfilled_Amount","The total amount based on unfulfilled orders without assigned region"
     "#_Orders_MIENBAC"                  ,"MIENBAC"          ,"#_Orders"     ,"Count Orders in the MIENBAC region"
     "#_Orders_MIENTRUNG"                ,"MIENTRUNG"        ,"#_Orders"     ,"Count Orders in the MIENTRUNG region"
     "#_Orders_MIENNAM"                  ,"MIENNAM"          ,"#_Orders"     ,"Count Orders in the MIENNAM region"
@@ -42,14 +51,6 @@ ${cfunction.csvToSQL(`
     "Item_Sold_MIENTRUNG"               ,"MIENTRUNG"        ,"Item_Sold"    ,"Count the number of items sold in the MIENTRUNG region"
     "Item_Sold_MIENNAM"                 ,"MIENNAM"          ,"Item_Sold"    ,"Count the number of items sold in the MIENNAM region"
     "Item_Sold_NULL_REGION"             ,"UNKNOWN REGION"   ,"Item_Sold"    ,"Count the number of items sold without assigned region"
-    "Fulfilled_Amount_MIENBAC"          ,"MIENBAC"          ,"Fulfilled_Amount","The total amount based on fulfilled orders in the MIENBAC region. The fulfilled orders must be one of following status: DELIVERING or DELIVERED or COMPLETED "
-    "Fulfilled_Amount_MIENTRUNG"        ,"MIENTRUNG"        ,"Fulfilled_Amount","The total amount based on fulfilled orders in the MIENTRUNG region"
-    "Fulfilled_Amount_MIENNAM"          ,"MIENNAM"          ,"Fulfilled_Amount","The total amount based on fulfilled orders in the MIENNAM region"
-    "Fulfilled_Amount_NULL_REGION"      ,"UNKNOWN REGION"   ,"Fulfilled_Amount","The total amount based on fulfilled orders without assigned region"
-    "Unfulfilled_Amount_MIENBAC"        ,"MIENBAC"          ,"Unfulfilled_Amount","The total amount based on unfulfilled orders in the MIENBAC region. The unfulfilled orders must be one of following status: CONFIRMED or PROCESSING or WAIT_TO_DELIVER "
-    "Unfulfilled_Amount_MIENTRUNG"      ,"MIENTRUNG"        ,"Unfulfilled_Amount","The total amount based on unfulfilled orders in the MIENTRUNG region"
-    "Unfulfilled_Amount_MIENNAM"        ,"MIENNAM"          ,"Unfulfilled_Amount","The total amount based on unfulfilled orders in the MIENNAM region"
-    "Unfulfilled_Amount_NULL_REGION"    ,"UNKNOWN REGION"   ,"Unfulfilled_Amount","The total amount based on unfulfilled orders without assigned region"
     "Cancellation_Amount_MIENBAC"       ,"MIENBAC"          ,"Cancellation_Amount","The total amount based on cancellation orders in the MIENBAC region. The cancellation orders must be one of following status: CANCEL or CANCELLED "
     "Cancellation_Amount_MIENTRUNG"     ,"MIENTRUNG"        ,"Cancellation_Amount","The total amount based on cancellation orders in the MIENTRUNG region"
     "Cancellation_Amount_MIENNAM"       ,"MIENNAM"          ,"Cancellation_Amount","The total amount based on cancellation orders in the MIENNAM region"
