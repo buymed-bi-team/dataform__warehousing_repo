@@ -17,10 +17,10 @@ SELECT
         WHEN dim_order.sales_region_code IS NULL then "Unfulfilled_Amount_NULL_REGION"
         ELSE "Unfulfilled_Amount_" || dim_order.sales_region_code
     END AS metric_code,
-    SUM(
-        IF( order_status IN ('WAIT_TO_CONFIRM','CONFIRMED', 'PROCESSING', 'WAIT_TO_DELIVER') OR order_status is NULL,
-        fact_order.gmv,
-        0)
+    SUM( 
+        fact_order.gmv
+        - IF( order_status IN ('DELIVERING', 'DELIVERED', 'COMPLETED'), fact_order.gmv, 0) 
+        - COALESCE(fact_order.return_amount,0)
     )  as value 
 
 FROM `lakehouse-prod-394907.gold_buymed_vn2.fact_order` fact_order

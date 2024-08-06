@@ -27,6 +27,9 @@ ${cfunction.csvToSQL(`
     "GMV_By_Region_MIENTRUNG"           ,"MIENTRUNG"        ,"GMV By Region","GMV calculated from orders in the MIENBAC region"
     "GMV_By_Region_MIENNAM"             ,"MIENNAM"          ,"GMV By Region","GMV calculated from orders in the MIENBAC region"
     "GMV_By_Region_NULL_REGION"         ,"UNKNOWN REGION"   ,"GMV By Region","GMV calculated from orders without assigned region"
+`, value_prediction='"')}
+
+/*
     "#_Orders_MIENBAC"                  ,"MIENBAC"          ,"#_Orders"     ,"Count Orders in the MIENBAC region"
     "#_Orders_MIENTRUNG"                ,"MIENTRUNG"        ,"#_Orders"     ,"Count Orders in the MIENTRUNG region"
     "#_Orders_MIENNAM"                  ,"MIENNAM"          ,"#_Orders"     ,"Count Orders in the MIENNAM region"
@@ -59,7 +62,7 @@ ${cfunction.csvToSQL(`
     "Outbound_Backlog_MIENTRUNG"        ,"MIENTRUNG"        ,"Outbound_Backlog","Count Orders has status CONFIRMED or PROCESSING or WAIT_TO_DELIVER and in the MIENTRUNG region"
     "Outbound_Backlog_MIENNAM"          ,"MIENNAM"          ,"Outbound_Backlog","Count Orders has status CONFIRMED or PROCESSING or WAIT_TO_DELIVER and in the MIENNAM region"
     "Outbound_Backlog_NULL_REGION"      ,"UNKNOWN REGION"   ,"Outbound_Backlog","Count Orders has status CONFIRMED or PROCESSING or WAIT_TO_DELIVER and without assigned region"
-`, value_prediction='"')}
+*/
 
 
 post_operations {
