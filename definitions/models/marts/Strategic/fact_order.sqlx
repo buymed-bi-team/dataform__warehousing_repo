@@ -10,12 +10,12 @@ config {
         // ordered_quantity: "The total quantity of items ordered"
         created_time : "NonNull | Datetime is in +7 timezone",
         created_date : "NonNull | Date is in +7 timezone",
-        // ordered_amount: "NonNull | The total valuation of all product in the order before discounts and fee. In marketplace, it is price field in orders table. In tender, it is total_amount in orders table",
+        ordered_amount: "NonNull | The total valuation of all product in the order before discounts and fee. In marketplace, it is price field in orders table. In tender, it is total_amount in orders table",
         ordered_amount_aft_discount: "NonNull | The total valuation of all product in the order after discounts and fee. In marketplace, it is total_price field in orders table. In tender, it is total_amount in orders table",
         ordered_line_items: "NonNull |The total number of stock-keeping units (SKUs) placed. In marketplace, it is total_item field in order table. In tender, it is number of record in order_item table group by order_id ",
         return_amount: "Nullable | the amount associated with a return, if appicable. It is amount field come from accounting_prd_core_credit_note where type of order is return ",
         order_status: "Nullable | Null means unknown",
-        gmv: "Nullable | The total valuation of all product in the order before discounts and fee. In marketplace, it is price field in orders table. In tender, it is total_amount in orders table"
+        gmv: "Nullable | The total valuation of all product in the order before discounts and fee"
     },
     assertions: {
         uniqueKey: "order_id",
