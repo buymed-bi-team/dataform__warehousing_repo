@@ -1,0 +1,22 @@
+config {
+    type: "view",
+    description: `PIC: minh.luu; model_type: table; schedule 0h00
+    Source: 
+        ${source.silver}.core_prd_master_data_district
+        ${source.silver}.core_prd_master_data_ward
+        ${source.silver}.core_prd_master_data_province
+        ${source.silver}.core_prd_master_data_region`,
+    name: "dim_geo_location_view",
+    schema: "buymed_AI_ML",
+    columns: {
+        location_code: "NonNull",
+        location_name: "NonNull",
+        location_class : "NonNull | It must be one of the following: WARD, DISTRICT, PROVINCE, REGION ",
+        parent_location_code: "Nullable | null if location_class = REGION",
+        child_location_code: "Nullable | null if location_class = WARD OR location_code in ('318','471','498','536','755') /* Because there are islands */ OR location_code in ('MB_ADM', 'MN_ADM', 'MIENBAC', 'MIENNAM', 'MIENTRUNG')"
+    }
+}
+
+
+select * 
+from gold_buymed_vn2.dim_geo_location

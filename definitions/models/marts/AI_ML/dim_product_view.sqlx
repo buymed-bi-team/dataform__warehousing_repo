@@ -1,0 +1,31 @@
+config {
+    type: "view",
+    description: `PIC: minh.luu & dong.le; model_type: table; orchestration: 0h00 daily
+    Source:
+      ${source.silver}.marketplace_prd_product_v2_product
+      ${source.silver}.seller_prd_core_seller
+    `,
+    name: "dim_product_view",
+    schema: "buymed_AI_ML",
+    columns: {
+        product_id: "Unique identifier for each product",
+        product_name: "Name of the product",
+        owner_code : "Code representing the owner (seller) of the product",
+        owner_name : "Name of the owner (seller) of the product",
+        unit : "Unit of measure for the product",
+        volumes : "Volume information for the product",
+        is_fragile: "Indicates whether the product is easily breakable",
+        is_frozen : "Indicates whether the product requires freezing",
+        height: "Product height",
+        length: "Product length",
+        width: "Product width",
+        product_report_category : "Category of the product based on certain criteria and logic: If owner_name contains '[Tech]', then 'TECH'; If owner_code is 'MARKETING', then 'MARKETING'; If owner_code is 'DENX', then 'DENX'; If unit or volumes is 'COMBO', then 'COMBO'; If product_name contains certain keywords, then 'PROMOTION'; Otherwise, 'NORMAL' "
+    }
+
+}
+
+
+select * 
+from gold_buymed_vn2.dim_product
+
+

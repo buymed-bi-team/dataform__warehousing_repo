@@ -1,0 +1,29 @@
+config {
+  type: "view",
+  description: ` 6 months| PIC: minh.luu; model_type: incremetal ;schedule: 12h00
+    Source:
+      ${source.silver}.marketplace_prd_order_v2_order_item
+      ${source.silver}.marketplace_prd_order_v2_order`,
+  name: "fact_checkout_item_view",
+  columns: {
+    order_id: "NonNull | Order identifier",
+    customer_id: "NonNull | The unique identifier for each customer",
+    sku: "NonNull | Stock Keeping Unit",
+    item_code: "NonNull | Item code",
+    price: "The cost of the item. This field indicates the selling price of the product at the time of the order",
+    quantity: "The number of units of the item ordered. This field shows the amount of product ordered by the customer",
+    order_item_created_time: "NonNull | The datetime when the order item was created, adjusted to the 'Asia/Ho_Chi_Minh' timezone",
+    cart_item_created_time: "NonNull | The datetime when the item was added to the cart, adjusted to the 'Asia/Ho_Chi_Minh' timezone. This helps in understanding customer behavior before purchase",
+    page: "Nullable | The webpage where the item was ordered from. This field is used for tracking the source page of the order",
+    event_source: "Nullable | The source of the event, indicating how the item was ordered. This can help identify whether the order was placed via promotion, same-seller, or something else",
+    event_screen: "Nullable | The screen on which the event occurred. This provides additional context on the user interface interaction",
+    tags: "Nullable | Tags associated with the order item. These tags can be used for categorization and analysis purposes",
+    sku_key: "NonNull | Stock Keeping Unit key",
+    province_code: "Nullable | Province code",
+    is_sku_customer_first_place_in_30_days: "NonNull | True if the customer has not purchased the SKU within the past 30 days"
+  },
+  schema: "buymed_AI_ML"
+}
+
+
+select * from gold_buymed_vn2.fact_checkout_item
