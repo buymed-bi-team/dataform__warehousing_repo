@@ -13,11 +13,12 @@ config {
     },
     tags: ["custom_5min_9to18","custom_1h_18to9","Weekend"],
     columns: {
-      order_id:"Unique identifier for each order",
-      created_time: "Timestamp indicating when the order was created. The time zone is set to 'Asia/Ho_Chi_Minh'",
-      confirmation_date: "order confirmation time",
-      order_channel: "Category of the order based on the tags and source.  'TENDER' if customer_tags contains 'TENDER', 'DISTRIBUTION' if source is 'brand-portal' or 'clinic-portal', 'CONSIGNMENT' if source is 'internal-portal','CIRCA' if customer_tags contains 'CIRCA', otherwise 'MARKETPLACE'",
-      province_code: "A standardized code used to identify provinces within a country",
+      order_id:"NonNull | Unique identifier for each order",
+      created_time: "NonNull | Timestamp indicating when the order was created. The time zone is set to 'Asia/Ho_Chi_Minh'",
+      confirmation_date: "Nullable | order confirmation time",
+      order_channel: "NonNull | Category of the order based on the tags and source.  'TENDER' if customer_tags contains 'TENDER', 'DISTRIBUTION' if source is 'brand-portal' or 'clinic-portal', 'CONSIGNMENT' if source is 'internal-portal','CIRCA' if customer_tags contains 'CIRCA', otherwise 'MARKETPLACE'",
+      province_code: "Nullable | A standardized code used to identify provinces within a country",
+      sales_region_code: "Nullable | Translate from the province code rather than the warehouse code, because assigning warehouse codes is not supported before 2022"
 
     },
     bigquery: {
@@ -128,17 +129,13 @@ SELECT
   province_code,
   dim_fc.sales_region_code
 FROM order_tbl
+LEFT JOIN ${ref(`dim_fc_service_area`)} dim_fc_service_area
+        ON order_tbl.province_code = dim_fc_service_area.service_area_code
 LEFT JOIN ${ref(`dim_fc`)} dim_fc
-    ON order_tbl.warehouse_code = dim_fc.fc_code
-
-${
-  when(incremental(),
-   `
-   WHERE created_time > (SELECT MAX(created_time) FROM ${self()})
-   `,
-   ``)
-   
-}
+    ON dim_fc_service_area.fc_code = dim_fc.fc_code
+${when(incremental(),
+   `WHERE created_time > (SELECT MAX(created_time) FROM ${self()})`,
+   ``)}
 
 UNION ALL
 
@@ -152,14 +149,10 @@ SELECT
 FROM tender_order_tbl
 LEFT JOIN ${ref(`dim_fc`)} dim_fc
     ON tender_order_tbl.warehouse_code = dim_fc.fc_code
-${
-  when(incremental(),
-   `
-   WHERE created_time > (SELECT MAX(created_time) FROM ${self()})
-   `,
-   ``)
-   
-}
+${when(incremental(),
+   `WHERE created_time > (SELECT MAX(created_time) FROM ${self()})`,
+   ``)}
+
 
 pre_operations {
   -- If user change order more than 5 minutes, incremental model will duplicate that order cause this model just

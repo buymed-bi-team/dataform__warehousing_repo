@@ -8,37 +8,34 @@ config {
     columns: {
         order_id : "NonNull",
         // ordered_quantity: "The total quantity of items ordered"
-        created_time : "NonNull",
-        created_date : "NonNull",
-        order_amount: "NonNull | The total valuation, the original valuation of all product in the order",
+        created_time : "NonNull | Datetime is in +7 timezone",
+        created_date : "NonNull | Date is in +7 timezone",
+        ordered_amount: "NonNull | The total valuation of all product in the order before discounts and fee. In marketplace, it is price field in orders table. In tender, it is total_amount in orders table",
+        ordered_amount_aft_discount: "NonNull | The total valuation of all product in the order after discounts and fee. In marketplace, it is total_price field in orders table. In tender, it is total_amount in orders table",
+        ordered_line_items: "NonNull |The total number of stock-keeping units (SKUs) placed. In marketplace, it is total_item field in order table. In tender, it is number of record in order_item table group by order_id ",
+        return_amount: "Nullable | the amount associated with a return, if appicable. It is amount field come from accounting_prd_core_credit_note where type of order is return ",
         order_status: "Nullable | Null means unknown",
-        gmv: "Nullable | If status isn't cancel then return ordered_amount, else return 0"
+        gmv: "Nullable | The total valuation of all product in the order before discounts and fee"
     },
     assertions: {
         uniqueKey: "order_id",
         nonNull: ["order_id","ordered_amount"]
+    },
+    bigquery : {
+        partitionBy: "DATE_TRUNC(created_date,MONTH)"
     }
 }
 
-WITH dedup_order_tbl as ( 
-${dedup.dedup(
-    source.silver + `.marketplace_prd_order_v2_order`,
-    `
-    order_id, 
-    DATETIME(created_time, 'Asia/Ho_Chi_Minh') as created_time, 
-    status as order_status,
-    price as ordered_amount,
-    total_price as ordered_amount_aft_discount,
-    "marketplace" as source_name
-    `
-    // ,
-    // start_timestamp= when(incremental(),
-    //           ` TIMESTAMP(current_datetime() - INTERVAL 2 DAY )`, // Nếu incremental thì mình chỉ lấy 3 ngày trở lại
-    //           ` TIMESTAMP_SECONDS(0)`)                            // tránh cho việc dedup phải thực hiện window function cả bảng
-    //                                                               // Điều này giúp nâng performance cụ thể là 1.32GB thành 37MB mỗi lần chạy incremental
-)} 
-UNION ALL
-${dedup.dedup(
+WITH tender_order_item_tbl as (
+    SELECT order_id, count( *) AS ordered_line_items
+    FROM ${dedup.dedup(
+        source.silver + `.tender_prd_core_tender_order_items`,
+        `order_id, product_id`
+    )}
+    GROUP BY 1
+), 
+
+tender_order_tbl as ${dedup.dedup(
     source.silver + `.tender_prd_core_tender_orders`,
     `
     order_id, 
@@ -52,7 +49,57 @@ ${dedup.dedup(
     // start_timestamp = when ( incremental(),
     //         ` TIMESTAMP(current_datetime() - INTERVAL 2 DAY )`,
     //         ` TIMESTAMP_SECONDS(0)`)      
-)})
+)}, 
+
+tender_order_tbl_with_item as (
+    SELECT 
+        tender_order_tbl.*,
+        ordered_line_items
+    FROM 
+        tender_order_tbl
+    LEFT JOIN tender_order_item_tbl
+        ON tender_order_tbl.order_id = tender_order_item_tbl.order_id
+),
+
+mkp_order_tbl as ${dedup.dedup(
+    source.silver + `.marketplace_prd_order_v2_order`,
+    `
+    order_id, 
+    DATETIME(created_time, 'Asia/Ho_Chi_Minh') as created_time, 
+    status as order_status,
+    price as ordered_amount,
+    total_price as ordered_amount_aft_discount,
+    total_item as ordered_line_items,
+    "marketplace" as source_name
+    `
+    // ,
+    // start_timestamp= when(incremental(),
+    //           ` TIMESTAMP(current_datetime() - INTERVAL 2 DAY )`, // Nếu incremental thì mình chỉ lấy 3 ngày trở lại
+    //           ` TIMESTAMP_SECONDS(0)`)                            // tránh cho việc dedup phải thực hiện window function cả bảng
+    //                                                               // Điều này giúp nâng performance cụ thể là 1.32GB thành 37MB mỗi lần chạy incremental
+)} ,
+
+dedup_order_tbl as ( 
+    SELECT -- *
+        order_id, 
+        created_time, 
+        order_status,
+        ordered_amount,
+        ordered_amount_aft_discount,
+        ordered_line_items,
+        source_name
+    FROM tender_order_tbl_with_item
+    UNION ALL
+    SELECT 
+        order_id, 
+        created_time, 
+        order_status,
+        ordered_amount,
+        ordered_amount_aft_discount,
+        ordered_line_items,
+        source_name
+    FROM mkp_order_tbl
+)
 
 js {
   function choose_new(column_name){
@@ -66,24 +113,50 @@ js {
         max(created_time) created_time,
         ${choose_new(`order_status`)},
         ${choose_new(`ordered_amount`)},
-        ${choose_new(`ordered_amount_aft_discount`)}
+        ${choose_new(`ordered_amount_aft_discount`)},
+        ${choose_new(`ordered_line_items`)}
     FROM 
         dedup_order_tbl
     GROUP BY 1,2
+),
+
+return_amount AS (
+  SELECT order_id, SUM(amount) AS return_amount
+  FROM ${dedup.dedup(
+    source.silver + '.accounting_prd_core_credit_note',
+    'order_id, amount, type'
+  )}
+  WHERE type ="RETURN"
+  GROUP BY 1 
 )
 
 SELECT
-    order_id,
-    created_time,
-    DATE(created_time) AS created_date,
-    order_status,
-    ordered_amount,
-    ordered_amount_aft_discount,
+    m.order_id,
+    m.created_time,
+    DATE(m.created_time) AS created_date,
+    m.order_status,
+    -- CASE
+    --     WHEN m.order_status = 'WAIT_TO_CONFIRM' THEN 1
+    --     WHEN m.order_status = 'CONFIRMED' THEN 2
+    --     WHEN m.order_status = 'PROCESSING' THEN 3
+    --     WHEN m.order_status = 'WAIT_TO_DELIVER' THEN 4
+    --     WHEN m.order_status = 'DELIVERING' THEN 5
+    --     WHEN m.order_status = 'DELIVERED' THEN 6
+    --     WHEN m.order_status = 'COMPLETED' THEN 7
+    --     WHEN m.order_status = 'CANCEL' THEN 8
+    --     WHEN m.order_status = 'CANCELED' THEN 9
+    --     ELSE NULL -- Unknow
+    -- END AS order_status_seq,
+    -- m.ordered_amount,
+    m.ordered_amount_aft_discount,
+    m.ordered_line_items,
+    return_amount.return_amount,
     CASE
-        WHEN order_status <> "CANCEL" THEN ordered_amount ELSE NULL
+        WHEN m.order_status <> "CANCEL" THEN m.ordered_amount ELSE NULL
     END AS gmv
 FROM 
-    dedup_order_tbl
+    dedup_order_tbl m
+LEFT JOIN return_amount USING (order_id)
 
 post_operations {
     ALTER TABLE ${self()} 
