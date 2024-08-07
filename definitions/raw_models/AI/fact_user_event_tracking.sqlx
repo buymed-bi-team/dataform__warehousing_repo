@@ -46,7 +46,7 @@ WITH
 SELECT
   event,
   customer_id,
-  created_time,
+  DATETIME(created_time, "Asia/Ho_Chi_Minh") AS created_time,
   province_code,
   screen,
   SOURCE,
