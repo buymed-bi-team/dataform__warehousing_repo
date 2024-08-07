@@ -33,7 +33,7 @@ WITH
     JSON_EXTRACT_SCALAR(extra_props, '$.metadata.seller_id') AS seller_id,
     JSON_EXTRACT_SCALAR(extra_props, '$.metadata.sku') AS sku_code,
     JSON_EXTRACT_SCALAR(extra_props, '$.ua_metadata.CLIENT') AS client,    
-    JSON_EXTRACT_SCALAR(extra_props, '$.ua_metadata.PLATFORM') AS platfrom,
+    JSON_EXTRACT_SCALAR(extra_props, '$.ua_metadata.PLATFORM') AS platform,
     JSON_EXTRACT_SCALAR(extra_props, '$.metadata.host') AS host
     -- DENSE_RANK() OVER( PARTITION BY seller_id, DATE(created_time), product_id  ORDER BY created_time ASC ) sequence_id
   FROM
@@ -51,7 +51,7 @@ SELECT
   screen,
   SOURCE,
   client,
-  platfrom,
+  platform,
   host,
   seller_id,
   product_id,
