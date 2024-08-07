@@ -157,9 +157,17 @@ SELECT
     m.ordered_line_items,
     m.notion_amount,
     return_amount.return_amount,
-    CASE
-        WHEN m.order_status <> "CANCEL" THEN m.ordered_amount ELSE NULL
-    END AS gmv
+    IF (
+        m.order_status <> "CANCEL" ,
+        IF (
+            m.ordered_amount <> 0,
+            m.ordered_amount,
+            m.ordered_amount_aft_discount
+        ),
+        NULL
+    ) AS gmv 
+    -- In internal, some order_id has 0 code but valuation -> Silver layer price = 0 and total_price <>0
+    -- So that this gmv isn't right at all, will find another columns
 FROM 
     dedup_order_tbl m
 LEFT JOIN return_amount USING (order_id)
