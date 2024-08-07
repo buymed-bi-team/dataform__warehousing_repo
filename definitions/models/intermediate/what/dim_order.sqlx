@@ -48,7 +48,8 @@ WITH dedup_order as ${
     DATETIME(created_time, 'Asia/Ho_Chi_Minh') as created_time, 
     confirmation_date, 
     source, 
-    province_code, 
+    province_code,
+    customer_province_code, 
     TO_JSON_STRING(JSON_VALUE_ARRAY(extra_props, '$.customer_tags')) as customer_tags,
     customer_id,
     warehouse_code
@@ -66,6 +67,7 @@ WITH dedup_order as ${
     ${choose_new(`confirmation_date`)},
     ${choose_new(`source`)},
     ${choose_new(`province_code`)},
+    ${choose_new(`customer_province_code`)},
     ${choose_new(`customer_tags`)},
     ${choose_new(`customer_id`)},
     ${choose_new(`warehouse_code`)}
@@ -127,12 +129,16 @@ SELECT
     ELSE 'MARKETPLACE'
   END AS order_channel,
   province_code,
-  dim_fc.sales_region_code
+  COALESCE(dim_fc.sales_region_code, dim_fc2.sales_region_code) sales_region_code
 FROM order_tbl
 LEFT JOIN ${ref(`dim_fc_service_area`)} dim_fc_service_area
         ON order_tbl.province_code = dim_fc_service_area.service_area_code
 LEFT JOIN ${ref(`dim_fc`)} dim_fc
     ON dim_fc_service_area.fc_code = dim_fc.fc_code
+LEFT JOIN ${ref(`dim_fc_service_area`)} dim_fc_service_area2
+        ON order_tbl.customer_province_code = dim_fc_service_area2.service_area_code
+LEFT JOIN ${ref(`dim_fc`)} dim_fc2
+    ON dim_fc_service_area2.fc_code = dim_fc2.fc_code
 ${when(incremental(),
    `WHERE created_time > (SELECT MAX(created_time) FROM ${self()})`,
    ``)}
