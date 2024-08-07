@@ -22,21 +22,16 @@ from
 
 UNION ALL
 
-SELECT 
-    'BD' AS fc_code,
-    '00' AS service_area_code,
-    'MIENNAM' AS sales_region_code
-
-UNION ALL
-
-SELECT 
-    'DN' AS fc_code,
-    '00' AS service_area_code,
-    'MIENTRUNG' AS sales_region_code
-
-UNION ALL
-
-SELECT 
-    'HN' AS fc_code,
-    '00' AS service_area_code,
-    'MIENBAC' AS sales_region_code
+${cfunction.csvToSQL(
+    `
+    "fc_code"   ,"service_area_code","sales_region_code"
+    "BD"        ,"00"              ,"MIENNAM"     
+    "DN"        ,"00"              ,"MIENTRUNG"   
+    "HN"        ,"00"              ,"MIENBAC"     
+    "BD"        ,"0"               ,"MIENNAM"     
+    "DN"        ,"0"               ,"MIENTRUNG"   
+    "HN"        ,"0"               ,"MIENBAC"    
+    "HN"        ,"1"               ,"MIENBAC"    
+    `,
+    value_prediction = '"'
+)}
