@@ -66,7 +66,21 @@ SELECT
         AND sub.created_time != stg.created_time
     ) THEN FALSE
     ELSE TRUE
-  END AS is_sku_customer_first_interaction_in_30_days	
+  END AS is_sku_customer_first_interaction_in_30_days,
+    CASE
+    WHEN EXISTS (
+      SELECT 1
+      FROM stg AS sub
+      WHERE sub.customer_id = stg.customer_id
+        AND sub.sku_code = stg.sku_code
+        AND sub.event = stg.event
+        AND sub.created_time BETWEEN
+          DATETIME_SUB(stg.created_time, INTERVAL 60 DAY)
+          AND stg.created_time
+        AND sub.created_time != stg.created_time
+    ) THEN FALSE
+    ELSE TRUE
+  END AS is_sku_customer_first_interaction_in_60_days		
 FROM
   stg
 
