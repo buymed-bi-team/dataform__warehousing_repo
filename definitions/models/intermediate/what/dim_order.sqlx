@@ -7,7 +7,7 @@ config {
     name: "dim_order",
     assertions: {
         uniqueKey: ["order_id"],
-        nonNull:["order_id"]
+        nonNull:["order_id","order_channel"]
     //     // nullable : seller_class vì một số seller_code không có trong seller_prd_core_seller table
     //     // nonNull: ["created_time","order_channel"]
     },
@@ -19,7 +19,6 @@ config {
       order_channel: "NonNull | Category of the order based on the tags and source.  'TENDER' if customer_tags contains 'TENDER', 'DISTRIBUTION' if source is 'brand-portal' or 'clinic-portal', 'CONSIGNMENT' if source is 'internal-portal','CIRCA' if customer_tags contains 'CIRCA', otherwise 'MARKETPLACE'",
       province_code: "Nullable | A standardized code used to identify provinces within a country",
       sales_region_code: "Nullable | Translate from the province code rather than the warehouse code, because assigning warehouse codes is not supported before 2022"
-
     },
     bigquery: {
       partitionBy: "DATE(created_time)"
