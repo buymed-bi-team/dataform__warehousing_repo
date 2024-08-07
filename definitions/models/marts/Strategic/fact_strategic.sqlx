@@ -36,7 +36,7 @@ SELECT
     value
 FROM
     ${ref(source)}
-WHERE date > "2019-01-01"
+WHERE date > "2021-01-01"
 ${i < source_list.length - 1 ? 'UNION ALL':''}
 `
     ).join('')
