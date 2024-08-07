@@ -13,6 +13,8 @@ config {
         partitionBy: "created_date"
     },
     tags: ["custom_1h_past7"]
+
+   
 }
 
 pre_operations {

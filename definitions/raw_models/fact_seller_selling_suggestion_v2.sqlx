@@ -1,6 +1,6 @@
 config {
     type: 'table',
-    description: `Started time: 2024-06-28 | PIC: minh.luu; schedule: 0h00 daily; model type: table
+    description: `Started time: 2024-06-28 | PIC: tu.dang; schedule: 0h00 daily; model type: table
     Source:
         ${source.silver}.monitoring_prd_collector_user_stats_*`,
     columns: {

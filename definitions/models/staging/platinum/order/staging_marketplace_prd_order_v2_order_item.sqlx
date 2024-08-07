@@ -45,7 +45,7 @@ pre_operations {
               OR (created_time IS NULL AND last_updated_time IS NOT NULL) 
               OR (created_time IS NOT NULL AND last_updated_time IS NULL)
             ) 
-            AND action != "d"
+            AND action != "d"    
         )
       );
 
