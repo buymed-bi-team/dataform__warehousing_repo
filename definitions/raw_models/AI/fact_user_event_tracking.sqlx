@@ -31,7 +31,10 @@ WITH
     JSON_EXTRACT_SCALAR(extra_props, '$.metadata.source') AS SOURCE,
     JSON_EXTRACT_SCALAR(extra_props, '$.metadata.product_id') AS product_id,
     JSON_EXTRACT_SCALAR(extra_props, '$.metadata.seller_id') AS seller_id,
-    JSON_EXTRACT_SCALAR(extra_props, '$.metadata.sku') AS sku_code
+    JSON_EXTRACT_SCALAR(extra_props, '$.metadata.sku') AS sku_code,
+    JSON_EXTRACT_SCALAR(extra_props, '$.ua_metadata.CLIENT') AS client,    
+    JSON_EXTRACT_SCALAR(extra_props, '$.ua_metadata.PLATFORM') AS platform,
+    JSON_EXTRACT_SCALAR(extra_props, '$.metadata.host') AS host
     -- DENSE_RANK() OVER( PARTITION BY seller_id, DATE(created_time), product_id  ORDER BY created_time ASC ) sequence_id
   FROM
     `${source.silver}.monitoring_prd_collector_user_stats_*`
@@ -43,10 +46,13 @@ WITH
 SELECT
   event,
   customer_id,
-  created_time,
+  DATETIME(created_time, "Asia/Ho_Chi_Minh") AS created_time,
   province_code,
   screen,
   SOURCE,
+  client,
+  platform,
+  host,
   seller_id,
   product_id,
   sku_code,
@@ -66,7 +72,21 @@ SELECT
         AND sub.created_time != stg.created_time
     ) THEN FALSE
     ELSE TRUE
-  END AS is_sku_customer_first_interaction_in_30_days	
+  END AS is_sku_customer_first_interaction_in_30_days,
+    CASE
+    WHEN EXISTS (
+      SELECT 1
+      FROM stg AS sub
+      WHERE sub.customer_id = stg.customer_id
+        AND sub.sku_code = stg.sku_code
+        AND sub.event = stg.event
+        AND sub.created_time BETWEEN
+          DATETIME_SUB(stg.created_time, INTERVAL 60 DAY)
+          AND stg.created_time
+        AND sub.created_time != stg.created_time
+    ) THEN FALSE
+    ELSE TRUE
+  END AS is_sku_customer_first_interaction_in_60_days		
 FROM
   stg
 

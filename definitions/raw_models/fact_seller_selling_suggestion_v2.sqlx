@@ -1,10 +1,10 @@
 config {
     type: 'table',
-    description: `Started time: 2024-06-28 | PIC: tu.dang; schedule: 0h00 daily; model type: table
+    description: `Started time: 2024-06-28 | PIC: minh.luu; schedule: 0h00 daily; model type: table
     Source:
         ${source.silver}.monitoring_prd_collector_user_stats_*`,
     columns: {
-        event: `NonNull | IN ("SUGGESTION_SELLING_UPDATE_PRODUCT", "SUGGESTION_SELLING_CREATE_PRODUCT", "SUGGESTION_SELLING_CTA_CLICK","SUGGESTION_SELLING_PAGE_VIEW","SUGGESTION_SELLING_SEARCH_PRODUCT") `,
+        event: `NonNull | IN ("SUGGESTION_SELLING_UPDATE_PRODUCT", "SUGGESTION_SELLING_CREATE_PRODUCT", "SUGGESTION_SELLING_CTA_CLICK") `,
         account_id: "NonNull |",
         account_type: "NonNull | IN (SELLER, USER)",
         created_time: "NonNull | Started time: 2024-06-28",
@@ -13,7 +13,7 @@ config {
         product_status: "Nullable | Null means Unknown ",
         seller_code: "NonNull |",
         has_ever_sold: "Nullable | Null means Unknown", // product has_ever_sold is Null still exists in order_v2_order_item
-        //action_key: "Nullable | IN ('INITIAL_UPDATE_PRODUCT','INITIAL_LISTING_PRODUCT','CONFIRM_UPDATE_PRODUCT','CONFIRM_LISTING_PRODUCT')",
+        action_key: "Nullable | IN ('INITIAL_UPDATE_PRODUCT','INITIAL_LISTING_PRODUCT','CONFIRM_UPDATE_PRODUCT','CONFIRM_LISTING_PRODUCT')",
         sequence_id : "NonNull | the dense ranking sorted by the group (seller code, created date, product_code) and ordered ascending by created_time",
     },
     tags:['0h00']
@@ -52,12 +52,35 @@ WITH stg AS (
         AND FORMAT_DATE('%Y%m%d', CURRENT_DATE())
         AND event IN ("SUGGESTION_SELLING_UPDATE_PRODUCT",
             "SUGGESTION_SELLING_CREATE_PRODUCT",
-            "SUGGESTION_SELLING_CTA_CLICK","SUGGESTION_SELLING_PAGE_VIEW","SUGGESTION_SELLING_SEARCH_PRODUCT")
+            "SUGGESTION_SELLING_CTA_CLICK")
 )
 
 SELECT
-    *,
-    DENSE_RANK() OVER( PARTITION BY seller_code, DATE(created_time), product_code  ORDER BY created_time ASC ) sequence_id
+    event,
+    account_id,
+    account_type,
+    created_time,
+    CAST( product_id AS integer) product_id,
+    product_code,
+    product_status,
+    seller_code,
+    CASE 
+        WHEN LOWER(has_ever_sold) = "true" THEN TRUE
+        WHEN LOWER(has_ever_sold) = "false" THEN TRUE
+        ELSE NULL 
+    END AS has_ever_sold,
+CASE
+    WHEN event = "SUGGESTION_SELLING_CTA_CLICK" AND has_ever_sold = "true" THEN "INITIAL_UPDATE_PRODUCT"
+    WHEN event = "SUGGESTION_SELLING_CTA_CLICK" THEN "INITIAL_LISTING_PRODUCT"
+    WHEN event = "SUGGESTION_SELLING_UPDATE_PRODUCT" THEN "CONFIRM_UPDATE_PRODUCT"
+    WHEN event = "SUGGESTION_SELLING_CREATE_PRODUCT" THEN "CONFIRM_LISTING_PRODUCT"
+    WHEN event = "SUGGESTION_SELLING_PAGE_VIEW" AND has_ever_sold = "true"  THEN "INITIAL_UPDATE_PRODUCT"
+    WHEN event = "SUGGESTION_SELLING_PAGE_VIEW" THEN "INITIAL_LISTING_PRODUCT"
+    WHEN event = "SUGGESTION_SELLING_SEARCH_PRODUCT" AND has_ever_sold = "true"  THEN "INITIAL_UPDATE_PRODUCT"
+    WHEN event = "SUGGESTION_SELLING_SEARCH_PRODUCT" THEN "INITIAL_LISTING_PRODUCT"
+    ELSE NULL
+    END AS action_key
+    -- DENSE_RANK() OVER( PARTITION BY seller_code, DATE(created_time), product_code  ORDER BY created_time ASC ) sequence_id
 FROM stg
 
 
