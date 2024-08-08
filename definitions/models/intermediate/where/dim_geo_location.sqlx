@@ -64,15 +64,10 @@ WITH
         `
     )}
 
+
 SELECT
-    CASE
-        WHEN dedup_ward.code IS NULL THEN dedup_district.code
-    ELSE dedup_ward.code
-    END AS location_code,
-    CASE
-        WHEN dedup_ward.code IS NULL THEN 'DISTRICT'
-    ELSE 'WARD'
-    END AS location_class,
+    dedup_ward.code AS location_code,
+    'WARD' AS location_class,
     dedup_ward.code as ward_code,
     dedup_ward.ward_name,
     dedup_district.code as district_code,
@@ -88,7 +83,58 @@ LEFT JOIN dedup_province
     ON dedup_province.code = dedup_district.province_code
 LEFT JOIN dedup_region
     ON dedup_region.code = dedup_province.region_code
+WHERE dedup_ward.code is not null
 
+UNION ALL
+
+SELECT
+    dedup_district.code AS location_code,
+    'DISTRICT' AS location_class,
+    NULL AS ward_code,
+    NULL AS ward_name,
+    dedup_district.code as district_code,
+    dedup_district.district_name,
+    dedup_province.code as province_code,
+    dedup_province.province_name,
+    dedup_region.code as region_code,
+    dedup_region.region_name
+FROM dedup_district 
+LEFT JOIN dedup_province
+    ON dedup_province.code = dedup_district.province_code
+LEFT JOIN dedup_region
+    ON dedup_region.code = dedup_province.region_code
+
+UNION ALL
+
+SELECT
+    dedup_province.code AS location_code,
+    'PROVINCE' AS location_class,
+    NULL AS ward_code,
+    NULL AS ward_name,
+    NULL AS district_code,
+    NULL AS district_name,
+    dedup_province.code as province_code,
+    dedup_province.province_name,
+    dedup_region.code as region_code,
+    dedup_region.region_name
+FROM dedup_province
+LEFT JOIN dedup_region
+    ON dedup_region.code = dedup_province.region_code
+
+UNION ALL
+
+SELECT
+    dedup_region.code AS location_code,
+    'REGION' AS location_class,
+    NULL AS ward_code,
+    NULL AS ward_name,
+    NULL AS district_code,
+    NULL AS district_name,
+    NULL AS province_code,
+    NULL AS province_name,
+    dedup_region.code as region_code,
+    dedup_region.region_name
+FROM dedup_region
 
 
 post_operations {
