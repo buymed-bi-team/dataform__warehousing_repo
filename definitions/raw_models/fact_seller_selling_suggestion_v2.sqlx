@@ -1,0 +1,87 @@
+config {
+    type: 'table',
+    description: `Started time: 2024-06-28 | PIC: tu.dang; schedule: 0h00 daily; model type: table
+    Source:
+        ${source.silver}.monitoring_prd_collector_user_stats_*`,
+    columns: {
+        event: `NonNull | IN ("SUGGESTION_SELLING_UPDATE_PRODUCT", "SUGGESTION_SELLING_CREATE_PRODUCT", "SUGGESTION_SELLING_CTA_CLICK","SUGGESTION_SELLING_PAGE_VIEW","SUGGESTION_SELLING_SEARCH_PRODUCT") `,
+        account_id: "NonNull |",
+        account_type: "NonNull | IN (SELLER, USER)",
+        created_time: "NonNull | Started time: 2024-06-28",
+        product_id: "NonNull |",
+        product_code: "NonNull |",
+        product_status: "Nullable | Null means Unknown ",
+        seller_code: "NonNull |",
+        has_ever_sold: "Nullable | Null means Unknown", // product has_ever_sold is Null still exists in order_v2_order_item
+        action_key: "Nullable | IN ('INITIAL_UPDATE_PRODUCT','INITIAL_LISTING_PRODUCT','CONFIRM_UPDATE_PRODUCT','CONFIRM_LISTING_PRODUCT')",
+        sequence_id : "NonNull | the dense ranking sorted by the group (seller code, created date, product_code) and ordered ascending by created_time",
+    },
+    tags:['0h00']
+}
+/*
+    product_status:
+        - NULL :
+        - OUT_OF_STOCK : 
+        - NORMAL :
+        - LIMIT :
+    action_key:
+        - INITIAL_LISTING_PRODUCT
+        - INITIAL_UPDATE_PRODUCT
+        - CONFIRM_LISTING_PRODUCT
+        - CONFIRM_UPDATE_PRODUCT 
+    has_ever_sold:
+        - false :
+        - true :
+        - NULL :
+*/
+WITH stg AS (
+    SELECT
+        event,
+        account_id,
+        account_type,
+        DATETIME(created_time, "Asia/Ho_Chi_Minh") AS created_time,
+        JSON_EXTRACT_SCALAR(extra_props, '$.metadata.productId') AS product_id,
+        JSON_EXTRACT_SCALAR(extra_props, '$.metadata.productCode') AS product_code,
+        JSON_EXTRACT_SCALAR(extra_props, '$.metadata.productStatus') AS product_status,
+        JSON_EXTRACT_SCALAR(extra_props, '$.metadata.sellerCode') AS seller_code,
+        JSON_EXTRACT_SCALAR(extra_props, '$.metadata.hasEverSold') AS has_ever_sold
+    FROM
+        `${source.silver}.monitoring_prd_collector_user_stats_*`
+    WHERE
+        _TABLE_SUFFIX BETWEEN '20240628'
+        AND FORMAT_DATE('%Y%m%d', CURRENT_DATE())
+        AND event IN ("SUGGESTION_SELLING_UPDATE_PRODUCT",
+            "SUGGESTION_SELLING_CREATE_PRODUCT",
+            "SUGGESTION_SELLING_CTA_CLICK","SUGGESTION_SELLING_PAGE_VIEW","SUGGESTION_SELLING_SEARCH_PRODUCT")
+)
+
+SELECT
+    event,
+    account_id,
+    account_type,
+    created_time,
+    CAST( product_id AS integer) product_id,
+    product_code,
+    product_status,
+    seller_code,
+    CASE 
+        WHEN LOWER(has_ever_sold) = "true" THEN TRUE
+        WHEN LOWER(has_ever_sold) = "false" THEN TRUE
+        ELSE NULL 
+    END AS has_ever_sold,
+    CASE
+        WHEN event = "SUGGESTION_SELLING_CTA_CLICK" AND has_ever_sold = "true" THEN "INITIAL_UPDATE_PRODUCT"
+        WHEN event = "SUGGESTION_SELLING_CTA_CLICK" THEN "INITIAL_LISTING_PRODUCT"
+        WHEN event = "SUGGESTION_SELLING_UPDATE_PRODUCT" THEN "CONFIRM_UPDATE_PRODUCT"
+        WHEN event = "SUGGESTION_SELLING_CREATE_PRODUCT" THEN "CONFIRM_LISTING_PRODUCT"
+        ELSE event
+    END AS action_key,
+    DENSE_RANK() OVER( PARTITION BY seller_code, DATE(created_time), product_code  ORDER BY created_time ASC ) sequence_id
+FROM stg
+
+
+post_operations {
+      ALTER TABLE ${self()} 
+      ADD FOREIGN KEY(product_id) references ${ref(`dim_product`)}(product_id) NOT ENFORCED,
+      ADD FOREIGN KEY(seller_code) references ${ref(`dim_supplier`)}(supplier_code) NOT ENFORCED
+}
