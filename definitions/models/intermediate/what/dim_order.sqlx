@@ -56,6 +56,7 @@ WITH dedup_order as (
       customer_province_code, 
       TO_JSON_STRING(JSON_VALUE_ARRAY(extra_props, '$.customer_tags')) as customer_tags,
       customer_id,
+      JSON_VALUE(extra_props, "$.brand_code") AS brand_code,
       warehouse_code
       `,
       start_timestamp= when(incremental(),
@@ -84,8 +85,10 @@ WITH dedup_order as (
     ${choose_new(`customer_province_code`)},
     ${choose_new(`customer_tags`)},
     ${choose_new(`customer_id`)},
-    ${choose_new(`warehouse_code`)},
-    ${choose_new(`sales_region_code`)}
+    ${choose_new(`brand_code`)},
+    ${choose_new(`sales_region_code`)},
+    ${choose_new(`warehouse_code`)}
+    
   FROM
     dedup_order
   GROUP BY
@@ -137,6 +140,7 @@ SELECT
   confirmation_date,
   CASE
     WHEN customer_tags LIKE '%TENDER%' THEN 'TENDER'
+    WHEN source = 'brand-portal' AND brand_code IN ('Q8HDUVQX', '2E84FW961P', 'PG961P') THEN 'TENDER'
     WHEN source in ('brand-portal', 'clinic-portal') THEN 'DISTRIBUTION'
     WHEN created_time >= "2023-10-01" AND source = 'internal-portal' THEN 'CONSIGNMENT' 
     WHEN created_time >= "2023-10-01" AND customer_id = 241098 THEN 'CONSIGNMENT'
