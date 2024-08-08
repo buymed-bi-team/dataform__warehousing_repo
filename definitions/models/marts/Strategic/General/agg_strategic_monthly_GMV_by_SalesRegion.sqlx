@@ -24,5 +24,6 @@ LEFT JOIN `lakehouse-prod-394907.gold_buymed_vn2.dim_order` dim_order
     ON fact_order.order_id = dim_order.order_id
 LEFT JOIN `lakehouse-prod-394907.gold_buymed_vn2.dim_calendar` dim_calendar
     ON fact_order.created_date = dim_calendar.date
+WHERE dim_order.sales_region_code IS NOT NULL --will fix_latter
 GROUP BY 1,2
 ORDER BY eom
