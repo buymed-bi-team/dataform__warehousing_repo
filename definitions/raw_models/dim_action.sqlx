@@ -43,7 +43,7 @@ CASE
     WHEN event = "SUGGESTION_SELLING_SEARCH_PRODUCT" THEN "SEARCH_PRODUCT"
     ELSE NULL
     END AS action
-from gold_buymed_vn2.fact_seller_selling_suggestion
+from gold_buymed_vn2.fact_seller_selling_suggestion_v2
 qualify ROW_NUMBER() over (partition by action_key,action_type)=1)
 
 select *
