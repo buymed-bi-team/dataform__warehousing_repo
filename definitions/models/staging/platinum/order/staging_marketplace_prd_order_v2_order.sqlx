@@ -35,7 +35,7 @@ pre_operations {
         FROM (
           SELECT  
             CASE 
-              WHEN created_time IS NOT NULL THEN DATE(created_time) 
+              WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh')) 
               ELSE DATE("2099-01-01") 
             END AS created_date
           FROM ${source.silver}.marketplace_prd_order_v2_order 
@@ -45,7 +45,7 @@ pre_operations {
               OR (created_time IS NULL AND last_updated_time IS NOT NULL) 
               OR (created_time IS NOT NULL AND last_updated_time IS NULL)
             ) 
-            AND action != "d"
+            AND action != "d"    
         )
       );
 
@@ -75,7 +75,7 @@ WITH deleted_records_table AS (
 )
 SELECT *, 
   CASE 
-    WHEN created_time IS NOT NULL THEN DATE(created_time)
+    WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
     ELSE "2099-01-01"
   END AS created_date
 FROM (
