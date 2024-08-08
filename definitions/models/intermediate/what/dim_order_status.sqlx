@@ -18,40 +18,70 @@ TODO:
 
 
     - Áp dụng SCD với những order trong nửa tháng trở lại đây
+        - 
+        - 
+        - 
 */ 
 
-WITH stg_order_CRM AS ${dedup.dedup(
-        source.silver + `.marketplace_prd_order_v2_order`,
-        "order_id,status as CRM_status"
-)}, 
+WITH stg_order_CRM AS (
+-- ${dedup.dedup(
+--         source.silver + `.marketplace_prd_order_v2_order`,
+--         "order_id,status as CRM_status, created_time"
+-- )}
+    SELECT
+        order_id,
+        status as CRM_status,
+        created_time
+    FROM 
+        ${source.platinum}.marketplace_prd_order_v2_order
+), 
 
 stg_order_WMS AS (
     SELECT 
         CAST( REGEXP_EXTRACT(sale_order_code, r'(\d+)') AS INT64 ) AS order_id, 
         REGEXP_REPLACE(sale_order_code, r'\d+', '') AS warehouse_order_code,
-        status as WMS_status
-    FROM ${dedup.dedup(
-        source.silver + `.warehouse_prd_core_sale_order`,
-        "sale_order_code,status"
-    )}
+        status as WMS_status,
+        created_time
+    FROM ${source.platinum}.warehouse_prd_core_sale_order
 ),
 
 stg_order_ACCOUNTING AS (
+    -- SELECT order_id, status as ACCOUNTING_status
+    -- FROM ${dedup.dedup(
+    --     source.silver + `.accounting_prd_core_bill`,
+    --     "order_id,status, created_time"
+    -- )}
     SELECT order_id, status as ACCOUNTING_status
-    FROM ${dedup.dedup(
-        source.silver + `.accounting_prd_core_bill`,
-        "order_id,status"
-    )}
+    FROM ${source.platinum}.accounting_prd_core_bill
+),
+
+stg_order_WMS_Delivery AS (
+    SELECT CAST( REGEXP_EXTRACT(sale_order_code, r'(\d+)') AS INT64 ) AS order_id,status  as WMS_Delivery_status
+    FROM  ${source.platinum}.warehouse_prd_core_delivery_order
 )
+
+-- stg_order_SHIPPING AS (
+--     SELECT order_id,status  as WMS_Delivery_status
+--     FROM  ${source.platinum}.delivery_prd_transporting_shipping_order
+-- )
+
+
+
 SELECT
     a.order_id,
     -- b.sale_order_code,
     a.CRM_status,
     b.WMS_status,
-    d.ACCOUNTING_status
+    c.WMS_Delivery_status,
+    d.ACCOUNTING_status,
+
+    a.created_time
+
 FROM stg_order_CRM a
 LEFT JOIN stg_order_WMS b
     ON a.order_id = b.order_id
+LEFT JOIN stg_order_WMS_Delivery c 
+    ON a.order_id = c.order_id
 LEFT JOIN stg_order_ACCOUNTING d
     ON a.order_id = d.order_id
 
