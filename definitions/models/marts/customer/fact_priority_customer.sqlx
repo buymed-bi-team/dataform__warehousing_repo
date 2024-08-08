@@ -6,7 +6,7 @@ config {
   columns:{
       customer_name: "NonNull | customer_name",
       email: "Nullable | customer email",
-      phone: "NonNull | customer phone",
+      phone: "NonNull | can use this column to join with dim_customer",
       customer_code : "NonNull | customer code",
       hash_tag : "NonNull | Can be in one of following 'CONVERTED', 'DELETED', 'NEW'",
       priority_customer_id : "NonNull & Unique |  ",
@@ -20,7 +20,7 @@ config {
       pic_account_id: "NonNull | ",
       pic_username : "Nullable | ",
       last_checked_out_day : "Nullable |",
-      note: "Nullable",
+      note: "Nullable |",
       created_time: "NonNull | In Timezone +7"
   },
   tags : ['0h00'],
@@ -50,7 +50,9 @@ SELECT
   -- location, -- nullable | {'coordinates': [x,y],'type': "Point"}
   pic_account_id ,
   pic_username ,
-  note
+  note,
+  created_time,
+  last_updated_time
   
 FROM 
 
@@ -59,6 +61,5 @@ ${dedup.dedup(`silver_buymed_vn.marketplace_prd_customer_priority_customer`,'*')
 post_operations {
   ALTER TABLE ${self()} 
   ADD PRIMARY KEY (customer_code) NOT ENFORCED,
-  ADD FOREIGN KEY(priority_customer_id) references ${ref(`dim_customer`)}(customer_id) NOT ENFORCED,
   ADD FOREIGN KEY(ward_code) references ${ref(`dim_geo_location`)}(location_code) NOT ENFORCED
 }
