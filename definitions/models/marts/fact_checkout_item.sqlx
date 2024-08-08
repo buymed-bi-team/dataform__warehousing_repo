@@ -27,7 +27,7 @@ config {
         partitionBy: "DATETIME_TRUNC((order_item_created_time),MONTH)"
     }
 }
-
+ 
 WITH stg_order_item as   ${dedup.dedup(
       source.silver + `.marketplace_prd_order_v2_order_item`,
       `
@@ -47,21 +47,21 @@ WITH stg_order_item as   ${dedup.dedup(
       `,
       start_timestamp= when(incremental(),
               ` TIMESTAMP(current_datetime() - INTERVAL 2 DAY )`,
-              ` TIMESTAMP_SECONDS(0)`)                           
-
+              ` TIMESTAMP_SECONDS(0)`)                          
+ 
 )}
 ,
-
+ 
 stg_order as ${dedup.dedup(
   source.silver + `.marketplace_prd_order_v2_order`,
   "order_id, province_code, status",
   start_timestamp= when(incremental(),
-            ` TIMESTAMP(current_datetime() - INTERVAL 2 DAY )`, 
+            ` TIMESTAMP(current_datetime() - INTERVAL 2 DAY )`,
             ` TIMESTAMP_SECONDS(0)`)
 )}
-
-
-SELECT 
+ 
+ 
+SELECT
   a.order_id,
   b.status as order_status,
   a.customer_id,
@@ -91,28 +91,43 @@ SELECT
         AND sub.order_item_created_time != a.order_item_created_time
     ) THEN FALSE
     ELSE TRUE
-  END AS is_sku_customer_first_place_in_30_days
-
+  END AS is_sku_customer_first_place_in_30_days,
+  CASE --tu.dang
+    WHEN EXISTS (
+      SELECT 1
+      FROM stg_order_item AS sub
+      LEFT JOIN stg_order AS sub_2 ON sub.order_id = sub_2.order_id
+      WHERE sub.customer_id = a.customer_id
+        AND sub_2.status like "COMPLETED"
+        AND sub.sku_key = a.sku_key
+        AND sub.order_item_created_time BETWEEN
+          DATETIME_SUB(a.order_item_created_time, INTERVAL 60 DAY)
+          AND a.order_item_created_time
+        AND sub.order_item_created_time != a.order_item_created_time
+    ) THEN FALSE
+    ELSE TRUE
+  END AS is_sku_customer_first_place_in_60_days
+ 
 FROM stg_order_item a
 LEFT JOIN stg_order b
   ON a.order_id = b.order_id
-
+ 
 ${
   when(incremental(),
    `WHERE order_item_created_time > (SELECT MAX(order_item_created_time) FROM ${self()})`,
    `WHERE order_item_created_time > DATE_TRUNC(CURRENT_DATETIME('+7') - INTERVAL 6 MONTH,  MONTH)`)
 }
-
+ 
 post_operations {
   ${
     when(incremental(),
       "",
       `
-      ALTER TABLE ${self()} 
+      ALTER TABLE ${self()}
       ADD FOREIGN KEY(order_id) references ${ref(`dim_order`)}(order_id) NOT ENFORCED,
       ADD FOREIGN KEY(sku_key) references ${ref(`dim_sku`)}(sku_key) NOT ENFORCED;
       `
     )
   }
-}
 
+}
