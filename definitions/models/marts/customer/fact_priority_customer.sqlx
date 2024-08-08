@@ -14,14 +14,16 @@ config {
       scope: "nullable | Can be in one of following : 'BEAUTY_SALON','CLINIC','DENTISTRY','DRUGSTORE','HOSPITAL','PATIENT','PHARMACIST','PHARMACY','PHARMA_COMPANY'",
       source: "nullable | can be in one of following : 'APP SALES','CHAT','HOMEPAGE','INTERNAL'",
       address: "Nullable | ",
-      ward_code: "Nullable | ",
-      district_code: "NonNull | ",
-      province_code: "NonNull | ",
+      // ward_code: "Nullable | ",
+      // district_code: "NonNull | ",
+      // province_code: "NonNull | ",
+      location_code: "Nullable | ",
       pic_account_id: "NonNull | ",
       pic_username : "Nullable | ",
       last_checked_out_day : "Nullable |",
       note: "Nullable |",
-      created_time: "NonNull | In Timezone +7"
+      created_time: "NonNull | In Timezone +7",
+      last_updated_time: "NonNull | In Timezone +7"
   },
   tags : ['0h00'],
   assertions: {
@@ -43,16 +45,18 @@ SELECT
   scope , 
   source ,  
   address, 
-  ward_code ,
-  province_code , 
-  district_code, 
+  CASE 
+    WHEN ward_code IS NOT NULL THEN ward_code
+    WHEN district_code IS NOT NULL THEN district_code
+    WHEN province_code IS NOT NULL THEN province_code
+  END AS location_code,
   last_checked_out_day,
   -- location, -- nullable | {'coordinates': [x,y],'type': "Point"}
   pic_account_id ,
   pic_username ,
   note,
-  created_time,
-  last_updated_time
+  DATETIME(created_time,'+7'),
+  DATETIME(last_updated_time, '+7')
   
 FROM 
 
@@ -61,5 +65,5 @@ ${dedup.dedup(`silver_buymed_vn.marketplace_prd_customer_priority_customer`,'*')
 post_operations {
   ALTER TABLE ${self()} 
   ADD PRIMARY KEY (customer_code) NOT ENFORCED,
-  ADD FOREIGN KEY(ward_code) references ${ref(`dim_geo_location`)}(location_code) NOT ENFORCED
+  ADD FOREIGN KEY(location_code) references ${ref(`dim_geo_location`)}(location_code) NOT ENFORCED
 }
