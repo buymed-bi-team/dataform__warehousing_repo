@@ -1,10 +1,10 @@
 config {
     type: 'table',
-    description: `Started time: 2024-06-28 | PIC: minh.luu; schedule: 0h00 daily; model type: table
+    description: `Started time: 2024-06-28 | PIC: tu.dang; schedule: 0h00 daily; model type: table
     Source:
         ${source.silver}.monitoring_prd_collector_user_stats_*`,
     columns: {
-        event: `NonNull | IN ("SUGGESTION_SELLING_UPDATE_PRODUCT", "SUGGESTION_SELLING_CREATE_PRODUCT", "SUGGESTION_SELLING_CTA_CLICK") `,
+        event: `NonNull | IN ("SUGGESTION_SELLING_UPDATE_PRODUCT", "SUGGESTION_SELLING_CREATE_PRODUCT", "SUGGESTION_SELLING_CTA_CLICK","SUGGESTION_SELLING_PAGE_VIEW","SUGGESTION_SELLING_SEARCH_PRODUCT") `,
         account_id: "NonNull |",
         account_type: "NonNull | IN (SELLER, USER)",
         created_time: "NonNull | Started time: 2024-06-28",
@@ -52,7 +52,7 @@ WITH stg AS (
         AND FORMAT_DATE('%Y%m%d', CURRENT_DATE())
         AND event IN ("SUGGESTION_SELLING_UPDATE_PRODUCT",
             "SUGGESTION_SELLING_CREATE_PRODUCT",
-            "SUGGESTION_SELLING_CTA_CLICK")
+            "SUGGESTION_SELLING_CTA_CLICK","SUGGESTION_SELLING_PAGE_VIEW","SUGGESTION_SELLING_SEARCH_PRODUCT")
 )
 
 SELECT
@@ -69,23 +69,19 @@ SELECT
         WHEN LOWER(has_ever_sold) = "false" THEN TRUE
         ELSE NULL 
     END AS has_ever_sold,
-CASE
-    WHEN event = "SUGGESTION_SELLING_CTA_CLICK" AND has_ever_sold = "true" THEN "INITIAL_UPDATE_PRODUCT"
-    WHEN event = "SUGGESTION_SELLING_CTA_CLICK" THEN "INITIAL_LISTING_PRODUCT"
-    WHEN event = "SUGGESTION_SELLING_UPDATE_PRODUCT" THEN "CONFIRM_UPDATE_PRODUCT"
-    WHEN event = "SUGGESTION_SELLING_CREATE_PRODUCT" THEN "CONFIRM_LISTING_PRODUCT"
-    WHEN event = "SUGGESTION_SELLING_PAGE_VIEW" AND has_ever_sold = "true"  THEN "INITIAL_UPDATE_PRODUCT"
-    WHEN event = "SUGGESTION_SELLING_PAGE_VIEW" THEN "INITIAL_LISTING_PRODUCT"
-    WHEN event = "SUGGESTION_SELLING_SEARCH_PRODUCT" AND has_ever_sold = "true"  THEN "INITIAL_UPDATE_PRODUCT"
-    WHEN event = "SUGGESTION_SELLING_SEARCH_PRODUCT" THEN "INITIAL_LISTING_PRODUCT"
-    ELSE NULL
-    END AS action_key
-    -- DENSE_RANK() OVER( PARTITION BY seller_code, DATE(created_time), product_code  ORDER BY created_time ASC ) sequence_id
+    CASE
+        WHEN event = "SUGGESTION_SELLING_CTA_CLICK" AND has_ever_sold = "true" THEN "INITIAL_UPDATE_PRODUCT"
+        WHEN event = "SUGGESTION_SELLING_CTA_CLICK" THEN "INITIAL_LISTING_PRODUCT"
+        WHEN event = "SUGGESTION_SELLING_UPDATE_PRODUCT" THEN "CONFIRM_UPDATE_PRODUCT"
+        WHEN event = "SUGGESTION_SELLING_CREATE_PRODUCT" THEN "CONFIRM_LISTING_PRODUCT"
+        ELSE event
+    END AS action_key,
+    DENSE_RANK() OVER( PARTITION BY seller_code, DATE(created_time), product_code  ORDER BY created_time ASC ) sequence_id
 FROM stg
 
 
--- post_operations {
---       ALTER TABLE ${self()} 
---       ADD FOREIGN KEY(product_id) references ${ref(`dim_product`)}(product_id) NOT ENFORCED,
---       ADD FOREIGN KEY(seller_code) references ${ref(`dim_supplier`)}(supplier_code) NOT ENFORCED
--- }
+post_operations {
+      ALTER TABLE ${self()} 
+      ADD FOREIGN KEY(product_id) references ${ref(`dim_product`)}(product_id) NOT ENFORCED,
+      ADD FOREIGN KEY(seller_code) references ${ref(`dim_supplier`)}(supplier_code) NOT ENFORCED
+}
