@@ -5,3 +5,4 @@ pyfunc/*
 definitions/docs/2_1_example_source.sqlx
 definitions/temp.sqlx
 definitions/models/intermediate/what/dim_order_temp.sqlx
+definitions/local/*

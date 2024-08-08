@@ -1,0 +1,36 @@
+config {
+  type: "assertion"
+}
+
+WITH unittest AS (
+  SELECT '34323079' as order_id_t ,'TENDER' as order_channel_t  UNION ALL
+  SELECT '34474037' as order_id_t  ,'TENDER' as order_channel_t  UNION ALL
+  SELECT '34482864' as order_id_t ,'TENDER' as order_channel_t  UNION ALL
+  SELECT '34554143' as order_id_t  ,'TENDER' as order_channel_t  UNION ALL
+  SELECT '34621732' as order_id_t  ,'TENDER' as order_channel_t  UNION ALL
+  SELECT '34621779' as order_id_t  ,'TENDER' as order_channel_t  UNION ALL
+  SELECT '34621813' as order_id_t  ,'TENDER' as order_channel_t  UNION ALL
+  SELECT '34626488' as order_id_t  ,'TENDER' as order_channel_t  UNION ALL
+  SELECT '34648794' as order_id_t  ,'TENDER' as order_channel_t  UNION ALL
+  SELECT '34673502' as order_id_t ,'TENDER' as order_channel_t  UNION ALL
+  SELECT '34690509' as order_id_t ,'TENDER' as order_channel_t  UNION ALL
+  SELECT '34701231' as order_id_t  ,'TENDER' as order_channel_t  UNION ALL
+  SELECT '34704621' as order_id_t  ,'TENDER' as order_channel_t  UNION ALL
+  SELECT '34712559' as order_id_t  ,'TENDER' as order_channel_t  UNION ALL
+  SELECT '34716897' as order_id_t  ,'TENDER' as order_channel_t  UNION ALL
+  SELECT '34747485' as order_id_t  ,'TENDER' as order_channel_t  UNION ALL
+  SELECT '34760983' as order_id_t ,'TENDER' as order_channel_t 
+), cast_unittest AS (
+    SELECT 
+        CAST(order_id_t AS integer) AS order_id_t,
+        * EXCEPT (order_id_t)
+    FROM unittest
+)
+
+
+SELECT DISTINCT t.*, h.order_id, h.order_channel
+FROM ${ref(`dim_order`)} h
+LEFT JOIN cast_unittest t 
+ON h.order_id = t.order_id_t 
+WHERE t.order_id_t != h.order_id
+	OR t.order_channel_t != h.order_channel
