@@ -12,16 +12,19 @@ config {
         product_id: "NON-NULL",
         sku_code: "NON-NULL",
         province_code: "NON-NULL",
-        total_price: "NON-NULL | Total ordered amount of SKU in Margin Date",
-        total_purchasing_value: "NON-NULL | Total purchasing amount of SKU in Margin Date",
-        total_quantity: "NON-NULL | Total ordered quantity of SKU in Margin Date",
+        total_price: "Total ordered amount of SKU in Margin Date",
+        total_purchasing_value: "Total purchasing amount of SKU in Margin Date",
+        total_quantity: "Total ordered quantity of SKU in Margin Date",
         sales_region_code: "NON-NULL",
     },
     tags: ["0h30"],
     bigquery: {
-        partitionBy: "DATE(date)",
+        partitionBy: "date",
         clusterBy: ["sku_code", "province_code"]
 
+    },
+    assertions: {
+        nonNull: ["date", "product_id", "sku_code", "province_code", "sales_region_code"]
     }
 }
 
@@ -30,7 +33,7 @@ SELECT
     , a.location_code AS province_code
     , s.product_id
     , a.sku AS sku_code
-    , a.margin
+    --, a.margin
     , a.total_price
     , a.total_purchasing_value
     , a.total_quantity
