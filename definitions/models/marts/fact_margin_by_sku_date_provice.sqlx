@@ -3,7 +3,7 @@ config {
     description: 
         `PIC: nguyen.tran; 
         Type: Table; 
-        Refresh Schedule: 0h00 daily;
+        Refresh Schedule: 0h30 daily;
         Source: 
             ${source.silver}.monitoring_prd_realtime_supply_margin_sku
         `,
