@@ -36,21 +36,35 @@ WITH tender_order_item_tbl as (
     GROUP BY 1
 ), 
 
-tender_order_tbl as ${dedup.dedup(
-    source.silver + `.tender_prd_core_tender_orders`,
-    `
-    order_id, 
-    DATETIME(created_time, 'Asia/Ho_Chi_Minh') as created_time, 
-    status as order_status,
-    total_amount as ordered_amount,
-    total_amount as ordered_amount_aft_discount,
-    "tender" as source_name
-    `
-    // ,
-    // start_timestamp = when ( incremental(),
-    //         ` TIMESTAMP(current_datetime() - INTERVAL 2 DAY )`,
-    //         ` TIMESTAMP_SECONDS(0)`)      
-)}, 
+tender_order_tbl as (
+    SELECT
+        a.order_id, 
+        DATETIME(created_time, 'Asia/Ho_Chi_Minh') as created_time, 
+        b.status as order_status,
+        total_amount as ordered_amount,
+        total_amount as ordered_amount_aft_discount,
+        "tender" as source_name
+    
+    
+    FROM
+        ${dedup.dedup(
+            source.silver + `.tender_prd_core_tender_orders`,`
+                order_id, 
+                created_time, 
+                status,
+                total_amount,
+                "tender" as source_name
+            `
+            // ,
+            // start_timestamp = when ( incremental(),
+            //         ` TIMESTAMP(current_datetime() - INTERVAL 2 DAY )`,
+            //         ` TIMESTAMP_SECONDS(0)`)    
+        )} a
+    LEFT JOIN 
+        ${dedup.dedup(source.silver + `.oms_prd_order_order`,'order_id, status')} b
+    ON a.order_id = b.order_id
+      
+), 
 
 tender_order_tbl_with_item as (
     SELECT 
@@ -158,7 +172,7 @@ SELECT
     m.notion_amount,
     return_amount.return_amount,
     IF (
-        m.order_status <> "CANCEL" and m.order_status <> "CANCELLED",
+        m.order_status <> "CANCEL" and m.order_status <> "CANCELLED" and dim_order.order_channel <> "CONSIGNMENT-RECOGNITION",
         IF (
             m.ordered_amount <> 0,
             m.ordered_amount,
@@ -170,6 +184,7 @@ SELECT
     -- So that this gmv isn't right at all, will find another columns
 FROM 
     dedup_order_tbl m
+LEFT JOIN ${source.ref}.dim_order dim_order USING (order_id)
 LEFT JOIN return_amount USING (order_id)
 
 post_operations {
