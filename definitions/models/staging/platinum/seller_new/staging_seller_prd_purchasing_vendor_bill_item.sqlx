@@ -37,7 +37,7 @@ pre_operations {
         FROM (
           SELECT  
             CASE 
-              WHEN created_time IS NOT NULL THEN DATE(created_time) 
+              WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
               ELSE DATE("2099-01-01") 
             END AS created_date
           FROM ${source.silver}.seller_prd_purchasing_vendor_bill_item 
@@ -77,7 +77,7 @@ WITH deleted_records_table AS (
 )
 SELECT *, 
   CASE 
-    WHEN created_time IS NOT NULL THEN DATE(created_time)
+    WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
     ELSE "2099-01-01"
   END AS created_date
 FROM (
