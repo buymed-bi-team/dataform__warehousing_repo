@@ -17,6 +17,7 @@ config {
       created_time: "NonNull | Timestamp indicating when the order was created. The time zone is set to 'Asia/Ho_Chi_Minh'",
       confirmation_date: "Nullable | order confirmation time",
       order_channel: "NonNull | Category of the order based on the tags and source.  'TENDER' if customer_tags contains 'TENDER', 'DISTRIBUTION' if source is 'brand-portal' or 'clinic-portal', 'CONSIGNMENT' if source is 'internal-portal','CIRCA' if customer_tags contains 'CIRCA', otherwise 'MARKETPLACE'",
+      order_type: "NonNull | SO, CO, TENDER, DO",
       province_code: "Nullable | A standardized code used to identify provinces within a country",
       sales_region_code: "Nullable | Translate from the province code rather than the warehouse code, because assigning warehouse codes is not supported before 2022"
     },
@@ -107,8 +108,7 @@ WITH dedup_order as (
     order_id,
     DATETIME(created_time, 'Asia/Ho_Chi_Minh') as created_time, 
     confirmation_date, 
-    province_code, 
-    "TENDER" AS order_channel
+    province_code
     `,
     start_timestamp = when ( incremental(),
               ` TIMESTAMP(current_datetime() - INTERVAL 2 DAY )`,
@@ -126,12 +126,11 @@ WITH dedup_order as (
     max(created_time) created_time,
     ${choose_new(`confirmation_date`)},
     ${choose_new(`province_code`)},
-    ${choose_new(`sales_region_code`)},
-    order_channel
+    ${choose_new(`sales_region_code`)}
   FROM
     dedup_tender_order
   GROUP BY
-    order_id,order_channel
+    order_id
 )
 
 SELECT
@@ -142,12 +141,22 @@ SELECT
     WHEN customer_tags LIKE '%TENDER%' THEN 'TENDER'
     WHEN source = 'brand-portal' AND brand_code IN ('Q8HDUVQX', '2E84FW961P', 'PG961P') THEN 'TENDER'
     WHEN source in ('brand-portal', 'clinic-portal') THEN 'DISTRIBUTION'
-    -- WHEN created_time >= "2023-10-01" AND source = 'internal-portal' THEN 'CONSIGNMENT'  -- Dự án CONSIGNMENT đã bể
-    -- WHEN created_time >= "2023-10-01" AND customer_id = 241098 THEN 'CONSIGNMENT'
+    WHEN created_time >= "2023-10-01" AND source = 'internal-portal' THEN 'CONSIGNMENT'  -- Dự án CONSIGNMENT đã bể
+    WHEN created_time >= "2023-10-01" AND customer_id = 241098 THEN 'CONSIGNMENT'
     WHEN customer_tags LIKE '%CIRCA%'  THEN 'CIRCA'
     ELSE 'MARKETPLACE'
   END AS order_channel,
+  CASE
+    WHEN customer_tags LIKE '%TENDER%' THEN 'TENDER'
+    WHEN source = 'brand-portal' AND brand_code IN ('Q8HDUVQX', '2E84FW961P', 'PG961P') THEN 'TENDER'
+    WHEN source in ('brand-portal', 'clinic-portal') THEN 'SO'
+    WHEN created_time >= "2023-10-01" AND source = 'internal-portal' THEN 'CO'  -- Dự án CONSIGNMENT đã bể
+    WHEN created_time >= "2023-10-01" AND customer_id = 241098 THEN 'CO'
+    WHEN customer_tags LIKE '%CIRCA%'  THEN 'SO'
+    ELSE 'SO'
+  END AS order_type,
   province_code,
+  customer_province_code,
   order_tbl.sales_region_code
 FROM order_tbl
 ${when(incremental(),
@@ -160,8 +169,10 @@ SELECT
   order_id,
   created_time,
   confirmation_date,
-  order_channel,
+  "TENDER" AS order_channel,
+  "TENDER" AS order_type,
   province_code,
+  province_code as customer_province_code,
   sales_region_code
 FROM tender_order_tbl
 
