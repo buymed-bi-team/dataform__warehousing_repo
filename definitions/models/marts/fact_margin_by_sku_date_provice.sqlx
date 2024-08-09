@@ -17,12 +17,16 @@ config {
         total_quantity: "NON-NULL | Total ordered quantity of SKU in Margin Date",
         sales_region_code: "NON-NULL",
     },
+    tags: ["0h30"],
+    bigquery: {
+        partitionBy: "DATE(date)",
+        clusterBy: ["sku_code", "province_code"]
 
-    tags: ["0h30"]
+    }
 }
 
 SELECT
-    PARSE_DATE("%Y/%m/%d", a.day_str) AS date
+    PARSE_DATE("%Y/%m/%d", a.day_str) AS  date
     , a.location_code AS province_code
     , s.product_id
     , a.sku AS sku_code
