@@ -158,7 +158,7 @@ SELECT
     m.notion_amount,
     return_amount.return_amount,
     IF (
-        m.order_status <> "CANCEL" ,
+        m.order_status <> "CANCEL" and m.order_status <> "CANCELLED",
         IF (
             m.ordered_amount <> 0,
             m.ordered_amount,
