@@ -19,7 +19,7 @@ config {
     },
     tags: ["0h30"],
     bigquery: {
-        partitionBy: "DATE(date)",
+        partitionBy: "date",
         clusterBy: ["sku_code", "province_code"]
 
     },
