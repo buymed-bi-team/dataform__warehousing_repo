@@ -80,6 +80,7 @@ cte_sku_fc AS (
     s.sku_code,
     s.product_id,
     s.seller_code,
+    s.seller_class,
     f.fc_code,
     f.sales_region_code
   FROM ${ref("dim_sku")} s
@@ -95,6 +96,7 @@ cte_sku_item AS (
     sf.sales_region_code,
     sf.fc_code,
     sf.seller_code as supplier_code,
+    sf.seller_class as supplier_class,
     sr.item_code,
     sr.status as item_status,
     sr.is_active as item_is_active,
@@ -122,7 +124,7 @@ SELECT
   c.length,
   c.width,
   d.avg_demand_l15d,
-  e.vendor_code as fv_vendor_code,
+  COALESCE(e.vendor_code, a.supplier_code) as fv_vendor_code,
   IF (e.vendor_code IS NULL, "NON-TRADING", "TRADING") as trading_type,
   f.pic_purchase_id,
   f.pic_purchase_name,
