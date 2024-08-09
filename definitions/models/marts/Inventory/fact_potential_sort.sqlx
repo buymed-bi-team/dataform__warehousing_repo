@@ -45,7 +45,7 @@ agg_sale_order_item AS (
     SELECT
     a.sale_order_code,
     DATE(a.created_time, "Asia/Ho_Chi_Minh") as created_date,
-    DATETIME(a.created_time, "Asia/Ho_Chi_Minh") as created_time,
+    TIMESTAMP(DATETIME(a.created_time, "Asia/Ho_Chi_Minh")) as created_time,
     b.status,
     CONCAT(c.sku_key, "_", b.fc_code) as sku_fc_key,
     a.sku_code,
@@ -54,8 +54,10 @@ agg_sale_order_item AS (
     a.reserved_quantity,
     CAST(JSON_VALUE(a1.first_reserved_quantity) AS INT64) AS first_reserved_quantity,
     IF(reserved_quantity > 0, 1, 0) as no_reserved_skus,
+    IF(CAST(JSON_VALUE(a1.first_reserved_quantity) AS INT64) > 0, 1, 0) as no_first_reserved_skus,
     a.unit_price * a.order_quantity as order_amount,
     a.unit_price * a.reserved_quantity as reserved_amount,
+    a.unit_price * CAST(JSON_VALUE(a1.first_reserved_quantity) AS INT64) as first_reserved_amount,
     SUM(a.order_quantity) OVER (PARTITION BY a.sale_order_code) AS total_qty,
     SUM(a.order_quantity *  a.unit_price) OVER (PARTITION BY a.sale_order_code) AS total_amt,
     COUNT(DISTINCT a.sku_code) OVER (PARTITION BY a.sale_order_code) AS total_sku
@@ -75,7 +77,10 @@ agg_sale_order_item_sort AS (
       + COALESCE(25 * 1 / NULLIF(total_sku, 0), 0) AS expected_sort,
       COALESCE(50 * reserved_quantity / NULLIF(total_qty, 0), 0) 
       + COALESCE(25 * reserved_amount / NULLIF(total_amt, 0), 0) 
-      + COALESCE(25 * no_reserved_skus / NULLIF(total_sku, 0), 0) AS actual_sort
+      + COALESCE(25 * no_reserved_skus / NULLIF(total_sku, 0), 0) AS actual_sort,
+      COALESCE(50 * first_reserved_quantity / NULLIF(total_qty, 0), 0) 
+      + COALESCE(25 * first_reserved_amount / NULLIF(total_amt, 0), 0) 
+      + COALESCE(25 * no_first_reserved_skus / NULLIF(total_sku, 0), 0) AS actual_sort_first_reserved,      
   FROM agg_sale_order_item
 )
 
