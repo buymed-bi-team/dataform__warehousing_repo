@@ -31,7 +31,7 @@ config {
 
 WITH dedup_sale_order AS ${dedup.dedup(
   source.silver + `.warehouse_prd_core_sale_order`,
-  "sale_order_code, warehouse_code as fc_code, status, created_time",
+  "sale_order_code, warehouse_code as fc_code, status, created_time, type",
   "timestamp(date_sub(current_date(),interval 1 month))"
 )},
 
@@ -66,7 +66,7 @@ agg_sale_order_item AS (
     LEFT JOIN dedup_sale_order b
     ON a.sale_order_code = b.sale_order_code
     LEFT JOIN ${ref("dim_sku")} c on a.sku_code = c.sku_code
-    WHERE a.sale_order_code LIKE "%SO%" AND a.created_time >= timestamp(date_sub(current_date(),interval 1 month))
+    WHERE b.type = "NORMAL" AND a.created_time >= timestamp(date_sub(current_date(),interval 1 month))
 ),
 
 agg_sale_order_item_sort AS (
