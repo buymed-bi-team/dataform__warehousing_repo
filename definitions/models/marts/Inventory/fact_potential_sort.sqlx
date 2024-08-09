@@ -37,7 +37,7 @@ WITH dedup_sale_order AS ${dedup.dedup(
 
 dedup_sale_order_item AS ${dedup.dedup(
   source.silver + `.warehouse_prd_core_sale_order_item`,
-  "sale_order_code, sku as sku_code, reserved_quantity, order_quantity, unit_price, created_time",
+  "sale_order_code, sku as sku_code, reserved_quantity, order_quantity, unit_price, created_time, pick_items",
   "timestamp(date_sub(current_date(),interval 1 month))"
 )},
 
