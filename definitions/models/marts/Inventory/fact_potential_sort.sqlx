@@ -37,7 +37,7 @@ WITH dedup_sale_order AS ${dedup.dedup(
 
 dedup_sale_order_item AS ${dedup.dedup(
   source.silver + `.warehouse_prd_core_sale_order_item`,
-  "sale_order_code, sku as sku_code, reserved_quantity, order_quantity, unit_price, created_time",
+  "sale_order_code, sku as sku_code, reserved_quantity, order_quantity, unit_price, created_time, pick_items",
   "timestamp(date_sub(current_date(),interval 1 month))"
 )},
 
@@ -52,6 +52,7 @@ agg_sale_order_item AS (
     a.unit_price,
     a.order_quantity,
     a.reserved_quantity,
+    CAST(JSON_VALUE(a1.first_reserved_quantity) AS INT64) AS first_reserved_quantity,
     IF(reserved_quantity > 0, 1, 0) as no_reserved_skus,
     a.unit_price * a.order_quantity as order_amount,
     a.unit_price * a.reserved_quantity as reserved_amount,
@@ -59,6 +60,7 @@ agg_sale_order_item AS (
     SUM(a.order_quantity *  a.unit_price) OVER (PARTITION BY a.sale_order_code) AS total_amt,
     COUNT(DISTINCT a.sku_code) OVER (PARTITION BY a.sale_order_code) AS total_sku
     FROM dedup_sale_order_item a
+    , UNNEST(JSON_QUERY_ARRAY(a.pick_items)) as a1
     LEFT JOIN dedup_sale_order b
     ON a.sale_order_code = b.sale_order_code
     LEFT JOIN ${ref("dim_sku")} c on a.sku_code = c.sku_code
