@@ -8,7 +8,8 @@ config {
         Refresh Schedule: hourly;
         Source: 
             ${source.platinum}.marketplace_prd_product_v2_sku,
-            ${source.platinum}.dedup_marketplace_prd_product_v2_tag
+            ${source.platinum}.dedup_marketplace_prd_product_v2_tag,
+            ${source.ref}.dim_sku_sales_region_current
         `,
     tags: ["custom_1h_past5"]
 }
@@ -22,11 +23,10 @@ SELECT
   t as tag_code,
   b.name AS tag,
   COALESCE(b.name, t) AS tag_name
--- FROM ${ref('dedup_marketplace_prd_product_v2_sku')} AS a
 FROM ${source.platinum}.marketplace_prd_product_v2_sku AS a
     , UNNEST(JSON_VALUE_ARRAY(a.tags)) AS t
-LEFT JOIN ${source.platinum}.dedup_marketplace_prd_product_v2_tag AS b ON t = b.code
--- LEFT JOIN ${ref("dim_sku_sales_region_current")} c on a.mg_id = c.mg_id 
+LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_tag AS b ON t = b.code
+LEFT JOIN ${ref("dim_sku_sales_region_current")} c on a.mg_id = c.mg_id 
 WHERE 
   a.mg_id IS NOT NULL 
   AND c.sku_code IS NOT NULL
