@@ -11,8 +11,7 @@ config {
     },
     bigquery: {
         partitionBy: "created_date"
-    },
-    tags: ["custom_1h_past5"]
+    }
 }
 
 pre_operations {
