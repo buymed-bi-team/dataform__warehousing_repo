@@ -5,7 +5,7 @@ config {
         ${source.silver}.marketplace_prd_customer_customer customer
         ${source.silver}.marketplace_prd_order_v2_order order`,
     assertions:{
-        nonNull: ["customer_id"],
+        nonNull: ["customer_id","customer_status"],
         uniqueKey: ["customer_id"]
     },
     name: "dim_customer",
@@ -14,6 +14,8 @@ config {
         customer_id: "NonNull",
         customer_name: "NonNull",
         customer_email: "Nullable",
+        customer_phone: "Nullable",
+        customer_status: "NonNull | Must be one of following: 'DELETED','ACTIVATE','INACTIVE'",
         customer_address: "Nullable",
         customer_report_category: "NonNull | Is one of TECH, TENDER, MARKETPLACE, or CIRCA? Category assigned to the customer based on specific conditions: TECH: If the customer's name contains keywords like 'TECH SELLER', 'TEST', 'TECH-QC', etc. EMPLOYEE: If the email contain @buymed or @thuocsi TENDER: If the customer's tags contain 'TENDER'. MARKETPLACE: If the customer's tags contain 'TERMINATE_CIRCA' or as a default category. CIRCA: If the customer's tags contain 'CIRCA'.",
         business_scope: "Nullable | Null means UNKNOWN scope",
@@ -23,26 +25,28 @@ config {
 
 WITH stg_customer AS (
     SELECT
-        dedup_customer.customer_id,
-        dedup_customer.name AS customer_name,
-        dedup_customer.email AS customer_email,
-        dedup_customer.address AS customer_address,
+        customer.customer_id,
+        customer.name AS customer_name,
+        customer.email AS customer_email,
+        customer.address AS customer_address,
+        customer.status AS customer_status,
+        customer.phone AS customer_phone,
         CASE
             WHEN REGEXP_CONTAINS( UPPER(name), r'TECH SELLER|TEST|TECH-QC|TS-TECH|\[TECH\]|\(TECH\)|DEMO|QC|TECH MONITOR|TECH 2') THEN "TECH"
-            WHEN REGEXP_CONTAINS(dedup_customer.email, "@buymed|@thuocsi") THEN "EMPLOYEE"
+            WHEN REGEXP_CONTAINS( customer.email, "@buymed|@thuocsi") THEN "EMPLOYEE"
             WHEN customer_id = 241098 THEN "CONSIGNMENT"
             WHEN customer_id = 360299 THEN "OPV"
-            WHEN TO_JSON_STRING( dedup_customer.tags ) LIKE '%TENDER%' THEN 'TENDER'
-            WHEN TO_JSON_STRING( dedup_customer.tags ) LIKE '%\"TERMINATE_CIRCA\"%'  THEN 'MARKETPLACE'
-            WHEN TO_JSON_STRING( dedup_customer.tags ) LIKE '%CIRCA%'  THEN 'CIRCA' -- Một số terminate circa vẫn được gán nhãn là circa ví dụ customer_id in (252404,358259,369079)
+            WHEN TO_JSON_STRING( customer.tags ) LIKE '%TENDER%' THEN 'TENDER'
+            WHEN TO_JSON_STRING( customer.tags ) LIKE '%\"TERMINATE_CIRCA\"%'  THEN 'MARKETPLACE'
+            WHEN TO_JSON_STRING( customer.tags ) LIKE '%CIRCA%'  THEN 'CIRCA' -- Một số terminate circa vẫn được gán nhãn là circa ví dụ customer_id in (252404,358259,369079)
             ELSE 'MARKETPLACE' -- Một số order trong dim_order bị xếp loại vào Marketplace trong khi vốn tên có là FC-CIRCA
         END AS customer_report_category,
-        dedup_customer.scope  AS business_scope,
+        customer.scope  AS business_scope,
         ward_code AS customer_ward_code,
         district_code AS customer_district_code
 
     FROM 
-        ${dedup.dedup(source.silver + `.marketplace_prd_customer_customer`,'*')} dedup_customer
+        ${source.platinum}.marketplace_prd_customer_customer customer
 )
 , stg_customer_order AS (
     SELECT

@@ -31,13 +31,13 @@ config {
 
 WITH dedup_sale_order AS ${dedup.dedup(
   source.silver + `.warehouse_prd_core_sale_order`,
-  "sale_order_code, warehouse_code as fc_code, status, created_time",
+  "sale_order_code, admin_id, warehouse_code as fc_code, status, created_time, type",
   "timestamp(date_sub(current_date(),interval 1 month))"
 )},
 
 dedup_sale_order_item AS ${dedup.dedup(
   source.silver + `.warehouse_prd_core_sale_order_item`,
-  "sale_order_code, sku as sku_code, reserved_quantity, order_quantity, unit_price, created_time",
+  "sale_order_code, sku as sku_code, reserved_quantity, order_quantity, unit_price, created_time, pick_items",
   "timestamp(date_sub(current_date(),interval 1 month))"
 )},
 
@@ -45,24 +45,30 @@ agg_sale_order_item AS (
     SELECT
     a.sale_order_code,
     DATE(a.created_time, "Asia/Ho_Chi_Minh") as created_date,
-    DATETIME(a.created_time, "Asia/Ho_Chi_Minh") as created_time,
+    TIMESTAMP(DATETIME(a.created_time, "Asia/Ho_Chi_Minh")) as created_time,
     b.status,
+    d.order_channel,
     CONCAT(c.sku_key, "_", b.fc_code) as sku_fc_key,
     a.sku_code,
     a.unit_price,
     a.order_quantity,
     a.reserved_quantity,
+    CAST(JSON_VALUE(a1.first_reserved_quantity) AS INT64) AS first_reserved_quantity,
     IF(reserved_quantity > 0, 1, 0) as no_reserved_skus,
+    IF(CAST(JSON_VALUE(a1.first_reserved_quantity) AS INT64) > 0, 1, 0) as no_first_reserved_skus,
     a.unit_price * a.order_quantity as order_amount,
     a.unit_price * a.reserved_quantity as reserved_amount,
+    a.unit_price * CAST(JSON_VALUE(a1.first_reserved_quantity) AS INT64) as first_reserved_amount,
     SUM(a.order_quantity) OVER (PARTITION BY a.sale_order_code) AS total_qty,
     SUM(a.order_quantity *  a.unit_price) OVER (PARTITION BY a.sale_order_code) AS total_amt,
     COUNT(DISTINCT a.sku_code) OVER (PARTITION BY a.sale_order_code) AS total_sku
     FROM dedup_sale_order_item a
+    , UNNEST(JSON_QUERY_ARRAY(a.pick_items)) as a1
     LEFT JOIN dedup_sale_order b
     ON a.sale_order_code = b.sale_order_code
     LEFT JOIN ${ref("dim_sku")} c on a.sku_code = c.sku_code
-    WHERE a.sale_order_code LIKE "%SO%" AND a.created_time >= timestamp(date_sub(current_date(),interval 1 month))
+    LEFT JOIN ${ref("dim_order")} d on b.admin_id = d.order_id
+    WHERE d.order_type = "SO" AND a.created_time >= timestamp(date_sub(current_date(),interval 1 month))
 ),
 
 agg_sale_order_item_sort AS (
@@ -73,7 +79,10 @@ agg_sale_order_item_sort AS (
       + COALESCE(25 * 1 / NULLIF(total_sku, 0), 0) AS expected_sort,
       COALESCE(50 * reserved_quantity / NULLIF(total_qty, 0), 0) 
       + COALESCE(25 * reserved_amount / NULLIF(total_amt, 0), 0) 
-      + COALESCE(25 * no_reserved_skus / NULLIF(total_sku, 0), 0) AS actual_sort
+      + COALESCE(25 * no_reserved_skus / NULLIF(total_sku, 0), 0) AS actual_sort,
+      COALESCE(50 * first_reserved_quantity / NULLIF(total_qty, 0), 0) 
+      + COALESCE(25 * first_reserved_amount / NULLIF(total_amt, 0), 0) 
+      + COALESCE(25 * no_first_reserved_skus / NULLIF(total_sku, 0), 0) AS actual_sort_first_reserved,      
   FROM agg_sale_order_item
 )
 

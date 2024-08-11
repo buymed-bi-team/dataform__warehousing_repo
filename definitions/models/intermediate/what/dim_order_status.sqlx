@@ -1,13 +1,19 @@
 config {
     type: "table",
-    description: " PIC: minh.luu; model_type: table; schedule 0h00, 12h00",
+    description: `PIC: minh.luu; model_type: table; schedule 0h00, 12h00
+    Source:
+        ${source.platinum}.marketplace_prd_order_v2_order
+        ${source.platinum}.warehouse_prd_core_sale_order
+        ${source.platinum}.accounting_prd_core_bill
+        ${source.platinum}.warehouse_prd_core_delivery_order`,
     name: "dim_order_status",
     tags: ["0h00","12h00"],
     columns: {
         order_id : "Id của order",
-        CRM_status : "status trên hệ thống CRM",
-        WMS_status : "status trên hệ thống WMS",
-        ACCOUNTING_status : "status trên hệ thống ACCOUNTING"
+        crm_status : "Nullable | In (WAIT_TO_CONFIRM, CONFIRMED, PROCESSING, WAIT_TO_DELIVER, DELIVERING, DELIVERED, COMPLETED, CANCEL, CANCELED)",
+        warehouse_status : "Nullable | In (RESERVING, WAIT_TO_PICK, PICKING, WAIT_TO_CHECK, CHECKING, WAIT_TO_PACK, PACKING, WAIT_TO_DELIVERY, DELIVERING, DELIVERED, CANCEL, COMPLETED, RETURN, RETURNING, RETURNED, LOST, DRAFT , WAIT_TO_LIQUIDATION, LIQUIDATED)",
+        accounting_status : "Nullable | status trên hệ thống ACCOUNTING",
+        delivery_status: "Nullable | "
     }
 }
 /*
@@ -24,10 +30,6 @@ TODO:
 */ 
 
 WITH stg_order_CRM AS (
--- ${dedup.dedup(
---         source.silver + `.marketplace_prd_order_v2_order`,
---         "order_id,status as CRM_status, created_time"
--- )}
     SELECT
         order_id,
         status as CRM_status,
@@ -46,11 +48,6 @@ stg_order_WMS AS (
 ),
 
 stg_order_ACCOUNTING AS (
-    -- SELECT order_id, status as ACCOUNTING_status
-    -- FROM ${dedup.dedup(
-    --     source.silver + `.accounting_prd_core_bill`,
-    --     "order_id,status, created_time"
-    -- )}
     SELECT order_id, status as ACCOUNTING_status
     FROM ${source.platinum}.accounting_prd_core_bill
 ),
@@ -59,11 +56,6 @@ stg_order_WMS_Delivery AS (
     SELECT CAST( REGEXP_EXTRACT(sale_order_code, r'(\d+)') AS INT64 ) AS order_id,status  as WMS_Delivery_status
     FROM  ${source.platinum}.warehouse_prd_core_delivery_order
 )
-
--- stg_order_SHIPPING AS (
---     SELECT order_id,status  as WMS_Delivery_status
---     FROM  ${source.platinum}.delivery_prd_transporting_shipping_order
--- )
 
 
 
@@ -74,7 +66,6 @@ SELECT
     b.WMS_status,
     c.WMS_Delivery_status,
     d.ACCOUNTING_status,
-
     a.created_time
 
 FROM stg_order_CRM a
@@ -85,11 +76,11 @@ LEFT JOIN stg_order_WMS_Delivery c
 LEFT JOIN stg_order_ACCOUNTING d
     ON a.order_id = d.order_id
 
-post_operations {                
-  ${
-    when(incremental(),
-      "",
-      `ALTER TABLE ${self()} ADD PRIMARY KEY (order_id) NOT ENFORCED;`
-    )
-  }
-}
+-- post_operations {                
+--   ${
+--     when(incremental(),
+--       "",
+--       `ALTER TABLE ${self()} ADD PRIMARY KEY (order_id) NOT ENFORCED;`
+--     )
+--   }
+-- }

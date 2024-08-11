@@ -1,0 +1,69 @@
+config {
+  type: 'table',
+  description: `PIC: minhluu , model_type: table ; schedule: 0h00 daily
+  Source:
+    ${source.silver}.marketplace_prd_customer_priority_customer`,
+  columns:{
+      customer_name: "NonNull | customer_name",
+      email: "Nullable | customer email",
+      phone: "NonNull | can use this column to join with dim_customer",
+      customer_code : "NonNull | customer code",
+      hash_tag : "NonNull | Can be in one of following 'CONVERTED', 'DELETED', 'NEW'",
+      priority_customer_id : "NonNull & Unique |  ",
+      status: "NonNull | ",
+      scope: "nullable | Can be in one of following : 'BEAUTY_SALON','CLINIC','DENTISTRY','DRUGSTORE','HOSPITAL','PATIENT','PHARMACIST','PHARMACY','PHARMA_COMPANY'",
+      source: "nullable | can be in one of following : 'APP SALES','CHAT','HOMEPAGE','INTERNAL'",
+      address: "Nullable | ",
+      // ward_code: "Nullable | ",
+      // district_code: "NonNull | ",
+      // province_code: "NonNull | ",
+      location_code: "Nullable | ",
+      pic_account_id: "NonNull | ",
+      pic_username : "Nullable | ",
+      last_checked_out_day : "Nullable |",
+      note: "Nullable |",
+      created_time: "NonNull | In Timezone +7",
+      last_updated_time: "NonNull | In Timezone +7"
+  },
+  tags : ['0h00'],
+  assertions: {
+      // guaranteed columns: primary key, Source_insure_NonNull
+      uniqueKey : "priority_customer_id",
+      nonNull : ("priority_customer_id" )
+  }
+}
+
+
+SELECT 
+  name AS customer_name,
+  email, 
+  phone, 
+  code as customer_code, 
+  hash_tag,
+  priority_customer_id, 
+  status ,
+  scope , 
+  source ,  
+  address, 
+  CASE 
+    WHEN ward_code IS NOT NULL THEN ward_code
+    WHEN district_code IS NOT NULL THEN district_code
+    WHEN province_code IS NOT NULL THEN province_code
+  END AS location_code,
+  last_checked_out_day,
+  -- location, -- nullable | {'coordinates': [x,y],'type': "Point"}
+  pic_account_id ,
+  pic_username ,
+  note,
+  DATETIME(created_time,'+7'),
+  DATETIME(last_updated_time, '+7')
+  
+FROM 
+
+${dedup.dedup(`silver_buymed_vn.marketplace_prd_customer_priority_customer`,'*')}
+
+post_operations {
+  ALTER TABLE ${self()} 
+  ADD PRIMARY KEY (customer_code) NOT ENFORCED,
+  ADD FOREIGN KEY(location_code) references ${ref(`dim_geo_location`)}(location_code) NOT ENFORCED
+}

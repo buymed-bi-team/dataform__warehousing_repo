@@ -28,7 +28,8 @@ pre_operations {
 
 
       CREATE OR REPLACE TEMP TABLE range_created_time_table AS (
-       SELECT MIN(DATE(created_time)) AS min_created_date, MAX(DATE(created_time)) AS max_created_date
+       SELECT MIN(DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))) AS min_created_date,
+        MAX(DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))) AS max_created_date
         FROM ${source.silver}.accounting_prd_invoice_order_invoice_item 
         WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) AND action != "d"
       );
@@ -51,16 +52,25 @@ pre_operations {
   }
 }
 
+-- prevent some cases that insert and delete have the same synced_at but action delete got to the file has timestamp before action i
+WITH deleted_records_table AS (
+  SELECT mg_id
+  FROM ${source.silver}.accounting_prd_invoice_order_invoice_item
+  WHERE action = 'd'
+    AND date(ingest_time) >= current_date() - 1
+)
+
 SELECT
  *,
  CASE 
-    WHEN created_time IS NOT NULL THEN DATE(created_time)
+    WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
     ELSE "2099-01-01"
   END AS created_date
 FROM ${source.silver}.accounting_prd_invoice_order_invoice_item o 
+
  ${
     when(incremental(), 
-      `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) 
+      `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) and mg_id not in (select mg_id from deleted_records_table) 
       QUALIFY ROW_NUMBER() OVER (_window) = 1`,
       `QUALIFY ROW_NUMBER() OVER (_window) = 1
        AND FIRST_VALUE(action) OVER (_window) <> 'd'`
