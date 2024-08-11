@@ -8,7 +8,7 @@ config {
         Refresh Schedule: hourly;
         Source: 
             ${source.platinum}.marketplace_prd_product_v2_sku,
-            ${source.platinum}.dedup_marketplace_prd_product_v2_tag,
+            ${source.platinum}.marketplace_prd_product_v2_tag,
             ${source.ref}.dim_sku_sales_region_current
         `,
     tags: ["custom_1h_past5"]
