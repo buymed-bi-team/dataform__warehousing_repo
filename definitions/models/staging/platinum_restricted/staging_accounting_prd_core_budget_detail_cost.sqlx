@@ -1,17 +1,17 @@
 
 
-
 config {
     type: "incremental",
-    name: "warehouse_prd_picking_sub_pick_ticket_item",
-    schema: "platinum_buymed_vn",
+    name: "accounting_prd_core_budget_detail_cost",
+    schema: "platinum_buymed_vn_restricted",
     assertions: {
         uniqueKey: 'mg_id',
         nonNull: ["created_date"]
     },
     bigquery: {
         partitionBy: "created_date"
-    }
+    },
+    tags: ["another_custom_2h_past5"]
 }
 
 pre_operations {
@@ -27,15 +27,15 @@ pre_operations {
 
 
       CREATE OR REPLACE TEMP TABLE range_created_time_table AS (
-       SELECT MIN(DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))) AS min_created_date, 
-       MAX(DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))) AS max_created_date
-        FROM ${source.silver}.warehouse_prd_picking_sub_pick_ticket_item 
+       SELECT MIN(DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))) AS min_created_date,
+        MAX(DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))) AS max_created_date
+        FROM ${source.silver_restricted}.accounting_prd_core_budget_detail_cost 
         WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) AND action != "d"
       );
 
       CREATE OR REPLACE TEMP TABLE get_deleted_record AS (
           SELECT mg_id 
-          FROM ${source.silver}.warehouse_prd_picking_sub_pick_ticket_item 
+          FROM ${source.silver_restricted}.accounting_prd_core_budget_detail_cost 
           WHERE  ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) and 
           created_time IS NULL AND last_updated_time IS NULL
         );
@@ -57,7 +57,7 @@ SELECT
     WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
     ELSE "2099-01-01"
   END AS created_date
-FROM ${source.silver}.warehouse_prd_picking_sub_pick_ticket_item o 
+FROM ${source.silver_restricted}.accounting_prd_core_budget_detail_cost o 
  ${
     when(incremental(), 
       `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) 
@@ -111,8 +111,8 @@ post_operations {
         
         CREATE OR REPLACE TEMP TABLE get_range_deleted AS (
           SELECT 
-            MIN(created_date) AS min_created_date_deleted, 
-            MAX(created_date) AS max_created_date_deleted 
+            MAX(created_date) AS min_created_date_deleted, 
+            MIN(created_date) AS max_created_date_deleted 
           FROM ${self()} 
           WHERE mg_id IN (SELECT mg_id FROM get_deleted_record) 
             AND created_date != "2099-01-01" 
@@ -135,5 +135,3 @@ post_operations {
     )
   }
 }
-
-
