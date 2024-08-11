@@ -1,0 +1,25 @@
+config {
+    type: "table", 
+    description: 
+        `PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.platinum}.marketplace_prd_product_v2_product,
+            ${source.platinum}.marketplace_prd_product_v2_category
+        `,
+    tags: ["custom_1h_past5"],
+    columns: {
+        level: "The level of Product Category"
+    }
+}
+
+SELECT
+    p.product_id
+    , STRING(cc) AS category_code
+    , pc.name AS category_name
+    , ROW_NUMBER() over(PARTITION BY p.product_id ORDER BY p.created_time) AS level
+FROM ${source.platinum}.marketplace_prd_product_v2_product AS p
+    , UNNEST(JSON_EXTRACT_ARRAY(p.category_codes)) AS cc 
+LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_category AS pc ON pc.code = STRING(cc)
+WHERE STRING(cc) <> 'COMBO' 
