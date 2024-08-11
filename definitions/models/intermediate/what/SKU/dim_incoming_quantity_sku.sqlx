@@ -2,7 +2,7 @@ config {
     type: "table", 
     description: 
         `
-        The incoming quantity of SKUs at each warehouse (based on the status of the PO);
+        The incoming quantity of SKUs from seller MEDX, MEDX_E at each warehouse (based on the status of the PO);
         PIC: nguyen.tran; 
         Type: Table; 
         Refresh Schedule: hourly;

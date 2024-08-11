@@ -1,0 +1,215 @@
+config {
+    type: "table", 
+    description: 
+        ` 
+        SKUs(Item Code) according to sales region dim table;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.platinum}.marketplace_prd_product_v2,
+            ${source.gold}.dim_sku_fc_person_in_charge,
+            ${source.platinum}.seller_prd_purchasing_initial_stock_draft,
+            ${source.ref}.dim_inventory_sku',
+            ${source.gold}.dim_sku_vendor,
+            ${source.silver}.marketplace_prd_product_v2_sku_limit,
+            ${source.gold}.adhoc_pricing_agg_vendor_bill_price,
+            ${source.ref}.dim_sku,
+            ${source.platinum}.marketplace_prd_product_v2_product_category_in_charge,
+            ${source.platinum}.marketplace_prd_product_v2_product_category_management,
+            ${source.ref}.dim_sku_location
+
+        `,
+    tags: ["custom_1h_past5"],
+    columns: {
+        sku_created_at                 : "The time ItemCode was created",
+        sku_approved_at                : "The time ItemCode was approved",
+        sku_last_updated_at            : "The latest time ItemCode was updated",
+        sub_sku_code                   : "ItemCode - Each ItemCode corresponds to 1 SKU at a specific sales region/FC",
+        sales_region_code              : "Including MIENNAM, MIENBAC, MIENTRUNG",
+        fc_code                        : "Including BD, HN, DN corresponding to 3 sales regions",
+        sku_sales_region_code          : "Created by concatenating the SKU & sales region code",
+        sku_fc_code                    : "Created by concatenating the SKU & FC code",
+        product_sales_region_code      : "Created by concatenating the product id & sales region code",
+        product_fc_code                : "Created by concatenating the product id & fc code",
+        sku_key_sales_region_code      : "Primary Key - Created by concatenating the product id, seller_code & sales region code",
+        fv_code                        : "Favourite Vendor Code",
+        fv_name                        : "Favourite Vendor Name",
+        sku_trading_by_fv              : "SKU trading type based on fv vendor",
+        sku_system_status              : "Status of ItemCode on the thuocsi.vn platform",
+        sku_system_active              : "Display Status of ItemCode on the thuocsi.vn platform ",
+        sku_level                      : "Level of SKUs",
+        sku_level_special              : "Special Level of SKUs",
+        sku_type                       : "SKUs Type (NORMAL/COMBO/GIFT)",
+        retail_price_type              : "Type of calculating display price for the SKUs/ItemCode",
+        retail_price_value             : "Setting Price of SKUs/ItemCode",
+        dynamic_pricing_level          : "Parameter for calculating display price. The display price of the SKUs will be calculated based on the corresponding coefficient in the Price Threshold table with the specified price dynamic level.",
+        pic_account_id                 : "Account id/ Employee id of the purchaser in charge",
+        pic_name                       : "Fullname of the purchase in charge",
+        cic_account_id                 : "Account id/ Employee id of the category in charge",
+        cic_name                       : "Fullname of the category in charge",
+        brand_type                     : "Brand Type of the product",
+        catm_group                     : "Category Management Group of the product at a specific fc",
+        vat                            : "The VAT tax of the SKUs",
+        is_near_expired                : "Indicates whether the SKUs is near exprired",
+        max_quantity_per_order         : "The maximum quantity of SKUs that customers can place in each order",
+        available_qty                  : "The available quantity of the SKUs at the corresponding fc",
+        min_quantity                   : "The minimum available quantity",
+        product_type                   : "Product type (NON-DRUG/ DRUG)",
+        quantity_per_day               : "The maximum quantity of the SKUs that customers can place in a day",
+        product_link                   : "URL of the SKUs on thuocsi.vn platform",
+        fee_code                       : "Service fee code used to calculate the display price of the SKUs",
+        inventory_price                : "Price used to calculate Invetory valuation at a specific fc",
+    },
+
+    assertions: {
+        uniqueKey: "sku_key_sales_region_code",
+        nonNull: ["sku_key_sales_region_code" ,"sku_sales_region_code", "sku_fc_code", "product_id", "fc_code" ,"sales_region_code"]
+    }
+}
+
+with
+    dedup_cic as (
+        SELECT
+            e.product_id
+            , JSON_EXTRACT_SCALAR(f, '$.warehouse_code') as fc_code
+            , JSON_EXTRACT_SCALAR(f, '$.category_in_charge') as cic_account_id
+            , acc3.fullname as cic_name
+            , JSON_EXTRACT_SCALAR(f, '$.category_management') as brand_type
+        FROM ${source.platinum}.marketplace_prd_product_v2_product_category_in_charge as e
+        LEFT JOIN UNNEST(JSON_EXTRACT_ARRAY(e.category_in_charge_data)) as f
+        LEFT JOIN `lakehouse-prod-394907.gold_buymed_vn.dim_employee` acc3
+            ON acc3.employee_id = SAFE_CAST(JSON_EXTRACT_SCALAR(f, '$.category_in_charge') as INT64)
+        QUALIFY ROW_NUMBER() OVER(PARTITION BY product_id, fc_code) = 1
+    ),
+
+    dedup_catm as (
+        SELECT
+            product_id
+            , JSON_EXTRACT_SCALAR(catm, '$.warehouse_code') as fc_code
+            , JSON_EXTRACT_SCALAR(catm, '$.category_management') as catm_group
+        FROM ${source.platinum}.marketplace_prd_product_v2_product_category_management pc
+        LEFT JOIN UNNEST(JSON_EXTRACT_ARRAY(pc.category_management_data)) catm
+        QUALIFY ROW_NUMBER() OVER(PARTITION BY product_id, fc_code) = 1
+    ),
+
+    cte_full as (
+      select
+        a.*
+      from  ${ref('dim_sku_location')} as a
+      QUALIFY ROW_NUMBER() over (PARTITION BY a.sku_code, sales_region_code) = 1
+    )
+
+SELECT
+    cte.mg_id,
+    TIMESTAMP_ADD(s.created_time,INTERVAL 7 HOUR) AS sku_created_at,
+    TIMESTAMP_ADD(s.approved_date,INTERVAL 7 HOUR) AS sku_approved_at,
+    TIMESTAMP_ADD(s.last_updated_time,INTERVAL 7 HOUR) AS sku_last_updated_at,
+    TIMESTAMP_ADD(current_timestamp(), INTERVAL 7 HOUR) AS transformed_at,
+    cte.sku_code,
+    s.product_id,
+    s.product_code,
+    ds.product_name,
+    s.item_code AS sub_sku_code,
+    s.seller_code,
+    s.seller_class,
+    s.seller_id,
+    cte.sales_region_code,
+    cte.fc_code,
+    CONCAT(cte.sku_code,"_",coalesce(cte.sales_region_code,"")) AS sku_sales_region_code, -- bug: If sales_region_code null, concat function returns null value
+    CONCAT(cte.sku_code,"_",coalesce(cte.fc_code,"")) AS sku_fc_code,
+    CONCAT(s.product_id,"_",coalesce(cte.sales_region_code,"")) AS product_sales_region_code,
+    CONCAT(s.product_id,"_",coalesce(cte.fc_code,"")) AS product_fc_code,
+    CONCAT(ds.sku_key, "_", cte.sales_region_code) AS sku_key_sales_region_code,
+    sv.vendor_code AS fv_code,
+    sv.vendor_name AS fv_name,
+    sv.vendor_type AS sku_trading_by_fv,
+    COALESCE(sv.purchase_status, "Off") AS purchase_status ,
+    sv.min_per_step,
+    s.status AS sku_system_status,
+    s.is_active AS sku_system_active,
+    s.level AS sku_level,
+    JSON_VALUE(JSON_QUERY(s.extra_props, '$.level_special'), '$.level') AS sku_level_special,
+    s.type AS sku_type,
+    s.retail_price_type,
+    s.retail_price_value,
+    IF ( vat >= 0,
+      s.retail_price_value + (s.retail_price_value * s.vat * 0.01),
+      s.retail_price_value
+    ) AS retail_price_value_vat,
+    s.dynamic_pricing_level,
+    s.pricing_strategy,
+    s.purchase_price,
+    pic.pic_account_id,
+    pic.pic_name,
+    cic.cic_account_id,
+    cic.cic_name,
+    cic.brand_type,
+    catm.catm_group,
+    isd.initial_stock,
+    isd.origin_initial_stock AS initial_stock_default_quantity,
+    SAFE_CAST(JSON_VALUE(isd.extra_props, '$.leadtime') AS INT64) AS sku_leadtime,
+    SAFE_CAST(JSON_VALUE(isd.extra_props, '$.stock_day') AS INT64) AS sku_stock_day,
+    s.vat,
+    JSON_VALUE(s.status_data, '$.next_status') as next_status,
+    JSON_VALUE(s.status_data, '$.is_auto_check_stock') as is_auto_check_stock,--tu.dang
+    SAFE_CAST(JSON_VALUE(s.lot_dates, '$[0].is_near_expired') AS BOOLEAN) as is_near_expired,
+    s.max_quantity_per_order,
+    IF(ins.available_quantity < 0, 0, ins.available_quantity) AS available_qty,
+    ins.min_quantity,
+    ins.product_type,
+    CASE
+      WHEN s.status in ('LIMIT', 'NEAR_EXPIRATION') THEN SAFE_CAST(JSON_VALUE(s.status_data, '$.next_is_active') AS BOOLEAN)
+    END AS next_is_active,
+    sl.quantity AS quantity_per_day,
+    sl.is_active AS is_active_limit,
+    CONCAT('https://thuocsi.vn/product/', s.slug) as product_link,
+    JSON_VALUE(s.fee_codes, '$.0') as fee_code,
+
+    CASE
+        WHEN s.status = 'GIFT' AND s.seller_class = 'INTERNAL'
+            THEN 
+              COALESCE(
+                NULLIF(bill.newest_price_bill_after_discount_VAT, 0)
+                , NULLIF(s.purchase_price, 0)
+                , NULLIF(s.retail_price_value, 0)
+                , 1000
+              )
+        WHEN s.status <> 'GIFT' AND s.seller_class = 'INTERNAL'
+            THEN 
+              IF(
+                s.seller_code = 'MARKETING' OR s.seller_code = 'MEDX_E',
+                COALESCE(NULLIF(bill.newest_price_bill_after_discount_VAT, 0), NULLIF(s.purchase_price, 0), NULLIF(s.retail_price_value, 0), 1000),
+                COALESCE(NULLIF(s.retail_price_value, 0), 1000)
+              )
+        ELSE COALESCE(NULLIF(s.retail_price_value, 0), 1000)
+    END AS inventory_price,
+    JSON_VALUE(s.extra_props, '$.demand_classification_code') as sku_demand_class,
+
+FROM cte_full AS cte
+    LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_sku AS s
+        ON s.mg_id = cte.mg_id
+    LEFT JOIN ${source.gold}.dim_sku_fc_person_in_charge AS pic
+        ON pic.sku_code = cte.sku_code AND pic.fc_code = cte.fc_code
+    LEFT JOIN ${source.platinum}.seller_prd_purchasing_initial_stock_draft AS isd
+        ON isd.sku = cte.sku_code AND isd.warehouse_code = cte.fc_code
+    LEFT JOIN ${ref('dim_inventory_sku')} AS ins
+        ON ins.sku = cte.sku_code AND ins.fc_code = cte.fc_code
+    LEFT JOIN ${source.gold}.dim_sku_vendor AS sv
+        ON sv.sku_code = cte.sku_code AND sv.fc_code = cte.fc_code AND sv.priority = 0
+    LEFT JOIN dedup_cic AS cic
+        ON cic.product_id = s.product_id AND cic.fc_code = cte.fc_code
+    LEFT JOIN dedup_catm AS catm
+        ON catm.product_id = s.product_id AND catm.fc_code = cte.fc_code
+    LEFT JOIN (
+        SELECT item_code, is_active, quantity
+        FROM ${source.silver}.marketplace_prd_product_v2_sku_limit
+        QUALIFY row_number() over (partition by item_code order by ingest_time desc) = 1
+    ) AS sl
+        ON sl.item_code = s.item_code
+    LEFT JOIN ${source.gold}.adhoc_pricing_agg_vendor_bill_price AS bill
+        ON bill.sku_code = cte.sku_code AND bill.sales_region_code = cte.sales_region_code
+    LEFT JOIN ${ref('dim_sku')} AS ds
+        ON ds.sku_code = cte.sku_code
+WHERE 
+    cte.sales_region_code IS NOT NULL
