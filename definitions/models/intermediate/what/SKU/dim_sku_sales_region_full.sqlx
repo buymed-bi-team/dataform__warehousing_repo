@@ -48,7 +48,12 @@ SELECT
     sc.fv_name as favourite_vendor,
     sc.fv_code
 FROM ${source.gold}.dim_sku AS s
-    CROSS JOIN ${ref('dim_fc_service_area')} AS sa
+    CROSS JOIN (
+        SELECT DISTINCT
+            sales_region_code
+            , fc_code
+        FROM ${ref('dim_fc_service_area')}
+    ) AS sa
     LEFT JOIN ${ref('dim_sku_sales_region_current')} AS sc
         ON sc.sku_code = s.sku_code AND sc.sales_region_code = sa.sales_region_code
     LEFT JOIN ${source.platinum}.seller_prd_core_seller AS sup
