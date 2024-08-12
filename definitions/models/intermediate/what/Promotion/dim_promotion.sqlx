@@ -1,0 +1,61 @@
+config {
+    type: "table", 
+    description: 
+        `
+        Promotion Dimension;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.platinum}.marketplace_prd_promotion_promotion
+        `,
+    tags: ["custom_1h_past5"]
+}
+
+SELECT
+    a.promotion_id
+    , a.promotion_name
+    , CONCAT(a.promotion_id, '_', a.promotion_name) AS promotion_filter
+    , short_name
+    , CASE
+        WHEN a.promotion_name LIKE '%Game - VQ%' THEN "Lucky Wheel"
+        WHEN a.promotion_name LIKE '%Game%' THEN "Rung cây Tết"
+        WHEN a.promotion_name LIKE '%DD%' THEN "Điểm danh nhận quà"
+        WHEN a.promotion_id = 3418 THEN "Campaign Voucher 2024"
+        WHEN a.promotion_id = 3591 THEN "Campaign Gift 2024"
+        WHEN a.promotion_id = 3759 THEN "Campaign Voucher 2024 - 2"
+      END AS campaign_name
+    , CASE
+        WHEN a.promotion_id IN (3763, 3772) THEN "Banking Voucher"
+        ELSE "Others"
+      END AS voucher_type
+    , a.promotion_type
+    , a.description
+    , DATE(TIMESTAMP_ADD(a.start_time, INTERVAL 7 HOUR)) AS start_date
+    , DATE(TIMESTAMP_ADD(a.end_time, INTERVAL 7 HOUR)) AS end_date
+    , a.status AS promotion_status
+    , a.voucher_group_code
+    , a.apply_type
+    , a.max_usage AS max_qty
+    , a.max_usage_per_customer AS usage_per_customer
+    , REGEXP_REPLACE(JSON_VALUE(a.condition_description), r'\\n|\\', '') AS condition_description
+    , JSON_VALUE(a.rewards, '$[0].type') AS discount_type
+	, JSON_VALUE(a.rewards, '$[0].absolute_discount') AS absolute_discount
+	, JSON_VALUE(a.rewards, '$[0].max_discount') AS max_discount
+	, JSON_VALUE(a.rewards, '$[0].percentage_discount') AS percentage_discount
+    , b.campaign_brand
+FROM ${source.platinum}.marketplace_prd_promotion_promotion AS a
+LEFT JOIN (
+    SELECT
+        SAFE_CAST(code AS INT64) AS promotion_id
+        , type
+        , value as campaign_brand
+    FROM ${source.collector}.data_prd
+    WHERE
+        object = 'Product'
+        AND type = 'CAMPAIGN_BRAND'
+        AND submit_id <> 4814
+    QUALIFY ROW_NUMBER() over (PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
+) AS b ON a.promotion_id = b.promotion_id
+WHERE
+    a.created_time >= TIMESTAMP_SUB('2023-01-01', INTERVAL 7 HOUR)

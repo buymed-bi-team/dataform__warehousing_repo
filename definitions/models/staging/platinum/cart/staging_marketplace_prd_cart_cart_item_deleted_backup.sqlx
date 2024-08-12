@@ -26,7 +26,7 @@ pre_operations {
 
 SELECT
  *,
- date(created_time) as created_date
+ WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
 FROM ${source.silver}.marketplace_prd_cart_cart_item_deleted_backup o 
   ${ when(incremental(), `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()})`)}
   QUALIFY ROW_NUMBER() OVER (_window) = 1

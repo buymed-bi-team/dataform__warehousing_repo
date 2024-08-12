@@ -1,0 +1,24 @@
+config {
+    type: "view", 
+    description: 
+        `
+        SKU Location Dimension;
+        PIC: nguyen.tran; 
+        Type: View; 
+        Source: 
+            ${source.platinum}.marketplace_prd_product_v2_sku,
+            ${source.ref}.dim_fc_service_area
+        `
+}
+
+SELECT
+    current_timestamp() AS transformed_at
+    , s.mg_id
+    , s.sku AS sku_code
+    , s.item_code AS sub_sku_code
+    , a AS service_area_code
+    , b.sales_region_code
+    , b.fc_code
+FROM ${source.platinum}.marketplace_prd_product_v2_sku AS s
+    , UNNEST(JSON_VALUE_ARRAY(s.location_codes)) AS a
+    LEFT JOIN ${ref('dim_fc_service_area')} AS b ON b.service_area_code = a

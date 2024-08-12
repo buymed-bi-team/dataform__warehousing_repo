@@ -1,0 +1,59 @@
+config {
+    type: "table", 
+    description: 
+        `
+        Voucher Dimension;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.platinum}.marketplace_prd_promotion_voucher,
+            ${source.ref}.dim_promotion
+        `,
+    tags: ["custom_1h_past5"]
+}
+
+SELECT
+    v.code AS voucher_code
+    , v.promotion_id
+    , v.type AS voucher_type
+    , v.status AS voucher_status
+    , DATE(TIMESTAMP_ADD(v.start_time, INTERVAL 7 HOUR)) AS start_date
+    , DATE(TIMESTAMP_ADD(v.end_time, INTERVAL 7 HOUR)) AS end_date
+    , v.max_usage
+    , v.usage_total
+    , SAFE_CAST(JSON_VALUE(r.absolute_discount) AS FLOAT64) AS voucher_discount
+    , JSON_VALUE(r.type) AS discount_type
+    , CASE
+        WHEN JSON_VALUE(r.type) = 'ABSOLUTE' THEN "E-VOUCHER"
+        WHEN JSON_VALUE(r.type) = 'GIFT' THEN "GIFT"
+       END AS campaign_type
+    , CASE
+		WHEN JSON_VALUE(extra_props, '$.promotion_organizer') = "SELLER_CENTER" then "SELLER"
+		ELSE "BUYMED"
+	  END AS promotion_organizer
+    , COALESCE(CAST(v.promotion_id AS STRING), code) AS filter_promotion_id
+    , v.promotion_name
+    , v.display_name
+    , v.max_usage_per_customer
+    , v.usage_type
+    , CASE
+        WHEN v.customer_apply_type = "AUTO" THEN "Tự động"
+        WHEN v.customer_apply_type = "MANY" THEN "Chỉ định"
+        WHEN v.customer_apply_type = "MANUAL" THEN "Tự chọn"
+        WHEN v.customer_apply_type is null THEN "Chưa xác định"
+      END AS apply_type
+    , CASE
+		WHEN usage_total IS NULL then "Chưa sử dụng"
+		ELSE "Đã sử dụng"
+	  END AS used_status
+    , JSON_VALUE(r.max_discount) AS max_discount
+	, JSON_VALUE(r.percentage_discount) AS percentage_discount
+    , p.campaign_brand
+FROM ${source.platinum}.marketplace_prd_promotion_voucher AS v
+    LEFT JOIN UNNEST(JSON_QUERY_ARRAY(rewards)) AS r
+    LEFT JOIN ${ref('dim_promotion')} AS p ON v.promotion_id = p.promotion_id
+WHERE
+    v.voucher_id NOT IN (6475,41228,43668, 286759)
+    AND v.end_time >= TIMESTAMP_SUB('2023-01-01', INTERVAL 7 HOUR)
+QUALIFY ROW_NUMBER() OVER(PARTITION BY voucher_id) = 1

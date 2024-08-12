@@ -13,7 +13,10 @@ config {
 }
 SELECT
     dim_calendar.eom as date,
-    "GMV_By_Channel_" || dim_order.order_channel AS metric_code,
+    CASE
+        WHEN  dim_order.order_channel LIKE "CONSIGNMENT" THEN  "GMV_By_Channel_MARKETPLACE" 
+        ELSE "GMV_By_Channel_" || dim_order.order_channel 
+    END AS metric_code,
     IF(SUM(fact_order.gmv) = 0, NULL,SUM(fact_order.gmv))  as value
 
 FROM `lakehouse-prod-394907.gold_buymed_vn2.fact_order` fact_order

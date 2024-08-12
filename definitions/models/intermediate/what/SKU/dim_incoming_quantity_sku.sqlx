@@ -1,0 +1,52 @@
+config {
+    type: "table", 
+    description: 
+        `
+        The incoming quantity of SKUs from seller MEDX, MEDX_E at each warehouse (based on the status of the PO);
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.platinum}.warehouse_prd_inbound_inbound_ticket_item,
+            ${source.platinum}.warehouse_prd_inbound_inbound_ticket
+        `,
+    tags: ["custom_1h_past5"],
+    columns: {
+        quantity: "Incoming Quantity of SKU at each FC",
+        status: "Status of PO"
+    }
+}
+
+WITH
+    item as (
+        SELECT
+            po_code,
+            ticket_id,
+            sku AS sku_code,
+            IF(inbound_quantity > 0, inbound_quantity, demand_quantity) AS quantity
+        FROM ${source.platinum}.warehouse_prd_inbound_inbound_ticket_item
+        WHERE
+            SPLIT(sku, ".")[SAFE_OFFSET(0)] IN ('MEDX', 'MEDX_E')
+    ),
+
+    ticket as (
+        SELECT
+            po_code
+            , ticket_id
+            , warehouse_code
+            , status
+        FROM ${source.platinum}.warehouse_prd_inbound_inbound_ticket
+        WHERE
+            DATE( DATE_TRUNC(created_time, DAY)) >= DATE_SUB(CURRENT_DATE, interval 1 month)
+            AND warehouse_code in ('BD', 'HN','DN')
+    )
+
+SELECT
+    item.po_code
+    , quantity
+    , warehouse_code as fc_code
+    , sku_code as sku
+    , status
+FROM item
+    LEFT JOIN ticket ON item.ticket_id = ticket.ticket_id
+WHERE status in ( 'WAITING', 'IN_TRANSIT', 'WAIT_TO_ADD', 'WAIT_TO_CHECK', 'MANUAL_CHECKING', 'CONVEYOR_CHECKING')
