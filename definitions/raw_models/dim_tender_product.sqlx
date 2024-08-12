@@ -1,0 +1,57 @@
+config {
+    type: "table",
+    description: `PIC: tu.dang; model_type: table; Schedule: 0h30
+    Source:
+      ${source.gold_buymed_vn2}.dim_order
+      ${source.gold_buymed_vn2}.dim_product
+      ${source.gold_buymed_vn}.fact_order_item
+      ${source.platinum}.tender_prd_core_tender_product`,
+
+    tags: ["0h30"],
+    /*assertions: {
+        uniqueKey: "product_id",
+        nonNull: ["product_id","owner_code"]
+    },*/
+    columns: {
+        product_id: "NonNull | Unique identifier for each product",
+        product_name: "NonNull | Name of the product",
+        owner_code : "NonNull | Code representing the owner (seller) of the product",
+        owner_name : "NonNull | Name of the owner (seller) of the product",
+        unit : "Nullable | Unit of measure for the product",
+        volumes : "Nullable | Volume information for the product",
+        is_prescription: "NonNull | Indicates whether the product is drug",
+        is_fragile: "NonNull | Indicates whether the product is easily breakable",
+        is_frozen : "NonNull | Indicates whether the product requires freezing",
+        height: "NonNull | Product height",
+        length: "NonNull | Product length",
+        width: "NonNull | Product width",
+        product_report_category : "NonNull | Category of the product based on certain criteria and logic: If owner_name contains '[Tech]', then 'TECH'; If owner_code is 'MARKETING', then 'MARKETING'; If owner_code is 'DENX', then 'DENX'; If unit or volumes is 'COMBO', then 'COMBO'; If product_name contains certain keywords, then 'PROMOTION'; Otherwise, 'NORMAL' "
+    }
+}
+/*
+Chú thích chi tiết:
+Bảng này gôm các product của Tender
+*/
+with internal_tender as (
+select
+    distinct product_id 
+from ${source.platinum}.tender_prd_core_tender_products 
+qualify ROW_NUMBER() over (partition by product_id)= 1)
+, internal_thuocsi as (
+    select
+    oi.product_id
+    from gold_buymed_vn.fact_order_item oi
+    left join `gold_buymed_vn2.dim_order` o on oi.order_id = o.order_id
+    where order_channel = "TENDER"
+    Qualify ROW_NUMBER() over (partition by product_id)= 1
+)
+,combine as
+(select *
+from internal_tender
+union all
+select *
+from internal_thuocsi)
+select p.*
+from combine c
+left join gold_buymed_vn2.dim_product p on c.product_id = p.product_id
+qualify ROW_NUMBER() over (partition by c.product_id)= 1
