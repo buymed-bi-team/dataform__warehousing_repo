@@ -1,0 +1,24 @@
+config {
+    type: "incremental", 
+    protected: true,
+    description: 
+        `
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.ref}.dim_sku_tag
+        `,
+    tags: ["custom_1h_past5"]
+}
+
+SELECT 
+    TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) as snapshot_time
+    , * 
+FROM (
+    SELECT *
+    FROM ${ref('dim_sku_tag')}
+    WHERE tag_code IN ('C7GB', 'E7GB')
+)
+
+${when(incremental(), `WHERE sku_sales_region_code NOT IN (SELECT sku_sales_region_code FROM ${self()})`) }
