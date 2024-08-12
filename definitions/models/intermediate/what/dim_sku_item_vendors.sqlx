@@ -28,6 +28,7 @@ SELECT
   f.sales_region_code,
   JSON_VALUE(vendor, "$.vendor_code") AS vendor_code,
   JSON_VALUE(vendor, "$.priority") AS vendor_priority,
+  JSON_VALUE(vendor, "$.min_per_step") AS min_per_step,
   v.supplier_name AS vendor_name,
   v.supplier_type AS vendor_type,
   case
