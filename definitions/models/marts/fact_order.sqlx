@@ -11,7 +11,6 @@ config {
             ${source.platinum}.accounting_prd_core_credit_note,
             ${source.platinum}.accounting_prd_core_bill
         `,
-    name: "fact_order_v2",
     tags: ["custom_1h_past5"],
     columns: {
         created_at: "The date and time when the order was placed, timezone +7",
