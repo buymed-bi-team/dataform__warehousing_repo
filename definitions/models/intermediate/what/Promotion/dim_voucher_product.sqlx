@@ -1,0 +1,44 @@
+config {
+    type: "table", 
+    description: 
+        `
+        List of SKUs based on the conditions of each voucher;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.ref}.dim_voucher,
+            ${source.ref}.dim_sku_tag
+        `,
+    tags: ["custom_1h_past5"]
+}
+
+SELECT
+    v.voucher_code
+    , SAFE_CAST(JSON_VALUE(p.product_condition.product_id) AS INT64) as product_id
+    , v.campaign_brand
+FROM ${ref('dim_voucher')} as v
+    , UNNEST(JSON_QUERY_ARRAY(and_conditions, '$.PRODUCT.and_conditions')) AS p
+UNION DISTINCT
+SELECT DISTINCT
+    v.voucher_code
+    , s.product_id
+    , v.campaign_brand
+FROM ${ref('dim_voucher')} as v
+    , UNNEST(JSON_QUERY_ARRAY(and_conditions, '$.PRODUCT_TAG.and_conditions')) AS p
+LEFT JOIN ${ref('dim_sku_tag')} AS s ON JSON_VALUE(p.product_tag_condition.tag_code) = s.tag_code
+UNION DISTINCT
+SELECT
+    v.voucher_code
+    , SAFE_CAST(JSON_VALUE(p.product_condition.product_id) AS INT64) as product_id
+    , v.campaign_brand
+FROM ${ref('dim_voucher')} as v
+    , UNNEST(JSON_QUERY_ARRAY(and_conditions, '$.PRODUCT.or_conditions')) AS p
+UNION DISTINCT
+SELECT DISTINCT
+    v.voucher_code
+    , s.product_id
+    , v.campaign_brand
+FROM ${ref('dim_voucher')} as v
+    , UNNEST(JSON_QUERY_ARRAY(and_conditions, '$.PRODUCT_TAG.or_conditions')) AS p
+LEFT JOIN ${ref('dim_sku_tag')} AS s ON JSON_VALUE(p.product_tag_condition.tag_code) = s.tag_code

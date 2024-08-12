@@ -1,12 +1,11 @@
 config {
   type: "view",
-  dependencies: ["dedup_marketplace_prd_order_v2_order_item"],
   name: "fact_order_item_combo"
 }
 
 
 with cte_date as (
-	select date_sub( timestamp( date_trunc( date_sub( current_date('+7'), interval 12 month) , month ) ) , interval 7 hour ) as start_date
+	select timestamp( date_trunc( date_sub( current_date('+7'), interval 12 month) , month ) ) as start_date
   -- select date_sub( timestamp( date_trunc( current_date('+7'), month ) ) , interval 7 hour ) as start_date
 --   SELECT date_sub( timestamp( date_trunc( date_sub( current_date('+7'), interval 1 day) , day ) ) , interval 7 hour ) as start_date
 ),
@@ -43,14 +42,13 @@ cte_order_item as (
         , to_json_string(oi.tags) as tag_code
         , oi.sku_status
         , DATETIME(oi.cart_item_created_time, "Asia/Ho_Chi_Minh") AS incart_at
-    -- from  ${source.silver}.marketplace_prd_order_v2_order_item  as oi
-    FROM  ${source.silver}.marketplace_prd_order_v2_order_item  as oi
-    -- from lakehouse-prod-394907._513c4051a7d94cc5f16470b9da40e24c2a97913a.anonead9caf2a3c74fb9d5e5ba78d4d488556c3878ac0646f0bcb2b2556661745865 as oi
+    FROM ${source.platinum}.marketplace_prd_order_v2_order_item as oi
     where
-       oi.ingest_time >= (select start_date from cte_date)
-        and ifnull( oi.created_time, current_timestamp ) >= (select start_date from cte_date)
-    qualify row_number() over (_window) = 1 AND FIRST_VALUE(action) over(_window) <> 'd'
-    WINDOW _window AS (PARTITION BY oi.mg_id ORDER BY oi.synced_at DESC)
+        created_date >= (select DATE(start_date) from cte_date)
+        -- oi.ingest_time >= (select start_date from cte_date)
+        -- and ifnull( oi.created_time, current_timestamp ) >= (select start_date from cte_date)
+    -- qualify row_number() over (_window) = 1 AND FIRST_VALUE(action) over(_window) <> 'd'
+    -- WINDOW _window AS (PARTITION BY oi.mg_id ORDER BY oi.synced_at DESC)
 ),
 
 cte_combo_item as (
@@ -81,7 +79,7 @@ select
   , oi.sales_price as combo_price
   -- , oi.seller_price
   , SAFE_CAST( JSON_VALUE( bom.seller_price ) AS INT64 ) AS bom_seller_price
-  , oi.demand_quantity combo_quantity
+  , oi.demand_quantity AS  combo_quantity
   , json_extract_scalar( bom.sku ) as sku_bom_code
   , json_value(bom.item_code) as item_bom_code
   , safe_cast( json_extract_scalar( bom.quantity ) as INT64 )  as bom_quantity
@@ -101,6 +99,7 @@ select
   , tag_code
   , sku_status
   , incart_at
+  , TO_JSON_STRING(JSON_QUERY(bom, '$.tags')) AS sub_tag_code
 from cte_order_item as oi
 , unnest( json_query_array(oi.extra_props, "$.sub_items") ) as bom
 ), 
@@ -145,6 +144,7 @@ select
   , sku_status
   , extra_props
   , incart_at
+  , sub_tag_code
 from cte_combo_item
 ),
 
@@ -190,6 +190,7 @@ cte_normal_item as (
     , sku_status
     , extra_props
     , incart_at
+    , tag_code AS sub_tag_code
   from cte_order_item as oi
   where
     oi.mg_id not in ( select mg_id from cte_combo_item_pricing )
