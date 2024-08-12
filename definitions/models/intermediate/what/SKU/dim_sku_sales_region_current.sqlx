@@ -28,11 +28,11 @@ config {
         sub_sku_code                   : "ItemCode - Each ItemCode corresponds to 1 SKU at a specific sales region/FC",
         sales_region_code              : "Including MIENNAM, MIENBAC, MIENTRUNG",
         fc_code                        : "Including BD, HN, DN corresponding to 3 sales regions",
-        sku_sales_region_code          : "Created by concatenating the SKU & sales region code",
-        sku_fc_code                    : "Created by concatenating the SKU & FC code",
+        sku_sales_region_code          : "Primary Key - Created by concatenating the SKU & sales region code",
+        sku_fc_code                    : "Unique Key - Created by concatenating the SKU & FC code",
         product_sales_region_code      : "Created by concatenating the product id & sales region code",
         product_fc_code                : "Created by concatenating the product id & fc code",
-        sku_key_sales_region_code      : "Primary Key - Created by concatenating the product id, seller_code & sales region code",
+        sku_key_sales_region_code      : "Unique Key - Created by concatenating the product id, seller_code & sales region code",
         fv_code                        : "Favourite Vendor Code",
         fv_name                        : "Favourite Vendor Name",
         sku_trading_by_fv              : "SKU trading type based on fv vendor",
@@ -63,8 +63,8 @@ config {
     },
 
     assertions: {
-        uniqueKey: "sku_key_sales_region_code",
-        nonNull: ["sku_key_sales_region_code" ,"sku_sales_region_code", "sku_fc_code", "product_id", "fc_code" ,"sales_region_code"]
+        uniqueKey: ["sku_sales_region_code","sku_key_sales_region_code", "sku_fc_code"],
+        nonNull: ["sku_key","sku_key_sales_region_code", "sku_sales_region_code", "sku_fc_code", "product_id", "fc_code" ,"sales_region_code"]
     }
 }
 
@@ -116,11 +116,12 @@ SELECT
     s.seller_id,
     cte.sales_region_code,
     cte.fc_code,
+    CONCAT(s.product_id, "_", s.seller_code) AS sku_key,
     CONCAT(cte.sku_code,"_",coalesce(cte.sales_region_code,"")) AS sku_sales_region_code, -- bug: If sales_region_code null, concat function returns null value
     CONCAT(cte.sku_code,"_",coalesce(cte.fc_code,"")) AS sku_fc_code,
     CONCAT(s.product_id,"_",coalesce(cte.sales_region_code,"")) AS product_sales_region_code,
     CONCAT(s.product_id,"_",coalesce(cte.fc_code,"")) AS product_fc_code,
-    CONCAT(ds.sku_key, "_", cte.sales_region_code) AS sku_key_sales_region_code,
+    CONCAT(s.product_id, "_", s.seller_code, "_", cte.sales_region_code) AS sku_key_sales_region_code,
     sv.vendor_code AS fv_code,
     sv.vendor_name AS fv_name,
     sv.vendor_type AS sku_trading_by_fv,

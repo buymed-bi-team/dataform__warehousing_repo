@@ -5,25 +5,43 @@ config {
     columns: {
       sku_code: "sku identifier", fc_code: "warehouse code", purchaser_code: "code of the purchaser",
       vendor_code: "unique identifier of associated vendor for the product",
-      priority: "score indicating vendor favoriteness; lower values indicate higher priority"
+      priority: "score indicating vendor favoriteness; lower values indicate higher priority",
+      product_id: "product identifier",
+      sales_region_code: "code for associated sales region",
+      vendor_name: "name of vendor",
+      vendor_type: "type of vendor, either TRADING or NON-TRADING",
+      purchase_status: "based on is_active of sku"
     }
 }
 
 WITH
   dedup_marketplace_sku AS ${dedup.dedup(
   source.silver + `.seller_prd_purchasing_sku_config`,
-  "sku, seller_code, product_id, purchaser_code, vendors"
+  "sku, seller_code, product_id, purchaser_code, vendors, is_active"
 )}
 
 SELECT
+  s.product_id,
   s.sku AS sku_code,
   f.fc_code,
   s.purchaser_code,
+  f.sales_region_code,
   JSON_VALUE(vendor, "$.vendor_code") AS vendor_code,
-  JSON_VALUE(vendor, "$.priority") AS vendor_priority
+  JSON_VALUE(vendor, "$.priority") AS vendor_priority,
+  JSON_VALUE(vendor, "$.min_per_step") AS min_per_step,
+  v.supplier_name AS vendor_name,
+  v.supplier_type AS vendor_type,
+  case
+    when s.is_active is True then 'On'
+    when s.is_active is False then 'Off'
+    when s.is_active is null then 'On' 
+  end as purchase_status
 FROM
   dedup_marketplace_sku s
 LEFT JOIN
   UNNEST(JSON_EXTRACT_ARRAY(s.vendors)) AS vendor
 LEFT JOIN
   ${ref("dim_fc")} f ON s.purchaser_code = f.purchaser_code
+LEFT JOIN ${ref('dim_supplier')} AS v ON  v.supplier_code = JSON_VALUE(vendor, "$.vendor_code")
+  WHERE
+    v.supplier_class = 'VENDOR'
