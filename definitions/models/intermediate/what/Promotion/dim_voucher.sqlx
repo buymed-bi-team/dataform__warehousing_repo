@@ -32,7 +32,7 @@ SELECT
 		WHEN JSON_VALUE(extra_props, '$.promotion_organizer') = "SELLER_CENTER" then "SELLER"
 		ELSE "BUYMED"
 	  END AS promotion_organizer
-    , COALESCE(CAST(v.promotion_id AS STRING), code) AS promotion_id
+    , COALESCE(CAST(v.promotion_id AS STRING), code) AS filter_promotion_id
     , v.promotion_name
     , v.display_name
     , v.max_usage_per_customer
