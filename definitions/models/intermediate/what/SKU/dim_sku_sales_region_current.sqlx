@@ -63,7 +63,7 @@ config {
     },
 
     assertions: {
-        uniqueKey: "sku_sales_region_code",
+        uniqueKey: ["sku_sales_region_code","sku_key_sales_region_code", "sku_fc_code"],
         nonNull: ["sku_key","sku_key_sales_region_code", "sku_sales_region_code", "sku_fc_code", "product_id", "fc_code" ,"sales_region_code"]
     }
 }
