@@ -1,0 +1,62 @@
+config {
+    type: "table", 
+    description: 
+        `PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: 0h30 daily;
+        Source: 
+            ${source.silver}.monitoring_prd_realtime_supply_margin_sku
+        `,
+    columns: {
+        date: "NON-NULL | Margin date in +7 Timezone",
+        product_id: "NON-NULL",
+        sku_code: "NON-NULL",
+        province_code: "NON-NULL",
+        total_price: "Total ordered amount of SKU in Margin Date",
+        total_purchasing_value: "Total purchasing amount of SKU in Margin Date",
+        total_quantity: "Total ordered quantity of SKU in Margin Date",
+        sales_region_code: "NON-NULL",
+    },
+    tags: ["0h30"]
+}
+
+with region as (
+  select area, province_code
+  from gold_buymed_vn.dim_province
+  QUALIFY 
+    ROW_NUMBER() OVER (PARTITION BY province_code ORDER BY area DESC) = 1
+),
+
+cart as (
+  select
+    c.ref_cart_item,
+    c.cart_id,
+    c.customer_id,
+    r.area as sale_region
+  from platinum_buymed_vn.marketplace_prd_cart_cart as c
+  left join region as r
+    on c.province_code = r.province_code
+  QUALIFY
+    ROW_NUMBER() OVER (PARTITION BY c.cart_id, c.ref_cart_item ORDER BY c.ingest_time DESC) = 1
+)
+
+select
+  date(timestamp_add(ct.created_time, interval 7 hour)) as created_date,
+  timestamp_add(ct.created_time, interval 7 hour) as created_time,
+  extract(hour from timestamp_add(ct.created_time, interval 7 hour)) as created_hour,
+  ct.sku,
+  ct.ref_cart,
+  concat(ct.sku, "_", c.sale_region) as sku_fc_code,
+  c.customer_id,
+  ct.cart_id,
+  ct.current_price,
+  ct.quantity as added_quantity,
+  ct.page as added_page
+
+from platinum_buymed_vn.marketplace_prd_cart_cart_item as ct
+left join cart as c
+  on ct.ref_cart = c.ref_cart_item
+  and ct.cart_id = c.cart_id
+where Date(timestamp_add(ct.created_time, interval 7 hour)) >= DATE_SUB(CURRENT_DATE(), INTERVAL 3 MONTH)
+QUALIFY
+  ROW_NUMBER() OVER (PARTITION BY ct.ref_cart, ct.sku ORDER BY ct.ingest_time DESC) = 1
