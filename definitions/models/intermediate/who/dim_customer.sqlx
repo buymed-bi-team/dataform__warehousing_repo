@@ -1,6 +1,6 @@
 config {
     type: "table",
-    description: `PIC: minh.luu; model_type: table; schedule 0h00
+    description: `PIC: minh.luu; model_type: table; schedule hourly
     Source:
         ${source.silver}.marketplace_prd_customer_customer customer
         ${source.silver}.marketplace_prd_order_v2_order order`,
@@ -9,7 +9,7 @@ config {
         uniqueKey: ["customer_id"]
     },
     name: "dim_customer",
-    tags: ["0h00"],
+    tags: ["custom_1h_past5"],
     columns: {
         customer_id: "NonNull",
         customer_name: "NonNull",

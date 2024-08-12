@@ -16,6 +16,7 @@ select
     fc.fc_code
     , json_extract_scalar(unnested_value) as service_area_code
     , fc.sales_region_code
+    , "PROVINCE" AS area_type
 from 
     ${ ref('dim_fc') } as fc,
     unnest( (json_extract_array(fc.service_areas, '$'))) as unnested_value
@@ -24,14 +25,20 @@ UNION ALL
 
 ${cfunction.csvToSQL(
     `
-    "fc_code"   ,"service_area_code","sales_region_code"
-    "BD"        ,"00"              ,"MIENNAM"     
-    "DN"        ,"00"              ,"MIENTRUNG"   
-    "HN"        ,"00"              ,"MIENBAC"     
-    "BD"        ,"0"               ,"MIENNAM"     
-    "DN"        ,"0"               ,"MIENTRUNG"   
-    "HN"        ,"0"               ,"MIENBAC"    
-    "HN"        ,"1"               ,"MIENBAC"    
+    "fc_code"   ,"service_area_code","sales_region_code", "area_type"
+    "BD"        ,"00"              ,"MIENNAM"       , "EXTENSION"     
+    "DN"        ,"00"              ,"MIENTRUNG"     , "EXTENSION"   
+    "HN"        ,"00"              ,"MIENBAC"       , "EXTENSION"     
+    "BD"        ,"0"               ,"MIENNAM"       , "EXTENSION"
+    "DN"        ,"0"               ,"MIENTRUNG"     , "EXTENSION"
+    "HN"        ,"0"               ,"MIENBAC"       , "EXTENSION"
+    "HN"        ,"1"               ,"MIENBAC"       , "EXTENSION"
+    "BD"        ,"MIENNAM"         ,"MIENNAM"       , "EXTENSION"
+    "DN"        ,"MIENTRUNG"       ,"MIENTRUNG"     , "EXTENSION"
+    "HN"        ,"MIENBAC"         ,"MIENBAC"       , "EXTENSION"
+    "BD"        ,"MN_ADM"          ,"MIENNAM"       , "EXTENSION"
+    "DN"        ,"MT_ADM"          ,"MIENTRUNG"     , "EXTENSION"
+    "HN"        ,"MB_ADM"          ,"MIENBAC"       , "EXTENSION"
     `,
     value_prediction = '"'
 )}

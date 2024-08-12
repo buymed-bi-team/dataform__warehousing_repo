@@ -1,12 +1,12 @@
 config {
     type: "table",
-    description: "PIC: Minh.luu; Model_Type: table; Schedule: 0h,7h,10h,13h,16h,18h",
+    description: "PIC: Minh.luu; Model_Type: table; Schedule: hourly",
     //assertions: {
     //    uniqueKey: ["sku_key"],
     //    // nullable : seller_class vì một số seller_code không có trong seller_prd_core_seller table
     //    nonNull: ["seller_class","product_id","sku_code","seller_class"]
     //},
-    tags: ["0h00","7h00","10h00","13h00","16h00","18h00"],
+    tags: ["custom_1h_past5"],
     columns: {
         sku_code: "The unique identifier for each SKU. Note: Except 2 error SKUs are MEDX.AGI-AGi-001 and MEDX.test.",
         product_id: "The identifier for the product associated with the SKU. Each product can have multiple SKUs",

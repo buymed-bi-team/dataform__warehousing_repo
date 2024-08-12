@@ -1,7 +1,8 @@
 config {
-    type: "view",
-    description: "Source: dim_sku_item_vendors. Extracts the vendor code with lowest priority score for each sku item. PIC: dong.le",
+    type: "table",
+    description: "Source: dim_sku_item_vendors. Extracts the vendor code with zero priority score for each sku item. PIC: dong.le",
     name: "dim_sku_item_fv_vendor",
+    tags: ["0h00", "12h00"],
     columns: {
       sku_code: "unique sku identifier", fc_code: "warehouse code", vendor_code: "the vendor code with lowest priority score for the sku"
     }
@@ -10,12 +11,7 @@ config {
 SELECT
   sku_code,
   fc_code,
-  vendor_code
-FROM (
-  SELECT
-    *,
-    ROW_NUMBER() OVER (PARTITION BY sku_code, fc_code ORDER BY vendor_priority ASC) AS rn
-  FROM
-    ${ref("dim_sku_item_vendors")} a
-)
-WHERE rn = 1
+  vendor_code,
+  vendor_priority
+FROM ${ref("dim_sku_item_vendors")} a
+WHERE a.vendor_priority = "0"

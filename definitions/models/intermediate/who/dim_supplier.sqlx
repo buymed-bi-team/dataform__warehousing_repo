@@ -1,8 +1,10 @@
 config {
     type: "table",
-    description: "PIC: minh.luu; model_type: table; Schedule: 0h00\nSource: seller_prd_core_seller",
+    description: `PIC: minh.luu; model_type: table; Schedule: hourly
+    Source: 
+        ${source.silver}.seller_prd_core_seller`,
     name: "dim_supplier",
-    tags: ["0h00"],
+    tags: ["custom_1h_past5"],
     assertions:{
         uniqueKey:'supplier_code'
     },

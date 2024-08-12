@@ -39,14 +39,23 @@ WITH
                     when b.warehouse_code = 'DN' then 'MIENTRUNG'
                 end
             ) as sku_sales_region
+            , CONCAT(
+                a.sku_key, '_', 
+                case
+                    when b.warehouse_code = 'HN' then 'MIENBAC'
+                    when b.warehouse_code = 'BD' then 'MIENNAM'
+                    when b.warehouse_code = 'DN' then 'MIENTRUNG'
+                end
+            ) as sku_key_sales_region
             , CONCAT(a.sku_code, '_', b.warehouse_code) as sku_fc_code
             , b.stock_quantity
             , b.available_quantity
             , b.min_quantity
             , b.status AS sku_status
+            , b.product_type
         FROM ${ref('dim_sku')} as a
             LEFT JOIN ${source.platinum}.warehouse_prd_inventory_sku AS b 
-            ON a.sku_code = b.sku
+                ON a.sku_code = b.sku
         WHERE
             b.warehouse_code in ('HN','BD','DN')
     )

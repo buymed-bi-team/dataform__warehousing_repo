@@ -1,0 +1,60 @@
+config {
+    type: "table", 
+    description: 
+        ` 
+        SKUs(Item Code) according to sales region dim table - Deal with case of removed sales region;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.gold}.dim_sku,
+            ${source.ref}.dim_fc_service_area, 
+            ${source.ref}.dim_sku_sales_region_current,
+            ${source.platinum}.seller_prd_core_seller
+        `,
+    tags: ["custom_1h_past5"],
+
+    assertions: {
+        uniqueKey: ["sku_sales_region_code","sku_key_sales_region_code"],
+        nonNull: ["sku_key","sku_key_sales_region_code", "sku_sales_region_code", "product_id", "fc_code" ,"sales_region_code"]
+    }
+}
+
+SELECT
+    s.sku_created_at,
+    s.sku_code,
+    s.product_id,
+    s.product_name,
+    s.seller_code,
+    sc.sub_sku_code,
+    sup.seller_id,
+    sa.sales_region_code,
+    sa.fc_code,
+    CONCAT(s.product_id,"_",s.seller_code) AS sku_key,
+    CONCAT(s.sku_code,"_",sa.sales_region_code) AS sku_sales_region_code,
+    CONCAT(s.product_id,"_",sa.sales_region_code) AS product_sales_region_code,
+    CONCAT(s.product_id,"_",s.seller_code,"_",sa.sales_region_code) AS sku_key_sales_region_code,
+    sc.sku_system_status,
+    sc.sku_system_active,
+    sc.sku_level,
+    sc.sku_type,
+    sc.retail_price_type,
+    sc.retail_price_value,
+    sc.brand_type,    
+    sc.cic_name,
+    sc.pic_name,
+    sc.purchase_status,
+    sc.catm_group,
+    sc.fv_name as favourite_vendor,
+    sc.fv_code
+FROM ${source.gold}.dim_sku AS s
+    CROSS JOIN (
+        SELECT DISTINCT
+            sales_region_code
+            , fc_code
+        FROM ${ref('dim_fc_service_area')}
+    ) AS sa
+    LEFT JOIN ${ref('dim_sku_sales_region_current')} AS sc
+        ON sc.sku_code = s.sku_code AND sc.sales_region_code = sa.sales_region_code
+    LEFT JOIN ${source.platinum}.seller_prd_core_seller AS sup
+        ON sup.code = s.seller_code
