@@ -16,7 +16,12 @@ config {
         is_sku_customer_first_interaction_in_30_days: "NonNull | A boolean indicating whether this is the customer's first interaction with the SKU in the past 30 days. It's determined by checking if there are any previous interactions with the same customer_id, sku_code, and event within 30 days before the current created_time.",
 
     },
-    tags: ['0h00']
+    tags: ['0h00'],
+    bigquery: {
+        partitionBy: "date",
+        clusterBy: ["sku_code", "province_code"]
+
+    },
 }
 
 WITH
@@ -25,6 +30,8 @@ WITH
     event,
     customer_id,
     DATETIME(created_time, "Asia/Ho_Chi_Minh") AS created_time,
+  date(created_time, "Asia/Ho_Chi_Minh") AS created_date,
+
     -- created_time,
     JSON_EXTRACT_SCALAR(extra_props, '$.user_metadata.LOCATION') AS province_code,
     JSON_EXTRACT_SCALAR(extra_props, '$.metadata.screen') AS screen,
@@ -46,7 +53,7 @@ WITH
 SELECT
   event,
   customer_id,
-  created_time,
+  created_time,created_date,
   province_code,
   screen,
   SOURCE,

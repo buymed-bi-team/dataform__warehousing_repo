@@ -1,0 +1,21 @@
+config {
+    type: "table", 
+    description: 
+        `PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.platinum}.marketplace_prd_product_v2_product,
+            ${source.platinum}.marketplace_prd_product_v2_efficacy
+        `,
+    tags: ["custom_1h_past5"]
+}
+
+SELECT
+  p.product_id
+  , ec as efficacy_code
+  , ROW_NUMBER() OVER(PARTITION BY product_id) AS efficacy_level
+  , e.name as efficacy_name
+FROM ${source.platinum}.marketplace_prd_product_v2_product AS p
+    , UNNEST(JSON_VALUE_ARRAY(p.efficacy_codes)) AS ec
+LEFT JOIN  ${source.platinum}.marketplace_prd_product_v2_efficacy AS e ON e.code = ec

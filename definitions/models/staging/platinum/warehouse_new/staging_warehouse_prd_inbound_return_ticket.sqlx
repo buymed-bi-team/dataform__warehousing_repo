@@ -1,6 +1,4 @@
 
-
-
 config {
     type: "incremental",
     name: "warehouse_prd_inbound_return_ticket",
@@ -27,7 +25,8 @@ pre_operations {
 
 
       CREATE OR REPLACE TEMP TABLE range_created_time_table AS (
-       SELECT MIN(DATE(created_time)) AS min_created_date, MAX(DATE(created_time)) AS max_created_date
+       SELECT MIN(DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))) AS min_created_date,
+        MAX(DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))) AS max_created_date
         FROM ${source.silver}.warehouse_prd_inbound_return_ticket 
         WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) AND action != "d"
       );
@@ -53,7 +52,7 @@ pre_operations {
 SELECT
  *,
  CASE 
-    WHEN created_time IS NOT NULL THEN DATE(created_time)
+    WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
     ELSE "2099-01-01"
   END AS created_date
 FROM ${source.silver}.warehouse_prd_inbound_return_ticket o 
@@ -110,8 +109,8 @@ post_operations {
         
         CREATE OR REPLACE TEMP TABLE get_range_deleted AS (
           SELECT 
-            MIN(created_date) AS min_created_date_deleted, 
-            MAX(created_date) AS max_created_date_deleted 
+            MAX(created_date) AS min_created_date_deleted, 
+            MIN(created_date) AS max_created_date_deleted 
           FROM ${self()} 
           WHERE mg_id IN (SELECT mg_id FROM get_deleted_record) 
             AND created_date != "2099-01-01" 
@@ -134,5 +133,3 @@ post_operations {
     )
   }
 }
-
-

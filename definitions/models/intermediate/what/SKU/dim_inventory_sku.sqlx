@@ -1,0 +1,67 @@
+config {
+    type: "table", 
+    description: 
+        ` 
+        The inventory quantity of SKUs at each warehouse;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.platinum}.warehouse_prd_inventory_sku,
+            ${source.ref}.dim_sku, 
+            ${source.ref}.dim_incoming_quantity_sku
+        `,
+    tags: ["custom_1h_past5"]
+}
+
+WITH
+    incoming AS (
+        SELECT
+            sku
+            , fc_code
+            , SUM(quantity) AS incoming_quantity
+        FROM ${ref('dim_incoming_quantity_sku')}
+        GROUP BY sku, fc_code
+    ),
+
+    inventory AS (
+        SELECT
+            a.sku_code as sku
+            , a.product_id
+            , a.product_name
+            , a.seller_code
+            , b.warehouse_code as fc_code
+            , CONCAT(
+                a.sku_code, '_', 
+                case
+                    when b.warehouse_code = 'HN' then 'MIENBAC'
+                    when b.warehouse_code = 'BD' then 'MIENNAM'
+                    when b.warehouse_code = 'DN' then 'MIENTRUNG'
+                end
+            ) as sku_sales_region
+            , CONCAT(
+                a.sku_key, '_', 
+                case
+                    when b.warehouse_code = 'HN' then 'MIENBAC'
+                    when b.warehouse_code = 'BD' then 'MIENNAM'
+                    when b.warehouse_code = 'DN' then 'MIENTRUNG'
+                end
+            ) as sku_key_sales_region
+            , CONCAT(a.sku_code, '_', b.warehouse_code) as sku_fc_code
+            , b.stock_quantity
+            , b.available_quantity
+            , b.min_quantity
+            , b.status AS sku_status
+            , b.product_type
+        FROM ${ref('dim_sku')} as a
+            LEFT JOIN ${source.platinum}.warehouse_prd_inventory_sku AS b 
+                ON a.sku_code = b.sku
+        WHERE
+            b.warehouse_code in ('HN','BD','DN')
+    )
+
+SELECT
+    a.*
+    , b.incoming_quantity
+FROM inventory AS a
+    LEFT JOIN incoming AS b ON a.sku = b.sku AND a.fc_code = b.fc_code

@@ -1,0 +1,20 @@
+config {
+    type: "table", 
+    description: 
+        `PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.platinum}.seller_prd_promotion_division
+        `,
+    tags: ["custom_1h_past5"]
+}
+
+SELECT
+    SAFE_CAST(JSON_EXTRACT_SCALAR(b.product_id) AS INT64) as product_id
+    , JSON_EXTRACT_SCALAR(b.product_code) as product_code
+    , a.division_id
+    , a.division_code
+    , a.division_name
+FROM ${source.platinum}.seller_prd_promotion_division AS a
+    , UNNEST(JSON_QUERY_ARRAY(products)) AS b

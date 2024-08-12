@@ -1,0 +1,32 @@
+config {
+    type: "table", 
+    description: 
+        `
+        SKUs Tags;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.platinum}.marketplace_prd_product_v2_sku,
+            ${source.platinum}.marketplace_prd_product_v2_tag,
+            ${source.ref}.dim_sku_sales_region_current
+        `,
+    tags: ["custom_1h_past5"]
+}
+
+SELECT
+  a.product_id,
+  c.sku_code,
+  c.sub_sku_code,
+  c.sales_region_code,
+  CONCAT(c.sku_code,"_",c.sales_region_code) as sku_sales_region_code,
+  t as tag_code,
+  b.name AS tag,
+  COALESCE(b.name, t) AS tag_name
+FROM ${source.platinum}.marketplace_prd_product_v2_sku AS a
+    , UNNEST(JSON_VALUE_ARRAY(a.tags)) AS t
+LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_tag AS b ON t = b.code
+LEFT JOIN ${ref("dim_sku_sales_region_current")} c on a.mg_id = c.mg_id 
+WHERE 
+  a.mg_id IS NOT NULL 
+  AND c.sku_code IS NOT NULL
