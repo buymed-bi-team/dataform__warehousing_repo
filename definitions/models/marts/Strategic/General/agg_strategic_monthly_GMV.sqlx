@@ -25,6 +25,8 @@ LEFT JOIN `lakehouse-prod-394907.gold_buymed_vn2.dim_order` dim_order
 LEFT JOIN `lakehouse-prod-394907.gold_buymed_vn2.dim_calendar` dim_calendar
     ON fact_order.created_date = dim_calendar.date
 WHERE dim_order.order_channel is not null -- fix latter
+AND dim_order.order_channel not like "CONSIGNMENT-RECOGNITION"
+
 GROUP BY 1,2
 ORDER BY eom
 

@@ -13,10 +13,10 @@ config {
 }
 SELECT
     dim_calendar.eom as date,
-    CASE
-        WHEN dim_order.sales_region_code IS NULL then "GMV_By_Region_NULL_REGION"
-        ELSE "GMV_By_Region_" || dim_order.sales_region_code
-    END AS metric_code,
+    -- CASE
+    --     WHEN dim_order.sales_region_code IS NULL then "GMV_By_Region_NULL_REGION"
+    --     ELSE "GMV_By_Region_" || dim_order.sales_region_code
+    -- END AS metric_code,
     IF(SUM(fact_order.gmv) = 0, NULL,SUM(fact_order.gmv))  as value
 
 FROM `lakehouse-prod-394907.gold_buymed_vn2.fact_order` fact_order

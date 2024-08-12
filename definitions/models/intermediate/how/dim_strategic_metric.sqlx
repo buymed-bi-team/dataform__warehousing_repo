@@ -21,13 +21,10 @@ ${cfunction.csvToSQL(`
     "GMV_By_Channel_TENDER"             ,"TENDER"           ,"GMV By Channel","GMV calculated from orders in the Tender channel. GMV is the sum of price field in marketplace order table. In tender GMV is the sum of total_amount in order table "
     "GMV_By_Channel_MARKETPLACE"        ,"MARKETPLACE"      ,"GMV By Channel","GMV calculated from orders in the MARKETPLACE channel"
     "GMV_By_Channel_DISTRIBUTION"       ,"DISTRIBUTION"     ,"GMV By Channel","GMV calculated from orders in the DISTRIBUTION channel"
-    "GMV_By_Channel_CONSIGNMENT"        ,"CONSIGNMENT"      ,"GMV By Channel","GMV calculated from orders in the CONSIGNMENT channel"
     "GMV_By_Channel_CIRCA"              ,"CIRCA"            ,"GMV By Channel","GMV calculated from orders in the CIRCA channel"
     "GMV_By_Region_MIENBAC"             ,"MIENBAC"          ,"GMV By Region","GMV calculated from orders in the MIENBAC region"
     "GMV_By_Region_MIENTRUNG"           ,"MIENTRUNG"        ,"GMV By Region","GMV calculated from orders in the MIENBAC region"
     "GMV_By_Region_MIENNAM"             ,"MIENNAM"          ,"GMV By Region","GMV calculated from orders in the MIENBAC region"
-    "GMV_By_Region_NULL_REGION"         ,"UNKNOWN REGION"   ,"GMV By Region","GMV calculated from orders without assigned region"
-    
 `, value_prediction='"')}
 
 /*

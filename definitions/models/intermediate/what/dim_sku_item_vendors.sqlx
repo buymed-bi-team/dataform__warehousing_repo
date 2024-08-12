@@ -23,6 +23,7 @@ WITH
 SELECT
   s.product_id,
   s.sku AS sku_code,
+  s.seller_code,
   f.fc_code,
   s.purchaser_code,
   f.sales_region_code,

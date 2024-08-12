@@ -5,8 +5,7 @@ config {
       ${source.gold_buymed_vn2}.dim_order
       ${source.gold_buymed_vn2}.dim_product
       ${source.gold_buymed_vn}.fact_order_item
-      ${source.platinum}.tender_prd_core_tender_order_items
-      ${source.platinum}.tender_prd_core_tender_orders`,
+      ${source.platinum}.tender_prd_core_tender_product`,
 
     tags: ["0h30"],
     /*assertions: {
@@ -35,9 +34,8 @@ Bảng này gôm các product của Tender
 */
 with internal_tender as (
 select
-    oi.product_id
-from ${source.platinum}.tender_prd_core_tender_order_items oi
-left join ${source.platinum}.tender_prd_core_tender_orders o on oi.order_id = o.order_id
+    distinct product_id 
+from ${source.platinum}.tender_prd_core_tender_products 
 qualify ROW_NUMBER() over (partition by product_id)= 1)
 , internal_thuocsi as (
     select
