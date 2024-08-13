@@ -26,34 +26,35 @@ WITH
 
     inventory AS (
         SELECT
-            a.sku_code as sku
+            a.sku_code AS sku
+            , a.sku_key
             , a.product_id
             , a.product_name
             , a.seller_code
-            , b.warehouse_code as fc_code
+            , b.warehouse_code AS fc_code
             , CONCAT(
                 a.sku_code, '_', 
-                case
-                    when b.warehouse_code = 'HN' then 'MIENBAC'
-                    when b.warehouse_code = 'BD' then 'MIENNAM'
-                    when b.warehouse_code = 'DN' then 'MIENTRUNG'
-                end
-            ) as sku_sales_region
+                CASE
+                    WHEN b.warehouse_code = 'HN' then 'MIENBAC'
+                    WHEN b.warehouse_code = 'BD' then 'MIENNAM'
+                    WHEN b.warehouse_code = 'DN' then 'MIENTRUNG'
+                END
+            ) AS sku_sales_region
             , CONCAT(
                 a.sku_key, '_', 
-                case
-                    when b.warehouse_code = 'HN' then 'MIENBAC'
-                    when b.warehouse_code = 'BD' then 'MIENNAM'
-                    when b.warehouse_code = 'DN' then 'MIENTRUNG'
-                end
-            ) as sku_key_sales_region
-            , CONCAT(a.sku_code, '_', b.warehouse_code) as sku_fc_code
+                CASE
+                    WHEN b.warehouse_code = 'HN' then 'MIENBAC'
+                    WHEN b.warehouse_code = 'BD' then 'MIENNAM'
+                    WHEN b.warehouse_code = 'DN' then 'MIENTRUNG'
+                END
+            ) AS sku_key_sales_region
+            , CONCAT(a.sku_code, '_', b.warehouse_code) AS sku_fc_code
             , b.stock_quantity
             , b.available_quantity
             , b.min_quantity
             , b.status AS sku_status
             , b.product_type
-        FROM ${ref('dim_sku')} as a
+        FROM ${ref('dim_sku')} AS a
             LEFT JOIN ${source.platinum}.warehouse_prd_inventory_sku AS b 
                 ON a.sku_code = b.sku
         WHERE

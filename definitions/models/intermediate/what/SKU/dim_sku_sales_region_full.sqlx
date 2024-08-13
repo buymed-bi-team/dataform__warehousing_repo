@@ -21,7 +21,7 @@ config {
 }
 
 SELECT
-    s.sku_created_at,
+    -- s.sku_created_at,
     s.sku_code,
     s.product_id,
     s.product_name,
@@ -47,7 +47,7 @@ SELECT
     sc.catm_group,
     sc.fv_name as favourite_vendor,
     sc.fv_code
-FROM ${source.gold}.dim_sku AS s
+FROM ${source.ref}.dim_sku AS s
     CROSS JOIN (
         SELECT DISTINCT
             sales_region_code
