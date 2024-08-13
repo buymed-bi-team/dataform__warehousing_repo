@@ -1,0 +1,58 @@
+config {
+    type: "table",
+    description: `PIC: tu.dang; model_type: table; Schedule: 7h30
+    Source:
+      ${source.platinum}.marketplace_prd_order_v2_order
+      ${source.ref}.dim_order
+      ${source.platinum}.tender_prd_core_tender_orders`,
+    //uniqueKey: ["mg_id"],
+    name: "fact_tender_order",
+    tags: ["7h30"],
+    //dependencies: ["lakehouse-prod-394907.gold_buymed_vn.fact_order_item"],
+    columns: {
+        created_at: "The date and time when the order was placed, timezone +7",
+        confirmed_time: "The date and time when the record was confirmed, timezone +7",
+        customer_id: "Foregin key for dim_customer, a unique identifier for customer who placed the order",
+        order_id: "Primary key, a unique identifier for the order",
+        ordered_quantity: "The total quantity of items ordered",
+        ordered_amount: "The total valuation, the original valuation of all product in the order"
+    }
+}
+with internal_thuocsi as
+(select
+f.order_id,
+order_status,
+-- customer_id                                             as recevier_id,
+-- gmv                                                     as total_amount,
+created_at    as created_time,
+date(created_at )       as created_date,
+so_code                                                 as sale_order_code,
+-- delivered_time as delivered_time,
+f.province_code,
+customer_name,
+"INTERNAL-THUOCSI"                                      as source
+from ${source.ref}.fact_order_v2 f
+         left join ${source.ref}.dim_order d on f.order_id = d.order_id
+where d.order_channel like "%TENDER%")
+, internal_tender as (
+  select
+--     order_code,
+order_id,
+status,
+-- receiver_id,
+-- total_amount,
+DATETIME(TIMESTAMP(created_time), 'Asia/Ho_Chi_Minh')   as created_time,
+created_date,
+sale_order_code,
+-- datetime(delivered_time) as delivered_time,
+province_code,
+receiver_name,
+source
+from ${source.platinum}.tender_prd_core_tender_orders
+
+)
+select *
+from internal_tender
+union all
+select *
+from internal_thuocsi
