@@ -16,7 +16,8 @@ config {
         ordered_amount: "The total valuation, the original valuation of all product in the order, excluded cancelled orders"
     }
 }
-select  --created_at,
+with internal_thuocsi as 
+(select  --created_at,
         date(created_at) as created_date,
         td.product_id,
         o.order_channel,
@@ -29,4 +30,20 @@ left join ${source.ref}.dim_tender_product td on  oi.product_id = td.product_id
 where s.CRM_status <> "%CANCEL%" 
 and date(created_at)>= "2023-01-01" 
 and td.product_id is not null
-GROUP BY ALL
+GROUP BY ALL),
+internal_tender as 
+(
+  select
+  o.created_date,
+    oi.product_id,
+    "TENDER" as order_channel,
+    sum(oi.total_amount) as ordered_amount,
+    sum(oi.quantity) as ordered_quantity
+from platinum_buymed_vn.tender_prd_core_tender_order_items oi
+left join platinum_buymed_vn.tender_prd_core_tender_orders o on oi.order_id = o.order_id
+where o.status <> "%CANCEL%" 
+group by all
+)
+select* from internal_thuocsi
+union all
+select * from internal_tender
