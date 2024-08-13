@@ -1,0 +1,65 @@
+config {
+    type: "table",
+    description: `PIC: tu.dang; model_type: table; Schedule: 7h30
+    Source:
+      ${source.platinum}.marketplace_prd_order_v2_order
+      ${source.ref}.dim_order
+      ${source.platinum}.tender_prd_core_tender_orders`,
+    //uniqueKey: ["mg_id"],
+    name: "fact_tender_order_item",
+    tags: ["7h30"],
+    //dependencies: ["lakehouse-prod-394907.gold_buymed_vn.fact_order_item"],
+    columns: {
+        created_at: "The date and time when the order was placed, timezone +7",
+        confirmed_time: "The date and time when the record was confirmed, timezone +7",
+        customer_id: "Foregin key for dim_customer, a unique identifier for customer who placed the order",
+        order_id: "Primary key, a unique identifier for the order",
+        ordered_quantity: "The total quantity of items ordered",
+        ordered_amount: "The total valuation, the original valuation of all product in the order"
+    }
+}
+with internal_tender as (
+select
+    oi.order_id,
+    oi.price,
+    oi.seller_class,
+    SAFE_CAST(oi.vat as int64) as vat,
+    oi.quantity,
+    oi.seller_code,
+    oi.product_id,
+    oi.total_amount,
+--     o.receiver_name,
+    o.receiver_id,
+    o.province_code,
+    "INTERNAL-TENDER" as source_type
+from ${source.platinum}.tender_prd_core_tender_order_items oi
+left join ${source.platinum}.tender_prd_core_tender_orders o on oi.order_id = o.order_id)
+, internal_thuocsi as (
+    select
+    oi.order_id,
+    oi.sales_price as price,
+    s.supplier_class as  seller_class,
+    oi.vat_code as vat,
+    oi.demand_quantity as quantity,
+    oi.seller_code,
+    oi.product_id,
+    sum( oi.demand_quantity * sales_price) as total_amount ,
+--     o.receiver_name,
+    oi.customer_id as receiver_id,
+    o.province_code,
+    "INTERNAL-THUOCSI" as source_type
+    from ${source.gold}.fact_order_item oi
+    left join ${source.ref}.dim_order o on oi.order_id = o.order_id
+    left join ${source.gold}.dim_seller s on oi.seller_code = s.supplier_code
+    where
+     o.order_channel like "%TENDER%"
+    --  and
+    -- date(oi.created_at) > "2024-07-01"
+    group by all
+--     where cus
+)
+select *
+from internal_tender
+union all
+select *
+from internal_thuocsi
