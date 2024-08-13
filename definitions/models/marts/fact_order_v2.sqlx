@@ -11,7 +11,6 @@ config {
             ${source.platinum}.accounting_prd_core_credit_note,
             ${source.platinum}.accounting_prd_core_bill
         `,
-    name: "fact_order_v2",
     tags: ["custom_1h_past5"],
     columns: {
         created_at: "The date and time when the order was placed, timezone +7",
@@ -78,6 +77,16 @@ WITH
     FROM invoice_amount AS a
       LEFT JOIN return_amount AS b ON a.order_id = b.order_id
     GROUP BY 1 
+  ),
+
+  customer_rating AS(
+    SELECT
+      order_id,
+      type,
+      point,
+      feedback
+    FROM ${source.platinum}.marketplace_prd_customer_customer_rating
+    QUALIFY ROW_NUMBER() OVER(PARTITION BY order_id ORDER BY last_updated_time DESC) = 1
   ),
 
   fact_order AS(
@@ -188,7 +197,7 @@ WITH
       a.tags
 
     FROM ${source.platinum}.marketplace_prd_order_v2_order AS a
-      LEFT JOIN ${source.platinum}.marketplace_prd_customer_customer_rating r 
+      LEFT JOIN customer_rating r 
         ON a.order_id=r.order_id
       LEFT JOIN return_amount AS b 
         ON a.order_id = b.order_id

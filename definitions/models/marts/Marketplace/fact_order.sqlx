@@ -79,6 +79,16 @@ WITH
     GROUP BY 1 
   ),
 
+  customer_rating AS(
+    SELECT
+      order_id,
+      type,
+      point,
+      feedback
+    FROM ${source.platinum}.marketplace_prd_customer_customer_rating
+    QUALIFY ROW_NUMBER() OVER(PARTITION BY order_id ORDER BY last_updated_time DESC) = 1
+  ),
+
   fact_order AS(
     SELECT
       DATETIME(a.created_time, 'Asia/Ho_Chi_Minh') AS created_at,
@@ -187,7 +197,7 @@ WITH
       a.tags
 
     FROM ${source.platinum}.marketplace_prd_order_v2_order AS a
-      LEFT JOIN ${source.platinum}.marketplace_prd_customer_customer_rating r 
+      LEFT JOIN customer_rating r 
         ON a.order_id=r.order_id
       LEFT JOIN return_amount AS b 
         ON a.order_id = b.order_id
