@@ -27,7 +27,7 @@ from ${source.gold}.fact_order_item oi
 left join ${source.ref}.dim_order_status s on oi.order_id = s.order_id
 left join ${source.ref}.dim_order o on oi.order_id = o.order_id
 left join ${source.ref}.dim_tender_product td on  oi.product_id = td.product_id
-where s.CRM_status <> "%CANCEL%" 
+where s.CRM_status not like "CANCEL" 
 and date(created_at)>= "2023-01-01" 
 and td.product_id is not null
 GROUP BY ALL),
@@ -41,7 +41,7 @@ internal_tender as
     sum(oi.quantity) as ordered_quantity
 from platinum_buymed_vn.tender_prd_core_tender_order_items oi
 left join platinum_buymed_vn.tender_prd_core_tender_orders o on oi.order_id = o.order_id
-where o.status <> "%CANCEL%" 
+where o.status not like  "CANCELLED" 
 group by all
 )
 select* from internal_thuocsi
