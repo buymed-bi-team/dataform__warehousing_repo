@@ -18,7 +18,7 @@ config {
 }
 with internal_thuocsi as 
 (select  --created_at,
-        date(created_at) as created_date,
+        date(o.created_time) as created_date,
         td.product_id,
         o.order_channel,
         sum(sales_price * demand_quantity) as ordered_amount,
