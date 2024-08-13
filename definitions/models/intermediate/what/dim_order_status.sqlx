@@ -14,6 +14,10 @@ config {
         warehouse_status : "Nullable | In (RESERVING, WAIT_TO_PICK, PICKING, WAIT_TO_CHECK, CHECKING, WAIT_TO_PACK, PACKING, WAIT_TO_DELIVERY, DELIVERING, DELIVERED, CANCEL, COMPLETED, RETURN, RETURNING, RETURNED, LOST, DRAFT , WAIT_TO_LIQUIDATION, LIQUIDATED)",
         accounting_status : "Nullable | status trên hệ thống ACCOUNTING",
         delivery_status: "Nullable | "
+    },
+    assertions: {
+        uniqueKey: "order_id",
+        nonNull: ("order_id")
     }
 }
 /*
@@ -41,20 +45,25 @@ WITH stg_order_CRM AS (
 stg_order_WMS AS (
     SELECT 
         CAST( REGEXP_EXTRACT(sale_order_code, r'(\d+)') AS INT64 ) AS order_id, 
-        REGEXP_REPLACE(sale_order_code, r'\d+', '') AS warehouse_order_code,
-        status as WMS_status,
-        created_time
+        -- REGEXP_REPLACE(sale_order_code, r'\d+', '') AS warehouse_order_code,
+        ARRAY_AGG( status ORDER BY created_time DESC)[0] AS WMS_status
     FROM ${source.platinum}.warehouse_prd_core_sale_order
+    GROUP BY 1
 ),
 
 stg_order_ACCOUNTING AS (
-    SELECT order_id, status as ACCOUNTING_status
+    SELECT order_id, 
+        ARRAY_AGG( status ORDER BY created_time DESC)[0] AS ACCOUNTING_status
     FROM ${source.platinum}.accounting_prd_core_bill
+    GROUP BY 1
 ),
 
 stg_order_WMS_Delivery AS (
-    SELECT CAST( REGEXP_EXTRACT(sale_order_code, r'(\d+)') AS INT64 ) AS order_id,status  as WMS_Delivery_status
+    SELECT 
+        CAST( REGEXP_EXTRACT(sale_order_code, r'(\d+)') AS INT64 ) AS order_id,
+        ARRAY_AGG( status ORDER BY created_time DESC)[0] AS WMS_Delivery_status
     FROM  ${source.platinum}.warehouse_prd_core_delivery_order
+    GROUP BY 1
 )
 
 
@@ -63,10 +72,10 @@ SELECT
     a.order_id,
     -- b.sale_order_code,
     a.CRM_status,
-    b.WMS_status,
-    c.WMS_Delivery_status,
-    d.ACCOUNTING_status,
-    a.created_time
+    b.WMS_status
+    -- c.WMS_Delivery_status,
+    -- d.ACCOUNTING_status,
+    -- a.created_time
 
 FROM stg_order_CRM a
 LEFT JOIN stg_order_WMS b
@@ -75,6 +84,7 @@ LEFT JOIN stg_order_WMS_Delivery c
     ON a.order_id = c.order_id
 LEFT JOIN stg_order_ACCOUNTING d
     ON a.order_id = d.order_id
+
 
 -- post_operations {                
 --   ${
