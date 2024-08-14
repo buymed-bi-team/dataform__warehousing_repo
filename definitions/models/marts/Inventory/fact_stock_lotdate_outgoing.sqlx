@@ -33,7 +33,7 @@ SELECT
     , JSON_VALUE(b1.lot) as lot
     , JSON_VALUE(b1.exp_date) as expired_date
     , COALESCE(b.source_location, a.source_location) as location
-    , JSON_VALUE(b1.quantity) as location_done_quantity
+    , CAST(JSON_VALUE(b1.quantity) as int64) as location_done_quantity
 FROM dedup_pick_ticket a
 LEFT JOIN dedup_pick_ticket_item b on b.ticket_id = a.ticket_id
 , UNNEST(JSON_QUERY_ARRAY(b.details)) as b1

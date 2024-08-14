@@ -4,40 +4,40 @@ config {
     name: "dim_expired_date",
     tags: ["0h00"],
     columns: {
+
     }
 }
 
 SELECT DISTINCT
     expired_date,
-    REPLACE(REPLACE(TRIM(expired_date), ' ', ''), '.', '') AS cleaned_expdate,
     CASE 
         WHEN LENGTH(expired_date) = 6 THEN
             CASE 
-                WHEN CAST(SUBSTRING(expired_date, 3, 2) AS UNSIGNED) <= 12 THEN
-                    STR_TO_DATE(CONCAT('20', SUBSTRING(expired_date, 5, 2), '-', SUBSTRING(expired_date, 3, 2), '-', SUBSTRING(expired_date, 1, 2)), '%Y-%m-%d')
+                WHEN SAFE_CAST(SUBSTR(expired_date, 3, 2) AS INT64) <= 12 THEN
+                    PARSE_DATE('%Y-%m-%d', CONCAT('20', SUBSTR(expired_date, 5, 2), '-', SUBSTR(expired_date, 3, 2), '-', SUBSTR(expired_date, 1, 2)))
                 ELSE 
-                    STR_TO_DATE(CONCAT('20', SUBSTRING(expired_date, 5, 2), '-', SUBSTRING(expired_date, 1, 2), '-', SUBSTRING(expired_date, 3, 2)), '%Y-%m-%d')
+                    PARSE_DATE('%Y-%m-%d', CONCAT('20', SUBSTR(expired_date, 5, 2), '-', SUBSTR(expired_date, 1, 2), '-', SUBSTR(expired_date, 3, 2)))
             END
         WHEN LENGTH(expired_date) = 8 THEN
             CASE 
-                WHEN CAST(SUBSTRING(expired_date, 3, 2) AS UNSIGNED) <= 12 THEN
-                    STR_TO_DATE(expired_date, '%d%m%Y')
+                WHEN SAFE_CAST(SUBSTR(expired_date, 3, 2) AS INT64) <= 12 THEN
+                    PARSE_DATE('%d%m%Y', expired_date)
                 ELSE 
-                    STR_TO_DATE(expired_date, '%m%d%Y')
+                    PARSE_DATE('%m%d%Y', expired_date)
             END
         WHEN LENGTH(expired_date) = 10 THEN
             CASE 
-                WHEN CAST(SUBSTRING(expired_date, 4, 2) AS UNSIGNED) <= 12 THEN
-                    STR_TO_DATE(expired_date, '%d-%m-%Y')
+                WHEN SAFE_CAST(SUBSTR(expired_date, 4, 2) AS INT64) <= 12 THEN
+                    PARSE_DATE('%d-%m-%Y', expired_date)
                 ELSE 
-                    STR_TO_DATE(expired_date, '%m-%d-%Y')
+                    PARSE_DATE('%m-%d-%Y', expired_date)
             END
         WHEN LENGTH(expired_date) = 24 THEN
             CASE 
-                WHEN CAST(SUBSTRING(expired_date, 6, 2) AS UNSIGNED) <= 12 THEN
-                    STR_TO_DATE(CONCAT(SUBSTRING(expired_date, 21, 4), '-', SUBSTRING(expired_date, 6, 2), '-', SUBSTRING(expired_date, 3, 2)), '%Y-%m-%d')
+                WHEN SAFE_CAST(SUBSTR(expired_date, 6, 2) AS INT64) <= 12 THEN
+                    PARSE_DATE('%Y-%m-%d', CONCAT(SUBSTR(expired_date, 21, 4), '-', SUBSTR(expired_date, 6, 2), '-', SUBSTR(expired_date, 3, 2)))
                 ELSE 
-                    STR_TO_DATE(CONCAT(SUBSTRING(expired_date, 21, 4), '-', SUBSTRING(expired_date, 3, 2), '-', SUBSTRING(expired_date, 6, 2)), '%Y-%m-%d')
+                    PARSE_DATE('%Y-%m-%d', CONCAT(SUBSTR(expired_date, 21, 4), '-', SUBSTR(expired_date, 3, 2), '-', SUBSTR(expired_date, 6, 2)))
             END
         ELSE
             NULL
@@ -46,3 +46,4 @@ FROM
     (SELECT expired_date FROM ${ref("fact_stock_lotdate_incoming")}
      UNION ALL
      SELECT expired_date FROM ${ref("fact_stock_lotdate_outgoing")}) AS combined_dates
+WHERE expired_date IS NOT NULL

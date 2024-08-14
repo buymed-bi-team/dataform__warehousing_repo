@@ -15,4 +15,5 @@ FROM
      UNION ALL
      SELECT lot FROM ${ref("fact_stock_lotdate_outgoing")})
     AS combined_lots
+WHERE lot is not null
 

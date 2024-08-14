@@ -1,0 +1,34 @@
+config {
+    type: "table",
+    description: "Schedule: daily at 12am, 12pm | PIC: dong.le",
+    name: "fact_stock_balance",
+    tags: ["0h00"],
+    columns: {
+        
+    }
+}
+
+SELECT
+    COALESCE(i.sku_code, o.sku_code) AS sku_code,
+    COALESCE(i.fc_code, o.fc_code) AS fc_code,
+    COALESCE(i.location, o.location) AS location,
+    COALESCE(i.lot, o.lot) AS lot,
+    COALESCE(i.expired_date, o.expired_date) AS expired_date,
+    IFNULL(SUM(i.done_quantity), 0) AS incoming_qty,
+    IFNULL(SUM(o.done_quantity), 0) AS outgoing_qty,
+    IFNULL(SUM(i.done_quantity), 0) - IFNULL(SUM(o.done_quantity), 0) AS balance_qty
+FROM
+    (SELECT sku_code, fc_code, location, lot, expired_date, SUM(location_done_quantity) done_quantity
+     FROM ${ref("fact_stock_lotdate_incoming")}
+     GROUP BY sku_code, fc_code, location, lot, expired_date) AS i
+FULL OUTER JOIN
+    (SELECT sku_code, fc_code, location, lot, expired_date, SUM(location_done_quantity) done_quantity
+     FROM ${ref("fact_stock_lotdate_outgoing")}
+     GROUP BY sku_code, fc_code, location, lot, expired_date) AS o
+ON i.sku_code = o.sku_code
+   AND i.fc_code = o.fc_code
+   AND i.location = o.location
+   AND i.lot = o.lot
+   AND i.expired_date = o.expired_date
+GROUP BY
+    sku_code, fc_code, location, lot, expired_date
