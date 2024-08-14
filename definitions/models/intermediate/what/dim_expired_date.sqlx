@@ -1,0 +1,48 @@
+config {
+    type: "table",
+    description: "Schedule: daily at 12am, 12pm | PIC: dong.le",
+    name: "dim_expired_date",
+    tags: ["0h00"],
+    columns: {
+    }
+}
+
+SELECT DISTINCT
+    expired_date,
+    REPLACE(REPLACE(TRIM(expired_date), ' ', ''), '.', '') AS cleaned_expdate,
+    CASE 
+        WHEN LENGTH(expired_date) = 6 THEN
+            CASE 
+                WHEN CAST(SUBSTRING(expired_date, 3, 2) AS UNSIGNED) <= 12 THEN
+                    STR_TO_DATE(CONCAT('20', SUBSTRING(expired_date, 5, 2), '-', SUBSTRING(expired_date, 3, 2), '-', SUBSTRING(expired_date, 1, 2)), '%Y-%m-%d')
+                ELSE 
+                    STR_TO_DATE(CONCAT('20', SUBSTRING(expired_date, 5, 2), '-', SUBSTRING(expired_date, 1, 2), '-', SUBSTRING(expired_date, 3, 2)), '%Y-%m-%d')
+            END
+        WHEN LENGTH(expired_date) = 8 THEN
+            CASE 
+                WHEN CAST(SUBSTRING(expired_date, 3, 2) AS UNSIGNED) <= 12 THEN
+                    STR_TO_DATE(expired_date, '%d%m%Y')
+                ELSE 
+                    STR_TO_DATE(expired_date, '%m%d%Y')
+            END
+        WHEN LENGTH(expired_date) = 10 THEN
+            CASE 
+                WHEN CAST(SUBSTRING(expired_date, 4, 2) AS UNSIGNED) <= 12 THEN
+                    STR_TO_DATE(expired_date, '%d-%m-%Y')
+                ELSE 
+                    STR_TO_DATE(expired_date, '%m-%d-%Y')
+            END
+        WHEN LENGTH(expired_date) = 24 THEN
+            CASE 
+                WHEN CAST(SUBSTRING(expired_date, 6, 2) AS UNSIGNED) <= 12 THEN
+                    STR_TO_DATE(CONCAT(SUBSTRING(expired_date, 21, 4), '-', SUBSTRING(expired_date, 6, 2), '-', SUBSTRING(expired_date, 3, 2)), '%Y-%m-%d')
+                ELSE 
+                    STR_TO_DATE(CONCAT(SUBSTRING(expired_date, 21, 4), '-', SUBSTRING(expired_date, 3, 2), '-', SUBSTRING(expired_date, 6, 2)), '%Y-%m-%d')
+            END
+        ELSE
+            NULL
+    END AS formatted_expdate
+FROM
+    (SELECT expired_date FROM ${ref("fact_stock_lotdate_incoming")}
+     UNION ALL
+     SELECT expired_date FROM ${ref("fact_stock_lotdate_outgoing")}) AS combined_dates
