@@ -11,17 +11,29 @@ config {
   }
 }
 
-WITH dedup_pick_ticket AS ${dedup.dedup(
-  source.silver + `.warehouse_prd_picking_pick_ticket`,
-  "ticket_id, so, created_time, end_pick_time, warehouse_code as fc_code, source_location",
-  "timestamp(date_sub(current_date(),interval 1 day))"
-)},
+WITH dedup_pick_ticket AS (
+  SELECT
+    ticket_id,
+    so,
+    created_time,
+    end_pick_time,
+    warehouse_code as fc_code,
+    source_location
+  FROM ${source.platinum}.warehouse_prd_picking_pick_ticket
+  WHERE created_date >= "2024-01-01"
+),
 
-dedup_pick_ticket_item AS ${dedup.dedup(
-  source.silver + `.warehouse_prd_picking_pick_ticket_item`,
-  "ticket_id, sku as sku_code, details, so, source_location, warehouse_code as fc_code",
-  "timestamp(date_sub(current_date(),interval 1 day))"
-)}
+dedup_pick_ticket_item AS (
+  SELECT
+    ticket_id,
+    sku as sku_code,
+    details,
+    so,
+    source_location,
+    warehouse_code as fc_code
+  FROM ${source.platinum}.warehouse_prd_picking_pick_ticket_item
+  WHERE created_date >= "2024-01-01"
+)
 
 SELECT
     a.so as so_code
