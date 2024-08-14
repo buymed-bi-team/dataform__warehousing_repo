@@ -1,0 +1,41 @@
+config {
+  type: "table",
+  description: "Source: warehouse_prd_inbound_inbound_ticket, warehouse_prd_inbound_inbound_ticket_item, only select tickets with status not in (CANCEL, COMPLETED) | Schedule: every 30 mins from 9am-6pm | PIC: dong.le",
+  name: "fact_stock_lotdate_incoming",
+  tags: ["0h00"],
+  columns: {
+
+  },
+  bigquery: {
+    partitionBy: "date(created_time)"
+  }
+}
+
+WITH dedup_put_ticket AS ${dedup.dedup(
+  source.silver + `.warehouse_prd_inbound_put_ticket`,
+  "ticket_id, reference as po_code, created_time, end_put_time",
+  "timestamp(date_sub(current_date(),interval 1 day))"
+)},
+
+dedup_put_ticket_item AS ${dedup.dedup(
+  source.silver + `.warehouse_prd_inbound_put_ticket_item`,
+  "ticket_id, sku as sku_code, warehouse_code as fc_code, lot, expired_date, done_quantity, location_details",
+  "timestamp(date_sub(current_date(),interval 1 day))"
+)}
+
+SELECT
+    a.po_code
+    , a.ticket_id
+    , DATETIME(a.end_put_time, "Asia/Ho_Chi_Minh") as created_time
+    , CONCAT(c.sku_key, "_", b.fc_code) as sku_fc_key
+    , b.sku_code
+    , b.fc_code
+    , b.lot
+    , b.expired_date
+    , b.done_quantity
+    , JSON_VALUE(b1.location) as location
+    , JSON_VALUE(b1.quantity) as location_done_quantity
+FROM dedup_put_ticket a
+LEFT JOIN dedup_put_ticket_item b on b.ticket_id = a.ticket_id
+, UNNEST(JSON_QUERY_ARRAY(b.location_details)) as b1
+LEFT JOIN ${ref("dim_sku")} c on b.sku_code = c.sku_code

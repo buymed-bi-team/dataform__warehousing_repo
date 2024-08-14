@@ -1,0 +1,40 @@
+config {
+  type: "table",
+  description: "Source: warehouse_prd_inbound_inbound_ticket, warehouse_prd_inbound_inbound_ticket_item, only select tickets with status not in (CANCEL, COMPLETED) | Schedule: every 30 mins from 9am-6pm | PIC: dong.le",
+  name: "fact_stock_lotdate_outgoing",
+  tags: ["0h00"],
+  columns: {
+
+  },
+  bigquery: {
+    partitionBy: "date(created_time)"
+  }
+}
+
+WITH dedup_pick_ticket AS ${dedup.dedup(
+  source.silver + `.warehouse_prd_picking_pick_ticket`,
+  "ticket_id, so, created_time, end_pick_time, warehouse_code as fc_code, source_location",
+  "timestamp(date_sub(current_date(),interval 1 day))"
+)},
+
+dedup_pick_ticket_item AS ${dedup.dedup(
+  source.silver + `.warehouse_prd_picking_pick_ticket_item`,
+  "ticket_id, sku as sku_code, details, so, source_location, warehouse_code as fc_code",
+  "timestamp(date_sub(current_date(),interval 1 day))"
+)}
+
+SELECT
+    a.so as so_code
+    , a.ticket_id
+    , DATETIME(a.end_pick_time, "Asia/Ho_Chi_Minh") as created_time
+    , CONCAT(c.sku_key, "_", b.fc_code) as sku_fc_key
+    , b.sku_code
+    , b.fc_code
+    , JSON_VALUE(b1.lot) as lot
+    , JSON_VALUE(b1.exp_date) as expired_date
+    , COALESCE(b.source_location, a.source_location) as location
+    , JSON_VALUE(b1.quantity) as location_done_quantity
+FROM dedup_pick_ticket a
+LEFT JOIN dedup_pick_ticket_item b on b.ticket_id = a.ticket_id
+, UNNEST(JSON_QUERY_ARRAY(b.details)) as b1
+LEFT JOIN ${ref("dim_sku")} c on b.sku_code = c.sku_code
