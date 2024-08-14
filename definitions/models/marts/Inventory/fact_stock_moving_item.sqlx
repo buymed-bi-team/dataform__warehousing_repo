@@ -1,0 +1,88 @@
+config {
+    type: "table", 
+    description: 
+        ` 
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: weekly on Monday;
+        Source: 
+            ${source.platinum}.warehouse_prd_inventory_transfer_sku,
+            ${source.platinum}.warehouse_prd_inventory_transfer
+        `,
+    tags: ["weekly_assertion"]
+}
+
+WITH cte_date as (
+	-- select (current_timestamp + interval 7 hour - interval 1 day) - interval 7 hour as start_date
+  select timestamp( date_trunc( date_sub( current_date('+7'), interval 3 month) , month ) ) as start_date
+)
+
+, cte_origin AS (
+SELECT 
+  iti.mg_id
+  , iti.transfer_id
+  , iti.reference
+  , timestamp_add(iti.created_time, interval 7 hour) ts_created
+  , iti.warehouse_code as fc_code
+  , iti.status
+  , iti.sku as sku_code
+  , iti.from_location as location_from
+  , iti.to_location as location_to
+  , iti.demand_quantity
+  , iti.done_quantity
+  , iti.location_details
+FROM ${source.platinum}.warehouse_prd_inventory_transfer_sku AS iti
+WHERE
+  iti.created_date >= (select DATE(start_date) from cte_date)
+--   and ifnull( iti.created_time, current_timestamp ) >= (select start_date from cte_date)
+  -- and iti.transfer_id = 16630538
+  -- iti.created_time >= (select start_ts from cte_date)
+-- QUALIFY row_number() over (_window) = 1 AND FIRST_VALUE(action) over(_window) <> 'd'
+-- WINDOW _window AS (PARTITION BY iti.mg_id ORDER BY iti.synced_at DESC)
+-- LIMIT 100
+)
+
+, cte_LocationDetail AS (
+SELECT 
+  a.mg_id
+  , a.transfer_id
+  , a.reference
+  , a.ts_created
+  , a.fc_code
+  , a.status
+  , a.sku_code
+  , COALESCE(a.location_from, json_value(item.location_code)) as location_from
+  , a.location_to
+  , a.demand_quantity
+  , COALESCE(a.done_quantity, SAFE_CAST(json_value(item.done_quantity) AS INT64)) as done_quantity
+FROM 
+  cte_origin AS a,
+  UNNEST(json_query_array(location_details)) as item
+)
+
+, cte_Normal AS (
+SELECT * EXCEPT (location_details)
+FROM cte_origin AS a
+WHERE
+  a.mg_id not in (SELECT mg_id FROM cte_LocationDetail)
+)
+
+, cte_Item AS (
+SELECT * FROM cte_LocationDetail
+UNION ALL
+SELECT * FROM cte_Normal
+)
+
+
+SELECT 
+  a.*,
+  timestamp_add(b.transfer_finish_time, interval 7 hour) as ts_moving_done
+  , b.type
+  , b.source_location as area_from
+  , b.destination_location as area_to
+  , a.sku_code || "_" || a.fc_code as sku_fc_code
+  , a.location_from || "_" || a.fc_code as shelf_fc_code
+FROM cte_Item AS a
+LEFT JOIN ${source.platinum}.warehouse_prd_inventory_transfer AS b on a.transfer_id = b.transfer_id
+WHERE
+  b.type in ('AUDIT', 'PICK', 'INBOUND', 'INTERNAL', 'CUSTOMER_RETURN', 'MISSING', 'DAMAGE_RETURN')
