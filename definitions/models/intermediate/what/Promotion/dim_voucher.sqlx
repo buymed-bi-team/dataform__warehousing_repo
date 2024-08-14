@@ -15,6 +15,7 @@ config {
 
 SELECT
     v.code AS voucher_code
+    , v.voucher_id
     , v.promotion_id
     , v.type AS voucher_type
     , v.status AS voucher_status
