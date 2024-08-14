@@ -26,6 +26,7 @@ SELECT
     s.product_id,
     s.product_name,
     s.seller_code,
+    s. seller_class,
     sc.sub_sku_code,
     sup.seller_id,
     sa.sales_region_code,
