@@ -52,6 +52,8 @@ SELECT
     , JSON_VALUE(r.max_discount) AS max_discount
 	, JSON_VALUE(r.percentage_discount) AS percentage_discount
     , p.campaign_brand
+    , JSON_VALUE(extra_props, '$.seller_codes.0') AS seller_code
+    , JSON_VALUE(extra_props, '$.seller_name') AS seller_name
 FROM ${source.platinum}.marketplace_prd_promotion_voucher AS v
     LEFT JOIN UNNEST(JSON_QUERY_ARRAY(rewards)) AS r
     LEFT JOIN ${ref('dim_promotion')} AS p ON v.promotion_id = p.promotion_id
