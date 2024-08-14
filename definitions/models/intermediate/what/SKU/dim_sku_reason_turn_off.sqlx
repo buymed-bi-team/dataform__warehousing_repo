@@ -1,0 +1,29 @@
+config {
+    type: "table", 
+    description: 
+        ` 
+        Reason turn off purchase;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: each 2h from 6 to 22;
+        Source: 
+            ${source.platinum}.seller_prd_purchasing_sku_config
+        `,
+    tags: ["custom_2h_past5"]
+}
+
+SELECT
+	a.seller_code,
+	a.sku as sku_code,
+	a.product_id,
+	a.reason as reason_turnoff,
+	a.purchaser_code,
+	case 
+		when a.purchaser_code = "PUR_HN" then "MIENBAC"
+		when a.purchaser_code = "PUR_HCM" then "MIENNAM"
+		when a.purchaser_code = "PUR_DN" then "MIENTRUNG"
+	end as sales_region_code,
+    CONCAT(product_id, "_", seller_code) AS sku_key
+FROM ${source.platinum}.seller_prd_purchasing_sku_config a
+-- WHERE 
+-- 	a.sku <>'MEDX.AGI-AGi-001'

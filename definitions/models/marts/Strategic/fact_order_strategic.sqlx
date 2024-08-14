@@ -31,7 +31,7 @@ WITH tender_order_item_tbl as (
     SELECT order_id, count( *) AS ordered_line_items
     FROM ${dedup.dedup(
         source.silver + `.tender_prd_core_tender_order_items`,
-        `order_id, product_id`
+        `order_id, product_id	`
     )}
     GROUP BY 1
 ), 
@@ -39,6 +39,7 @@ WITH tender_order_item_tbl as (
 tender_order_tbl as (
     SELECT
         a.order_id, 
+        a.sale_order_code,
         DATETIME(created_time, 'Asia/Ho_Chi_Minh') as created_time, 
         b.status as order_status,
         total_amount as ordered_amount,
@@ -50,6 +51,7 @@ tender_order_tbl as (
         ${dedup.dedup(
             source.silver + `.tender_prd_core_tender_orders`,`
                 order_id, 
+                sale_order_code,
                 created_time, 
                 status,
                 total_amount,
@@ -80,6 +82,7 @@ mkp_order_tbl as ${dedup.dedup(
     source.silver + `.marketplace_prd_order_v2_order`,
     `
     order_id, 
+    sale_order_code,
     DATETIME(created_time, 'Asia/Ho_Chi_Minh') as created_time, 
     status as order_status,
     price as ordered_amount,
@@ -98,6 +101,7 @@ mkp_order_tbl as ${dedup.dedup(
 dedup_order_tbl as ( 
     SELECT -- *
         order_id, 
+        sale_order_code,
         created_time, 
         order_status,
         ordered_amount,
@@ -109,6 +113,7 @@ dedup_order_tbl as (
     UNION ALL
     SELECT 
         order_id, 
+        sale_order_code,
         created_time, 
         order_status,
         ordered_amount,
@@ -129,6 +134,7 @@ js {
         order_id,
         source_name,
         max(created_time) created_time,
+        ${choose_new(`sale_order_code`)},
         ${choose_new(`order_status`)},
         ${choose_new(`ordered_amount`)},
         ${choose_new(`ordered_amount_aft_discount`)},
@@ -151,6 +157,7 @@ return_amount AS (
 
 SELECT
     m.order_id,
+    m.sale_order_code,
     m.created_time,
     DATE(m.created_time) AS created_date,
     m.order_status,

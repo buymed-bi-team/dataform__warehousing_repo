@@ -22,6 +22,7 @@ SELECT
     a.supplier_class,
     a.product_name,
     a.sales_region_code,
+    CONCAT(a.product_id, "_", a.seller_code, "_", a.sales_region_code) AS sku_key_sales_region_code,
     a.cic_name, 
     a.retail_price_value,
     a.purchase_price,
