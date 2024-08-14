@@ -16,8 +16,8 @@ SELECT
     e.formatted_expdate AS expired_date,
     SUM(IFNULL(i.location_done_quantity, 0)) AS incoming_qty,
     SUM(IFNULL(o.location_done_quantity, 0)) AS outgoing_qty,
-    STRING_AGG(i.po_code, ',') AS po_codes,
-    STRING_AGG(o.so_code, ',') AS so_codes
+    STRING_AGG(i.po_code, ', ') AS po_codes,
+    STRING_AGG(o.so_code, ', ') AS so_codes
 FROM
     ${ref("fact_stock_lotdate_incoming")} AS i
 FULL OUTER JOIN
