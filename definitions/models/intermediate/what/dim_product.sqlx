@@ -12,19 +12,72 @@ config {
         nonNull: ["product_id","owner_code"]
     },
     columns: {
+        transformed_at: "NonNull | The last time that table is refresh",
+        product_created_at: "NonNull | Timezone in +7",
         product_id: "NonNull | Unique identifier for each product",
+        filter_product_id: "NonNull | is string type cast from product_id",
+        // product_code : "",
         product_name: "NonNull | Name of the product",
+        // product_vat: "",
+        product_category: "Nullable | one of following: (Thuốc, Dược mỹ phẩm, Thực phẩm chức năng, Thiết bị và vật tư y tế, Hàng tiêu dùng, Null)",
+        product_category_code: "Nullable | one of following: (AQFV2U, UACLT0, P3ABCL, GU2U1Y, YX7GBC, Null)",
+        // brand: "",
+        // brand_type: "",
+
         owner_code : "NonNull | Code representing the owner (seller) of the product",
         owner_name : "NonNull | Name of the owner (seller) of the product",
+
+        manufacturer_code: "NonNull | Mã nhà sản xuất",
+        manufacturer_short_name: "Nullable | Tên viết tắt của nhà sản xuất",
+        
+        dosage_form: "Dạng bảo chứa",
         unit : "Nullable | Unit of measure for the product",
         volumes : "Nullable | Volume information for the product",
-        is_prescription: "NonNull | Indicates whether the product is drug",
-        is_fragile: "NonNull | Indicates whether the product is easily breakable",
-        is_frozen : "NonNull | Indicates whether the product requires freezing",
+        // retail_unit_quantity_per_unit: "Số lượng bán lẻ của sản phâm trên 1 unit. Ví dụ 10 viên/vỉ thì 10 là retail_unit_quantity_per_unit",
+        // retail_unit: "Đơn vị bán lẻ. Bao gồm: Chai, vỉ, lốc, thùng,...",
+
+        
+        origin: "NonNull | Xuất xứ, currenly just care about in VietNam or not",
+        origin_type: "NonNull | Same with above origin column, is Local or Import ",
+        country_origin: "",
+        registration_number: "Số đăng ký kiểm định",
+
+        // is_prescription: "NonNull | (DRUG, NON-DRUG) Indicates whether the product is drug",
+        is_prescription: "Nullable | is_prescription : Không phải Thuốc, Null, Thuốc kê đơn, Thuốc không kê đơn",
+        is_fragile: "NonNull | (FRAGILE, NORMAL) Indicates whether the product is easily breakable",
+        is_ingredient_special: "NonNull | (SPECIAL, NORMAL) Indicates whether the product has special ingredient or normal",
+        is_frozen : "NonNull | (FROZEN, NORMAL) Indicates whether the product requires freezing",
+        is_herb: "Sản phẩm có phải là sản phảm thảo mộc hay không ?. True/False (Nếu Blank sẽ được tính là False)",
+
         height: "NonNull | Product height",
         length: "NonNull | Product length",
         width: "NonNull | Product width",
-        product_report_category : "NonNull | Category of the product based on certain criteria and logic: If owner_name contains '[Tech]', then 'TECH'; If owner_code is 'MARKETING', then 'MARKETING'; If owner_code is 'DENX', then 'DENX'; If unit or volumes is 'COMBO', then 'COMBO'; If product_name contains certain keywords, then 'PROMOTION'; Otherwise, 'NORMAL' "
+        // weight: "",
+        
+        // usage: "Cách sử dụng thuốc",
+        // act_2: "",
+        // act_3: "",
+        // retail_name: "",
+        // retail_categogy_name: "",
+        
+        // level_1_unit: " ",
+        // level_1_quantity: " ",
+        // level_2_unit: " ",
+        // level_2_quantity: " ",
+        // level_3_unit: " ",
+        // level_3_quantity: " ",
+        // level_4_unit: " ",
+        // level_4_quantity: " ",
+
+        // unit_sale_allowed: " ",
+
+        /*
+        owner -> owner_name
+        manufacturer -> manufacturer_short_name
+        */
+
+        product_report_category : "NonNull | Category of the product based on certain criteria and logic: If owner_name contains '[Tech]', then 'TECH'; If owner_code is 'MARKETING', then 'MARKETING'; If owner_code is 'DENX', then 'DENX'; If unit or volumes is 'COMBO', then 'COMBO'; If product_name contains certain keywords, then 'PROMOTION'; Otherwise, 'NORMAL' ",
+        // product_classification: "",
     }
 }
 
@@ -39,60 +92,151 @@ Chú thích chi tiết:
         PROMOTION : Tất cả các sản phẩm khuyến mãi
         NORMAL    : Các Sản phẩm không theo nhóm trên
 */
-
-WITH stg_product as (
+WITH product_retail_unit AS ( 
   SELECT
-    product_id,
-    name as product_name,
-    owner as owner_code,
-    unit,
-    volumes,
-    is_prescription,
-    is_fragile,
-    is_frozen,
-    height,
-    length,
-    width
-  FROM ${source.platinum}.marketplace_prd_product_v2_product
-)
-,
-stg_seller as (
-  SELECT
-    code,
-    seller_id,
-    name as owner_name
-  FROM ${source.platinum}.seller_prd_core_seller
+      product_id
+      , max(case when level = 1 then unit end) as level_1_unit,
+          sum(case when level = 1 then quantity end) as level_1_quantity,
+          max(case when level = 2 then unit end) as level_2_unit,
+          sum(case when level = 2 then quantity end) as level_2_quantity,
+          max(case when level = 3 then unit end) as level_3_unit,
+          sum(case when level = 3 then quantity end) as level_3_quantity,
+          max(case when level = 4 then unit end) as level_4_unit,
+          sum(case when level = 4 then quantity end) as level_4_quantity,
+          max(case when is_sale = true then unit end) as unit_sale_allowed
+  FROM (
+      SELECT
+          product_id
+          , JSON_EXTRACT_SCALAR(ru.unit) as unit
+          , SAFE_CAST(JSON_EXTRACT_SCALAR(ru.level) AS INT64) as level
+          , SAFE_CAST(JSON_EXTRACT_SCALAR(ru.quantity) AS INT64) as quantity
+          , SAFE_CAST(JSON_EXTRACT_SCALAR(ru.is_sale) as BOOLEAN) as is_sale
+      FROM ${source.platinum}.marketplace_prd_product_v2_product AS p
+      LEFT JOIN UNNEST(JSON_EXTRACT_ARRAY(p.retail_units)) AS ru
+  ) a
+  GROUP BY product_id
 )
 
 SELECT
-  product_id,
-  product_name,
-  owner_code,
-  owner_name,
-  unit,
-  volumes,
-  IF(is_prescription = TRUE, "DRUG","NON-DRUG") is_prescription,
-  IF(is_fragile = TRUE,"FRAGILE","NORMAL") is_fragile,
-  IF(is_frozen = TRUE, "FROZEN","NORMAL") is_frozen,
-  height,
-  length,
-  width,
+  ${utils.ToTimezone('current_timestamp()')} as transformed_at,
+  ${utils.ToTimezone('product.created_time')} as product_created_at,
+  product.product_id,
+  CAST(product.product_id AS STRING) AS filter_product_id,
+  product.code as product_code, 
+  product.name as product_name,
+  seller_category.name AS product_category,
+  product.seller_category_code as product_category_code,
+  product.vat,
+  product.brand,
+  product.category_management as brand_type,
+
+  seller.code as owner_code,
+  seller.name as owner_name,
+
+  manufacturer.code as manufacturer_code,
+  manufacturer.short_name as manufacturer_short_name,
+
+  product.dosage_form,
+  product.unit,
+  product.volumes,
+  product.retail_unit_quantity_per_unit,
+  product.retail_unit,
+
+
+
   CASE
-    WHEN owner_name LIKE '%[Tech]%' THEN 'TECH'
-    WHEN owner_code LIKE 'MARKETING' then 'MARKETING'
-    WHEN owner_code LIKE 'DENX' then 'DENX'
-    WHEN UPPER( COALESCE( unit, volumes ) ) = 'COMBO' then 'COMBO'
+      WHEN product.origin IN ('Vietnam', 'VN') THEN 'Vietnam'
+      ELSE 'International'
+    END AS origin,
+  CASE
+    WHEN product.origin IN ('Vietnam', 'VN') THEN 'Local'
+    ELSE 'Import'
+  END AS origin_type,
+  tb3.name as country_origin,
+  product.registration_number,
+
+  -- IF(product.is_prescription = TRUE, "DRUG","NON-DRUG") is_prescription,
+  -- IF(product.is_ingredient_special = TRUE, "SPECIAL","NORMAL") is_ingredient_special,
+  -- IF(product.is_fragile = TRUE,"FRAGILE","NORMAL") is_fragile,
+  -- IF(product.is_frozen = TRUE, "FROZEN","NORMAL") is_frozen,
+  CASE
+      WHEN product.seller_category_code = 'AQFV2U' THEN
+        CASE
+          WHEN seller_sub_category.code IN ('XT2U1Y','LALT0T') THEN seller_sub_category.name
+          ELSE NULL
+        END
+      ELSE 'Không phải Thuốc'
+    END AS is_prescription,
+  product.is_fragile,
+  product.is_frozen,
+  product.is_ingredient_special,
+  product.is_herb,
+
+  product.height,
+  product.length,
+  product.width,
+  product.weight,
+
+  product.usage,
+  atc2.name AS act_2,
+  atc3.name AS act_3,
+  JSON_EXTRACT_SCALAR(product.retail_info, '$.retail_name') as retail_name,
+  tb1.name as retail_categogy_name,
+
+
+  tb2.level_1_unit,
+  tb2.level_1_quantity,
+  tb2.level_2_unit,
+  tb2.level_2_quantity,
+  tb2.level_3_unit,
+  tb2.level_3_quantity,
+  tb2.level_4_unit,
+  tb2.level_4_quantity,
+
+  tb2.unit_sale_allowed,
+
+  CASE
+    WHEN seller.name LIKE '%[Tech]%' THEN 'TECH'
+    WHEN seller.code LIKE 'MARKETING' then 'MARKETING'
+    WHEN seller.code LIKE 'DENX' then 'DENX'
+    WHEN UPPER( COALESCE( product.unit, product.volumes ) ) = 'COMBO' then 'COMBO'
     WHEN REGEXP_CONTAINS(
-          LOWER(product_name),
+          LOWER(product.name ),
           r'combo|quà|tặng|khuyến mãi|khuyến mại|hóa đơn|bảo hiểm|thẻ cào|mua|gift 1|gift 2|tờ rơi|áo blouse|poster|ưu đãi|trưng bày'
-        ) OR LOWER(product_name) LIKE '% circa %' OR LOWER(product_name) LIKE '% thuocsi %' 
+        ) OR LOWER(product.name ) LIKE '% circa %' OR LOWER(product.name ) LIKE '% thuocsi %' 
         then 'PROMOTION'
     ELSE 'NORMAL'
-  END product_report_category
-FROM 
-  stg_product p
-LEFT JOIN  stg_seller s on p.owner_code = s.code
+  END product_report_category,
+  IF(
+        REGEXP_CONTAINS(
+            LOWER(product.name),
+            r'combo|quà|tặng|khuyến mãi|khuyến mại|hóa đơn|bảo hiểm|thẻ cào|mua|gift 1|gift 2|tờ rơi|áo blouse|poster|ưu đãi|trưng bày'
+        ) OR product.owner = 'MARKETING' OR product.owner = '%[Tech]%' OR LOWER(product.name) LIKE '% circa %' OR LOWER(product.name) LIKE '% thuocsi %',
+        'Promotion Product',
+        'Normal Product'
+    ) AS product_classification,
 
+    tb4.name as main_category_name 
+
+FROM ${source.platinum}.marketplace_prd_product_v2_product AS product
+LEFT JOIN  ${source.platinum}.seller_prd_core_seller AS seller on product.owner = seller.code
+LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_seller_category AS seller_category ON seller_category.code = product.seller_category_code
+LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_seller_sub_category AS seller_sub_category ON seller_sub_category.code = product.seller_sub_category_code
+LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_manufacturer AS manufacturer ON manufacturer.code = product.manufacturer_code
+LEFT JOIN ${source.platinum}.core_prd_master_data_atc AS atc2 ON product.atc2_code = atc2.code
+LEFT JOIN ${source.platinum}.core_prd_master_data_atc AS atc3 ON product.atc3_code = atc3.code
+LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_product AS tb1 ON tb1.code = JSON_EXTRACT_SCALAR(product.extra_props, '$.retail_category_codes.0')
+LEFT JOIN product_retail_unit AS tb2 ON tb2.product_id = product.product_id
+LEFT JOIN ${source.platinum}.core_prd_master_data_country AS tb3 ON tb3.code = product.origin
+LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_main_category AS tb4 ON tb4.code = product.main_category_code
+
+WHERE
+    LOWER(product.name) NOT LIKE '%(bỏ)%'
+    AND LOWER(product.name) NOT LIKE '%[bỏ]%'
+    AND LOWER(product.name) NOT LIKE '%(tech%'
+    AND LOWER(product.name) NOT LIKE '%[tech%'
+    AND LOWER(product.name) NOT LIKE '%[oanh%'
+    AND LOWER(product.name) NOT LIKE '%sp test%'
 
 post_operations {                
   ALTER TABLE ${self()} ADD PRIMARY KEY (product_id) NOT ENFORCED;

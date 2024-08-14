@@ -15,6 +15,8 @@ config {
         month: "tháng",
         year: "năm",
         quarter: "quý",
+        year_quater_short: "<Năm>-Q<Quý>",
+        year_quater_long : "<Năm> Quater <Quý>",
         soq: "Date đầu quý",
         eoq: "Date cuối quý",
         past_now_future: "Là quá khứ, hiện tại hoặc tương lại",
@@ -56,6 +58,8 @@ WITH calendar AS (
     CAST(EXTRACT(MONTH FROM Date) AS INT64) AS month,
     CAST(EXTRACT(YEAR FROM Date) AS INT64) AS year,
     CAST(EXTRACT(QUARTER FROM Date) AS INT64) AS quarter,
+    EXTRACT(YEAR FROM Date) || " Quarter " || EXTRACT(QUARTER FROM Date)  as year_quater_long,
+    EXTRACT(YEAR FROM Date) || "-Q" || EXTRACT(QUARTER FROM Date)  as year_quater_short,
     DATE_TRUNC(Date, QUARTER) AS soq,
     DATE_ADD(DATE_TRUNC(Date, QUARTER), INTERVAL 2 MONTH) AS eoq,
     CASE

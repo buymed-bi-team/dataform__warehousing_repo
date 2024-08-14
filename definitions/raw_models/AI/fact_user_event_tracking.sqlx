@@ -8,7 +8,7 @@ config {
         event: `NonNull | IN ("ADD_TO_CART", "SKU_DETAIL_VIEW","SKU_IMPRESSION") `,
         customer_id: " NonNull | The unique identifier for the customer",
         created_time: "NonNull | The datetime when the event was created, adjusted to the 'Asia/Ho_Chi_Minh' timezone",
-        product_id: "Nullable |",
+        product_id: "NonNull | Unique identifier for each product",
         province_code: "Nullable | " + docs.province_code,
         screen: "Nullable | The screen on which the event occurred. This provides additional context on the user interface interaction",
         source: "Nullable | The source of the event, indicating how the item was created",
