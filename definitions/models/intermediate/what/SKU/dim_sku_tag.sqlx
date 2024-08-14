@@ -23,7 +23,11 @@ SELECT
   CONCAT(c.sku_code,"_",c.sales_region_code) as sku_sales_region_code,
   t as tag_code,
   b.name AS tag,
-  COALESCE(b.name, t) AS tag_name
+  COALESCE(b.name, t) AS tag_name,
+  b.tag_id,
+  TIMESTAMP_ADD(a.created_time, INTERVAL 7 HOUR) AS created_time,
+  TIMESTAMP_ADD(a.last_updated_time, INTERVAL 7 HOUR) AS last_updated_time,
+  b.visible
 FROM ${source.platinum}.marketplace_prd_product_v2_sku AS a
     , UNNEST(JSON_VALUE_ARRAY(a.tags)) AS t
     LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_tag AS b 
