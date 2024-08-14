@@ -40,6 +40,7 @@ SELECT
     sc.sku_type,
     sc.retail_price_type,
     sc.retail_price_value,
+    sc.purchase_price,
     sc.brand_type,    
     sc.cic_name,
     sc.pic_name,
