@@ -29,6 +29,7 @@ config {
     phone -> supplier_phone
     email -> supplier_email
     province -> province_name
+    seller_pic -> supplier_pic
 */
 /*
     supplier_type:
