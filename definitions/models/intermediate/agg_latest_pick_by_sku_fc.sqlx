@@ -4,14 +4,29 @@ config {
     name: "agg_latest_pick_by_sku_fc"
 }
 
+WITH LatestPick AS (
+    SELECT
+        a.sku,
+        a.warehouse_code,
+        MAX(a.created_time) AS latest_pick_time
+    FROM ${source.platinum}.warehouse_prd_picking_pick_ticket_item a
+    LEFT JOIN ${source.platinum}.warehouse_prd_picking_pick_ticket b
+    ON a.ticket_id = b.ticket_id
+    WHERE b.so LIKE "%SO"
+    GROUP BY a.sku, a.warehouse_code
+)
+
 SELECT
-    a.sku,
-    a.warehouse_code,
-    MAX(a.created_time) AS latest_pick_time,
-    TIMESTAMP_DIFF(CURRENT_TIMESTAMP(), MAX(a.created_time), DAY) AS aging_pick_days,
-    MAX(a.ticket_id) as latest_pick_ticket_id,
-    MAX(b.so) as latest_so
-FROM ${ref("dedup_warehouse_prd_picking_pick_ticket_item")} a
-JOIN ${ref("dedup_warehouse_prd_picking_pick_ticket")} b
-ON a.ticket_id = b.ticket_id
-GROUP BY 1, 2
+    lp.sku,
+    lp.warehouse_code,
+    lp.latest_pick_time,
+    TIMESTAMP_DIFF(CURRENT_TIMESTAMP(), lp.latest_pick_time, DAY) AS aging_pick_days,
+    a.ticket_id AS latest_pick_ticket_id,
+    b.so AS latest_so
+FROM LatestPick lp
+JOIN ${source.platinum}.warehouse_prd_picking_pick_ticket_item a
+    ON lp.sku = a.sku
+    AND lp.warehouse_code = a.warehouse_code
+    AND lp.latest_pick_time = a.created_time
+JOIN ${source.platinum}.warehouse_prd_picking_pick_ticket b
+    ON a.ticket_id = b.ticket_id

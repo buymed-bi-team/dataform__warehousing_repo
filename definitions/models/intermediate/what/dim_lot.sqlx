@@ -1,0 +1,19 @@
+config {
+    type: "table",
+    description: "Schedule: daily at 12am, 12pm | PIC: dong.le",
+    name: "dim_lot",
+    tags: ["0h00"],
+    columns: {
+    }
+}
+
+SELECT DISTINCT
+    REPLACE(TRIM(UPPER(lot)), ' ', '') as lot,
+    REPLACE(REPLACE(TRIM(UPPER(lot)), ' ', ''), '.', '') AS cleaned_lot
+FROM
+    (SELECT lot FROM ${ref("fact_stock_lotdate_incoming")}
+     UNION ALL
+     SELECT lot FROM ${ref("fact_stock_lotdate_outgoing")})
+    AS combined_lots
+WHERE lot is not null
+
