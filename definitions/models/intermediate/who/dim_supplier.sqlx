@@ -64,7 +64,7 @@ SELECT
     , s.phone AS supplier_phone
     , p.province_name
     , p.province_code
-    , p.region_code 
+    , p.sales_region_code
     , s.contract_status
     , s.line_manager
     , if (s.line_manager is null or s.line_manager = "", 
@@ -80,7 +80,16 @@ SELECT
 FROM    ${source.platinum}.seller_prd_core_seller s
 LEFT JOIN  ${source.platinum}.seller_prd_core_seller AS cmv on s.line_manager = cmv.code
 LEFT JOIN ${ref('dim_employee')} as acc on s.pic_account_id = acc.employee_id
-LEFT JOIN ${ref('dim_geo_location')} p on s.province_code = p.location_code
+LEFT JOIN (
+    SELECT 
+      DISTINCT
+      province_code,
+      province_name,
+      service_area.sales_region_code
+    FROM ${ref('dim_geo_location')} p 
+    INNER JOIN ${ref('dim_fc_service_area')} AS service_area ON service_area.service_area_code = p.province_code
+    WHERE province_code IS NOT NULL
+) p on s.province_code = p.province_code
 post_operations {
     ALTER TABLE ${self()} ALTER COLUMN supplier_type SET DEFAULT "UNKNOWN";
     ALTER TABLE ${self()} ADD PRIMARY KEY (supplier_code) NOT ENFORCED;

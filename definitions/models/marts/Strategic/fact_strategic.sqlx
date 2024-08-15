@@ -19,11 +19,11 @@ js {
         // 'agg_strategic_orders_by_Sales_Region',
         // 'agg_strategic_delivers_by_Sales_Region',
         // 'agg_strategic_item_sold_by_Sales_Region',
-        // 'agg_strategic_fulfilled_amount_by_SalesRegion',
-        // 'agg_strategic_unfulfilled_amount_by_SalesRegion',
+        'agg_strategic_fulfilled_amount_by_SalesRegion',
+        'agg_strategic_unfulfilled_amount_by_SalesRegion',
         // 'agg_strategic_cancelation_amount_by_SalesRegion',
         // 'agg_strategic_backorder_amount_by_SalesRegion',
-        // 'agg_strategic_outbound_backlog_by_SalesRegion'
+        'agg_strategic_outbound_backlog_by_SalesRegion'
     ]
 }
 

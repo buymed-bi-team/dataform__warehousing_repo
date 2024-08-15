@@ -33,7 +33,7 @@ SELECT
     , a.location_code AS province_code
     , s.product_id
     , a.sku AS sku_code
-    --, a.margin
+    , a.margin
     , a.total_price
     , a.total_purchasing_value
     , a.total_quantity
