@@ -39,8 +39,9 @@ x mg_id
 -- last_action_time
 -- customer_code
 email > customer_email
-address > customer_address
 phone > customer_phone
+-- address
+
 ? mst 
 user_system_status
 
