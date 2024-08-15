@@ -48,7 +48,7 @@ select
   cm.comment_id,
   JSON_VALUE(cm.commenter, "$.customer_id") as customer_id,
   cm.target_code as sku_code,
-  concat(cm.target_code, "_", c.sale_region) as sku_fc_code,
+  concat(s.sku_key, "_", c.sale_region) as sku_fc_code,
   cm.content as comment,
   cm.status as comment_status,
   case
@@ -64,6 +64,8 @@ left join customer as c
   on CAST(JSON_VALUE(cm.commenter, "$.customer_id") as INT64) = c.customer_id
 left join reply as r
   on cm.comment_id = r.comment_id
+left join gold_buymed_vn2.dim_sku as s
+  on cm.target_code = s.sku_code
 where cm.type = "COMMENT"
 and cm.target_type = "SKU"
 QUALIFY
