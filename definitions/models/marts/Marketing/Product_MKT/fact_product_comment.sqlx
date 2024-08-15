@@ -1,0 +1,70 @@
+config {
+    type: "table", 
+    description: 
+        `PIC: huyen.nguyenthu; 
+        Type: Table; 
+        Refresh Schedule: 0h30 daily;
+        Source: 
+            ${source.silver}.marketplace_prd_ticket_comment
+        `,
+        
+    tags: ["0h30"]
+}
+
+with customer as (
+  select
+    customer_id,
+    config_fc as sale_region
+  from gold_buymed_vn.dim_customer
+),
+
+reply as (
+SELECT
+  TIMESTAMP_ADD(created_time, INTERVAL 7 HOUR) AS reply_time,
+  DATE(TIMESTAMP_ADD(created_time, INTERVAL 7 HOUR)) AS reply_date,
+  comment_id AS reply_id,
+  CAST(JSON_VALUE(extra_props, "$.parent_comment_id") AS INT64) AS comment_id,
+  REGEXP_REPLACE(
+    content,
+    r'<[^>]*>',
+    ''
+  ) AS reply_content,
+  status as reply_status,
+  CASE
+    WHEN is_approved = true THEN "Approved"
+    ELSE "Refused"
+  END AS reply_approve_status
+FROM
+  ${source.silver}.marketplace_prd_ticket_comment AS cm
+WHERE
+  type = "REPLY"
+QUALIFY
+  ROW_NUMBER() OVER (PARTITION BY comment_id ORDER BY ingest_time DESC) = 1
+)
+
+select
+  timestamp_add(cm.created_time, interval 7 hour) as comment_time,
+  date(timestamp_add(cm.created_time, interval 7 hour)) as comment_date,
+  cm.comment_id,
+  JSON_VALUE(cm.commenter, "$.customer_id") as customer_id,
+  cm.target_code as sku_code,
+  concat(cm.target_code, "_", c.sale_region) as sku_fc_code,
+  cm.content as comment,
+  cm.status as comment_status,
+  case
+    when cm.is_approved = true then "Approved"
+    else "Refused"
+  end as approve_status,
+  r.reply_time,
+  r.reply_date,
+  r.reply_content
+
+from ${source.silver}.marketplace_prd_ticket_comment as cm
+left join customer as c
+  on CAST(JSON_VALUE(cm.commenter, "$.customer_id") as INT64) = c.customer_id
+left join reply as r
+  on cm.comment_id = r.comment_id
+where cm.type = "COMMENT"
+and cm.target_type = "SKU"
+QUALIFY
+  ROW_NUMBER() OVER (PARTITION BY cm.comment_id ORDER BY cm.ingest_time DESC) = 1

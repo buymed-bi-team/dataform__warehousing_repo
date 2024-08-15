@@ -1,0 +1,51 @@
+config {
+    type: "table", 
+    description: 
+        `PIC: huyen.nguyenthu; 
+        Type: Table; 
+        Refresh Schedule: 0h30 daily;
+        Source: 
+            ${source.silver}.monitoring_prd_collector_user_stats
+        `,
+    columns: {
+        created_time: "NON-NULL | Margin date in +7 Timezone",
+        customer_id: "NON-NULL",
+        sku_code: "NON-NULL",
+        sku_fc_code: "NON-NULL"
+    },
+    tags: ["0h30"]
+}
+WITH region AS (
+  SELECT area, province_code
+  FROM gold_buymed_vn.dim_province
+  QUALIFY ROW_NUMBER() OVER (PARTITION BY province_code ORDER BY area DESC) = 1
+),
+adjusted_events AS (
+  SELECT
+    timestamp_add(e.created_time, INTERVAL 7 HOUR) AS created_time,
+    e.customer_id,
+    e.event,
+    json_value(e.extra_props, "$.ua_metadata.OS") AS device_os,
+    json_value(e.extra_props, "$.ua_metadata.PLATFORM") AS device_platform,
+    json_value(e.extra_props, "$.metadata.sku") AS sku_code,
+    json_value(e.extra_props, "$.metadata.screen") AS page_view,
+    json_value(e.extra_props, "$.user_metadata.LOCATION") AS location
+  FROM ${source.silver}.monitoring_prd_collector_user_stats AS e
+  WHERE e.created_time >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 14 DAY)
+  AND json_value(e.extra_props, "$.metadata.sku") IS NOT NULL
+)
+
+SELECT
+  ae.created_time,
+  DATE(ae.created_time) AS created_date,
+  EXTRACT(HOUR FROM ae.created_time) AS created_hour,
+  ae.customer_id,
+  ae.event,
+  ae.device_os,
+  ae.device_platform,
+  ae.sku_code,
+  CONCAT(ae.sku_code, "_", r.area) AS sku_fc_code,
+  ae.page_view
+FROM adjusted_events AS ae
+LEFT JOIN region AS r
+  ON ae.location = r.province_code
