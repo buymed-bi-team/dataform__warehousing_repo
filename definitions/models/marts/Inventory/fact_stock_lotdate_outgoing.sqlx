@@ -18,9 +18,8 @@ WITH dedup_pick_ticket AS (
     created_time,
     end_pick_time,
     warehouse_code as fc_code,
-    source_location
   FROM ${source.platinum}.warehouse_prd_picking_pick_ticket
-  WHERE created_date >= "2024-01-01" AND created_date <= current_date
+  -- WHERE created_date >= "2024-01-01" AND created_date <= current_date
 ),
 
 dedup_pick_ticket_item AS (
@@ -29,10 +28,10 @@ dedup_pick_ticket_item AS (
     sku as sku_code,
     details,
     so,
-    source_location,
+    location_details,
     warehouse_code as fc_code
   FROM ${source.platinum}.warehouse_prd_picking_pick_ticket_item
-  WHERE created_date >= "2024-01-01" AND created_date <= current_date
+  -- WHERE created_date >= "2024-01-01" AND created_date <= current_date
 )
 
 SELECT
@@ -44,9 +43,11 @@ SELECT
     , b.fc_code
     , JSON_VALUE(b1.lot) as lot
     , JSON_VALUE(b1.exp_date) as expired_date
-    , COALESCE(b.source_location, a.source_location) as location
+    , JSON_VALUE(b2.location_code) as location
     , CAST(JSON_VALUE(b1.quantity) as int64) as location_done_quantity
-FROM dedup_pick_ticket a
-LEFT JOIN dedup_pick_ticket_item b on b.ticket_id = a.ticket_id
+    -- , CAST(JSON_VALUE(b2.done_quantity) as int64) as location_done_quantity
+FROM dedup_pick_ticket_item b
 , UNNEST(JSON_QUERY_ARRAY(b.details)) as b1
+, UNNEST(JSON_QUERY_ARRAY(b.location_details)) as b2
+LEFT JOIN dedup_pick_ticket a on b.ticket_id = a.ticket_id
 LEFT JOIN ${ref("dim_sku")} c on b.sku_code = c.sku_code

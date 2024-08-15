@@ -1,6 +1,5 @@
 config {
-    type: "incremental",
-    protected: true,
+    type: "table",
     description: " Source: warehouse_prd_inbound_inbound_ticket | Schedule: 12am, daily | PIC: dong.le",
     name: "dim_inbound_ticket",
     tags: ["0h00"],
@@ -18,10 +17,14 @@ config {
 }
 
 WITH
-  dedup_inbound_ticket AS ${dedup.dedup(
-  source.silver + `.warehouse_prd_inbound_inbound_ticket`,
-  "code, po_code, external_type, created_time"
-)}
+  dedup_inbound_ticket AS (
+    SELECT
+      code,
+      po_code,
+      external_type,
+      created_time
+    FROM ${source.platinum}.warehouse_prd_inbound_inbound_ticket
+  )
 
 SELECT
   i.code as inbound_code,
@@ -39,18 +42,3 @@ SELECT
   DATETIME(i.created_time, 'Asia/Ho_Chi_Minh') as created_time,
   
 FROM dedup_inbound_ticket i
-
-${
-  when(incremental(),
-   `WHERE DATETIME(created_time) > (SELECT MAX(created_time) FROM ${self()})`,
-   ``)
-}
-
-post_operations {                
-  ${
-    when(incremental(),
-      "",
-      `ALTER TABLE ${self()} ADD PRIMARY KEY (inbound_code) NOT ENFORCED;`
-    )
-  }
-}
