@@ -29,17 +29,19 @@ config {
   }
 }
 
-WITH dedup_sale_order AS ${dedup.dedup(
-  source.silver + `.warehouse_prd_core_sale_order`,
-  "sale_order_code, admin_id, warehouse_code as fc_code, status, created_time, type",
-  "timestamp(date_sub(current_date(),interval 1 month))"
-)},
+WITH dedup_sale_order AS (
+  SELECT
+    sale_order_code, admin_id, warehouse_code as fc_code, status, created_time, type
+  FROM ${source.platinum}.warehouse_prd_core_sale_order
+  WHERE created_date >= DATE(timestamp(date_sub(current_date(),interval 1 month)))
+),
 
-dedup_sale_order_item AS ${dedup.dedup(
-  source.silver + `.warehouse_prd_core_sale_order_item`,
-  "sale_order_code, sku as sku_code, reserved_quantity, order_quantity, unit_price, created_time, pick_items",
-  "timestamp(date_sub(current_date(),interval 1 month))"
-)},
+dedup_sale_order_item AS (
+  SELECT
+    sale_order_code, sku as sku_code, reserved_quantity, order_quantity, unit_price, created_time, pick_items
+  FROM ${source.platinum}.warehouse_prd_core_sale_order_item
+  WHERE created_date >= DATE(timestamp(date_sub(current_date(),interval 1 month)))
+),
 
 agg_sale_order_item AS (
     SELECT
@@ -61,7 +63,7 @@ agg_sale_order_item AS (
     a.unit_price * CAST(JSON_VALUE(a1.first_reserved_quantity) AS INT64) as first_reserved_amount,
     SUM(CAST(JSON_VALUE(a1.order_quantity) AS INT64)) OVER (PARTITION BY a.sale_order_code) AS total_qty,
     SUM(CAST(JSON_VALUE(a1.order_quantity) AS INT64) *  a.unit_price) OVER (PARTITION BY a.sale_order_code) AS total_amt,
-    COUNT(DISTINCT a.sku_code) OVER (PARTITION BY a.sale_order_code) AS total_sku
+    COUNT(DISTINCT JSON_VALUE(a1.sku)) OVER (PARTITION BY a.sale_order_code) AS total_sku
     FROM dedup_sale_order_item a
     , UNNEST(JSON_QUERY_ARRAY(a.pick_items)) as a1
     LEFT JOIN dedup_sale_order b
