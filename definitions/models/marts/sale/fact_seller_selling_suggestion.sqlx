@@ -43,6 +43,7 @@ WITH stg AS (
         JSON_EXTRACT_SCALAR(extra_props, '$.metadata.productId') AS product_id,
         JSON_EXTRACT_SCALAR(extra_props, '$.metadata.productCode') AS product_code,
         JSON_EXTRACT_SCALAR(extra_props, '$.metadata.productStatus') AS product_status,
+        JSON_EXTRACT_SCALAR(extra_props, '$.metadata.search') AS search, --tu.dang added
         JSON_EXTRACT_SCALAR(extra_props, '$.metadata.sellerCode') AS seller_code,
         JSON_EXTRACT_SCALAR(extra_props, '$.metadata.hasEverSold') AS has_ever_sold
     FROM
@@ -63,7 +64,8 @@ SELECT
     account_type,
     created_time,
     CAST( product_id AS integer) product_id,
-    product_code,
+    product_code, 
+    search, --tu.dang added
     product_status,
     seller_code,
     CASE 
