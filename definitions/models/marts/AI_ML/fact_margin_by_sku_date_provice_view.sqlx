@@ -1,0 +1,25 @@
+config {
+    type: "table", 
+    description: 
+        `PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: 0h30 daily;
+        partitionBy: "date",
+        clusterBy: ["sku_code", "province_code"]
+        Source: 
+            ${source.silver}.monitoring_prd_realtime_supply_margin_sku
+        `,
+    columns: {
+        date: "NON-NULL | Margin date in +7 Timezone",
+        product_id: "NON-NULL",
+        sku_code: "NON-NULL",
+        province_code: "NON-NULL",
+        total_price: "Total ordered amount of SKU in Margin Date",
+        total_purchasing_value: "Total purchasing amount of SKU in Margin Date",
+        total_quantity: "Total ordered quantity of SKU in Margin Date",
+        sales_region_code: "NON-NULL",
+    },
+    schema: "buymed_AI_ML",
+}
+
+select * from gold_buymed_vn2.fact_margin_by_sku_date_provice
