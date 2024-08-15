@@ -71,7 +71,7 @@ cte_sku_ranked AS (
     s.demand_classification_code,
     ROW_NUMBER() OVER (PARTITION BY s.sku, s.sales_region_code ORDER BY s.product_id) AS row_num
   FROM cte_sku_sr_code s
-  JOIN ${ref("dim_fc")} f on s.sales_region_code = f.sales_region_code
+  LEFT JOIN ${ref("dim_fc")} f on s.sales_region_code = f.sales_region_code
   WHERE s.sales_region_code IS NOT NULL
 ),
 
