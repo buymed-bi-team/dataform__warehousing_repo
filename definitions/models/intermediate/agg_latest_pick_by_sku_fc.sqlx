@@ -12,7 +12,7 @@ WITH LatestPick AS (
     FROM ${source.platinum}.warehouse_prd_picking_pick_ticket_item a
     LEFT JOIN ${source.platinum}.warehouse_prd_picking_pick_ticket b
     ON a.ticket_id = b.ticket_id
-    WHERE b.so LIKE "%SO"
+    WHERE b.so LIKE "%SO%"
     GROUP BY a.sku, a.warehouse_code
 )
 
