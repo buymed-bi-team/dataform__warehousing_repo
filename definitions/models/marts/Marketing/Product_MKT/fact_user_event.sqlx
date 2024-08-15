@@ -16,10 +16,15 @@ config {
     tags: ["0h30"]
 }
 WITH region AS (
-  SELECT area, province_code
-  FROM gold_buymed_vn.dim_province
-  QUALIFY ROW_NUMBER() OVER (PARTITION BY province_code ORDER BY area DESC) = 1
+    select
+        sa.sales_region_code as area,
+        gl.province_code
+    from gold_buymed_vn2.dim_geo_location as gl
+    left join gold_buymed_vn2.dim_fc_service_area as sa
+    on gl.province_code = sa.service_area_code
+    where gl.location_class = 'PROVINCE'
 ),
+
 adjusted_events AS (
   SELECT
     timestamp_add(e.created_time, INTERVAL 7 HOUR) AS created_time,
@@ -44,8 +49,10 @@ SELECT
   ae.device_os,
   ae.device_platform,
   ae.sku_code,
-  CONCAT(ae.sku_code, "_", r.area) AS sku_fc_code,
+  CONCAT(s.sku_key, "_", r.area) AS sku_fc_code,
   ae.page_view
 FROM adjusted_events AS ae
 LEFT JOIN region AS r
   ON ae.location = r.province_code
+LEFT JOIN gold_buymed_vn2.dim_sku as s
+  ON ae.sku_code = s.sku_code
