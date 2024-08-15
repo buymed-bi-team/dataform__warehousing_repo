@@ -20,60 +20,35 @@ config {
 /*
 */
 
-WITH dedup_sku_main as -- 83MB
-${dedup.dedup(
-    source.silver + `.marketplace_prd_product_v2_sku_main_v2`,
-    `
-    code as sku_code,
-    product_id,
-    seller_code
-    `
-)}
-, dedup_seller AS
-${dedup.dedup(
-    source.silver + `.seller_prd_core_seller`,
-    `
-    seller_class,
-    code seller_code
-    `
-)}
-, dedup_product AS 
-${dedup.dedup(
-    source.silver + `.marketplace_prd_product_v2_product`,
-    `
-    product_id,
-    name as product_name
-    `
-)}
 SELECT
-    sku_code,
-    dedup_sku_main.product_id,
-    dedup_product.product_name,
-    dedup_sku_main.seller_code,
-    dedup_sku_main.product_id || "_" || dedup_sku_main.seller_code as sku_key,
-    seller_class
-FROM dedup_sku_main
-INNER JOIN dedup_seller
-ON dedup_sku_main.seller_code = dedup_seller.seller_code
-LEFT JOIN dedup_product
-ON dedup_sku_main.product_id = dedup_product.product_id
+    sku_main.code as sku_code,
+    sku_main.product_id,
+    product.name as product_name,
+    sku_main.seller_code,
+    sku_main.product_id || "_" || sku_main.seller_code as sku_key,
+    seller.seller_class
+FROM ${source.platinum}.marketplace_prd_product_v2_sku_main_v2 sku_main
+INNER JOIN ${source.platinum}.seller_prd_core_seller seller
+ON sku_main.seller_code = seller.code
+LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_product product
+ON sku_main.product_id = product.product_id
 WHERE
-    dedup_sku_main.seller_code <> 'Med_NT' 
+    sku_main.seller_code <> 'Med_NT' 
     -- and sku_code not in ( -- loại trừ những trường
     --     select sku_code 
-    --     from dedup_sku_main
+    --     from sku_main
     --     where upper(sku_code) in (
     --         select upper(sku_code)
-    --         from dedup_sku_main
+    --         from sku_main
     --         where REGEXP_CONTAINS(sku_code, r'[a-z]')
     --         INTERSECT distinct
     --         select sku_code
-    --         from dedup_sku_main
+    --         from sku_main
     --         where NOT REGEXP_CONTAINS(sku_code, r'[a-z]')
     --     )
     --     and REGEXP_CONTAINS(sku_code, r'[a-z]')
     -- )
 
-post_operations {                
-    ALTER TABLE ${self()} ADD PRIMARY KEY (sku_key) NOT ENFORCED;
-}
+-- post_operations {                
+--     ALTER TABLE ${self()} ADD PRIMARY KEY (sku_key) NOT ENFORCED;
+-- }
