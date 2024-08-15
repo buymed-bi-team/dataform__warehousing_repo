@@ -89,5 +89,5 @@ LEFT JOIN stg_order o
     ON oi.order_id = o.order_id
 LEFT JOIN `lakehouse-prod-394907.gold_buymed_vn2.dim_supplier` s
     ON oi.seller_code = s.supplier_code
-WHERE created_at > CURRENT_DATE("+7") - INTERVAL 31 DAY
+WHERE oi.created_at > CURRENT_DATE("+7") - INTERVAL 31 DAY
 AND seller_class in ("EXTERNAL","INTERNAL")
