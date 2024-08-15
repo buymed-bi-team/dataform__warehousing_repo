@@ -16,7 +16,7 @@ WITH LatestPick AS (
     GROUP BY a.sku, a.warehouse_code
 )
 
-SELECT
+SELECT DISTINCT
     lp.sku,
     lp.warehouse_code,
     lp.latest_pick_time,
