@@ -87,6 +87,11 @@ SELECT
   , b.destination_location as area_to
   , a.sku_code || "_" || a.fc_code as sku_fc_code
   , a.location_from || "_" || a.fc_code as shelf_fc_code
+  , CASE
+      WHEN destination_location = "WH-MISSING" AND source_location = 'WH-MAIN' THEN "MISSING-IN"
+      WHEN source_location = "WH-MISSING" AND destination_location = 'WH-MAIN' THEN "MISSING-OUT"
+      WHEN destination_location = "WH-MISSING" AND source_location <> 'WH-MAIN' THEN "MISSING-OTHER"
+    END AS missing_type
 FROM cte_Item AS a
 LEFT JOIN ${source.platinum}.warehouse_prd_inventory_transfer AS b on a.transfer_id = b.transfer_id
 WHERE
