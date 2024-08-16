@@ -44,7 +44,7 @@ WITH RankedData AS (
             '}'
         ) AS note,
         ROW_NUMBER() OVER (PARTITION BY a.sku, a.warehouse_code ORDER BY GREATEST(b.latest_put_time, c.latest_pick_time) DESC) AS rn
-    FROM ${ref("dedup_warehouse_prd_inventory_sku_merge")} a
+    FROM ${source.platinum}.warehouse_prd_inventory_sku a
     LEFT JOIN ${ref("agg_latest_put_by_sku_fc")} b
         ON a.sku = b.sku AND a.warehouse_code = b.warehouse_code
     LEFT JOIN ${ref("agg_latest_pick_by_sku_fc")} c
