@@ -8,7 +8,7 @@ WITH LatestPut AS (
     SELECT
         a.sku,
         a.warehouse_code,
-        MAX(a.created_time) AS latest_put_time
+        MAX(b.end_put_time) AS latest_put_time
     FROM ${source.platinum}.warehouse_prd_inbound_put_ticket_item a
     JOIN ${source.platinum}.warehouse_prd_inbound_put_ticket b
         ON a.put_code = b.code
