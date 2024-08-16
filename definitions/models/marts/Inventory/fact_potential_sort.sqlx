@@ -44,34 +44,38 @@ dedup_sale_order_item AS (
 ),
 
 agg_sale_order_item AS (
-    SELECT
+  SELECT
     a.sale_order_code,
-    DATE(a.created_time, "Asia/Ho_Chi_Minh") as created_date,
-    TIMESTAMP(DATETIME(a.created_time, "Asia/Ho_Chi_Minh")) as created_time,
+    DATE(a.created_time, "Asia/Ho_Chi_Minh") AS created_date,
+    TIMESTAMP(DATETIME(a.created_time, "Asia/Ho_Chi_Minh")) AS created_time,
     b.status,
     d.order_channel,
-    CONCAT(c.sku_key, "_", b.fc_code) as sku_fc_key,
+    CONCAT(c.sku_key, "_", b.fc_code) AS sku_fc_key,
     JSON_VALUE(a1.sku) AS sku_code,
     a.unit_price,
     CAST(JSON_VALUE(a1.order_quantity) AS INT64) AS order_quantity,
     CAST(JSON_VALUE(a1.reserved_quantity) AS INT64) AS reserved_quantity,
-    CAST(JSON_VALUE(a1.first_reserved_quantity) AS INT64) AS first_reserved_quantity,
-    IF(CAST(JSON_VALUE(a1.reserved_quantity) AS INT64) > 0, 1, 0) as no_reserved_skus,
-    IF(CAST(JSON_VALUE(a1.first_reserved_quantity) AS INT64) > 0, 1, 0) as no_first_reserved_skus,
-    a.unit_price * CAST(JSON_VALUE(a1.order_quantity) AS INT64) as order_amount,
-    a.unit_price * CAST(JSON_VALUE(a1.reserved_quantity) AS INT64) as reserved_amount,
-    a.unit_price * CAST(JSON_VALUE(a1.first_reserved_quantity) AS INT64) as first_reserved_amount,
+    LEAST(CAST(JSON_VALUE(a1.first_reserved_quantity) AS INT64), CAST(JSON_VALUE(a1.order_quantity) AS INT64)) AS first_reserved_quantity, -- Force frq to be <= oq
+    IF(CAST(JSON_VALUE(a1.reserved_quantity) AS INT64) > 0, 1, 0) AS no_reserved_skus,
+    IF(CAST(JSON_VALUE(a1.first_reserved_quantity) AS INT64) > 0, 1, 0) AS no_first_reserved_skus,
+    a.unit_price * CAST(JSON_VALUE(a1.order_quantity) AS INT64) AS order_amount,
+    a.unit_price * CAST(JSON_VALUE(a1.reserved_quantity) AS INT64) AS reserved_amount,
+    a.unit_price * LEAST(CAST(JSON_VALUE(a1.first_reserved_quantity) AS INT64), CAST(JSON_VALUE(a1.order_quantity) AS INT64)) AS first_reserved_amount, -- Adjust amount accordingly
     SUM(CAST(JSON_VALUE(a1.order_quantity) AS INT64)) OVER (PARTITION BY a.sale_order_code) AS total_qty,
-    SUM(CAST(JSON_VALUE(a1.order_quantity) AS INT64) *  a.unit_price) OVER (PARTITION BY a.sale_order_code) AS total_amt,
+    SUM(CAST(JSON_VALUE(a1.order_quantity) AS INT64) * a.unit_price) OVER (PARTITION BY a.sale_order_code) AS total_amt,
     COUNT(DISTINCT JSON_VALUE(a1.sku)) OVER (PARTITION BY a.sale_order_code) AS total_sku
-    FROM dedup_sale_order_item a
-    , UNNEST(JSON_QUERY_ARRAY(a.pick_items)) as a1
-    LEFT JOIN dedup_sale_order b
+  FROM dedup_sale_order_item a
+  , UNNEST(JSON_QUERY_ARRAY(a.pick_items)) AS a1
+  LEFT JOIN dedup_sale_order b
     ON a.sale_order_code = b.sale_order_code
-    LEFT JOIN ${ref("dim_sku")} c on JSON_VALUE(a1.sku) = c.sku_code
-    LEFT JOIN ${ref("dim_order")} d on b.admin_id = d.order_id
-    WHERE d.order_type = "SO" AND a.created_time >= timestamp(date_sub(current_date(),interval 1 month))
+  LEFT JOIN ${ref("dim_sku")} c 
+    ON JSON_VALUE(a1.sku) = c.sku_code
+  LEFT JOIN ${ref("dim_order")} d 
+    ON b.admin_id = d.order_id
+  WHERE d.order_type = "SO" 
+    AND a.created_time >= TIMESTAMP(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH))
 ),
+
 
 agg_sale_order_item_sort AS (
   SELECT
