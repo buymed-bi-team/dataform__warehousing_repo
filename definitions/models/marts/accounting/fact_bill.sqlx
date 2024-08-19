@@ -16,7 +16,7 @@ config {
     },
     assertions: {
         // uniqueKey: 'order_id || "__" || product_id',
-        nonNull: ('order_id','product_id')
+        nonNull: ('order_id')
     },
     tags: ('0h00'),
     bigquery: {
