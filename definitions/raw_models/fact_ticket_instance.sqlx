@@ -20,8 +20,8 @@ select requester_code,
        JSON_EXTRACT_SCALAR(input_data,'$.userDescription') as user_description,
        cause_code,
        assignee_account_id,
-       JSON_EXTRACT_SCALAR(JSON_EXTRACT(decision_selecteds,'$[0]'),'$.decision_time') as first_decision_time,
-       JSON_EXTRACT_SCALAR(JSON_EXTRACT(decision_selecteds,'$[1]'),'$.decision_time') as second_decision_time,
+       DATETIME(PARSE_TIMESTAMP('%Y-%m-%dT%H:%M:%E*S%Ez',JSON_EXTRACT_SCALAR(JSON_EXTRACT(decision_selecteds,'$[0]'),'$.decision_time')), "Asia/Ho_Chi_Minh") as first_decision_time,
+       DATETIME(PARSE_TIMESTAMP('%Y-%m-%dT%H:%M:%E*S%Ez',JSON_EXTRACT_SCALAR(JSON_EXTRACT(decision_selecteds,'$[1]'),'$.decision_time')), "Asia/Ho_Chi_Minh") as second_decision_time,
        status as ticket_status,
        JSON_EXTRACT_SCALAR(JSON_EXTRACT(decision_selecteds,'$[0]'),'$.name') as first_decision_name,
        JSON_EXTRACT_SCALAR(JSON_EXTRACT(decision_selecteds,'$[1]'),'$.name') as senconde_decision_name,
@@ -32,10 +32,11 @@ select requester_code,
        assignee_account_email,
        template_module_code,
        branch_code,
-       picked_time,
-       deadline_time,
+       DATETIME(picked_time, "Asia/Ho_Chi_Minh") AS picked_time,
+       DATETIME(created_time, "Asia/Ho_Chi_Minh") AS created_time,
+       DATETIME(deadline_time, "Asia/Ho_Chi_Minh") AS deadline_time,
        root_ticket_instance_code,
-       JSON_EXTRACT_SCALAR(extra_props,'$.completed_time') as completed_time
+       DATETIME(PARSE_TIMESTAMP('%Y-%m-%dT%H:%M:%E*S%Ez',JSON_EXTRACT_SCALAR(extra_props,'$.completed_time')), "Asia/Ho_Chi_Minh") as completed_time
 from `${source.platinum}.platform_organization_prd_ticket_ticket_instance`,
 
      unnest(JSON_EXTRACT_ARRAY(assign_roles,'$')) a,
@@ -43,11 +44,4 @@ from `${source.platinum}.platform_organization_prd_ticket_ticket_instance`,
 -- where key like 'a0110ebd-0265-4bcb-832a-78322d27c34f'
 -- requester_type like "CIRCA_FS" or
 -- template_module_code like "CIRCA_FS" and branch_code like "VN"
--- QUALIFY ROW_NUMBER() OVER(_window) = 1 AND FIRST_VALUE(action) OVER(_window) <> 'd'
--- WINDOW
---     _window AS (
---         PARTITION BY mg_id
---         ORDER BY synced_at DESC, IF(action = 'd', 3, IF(action = 'u', 2, 1)) DESC, last_updated_time DESC
---     )
--- where key = 'f7b402dd-9233-444d-ad18-99b5c2460639'
--- limit 1
+QUALIFY ROW_NUMBER() OVER(partition by ticket_instance_code ) = 1
