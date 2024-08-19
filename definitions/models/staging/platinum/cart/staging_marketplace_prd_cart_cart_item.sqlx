@@ -137,7 +137,7 @@ post_operations {
             MAX(created_date) AS max_created_date_deleted 
           FROM ${self()} 
           WHERE mg_id IN (SELECT mg_id FROM get_deleted_record) 
-            AND created_date != "2099-01-01" 
+            AND (created_date != "2099-01-01" OR (created_date = "2099-01-01" AND action != "d")) 
         );
         
         SET min_created_date_deleted = (SELECT min_created_date_deleted FROM get_range_deleted);
