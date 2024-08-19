@@ -1,13 +1,14 @@
 config {
     type: "table", 
     description: 
-        `PIC: nguyen.tran; 
+        `PIC: huyen.nguyenthu; 
         Type: Table; 
-        Refresh Schedule: 0h30 daily;
+        Refresh Schedule: hourly;
         Source: 
-            ${source.silver}.monitoring_prd_realtime_supply_margin_sku
+            ${source.platinum}.marketplace_prd_cart_cart,
+            ${source.platinum}.marketplace_prd_cart_cart_item
         `,
-    tags: ["0h30"]
+    tags: ["custom_1h_past5", "13h30"]
 }
 
 with region as (
