@@ -200,7 +200,7 @@ FROM cte_full AS cte
     LEFT JOIN ${ref('dim_inventory_sku')} AS ins
         ON ins.sku = cte.sku_code AND ins.fc_code = cte.fc_code
     LEFT JOIN ${ref('dim_sku_item_vendors')} AS sv
-        ON sv.sku_code = cte.sku_code AND sv.fc_code = cte.fc_code AND sv.vendor_priority = '0'
+        ON sv.sku_code = cte.sku_code AND sv.fc_code = cte.fc_code AND sv.vendor_priority = 0
     LEFT JOIN dedup_cic AS cic
         ON cic.product_id = s.product_id AND cic.fc_code = cte.fc_code
     LEFT JOIN dedup_catm AS catm
