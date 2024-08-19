@@ -71,12 +71,10 @@ FROM o
 LEFT JOIN oi ON o.order_id = oi.order_id
 
 post_operations {
+    ALTER TABLE ${self()} 
+    ADD FOREIGN KEY (order_id) references ${ref(`dim_order`)}(order_id) NOT ENFORCED,
+    ADD FOREIGN KEY (product_id) references ${ref(`dim_product`)}(product_id) NOT ENFORCED;
 
-      -- Bước thực hiện add primary key, nhưng chỉ trong lần đầu full-refresh, nếu thực hiện incremental sau thì k cần làm gì
-      ALTER TABLE ${self()} 
-      ADD FOREIGN KEY (order_id) references ${ref(`dim_order`)}(order_id) NOT ENFORCED,
-      ADD FOREIGN KEY (product_id) references ${ref(`dim_product`)}(product_id) NOT ENFORCED;
-    --   ADD FOREIGN KEY ;
 }
 
 
