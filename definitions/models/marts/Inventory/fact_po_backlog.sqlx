@@ -1,6 +1,6 @@
 config {
-    type: "view",
-    description: "PIC: dong.le",
+    type: "table",
+    description: "Schedule: daily at 12am, 12pm | PIC: dong.le",
     tags: ["0h00", "12h00"]
 }
 
