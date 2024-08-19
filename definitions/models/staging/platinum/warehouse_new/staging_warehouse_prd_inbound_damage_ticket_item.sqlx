@@ -1,7 +1,7 @@
 
 
 config {
-    type: "incremental",
+    type: "table",
     name: "warehouse_prd_inbound_damage_ticket_item",
     schema: "platinum_buymed_vn",
     assertions: {
