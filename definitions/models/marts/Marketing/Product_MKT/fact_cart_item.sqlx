@@ -8,7 +8,7 @@ config {
             ${source.platinum}.marketplace_prd_cart_cart,
             ${source.platinum}.marketplace_prd_cart_cart_item
         `,
-    tags: ["custom_1h_past5", "11h00", "11h30", "19h00", "15h00", "10h00", "13h30"]
+    tags: ["custom_1h_past5", "11h00", "11h30", "19h00", "15h00", "10h00", "13h30", "16h30"]
 }
 
 with region as (
