@@ -9,7 +9,8 @@ config {
     columns: {
        sku_fc_key: "primary-key, concatenation of product_id, seller_code, and fc_code",
        sku_sr_key: "concatenation of sku and sales region code",
-       item_system_active: "the status of sku_item in system ( ACTIVE or INACTIVE )"
+       item_system_active: "the status of sku_item in system ( ACTIVE or INACTIVE )",
+       inventory_price: "COALESCE(WHEN supplier_class = “EXTERNAL” THEN setting_price, WHEN supplier_class = “INTERNAL” THEN purchase_price END, 999)"
     }
 }
 
@@ -129,7 +130,12 @@ SELECT
   f.pic_purchase_id,
   f.pic_purchase_name,
   f.pic_category_id,
-  f.pic_category_name
+  f.pic_category_name,
+  COALESCE(
+    CASE
+      WHEN g.seller_class = "EXTERNAL" THEN retail_price_value
+      WHEN g.seller_class = "INTERNAL" THEN purchase_price
+    END, 999) AS inventory_price
 FROM cte_sku_item a
 LEFT JOIN ${ref("dim_stock_classification")} b
 ON a.sku_code = b.sku_code AND a.fc_code = b.fc_code
@@ -141,6 +147,8 @@ LEFT JOIN ${ref("dim_sku_item_fv_vendor")} e
 ON a.sku_code = e.sku_code AND a.fc_code = e.fc_code
 LEFT JOIN ${ref("dim_sku_item_person_in_charge")} f
 ON a.sku_code = f.sku_code AND a.fc_code = f.fc_code
+LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_sku g
+ON a.item_code = g.item_code
 
 post_operations {
     ALTER TABLE ${self()} ADD PRIMARY KEY (sku_fc_key) NOT ENFORCED;

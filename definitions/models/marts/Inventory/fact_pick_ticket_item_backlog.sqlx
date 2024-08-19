@@ -26,10 +26,10 @@ SELECT
     pti.order_quantity as demand_quantity,
     pti.quantity as reserved_quantity,
     pti.order_quantity - pti.quantity AS unff_quantity
-FROM `platinum_buymed_vn.warehouse_prd_picking_pick_ticket_item` pti
-LEFT JOIN `platinum_buymed_vn.warehouse_prd_picking_pick_ticket` pt
+FROM {source.platinum}.warehouse_prd_picking_pick_ticket_item pti
+LEFT JOIN {source.platinum}.warehouse_prd_picking_pick_ticket pt
 ON pti.ticket_id = pt.ticket_id
-LEFT JOIN `platinum_buymed_vn.warehouse_prd_core_sale_order` so
+LEFT JOIN {source.platinum}.warehouse_prd_core_sale_orderdi so
 ON pti.so = so.sale_order_code
 WHERE pti.created_date >= (SELECT start_date FROM cte_date)
 AND pt.created_date >= (SELECT start_date FROM cte_date)
