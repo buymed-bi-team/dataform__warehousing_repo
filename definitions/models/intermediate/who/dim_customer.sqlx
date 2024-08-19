@@ -16,46 +16,110 @@ config {
         customer_email: "Nullable",
         customer_phone: "Nullable",
         customer_status: "NonNull | Must be one of following: 'DELETED','ACTIVATE','INACTIVE'",
-        customer_address: "Nullable",
+        ward_code: "Nullable | For BI team | Customer ward_code when registering",
+        district_code: "Nullable | For BI team | The customer's district_code when registering, Since many connection reports may break without this column, please keep it as is",
+        province_code: "Nullable | For BI team | The customer's province when registering, Since many connection reports may break without this column, please keep it as is",
+        address: "Nullable | For BI team | Customer address when registering",
+        customer_ward_code: "Nullable | Last shipping location_code",
+        customer_address: "Nullable | Last shipping address",
         customer_report_category: "NonNull | Is one of TECH, TENDER, MARKETPLACE, or CIRCA? Category assigned to the customer based on specific conditions: TECH: If the customer's name contains keywords like 'TECH SELLER', 'TEST', 'TECH-QC', etc. EMPLOYEE: If the email contain @buymed or @thuocsi TENDER: If the customer's tags contain 'TENDER'. MARKETPLACE: If the customer's tags contain 'TERMINATE_CIRCA' or as a default category. CIRCA: If the customer's tags contain 'CIRCA'.",
         business_scope: "Nullable | Null means UNKNOWN scope",
         customer_ward_code: "Nullable | If the customer doesn't have a ward_code, then get ward_code of last order of customer from the order table. Otherwise, return null."
     }
 }
+/*
+x mg_id
+-- user_created_at
+-- user_last_updated_at
+-- user_activated_at
+-- first_order_at
+-- last_order_at
+-- last_deleted_at
+-- last_update_status_at
+-- last_action_time
+-- customer_code
+email > customer_email
+phone > customer_phone
+-- address
 
-WITH stg_customer AS (
-    SELECT
-        customer.customer_id,
-        customer.name AS customer_name,
-        customer.email AS customer_email,
-        customer.address AS customer_address,
-        customer.status AS customer_status,
-        customer.phone AS customer_phone,
-        CASE
-            WHEN REGEXP_CONTAINS( UPPER(name), r'TECH SELLER|TEST|TECH-QC|TS-TECH|\[TECH\]|\(TECH\)|DEMO|QC|TECH MONITOR|TECH 2') THEN "TECH"
-            WHEN REGEXP_CONTAINS( customer.email, "@buymed|@thuocsi") THEN "EMPLOYEE"
-            WHEN customer_id = 241098 THEN "CONSIGNMENT"
-            WHEN customer_id = 360299 THEN "OPV"
-            WHEN TO_JSON_STRING( customer.tags ) LIKE '%TENDER%' THEN 'TENDER'
-            WHEN TO_JSON_STRING( customer.tags ) LIKE '%\"TERMINATE_CIRCA\"%'  THEN 'MARKETPLACE'
-            WHEN TO_JSON_STRING( customer.tags ) LIKE '%CIRCA%'  THEN 'CIRCA' -- Một số terminate circa vẫn được gán nhãn là circa ví dụ customer_id in (252404,358259,369079)
-            ELSE 'MARKETPLACE' -- Một số order trong dim_order bị xếp loại vào Marketplace trong khi vốn tên có là FC-CIRCA
-        END AS customer_report_category,
-        customer.scope  AS business_scope,
-        ward_code AS customer_ward_code,
-        district_code AS customer_district_code
+? mst 
+user_system_status
 
-    FROM 
-        ${source.platinum}.marketplace_prd_customer_customer customer
-)
-, stg_customer_order AS (
+-- Can create location_code only then join to dim_geo_location
+-? province_code
+-? district_code
+-> ward_code
+-? location_code
+c- config_fc
+-- refer_code
+-- business_type
+-- customer_level
+-- tax_code
+-- supporter
+-- private_note
+-- SOURCE
+-- color
+-- reason_code_ban
+-- tags
+-- supporter_account_id
+-- level_point
+-- total_point
+-- business_name
+-- customer_id_filter
+-- account_id
+-- create_account_pic
+-- first_order_pic
+-- date_of_birth
+-- legal_representative
+-- company_name
+-- loyalty_point
+-- user_last_login
+-- customer_note
+-- is_license
+-- GPHDKCB
+-- GPP
+-- GPKD
+-- DDKKDD
+-- GDP
+-- CCHN
+-- GSP
+c- event_name
+c- circa_pos_code
+*/
+WITH  
+    customer_order AS (
     SELECT
         customer_id,
-        ARRAY_AGG( customer_shipping_address ORDER BY created_time DESC)[0] AS customer_address,
-        ARRAY_AGG( customer_ward_code ORDER BY created_time DESC)[0] AS customer_ward_code,
-        ARRAY_AGG( customer_district_code ORDER BY created_time DESC)[0] AS customer_district_code 
-    FROM ${source.silver}.marketplace_prd_order_v2_order
-    GROUP BY customer_id
+        ARRAY_AGG(customer_shipping_address order by created_time desc)[0] AS customer_address,
+        ARRAY_AGG(customer_ward_code order by created_time desc)[0] AS customer_ward_code,
+        ARRAY_AGG(customer_district_code order by created_time desc)[0] AS customer_district_code 
+    FROM ${source.platinum}.marketplace_prd_order_v2_order
+    GROUP BY 1
+),
+    customer_event AS(
+    SELECT
+        a.phone AS registrant_phone,
+        b.event_name,
+        date(JSON_VALUE(b.extra_props, '$.start_time')) AS created_date_event,
+        ROW_NUMBER() OVER (PARTITION BY a.phone ORDER BY date(JSON_VALUE(b.extra_props, '$.start_time'))) as row_num
+    FROM ${dedup.dedup( source.silver + '.platform_event_prd_management_participant','*')} AS a  
+    LEFT JOIN ${dedup.dedup( source.silver + '.platform_event_prd_management_event','*')} AS b on a.event_id = b.event_id
+),
+stg_province AS (
+    SELECT 
+      DISTINCT
+      province_code,
+      service_area.sales_region_code
+    FROM ${ref('dim_geo_location')} p 
+    INNER JOIN ${ref('dim_fc_service_area')} AS service_area ON service_area.service_area_code = p.province_code
+    WHERE province_code IS NOT NULL
+),
+stg_customer_note AS(
+    SELECT
+      customer_code,
+      ARRAY_AGG(content order by created_time desc)[0] as content
+    FROM ${source.platinum}.marketplace_prd_customer_note
+    GROUP BY 1
 )
 
 js {
@@ -72,27 +136,131 @@ js {
 
 
 SELECT
-    stg_customer.* EXCEPT(  customer_address, customer_ward_code,customer_district_code ),
+
+    ${utils.ToTimezone('customer.created_time')} AS user_created_at,
+    ${utils.ToTimezone('customer.last_updated_time')} AS user_last_updated_at,
+    ${utils.ToTimezone('customer.confirmed_time')} AS user_activated_at,
+    ${utils.ToTimezone('customer.first_order_at')} AS first_order_at,
+    ${utils.ToTimezone('customer.last_order_at')} AS last_order_at,
+    ${utils.ToTimezone('customer.last_deleted_at')} AS last_deleted_at,
+    ${utils.ToTimezone('customer.last_update_status_at')} AS last_update_status_at,
+    ${utils.ToTimezone('customer.last_action_time')} AS last_action_time,
+    ${utils.ToTimezone('b.last_active')} AS user_last_login,
+    customer.customer_id,
+    customer.code AS customer_code,
+    customer.name AS customer_name,
+    customer.email AS customer_email,
+    customer.status AS customer_status,
+    customer.phone AS customer_phone,
+    customer.mst,
+    customer.status AS user_system_status,
+
+    customer.refer_code,
+    customer.scope AS business_scope,
+    customer.level AS customer_level,
+    customer.tax_code,
+    customer.supporter,
+    JSON_VALUE(customer.extra_props, "$.private_note") AS private_note,
+    JSON_VALUE(customer.extra_props, "$.source") AS SOURCE,
+    customer.color,
+    customer.reason_code_ban,
+    TO_JSON_STRING(customer.tags) AS tags,
+    customer.supporter_account_id,
+    customer.level_point,
+    customer.total_point,
+    customer.business_name,
+    CAST(customer.customer_id AS string) AS customer_id_filter,
+    customer.account_id,
+    JSON_VALUE(customer.extra_props, "$.create_account_pic") AS create_account_pic,
+    JSON_VALUE(customer.extra_props, "$.first_order_pic") AS first_order_pic,
+    LEFT(JSON_VALUE(customer.extra_props, "$.date_of_birth"), LENGTH(JSON_VALUE(customer.extra_props, "$.date_of_birth")) - 10)  AS date_of_birth,
+    customer.legal_representative,
+    customer.company_name,
+    customer.point AS loyalty_point,
+
+    note.content AS customer_note,
+    CASE
+      WHEN TO_JSON_STRING(customer.licenses) LIKE "%name%" THEN TRUE
+    ELSE FALSE END AS is_license,
+    CASE
+      WHEN TO_JSON_STRING(customer.examination_and_treatment_license) LIKE "%name%" THEN 1
+    ELSE 0 END AS GPHDKCB,
+    CASE
+      WHEN TO_JSON_STRING(customer.gpp) LIKE "%name%" THEN 1
+    ELSE 0 END AS GPP,
+    CASE
+      WHEN TO_JSON_STRING(customer.licenses) LIKE "%name%" THEN 1
+    ELSE 0 END AS GPKD,
+    CASE
+      WHEN TO_JSON_STRING(customer.pharmacy_eligibility_license) LIKE "%name%" THEN 1
+    ELSE 0 END AS DDKKDD,
+    CASE
+      WHEN TO_JSON_STRING(customer.gdp) LIKE "%name%" THEN 1
+    ELSE 0 END AS GDP,
+    CASE
+      WHEN TO_JSON_STRING(customer.practicing_license) LIKE "%name%" THEN 1
+    ELSE 0 END AS CCHN,
+    CASE
+      WHEN JSON_QUERY(customer.extra_props, '$.gsp') IS NULL OR TO_JSON_STRING(JSON_QUERY(customer.extra_props, '$.gsp')) LIKE "%null%" THEN 0
+    ELSE 1 END AS GSP,
+    concat(c.event_name,"_",c.created_date_event) as event_name,
+
+    pos.code AS circa_pos_code,
+
+    customer.province_code,
+    customer.district_code,
+    customer.ward_code,
+    customer.address,
+    CASE
+        WHEN SAFE_CAST(customer.ward_code AS integer) > 0 THEN customer.ward_code
+        WHEN SAFE_CAST(customer.district_code AS integer) > 0 THEN customer.district_code
+        WHEN SAFE_CAST(customer.province_code AS integer) > 0 THEN customer.province_code
+        ELSE NULL
+    END AS location_code,
+    p.sales_region_code AS config_fc,
 
     CASE
-        ${when_case ('stg_customer.customer_ward_code')}
-        ${when_case ('stg_customer_order.customer_ward_code')}
-        ${when_case ('stg_customer.customer_district_code')}  -- cho trường hợp là đảo, hoặc là user chỉ điền district code
-        ${when_case ('stg_customer_order.customer_district_code')}
+        ${when_case ('customer.ward_code')} 
+        ${when_case ('customer_order.customer_ward_code')}
+        ${when_case ('customer.district_code')}  -- cho trường hợp là đảo, hoặc là user chỉ điền district code
+        ${when_case ('customer_order.customer_district_code')}
         ELSE NULL
     END AS customer_ward_code,
     CASE
-        ${when_case_address ('stg_customer.customer_ward_code')}
-        ${when_case_address ('stg_customer_order.customer_ward_code')}
-        ${when_case_address ('stg_customer.customer_district_code')}  
-        ${when_case_address ('stg_customer_order.customer_district_code')}
+        WHEN customer.ward_code IS NOT NULL AND customer.ward_code NOT LIKE '0' THEN customer.address
+        WHEN customer_order.customer_ward_code IS NOT NULL AND customer_order.customer_ward_code NOT LIKE '0' THEN customer_order.customer_address
+        WHEN customer.district_code IS NOT NULL AND customer.district_code NOT LIKE '0' THEN customer.address  
+        WHEN customer_order.customer_district_code IS NOT NULL AND customer_order.customer_district_code NOT LIKE '0' THEN customer_order.customer_address
         ELSE NULL
-    END AS customer_address
-FROM
-    stg_customer
-LEFT JOIN stg_customer_order ON stg_customer.customer_id = stg_customer_order.customer_id
+    END AS customer_address,
+    CASE
+        WHEN REGEXP_CONTAINS( UPPER(name), r'TECH SELLER|TEST|TECH-QC|TS-TECH|\[TECH\]|\(TECH\)|DEMO|QC|TECH MONITOR|TECH 2') THEN "TECH"
+        WHEN REGEXP_CONTAINS( customer.email, "@buymed|@thuocsi") THEN "EMPLOYEE"
+        WHEN customer.customer_id = 241098 THEN "CONSIGNMENT"
+        WHEN customer.customer_id = 360299 THEN "OPV"
+        WHEN TO_JSON_STRING( customer.tags ) LIKE '%TENDER%' THEN 'TENDER'
+        WHEN TO_JSON_STRING( customer.tags ) LIKE '%\"TERMINATE_CIRCA\"%'  THEN 'MARKETPLACE'
+        WHEN TO_JSON_STRING( customer.tags ) LIKE '%CIRCA%'  THEN 'CIRCA' -- Một số terminate circa vẫn được gán nhãn là circa ví dụ customer_id in (252404,358259,369079)
+        ELSE 'MARKETPLACE' -- Một số order trong dim_order bị xếp loại vào Marketplace trong khi vốn tên có là FC-CIRCA
+    END AS customer_report_category
+FROM ${source.platinum}.marketplace_prd_customer_customer customer
+LEFT JOIN customer_order ON customer.customer_id = customer_order.customer_id
+LEFT JOIN ${source.platinum}.core_prd_account_account AS b ON customer.account_id = b.account_id
+LEFT JOIN stg_customer_note AS note ON note.customer_code = customer.code 
+LEFT JOIN stg_province AS p ON p.province_code = customer.province_code
+LEFT JOIN customer_event as c on c.registrant_phone = customer.phone and c.created_date_event= date(TIMESTAMP_ADD(customer.created_time, INTERVAL 7 hour)) and c.row_num=1
+LEFT JOIN (
+  SELECT
+    code,
+    thuocsi_id
+  FROM buymed_circa.entity_pos_profile
+  WHERE 
+    code IS NOT NULL
+  QUALIFY ROW_NUMBER() OVER(PARTITION BY thuocsi_id) = 1 
+) AS pos ON pos.thuocsi_id = customer.customer_id
 
-
+WHERE customer.name NOT LIKE '%test%'
+AND customer.name NOT LIKE '%TEST%'
 
 post_operations {
     ALTER TABLE ${self()} 

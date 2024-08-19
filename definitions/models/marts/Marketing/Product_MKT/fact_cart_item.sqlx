@@ -7,24 +7,17 @@ config {
         Source: 
             ${source.silver}.monitoring_prd_realtime_supply_margin_sku
         `,
-    columns: {
-        date: "NON-NULL | Margin date in +7 Timezone",
-        product_id: "NON-NULL",
-        sku_code: "NON-NULL",
-        province_code: "NON-NULL",
-        total_price: "Total ordered amount of SKU in Margin Date",
-        total_purchasing_value: "Total purchasing amount of SKU in Margin Date",
-        total_quantity: "Total ordered quantity of SKU in Margin Date",
-        sales_region_code: "NON-NULL",
-    },
     tags: ["0h30"]
 }
 
 with region as (
-  select area, province_code
-  from gold_buymed_vn.dim_province
-  QUALIFY 
-    ROW_NUMBER() OVER (PARTITION BY province_code ORDER BY area DESC) = 1
+    select
+        sa.sales_region_code as area,
+        gl.province_code
+    from gold_buymed_vn2.dim_geo_location as gl
+    left join gold_buymed_vn2.dim_fc_service_area as sa
+    on gl.province_code = sa.service_area_code
+    where gl.location_class = 'PROVINCE'
 ),
 
 cart as (
@@ -46,7 +39,7 @@ select
   extract(hour from timestamp_add(ct.created_time, interval 7 hour)) as created_hour,
   ct.sku,
   ct.ref_cart,
-  concat(ct.sku, "_", c.sale_region) as sku_fc_code,
+  concat(s.sku_key, "_", c.sale_region) as sku_fc_code,
   c.customer_id,
   ct.cart_id,
   ct.current_price,
@@ -57,6 +50,8 @@ from platinum_buymed_vn.marketplace_prd_cart_cart_item as ct
 left join cart as c
   on ct.ref_cart = c.ref_cart_item
   and ct.cart_id = c.cart_id
+LEFT JOIN gold_buymed_vn2.dim_sku as s
+  ON ct.sku = s.sku_code
 where Date(timestamp_add(ct.created_time, interval 7 hour)) >= DATE_SUB(CURRENT_DATE(), INTERVAL 3 MONTH)
 QUALIFY
   ROW_NUMBER() OVER (PARTITION BY ct.ref_cart, ct.sku ORDER BY ct.ingest_time DESC) = 1

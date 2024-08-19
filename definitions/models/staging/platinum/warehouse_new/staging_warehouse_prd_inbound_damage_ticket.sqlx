@@ -1,7 +1,8 @@
 
+
 config {
     type: "incremental",
-    name: "marketplace_prd_product_v2_sku",
+    name: "warehouse_prd_inbound_damage_ticket",
     schema: "platinum_buymed_vn",
     assertions: {
         uniqueKey: 'mg_id',
@@ -27,13 +28,13 @@ pre_operations {
       CREATE OR REPLACE TEMP TABLE range_created_time_table AS (
        SELECT MIN(DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))) AS min_created_date,
         MAX(DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))) AS max_created_date
-        FROM ${source.silver}.marketplace_prd_product_v2_sku 
+        FROM ${source.silver}.warehouse_prd_inbound_damage_ticket 
         WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) AND action != "d"
       );
 
       CREATE OR REPLACE TEMP TABLE get_deleted_record AS (
           SELECT mg_id 
-          FROM ${source.silver}.marketplace_prd_product_v2_sku 
+          FROM ${source.silver}.warehouse_prd_inbound_damage_ticket 
           WHERE  ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) and 
           created_time IS NULL AND last_updated_time IS NULL
         );
@@ -50,12 +51,12 @@ pre_operations {
 }
 
 SELECT
- *,
+ * ,
  CASE 
     WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
     ELSE "2099-01-01"
   END AS created_date
-FROM ${source.silver}.marketplace_prd_product_v2_sku o 
+FROM ${source.silver}.warehouse_prd_inbound_damage_ticket o 
  ${
     when(incremental(), 
       `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) 
@@ -109,8 +110,8 @@ post_operations {
         
         CREATE OR REPLACE TEMP TABLE get_range_deleted AS (
           SELECT 
-            MAX(created_date) AS min_created_date_deleted, 
-            MIN(created_date) AS max_created_date_deleted 
+            MIN(created_date) AS min_created_date_deleted, 
+            MAX(created_date) AS max_created_date_deleted 
           FROM ${self()} 
           WHERE mg_id IN (SELECT mg_id FROM get_deleted_record) 
             AND created_date != "2099-01-01" 
@@ -133,3 +134,4 @@ post_operations {
     )
   }
 }
+

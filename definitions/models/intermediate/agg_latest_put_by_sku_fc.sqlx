@@ -8,18 +8,18 @@ WITH LatestPut AS (
     SELECT
         a.sku,
         a.warehouse_code,
-        MAX(a.created_time) AS latest_put_time
-    FROM ${ref("dedup_warehouse_prd_inbound_put_ticket_item")} a
-    JOIN ${ref("dedup_warehouse_prd_inbound_put_ticket")} b
+        MAX(b.end_put_time) AS latest_put_time
+    FROM ${source.platinum}.warehouse_prd_inbound_put_ticket_item a
+    JOIN ${source.platinum}.warehouse_prd_inbound_put_ticket b
         ON a.put_code = b.code
     LEFT JOIN ${ref("dim_inbound_ticket")} c
         ON json_value(b.extra_props, "$.inbound_code") = c.po_code
-    WHERE c.inbound_type = "PURCHASE"
+    WHERE c.inbound_type = "PURCHASE" AND b.status <> "CANCEL"
     GROUP BY 1, 2
     
 )
 
-SELECT
+SELECT DISTINCT
     l.sku,
     l.warehouse_code,
     l.latest_put_time,
@@ -27,9 +27,9 @@ SELECT
     b.code AS latest_put_code,
     json_value(b.extra_props, "$.inbound_code") AS latest_inbound_code
 FROM LatestPut l
-JOIN ${ref("dedup_warehouse_prd_inbound_put_ticket_item")} a
+JOIN ${source.platinum}.warehouse_prd_inbound_put_ticket_item a
     ON l.sku = a.sku
     AND l.warehouse_code = a.warehouse_code
-    AND l.latest_put_time = a.created_time
-JOIN ${ref("dedup_warehouse_prd_inbound_put_ticket")} b
+JOIN ${source.platinum}.warehouse_prd_inbound_put_ticket b
     ON a.put_code = b.code
+    AND l.latest_put_time = b.end_put_time

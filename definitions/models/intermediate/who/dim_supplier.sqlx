@@ -6,18 +6,31 @@ config {
     name: "dim_supplier",
     tags: ["custom_1h_past5"],
     assertions:{
-        uniqueKey:'supplier_code'
+        uniqueKey:'supplier_code',
+        nonNull: ('supplier_code')
     },
     columns: {
         supplier_code: docs.supplier_code,
+        supplier_id: "Primary Key in Integer",
+        supplier_name:"It assigns the supplier's name based on their class; if the class is 'INTERNAL' or 'PURCHASER', the code is used as the name, otherwise, the name field is used.",
+        
+        created_at: "When the supplier created",
+        confirmed_at: "When we confirmed the supplier",
+
         supplier_type:"It categorizes suppliers into different types: Enterprise, Individual and so on",
         supplier_sku_trading_type: "Categorizes as NON-TRADING if the supplier is not the favorite vendor of any sku item, otherwise equals to seller_type",
         supplier_class:"Seller-External, Seller-Internal, or Vendor",
-        supplier_name:"It assigns the supplier's name based on their class; if the class is 'INTERNAL' or 'PURCHASER', the code is used as the name, otherwise, the name field is used.",
+        
         supplier_status:`Status of supplier, can be one of (ACTIVE, STOP_COOPERATING, DRAFT, INACTIVE)`
     }
 }
-
+/*
+    supplier_system_status -> supplier_status
+    phone -> supplier_phone
+    email -> supplier_email
+    province -> province_name
+    seller_pic -> supplier_pic
+*/
 /*
     supplier_type:
         - INDIVIDUAL:
@@ -31,28 +44,52 @@ config {
 
 
 SELECT 
-    s.code AS supplier_code,          -- primary key, 
-    s.seller_id AS supplier_id,
-    IF ( s.seller_type IS NULL , "UNKNOWN", s.seller_type ) AS supplier_type,  -- 310 null,  6 unique value
-    IF ( 
+    s.code AS supplier_code          -- primary key, 
+    , s.seller_id AS supplier_id
+    , CASE
+        WHEN s.seller_class in ("INTERNAL", "PURCHASER") THEN s.code
+        ELSE s.name
+    END AS supplier_name
+    , s.status AS supplier_status
+    , s.seller_type AS supplier_type  -- 310 null,  6 unique value -- null means unknown
+    , IF ( 
         REGEXP_CONTAINS( UPPER(s.name), r'TECH SELLER|TEST|TECH-QC|TS-TECH|\[TECH\]|\(TECH\)|DEMO|QC|TECH MONITOR|TECH 2')
-        AND NOT name LIKE "Abbott  test- Sang Pharma" , 
+        AND NOT s.name LIKE "Abbott  test- Sang Pharma" , 
         "TECH" ,
         s.seller_class ) 
-    AS supplier_class, -- not null,  4 unique value
-    CASE
-        WHEN s.seller_class in ("INTERNAL", "PURCHASER") THEN code
-        ELSE name
-    END as supplier_name,
-    s.status AS supplier_status,
-    s.extra_props as supplier_extra_props
-
-FROM
-    ${dedup.dedup(
-        source.silver + `.seller_prd_core_seller`,
-        "*"
-    )} s
-
+    AS supplier_class -- not null,  4 unique value
+    , acc.fullname AS supplier_pic
+    , s.email AS supplier_email
+    , s.is_vip
+    , s.phone AS supplier_phone
+    , p.province_name
+    , p.province_code
+    , p.sales_region_code
+    , s.contract_status
+    , s.line_manager
+    , if (s.line_manager is null or s.line_manager = "", 
+                s.name,
+                cmv.name
+    ) as commercial_supplier_name
+    ,s.extra_props as supplier_extra_props
+    ,s.inbound_addresses
+    , ${utils.ToTimezone('s.created_time')} as created_at
+    , ${utils.ToTimezone('s.last_updated_time')} as last_updated_at
+    , ${utils.ToTimezone('s.approved_time')} as approved_at
+    , ${utils.ToTimezone('coalesce(s.confirmed_time, s.approved_time)')} as confirmed_at
+FROM    ${source.platinum}.seller_prd_core_seller s
+LEFT JOIN  ${source.platinum}.seller_prd_core_seller AS cmv on s.line_manager = cmv.code
+LEFT JOIN ${ref('dim_employee')} as acc on s.pic_account_id = acc.employee_id
+LEFT JOIN (
+    SELECT 
+      DISTINCT
+      province_code,
+      province_name,
+      service_area.sales_region_code
+    FROM ${ref('dim_geo_location')} p 
+    INNER JOIN ${ref('dim_fc_service_area')} AS service_area ON service_area.service_area_code = p.province_code
+    WHERE province_code IS NOT NULL
+) p on s.province_code = p.province_code
 post_operations {
     ALTER TABLE ${self()} ALTER COLUMN supplier_type SET DEFAULT "UNKNOWN";
     ALTER TABLE ${self()} ADD PRIMARY KEY (supplier_code) NOT ENFORCED;
