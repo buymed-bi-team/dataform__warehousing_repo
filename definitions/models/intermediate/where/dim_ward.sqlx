@@ -1,0 +1,15 @@
+config {
+    type: "view",
+    description: `PIC: nguyen.tran;
+    Source: 
+        ${source.ref}.dim_geo_location`
+}
+
+SELECT 
+	location_code AS ward_code,
+	ward_name,
+	district_name,
+	province_name,
+	region_name
+FROM ${ref('dim_geo_location')}
+WHERE location_class = 'WARD'
