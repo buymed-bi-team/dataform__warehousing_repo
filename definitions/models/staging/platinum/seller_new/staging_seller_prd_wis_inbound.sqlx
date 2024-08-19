@@ -52,6 +52,12 @@ pre_operations {
   }
 }
 
+WITH deleted_records_table AS (
+  SELECT mg_id
+  FROM ${source.silver}.seller_prd_purchasing_vendor_bill_item
+  WHERE action = 'd'
+    AND date(ingest_time) >= current_date() - 1
+)
 SELECT
  *,
  CASE 
@@ -61,7 +67,7 @@ SELECT
 FROM ${source.silver}.seller_prd_wis_inbound o 
  ${
     when(incremental(), 
-      `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) 
+      `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) and mg_id not in (select mg_id from deleted_records_table)
       QUALIFY ROW_NUMBER() OVER (_window) = 1`,
       `QUALIFY ROW_NUMBER() OVER (_window) = 1
        AND FIRST_VALUE(action) OVER (_window) <> 'd'`
