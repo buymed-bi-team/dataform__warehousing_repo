@@ -2,8 +2,8 @@
 
 config {
     type: "incremental",
-    name: "platform_finance_prd_budget_payment_request_cost",
-    schema: "platinum_buymed_vn_restricted",
+    name: "platform_accounting_prd_reconcile_reconcile",
+    schema: "platinum_buymed_vn",
     assertions: {
         uniqueKey: 'mg_id',
         nonNull: ["created_date"]
@@ -11,7 +11,7 @@ config {
     bigquery: {
         partitionBy: "created_date"
     },
-    tags: ["another_custom_2h_past5"]
+    tags:["custom_2h_past5"]
 }
 
 pre_operations {
@@ -29,13 +29,13 @@ pre_operations {
       CREATE OR REPLACE TEMP TABLE range_created_time_table AS (
        SELECT MIN(DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))) AS min_created_date,
         MAX(DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))) AS max_created_date
-        FROM ${source.silver_restricted}.platform_finance_prd_budget_payment_request_cost 
+        FROM ${source.silver}.platform_accounting_prd_reconcile_reconcile 
         WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) AND action != "d"
       );
 
       CREATE OR REPLACE TEMP TABLE get_deleted_record AS (
           SELECT mg_id 
-          FROM ${source.silver_restricted}.platform_finance_prd_budget_payment_request_cost 
+          FROM ${source.silver}.platform_accounting_prd_reconcile_reconcile 
           WHERE  ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) and 
           created_time IS NULL AND last_updated_time IS NULL
         );
@@ -52,12 +52,12 @@ pre_operations {
 }
 
 SELECT
- *,
+ * ,
  CASE 
     WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
     ELSE "2099-01-01"
   END AS created_date
-FROM ${source.silver_restricted}.platform_finance_prd_budget_payment_request_cost o 
+FROM ${source.silver}.platform_accounting_prd_reconcile_reconcile o 
  ${
     when(incremental(), 
       `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) 
@@ -135,3 +135,4 @@ post_operations {
     )
   }
 }
+

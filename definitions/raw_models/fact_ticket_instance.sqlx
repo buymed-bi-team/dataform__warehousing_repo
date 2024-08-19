@@ -1,0 +1,47 @@
+config {
+    type: "table",
+    tags: ["adhoc-office"],
+    dependencies: ["platform_organization_prd_ticket_ticket_instance"],
+    name: "fact_ticket_instance",
+    description: "PIC: tu.dang; model_type: table; Schedule: At minute 5 past hour 7, 10, 13, 16 and 19",
+    bigquery: {
+    partitionBy: "created_date"
+  }
+}
+select requester_code,
+       requester_name,
+       clasify,
+       JSON_EXTRACT_SCALAR(a,'$.department_code') as department_code,
+       org_id,
+       priority,
+       template_topic_code,
+       ticket_instance_code,
+       name as ticket_name,
+       JSON_EXTRACT_SCALAR(input_data,'$.userDescription') as user_description,
+       cause_code,
+       assignee_account_id,
+       DATETIME(PARSE_TIMESTAMP('%Y-%m-%dT%H:%M:%E*S%Ez',JSON_EXTRACT_SCALAR(JSON_EXTRACT(decision_selecteds,'$[0]'),'$.decision_time')), "Asia/Ho_Chi_Minh") as first_decision_time,
+       DATETIME(PARSE_TIMESTAMP('%Y-%m-%dT%H:%M:%E*S%Ez',JSON_EXTRACT_SCALAR(JSON_EXTRACT(decision_selecteds,'$[1]'),'$.decision_time')), "Asia/Ho_Chi_Minh") as second_decision_time,
+       status as ticket_status,
+       JSON_EXTRACT_SCALAR(JSON_EXTRACT(decision_selecteds,'$[0]'),'$.name') as first_decision_name,
+       JSON_EXTRACT_SCALAR(JSON_EXTRACT(decision_selecteds,'$[1]'),'$.name') as senconde_decision_name,
+       created_date,
+       requester_type,
+       created_by_account_name,
+       assignee_account_name,
+       assignee_account_email,
+       template_module_code,
+       branch_code,
+       DATETIME(picked_time, "Asia/Ho_Chi_Minh") AS picked_time,
+       DATETIME(created_time, "Asia/Ho_Chi_Minh") AS created_time,
+       DATETIME(deadline_time, "Asia/Ho_Chi_Minh") AS deadline_time,
+       root_ticket_instance_code,
+       DATETIME(PARSE_TIMESTAMP('%Y-%m-%dT%H:%M:%E*S%Ez',JSON_EXTRACT_SCALAR(extra_props,'$.completed_time')), "Asia/Ho_Chi_Minh") as completed_time
+from `${source.platinum}.platform_organization_prd_ticket_ticket_instance`,
+
+     unnest(JSON_EXTRACT_ARRAY(assign_roles,'$')) a,
+     unnest(JSON_EXTRACT_ARRAY(decision_selecteds,'$')) b
+-- where key like 'a0110ebd-0265-4bcb-832a-78322d27c34f'
+-- requester_type like "CIRCA_FS" or
+-- template_module_code like "CIRCA_FS" and branch_code like "VN"
+QUALIFY ROW_NUMBER() OVER(partition by ticket_instance_code ) = 1
