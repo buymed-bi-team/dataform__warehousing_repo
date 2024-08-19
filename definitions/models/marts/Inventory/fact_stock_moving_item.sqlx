@@ -114,7 +114,7 @@ WITH cte_date as (
             SELECT
                 sku_code
                 , o.sales_region_code
-                , SAFE_DIVIDE(SUM(demand_quantity * sales_price_original) , SUM(demand_quantity)) AS price
+                , SAFE_DIVIDE(SUM(demand_quantity * sales_price) , SUM(demand_quantity)) AS price
             FROM ${ref('fact_order_item')} AS oi
                 LEFT JOIN ${ref('dim_order')} AS o USING(order_id)
             WHERE 
@@ -172,5 +172,3 @@ FROM (
             USING(fc_code, sku_code)
 ) AS a
     LEFT JOIN alt_price AS b USING(sku_code)
-
-
