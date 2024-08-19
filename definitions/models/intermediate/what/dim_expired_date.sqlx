@@ -11,33 +11,48 @@ config {
 SELECT DISTINCT
     expired_date,
     CASE 
-        WHEN LENGTH(expired_date) = 6 THEN
+        -- Handle 6-character dates (DDMMYY or MMDDYY)
+        WHEN LENGTH(expired_date) = 6 AND 
+            SAFE_CAST(SUBSTR(expired_date, 3, 2) AS INT64) BETWEEN 1 AND 12 AND
+            SAFE_CAST(SUBSTR(expired_date, 1, 2) AS INT64) BETWEEN 1 AND 31 THEN
             CASE 
                 WHEN SAFE_CAST(SUBSTR(expired_date, 3, 2) AS INT64) <= 12 THEN
-                    PARSE_DATE('%Y-%m-%d', CONCAT('20', SUBSTR(expired_date, 5, 2), '-', SUBSTR(expired_date, 3, 2), '-', SUBSTR(expired_date, 1, 2)))
+                    SAFE.PARSE_DATE('%d%m%y', expired_date)
                 ELSE 
-                    PARSE_DATE('%Y-%m-%d', CONCAT('20', SUBSTR(expired_date, 5, 2), '-', SUBSTR(expired_date, 1, 2), '-', SUBSTR(expired_date, 3, 2)))
+                    SAFE.PARSE_DATE('%m%d%y', expired_date)
             END
-        WHEN LENGTH(expired_date) = 8 THEN
+        
+        -- Handle 8-character dates (DDMMYYYY or MMDDYYYY)
+        WHEN LENGTH(expired_date) = 8 AND 
+            SAFE_CAST(SUBSTR(expired_date, 3, 2) AS INT64) BETWEEN 1 AND 12 AND
+            SAFE_CAST(SUBSTR(expired_date, 1, 2) AS INT64) BETWEEN 1 AND 31 THEN
             CASE 
                 WHEN SAFE_CAST(SUBSTR(expired_date, 3, 2) AS INT64) <= 12 THEN
-                    PARSE_DATE('%d%m%Y', expired_date)
+                    SAFE.PARSE_DATE('%d%m%Y', expired_date)
                 ELSE 
-                    PARSE_DATE('%m%d%Y', expired_date)
+                    SAFE.PARSE_DATE('%m%d%Y', expired_date)
             END
-        WHEN LENGTH(expired_date) = 10 THEN
+        
+        -- Handle 10-character dates (DD-MM-YYYY or MM-DD-YYYY)
+        WHEN LENGTH(expired_date) = 10 AND 
+            SAFE_CAST(SUBSTR(expired_date, 4, 2) AS INT64) BETWEEN 1 AND 12 AND
+            SAFE_CAST(SUBSTR(expired_date, 1, 2) AS INT64) BETWEEN 1 AND 31 THEN
             CASE 
                 WHEN SAFE_CAST(SUBSTR(expired_date, 4, 2) AS INT64) <= 12 THEN
-                    PARSE_DATE('%d-%m-%Y', expired_date)
+                    SAFE.PARSE_DATE('%d-%m-%Y', expired_date)
                 ELSE 
-                    PARSE_DATE('%m-%d-%Y', expired_date)
+                    SAFE.PARSE_DATE('%m-%d-%Y', expired_date)
             END
-        WHEN LENGTH(expired_date) = 24 THEN
+        
+        -- Handle 24-character dates (datetime format with full timestamp)
+        WHEN LENGTH(expired_date) = 24 AND
+            SAFE_CAST(SUBSTR(expired_date, 6, 2) AS INT64) BETWEEN 1 AND 12 AND
+            SAFE_CAST(SUBSTR(expired_date, 3, 2) AS INT64) BETWEEN 1 AND 31 THEN
             CASE 
                 WHEN SAFE_CAST(SUBSTR(expired_date, 6, 2) AS INT64) <= 12 THEN
-                    PARSE_DATE('%Y-%m-%d', CONCAT(SUBSTR(expired_date, 21, 4), '-', SUBSTR(expired_date, 6, 2), '-', SUBSTR(expired_date, 3, 2)))
+                    SAFE.PARSE_DATE('%Y-%m-%d', CONCAT(SUBSTR(expired_date, 21, 4), '-', SUBSTR(expired_date, 6, 2), '-', SUBSTR(expired_date, 3, 2)))
                 ELSE 
-                    PARSE_DATE('%Y-%m-%d', CONCAT(SUBSTR(expired_date, 21, 4), '-', SUBSTR(expired_date, 3, 2), '-', SUBSTR(expired_date, 6, 2)))
+                    SAFE.PARSE_DATE('%Y-%m-%d', CONCAT(SUBSTR(expired_date, 21, 4), '-', SUBSTR(expired_date, 3, 2), '-', SUBSTR(expired_date, 6, 2)))
             END
         ELSE
             NULL

@@ -23,21 +23,21 @@ WITH cte_date as (
 )
 
 , cte_origin AS (
-SELECT 
-  iti.mg_id
-  , iti.transfer_id
-  , iti.reference
-  , timestamp_add(iti.created_time, interval 7 hour) ts_created
-  , iti.warehouse_code as fc_code
-  , iti.status
-  , iti.sku as sku_code
-  , iti.from_location as location_from
-  , iti.to_location as location_to
-  , iti.demand_quantity
-  , iti.done_quantity
-  , iti.location_details
-FROM ${source.platinum}.warehouse_prd_inventory_transfer_sku AS iti
-WHERE
+  SELECT 
+    iti.mg_id
+    , iti.transfer_id
+    , iti.reference
+    , timestamp_add(iti.created_time, interval 7 hour) ts_created
+    , iti.warehouse_code as fc_code
+    , iti.status
+    , iti.sku as sku_code
+    , iti.from_location as location_from
+    , iti.to_location as location_to
+    , iti.demand_quantity
+    , iti.done_quantity
+    , iti.location_details
+  FROM ${source.platinum}.warehouse_prd_inventory_transfer_sku AS iti
+  WHERE
   iti.created_date >= (select DATE(start_date) from cte_date)
 --   and ifnull( iti.created_time, current_timestamp ) >= (select start_date from cte_date)
   -- and iti.transfer_id = 16630538
@@ -48,34 +48,34 @@ WHERE
 )
 
 , cte_LocationDetail AS (
-SELECT 
-  a.mg_id
-  , a.transfer_id
-  , a.reference
-  , a.ts_created
-  , a.fc_code
-  , a.status
-  , a.sku_code
-  , COALESCE(a.location_from, json_value(item.location_code)) as location_from
-  , a.location_to
-  , a.demand_quantity
-  , COALESCE(a.done_quantity, SAFE_CAST(json_value(item.done_quantity) AS INT64)) as done_quantity
-FROM 
-  cte_origin AS a,
-  UNNEST(json_query_array(location_details)) as item
+  SELECT 
+    a.mg_id
+    , a.transfer_id
+    , a.reference
+    , a.ts_created
+    , a.fc_code
+    , a.status
+    , a.sku_code
+    , COALESCE(a.location_from, json_value(item.location_code)) as location_from
+    , a.location_to
+    , a.demand_quantity
+    , COALESCE(a.done_quantity, SAFE_CAST(json_value(item.done_quantity) AS INT64)) as done_quantity
+  FROM 
+    cte_origin AS a,
+    UNNEST(json_query_array(location_details)) as item
 )
 
 , cte_Normal AS (
-SELECT * EXCEPT (location_details)
-FROM cte_origin AS a
-WHERE
-  a.mg_id not in (SELECT mg_id FROM cte_LocationDetail)
+  SELECT * EXCEPT (location_details)
+  FROM cte_origin AS a
+  WHERE
+    a.mg_id not in (SELECT mg_id FROM cte_LocationDetail)
 )
 
 , cte_Item AS (
-SELECT * FROM cte_LocationDetail
-UNION ALL
-SELECT * FROM cte_Normal
+  SELECT * FROM cte_LocationDetail
+  UNION ALL
+  SELECT * FROM cte_Normal
 )
 
 , stock_moving AS (
@@ -93,7 +93,7 @@ SELECT * FROM cte_Normal
         WHEN destination_location = "WH-MISSING" AND source_location <> 'WH-MAIN' THEN "MISSING-OTHER"
       END AS missing_type
   FROM cte_Item AS a
-  LEFT JOIN ${source.platinum}.warehouse_prd_inventory_transfer AS b on a.transfer_id = b.transfer_id
+    LEFT JOIN ${source.platinum}.warehouse_prd_inventory_transfer AS b on a.transfer_id = b.transfer_id
   WHERE
     b.type in ('AUDIT', 'PICK', 'INBOUND', 'INTERNAL', 'CUSTOMER_RETURN', 'MISSING', 'DAMAGE_RETURN')
 )
@@ -135,6 +135,26 @@ SELECT
     a.* EXCEPT (res)
     , DATE(a.ts_moving_done) AS moving_date
     , IF(res > 0, res, b.alt_price) AS price_unit
+    , CASE fc_code
+          WHEN "HN" THEN
+              CASE missing_type
+                  WHEN "MISSING-OUT" THEN FORMAT_DATE("%Y-%m", DATE(a.ts_moving_done))
+                  ELSE IF(
+                      EXTRACT(DAY FROM DATE(a.ts_moving_done)) >= 27,
+                      FORMAT_DATE("%Y-%m", DATE_ADD(DATE(a.ts_moving_done), INTERVAL 1 MONTH)),
+                      FORMAT_DATE("%Y-%m", DATE(a.ts_moving_done))
+                  )
+              END
+          ELSE
+              CASE missing_type
+                  WHEN "MISSING-OUT" THEN FORMAT_DATE("%Y-%m", DATE(a.ts_moving_done))
+                  ELSE IF(
+                      EXTRACT(DAY FROM DATE(a.ts_moving_done)) >= 16,
+                      FORMAT_DATE("%Y-%m", DATE_ADD(DATE(a.ts_moving_done), INTERVAL 1 MONTH)),
+                      FORMAT_DATE("%Y-%m", DATE(a.ts_moving_done))
+                  )
+              END
+      END AS year_month_missing
 FROM (
     SELECT
         sm.*
