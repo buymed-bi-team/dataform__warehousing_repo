@@ -1,6 +1,7 @@
 config {
     type: "table",
     description: `PIC: minh.luu, schedule: 0h00 daily
+    The accounting system retrieves some details from the marketplace system
     Source
         ${source.platinum}.marketplace_prd_order_v2_order
         ${source.platinum}.marketplace_prd_order_v2_order_item`,
@@ -9,7 +10,7 @@ config {
         product_id: "Nullable",
         created_time: "NonNull | Timezone in +7",
         outbound_time: "Nullable | Timezone in +7",
-        outbound_quantity: "Nullable | the product quantity to delivery ",
+        outbound_quantity: "Nullable | the quantity of products have be shipped from warehouse",
         price: "Nullable",
         outbound_amount: "Nullable | outbound_quatity * price for each product"
     },
