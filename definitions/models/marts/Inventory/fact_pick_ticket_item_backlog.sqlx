@@ -17,6 +17,7 @@ SELECT
     pti.so as order_code,
     so.status as order_status,
     pt.status as ticket_status,
+    pt.warehouse_code as fc_code,
     pti.tags,
     pti.sku as sku_code,
     pti.erp_product_id as product_id,
