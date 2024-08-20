@@ -8,10 +8,11 @@ config {
         Refresh Schedule: hourly;
         Source: 
             ${source.platinum}.marketplace_prd_product_v2,
-            ${source.gold}.dim_sku_fc_person_in_charge,
+            ${source.ref}.dim_sku_item_person_in_charge,
+            ${source.ref}.dim_supplier_fc_person_in_charge,
             ${source.platinum}.seller_prd_purchasing_initial_stock_draft,
             ${source.ref}.dim_inventory_sku',
-            ${source.gold}.dim_sku_vendor,
+            ${source.ref}.dim_sku_item_vendors,
             ${source.silver}.marketplace_prd_product_v2_sku_limit,
             ${source.gold}.adhoc_pricing_agg_vendor_bill_price,
             ${source.ref}.dim_sku,
@@ -141,8 +142,8 @@ SELECT
     s.dynamic_pricing_level,
     s.pricing_strategy,
     s.purchase_price,
-    pic.pic_account_id,
-    pic.pic_name,
+    COALESCE(pic.pic_purchase_id, pic1.pic_purchase_id) AS pic_account_id,
+    COALESCE(pic.pic_purchase_name, pic1.pic_purchase_name) AS pic_name,
     cic.cic_account_id,
     cic.cic_name,
     cic.brand_type,
@@ -190,14 +191,16 @@ SELECT
 FROM cte_full AS cte
     LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_sku AS s
         ON s.mg_id = cte.mg_id
-    LEFT JOIN ${source.gold}.dim_sku_fc_person_in_charge AS pic
+    LEFT JOIN ${ref('dim_sku_item_person_in_charge')} AS pic
         ON pic.sku_code = cte.sku_code AND pic.fc_code = cte.fc_code
+    LEFT JOIN ${ref('dim_supplier_fc_person_in_charge')} AS pic1
+        ON pic1.supplier_code = s.seller_code AND pic1.fc_code = cte.fc_code
     LEFT JOIN ${source.platinum}.seller_prd_purchasing_initial_stock_draft AS isd
         ON isd.sku = cte.sku_code AND isd.warehouse_code = cte.fc_code
     LEFT JOIN ${ref('dim_inventory_sku')} AS ins
         ON ins.sku = cte.sku_code AND ins.fc_code = cte.fc_code
-    LEFT JOIN ${source.gold}.dim_sku_vendor AS sv
-        ON sv.sku_code = cte.sku_code AND sv.fc_code = cte.fc_code AND sv.priority = 0
+    LEFT JOIN ${ref('dim_sku_item_vendors')} AS sv
+        ON sv.sku_code = cte.sku_code AND sv.fc_code = cte.fc_code AND sv.vendor_priority = 0
     LEFT JOIN dedup_cic AS cic
         ON cic.product_id = s.product_id AND cic.fc_code = cte.fc_code
     LEFT JOIN dedup_catm AS catm

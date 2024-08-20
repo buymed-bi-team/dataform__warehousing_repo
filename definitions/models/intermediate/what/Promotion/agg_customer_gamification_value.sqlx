@@ -1,0 +1,22 @@
+config {
+    type: "table", 
+    description: 
+        `
+        List of customers participating in Gamification;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.ref}.agg_order_gamification
+        `,
+    tags: ["custom_1h_past5"]
+}
+
+SELECT
+    customer_id
+    , gamification_code
+    , min_total_value
+    , SUM(ordered_amount) AS ordered_amount
+    , SUM(value_by_condition) AS value_by_condition
+FROM ${ref('agg_order_gamification')}
+GROUP BY ALL

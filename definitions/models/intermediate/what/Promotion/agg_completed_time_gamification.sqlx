@@ -1,0 +1,49 @@
+config {
+    type: "table", 
+    description: 
+        `
+        Mission Completed Time of Customers in Gamification;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.ref}.agg_order_gamification
+        `,
+    tags: ["custom_1h_past5"]
+}
+
+WITH
+    cte_value  AS (
+        SELECT
+            *,
+            SUM(value_by_condition) OVER(
+                PARTITION BY customer_id
+                ORDER BY order_created_at
+                ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+            ) AS cummulative_value
+        FROM ${ref('agg_order_gamification')}
+        ORDER BY customer_id, order_created_at DESC
+    )
+
+SELECT
+    customer_id
+    , a.gamification_code
+    , min_total_value
+    , order_id
+    , order_created_at
+    , cummulative_value
+    , COALESCE(level, min_total_value) AS level
+FROM cte_value AS a
+LEFT JOIN (
+    SELECT
+        code AS gamification_code
+        , SAFE_CAST(value AS INT64) AS  level
+    FROM ${source.collector}.data_prd
+    WHERE
+        object = 'Product'
+        AND type = 'GAMIFICATION_LEVEL'
+        AND submit_id >= 4721
+    QUALIFY RANK() over (PARTITION BY code, object, type ORDER BY submit_id DESC ) = 1
+) AS b ON a.gamification_code = b.gamification_code
+WHERE cummulative_value >= COALESCE(level, min_total_value)
+QUALIFY ROW_NUMBER() over (PARTITION BY customer_id, a.gamification_code, level ORDER BY cummulative_value) = 1

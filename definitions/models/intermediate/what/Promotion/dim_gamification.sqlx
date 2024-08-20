@@ -1,0 +1,46 @@
+config {
+    type: "table", 
+    description: 
+        `
+        Gamification Dimension;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.platinum}.marketplace_prd_promotion_gamification,
+            ${source.platinum}.marketplace_prd_promotion_gamification_detail
+        `,
+    tags: ["custom_1h_past5"]
+}
+
+SELECT
+    a.gamification_id
+    , a.gamification_code
+    , a.name AS gamification_name
+    , TIMESTAMP_ADD(a.start_time, INTERVAL 7 HOUR) AS start_time
+    , TIMESTAMP_ADD(a.end_time, INTERVAL 7 HOUR) AS end_time
+    , REGEXP_REPLACE(a.description, r'\\n|\\', '') AS description
+    , a.scope
+    , b.condition
+    , JSON_VALUE(b.condition.order_status) AS order_status_condition
+    , CASE
+        WHEN JSON_VALUE(b.condition.order_status) = 'DELIVERED' THEN 6
+        WHEN JSON_VALUE(b.condition.order_status) = 'COMPLETED' THEN 7
+    END AS order_status_seq
+    , JSON_VALUE(b.condition.kind_of_value) AS kind_of_value
+    , SAFE_CAST(JSON_VALUE(b.condition.min_total_value) AS INT64) AS min_total_value
+FROM ${source.platinum}.marketplace_prd_promotion_gamification AS a
+    LEFT JOIN ${source.platinum}.marketplace_prd_promotion_gamification_detail AS b 
+        ON a.gamification_code = b.gamification_code
+    LEFT JOIN (
+        SELECT
+            code AS gamification_code
+            , value as gamification_brand
+        FROM ${source.collector}.data_prd
+        WHERE
+            object = 'Product'
+            AND type = 'CAMPAIGN_BRAND'
+        QUALIFY ROW_NUMBER() over (PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
+    ) AS c ON a.gamification_code = c.gamification_code
+WHERE 
+    c.gamification_code IS NOT NULL

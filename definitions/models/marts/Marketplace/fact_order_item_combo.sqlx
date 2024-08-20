@@ -25,6 +25,7 @@ cte_order_item as (
         , oi.extra_props
         , oi.product_id
         , oi.sku as sku_code
+        , CONCAT(oi.product_id, "_", oi.seller_code) AS sku_key
         , oi.item_code
         , oi.seller_code
         , oi.type as item_type
@@ -75,6 +76,7 @@ select
   -- , oi.product_id
   , safe_cast( json_extract_scalar( bom.product_id ) as INT64 ) as product_bom_id
   , oi.sku_code
+  , oi.sku_key
   , oi.item_code
   , oi.sales_price as combo_price
   -- , oi.seller_price
@@ -118,6 +120,7 @@ select
   , promotion_amount
   , seller_code
   , sku_code as sku_orignal_code
+  , sku_key as sku_orignal_key
   , item_code as item_original_code
   , sku_bom_code as sku_code
   , item_bom_code as item_code
@@ -168,6 +171,7 @@ cte_normal_item as (
   ) as promotion_amount
     , oi.seller_code
     , oi.sku_code as sku_orignal_code
+    , oi.sku_key as sku_orignal_key
     , oi.item_code as item_original_code
     , oi.sku_code
     , oi.item_code

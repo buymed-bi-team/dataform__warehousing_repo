@@ -1,0 +1,22 @@
+config {
+    type: "view",
+    description: `PIC: nguyen.tran;
+    Source: 
+        ${source.ref}.dim_geo_location`
+}
+
+select
+    location_code AS district_code,
+    district_name,
+    case
+        when district_name = 'Quận 12' or district_name = 'Quận 9' then 'Rural'
+        when district_name LIKE 'Quận%' or district_name LIKE 'Thành phố%' then 'Urban'
+        else 'Rural'
+    end urban_rural,
+    province_code,
+    province_name
+FROM
+  ${ref('dim_geo_location')}
+WHERE location_class = 'DISTRICT'
+qualify row_number() over (partition by district_code ) = 1
+order by district_code 

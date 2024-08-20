@@ -1,9 +1,8 @@
 
 
-
 config {
     type: "incremental",
-    name: "seller_prd_wis_inbound",
+    name: "seller_prd_wis_return_order",
     schema: "platinum_buymed_vn",
     assertions: {
         uniqueKey: 'mg_id',
@@ -12,7 +11,7 @@ config {
     bigquery: {
         partitionBy: "created_date"
     },
-    tags: ["custom_2h_past5"]
+    tags:["custom_2h_past5"]
 }
 
 pre_operations {
@@ -30,13 +29,13 @@ pre_operations {
       CREATE OR REPLACE TEMP TABLE range_created_time_table AS (
        SELECT MIN(DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))) AS min_created_date,
         MAX(DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))) AS max_created_date
-        FROM ${source.silver}.seller_prd_wis_inbound 
+        FROM ${source.silver}.seller_prd_wis_return_order 
         WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) AND action != "d"
       );
 
       CREATE OR REPLACE TEMP TABLE get_deleted_record AS (
           SELECT mg_id 
-          FROM ${source.silver}.seller_prd_wis_inbound 
+          FROM ${source.silver}.seller_prd_wis_return_order 
           WHERE  ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) and 
           created_time IS NULL AND last_updated_time IS NULL
         );
@@ -52,22 +51,16 @@ pre_operations {
   }
 }
 
-WITH deleted_records_table AS (
-  SELECT mg_id
-  FROM ${source.silver}.seller_prd_purchasing_vendor_bill_item
-  WHERE action = 'd'
-    AND date(ingest_time) >= current_date() - 1
-)
 SELECT
- *,
+ * ,
  CASE 
     WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
     ELSE "2099-01-01"
   END AS created_date
-FROM ${source.silver}.seller_prd_wis_inbound o 
+FROM ${source.silver}.seller_prd_wis_return_order o 
  ${
     when(incremental(), 
-      `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) and mg_id not in (select mg_id from deleted_records_table)
+      `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) 
       QUALIFY ROW_NUMBER() OVER (_window) = 1`,
       `QUALIFY ROW_NUMBER() OVER (_window) = 1
        AND FIRST_VALUE(action) OVER (_window) <> 'd'`
@@ -142,5 +135,4 @@ post_operations {
     )
   }
 }
-
 
