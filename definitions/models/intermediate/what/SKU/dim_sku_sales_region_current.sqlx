@@ -13,7 +13,7 @@ config {
             ${source.platinum}.seller_prd_purchasing_initial_stock_draft,
             ${source.ref}.dim_inventory_sku',
             ${source.ref}.dim_sku_item_vendors,
-            ${source.silver}.marketplace_prd_product_v2_sku_limit,
+            ${source.platinum}.marketplace_prd_product_v2_sku_limit,
             ${source.gold}.adhoc_pricing_agg_vendor_bill_price,
             ${source.ref}.dim_sku,
             ${source.platinum}.marketplace_prd_product_v2_product_category_in_charge,
@@ -205,11 +205,7 @@ FROM cte_full AS cte
         ON cic.product_id = s.product_id AND cic.fc_code = cte.fc_code
     LEFT JOIN dedup_catm AS catm
         ON catm.product_id = s.product_id AND catm.fc_code = cte.fc_code
-    LEFT JOIN (
-        SELECT item_code, is_active, quantity
-        FROM ${source.silver}.marketplace_prd_product_v2_sku_limit
-        QUALIFY row_number() over (partition by item_code order by ingest_time desc) = 1
-    ) AS sl
+    LEFT JOIN  ${source.platinum}.marketplace_prd_product_v2_sku_limit AS sl
         ON sl.item_code = s.item_code
     LEFT JOIN ${source.gold}.adhoc_pricing_agg_vendor_bill_price AS bill
         ON bill.sku_code = cte.sku_code AND bill.sales_region_code = cte.sales_region_code
