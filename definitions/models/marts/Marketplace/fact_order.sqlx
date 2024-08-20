@@ -11,7 +11,7 @@ config {
             ${source.platinum}.accounting_prd_core_credit_note,
             ${source.platinum}.accounting_prd_core_bill
         `,
-    tags: ["custom_1h_past5", "8h30", "10h30", "12h30", "15h30" ,"18h", "20h30"],
+    tags: ["custom_1h_past5", "8h30", "10h30", "12h30", "15h30" ,"18h00", "20h30"],
     columns: {
         created_at: "The date and time when the order was placed, timezone +7",
         last_updated_time: "The last and time when the record was updated, timezone +7",
