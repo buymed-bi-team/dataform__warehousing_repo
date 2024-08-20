@@ -1,0 +1,92 @@
+config {
+  type: "table",
+  description: 
+        `
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: daily at 8h30, 10h30, 12h30, 15h30, 18h00;
+        Source: 
+            ${source.platinum}.seller_prd_purchasing_purchase_order,
+            ${source.platinum}.seller_prd_purchasing_purchase_order_item
+        `,
+  bigquery: {
+    partitionBy: "date(created_time)",
+    clusterBy: ["po_code", "sku"]
+  },
+  tags: ["8h30", "10h30", "12h30", "15h30" ,"18h00"]
+}
+
+with
+    target_date as (
+        SELECT
+            DATE_SUB( DATE_TRUNC( CURRENT_DATE('Asia/Ho_Chi_Minh'), YEAR ), interval 2 YEAR) AS start_date
+    ),
+
+    po_dedup as (
+        select
+            status,
+            TIMESTAMP_ADD(created_time, INTERVAL 7 hour) as created_time,
+            po_code
+        from ${source.platinum}.seller_prd_purchasing_purchase_order
+        WHERE
+          created_date >= (SELECT start_date FROM target_date) 
+    ),
+
+    poi_dedup as (
+        select
+--             date(TIMESTAMP_ADD(pi.created_time, INTERVAL 7 hour)) as created_time,
+            pi.po_code,
+            pi.warehouse_code as fc_code,
+            pi.vendor_code,
+            pi.product_id,
+            pi.sku as sku,
+            pi.price_after_rebate,
+            pi.vat,
+            pi.discount_percent/100 as discount_percent ,
+            pi.expect_quantity,
+            pi.actual_quantity,
+            pi.total_price,
+            pi.seller_code,
+            pi.price_after_discount,
+            case when pi.vat > 0 then 'Trading'
+                else 'Non-Trading'
+                end as sku_trading_po
+        from ${source.platinum}.seller_prd_purchasing_purchase_order_item AS pi
+        WHERE
+           created_date >= (SELECT start_date FROM target_date) 
+    ),
+
+    cte as (
+        select
+            pi.*,
+            po.status,
+            po.created_time
+        from poi_dedup as pi
+            left join po_dedup as po on po.po_code = pi.po_code
+        where
+            created_time  >= (SELECT TIMESTAMP_ADD(TIMESTAMP(start_date), interval 7 hour) FROM target_date)
+            and po.status not in ('DRAFT','CANCELED')
+    ),
+
+    group_by as (
+        SELECT
+            po_code
+            , sku
+            , SUM(actual_quantity) as Sum_Qty
+            , SUM(total_price) as Total_Amount
+            , IFNULL(SAFE_DIVIDE(SUM(total_price), SUM(actual_quantity)), 0) as avg_unit_price
+        FROM cte
+        GROUP BY 1,2
+    ),
+
+    final as (
+        SELECT
+            a.*,
+            b.avg_unit_price
+        FROM cte a
+        LEFT JOIN group_by as b ON a.po_code = b.po_code AND a.sku = b.sku
+    )
+
+SELECT
+    *
+FROM final

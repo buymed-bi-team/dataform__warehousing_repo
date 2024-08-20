@@ -1,0 +1,102 @@
+config {
+  type: "table",
+  description: 
+        `
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: daily at 8h30, 10h30, 12h30, 15h30, 18h00;
+        Source: 
+            ${source.platinum}.seller_prd_purchasing_vendor_bill_item,
+            ${source.ref}.fact_vendor_bill
+        `,
+    bigquery: {
+        partitionBy: "DATE_TRUNC(created_time, MONTH)",
+        clusterBy: ['vendor_bill_id', 'po_code']
+    },
+  tags: ["8h30", "10h30", "12h30", "15h30" ,"18h00"]
+}
+
+with
+    bill_dedup as (
+        select
+            vendor_bill_id,
+            fc_code,
+            po_code,
+            status,
+            created_time
+        from ${ref('fact_vendor_bill')}
+    ),
+
+    bill_item as (
+        select
+            po_code,
+            vendor_bill_id,
+            vendor_bill_code,
+            TIMESTAMP_ADD(vi.last_updated_time, INTERVAL 7 hour) as last_updated_time,
+            vi.sku as sku_code,
+            vi.lot,
+            vi.exp_date,
+            vi.quantity,
+            vi.price,
+            vi.price_after_discount,
+            vi.discount_percent as discount_percent_vb,
+            split(vi.sku,'.')[0] as seller_code,
+            vi.product_id,
+            vi.price_after_discount * vi.quantity as amount_after_discount,
+            case when vi.vat > 0 then vi.vat else 0 end as vat,
+            vi.total_price as total_amount
+        from ${source.platinum}.seller_prd_purchasing_vendor_bill_item AS vi
+    ),
+
+    cte as (
+        select
+            vi.*
+            , vb.fc_code
+            , quantity * price as raw_amount
+            , vb.created_time
+            , vb.status
+        from bill_item vi
+            left join bill_dedup vb on vb.vendor_bill_id = vi.vendor_bill_id
+        where
+            vi.sku_code is not null
+            AND vb.status NOT IN ('DRAFT', 'CANCEL')
+        ORDER BY raw_amount
+    ),
+
+    group_by as (
+        SELECT
+            a.*
+            , IF( total_raw_amt > 0,
+                  SAFE_DIVIDE( 1 - total_amount/total_raw_amt, sku_rows ),
+                  SAFE_DIVIDE( 1 , sku_rows)
+              ) as discount_per
+            , IFNULL( SAFE_DIVIDE(total_amount, sum_qty), 0 ) as price_unit
+            , IFNULL( SAFE_DIVIDE(total_amount_vat, sum_qty), 0 ) as price_unit_vat
+        FROM (
+            SELECT
+                po_code
+                , sku_code
+                , SUM(quantity) as sum_qty
+                , SUM(amount_after_discount) as total_amount
+                , SUM(total_amount) as total_amount_vat
+                , SUM(raw_amount) as total_raw_amt
+                , COUNT(1) as sku_rows
+            FROM cte
+            GROUP BY 1, 2
+        ) a
+    ),
+
+    final as (
+        SELECT
+            a.*
+            , b.price_unit
+            , b.price_unit_vat
+            , b.discount_per as discount_percent
+            , CONCAT(a.fc_code, "_", a.seller_code, "_", a.product_id) as bi_sku
+        FROM cte a
+        LEFT JOIN group_by b ON a.po_code = b.po_code AND a.sku_code = b.sku_code
+    )
+
+SELECT
+    * except (raw_amount)
+FROM final

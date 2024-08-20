@@ -80,6 +80,7 @@ WITH cte_province_without_accent AS (
 SELECT
     g.location_code AS province_code
     , g.province_name
+    , g.region_code
     , g.region_name 
     , p.province_without_accent
 FROM ${ref('dim_geo_location')} AS g

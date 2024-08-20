@@ -1,0 +1,60 @@
+config {
+  type: "table",
+  description: 
+        `
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: daily at 8h30, 10h30, 12h30, 15h30, 18h00;
+        Source: 
+            ${source.platinum}.seller_prd_purchasing_purchase_order,
+            ${source.platinum}.seller_prd_purchasing_vendor_bill
+        `,
+  bigquery: {
+    partitionBy: "created_time",
+    clusterBy: ["vendor_bill_id"]
+  },
+  tags: ["8h30", "10h30", "12h30", "15h30" ,"18h00"]
+}
+
+WITH
+    target_date as (
+        SELECT
+            DATE_SUB( DATE_TRUNC( CURRENT_DATE('Asia/Ho_Chi_Minh'), YEAR ), interval 2 YEAR) AS start_date
+    ),
+    purchase_order as (
+        SELECT
+            po_code,
+            created_time,
+            created_by_system
+        FROM ${source.platinum}.seller_prd_purchasing_purchase_order
+        WHERE
+          created_date >= (SELECT start_date FROM target_date) 
+    )
+
+SELECT
+    DATE(TIMESTAMP_ADD(v.created_time, interval 7 hour)) AS created_time
+    , DATE(TIMESTAMP_ADD(p.created_time, interval 7 hour)) AS po_created_time
+    , DATE(TIMESTAMP_ADD(v.issued_time, interval 7 hour)) AS issued_date
+    , DATE(TIMESTAMP_ADD(v.due_time, interval 7 hour)) AS due_date
+    , v.vendor_bill_id
+    , v.vendor_bill_code
+    , v.vendor_code
+    , v.seller_code
+    , v.status
+    , v.po_code
+    , p.created_by_system
+    , v.invoice_number
+    , CASE
+        WHEN v.po_code LIKE 'POHN%' then 'HN'
+        WHEN v.po_code LIKE 'PODN%' then 'DN'
+        ELSE 'BD'
+    END as fc_code
+    , v.total_price_without_vat
+    , v.total_vat_price
+    , v.total_price
+FROM ${source.platinum}.seller_prd_purchasing_vendor_bill AS v
+    LEFT JOIN purchase_order AS p ON v.po_code = p.po_code
+WHERE
+    v.created_date >= (SELECT start_date FROM target_date) 
+    AND v.status NOT IN ('DRAFT', 'CANCEL')
+

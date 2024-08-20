@@ -5,10 +5,11 @@ config {
         Customer information, address, tax code in the invoice for each order;
         PIC: nguyen.tran; 
         Type: Table; 
-        Refresh Schedule: daily at 8h30, 10h30, 12h30, 15h30, 18h, 20h30;
+        Refresh Schedule: daily at 8h30, 10h30, 12h30, 15h30, 18h00;
         Source: 
-            ${source.platinum}.marketplace_prd_order_v2_order_item,
-            ${source.ref}.fact_order
+            ${source.platinum}.accounting_prd_invoice_order,
+            ${source.platinum}.accounting_prd_invoice_order_invoice
+
         `,
   bigquery: {
     partitionBy: "date(invoice_time)",
