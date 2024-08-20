@@ -39,13 +39,9 @@ js {
     return `ARRAY_AGG( ${column_name} ORDER BY created_time DESC)[0] AS ${column_name}`
   }
 }
-
-WITH dedup_order as (
-  SELECT
-    a.*,
-    COALESCE(dim_fc.sales_region_code, dim_fc2.sales_region_code) sales_region_code
-  FROM 
-  ${
+WITH 
+-- Marketplace
+dedup_order AS ${
     dedup.dedup(
       source.silver + `.marketplace_prd_order_v2_order`,
       `
@@ -53,19 +49,28 @@ WITH dedup_order as (
       DATETIME(created_time, 'Asia/Ho_Chi_Minh') as created_time, 
       confirmation_date, 
       source, 
+      ward_code,
+      district_code,
       province_code,
+      customer_ward_code,
+      customer_district_code,
       customer_province_code, 
       TO_JSON_STRING(JSON_VALUE_ARRAY(extra_props, '$.customer_tags')) as customer_tags,
       TO_JSON_STRING(tags) as tags,
       customer_id,
-      JSON_VALUE(extra_props, "$.brand_code") AS brand_code,
+      JSON_VALUE(extra_props, "\$.brand_code") AS brand_code,
       warehouse_code
       `,
       start_timestamp= when(incremental(),
                 ` TIMESTAMP(current_datetime() - INTERVAL 2 DAY )`, // Nếu incremental thì mình chỉ lấy 3 ngày trở lại
                 ` TIMESTAMP_SECONDS(0)`)                            // tránh cho việc dedup phải thực hiện window function cả bảng
                                                                     // Điều này giúp nâng performance cụ thể là 1.32GB thành 37MB mỗi lần chạy incremental
-  )} a
+)}
+, order_sales_region_code as (
+  SELECT
+    a.*,
+    COALESCE(dim_fc.sales_region_code, dim_fc2.sales_region_code) sales_region_code
+  FROM dedup_order a
   LEFT JOIN ${ref(`dim_fc_service_area`)} dim_fc_service_area
         ON a.province_code = dim_fc_service_area.service_area_code
   LEFT JOIN ${ref(`dim_fc`)} dim_fc
@@ -76,7 +81,7 @@ WITH dedup_order as (
       ON dim_fc_service_area2.fc_code = dim_fc2.fc_code
 )
 
-,order_tbl as ( -- dedup order
+,order_tbl as ( -- dedup order when incremental too fast
   SELECT 
     order_id,
     max(created_time) created_time,
@@ -90,20 +95,15 @@ WITH dedup_order as (
     ${choose_new(`brand_code`)},
     ${choose_new(`sales_region_code`)},
     ${choose_new(`warehouse_code`)}
-    
   FROM
-    dedup_order
+    order_sales_region_code
   GROUP BY
     order_id
 )
 
-, dedup_tender_order AS  -- tender system
-  (
-  SELECT 
-    a.*,
-    dim_fc.sales_region_code
 
-  FROM ${ dedup.dedup(
+-- TENDER
+, dedup_tender_order AS ${ dedup.dedup(
     source.silver + `.tender_prd_core_tender_orders`,
     `
     order_id,
@@ -114,7 +114,15 @@ WITH dedup_order as (
     start_timestamp = when ( incremental(),
               ` TIMESTAMP(current_datetime() - INTERVAL 2 DAY )`,
               ` TIMESTAMP_SECONDS(0)`)                           
-  )} a
+)}
+
+, tender_order_sales_region_code AS  
+  (
+  SELECT 
+    a.*,
+    dim_fc.sales_region_code
+
+  FROM dedup_tender_order a
   LEFT JOIN ${ref(`dim_fc_service_area`)} dim_fc_service_area
         ON a.province_code = dim_fc_service_area.service_area_code
   LEFT JOIN ${ref(`dim_fc`)} dim_fc
@@ -129,7 +137,7 @@ WITH dedup_order as (
     ${choose_new(`province_code`)},
     ${choose_new(`sales_region_code`)}
   FROM
-    dedup_tender_order
+    tender_order_sales_region_code
   GROUP BY
     order_id
 )
