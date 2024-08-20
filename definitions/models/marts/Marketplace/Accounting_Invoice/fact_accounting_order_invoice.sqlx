@@ -1,0 +1,37 @@
+config {
+  type: "table",
+  description: 
+        `
+        Customer information, address, tax code in the invoice for each order;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: daily at 8h30, 10h30, 12h30, 15h30, 18h, 20h30;
+        Source: 
+            ${source.platinum}.marketplace_prd_order_v2_order_item,
+            ${source.ref}.fact_order
+        `,
+  bigquery: {
+    partitionBy: "date(invoice_time)",
+    clusterBy: ["order_id"]
+  },
+  tags: ["8h30", "10h30", "12h30", "15h30" ,"18h00"]
+}
+
+SELECT
+    io.order_id
+    , io.customer_request AS invoice_request
+    , io.customer_tax_code
+    , io.customer_name AS invoice_name
+    , io.customer_address AS invoice_address
+    , CASE 
+        WHEN io.customer_request = true THEN 'Có lấy hóa đơn'
+        WHEN io.customer_request = false THEN 'Không yêu cầu xuất hóa đơn' 
+      END AS invoice_note
+    , io.sale_order_code
+    , ioi.seller_code
+    , ioi.code AS invoice_code
+    , TIMESTAMP_ADD( ioi.arising_time, interval 7 hour) AS invoice_time
+    , ioi.customer_id
+FROM ${source.platinum}.accounting_prd_invoice_order AS io
+    LEFT JOIN ${source.platinum}.accounting_prd_invoice_order_invoice AS ioi
+        USING(order_id)
