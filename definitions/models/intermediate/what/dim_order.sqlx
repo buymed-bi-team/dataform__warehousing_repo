@@ -15,10 +15,11 @@ config {
     columns: {
       order_id:"NonNull | Unique identifier for each order",
       created_time: "NonNull | Timestamp indicating when the order was created. The time zone is set to 'Asia/Ho_Chi_Minh'",
-      confirmation_date: "Nullable | order confirmation time",
-      order_channel: "NonNull | Category of the order based on the tags and source.  'TENDER' if customer_tags contains 'TENDER', 'DISTRIBUTION' if source is 'brand-portal' or 'clinic-portal', 'CONSIGNMENT' if source is 'internal-portal','CIRCA' if customer_tags contains 'CIRCA', otherwise 'MARKETPLACE'",
+      confirmation_date: "Nullable | order confirmation time. The time zone is set to 'Asia/Ho_Chi_Minh",
+      order_channel: "NonNull | Category of the order based on the tags and source.  'TENDER' if customer_tags contains 'TENDER', 'DISTRIBUTION' if source is 'brand-portal' or 'clinic-portal', 'CONSIGNMENT-RECOGNITION' if tags contains 'SO_INTERNAL', 'CONSIGNMENT' if source is 'internal-portal','CIRCA' if customer_tags contains 'CIRCA', otherwise 'MARKETPLACE'",
       order_type: "NonNull | SO, CO, TENDER, DO",
-      province_code: "Nullable | A standardized code used to identify provinces within a country",
+      location_code: "Nullable | A standardized code used to identify provinces within a country",
+      shipping_location_code: "Nullable ",
       sales_region_code: "Nullable | Translate from the province code rather than the warehouse code, because assigning warehouse codes is not supported before 2022"
     },
     bigquery: {
@@ -46,8 +47,8 @@ dedup_order AS ${
       source.silver + `.marketplace_prd_order_v2_order`,
       `
       order_id, 
-      DATETIME(created_time, 'Asia/Ho_Chi_Minh') as created_time, 
-      confirmation_date, 
+      ${utils.ToTimezone(`created_time`)} as created_time, 
+      ${utils.ToTimezone(`confirmation_date`)} as confirmation_date, 
       source, 
       ward_code,
       district_code,
@@ -69,6 +70,18 @@ dedup_order AS ${
 , order_sales_region_code as (
   SELECT
     a.*,
+    CASE
+        WHEN SAFE_CAST(a.ward_code AS integer) > 0 THEN a.ward_code
+        WHEN SAFE_CAST(a.district_code AS integer) > 0 THEN a.district_code
+        WHEN SAFE_CAST(a.province_code AS integer) > 0 THEN a.province_code
+        ELSE NULL
+    END AS location_code,
+    CASE
+        WHEN SAFE_CAST(a.customer_ward_code AS integer) > 0 THEN a.customer_ward_code
+        WHEN SAFE_CAST(a.customer_district_code AS integer) > 0 THEN a.customer_district_code
+        WHEN SAFE_CAST(a.customer_province_code AS integer) > 0 THEN a.customer_province_code
+        ELSE NULL
+    END AS shipping_location_code,
     COALESCE(dim_fc.sales_region_code, dim_fc2.sales_region_code) sales_region_code
   FROM dedup_order a
   LEFT JOIN ${ref(`dim_fc_service_area`)} dim_fc_service_area
@@ -87,8 +100,8 @@ dedup_order AS ${
     max(created_time) created_time,
     ${choose_new(`confirmation_date`)},
     ${choose_new(`source`)},
-    ${choose_new(`province_code`)},
-    ${choose_new(`customer_province_code`)},
+    ${choose_new(`location_code`)},
+    ${choose_new(`shipping_location_code`)},
     ${choose_new(`customer_tags`)},
     ${choose_new(`tags`)},
     ${choose_new(`customer_id`)},
@@ -107,8 +120,10 @@ dedup_order AS ${
     source.silver + `.tender_prd_core_tender_orders`,
     `
     order_id,
-    DATETIME(created_time, 'Asia/Ho_Chi_Minh') as created_time, 
-    confirmation_date, 
+    ${utils.ToTimezone(`created_time`)} as created_time, 
+    ${utils.ToTimezone(`confirmation_date`)} as confirmation_date, 
+    ward_code,
+    district_code,
     province_code
     `,
     start_timestamp = when ( incremental(),
@@ -116,10 +131,22 @@ dedup_order AS ${
               ` TIMESTAMP_SECONDS(0)`)                           
 )}
 
-, tender_order_sales_region_code AS  
+,dedup_tender_order_sales_region_code AS  
   (
   SELECT 
     a.*,
+    CASE
+        WHEN SAFE_CAST(a.ward_code AS integer) > 0 THEN a.ward_code
+        WHEN SAFE_CAST(a.district_code AS integer) > 0 THEN a.district_code
+        WHEN SAFE_CAST(a.province_code AS integer) > 0 THEN a.province_code
+        ELSE NULL
+    END AS location_code,
+    CASE
+        WHEN SAFE_CAST(a.ward_code AS integer) > 0 THEN a.ward_code
+        WHEN SAFE_CAST(a.district_code AS integer) > 0 THEN a.district_code
+        WHEN SAFE_CAST(a.province_code AS integer) > 0 THEN a.province_code
+        ELSE NULL
+    END AS shipping_location_code,
     dim_fc.sales_region_code
 
   FROM dedup_tender_order a
@@ -134,10 +161,11 @@ dedup_order AS ${
     order_id,
     max(created_time) created_time,
     ${choose_new(`confirmation_date`)},
-    ${choose_new(`province_code`)},
+    ${choose_new(`location_code`)},
+    ${choose_new(`shipping_location_code`)},
     ${choose_new(`sales_region_code`)}
   FROM
-    tender_order_sales_region_code
+    dedup_tender_order_sales_region_code
   GROUP BY
     order_id
 )
@@ -167,8 +195,8 @@ SELECT
     WHEN customer_tags LIKE '%"CIRCA"%'  THEN 'SO'
     ELSE 'SO'
   END AS order_type,
-  province_code,
-  customer_province_code,
+  location_code,
+  shipping_location_code,
   order_tbl.sales_region_code
 FROM order_tbl
 ${when(incremental(),
@@ -183,8 +211,8 @@ SELECT
   confirmation_date,
   "TENDER" AS order_channel,
   "TENDER" AS order_type,
-  province_code,
-  province_code as customer_province_code,
+  location_code,
+  shipping_location_code,
   sales_region_code
 FROM tender_order_tbl
 
@@ -216,7 +244,10 @@ post_operations {
       "",
       `
       -- Bước thực hiện add primary key, nhưng chỉ trong lần đầu full-refresh, nếu thực hiện incremental sau thì k cần làm gì
-      ALTER TABLE ${self()} ADD PRIMARY KEY (order_id) NOT ENFORCED;
+      ALTER TABLE ${self()} 
+        ADD PRIMARY KEY (order_id) NOT ENFORCED,
+        ADD FOREIGN KEY (location_code) references ${ref(`dim_geo_location`)}(location_code) NOT ENFORCED,
+        ADD FOREIGN KEY (shipping_location_code) references ${ref(`dim_geo_location`)}(location_code) NOT ENFORCED;
       `
     )
   }
