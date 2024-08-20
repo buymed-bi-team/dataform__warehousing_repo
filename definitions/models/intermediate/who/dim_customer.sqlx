@@ -177,6 +177,7 @@ SELECT
     customer.legal_representative,
     customer.company_name,
     customer.point AS loyalty_point,
+    customer.is_active,
 
     note.content AS customer_note,
     CASE
