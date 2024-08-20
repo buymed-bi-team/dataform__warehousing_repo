@@ -1,0 +1,88 @@
+config {
+    type: "view",
+    description: `PIC: nguyen.tran;
+    Source: 
+        ${source.ref}.dim_geo_location`
+}
+
+WITH cte_province_without_accent AS (
+    SELECT
+        province_code,
+        province_without_accent
+    FROM
+    UNNEST([
+        STRUCT('01' AS province_code, 'Ha Noi' AS province_without_accent),
+        STRUCT('79' AS province_code, 'TP. Ho Chi Minh' AS province_without_accent),
+        STRUCT('66' AS province_code, 'Dak Lak' AS province_without_accent),
+        STRUCT('67' AS province_code, 'Dak Nong' AS province_without_accent),
+        STRUCT('48' AS province_code, 'Da Nang' AS province_without_accent),
+        STRUCT('26' AS province_code, 'Vinh Phuc' AS province_without_accent),
+        STRUCT('14' AS province_code, 'Son La' AS province_without_accent),
+        STRUCT('15' AS province_code, 'Yen Bai' AS province_without_accent),
+        STRUCT('20' AS province_code, 'Lang Son' AS province_without_accent),
+        STRUCT('31' AS province_code, 'Hai Phong' AS province_without_accent),
+        STRUCT('56' AS province_code, 'Khanh Hoa' AS province_without_accent),
+        STRUCT('52' AS province_code, 'Binh Dinh' AS province_without_accent),
+        STRUCT('08' AS province_code, 'Tuyen Quang' AS province_without_accent),
+        STRUCT('45' AS province_code, 'Quang Tri' AS province_without_accent),
+        STRUCT('24' AS province_code, 'Bac Giang' AS province_without_accent),
+        STRUCT('30' AS province_code, 'Hai Duong' AS province_without_accent),
+        STRUCT('92' AS province_code, 'Can Tho' AS province_without_accent),
+        STRUCT('35' AS province_code, 'Ha Nam' AS province_without_accent),
+        STRUCT('10' AS province_code, 'Lao Cai' AS province_without_accent),
+        STRUCT('36' AS province_code, 'Nam Dinh' AS province_without_accent),
+        STRUCT('60' AS province_code, 'Binh Thuan' AS province_without_accent),
+        STRUCT('33' AS province_code, 'Hung Yen' AS province_without_accent),
+        STRUCT('44' AS province_code, 'Quang Binh' AS province_without_accent),
+        STRUCT('22' AS province_code, 'Quang Ninh' AS province_without_accent),
+        STRUCT('40' AS province_code, 'Nghe An' AS province_without_accent),
+        STRUCT('17' AS province_code, 'Hoa Binh' AS province_without_accent),
+        STRUCT('75' AS province_code, 'Dong Nai' AS province_without_accent),
+        STRUCT('82' AS province_code, 'Tien Giang' AS province_without_accent),
+        STRUCT('72' AS province_code, 'Tay Ninh' AS province_without_accent),
+        STRUCT('87' AS province_code, 'Dong Thap' AS province_without_accent),
+        STRUCT('83' AS province_code, 'Ben Tre' AS province_without_accent),
+        STRUCT('84' AS province_code, 'Tra Vinh' AS province_without_accent),
+        STRUCT('94' AS province_code, 'Soc Trang' AS province_without_accent),
+        STRUCT('89' AS province_code, 'An Giang' AS province_without_accent),
+        STRUCT('93' AS province_code, 'Hau Giang' AS province_without_accent),
+        STRUCT('80' AS province_code, 'Long An' AS province_without_accent),
+        STRUCT('91' AS province_code, 'Kien Giang' AS province_without_accent),
+        STRUCT('02' AS province_code, 'Ha Giang' AS province_without_accent),
+        STRUCT('06' AS province_code, 'Bac Kan' AS province_without_accent),
+        STRUCT('96' AS province_code, 'Ca Mau' AS province_without_accent),
+        STRUCT('77' AS province_code, 'Ba Ria - Vung Tau' AS province_without_accent),
+        STRUCT('27' AS province_code, 'Bac Ninh' AS province_without_accent),
+        STRUCT('95' AS province_code, 'Bac Lieu' AS province_without_accent),
+        STRUCT('74' AS province_code, 'Binh Duong' AS province_without_accent),
+        STRUCT('70' AS province_code, 'Binh Phuoc' AS province_without_accent),
+        STRUCT('04' AS province_code, 'Cao Bang' AS province_without_accent),
+        STRUCT('68' AS province_code, 'Lam Dong' AS province_without_accent),
+        STRUCT('11' AS province_code, 'Dien Bien' AS province_without_accent),
+        STRUCT('64' AS province_code, 'Gia Lai' AS province_without_accent),
+        STRUCT('42' AS province_code, 'Ha Tinh' AS province_without_accent),
+        STRUCT('62' AS province_code, 'Kon Tum' AS province_without_accent),
+        STRUCT('12' AS province_code, 'Lai Chau' AS province_without_accent),
+        STRUCT('25' AS province_code, 'Phu Tho' AS province_without_accent),
+        STRUCT('49' AS province_code, 'Quang Nam' AS province_without_accent),
+        STRUCT('51' AS province_code, 'Quang Ngai' AS province_without_accent),
+        STRUCT('34' AS province_code, 'Thai Binh' AS province_without_accent),
+        STRUCT('19' AS province_code, 'Thai Nguyen' AS province_without_accent),
+        STRUCT('38' AS province_code, 'Thanh Hoa' AS province_without_accent),
+        STRUCT('46' AS province_code, 'Thua Thien - Hue' AS province_without_accent),
+        STRUCT('86' AS province_code, 'Vinh Long' AS province_without_accent),
+        STRUCT('54' AS province_code, 'Phu Yen' AS province_without_accent),
+        STRUCT('37' AS province_code, 'Ninh Binh' AS province_without_accent),
+        STRUCT('58' AS province_code, 'Ninh Thuan' AS province_without_accent)
+    ]) AS record
+)
+
+SELECT
+    g.location_code AS province_code
+    , g.province_name
+    , g.region_name 
+    , p.province_without_accent
+FROM ${ref('dim_geo_location')} AS g
+    LEFT JOIN cte_province_without_accent AS p
+        ON g.location_code = p.province_code
+WHERE g.location_class = 'PROVINCE'

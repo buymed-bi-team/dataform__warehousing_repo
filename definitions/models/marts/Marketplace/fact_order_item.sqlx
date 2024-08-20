@@ -31,6 +31,9 @@ config {
 SELECT 
     oi.*
     , CONCAT(product_id, "_", seller_code) AS sku_key
-    , o.province_code
+    , o.shipping_province_code AS province_code
+    , fc.sales_region_code
+    , CONCAT(oi.product_id, "_", oi.seller_code, "_", fc.sales_region_code) AS sku_key_sales_region_code
 FROM ${ref("fact_order_item_combo")} AS oi 
-LEFT JOIN ${ref('fact_order')} AS o ON oi.order_id = o.order_id
+    LEFT JOIN ${ref('fact_order')} AS o ON oi.order_id = o.order_id
+    LEFT JOIN ${ref('dim_fc_service_area')} AS fc ON fc.service_area_code = o.shipping_province_code

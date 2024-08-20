@@ -7,7 +7,7 @@ config {
         Type: Table; 
         Refresh Schedule: hourly;
         Source: 
-            ${source.gold}.dim_sku,
+            ${source.ref}.dim_sku,
             ${source.ref}.dim_fc_service_area, 
             ${source.ref}.dim_sku_sales_region_current,
             ${source.platinum}.seller_prd_core_seller
@@ -21,7 +21,7 @@ config {
 }
 
 SELECT
-    -- s.sku_created_at,
+    s.sku_created_at,
     s.sku_code,
     s.product_id,
     s.product_name,
@@ -49,7 +49,7 @@ SELECT
     sc.catm_group,
     sc.fv_name as favourite_vendor,
     sc.fv_code
-FROM ${source.ref}.dim_sku AS s
+FROM ${ref('dim_sku')} AS s
     CROSS JOIN (
         SELECT DISTINCT
             sales_region_code

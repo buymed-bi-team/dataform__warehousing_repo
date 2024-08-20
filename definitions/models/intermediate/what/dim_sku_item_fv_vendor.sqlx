@@ -14,4 +14,4 @@ SELECT
   vendor_code,
   vendor_priority
 FROM ${ref("dim_sku_item_vendors")} a
-WHERE a.vendor_priority = "0"
+WHERE a.vendor_priority = 0
