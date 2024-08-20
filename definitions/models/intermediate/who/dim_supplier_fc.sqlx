@@ -41,6 +41,7 @@ SELECT
     dim_fc.fc_extra_props,
 
     dim_supplier.supplier_code,
+    dim_supplier.supplier_id,
     dim_supplier.supplier_type,
     dim_supplier.supplier_class,
     dim_supplier.supplier_name,
