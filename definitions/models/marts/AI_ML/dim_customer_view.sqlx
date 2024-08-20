@@ -15,10 +15,13 @@ config {
       - MARKETPLACE: If the customer's tags contain 'TERMINATE_CIRCA' or as a default category.
       - CIRCA: If the customer's tags contain 'CIRCA'.`,
     customer_ward_code: `Nullable | If the customer doesn't have a ward_code, then get ward_code of last order of customer 
-      from the order table. Otherwise, return null.`
+      from the order table. Otherwise, return null.`,
+     business_scope: "Nullable | Null means UNKNOWN scope",
+     customer_ward_code: "Nullable | If the customer doesn't have a ward_code, then get ward_code of last order of customer from the order table. Otherwise, return null."
+
   }
 }
 
 
-select customer_id, customer_report_category, customer_ward_code 
+select customer_id, customer_report_category, customer_ward_code, business_scope, customer_level, customer_ward_code
 from gold_buymed_vn2.dim_customer
