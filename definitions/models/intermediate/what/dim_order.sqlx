@@ -145,6 +145,7 @@ SELECT
     WHEN REGEXP_CONTAINS(tags,'SO_INTERNAL')  THEN 'CONSIGNMENT-RECOGNITION' -- replace consignment
     WHEN created_time >= "2023-10-01" AND source = 'internal-portal' THEN 'CONSIGNMENT'  
     WHEN created_time >= "2023-10-01" AND customer_id = 241098 THEN 'CONSIGNMENT'
+    WHEN customer_tags LIKE "%TERMINATE_CIRCA%" THEN "MARKETPLACE"
     WHEN customer_tags LIKE '%CIRCA%'  THEN 'CIRCA'
     ELSE 'MARKETPLACE'
   END AS order_channel,
@@ -154,7 +155,8 @@ SELECT
     WHEN source in ('brand-portal', 'clinic-portal') THEN 'SO'
     WHEN created_time >= "2023-10-01" AND source = 'internal-portal' THEN 'CO'  -- Dự án CONSIGNMENT đã bể
     WHEN created_time >= "2023-10-01" AND customer_id = 241098 THEN 'CO'
-    WHEN customer_tags LIKE '%CIRCA%'  THEN 'SO'
+    WHEN customer_tags LIKE "%TERMINATE_CIRCA%" THEN "SO"
+    WHEN customer_tags LIKE '%"CIRCA"%'  THEN 'SO'
     ELSE 'SO'
   END AS order_type,
   province_code,

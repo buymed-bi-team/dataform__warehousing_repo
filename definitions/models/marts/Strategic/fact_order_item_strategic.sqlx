@@ -1,0 +1,43 @@
+config {
+    type: "table",
+    description: `PIC: minh.luu, schedule: 0h00 daily
+    Source
+        ${source.ref}.fact_bill`,
+    columns: {
+        order_id: "NonNull",
+        product_id: "Nullable",
+        created_time: "NonNull | Timezone in +7",
+        outbound_time: "Nullable | from bill | Timezone in +7 ",
+        outbound_quantity: "Nullable | Retrieve from accounting system | the quantity of products have be shipped from warehouse",
+        price: "Nullable",
+        outbound_amount: "Nullable | Retrieve from  accounting system | outbound_quatity * price for each product"
+    },
+    assertions: {
+        nonNull: ('order_id')
+    },
+    tags: ('0h00'),
+    bigquery: {
+        partitionBy: "DATE(order_created_time)"
+    }
+}
+
+SELECT
+    o.order_id,
+    bill.product_id,
+    bill.created_time as bill_created_time,
+    o.created_time as order_created_time,
+    bill.outbound_time,
+    bill.outbound_quantity,
+    bill.price,
+    bill.outbound_amount
+
+FROM ${source.platinum}.marketplace_prd_order_v2_order o 
+LEFT JOIN ${source.ref}.fact_bill as bill
+    ON o.order_id = bill.order_id
+
+post_operations {
+    ALTER TABLE ${self()} 
+    ADD FOREIGN KEY (order_id) references ${ref(`dim_order`)}(order_id) NOT ENFORCED,
+    ADD FOREIGN KEY (product_id) references ${ref(`dim_product`)}(product_id) NOT ENFORCED;
+
+}

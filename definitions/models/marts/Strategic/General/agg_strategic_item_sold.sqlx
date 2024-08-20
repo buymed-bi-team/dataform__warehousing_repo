@@ -4,7 +4,7 @@ config {
     Source
         ${source.ref}.dim_order
         ${source.ref}.dim_calendar
-        ${source.ref}.fact_order`,
+        ${source.ref}.fact_order_strategic`,
     columns: {
         metric_code: "NonNull | Concat of SalesRegion and metric lv2 column",
         date: "NonNull | End of month",
@@ -13,16 +13,15 @@ config {
 }
 SELECT
     dim_calendar.eom as date,
-    CASE
-        WHEN dim_order.sales_region_code IS NULL then "Item_Sold_NULL_REGION"
-        ELSE "Item_Sold_" || dim_order.sales_region_code
-    END AS metric_code,
-    SUM(fact_order.ordered_line_items)  as value
+    "ITEM" AS metric_code,
+    SUM(fact_order_strategic.ordered_line_items)  as value
 
-FROM `lakehouse-prod-394907.gold_buymed_vn2.fact_order` fact_order
+FROM `lakehouse-prod-394907.gold_buymed_vn2.fact_order_strategic` fact_order_strategic
 LEFT JOIN `lakehouse-prod-394907.gold_buymed_vn2.dim_order` dim_order
-    ON fact_order.order_id = dim_order.order_id
+    ON fact_order_strategic.order_id = dim_order.order_id
 LEFT JOIN `lakehouse-prod-394907.gold_buymed_vn2.dim_calendar` dim_calendar
-    ON fact_order.created_date = dim_calendar.date
+    ON fact_order_strategic.created_date = dim_calendar.date
+WHERE order_status NOT IN ("CANCEL","CANCELLED")
 GROUP BY 1,2
+HAVING value <> 0
 ORDER BY eom

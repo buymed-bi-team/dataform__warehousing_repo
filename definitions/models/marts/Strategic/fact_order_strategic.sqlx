@@ -107,7 +107,7 @@ dedup_order_tbl as (
         ordered_amount,
         ordered_amount_aft_discount,
         ordered_line_items,
-        0 as notion_amount,
+        ordered_amount as notional_amount,
         source_name
     FROM tender_order_tbl_with_item
     UNION ALL
@@ -119,7 +119,7 @@ dedup_order_tbl as (
         ordered_amount,
         ordered_amount_aft_discount,
         ordered_line_items,
-        notion_amount,
+        notion_amount as notional_amount,
         source_name
     FROM mkp_order_tbl
 )
@@ -139,7 +139,7 @@ js {
         ${choose_new(`ordered_amount`)},
         ${choose_new(`ordered_amount_aft_discount`)},
         ${choose_new(`ordered_line_items`)},
-        ${choose_new(`notion_amount`)}
+        ${choose_new(`notional_amount`)}
     FROM 
         dedup_order_tbl
     GROUP BY 1,2
@@ -176,7 +176,7 @@ SELECT
     m.ordered_amount,
     m.ordered_amount_aft_discount,
     m.ordered_line_items,
-    m.notion_amount,
+    m.notional_amount,
     return_amount.return_amount,
     IF (
         m.order_status <> "CANCEL" and m.order_status <> "CANCELLED" and dim_order.order_channel <> "CONSIGNMENT-RECOGNITION",

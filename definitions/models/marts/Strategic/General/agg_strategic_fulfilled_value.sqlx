@@ -13,14 +13,9 @@ config {
 }
 SELECT
     dim_calendar.eom as date,
-    CASE
-        WHEN dim_order.sales_region_code LIKE "MIENNAM" THEN "FILL-SOUTHERN"
-        WHEN dim_order.sales_region_code LIKE "MIENTRUNG" THEN "FILL-CENTRAL"
-        WHEN dim_order.sales_region_code LIKE "MIENBAC" THEN "FILL-NOTHERN"
-        ELSE "FILL-UNKNOWN"
-    END AS metric_code,
+    'FILL' AS metric_code,
     SUM ( IF( 
-            order_status IN ('COMPLETED'), 
+            order_status IN ('COMPLETED','DELIVERED'), 
             notional_amount ,
     0))  as value
 

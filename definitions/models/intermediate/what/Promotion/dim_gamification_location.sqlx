@@ -1,0 +1,37 @@
+config {
+    type: "table", 
+    description: 
+        `
+        Gamification Dimension According to Location;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.ref}.dim_gamification,
+            ${source.ref}.dim_province
+        `,
+    tags: ["custom_1h_past5"]
+}
+
+WITH 
+    location AS (
+        SELECT
+            gamification_code
+            , a AS province_code
+        FROM ${ref('dim_gamification')}
+        , UNNEST(JSON_VALUE_ARRAY(scope.customer_areas)) AS a
+    ),
+
+    _all AS (
+        SELECT
+            gamification_code
+            , b.province_code
+        FROM ${ref('dim_gamification')} AS a
+        , ${ref('dim_province')} AS b
+        WHERE
+            gamification_code NOT IN (SELECT gamification_code FROM location)
+    )
+
+SELECT * FROM location
+UNION DISTINCT
+SELECT * FROM _all
