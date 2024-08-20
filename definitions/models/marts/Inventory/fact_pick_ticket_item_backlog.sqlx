@@ -12,7 +12,7 @@ WITH cte_date AS (
     DATE_SUB(CURRENT_DATE('Asia/Bangkok'), INTERVAL 30 DAY) AS start_date
 )
 
-SELECT 
+SELECT
     pti.ticket_id,
     pti.so as order_code,
     so.status as order_status,
@@ -20,6 +20,7 @@ SELECT
     pti.tags,
     pti.sku as sku_code,
     pti.erp_product_id as product_id,
+    pti.created_date,
     pti.created_time,
     CURRENT_TIMESTAMP() AS current_time,
     TIMESTAMP_DIFF(CURRENT_TIMESTAMP(), pti.created_time, HOUR) AS reserving_hours,
