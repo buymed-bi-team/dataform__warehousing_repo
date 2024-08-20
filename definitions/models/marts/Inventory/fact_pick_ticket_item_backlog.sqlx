@@ -18,7 +18,7 @@ SELECT
     so.status as order_status,
     pt.status as ticket_status,
     pt.warehouse_code as fc_code,
-    pti.tags,
+    TO_JSON_STRING(pti.tags) as tags,
     pti.sku as sku_code,
     pti.erp_product_id as product_id,
     pti.created_date,
