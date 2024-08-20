@@ -9,7 +9,7 @@ config {
         order_id: "NonNull",
         product_id: "Nullable",
         created_time: "NonNull | Timezone in +7",
-        outbound_time: "Nullable | Timezone in +7",
+        outbound_time: "Nullable | Timezone in +7 | out of fulfillment center time, or picked-up by carrier time",
         outbound_quantity: "Nullable | the quantity of products have be shipped from warehouse",
         price: "Nullable",
         outbound_amount: "Nullable | outbound_quatity * price for each product"
@@ -32,7 +32,7 @@ config {
 WITH o AS (
     SELECT 
         order_id,
-        delivered_time,
+        outbound_date,
         created_time
         
     FROM
@@ -46,30 +46,40 @@ WITH o AS (
         product_id,
         -- seller_code,
         -- sku,
-        delivered_quantity,
+        outbound_quantity,
         price
     FROM 
         ${source.platinum}.marketplace_prd_order_v2_order_item
     -- WHERE
     --     created_date > ${event_checkpoint_date}
 )
+, bill as (
+    SELECT 
+        distinct
+        order_id,
+        created_time
+    FROM
+        ${source.platinum}.accounting_prd_core_bill 
+)
 SELECT
     o.order_id,
     oi.product_id,
     -- oi.seller_code as supplier_code,
     -- oi.sku,
-    ${utils.ToTimezone(`o.delivered_time`)} AS outbound_time,
-    oi.delivered_quantity AS outbound_quantity,
+    ${utils.ToTimezone(`o.outbound_date`)} AS outbound_time,
+    oi.outbound_quantity AS outbound_quantity,
     -- max_quantity as demand_quantity, 
     oi.price,
     -- vat
-    (delivered_quantity * oi.price ) AS outbound_amount,
+    (oi.outbound_quantity * oi.price ) AS outbound_amount,
     
-    ${utils.ToTimezone(`o.created_time`)} created_time
+    ${utils.ToTimezone(`bill.created_time`)} created_time
 
 
-FROM o
+FROM bill 
+LEFT JOIN o ON o.order_id = bill.order_id
 LEFT JOIN oi ON o.order_id = oi.order_id
+
 
 post_operations {
     ALTER TABLE ${self()} 
