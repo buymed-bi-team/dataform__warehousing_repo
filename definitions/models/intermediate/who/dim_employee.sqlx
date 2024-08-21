@@ -21,6 +21,7 @@ WITH dedup_human_resource AS ${dedup.dedup(
     source.silver + `.platform_human_resource_prd_employee_employee_info`,
     `               
     email,
+    user_name,
     full_name as fullname,
     status as employee_status,
     employee_department as department,
@@ -32,6 +33,7 @@ WITH dedup_human_resource AS ${dedup.dedup(
 SELECT 
     CAST(json_value(branch.branch_account_id) AS INTEGER) AS employee_id,
     email,
+    user_name,
     fullname,
     department,
     job_title,

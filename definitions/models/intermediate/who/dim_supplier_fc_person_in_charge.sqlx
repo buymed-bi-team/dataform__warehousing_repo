@@ -53,7 +53,9 @@ SELECT
     fc_code,
     pic_purchase_id,
     cic_category_id,
+    dim_employee_1.user_name as pic_user_name,
     dim_employee_1.fullname as pic_purchase_name,
+    dim_employee_2.user_name as cic_user_name,
     dim_employee_2.fullname as cic_category_name
 FROM
     dedup_pic

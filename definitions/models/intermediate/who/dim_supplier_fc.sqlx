@@ -53,7 +53,9 @@ SELECT
     pic.pic_purchase_id,
     pic.cic_category_id,
     pic.pic_purchase_name,
-    pic.cic_category_name
+    pic.cic_category_name,
+    pic.pic_user_name,
+    pic.cic_user_name
     
 FROM ${ref(`dim_fc`)} dim_fc , ${ref(`dim_supplier`)} dim_supplier
 LEFT JOIN ${ref(`dim_supplier_fc_person_in_charge`)} pic
