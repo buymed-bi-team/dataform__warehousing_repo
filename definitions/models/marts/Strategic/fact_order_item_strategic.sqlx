@@ -27,7 +27,7 @@ WITH o AS (
         order_id,
         status,
         ${utils.ToTimezone(`outbound_date`)} as outbound_time,
-        created_time
+        created_time as order_created_time
         
     FROM
         ${source.platinum}.marketplace_prd_order_v2_order
@@ -73,7 +73,8 @@ SELECT
     -- vat
     (oi.outbound_quantity * oi.price ) AS outbound_amount,
     
-    bill_created_time
+    bill.bill_created_time,
+    o.order_created_time
 
 
 FROM oi
