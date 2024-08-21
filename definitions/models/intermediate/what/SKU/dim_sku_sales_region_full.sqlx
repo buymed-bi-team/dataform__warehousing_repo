@@ -60,3 +60,4 @@ FROM ${ref('dim_sku')} AS s
         ON sc.sku_code = s.sku_code AND sc.sales_region_code = sa.sales_region_code
     LEFT JOIN ${source.platinum}.seller_prd_core_seller AS sup
         ON sup.code = s.seller_code
+QUALIFY ROW_NUMBER() OVER(PARTITION BY sku_key_sales_region_code) = 1
