@@ -36,8 +36,8 @@ WITH dedup_human_resource AS ${dedup.dedup(
 SELECT 
     employee_id,
     CAST(json_value(branch.branch_account_id) AS INTEGER) AS branch_account_id,
-    user_name,
     email,
+    user_name,
     fullname,
     department,
     job_title,

@@ -57,6 +57,7 @@ SELECT
     dim_employee_2.fullname as cic_category_name,
     dim_employee_1.user_name as pic_purchase_username,
     dim_employee_2.user_name as cic_category_username
+
 FROM
     dedup_pic
 LEFT JOIN `lakehouse-prod-394907.gold_buymed_vn2.dim_employee` dim_employee_1
