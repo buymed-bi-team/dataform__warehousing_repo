@@ -55,8 +55,8 @@ SELECT
   pic_account_id ,
   pic_username ,
   note,
-  DATETIME(created_time,'+7'),
-  DATETIME(last_updated_time, '+7')
+  ${utils.ToTimezone('created_time')} created_time,
+  ${utils.ToTimezone('last_updated_time')} last_updated_time
   
 FROM 
 
