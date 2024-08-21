@@ -50,5 +50,5 @@ SELECT
 FROM ${ref("dim_sku")} AS sku, ${ref("dim_fc")} AS fc
 LEFT JOIN cte_main AS m ON sku.sku_code = m.sku_code AND fc.fc_code = m.fc_code
 LEFT JOIN ${ ref("dim_supplier_fc_person_in_charge") } AS ic ON sku.seller_code = ic.supplier_code AND fc.fc_code = ic.fc_code
-LEFT JOIN ${ ref("dim_employee") } AS e1 ON m.cic_account_id = e1.employee_id
-LEFT JOIN ${ ref("dim_employee") } AS e2 ON m.pic_account_id = e2.employee_id
+LEFT JOIN ${ ref("dim_employee") } AS e1 ON m.cic_account_id = e1.branch_account_id
+LEFT JOIN ${ ref("dim_employee") } AS e2 ON m.pic_account_id = e2.branch_account_id
