@@ -173,7 +173,8 @@ select
     ,c.end_at
 from fill_backwwark_value c
 left join gold_buymed_vn.adhoc_pm_master_sku s on c.sku = s.sku_code and c.sales_region_code_bf = s.sales_region_code
-left join previous_item_status as p on CONCAT(SPLIT(c.item_code, '.')[SAFE_ORDINAL(1)], '.', SPLIT(c.item_code, '.')[SAFE_ORDINAL(2)]) = previous_item_code
+left join previous_item_status as p 
+  on CONCAT(SPLIT(c.item_code, '.')[SAFE_ORDINAL(1)], '.', SPLIT(c.item_code, '.')[SAFE_ORDINAL(2)]) = previous_item_code
 where c.date > DATE(DATE_TRUNC(current_date(), MONTH) - INTERVAL 3 MONTH)
 )
 -- step 3: listing toàn bộ những con sku không được ghi nhân có sự thay đổi status in L90D và join với historical
