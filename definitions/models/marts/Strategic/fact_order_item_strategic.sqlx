@@ -65,7 +65,6 @@ SELECT
     oi.outbound_quantity,
     oi.demand_quantity, 
     oi.price,
-    demand_quantity * price AS gmv,
     CASE 
         WHEN do.order_channel = "CONSIGNMENT" then 0
         WHEN o.status <> "CANCEL" and o.status <> "CANCELLED" and do.order_channel <> "CONSIGNMENT-RECOGNITION" then demand_quantity * price
