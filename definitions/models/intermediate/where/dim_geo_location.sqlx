@@ -13,17 +13,17 @@ config {
     name: "dim_geo_location",
     tags: ["0h00"],
     columns: {
-        location_code: "NonNull | Can be district code if island else ward code",
+        location_code: "NonNull | It is union code of ward district province region",
         location_name: "NonNull | ",
-        location_class : "NonNull | It must be one of the following: WARD, DISTRICT",
-        ward_code : "Nullable | Null if island",
-        ward_name : "Nullable | Null if island",
-        district_code : "NonNull | ",
-        district_name : "NonNull | ",
-        province_code : "NonNull | ",
-        province_name : "NonNull | ",
-        region_code : "NonNull | ",
-        region_name : "NonNull | ",
+        location_class : "NonNull | It must be one of the following: WARD, DISTRICT, PROVINCE, REGION",
+        ward_code : "Nullable | Null if island, or location class is not ward",
+        ward_name : "Nullable | ",
+        district_code : "Nullable | Null if location class is province region ",
+        district_name : "Nullable | ",
+        province_code : "Nullable |  Null if location class is region",
+        province_name : "Nullable | ",
+        region_code : "Nullable | ",
+        region_name : "Nullable | ",
     }
 }
 -- location code can be every level code: ward, district, province, region
@@ -67,6 +67,7 @@ WITH
 
 SELECT
     dedup_ward.code AS location_code,
+    dedup_ward.ward_name AS location_name,
     'WARD' AS location_class,
     dedup_ward.code as ward_code,
     dedup_ward.ward_name,
@@ -89,6 +90,7 @@ UNION ALL
 
 SELECT
     dedup_district.code AS location_code,
+    dedup_district.district_name AS location_name,
     'DISTRICT' AS location_class,
     NULL AS ward_code,
     NULL AS ward_name,
@@ -108,6 +110,7 @@ UNION ALL
 
 SELECT
     dedup_province.code AS location_code,
+    dedup_province.province_name AS location_name,
     'PROVINCE' AS location_class,
     NULL AS ward_code,
     NULL AS ward_name,
@@ -125,6 +128,7 @@ UNION ALL
 
 SELECT
     dedup_region.code AS location_code,
+    dedup_region.region_name AS location_name,
     'REGION' AS location_class,
     NULL AS ward_code,
     NULL AS ward_name,

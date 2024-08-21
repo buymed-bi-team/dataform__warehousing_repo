@@ -173,7 +173,8 @@ select
     ,c.end_at
 from fill_backwwark_value c
 left join gold_buymed_vn.adhoc_pm_master_sku s on c.sku = s.sku_code and c.sales_region_code_bf = s.sales_region_code
-left join previous_item_status as p on CONCAT(SPLIT(c.item_code, '.')[SAFE_ORDINAL(1)], '.', SPLIT(c.item_code, '.')[SAFE_ORDINAL(2)]) = previous_item_code
+left join previous_item_status as p 
+  on CONCAT(SPLIT(c.item_code, '.')[SAFE_ORDINAL(1)], '.', SPLIT(c.item_code, '.')[SAFE_ORDINAL(2)]) = previous_item_code
 where c.date > DATE(DATE_TRUNC(current_date(), MONTH) - INTERVAL 3 MONTH)
 )
 -- step 3: listing toàn bộ những con sku không được ghi nhân có sự thay đổi status in L90D và join với historical
@@ -276,7 +277,7 @@ from in_historical c)
         safe_cast (count(distinct sr.seller_code) as string) as no_seller,
         string_agg( sr.seller_code,", ") as list_seller_in_product
     from gold_buymed_vn.adhoc_pm_master_sku as sr
-    where sr.sku_system_active = true and sku_system_status is not null
+    where sku_system_status is not null
     group by all
 )
 , product_seller_oos as -- get all seller of product, condition: only sku active and status sku = oos
@@ -285,7 +286,7 @@ select
     sr.product_id, sr.sales_region_code,date,
     safe_cast (count(distinct sr.seller_code) as string) as no_seller_oos, string_agg( sr.seller_code, ", ") as list_seller_oos_in_product
 from union_all as sr
-where sr.sku_system_active = true and sr.status = "OUT_OF_STOCK" and status is not null
+where sr.status = "OUT_OF_STOCK" and status is not null
 group by all
     )
 
@@ -299,4 +300,4 @@ case
 from union_all cf
 left join product_seller ps on cf.product_id= ps.product_id and cf.sales_region_code= ps.sales_region_code 
 left join product_seller_oos po on cf.product_id= po.product_id and cf.date= po.date and cf.sales_region_code= po.sales_region_code
-where cf.sku_system_active = true
+--where cf.sku_system_active = true

@@ -26,7 +26,9 @@ with
         select
             status,
             TIMESTAMP_ADD(created_time, INTERVAL 7 hour) as created_time,
-            po_code
+            po_code,
+            TIMESTAMP_ADD(first_inbound_time, INTERVAL 7 hour) as received_time,
+            DATE(TIMESTAMP_ADD(first_inbound_time, INTERVAL 7 hour)) as received_date
         from ${source.platinum}.seller_prd_purchasing_purchase_order
         WHERE
           created_date >= (SELECT start_date FROM target_date) 
@@ -45,6 +47,7 @@ with
             pi.discount_percent/100 as discount_percent ,
             pi.expect_quantity,
             pi.actual_quantity,
+            pi.bill_quantity,
             pi.total_price,
             pi.seller_code,
             pi.price_after_discount,
@@ -60,7 +63,9 @@ with
         select
             pi.*,
             po.status,
-            po.created_time
+            po.created_time,
+            po.received_time,
+            po.received_date
         from poi_dedup as pi
             left join po_dedup as po on po.po_code = pi.po_code
         where
