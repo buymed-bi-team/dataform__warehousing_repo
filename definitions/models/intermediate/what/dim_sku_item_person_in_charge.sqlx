@@ -42,11 +42,11 @@ SELECT
     , coalesce(
         e1.fullname
         , ic.cic_category_name
-    ) as cic_name
+    ) as pic_category_name
     , coalesce(
         e2.fullname
         , ic.pic_purchase_name
-    ) as pic_name
+    ) as pic_purchase_name
 FROM ${ref("dim_sku")} AS sku, ${ref("dim_fc")} AS fc
 LEFT JOIN cte_main AS m ON sku.sku_code = m.sku_code AND fc.fc_code = m.fc_code
 LEFT JOIN ${ ref("dim_supplier_fc_person_in_charge") } AS ic ON sku.seller_code = ic.supplier_code AND fc.fc_code = ic.fc_code
