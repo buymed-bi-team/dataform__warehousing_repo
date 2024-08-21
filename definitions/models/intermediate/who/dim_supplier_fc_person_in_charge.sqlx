@@ -53,16 +53,17 @@ SELECT
     fc_code,
     pic_purchase_id,
     cic_category_id,
-    dim_employee_1.user_name as pic_user_name,
     dim_employee_1.fullname as pic_purchase_name,
-    dim_employee_2.user_name as cic_user_name,
-    dim_employee_2.fullname as cic_category_name
+    dim_employee_2.fullname as cic_category_name,
+    dim_employee_1.user_name as pic_purchase_username,
+    dim_employee_2.user_name as cic_category_username
+
 FROM
     dedup_pic
 LEFT JOIN `lakehouse-prod-394907.gold_buymed_vn2.dim_employee` dim_employee_1
-    ON pic_purchase_id = dim_employee_1.employee_id
+    ON pic_purchase_id = dim_employee_1.branch_account_id
 LEFT JOIN `lakehouse-prod-394907.gold_buymed_vn2.dim_employee` dim_employee_2
-    ON cic_category_id = dim_employee_2.employee_id
+    ON cic_category_id = dim_employee_2.branch_account_id
 
 -- post_operations {                
 --     ALTER VIEW ${self()} 
