@@ -22,15 +22,27 @@ config {
 }
 
 
-WITH o AS ( 
+WITH bill as (
     SELECT 
+        distinct
         order_id,
-        status,
-        ${utils.ToTimezone(`outbound_date`)} as outbound_time,
-        created_time as order_created_time
+        ${utils.ToTimezone(`created_time`)} as bill_created_time,
+    FROM
+        ${source.platinum}.accounting_prd_core_bill 
+)
+, o AS ( 
+    SELECT 
+        o.order_id,
+        o.status,
+        ${utils.ToTimezone(`o.outbound_date`)} as outbound_time,
+        o.created_time as order_created_time,
+        bill.bill_created_time,
+        do.order_channel
         
     FROM
-        ${source.platinum}.marketplace_prd_order_v2_order
+        ${source.platinum}.marketplace_prd_order_v2_order o
+    LEFT JOIN ${ref(`dim_order`)} do ON do.order_id = o.order_id
+    LEFT JOIN bill ON o.order_id = bill.order_id
     -- WHERE 
     --     created_date > ${event_checkpoint_date}
 )
@@ -50,14 +62,7 @@ WITH o AS (
     -- WHERE
     --     created_date > ${event_checkpoint_date}
 )
-, bill as (
-    SELECT 
-        distinct
-        order_id,
-        ${utils.ToTimezone(`created_time`)} as bill_created_time,
-    FROM
-        ${source.platinum}.accounting_prd_core_bill 
-)
+
 SELECT
     o.order_id,
     oi.product_id,
@@ -73,21 +78,19 @@ SELECT
     oi.demand_quantity, 
     oi.price,
     CASE 
-        WHEN do.order_channel = "CONSIGNMENT" then 0
-        WHEN o.status <> "CANCEL" and o.status <> "CANCELLED" and do.order_channel <> "CONSIGNMENT-RECOGNITION" then demand_quantity * price
+        WHEN o.order_channel = "CONSIGNMENT" then 0
+        WHEN o.status <> "CANCEL" and o.status <> "CANCELLED" and o.order_channel <> "CONSIGNMENT-RECOGNITION" then oi.demand_quantity * oi.price
         ELSE NULL
     END AS gmv ,
     -- vat
     (oi.outbound_quantity * oi.price ) AS outbound_amount,
     
-    bill.bill_created_time,
+    o.bill_created_time,
     o.order_created_time
 
 
 FROM oi
 LEFT JOIN o ON o.order_id = oi.order_id
-LEFT JOIN bill ON bill.order_id = oi.order_id
-LEFT JOIN ${ref(`dim_order`)} do ON do.order_id = bill.order_id
 LEFT JOIN ${ref(`dim_supplier`)} ds1 ON oi.seller_code = ds1.supplier_code
 LEFT JOIN ${ref(`dim_sku`)} dsku ON dsku.sku_code = oi.sku 
 LEFT JOIN ${ref(`dim_supplier`)} ds2 ON ds2.supplier_code = dsku.seller_code
