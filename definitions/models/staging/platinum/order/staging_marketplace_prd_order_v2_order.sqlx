@@ -77,9 +77,11 @@ SELECT *,
   CASE 
     WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
     ELSE "2099-01-01"
-  END AS created_date
+  END AS created_date,
+  
 FROM (
-  SELECT *
+  SELECT *,
+ 
   FROM ${source.silver}.marketplace_prd_order_v2_order o 
   ${
     when(incremental(), 
