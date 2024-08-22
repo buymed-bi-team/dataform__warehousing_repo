@@ -15,7 +15,7 @@ config {
         ordered_line_items: "NonNull |The total number of stock-keeping units (SKUs) placed. In marketplace, it is total_item field in order table. In tender, it is number of record in order_item table group by order_id ",
         return_amount: "Nullable | the amount associated with a return, if appicable. It is amount field come from accounting_prd_core_credit_note where type of order is return ",
         order_status: "Nullable | Null means unknown",
-        gmv: "Nullable | The total valuation of all product in the order before discounts and fee",
+        gmv: "Nullable | The total valuation of all product in the order before discounts and fee | Revenue of Consignment is not same between order and order_item",
         notional_amount: "The notional or theoretical or potential delivered amount of the order",
     },
     assertions: {
@@ -180,11 +180,11 @@ SELECT
     return_amount.return_amount,
     IF (
         m.order_status <> "CANCEL" and m.order_status <> "CANCELLED" and dim_order.order_channel <> "CONSIGNMENT-RECOGNITION",
-        IF (
-            m.ordered_amount <> 0,
-            m.ordered_amount,
-            m.ordered_amount_aft_discount
-        ),
+        CASE 
+            WHEN dim_order.order_channel = "CONSIGNMENT" THEN m.ordered_amount
+            WHEN m.ordered_amount <> 0 THEN m.ordered_amount
+            ELSE m.ordered_amount_aft_discount
+        END,
         NULL
     ) AS gmv 
     -- In internal, some order_id has 0 code but valuation -> Silver layer price = 0 and total_price <>0
