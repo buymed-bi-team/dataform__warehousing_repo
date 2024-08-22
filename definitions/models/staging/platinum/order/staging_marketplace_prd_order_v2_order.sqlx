@@ -81,14 +81,7 @@ SELECT *,
   
 FROM (
   SELECT *,
-  CASE
-        WHEN o.source = 'brand-portal' AND JSON_VALUE(o.extra_props, "$.brand_code") IN ('Q8HDUVQX', '2E84FW961P', 'PG961P') THEN 'TENDER'
-        WHEN TO_JSON_STRING(JSON_VALUE_ARRAY(o.extra_props, '$.customer_tags')) LIKE '%TENDER%' THEN 'TENDER'
-        WHEN o.source IN ('brand-portal', 'clinic-portal')  THEN 'DISTRIBUTION'
-        WHEN o.source = 'internal-portal' THEN 'CONSIGNMENT'
-        WHEN TO_JSON_STRING(JSON_VALUE_ARRAY(o.extra_props, '$.customer_tags')) LIKE '%"CIRCA"%' THEN 'CIRCA'
-        ELSE 'MARKETPLACE'
-      END AS channel,
+ 
   FROM ${source.silver}.marketplace_prd_order_v2_order o 
   ${
     when(incremental(), 
