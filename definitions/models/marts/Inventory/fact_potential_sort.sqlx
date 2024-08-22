@@ -2,7 +2,7 @@ config {
   type: "table",
   description: "Source: marketplace_prd_order_v2_order, marketplace_prd_order_v2_order_item | Schedule: every day at 12am | PIC: dong.le",
   name: "fact_potential_sort",
-  tags: ["0h00", "9h00", "13h00", "16h00"],
+  tags: ["0h00", "9h00", "10h00", "11h00", "13h00", "14h00", "15h00", "16h00"],
   columns: {
     "sale_order_code": "sales order code",
     "created_date": "date the sale order was created",
