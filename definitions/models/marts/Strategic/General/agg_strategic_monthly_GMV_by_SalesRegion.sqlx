@@ -23,13 +23,15 @@ SELECT
         WHEN dim_order.sales_region_code LIKE "MIENBAC" THEN "GMV-VN-REGION-NOTHERN"
         ELSE "GMV-VN-REGION-UNKNOWN"
     END AS metric_code,
-    IF(SUM(fact_order_strategic.gmv) = 0, NULL,SUM(fact_order_strategic.gmv))  as value
+    IF(SUM(fact_order_item_strategic.gmv) = 0, NULL,SUM(fact_order_item_strategic.gmv))  as value
 
-FROM `lakehouse-prod-394907.gold_buymed_vn2.fact_order_strategic` fact_order_strategic
+FROM `lakehouse-prod-394907.gold_buymed_vn2.fact_order_item_strategic` fact_order_item_strategic
 LEFT JOIN `lakehouse-prod-394907.gold_buymed_vn2.dim_order` dim_order
-    ON fact_order_strategic.order_id = dim_order.order_id
+    ON fact_order_item_strategic.order_id = dim_order.order_id
 LEFT JOIN `lakehouse-prod-394907.gold_buymed_vn2.dim_calendar` dim_calendar
-    ON fact_order_strategic.created_date = dim_calendar.date
+    ON DATE(fact_order_item_strategic.order_created_time) = dim_calendar.date
 WHERE dim_order.sales_region_code IS NOT NULL --will fix_latter
+AND dim_order.order_channel not like "CONSIGNMENT-RECOGNITION"
+AND fact_order_item_strategic.supplier_class NOT LIKE "TECH"
 GROUP BY 1,2
 ORDER BY eom
