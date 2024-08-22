@@ -30,7 +30,7 @@ WITH bill as (
     FROM
         ${source.platinum}.accounting_prd_core_bill 
 )
-, o AS ( 
+, mkp_o AS ( 
     SELECT 
         o.order_id,
         o.status,
@@ -46,9 +46,9 @@ WITH bill as (
     -- WHERE 
     --     created_date > ${event_checkpoint_date}
 )
-, oi AS (
+, mkp_oi AS (
     SELECT 
-    mg_id,
+    -- mg_id,
         order_id,
         product_id,
         seller_code,
@@ -64,9 +64,48 @@ WITH bill as (
     --     -- created_date > ${event_checkpoint_date}
     --     created_date between "2024-05-01" and "2024-06-01"
 )
-
+, tender_o AS (
+    SELECT 
+        o.order_id,
+        o.status,
+        ${utils.ToTimezone(`o.outbound_date`)} as outbound_time,
+        ${utils.ToTimezone(`o.created_time`)} as order_created_time,
+        -- bill.bill_created_time,
+        "TENDER" AS order_channel
+        
+    FROM
+        ${source.platinum}.tender_prd_core_tender_orders o
+)
+, tender_oi AS (
+    SELECT 
+    -- mg_id,
+        order_id,
+        product_id,
+        seller_code,
+        'notneednow' AS sku,
+        seller_class, 
+        quantity AS outbound_quantity, -- temp, not find, not check, not test
+        quantity AS demand_quantity,
+        price
+    FROM 
+        ${source.platinum}.tender_prd_core_tender_order_items oi
+    
+    -- WHERE
+    --     -- created_date > ${event_checkpoint_date}
+    --     created_date between "2024-05-01" and "2024-06-01"
+)
+, o AS (
+    SELECT * FROM mkp_o 
+    UNION ALL 
+    SELECT * FROM tender_o
+)
+, oi AS (
+    SELECT * FROM mkp_oi 
+    UNION ALL
+    SELECT * FROM tender_oi
+)
 SELECT
-    oi.mg_id,
+    -- oi.mg_id,
     o.order_id,
     oi.product_id,
     oi.seller_code as supplier_code,
