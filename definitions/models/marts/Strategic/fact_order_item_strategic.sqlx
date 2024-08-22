@@ -35,7 +35,7 @@ WITH bill as (
         o.order_id,
         o.status,
         ${utils.ToTimezone(`o.outbound_date`)} as outbound_time,
-        o.created_time as order_created_time,
+        ${utils.ToTimezone(`o.created_time`)} as order_created_time,
         -- bill.bill_created_time,
         do.order_channel
         
