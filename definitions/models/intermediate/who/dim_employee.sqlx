@@ -7,7 +7,9 @@ config {
     },
     description:"Employee table within VN branch | PIC: minh.luu; model type: table; schedule: 0h00\nSource: platform_human_resource_prd_employee_employee_info",
     columns: {
-        employee_id:"The unique identifier for the employee. This ID is branch_account_id field within the user_branch_infos JSON array",
+        employee_id:"NonNull",
+        branch_account_id:"The unique identifier for the employee. This ID is branch_account_id field within the user_branch_infos JSON array",
+        user_name:"",
         email:"The email address of the employee",
         fullname: " The full name of the employee",
         department: "department of employee",
@@ -19,8 +21,10 @@ config {
 
 WITH dedup_human_resource AS ${dedup.dedup(
     source.silver + `.platform_human_resource_prd_employee_employee_info`,
-    `               
+    `        
+    employee_id,       
     email,
+    user_name,
     full_name as fullname,
     status as employee_status,
     employee_department as department,
@@ -30,8 +34,10 @@ WITH dedup_human_resource AS ${dedup.dedup(
 )}
 
 SELECT 
-    CAST(json_value(branch.branch_account_id) AS INTEGER) AS employee_id,
+    employee_id,
+    CAST(json_value(branch.branch_account_id) AS INTEGER) AS branch_account_id,
     email,
+    user_name,
     fullname,
     department,
     job_title,

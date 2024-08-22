@@ -15,21 +15,52 @@ SELECT
     dim_calendar.eom as date,
     CASE
         WHEN dim_order.order_channel LIKE "CONSIGNMENT" THEN  "GMV-VN-STREAMS-MKP"
-        WHEN dim_order.order_channel LIKE "MARKETPLACE" THEN "GMV-VN-STREAMS-MKP" 
         ELSE "GMV-VN-STREAMS-" || dim_order.order_channel 
     END AS metric_code,
-    IF(SUM(fact_order_strategic.gmv) = 0, NULL,SUM(fact_order_strategic.gmv))  as value
+    SUM( fact_order_strategic.gmv)  as value
 
-FROM `lakehouse-prod-394907.gold_buymed_vn2.fact_order_strategic` fact_order_strategic
-LEFT JOIN `lakehouse-prod-394907.gold_buymed_vn2.dim_order` dim_order
+FROM ${ref(`fact_order_strategic`)} fact_order_strategic
+LEFT JOIN ${ref(`dim_order`)} dim_order
     ON fact_order_strategic.order_id = dim_order.order_id
-LEFT JOIN `lakehouse-prod-394907.gold_buymed_vn2.dim_calendar` dim_calendar
+LEFT JOIN ${ref(`dim_calendar`)} dim_calendar
     ON fact_order_strategic.created_date = dim_calendar.date
+
 WHERE dim_order.order_channel is not null -- fix latter
 AND dim_order.order_channel not like "CONSIGNMENT-RECOGNITION"
+AND dim_order.order_channel not like "MARKETPLACE"
 
 GROUP BY 1,2
-ORDER BY eom
+HAVING value <> 0
+
+UNION ALL
+
+-- For metric code is MKP
+SELECT
+    dim_calendar.eom as date,
+    CASE 
+            WHEN fact_order_item_strategic.supplier_class = "INTERNAL" THEN "GMV-VN-STREAMS-MKP-MEDX" 
+            WHEN fact_order_item_strategic.supplier_class = "EXTERNAL" THEN "GMV-VN-STREAMS-MKP-SC" 
+            ELSE fact_order_item_strategic.supplier_class
+    END AS metric_code,
+    SUM( fact_order_item_strategic.gmv )  as value
+
+FROM ${ref(`fact_order_strategic`)} fact_order_strategic
+LEFT JOIN ${ref(`dim_order`)} dim_order
+    ON fact_order_strategic.order_id = dim_order.order_id
+LEFT JOIN ${ref(`fact_order_item_strategic`)} fact_order_item_strategic
+    ON fact_order_strategic.order_id = fact_order_item_strategic.order_id
+LEFT JOIN ${ref(`dim_calendar`)} dim_calendar
+    ON fact_order_strategic.created_date = dim_calendar.date
+
+WHERE dim_order.order_channel is not null -- fix latter
+AND dim_order.order_channel LIKE "MARKETPLACE"
+AND fact_order_item_strategic.supplier_class NOT LIKE "TECH"
+
+GROUP BY 1,2
+HAVING value <> 0
+
+
+ORDER BY date
 
 -- post_operations {
 --     ALTER VIEW ${self()} ADD PRIMARY KEY (year_month) NOT ENFORCED
