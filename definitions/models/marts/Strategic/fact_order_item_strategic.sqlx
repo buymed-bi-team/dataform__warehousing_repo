@@ -20,17 +20,35 @@ config {
         partitionBy: "DATE(order_created_time)"
     }
 }
+-- js {
+--     const checkpoint_start_created_time = `"2024-05-01"`;
+--     const checkpoint_end_created_time   = `"2024-06-01"`;
+
+--     if ( checkpoint_start_created_time !== null && checkpoint_end_created_time!== null) {
+--         const where_condition = `WHERE created_time BETWEEN ${checkpoint_start_created_time} AND ${checkpoint_end_created_time}`;
+--     }
+--     else if (checkpoint_start_created_time !== null ) {
+--         const where_condition = `created_time > ${checkpoint_start_created_time}`;
+--     }
+--     else if (checkpoint_end_created_time!== null) {
+--         const where_condition = `created_time < ${checkpoint_end_created_time}`;
+--     }
+--     else {const where_condition = ``;}
+-- }
 
 
-WITH bill as (
-    SELECT 
-        distinct
-        order_id,
-        ${utils.ToTimezone(`created_time`)} as bill_created_time,
-    FROM
-        ${source.platinum}.accounting_prd_core_bill 
-)
-, mkp_o AS ( 
+WITH 
+-- bill as (
+--     SELECT 
+--         order_id,
+--         min( ${utils.ToTimezone(`created_time`)} ) as bill_created_time,
+--     FROM
+--         ${source.platinum}.accounting_prd_core_bill 
+--     GROUP BY 1
+-- )
+
+-- , 
+mkp_o AS ( 
     SELECT 
         o.order_id,
         o.status,

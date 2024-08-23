@@ -2,7 +2,7 @@ config {
   type: "table",
   description: "Source: marketplace_prd_order_v2_order, marketplace_prd_order_v2_order_item | Schedule: every day at 12am | PIC: dong.le",
   name: "fact_potential_sort",
-  tags: ["0h00", "9h00", "13h00", "16h00"],
+  tags: ["0h00", "9h00", "10h00", "11h00", "13h00", "14h00", "15h00", "16h00"],
   columns: {
     "sale_order_code": "sales order code",
     "created_date": "date the sale order was created",
@@ -21,8 +21,8 @@ config {
     "total_sku": "total distinct SKU count for the whole sale order",
     "expected_sort": "= 50% order_quantity / total_qty + 25% order_amount / total_amt + 25% / total_sku",
     "actual_sort": "= 50% order_quantity / total_qty + 25% order_amount / total_amt + 25% no_reserved_skus / total_sku",
-    "potential_sort": "expected_sort - actual_sort for in-progress statuses (CHECKING, WAIT_TO_DELIVERY, DRAFT, WAIT_TO_PICK, RESERVING, PACKING, WAIT_TO_CHECK, DELIVERING, CONFIRM, WAIT_TO_PACK, PICKING)",
-    "unFF_sort": "expected_sort - actual_sort for completed or canceled statuses (DELIVERED, RETURNING, RETURNED, COMPLETED, RETURN, LOST, CANCEL)"
+    "potential_sort": "expected_sort - actual_sort for RESERVING status",
+    "unFF_sort": "expected_sort - actual_sort for other status"
   },
   bigquery: {
     partitionBy: "created_date",
@@ -94,7 +94,7 @@ agg_sale_order_item_sort AS (
 
 SELECT
   *,
-  IF(status IN ("CHECKING", "WAIT_TO_DELIVERY", "DRAFT", "WAIT_TO_PICK", "RESERVING", "PACKING", "WAIT_TO_CHECK", "DELIVERING", "CONFIRM", "WAIT_TO_PACK", "PICKING"), expected_sort - actual_sort, 0) AS potential_sort,
-  IF(status IN ("DELIVERED", "RETURNING", "RETURNED", "COMPLETED", "RETURN", "LOST", "CANCEL"), expected_sort - actual_sort, 0) AS unFF_sort
+  IF(status = "RESERVING", expected_sort - actual_sort, 0) AS potential_sort,
+  IF(status <> "RESERVING", expected_sort - actual_sort, 0) AS unFF_sort
 FROM agg_sale_order_item_sort
 

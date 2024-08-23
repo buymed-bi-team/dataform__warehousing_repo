@@ -14,21 +14,18 @@ config {
 SELECT
     dim_calendar.eom as date,
     CASE
-        WHEN dim_order.sales_region_code LIKE "MIENNAM" THEN "OB-ITEM-BD"
-        WHEN dim_order.sales_region_code LIKE "MIENTRUNG" THEN "OB-ITEM-DN"
-        WHEN dim_order.sales_region_code LIKE "MIENBAC" THEN "OB-ITEM-HN"
+        WHEN fact_order_item_outbound_strategic.warehouse_code LIKE "BD" THEN "OB-ITEM-BD"
+        WHEN fact_order_item_outbound_strategic.warehouse_code LIKE "DN" THEN "OB-ITEM-DN"
+        WHEN fact_order_item_outbound_strategic.warehouse_code LIKE "HN" THEN "OB-ITEM-HN"
     END AS metric_code,
-    SUM(fact_bill.outbound_quantity) as value
+    SUM(fact_order_item_outbound_strategic.outbound_items) as value
 
-FROM ${ref(`fact_order_strategic`)} fact_order_strategic
-LEFT JOIN  ${ref(`dim_order`)}  dim_order
-    ON fact_order_strategic.order_id = dim_order.order_id
-LEFT JOIN ${ref(`fact_bill`)} fact_bill
-    ON fact_order_strategic.order_id = fact_bill.order_id
+FROM ${ref(`fact_order_item_outbound_strategic`)} fact_order_item_outbound_strategic
 LEFT JOIN  ${ref(`dim_calendar`)} dim_calendar
-    ON DATE(fact_bill.created_time) = dim_calendar.date
-WHERE order_status NOT IN ('CANCEL','CANCELLED')
-AND dim_order.sales_region_code IS NOT NULL --will fix_latter
+    ON DATE(fact_order_item_outbound_strategic.outbound_time) = dim_calendar.date
+-- WHERE order_status NOT IN ('CANCEL','CANCELLED')
+-- WHERE dim_order.sales_region_code IS NOT NULL --will fix_latter
+WHERE warehouse_code IN ("BD", "DN", "HN")
 GROUP BY 1,2
 HAVING value <> 0
 ORDER BY eom

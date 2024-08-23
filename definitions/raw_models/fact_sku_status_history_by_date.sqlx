@@ -80,23 +80,51 @@ sku_list AS (
 ),
 
 previous_item_status AS (
-  SELECT 
+  SELECT
     CONCAT(SPLIT(item_code, '.')[SAFE_ORDINAL(1)], '.', SPLIT(item_code, '.')[SAFE_ORDINAL(2)]) AS previous_item_code,
-    sku,
+   
     status as previous_external_status,
-    start_at,
-    end_at,
-    end_at_custom,
-    sales_region_code
+    *
   FROM sku_status
   WHERE SPLIT(item_code, '.')[SAFE_ORDINAL(3)] = "1"  and seller_class = "EXTERNAL"
 ),
--- generate 3 months date for each item_code
+ 
+item_external AS (
+  SELECT
+   a.sku as sku,
+   a.previous_item_code,
+   b.item_code as item_code,
+   a.start_at as start_at,
+   CASE
+      WHEN a.end_at IS NULL AND b.start_at IS NOT NULL THEN b.start_at
+      ELSE a.end_at
+    END AS end_at_custom,
+   a.end_at as end_at,
+   a.status as status,
+   b.sales_region_code as sales_region_code,
+   a.seller_class as seller_class
+  FROM previous_item_status a right join sku_status b on CONCAT(SPLIT(b.item_code, '.')[SAFE_ORDINAL(1)], '.', SPLIT(b.item_code, '.')[SAFE_ORDINAL(2)]) = a.previous_item_code and SPLIT(b.item_code, '.')[SAFE_ORDINAL(3)] != "1"
+),
+ 
+final_sku_status as (
+  select * from sku_status
+  UNION ALL
+  select
+   sku,
+    item_code,
+    start_at,
+    end_at_custom,
+    end_at,
+    status,
+    sales_region_code,
+    seller_class
+  from item_external
+),
 sku_date AS (
   SELECT *
   FROM sku_list, DateSeries
 ),
-
+ 
 
 -- step 2: fill missing value
 -- start_at_v2 fill bằng current_datetime - 3 months
@@ -135,7 +163,7 @@ fill_backwwark_value AS (
     -- , s.sku_system_active
     FIRST_VALUE(ss.status IGNORE NULLS) OVER (partition by sd.sub_sku_sales_region_code ORDER BY sd.date ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS contrast_first_status
     from sku_date as sd 
-    left join sku_status as ss on sd.item_code = ss.item_code and sd.sales_region_code = ss.sales_region_code and sd.date between DATE(DATETIME(ss.start_at, 'Asia/Ho_Chi_Minh')) 
+    left join final_sku_status as ss on sd.item_code = ss.item_code and sd.sales_region_code = ss.sales_region_code and sd.date between DATE(DATETIME(ss.start_at, 'Asia/Ho_Chi_Minh')) 
     and DATETIME(ss.end_at_custom, 'Asia/Ho_Chi_Minh') 
     -- first, carefully handle condition for join here, we need to convert all of the time column to one timezone 
     -- second, we need to compate between date and date not date and datetime because for example date 2024-04-25 will not between 2024-04-25 07:00:00 
@@ -159,7 +187,6 @@ select
       c.seller_class
     , case 
         when contrast_first_status = "OUT_OF_STOCK" and status is null and c.date >= date(s.sku_approved_at) then "NORMAL"
-        when  previous_external_status is not null and contrast_first_status not in ("OUT_OF_STOCK") and SPLIT(c.item_code, '.')[SAFE_ORDINAL(3)] != "1" and c.date >= date(s.sku_approved_at) and c.seller_class = "EXTERNAL" then previous_external_status
         when contrast_first_status not in ("OUT_OF_STOCK") and status is null and c.date >= date(s.sku_approved_at) then "UNKNOWN"
         when c.date < date(s.sku_approved_at) and status is null then null
         --when s.seller_class = "EXTERNAL" and status is null 
@@ -173,8 +200,6 @@ select
     ,c.end_at
 from fill_backwwark_value c
 left join gold_buymed_vn.adhoc_pm_master_sku s on c.sku = s.sku_code and c.sales_region_code_bf = s.sales_region_code
-left join previous_item_status as p 
-  on CONCAT(SPLIT(c.item_code, '.')[SAFE_ORDINAL(1)], '.', SPLIT(c.item_code, '.')[SAFE_ORDINAL(2)]) = previous_item_code
 where c.date > DATE(DATE_TRUNC(current_date(), MONTH) - INTERVAL 3 MONTH)
 )
 -- step 3: listing toàn bộ những con sku không được ghi nhân có sự thay đổi status in L90D và join với historical
