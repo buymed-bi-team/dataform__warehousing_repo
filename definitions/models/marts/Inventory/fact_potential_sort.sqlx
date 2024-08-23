@@ -21,8 +21,8 @@ config {
     "total_sku": "total distinct SKU count for the whole sale order",
     "expected_sort": "= 50% order_quantity / total_qty + 25% order_amount / total_amt + 25% / total_sku",
     "actual_sort": "= 50% order_quantity / total_qty + 25% order_amount / total_amt + 25% no_reserved_skus / total_sku",
-    "potential_sort": "expected_sort - actual_sort for RESERVING status",
-    "unFF_sort": "expected_sort - actual_sort for other status"
+    "potential_sort": "expected_sort - actual_sort for in-progress statuses (DRAFT, CONFIRM, RESERVING, WAIT-TO-CHECK, CHECKING, WAIT-TO-PICK, PICKING)",
+    "unFF_sort": "expected_sort - actual_sort for other statuses"
   },
   bigquery: {
     partitionBy: "created_date",
@@ -94,7 +94,7 @@ agg_sale_order_item_sort AS (
 
 SELECT
   *,
-  IF(status = "RESERVING", expected_sort - actual_sort, 0) AS potential_sort,
-  IF(status <> "RESERVING", expected_sort - actual_sort, 0) AS unFF_sort
+  IF(status IN ("CHECKING", "DRAFT", "WAIT_TO_PICK", "RESERVING", "WAIT_TO_CHECK", "CONFIRM", "PICKING"), expected_sort - actual_sort, 0) AS potential_sort,
+  IF(status NOT IN ("CHECKING", "DRAFT", "WAIT_TO_PICK", "RESERVING", "WAIT_TO_CHECK", "CONFIRM", "PICKING"), expected_sort - actual_sort, 0) AS unFF_sort
 FROM agg_sale_order_item_sort
 
