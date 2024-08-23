@@ -5,7 +5,7 @@ config {
     Source:
         ${source.silver}.monitoring_prd_collector_user_stats_*`,
     columns: {
-        event: `NonNull | IN ("ADD_TO_CART", "SKU_DETAIL_VIEW","SKU_IMPRESSION","ADD_SUGGESTED_COMBO_TO_CART") `,
+        event: `NonNull | In all Customer Events Recorded `,
         customer_id: "NonNull | The unique identifier for the customer",
         created_time: "NonNull | The datetime when the event was created, adjusted to the 'Asia/Ho_Chi_Minh' timezone",
         product_id: "NonNull | Unique identifier for each product",
@@ -43,9 +43,7 @@ WITH stg AS (
      ${
     when(incremental(), 
       `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) `,
-      `WHERE DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh')) >= '2024-06-01' and ingest_time >= "2024-05-31" 
-        AND event IN ("ADD_TO_CART", "SKU_DETAIL_VIEW", "SKU_IMPRESSION","ADD_SUGGESTED_COMBO_TO_CART")`
-    )
+      `WHERE DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh')) >= '2024-06-01' and ingest_time >= "2024-05-31" `)
   }
 )
 
@@ -81,21 +79,7 @@ SELECT
               AND sub.created_time != stg.created_time
         ) THEN FALSE
         ELSE TRUE
-    END AS is_sku_customer_first_interaction_in_30_days,
-    CASE
-        WHEN EXISTS (
-            SELECT 1
-            FROM stg AS sub
-            WHERE sub.customer_id = stg.customer_id
-              AND sub.sku_code = stg.sku_code
-              AND sub.event = stg.event
-              AND sub.created_time BETWEEN
-                DATETIME_SUB(stg.created_time, INTERVAL 60 DAY)
-                AND stg.created_time
-              AND sub.created_time != stg.created_time
-        ) THEN FALSE
-        ELSE TRUE
-    END AS is_sku_customer_first_interaction_in_60_days
+    END AS is_sku_customer_first_interaction_in_30_days
 FROM
     stg
-where event in ("ADD_TO_CART", "SKU_DETAIL_VIEW", "SKU_IMPRESSION","ADD_SUGGESTED_COMBO_TO_CART")
+where customer_id >0

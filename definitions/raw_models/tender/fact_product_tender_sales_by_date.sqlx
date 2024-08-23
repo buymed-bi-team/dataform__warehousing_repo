@@ -4,7 +4,7 @@ config {
     Source:
       ${source.ref}.dim_tender_product
       ${source.ref}.dim_order_status
-      ${source.gold}.fact_order_item`,
+      ${source.ref}.fact_order_item`,
     //uniqueKey: ["mg_id"],
     name: "fact_product_tender_sales_by_date",
     tags: ["7h30"],
@@ -23,7 +23,7 @@ with internal_thuocsi as
         o.order_channel,
         sum(sales_price * demand_quantity) as ordered_amount,
         SUM(demand_quantity) as ordered_quantity
-from ${source.gold}.fact_order_item oi
+from ${source.ref}.fact_order_item oi
 left join ${source.ref}.dim_order_status s on oi.order_id = s.order_id
 left join ${source.ref}.dim_order o on oi.order_id = o.order_id
 left join ${source.ref}.dim_tender_product td on  oi.product_id = td.product_id
@@ -39,8 +39,8 @@ internal_tender as
     "TENDER" as order_channel,
     sum(oi.total_amount) as ordered_amount,
     sum(oi.quantity) as ordered_quantity
-from platinum_buymed_vn.tender_prd_core_tender_order_items oi
-left join platinum_buymed_vn.tender_prd_core_tender_orders o on oi.order_id = o.order_id
+from ${source.platinum}.tender_prd_core_tender_order_items oi
+left join ${source.platinum}.tender_prd_core_tender_orders o on oi.order_id = o.order_id
 where o.status not like  "CANCELLED" 
 group by all
 )
