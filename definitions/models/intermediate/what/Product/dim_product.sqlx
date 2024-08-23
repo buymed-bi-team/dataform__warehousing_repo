@@ -197,12 +197,16 @@ SELECT
 
   CASE
     WHEN seller.name LIKE '%[Tech]%' THEN 'TECH'
+    when REGEXP_CONTAINS(
+      LOWER(product.name),
+      "tech test|techtest|tect - test|tech-test|Tech tạo để test"
+    ) THEN 'TECH'
     WHEN seller.code LIKE 'MARKETING' then 'MARKETING'
     WHEN seller.code LIKE 'DENX' then 'DENX'
     WHEN UPPER( COALESCE( product.unit, product.volumes ) ) = 'COMBO' then 'COMBO'
     WHEN REGEXP_CONTAINS(
           LOWER(product.name ),
-          r'combo|quà|tặng|khuyến mãi|khuyến mại|hóa đơn|bảo hiểm|thẻ cào|mua|gift 1|gift 2|tờ rơi|áo blouse|poster|ưu đãi|trưng bày|tech test|techtest|tect - test|tech-test|Tech tạo để test'
+          r'combo|quà|tặng|khuyến mãi|khuyến mại|hóa đơn|bảo hiểm|thẻ cào|mua|gift 1|gift 2|tờ rơi|áo blouse|poster|ưu đãi|trưng bày'
         ) OR LOWER(product.name ) LIKE '% circa %' OR LOWER(product.name ) LIKE '% thuocsi %' 
         then 'PROMOTION'
     ELSE 'NORMAL'
