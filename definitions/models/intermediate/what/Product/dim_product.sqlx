@@ -197,6 +197,10 @@ SELECT
 
   CASE
     WHEN seller.name LIKE '%[Tech]%' THEN 'TECH'
+    when REGEXP_CONTAINS(
+      LOWER(product.name),
+      "tech test|techtest|tect - test|tech-test|Tech tạo để test"
+    ) THEN 'TECH'
     WHEN seller.code LIKE 'MARKETING' then 'MARKETING'
     WHEN seller.code LIKE 'DENX' then 'DENX'
     WHEN UPPER( COALESCE( product.unit, product.volumes ) ) = 'COMBO' then 'COMBO'

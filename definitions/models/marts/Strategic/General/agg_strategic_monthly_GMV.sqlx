@@ -14,8 +14,8 @@ config {
 SELECT
     dim_calendar.eom as date,
     CASE
-        WHEN dim_order.order_channel LIKE "CONSIGNMENT" THEN  "GMV-VN-STREAMS-MKP"
-        WHEN dim_order.order_channel LIKE "MARKETPLACE" THEN CASE 
+        -- WHEN dim_order.order_channel LIKE "CONSIGNMENT" THEN  "GMV-VN-STREAMS-MKP"
+        WHEN dim_order.order_channel IN ("MARKETPLACE","CONSIGNMENT" ) THEN CASE 
             WHEN fact_order_item_strategic.supplier_class = "INTERNAL" THEN "GMV-VN-STREAMS-MKP-MEDX" 
             WHEN fact_order_item_strategic.supplier_class = "EXTERNAL" THEN "GMV-VN-STREAMS-MKP-SC" 
             ELSE fact_order_item_strategic.supplier_class END
