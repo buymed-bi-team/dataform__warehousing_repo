@@ -23,10 +23,12 @@ js {
         'agg_strategic_outbound_item',
         'agg_strategic_outbound_orders',
         'agg_strategic_outbound_value',
-        // 'agg_strategic_fulfilled_value',
-        // 'agg_strategic_unfulfilled_value',
-        // 'agg_strategic_return_value',
-        // 'agg_strategic_cancel_value'
+
+        'agg_strategic_fulfilled_value',
+        'agg_strategic_unfulfilled_value',
+        'agg_strategic_backlog_value',
+        'agg_strategic_return_value',
+        'agg_strategic_cancel_value'
     ]
 }
 
@@ -34,6 +36,7 @@ ${
     source_list.map((source,i) =>`
 SELECT
     "${source}" as source,
+    CURRENT_DATETIME("+7") AS refresh_time,
     date, 
     metric_code,
     value
