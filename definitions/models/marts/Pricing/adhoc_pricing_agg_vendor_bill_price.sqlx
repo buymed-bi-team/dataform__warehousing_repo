@@ -11,7 +11,7 @@ config {
             ${source.platinum}.seller_prd_purchasing_vendor_bill,
             ${source.ref}.dim_sku
         `,
-    tags: ["0h00"],
+    tags: ["0h00", "PRICING"],
     columns: {
       created_time: "The date and time vendor bill was created",
       vendor_bill_id: "ID of the last vendor bill",

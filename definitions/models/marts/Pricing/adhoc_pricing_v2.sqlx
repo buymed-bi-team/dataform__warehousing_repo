@@ -10,7 +10,7 @@ config {
             ${source.platinum}.marketplace_prd_promotion_voucher,
             ${source.ref}.dim_promotion
         `,
-    tags: ["custom_1h_past5"]
+    tags: ["custom_1h_past5", "PRICING"]
 }
 
 SELECT 

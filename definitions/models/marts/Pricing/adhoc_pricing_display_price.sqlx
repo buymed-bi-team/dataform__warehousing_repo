@@ -12,7 +12,7 @@ config {
             ${source.silver}.marketplace_prd_pricing_v2_price_level, 
             ${source.silver}.marketplace_prd_pricing_v2_dynamic_level
         `,
-    tags: ["custom_1h_past5"],
+    tags: ["custom_1h_past5", "PRICING"],
     columns: {
       customer_level_fee_value: "Fee value corresponding to PLATINUM level",
       dynamic_pricing_level_fee_value: "Fee value corresponding to dynamic pricing level", 
