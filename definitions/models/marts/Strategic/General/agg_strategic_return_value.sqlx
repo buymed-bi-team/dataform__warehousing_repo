@@ -21,5 +21,17 @@ LEFT JOIN `lakehouse-prod-394907.gold_buymed_vn2.dim_order` dim_order
     ON fact_order_strategic.order_id = dim_order.order_id
 LEFT JOIN `lakehouse-prod-394907.gold_buymed_vn2.dim_calendar` dim_calendar
     ON fact_order_strategic.created_date = dim_calendar.date
+LEFT JOIN (
+    SELECT 
+        order_id,supplier_class 
+    FROM ${ref(`fact_order_item_strategic`)} fact_order_item_strategic
+    GROUP BY 1,2
+) fact_order_item_strategic
+    ON fact_order_item_strategic.order_id = fact_order_strategic.order_id
+WHERE order_status NOT IN ('CANCEL','CANCELLED')
+AND dim_order.order_channel is not null -- fix latter
+AND dim_order.order_channel not like "CONSIGNMENT-RECOGNITION"
+AND fact_order_item_strategic.supplier_class NOT LIKE "TECH"
 GROUP BY 1,2
+HAVING value <> 0
 ORDER BY eom
