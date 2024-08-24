@@ -44,7 +44,8 @@ sku_is_active AS (
     END AS end_at_custom,
     end_at,
     is_active,
-    sales_region_code
+    sales_region_code,
+    seller_class
     -- , active
   FROM (
     SELECT
@@ -53,13 +54,15 @@ sku_is_active AS (
       created_time AS start_at,
       LEAD(created_time) OVER (PARTITION BY ss.sku, item_code, b.region_code ORDER BY created_time ASC) AS end_at,
       is_active
-      , b.region_code AS sales_region_code
+      , b.region_code AS sales_region_code,
+      a.seller_class
       -- ,
       -- CASE WHEN status = "OUT_OF_STOCK" THEN "OFF"
       -- ELSE "ON"
       -- END AS active
     FROM is_active_history_location ss
     LEFT JOIN gold_buymed_vn.dim_sales_region_service_area AS b ON b.service_area_code = ss.location_code
+    LEFT JOIN gold_buymed_vn.adhoc_pm_master_sku a on ss.item_code = a.sub_sku_code
   ) a
 ),
 
@@ -73,6 +76,48 @@ sku_list AS (
   FROM sku_is_active ss
   WHERE ss.sales_region_code IS NOT NULL
   QUALIFY ROW_NUMBER() OVER (PARTITION BY ss.item_code, sales_region_code) = 1
+),
+
+previous_item_is_active AS (
+  SELECT
+    CONCAT(SPLIT(item_code, '.')[SAFE_ORDINAL(1)], '.', SPLIT(item_code, '.')[SAFE_ORDINAL(2)]) AS previous_item_code,
+   
+    is_active as previous_external_is_active,
+    *
+  FROM sku_is_active
+  WHERE SPLIT(item_code, '.')[SAFE_ORDINAL(3)] = "1"  and seller_class = "EXTERNAL"
+),
+ 
+item_external AS (
+  SELECT
+   a.sku as sku,
+   a.previous_item_code,
+   b.item_code as item_code,
+   a.start_at as start_at,
+   CASE
+      WHEN a.end_at IS NULL AND b.start_at IS NOT NULL THEN b.start_at
+      ELSE a.end_at
+    END AS end_at_custom,
+   a.end_at as end_at,
+   a.is_active as is_active,
+   b.sales_region_code as sales_region_code,
+   a.seller_class as seller_class
+  FROM previous_item_is_active a right join sku_is_active b on CONCAT(SPLIT(b.item_code, '.')[SAFE_ORDINAL(1)], '.', SPLIT(b.item_code, '.')[SAFE_ORDINAL(2)]) = a.previous_item_code and SPLIT(b.item_code, '.')[SAFE_ORDINAL(3)] != "1"
+),
+ 
+final_sku_is_active as (
+  select * from sku_is_active
+  UNION ALL
+  select
+   sku,
+    item_code,
+    start_at,
+    end_at_custom,
+    end_at,
+    is_active,
+    sales_region_code,
+    seller_class
+  from item_external
 ),
 
 -- generate 3 months date for each item_code
@@ -114,7 +159,7 @@ fill_backwwark_value AS (
     -- , s.sku_system_active
     FIRST_VALUE(ss.is_active IGNORE NULLS) OVER (partition by sd.sub_sku_sales_region_code ORDER BY sd.date ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS contrast_first_active
     from sku_date as sd 
-    left join sku_is_active as ss on sd.item_code = ss.item_code and sd.sales_region_code = ss.sales_region_code and sd.date between date(ss.start_at) and date(ss.end_at_custom)
+    left join final_sku_is_active as ss on sd.item_code = ss.item_code and sd.sales_region_code = ss.sales_region_code and sd.date between date(ss.start_at) and date(ss.end_at_custom)
     
 )
 
