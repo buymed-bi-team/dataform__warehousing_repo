@@ -2,7 +2,7 @@ config {
     type: "table", 
     description: 
         `
-        ALL types of SKU prices including display price (calculated from the pricing formula), deal price, campaign price, setting price, purchase price, after rebate price and the net price received of external seller;
+        All types of SKU prices including display price (calculated according to the pricing formula for PLATINUM-level customer in HCM, HN, DN corresponding to 3 sales regions ), deal price, campaign price, setting price, purchase price, price after rebate and the net price received of external seller;
         PIC: nguyen.tran; 
         Type: Table; 
         Refresh Schedule: hourly;

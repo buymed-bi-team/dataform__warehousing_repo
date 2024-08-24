@@ -1,0 +1,58 @@
+config {
+    type: "table", 
+    description: 
+        `
+        The price after discount of SKUs in the last vendor bill (excluding bills with DRAFT or CANCEL status);
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: daily at 0h;
+        Source: 
+            ${source.platinum}.seller_prd_purchasing_vendor_bill_item,
+            ${source.platinum}.seller_prd_purchasing_vendor_bill,
+            ${source.ref}.dim_sku
+        `,
+    tags: ["0h00"],
+    columns: {
+      created_time: "The date and time vendor bill was created",
+      vendor_bill_id: "ID of the last vendor bill",
+      newest_price_bill_after_discount_VAT: "Price after discount of SKU in the last vendor bill (including VAT)"
+    },
+
+    assertions: {
+      uniqueKey: ["sku_key_sales_region_code"],
+      nonNull: ["sku_code", "vendor_bill_id", "sales_region_code"]
+    }
+}
+
+WITH
+    cte_date AS (
+      SELECT TIMESTAMP_SUB(CAST(DATE_TRUNC(DATE_SUB(CURRENT_DATE("+7"), INTERVAL 6 MONTH), MONTH) AS TIMESTAMP), INTERVAL 7 HOUR) as datetime_,
+    )
+
+select 
+  TIMESTAMP_ADD(b.created_time, INTERVAL 7 HOUR) AS created_time,
+  b.vendor_bill_id,
+  a.sku_code,
+  CASE
+    WHEN REGEXP_CONTAINS(b.po_code, r'POHN') THEN 'MIENBAC'
+    WHEN REGEXP_CONTAINS(b.po_code, r'PODN') THEN 'MIENTRUNG'
+    WHEN REGEXP_CONTAINS(b.po_code, r'PO') THEN 'MIENNAM'
+  END as sales_region_code,
+  CONCAT(a.sku_key, "_", 
+    CASE
+      WHEN REGEXP_CONTAINS(b.po_code, r'POHN') THEN 'MIENBAC'
+      WHEN REGEXP_CONTAINS(b.po_code, r'PODN') THEN 'MIENTRUNG'
+      WHEN REGEXP_CONTAINS(b.po_code, r'PO') THEN 'MIENNAM'
+    END 
+  ) AS sku_key_sales_region_code,
+  SAFE_DIVIDE(b.total_price, b.quantity) AS newest_price_bill_after_discount_VAT -- total_price = unit_price * (1-discount) * quantity * (1 + vat)
+FROM ${ref('dim_sku')} AS a
+    LEFT JOIN ${source.platinum}.seller_prd_purchasing_vendor_bill_item AS b 
+      ON a.sku_code = b.sku
+    LEFT JOIN ${source.platinum}.seller_prd_purchasing_vendor_bill AS c 
+      ON b.vendor_bill_id = c.vendor_bill_id
+WHERE b.total_price > 0
+  AND b.quantity > 0
+  AND b.last_updated_time IS NOT NULL
+  AND c.status NOT IN ('DRAFT', 'CANCEL')
+QUALIFY ROW_NUMBER() OVER (PARTITION BY a.sku_code, sales_region_code ORDER BY c.created_time DESC) = 1
