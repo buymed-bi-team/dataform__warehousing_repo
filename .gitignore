@@ -2,3 +2,4 @@ node_modules/
 definitions/self_dev/*
 definitions/models_test/*
 pyfunc/*
+local/*
