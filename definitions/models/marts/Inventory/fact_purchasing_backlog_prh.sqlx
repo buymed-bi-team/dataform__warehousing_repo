@@ -16,8 +16,8 @@ SELECT
   , wi.quantity
   , wi.reason as sku_note
   , timestamp_add( current_timestamp(), interval 7 hour ) as transformed_at
-FROM ${source.silver}.seller_prd_wis_withdraw_ticket AS wt
-LEFT JOIN ${source.silver}.seller_prd_wis_withdraw_item AS wi on wt.code = wi.withdraw_code
+FROM ${source.platinum}.seller_prd_wis_withdraw_ticket AS wt
+LEFT JOIN ${source.platinum}.seller_prd_wis_withdraw_item AS wi on wt.code = wi.withdraw_code
 WHERE 
   TIMESTAMP_TRUNC(wt.ingest_time, DAY) >= TIMESTAMP("2023-11-01") 
   AND wt.overdue_date >= current_timestamp()
