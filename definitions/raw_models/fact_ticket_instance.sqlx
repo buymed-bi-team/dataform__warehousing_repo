@@ -35,7 +35,7 @@ select requester_code,
        template_module_code,
        branch_code,
        case when created_by_account_id > 0 then "Internal"
-       else "Pharmacy" end as creator_type ,
+       else "Pharmacy" end as creator_type , partner_code,
        DATETIME(picked_time, "Asia/Ho_Chi_Minh") AS picked_time,
        DATETIME(created_time, "Asia/Ho_Chi_Minh") AS created_time,
        DATETIME(deadline_time, "Asia/Ho_Chi_Minh") AS deadline_time,
