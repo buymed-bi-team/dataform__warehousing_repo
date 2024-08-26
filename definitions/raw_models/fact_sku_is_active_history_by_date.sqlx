@@ -145,7 +145,11 @@ fill_backwwark_value AS (
     ss.sales_region_code,
     sd.sub_sku_sales_region_code,
     LEFT(sd.item_code, INSTR(sd.item_code, '.', 1, 2) - 1) AS sku_code_bf,
-    SUBSTR(sd.sub_sku_sales_region_code, INSTR(sd.sub_sku_sales_region_code, '_') + 1) AS sales_region_code_bf,
+    CASE
+      WHEN CONTAINS_SUBSTR(sd.sub_sku_sales_region_code, 'MIENBAC') IS TRUE THEN "MIENBAC"
+      WHEN CONTAINS_SUBSTR(sd.sub_sku_sales_region_code, 'MIENNAM') IS TRUE THEN "MIENNAM"
+      WHEN CONTAINS_SUBSTR(sd.sub_sku_sales_region_code, 'MIENTRUNG') IS TRUE THEN "MIENTRUNG"
+    END AS sales_region_code_bf,
     CASE
       WHEN ss.end_at_custom IS NULL THEN LEAD(DATETIME(ss.start_at, 'Asia/Ho_Chi_Minh'))
         OVER (PARTITION BY sub_sku_sales_region_code ORDER BY sd.date ASC)
