@@ -1,0 +1,45 @@
+config {
+    type: "view",
+    description: `PIC: minh.luu, model_type: view"
+    Source
+        ${source.ref}.dim_order
+        ${source.ref}.dim_calendar
+        ${source.ref}.fact_order_strategic`,
+    columns: {
+        metric_code: "NonNull | Concat of SalesRegion and metric lv2 column",
+        date: "NonNull | End of month",
+        value: "NonNull | gmv"
+    }
+}
+SELECT
+    dim_calendar.eom as date,
+    -- CASE
+    --     WHEN dim_order.sales_region_code IS NULL then "GMV_By_Region_NULL_REGION"
+    --     ELSE "GMV_By_Region_" || dim_order.sales_region_code
+    -- END AS metric_code,
+    CASE
+        WHEN fo.sales_region_code LIKE "MIENNAM" THEN "GMV-VN-REGION-SOUTHERN"
+        WHEN fo.sales_region_code LIKE "MIENTRUNG" THEN "GMV-VN-REGION-CENTRAL"
+        WHEN fo.sales_region_code LIKE "MIENBAC" THEN "GMV-VN-REGION-NOTHERN"
+        ELSE "GMV-VN-REGION-UNKNOWN"
+    END AS metric_code,
+    IF(SUM(fact_order_item_strategic.gmv_before_cancel) = 0, NULL,SUM(fact_order_item_strategic.gmv_before_cancel))  as value
+
+FROM `lakehouse-prod-394907.gold_buymed_vn2.fact_order_item_strategic` fact_order_item_strategic
+LEFT JOIN (
+    SELECT 
+        fo.order_id,
+        fo.order_status,
+        do.order_channel,
+        do.sales_region_code
+    FROM gold_buymed_vn2.fact_order_strategic fo
+    LEFT JOIN gold_buymed_vn2.dim_order do ON fo.order_id = do.order_id
+) fo
+    ON fact_order_item_strategic.order_id = fo.order_id
+LEFT JOIN `lakehouse-prod-394907.gold_buymed_vn2.dim_calendar` dim_calendar
+    ON DATE(fact_order_item_strategic.order_created_time) = dim_calendar.date
+WHERE order_status NOT IN ('CANCEL','CANCELLED')
+AND fo.sales_region_code IS NOT NULL --will fix_latter
+AND fo.order_channel not like "CONSIGNMENT-RECOGNITION"
+AND fact_order_item_strategic.supplier_class NOT LIKE "TECH"
+GROUP BY 1,2
