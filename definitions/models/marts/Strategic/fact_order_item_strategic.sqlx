@@ -138,6 +138,10 @@ SELECT
         WHEN o.status <> "CANCEL" and o.status <> "CANCELLED" and o.order_channel <> "CONSIGNMENT-RECOGNITION" THEN oi.demand_quantity * oi.price
         ELSE NULL
     END AS gmv ,
+    CASE 
+        WHEN o.order_channel <> "CONSIGNMENT-RECOGNITION" THEN oi.demand_quantity * oi.price
+        ELSE NULL 
+    END AS gmv_before_cancel,
     -- vat
     (oi.outbound_quantity * oi.price ) AS outbound_amount,
     
