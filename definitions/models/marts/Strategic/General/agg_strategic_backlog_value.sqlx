@@ -13,14 +13,18 @@ config {
 }
 SELECT
     dim_calendar.eom as date,
-    'FILL' AS metric_code,
-    SUM (IF(order_status IN ('COMPLETED','DELIVERED'),fact_order_item_strategic.outbound_amount ,0))  - SUM(COALESCE(return_amount,0))
+    'GMV-BACKLOG' AS metric_code,
+    -- SUM( 
+    --     fact_order_strategic.gmv
+    --     - IF( order_status IN ('DELIVERING', 'DELIVERED', 'COMPLETED'), fact_order_strategic.gmv, 0) 
+    --     - COALESCE(fact_order_strategic.return_amount,0)
+    -- )  as value 
+    -- SUM (gmv)
+    SUM ( IF( order_status IN ('DELIVERING'), fact_order_item_strategic.outbound_amount , 0) )
     as value
--- outbound_amount
 
-
-FROM ${ref(`fact_order_strategic`)} fact_order_strategic
-LEFT JOIN ${ref(`dim_order`)} dim_order
+FROM `lakehouse-prod-394907.gold_buymed_vn2.fact_order_strategic` fact_order_strategic
+LEFT JOIN `lakehouse-prod-394907.gold_buymed_vn2.dim_order` dim_order
     ON fact_order_strategic.order_id = dim_order.order_id
 LEFT JOIN (
     SELECT 
@@ -29,7 +33,7 @@ LEFT JOIN (
     GROUP BY 1,2
 ) fact_order_item_strategic
     ON fact_order_item_strategic.order_id = fact_order_strategic.order_id
-LEFT JOIN ${ref(`dim_calendar`)} dim_calendar
+LEFT JOIN `lakehouse-prod-394907.gold_buymed_vn2.dim_calendar` dim_calendar
     ON fact_order_strategic.created_date = dim_calendar.date
 WHERE order_status NOT IN ('CANCEL','CANCELLED')
 AND dim_order.order_channel is not null -- fix latter

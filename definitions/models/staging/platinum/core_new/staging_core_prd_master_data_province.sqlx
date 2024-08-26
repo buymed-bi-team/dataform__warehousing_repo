@@ -1,9 +1,8 @@
 
 
-
 config {
     type: "incremental",
-    name: "marketplace_prd_product_v2_product_category_in_charge",
+    name: "core_prd_master_data_province",
     schema: "platinum_buymed_vn",
     assertions: {
         uniqueKey: 'mg_id',
@@ -12,7 +11,7 @@ config {
     bigquery: {
         partitionBy: "created_date"
     },
-    tags:["custom_1h_past7"]
+    tags:["custom_2h_past5"]
 }
 
 pre_operations {
@@ -30,13 +29,13 @@ pre_operations {
       CREATE OR REPLACE TEMP TABLE range_created_time_table AS (
        SELECT MIN(DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))) AS min_created_date,
         MAX(DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))) AS max_created_date
-        FROM ${source.silver}.marketplace_prd_product_v2_product_category_in_charge 
+        FROM ${source.silver}.core_prd_master_data_province 
         WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) AND action != "d"
       );
 
       CREATE OR REPLACE TEMP TABLE get_deleted_record AS (
           SELECT mg_id 
-          FROM ${source.silver}.marketplace_prd_product_v2_product_category_in_charge 
+          FROM ${source.silver}.core_prd_master_data_province 
           WHERE  ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) and 
           created_time IS NULL AND last_updated_time IS NULL
         );
@@ -53,12 +52,12 @@ pre_operations {
 }
 
 SELECT
- *,
+ * ,
  CASE 
     WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
     ELSE "2099-01-01"
   END AS created_date
-FROM ${source.silver}.marketplace_prd_product_v2_product_category_in_charge o 
+FROM ${source.silver}.core_prd_master_data_province o 
  ${
     when(incremental(), 
       `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) 
@@ -136,5 +135,4 @@ post_operations {
     )
   }
 }
-
 

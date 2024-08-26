@@ -16,7 +16,7 @@ config {
     },
     assertions: {
         // uniqueKey: 'order_id || "__" || product_id',
-        nonNull: ('order_id')
+        nonNull: ['order_id']
     },
     tags: ('0h00'),
     bigquery: {
@@ -62,7 +62,7 @@ WITH o AS (
         ${source.platinum}.accounting_prd_core_bill 
 )
 SELECT
-    o.order_id,
+    bill.order_id,
     oi.product_id,
     -- oi.seller_code as supplier_code,
     -- oi.sku,

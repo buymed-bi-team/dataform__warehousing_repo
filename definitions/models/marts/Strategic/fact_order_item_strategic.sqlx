@@ -12,9 +12,6 @@ config {
         price: "Nullable",
         outbound_amount: "Nullable | Retrieve from  accounting system | outbound_quatity * price for each product"
     },
-    assertions: {
-        nonNull: ('order_id')
-    },
     tags: ('0h00'),
     bigquery: {
         partitionBy: "DATE(order_created_time)"
@@ -124,7 +121,7 @@ mkp_o AS (
 )
 SELECT
     -- oi.mg_id,
-    o.order_id,
+    oi.order_id,
     oi.product_id,
     oi.seller_code as supplier_code,
     COALESCE(
@@ -141,6 +138,10 @@ SELECT
         WHEN o.status <> "CANCEL" and o.status <> "CANCELLED" and o.order_channel <> "CONSIGNMENT-RECOGNITION" THEN oi.demand_quantity * oi.price
         ELSE NULL
     END AS gmv ,
+    CASE 
+        WHEN o.order_channel <> "CONSIGNMENT-RECOGNITION" THEN oi.demand_quantity * oi.price
+        ELSE NULL 
+    END AS gmv_before_cancel,
     -- vat
     (oi.outbound_quantity * oi.price ) AS outbound_amount,
     
