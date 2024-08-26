@@ -248,6 +248,6 @@ WHERE
     AND LOWER(product.name) NOT LIKE '%[oanh%'
     AND LOWER(product.name) NOT LIKE '%sp test%'
 
--- post_operations {                
---   ALTER TABLE ${self()} ADD PRIMARY KEY (product_id) NOT ENFORCED;
--- }
+post_operations {                
+  ALTER TABLE ${self()} ADD PRIMARY KEY (product_id) NOT ENFORCED;
+}

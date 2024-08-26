@@ -1,0 +1,246 @@
+config {
+    type: "table", 
+    description: 
+        `
+        Deal price & Campaign price of SKUs;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.ref}.dim_sku_sales_region_current,
+            ${source.ref}.adhoc_pricing_display_price,
+            ${source.silver}.marketplace_prd_promotion_campaign,
+            ${source.silver}.marketplace_prd_promotion_campaign_product, 
+            ${source.silver}.marketplace_prd_product_v2_deal
+        `,
+    tags: ["custom_1h_past5", "PRICING"],
+
+    assertions: {
+      uniqueKey: ["sku_key_sales_region_code"],
+      nonNull: ["sku_code", "sku_key", "sales_region_code"]
+    }
+}
+
+WITH
+    cte_date AS (
+        select
+            TIMESTAMP_ADD(current_timestamp(), interval 7 hour) as current_timestamp_,
+            timestamp_sub(current_timestamp(), interval 60 day) as start_date
+    )
+
+-- step 1: Get skus in a campaign that is active on website.
+    , get_campaign_products as (
+        select
+            a.campaign_code as campaign_deal_code,
+            b.sku as sku_code,
+            b.sale_type as promotion_type,
+            b.absolute_discount as absolute_price,
+            b.campaign_price,
+            b.percentage_discount,
+            JSON_VALUE(a.regions, '$.0') as regions
+        from (
+            select *
+            from ${source.silver}.marketplace_prd_promotion_campaign a
+            QUALIFY ROW_NUMBER() OVER (partition by mg_id order by synced_at desc, if(action = 'd',3, if(action = 'u',2,1)) desc, last_updated_time desc) = 1
+                and action <> 'd'
+        ) a
+            left join (
+                select *
+                from ${source.silver}.marketplace_prd_promotion_campaign_product b
+                QUALIFY ROW_NUMBER() OVER (partition by mg_id order by synced_at desc, if(action = 'd',3, if(action = 'u',2,1)) desc, last_updated_time desc) = 1
+                    and action <> 'd'
+            ) b ON a.campaign_id = b.campaign_id
+        where
+        -- condition to get active campaign
+            b.is_active = true and upper(b.status) = "NORMAL"
+            and (select current_timestamp_ from cte_date) between TIMESTAMP_ADD(a.start_time,INTERVAL 7 HOUR) and TIMESTAMP_ADD(a.end_time,INTERVAL 7 HOUR)
+    )
+-- step 2: Get skus in a deal that is active on website.
+-- Note: + Because regions that are applied to deal price are very variety. So sometime bug will occur in this code.
+    , get_deal_products as (
+        select
+            code as campaign_deal_code,
+            json_value (sku_json, '$.sku') sku_code,
+            CASE
+                WHEN a.pricing_type IS NULL THEN 'ABSOLUTE'
+                ELSE a.pricing_type
+            END as promotion_type,
+            price as absolute_price,
+            null as campaign_price, -- dummy col to union in next step
+            discount_percent as percentage_discount,
+            charge_deal_fee,
+            max_discount_value,
+            area_code, -- debug field
+            -- + Determine sale_region_code in this rule below.
+            --    Ex. HA NOI in "Đồng Bằng Sông Hồng" region that has code '113RVDTCV2U1', I will determine this deal is MIENBAC.
+            case
+                when string(area_code) like "%MIENBAC%" then "MIENBAC"
+                when string(area_code) like "%MB_ADM%" then "MIENBAC"
+                when string(area_code) like "%113RVDTCV2U1%"then "MIENBAC"
+                when string(area_code) like "%01%" then "MIENBAC"
+                when string(area_code) like "%MIENNAM%" then "MIENNAM"
+                when string(area_code) like "%MN_ADM%" then "MIENNAM"
+                when string(area_code) like "%107TQTAR1Y7G%" then "MIENNAM"
+                when string(area_code) like "%79%" then "MIENNAM"
+                when string(area_code) like "%MIENTRUNG%" then "MIENTRUNG"
+                when string(area_code) like "%MT_ADM%" then "MIENTRUNG"
+                when string(area_code) like "%528UQP72U1Y%" then "MIENTRUNG"
+                when string(area_code) like "%48%" then "MIENTRUNG"
+                when string(area_code) like "%00%" then "00"
+            -- else string(area_code)
+                else sr.sales_region_code
+            end as sales_region_code
+        from (
+            select *
+            from ${source.silver}.marketplace_prd_product_v2_deal
+            where 
+                ingest_time >= (select start_date from cte_date) and
+                (created_time >= (select start_date from cte_date) or created_time is null)
+            QUALIFY ROW_NUMBER() OVER (partition by mg_id order by synced_at desc, if(action = 'd',3, if(action = 'u',2,1)) desc, last_updated_time desc) = 1
+            and action <> 'd'
+        ) a
+            left join unnest(JSON_QUERY_ARRAY(a.skus)) as sku_json
+            left join unnest (JSON_QUERY_ARRAY(a.area_codes)) area_code
+            left join ${ref('dim_fc_service_area')} AS sr ON sr.service_area_code = STRING(area_code)
+        where  -- condition to get active deal
+            status = "ACTIVE"
+            and (select current_timestamp_ from cte_date) between TIMESTAMP_ADD(start_time,INTERVAL 7 HOUR) and TIMESTAMP_ADD(end_time,INTERVAL 7 HOUR)
+        qualify row_number() over (partition by code,sku_code,sales_region_code order by ingest_time desc) = 1
+            and action <> 'd'
+    )
+
+-- step 3: skus in step 1 join to sku_sales_region with key sku and sales_region_code (I want to modeling data with 1-1 dim_sku_sales_region_current in powerbi model layer)
+    , sku_campaign_table as (
+        select
+            a.sku_code,
+            a.sales_region_code,
+            b.campaign_deal_code as campaign_code,
+            b.promotion_type as campaign_type,
+            case
+                when upper(b.promotion_type) = 'ABSOLUTE' then b.absolute_price
+                when upper(b.promotion_type) = 'PRICE' then b.campaign_price
+                else b.percentage_discount
+            end as campaign_value
+        from  ${ref('dim_sku_sales_region_current')} a
+            cross join get_campaign_products b
+        where
+            (a.sku_code = b.sku_code and b.regions is null)
+            or (a.sku_code = b.sku_code and a.sales_region_code = b.regions)
+    )
+
+-- step 4: Skus in step 2 join to sku_sales_region_current with key sku and sales_region_code (I want to modeling data with 1-1 dim_sku_sales_region_current in powerbi model layer)
+    , sku_deal_table as (
+        select
+            a.sku_code,
+            a.sales_region_code,
+            c.campaign_deal_code as deal_code,
+            c.promotion_type as deal_type,
+            c.charge_deal_fee,
+            c.max_discount_value,
+            -- COALESCE(c.absolute_price, c.percentage_discount, c.campaign_price) as deal_value
+            case
+                when upper(c.promotion_type) = 'ABSOLUTE' then c.absolute_price
+                when upper(c.promotion_type) = 'PRICE' then c.campaign_price
+                else c.percentage_discount
+            end as deal_value
+
+        from ${ref('dim_sku_sales_region_current')} a
+            cross join get_deal_products c
+        where
+            (a.sku_code = c.sku_code and c.sales_region_code= "00")
+            or (a.sku_code = c.sku_code and a.sales_region_code = c.sales_region_code )
+            or (a.sku_code = c.sku_code and c.sales_region_code is null )
+    )
+
+-- step 5: Join data result in step 3 in 4. Then, dedup sku in a sales region.
+-- So why we need deduping? In step 1 or 2, in a deal or campaign contains many region code so when join in step 3 or 4, row in sku_sales_region_current will dupllicate by sale_region_code
+    , dedup_promotion as (
+        select
+            a.sku_code,
+            a.sales_region_code,
+            a.sku_key_sales_region_code,
+            a.sku_key,
+            a.retail_price_value,
+            b.campaign_code,
+            b.campaign_type,
+            b.campaign_value,
+            c.deal_code,
+            c.deal_type,
+            c.deal_value,
+            c.charge_deal_fee,
+            c.max_discount_value,
+        from ${ref('dim_sku_sales_region_current')} a
+            left join sku_campaign_table b on a.sku_code = b.sku_code and a.sales_region_code = b.sales_region_code
+            left join sku_deal_table c on a.sku_code = c.sku_code and a.sales_region_code = c.sales_region_code
+        where
+            campaign_code is not null
+            or deal_code is not null
+        qualify row_number() over (partition by a.sku_code, a.sales_region_code) = 1
+    )
+
+-- step 6: Calculate promotion price accorrding to logic.
+-- Note: + External and Internal SKUs have differance method to calculate
+    , final_step as (
+        select
+            b.* except(retail_price_value),
+        -- calculate campaign_price
+            if (
+                b.campaign_code is not null,
+                case
+                    WHEN  upper(b.campaign_type) = "PERCENTAGE" then
+                        if (
+                            -- external
+                            a.seller_class = "EXTERNAL",
+                            a.retail_price_value * ( 1 - b.campaign_value / 100),
+                            -- internal
+                            a.display_price * ( 1 - b.campaign_value / 100)
+                        )
+                    WHEN  upper(b.campaign_type) = "ABSOLUTE" then
+        -- +  In that code line "b.campaign_value > b.retail_price_value / 2", some situations campaign_value will use for display price
+        -- but sometime display price = retail_price - campaign_value. This is cheat code
+                        if(
+                            -- external and internal are same formula
+                            b.campaign_value > b.retail_price_value / 2,
+                            b.campaign_value,
+                            b.retail_price_value - b.campaign_value
+                        )
+                    WHEN  upper(b.campaign_type) = "PRICE" then b.campaign_value  -- external and internal are same formula
+                end ,
+                null
+            ) as campaign_price,
+
+        -- calculate deal_price
+            if (
+                b.deal_code is not null,
+                case
+                    WHEN  upper(b.deal_type) = "PERCENTAGE" then
+        -- +  In situations, if discount price of a sku after appling deal is larger than max_discount_value field in a deal, we use max_discount_value replace deal value for deal_price
+                        case
+                            when a.seller_class = "EXTERNAL"
+                                and a.retail_price_value * (b.deal_value / 100) > max_discount_value
+                                and max_discount_value > 0
+                            then a.retail_price_value - max_discount_value
+
+                            when a.seller_class = "EXTERNAL"
+                            then a.retail_price_value * ( 1 - b.deal_value / 100)
+
+                            when a.seller_class = "INTERNAL"
+                                and a.retail_price_value * (b.deal_value / 100) > max_discount_value
+                                and max_discount_value > 0
+                            then a.retail_price_value - max_discount_value
+
+                            when a.seller_class = "INTERNAL"
+                            then a.display_price * ( 1 - b.deal_value / 100)
+                        end
+                    WHEN  upper(b.deal_type) = "ABSOLUTE" then b.deal_value
+                end ,
+                null
+            ) as deal_price,
+
+        from dedup_promotion b
+            -- we need some field in display_price to calculate promtion price for external seller
+            left join ${ref('adhoc_pricing_display_price')} a
+                on a.sku_code = b.sku_code and a.sales_region_code = b.sales_region_code
+    )
+
+select * from final_step

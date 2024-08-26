@@ -23,7 +23,7 @@ SELECT
         WHEN fo.sales_region_code LIKE "MIENBAC" THEN "GMV-VN-REGION-NOTHERN"
         ELSE "GMV-VN-REGION-UNKNOWN"
     END AS metric_code,
-    IF(SUM(fact_order_item_strategic.gmv) = 0, NULL,SUM(fact_order_item_strategic.gmv))  as value
+    IF(SUM(fact_order_item_strategic.gmv_before_cancel) = 0, NULL,SUM(fact_order_item_strategic.gmv_before_cancel))  as value
 
 FROM `lakehouse-prod-394907.gold_buymed_vn2.fact_order_item_strategic` fact_order_item_strategic
 LEFT JOIN (

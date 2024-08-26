@@ -9,7 +9,11 @@ config {
         Source: 
             ${source.platinum}.marketplace_prd_promotion_promotion
         `,
-    tags: ["custom_1h_past5"]
+    tags: ["custom_1h_past5"],
+
+    assertions : {
+        uniqueKey: ["promotion_id"]
+    }
 }
 
 SELECT
