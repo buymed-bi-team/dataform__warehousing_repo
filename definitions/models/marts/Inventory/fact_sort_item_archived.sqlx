@@ -1,8 +1,8 @@
 config {
   type: "table",
   description: "Source: marketplace_prd_order_v2_order, marketplace_prd_order_v2_order_item | Schedule: every day at 12am | PIC: dong.le",
-  name: "fact_sort_item_recent",
-  tags: ["0h00", "9h00", "10h00", "11h00", "13h00", "14h00", "15h00", "16h00"],
+  name: "fact_sort_item_archived",
+  tags: ["0h00"],
   columns: {
     "sale_order_code": "sales order code",
     "created_date": "date the sale order was created",
@@ -33,14 +33,14 @@ WITH dedup_sale_order AS (
   SELECT
     sale_order_code, admin_id, warehouse_code as fc_code, status, created_time, type
   FROM ${source.platinum}.warehouse_prd_core_sale_order
-  WHERE created_date >= DATE(timestamp(date_sub(current_date(),interval 10 day))) 
+  WHERE created_date < DATE(timestamp(date_sub(current_date(),interval 10 day))) 
 ),
 
 dedup_sale_order_item AS (
   SELECT
     sale_order_code, sku as sku_code, reserved_quantity, order_quantity, unit_price, created_time, pick_items
   FROM ${source.platinum}.warehouse_prd_core_sale_order_item
-  WHERE created_date >= DATE(timestamp(date_sub(current_date(),interval 10 day)))
+  WHERE created_date < DATE(timestamp(date_sub(current_date(),interval 10 day)))
 ),
 
 agg_sale_order_item AS (
