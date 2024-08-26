@@ -1,0 +1,71 @@
+
+
+config {
+    type: "incremental",
+    name: "marketplace_prd_pricing_v2_dynamic_level",
+    schema: "platinum_buymed_vn",
+    assertions: {
+        uniqueKey: 'mg_id',
+
+    },
+    tags:["custom_2h_past5"]
+}
+
+SELECT
+   *
+    --mg_id
+FROM (
+         SELECT
+             *
+         FROM
+            ${source.silver}.marketplace_prd_pricing_v2_dynamic_level
+        -- where IFNULL(last_updated_time, timestamp('2099-01-01')) >= "2023-12-01"
+          ${
+    when(incremental(), 
+      `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) 
+      QUALIFY ROW_NUMBER() OVER (_window) = 1`,
+      `QUALIFY ROW_NUMBER() OVER (_window) = 1
+       AND FIRST_VALUE(action) OVER (_window) <> 'd'`
+    )
+  }
+         WINDOW
+             _window AS (
+                     PARTITION
+                         BY
+                         mg_id
+                     ORDER
+                         BY
+                         synced_at
+                         DESC,
+                         IF(action='d',3,IF(action='u',2,1)) DESC, last_updated_time DESC))
+
+
+post_operations {
+  ${
+    when(incremental(),
+      `
+      -- Variable declarations and assignments at the start of the block
+
+
+        -- Delete rows using the temporary table
+        DELETE FROM ${self()}
+        WHERE  (key) IN (
+            SELECT (key)
+            FROM ${self()}
+            QUALIFY ROW_NUMBER() OVER (_window) > 1
+            WINDOW _window AS (
+              PARTITION BY mg_id
+              ORDER BY synced_at DESC,
+              IF(action = 'd', 3, IF(action = 'u', 2, 1)) DESC,
+              last_updated_time DESC
+            )
+          );
+
+      
+
+      `,
+      ``
+    )
+  }
+}
+
