@@ -142,8 +142,10 @@ SELECT
     s.dynamic_pricing_level,
     s.pricing_strategy,
     s.purchase_price,
-    COALESCE(pic.pic_purchase_id, pic1.pic_purchase_id) AS pic_account_id,
-    COALESCE(pic.pic_purchase_name, pic1.pic_purchase_name) AS pic_name,
+    -- COALESCE(pic.pic_purchase_id, pic1.pic_purchase_id) AS pic_account_id,
+    pic.pic_purchase_id AS pic_account_id,
+    -- COALESCE(pic.pic_purchase_name, pic1.pic_purchase_name) AS pic_name,
+    pic.pic_purchase_name AS pic_name,
     cic.cic_account_id,
     cic.cic_name,
     cic.brand_type,
@@ -193,8 +195,8 @@ FROM cte_full AS cte
         ON s.mg_id = cte.mg_id
     LEFT JOIN ${ref('dim_sku_item_person_in_charge')} AS pic
         ON pic.sku_code = cte.sku_code AND pic.fc_code = cte.fc_code
-    LEFT JOIN ${ref('dim_supplier_fc_person_in_charge')} AS pic1
-        ON pic1.supplier_code = s.seller_code AND pic1.fc_code = cte.fc_code
+    -- LEFT JOIN ${ref('dim_supplier_fc_person_in_charge')} AS pic1
+    --     ON pic1.supplier_code = s.seller_code AND pic1.fc_code = cte.fc_code
     LEFT JOIN ${source.platinum}.seller_prd_purchasing_initial_stock_draft AS isd
         ON isd.sku = cte.sku_code AND isd.warehouse_code = cte.fc_code
     LEFT JOIN ${ref('dim_inventory_sku')} AS ins

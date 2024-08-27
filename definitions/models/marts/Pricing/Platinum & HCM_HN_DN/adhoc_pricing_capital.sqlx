@@ -1,0 +1,96 @@
+config {
+    type: "view", 
+    description: 
+        `
+        PIC: nguyen.tran; 
+        Type: View; 
+        `,
+    tags: ["PRICING"],
+
+    assertions: {
+      uniqueKey: ["product_id"],
+      nonNull: ["product_id"]
+    }
+}
+
+with
+    cte_date as (
+        SELECT TIMESTAMP_SUB(TIMESTAMP_TRUNC(current_timestamp(),day), interval 7 HOUR) as trunc_timestamp
+    )
+
+    , get_min_from_pricing as (
+        select
+            a.product_id,
+            a.sales_region_code,
+            min(coalesce(a.seller_received_with_promo,a.seller_received_without_promo)) as min_seller_recived,
+        from ${ref('adhoc_pricing_v2')} a
+            left join ${ref('dim_sku_sales_region_current')} b on a.sku_code = b.sku_code and a.sales_region_code = b.sales_region_code
+            left join ${ref('dim_supplier')} c on b.seller_code = c.supplier_code
+        where b.sku_system_active = true
+            and upper(c.supplier_name) not like '%CIRCA%'
+            and upper(c.supplier_class) != "INTERNAL"
+        group by 1,2
+    )
+
+    , get_rebate as (
+        select product_id,
+            sales_region_code,
+            min(price_after_rebate_with_adhoc_promotion) as min_price_after_rebate_with_adhoc_promotion
+        from (
+            select
+                product_id,
+                case
+                    when warehouse_code = "HN" then "MIENBAC"
+                    when warehouse_code = "BD" then 'MIENNAM'
+                    when warehouse_code = "DN" then 'MIENTRUNG'
+                end as sales_region_code,
+                price_after_rebate_with_adhoc_promotion,
+            from ${source.platinum}.seller_prd_promotion_log_price_after_rebate
+            where created_date >= (select date(trunc_timestamp) from cte_date)
+            QUALIFY ROW_NUMBER() OVER (PARTITION BY product_id, warehouse_code,vendor_code ORDER BY last_updated_time DESC) = 1
+        )
+      group by 1,2
+    )
+
+    , get_prd as (
+        select distinct product_id, sales_region_code
+        from ${ref('dim_sku_sales_region_full')}
+    )
+
+    , data_agg as (
+        select
+            a.product_id,
+            a.sales_region_code,
+            b.min_seller_recived,
+            c.min_price_after_rebate_with_adhoc_promotion,
+--             d.GMV,
+            coalesce(
+                LEAST(b.min_seller_recived, c.min_price_after_rebate_with_adhoc_promotion),
+                coalesce(b.min_seller_recived,c.min_price_after_rebate_with_adhoc_promotion)
+            ) as capital
+        from get_prd AS a
+            left join get_min_from_pricing AS b on a.product_id = b.product_id and a.sales_region_code = b.sales_region_code
+            left join get_rebate AS c on a.product_id = c.product_id and a.sales_region_code = c.sales_region_code
+--             left join `lakehouse-prod-394907.gold_buymed_vn.adhoc_pricing_capital_agg_GMV` d on d.product_id = a.product_id and d.sales_region_code = a.sales_region_code
+        order by a.product_id
+    )
+
+select
+    TIMESTAMP(DATETIME(CURRENT_TIMESTAMP(), "Asia/Ho_Chi_Minh")) as transformed_at,
+    a.product_id,
+    b.min_seller_recived as min_seller_received_MB,
+    c.min_seller_recived as min_seller_received_MN,
+    b.min_price_after_rebate_with_adhoc_promotion as min_price_after_rebate_wpro_MB,
+    c.min_price_after_rebate_with_adhoc_promotion as min_price_after_rebate_wpro_MN,
+    b.capital as capital_MB,
+    c.capital as capital_MN,
+--     b.GMV as GMV_MB,
+--     c.GMV as GMV_MN,
+    SAFE_DIVIDE(b.capital, c.capital) per_capital_MB
+from (
+    select distinct(product_id)
+    from data_agg
+) a
+    left join data_agg b on a.product_id = b.product_id and b.sales_region_code = "MIENBAC"
+    left join data_agg c on a.product_id = c.product_id and c.sales_region_code = "MIENNAM"
+order by product_id

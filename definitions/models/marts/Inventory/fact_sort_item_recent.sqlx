@@ -1,0 +1,100 @@
+config {
+  type: "table",
+  description: "Source: marketplace_prd_order_v2_order, marketplace_prd_order_v2_order_item | Schedule: every day at 12am | PIC: dong.le",
+  name: "fact_sort_item_recent",
+  tags: ["9h00", "11h00", "13h00", "16h00"],
+  columns: {
+    "sale_order_code": "sales order code",
+    "created_date": "date the sale order was created",
+    "created_time": "timestamp the sale order was created",
+    "status": "status of the sale order",
+    "sku_fc_key": "SKU key combined with FC code",
+    "sku_code": "SKU code of the item",
+    "unit_price": "unit price of from sale_order_item",
+    "order_quantity": "order quantity from sale_order_item",
+    "reserved_quantity": "reserved quantity from sale_order_item",
+    "no_reserved_skus": "indicator if the reserved quantity of order item is greater than 0",
+    "order_amount": "= unit_price * order_quantity",
+    "reserved_amount": "= unit_price * reserved_quantity",
+    "total_qty": "sum of order_quantity for the whole sale order",
+    "total_amt": "sum of unit_price * order_quantity for the whole sale order",
+    "total_sku": "total distinct SKU count for the whole sale order",
+    "expected_sort": "= 50% order_quantity / total_qty + 25% order_amount / total_amt + 25% / total_sku",
+    "actual_sort": "= 50% order_quantity / total_qty + 25% order_amount / total_amt + 25% no_reserved_skus / total_sku",
+    "potential_sort": "expected_sort - actual_sort for in-progress statuses (DRAFT, CONFIRM, RESERVING, WAIT-TO-CHECK, CHECKING, WAIT-TO-PICK, PICKING)",
+    "unFF_sort": "expected_sort - actual_sort for other statuses"
+  },
+  bigquery: {
+    partitionBy: "created_date",
+  }
+}
+
+WITH dedup_sale_order AS (
+  SELECT
+    sale_order_code, admin_id, warehouse_code as fc_code, status, created_time, type
+  FROM ${source.platinum}.warehouse_prd_core_sale_order
+  WHERE created_date >= DATE(timestamp(date_sub(current_date(),interval 10 day))) 
+),
+
+dedup_sale_order_item AS (
+  SELECT
+    sale_order_code, sku as sku_code, reserved_quantity, order_quantity, unit_price, created_time, pick_items
+  FROM ${source.platinum}.warehouse_prd_core_sale_order_item
+  WHERE created_date >= DATE(timestamp(date_sub(current_date(),interval 10 day)))
+),
+
+agg_sale_order_item AS (
+  SELECT
+    a.sale_order_code,
+    DATE(a.created_time, "Asia/Ho_Chi_Minh") AS created_date,
+    TIMESTAMP(DATETIME(a.created_time, "Asia/Ho_Chi_Minh")) AS created_time,
+    b.status,
+    d.order_channel,
+    CONCAT(c.sku_key, "_", b.fc_code) AS sku_fc_key,
+    JSON_VALUE(a1.sku) AS sku_code,
+    a.unit_price,
+    CAST(JSON_VALUE(a1.order_quantity) AS INT64) AS order_quantity,
+    CAST(JSON_VALUE(a1.reserved_quantity) AS INT64) AS reserved_quantity,
+    LEAST(CAST(JSON_VALUE(a1.first_reserved_quantity) AS INT64), CAST(JSON_VALUE(a1.order_quantity) AS INT64)) AS first_reserved_quantity, -- Force frq to be <= oq
+    IF(CAST(JSON_VALUE(a1.reserved_quantity) AS INT64) > 0, 1, 0) AS no_reserved_skus,
+    IF(CAST(JSON_VALUE(a1.first_reserved_quantity) AS INT64) > 0, 1, 0) AS no_first_reserved_skus,
+    a.unit_price * CAST(JSON_VALUE(a1.order_quantity) AS INT64) AS order_amount,
+    a.unit_price * CAST(JSON_VALUE(a1.reserved_quantity) AS INT64) AS reserved_amount,
+    a.unit_price * LEAST(CAST(JSON_VALUE(a1.first_reserved_quantity) AS INT64), CAST(JSON_VALUE(a1.order_quantity) AS INT64)) AS first_reserved_amount, -- Adjust amount accordingly
+    SUM(CAST(JSON_VALUE(a1.order_quantity) AS INT64)) OVER (PARTITION BY a.sale_order_code) AS total_qty,
+    SUM(CAST(JSON_VALUE(a1.order_quantity) AS INT64) * a.unit_price) OVER (PARTITION BY a.sale_order_code) AS total_amt,
+    COUNT(DISTINCT JSON_VALUE(a1.sku)) OVER (PARTITION BY a.sale_order_code) AS total_sku
+  FROM dedup_sale_order_item a
+  , UNNEST(JSON_QUERY_ARRAY(a.pick_items)) AS a1
+  LEFT JOIN dedup_sale_order b
+    ON a.sale_order_code = b.sale_order_code
+  LEFT JOIN ${ref("dim_sku")} c 
+    ON JSON_VALUE(a1.sku) = c.sku_code
+  LEFT JOIN ${ref("dim_order")} d 
+    ON b.admin_id = d.order_id
+  WHERE d.order_type = "SO" 
+    AND a.created_time >= TIMESTAMP(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH))
+),
+
+
+agg_sale_order_item_sort AS (
+  SELECT
+    *,
+      COALESCE(50 * order_quantity / NULLIF(total_qty, 0), 0) 
+      + COALESCE(25 * order_amount / NULLIF(total_amt, 0), 0) 
+      + COALESCE(25 * 1 / NULLIF(total_sku, 0), 0) AS expected_sort,
+      COALESCE(50 * reserved_quantity / NULLIF(total_qty, 0), 0) 
+      + COALESCE(25 * reserved_amount / NULLIF(total_amt, 0), 0) 
+      + COALESCE(25 * no_reserved_skus / NULLIF(total_sku, 0), 0) AS actual_sort,
+      COALESCE(50 * first_reserved_quantity / NULLIF(total_qty, 0), 0) 
+      + COALESCE(25 * first_reserved_amount / NULLIF(total_amt, 0), 0) 
+      + COALESCE(25 * no_first_reserved_skus / NULLIF(total_sku, 0), 0) AS actual_sort_first_reserved,      
+  FROM agg_sale_order_item
+)
+
+SELECT
+  *,
+  IF(status IN ("CHECKING", "DRAFT", "WAIT_TO_PICK", "RESERVING", "WAIT_TO_CHECK", "CONFIRM", "PICKING"), expected_sort - actual_sort, 0) AS potential_sort,
+  IF(status NOT IN ("CHECKING", "DRAFT", "WAIT_TO_PICK", "RESERVING", "WAIT_TO_CHECK", "CONFIRM", "PICKING"), expected_sort - actual_sort, 0) AS unFF_sort
+FROM agg_sale_order_item_sort
+

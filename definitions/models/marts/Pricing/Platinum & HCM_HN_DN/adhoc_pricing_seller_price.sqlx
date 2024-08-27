@@ -1,0 +1,177 @@
+config {
+    type: "table", 
+    description: 
+        `
+        Display price of the External SKUs, Net price received by the Seller after deducting taxes and fees;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.ref}.dim_sku_sales_region_current,
+            ${source.ref}.dim_supplier, 
+            ${source.ref}.dim_product, 
+            ${source.ref}.adhoc_pricing_display_price,
+            ${source.ref}.adhoc_pricing_promotion_price,
+            ${source.silver}.marketplace_prd_product_v2_seller_category_level
+        `,
+    tags: ["custom_1h_past5", "PRICING"],
+
+    assertions: {
+      uniqueKey: ["sku_key_sales_region_code"],
+      nonNull: ["sku_code", "sku_key", "sales_region_code"]
+    }
+}
+
+-- step 1: get some fee to calculate seller_received_value
+with
+
+    cte_category_seller_level as (
+        select
+            JSON_EXTRACT_SCALAR(a.extra_props, '$.category_code') || '_' || level as cate_level_code,
+            sale_fee_percent,
+            fulfillment_fee_percent
+        from ${source.silver}.marketplace_prd_product_v2_seller_category_level AS a
+        QUALIFY ROW_NUMBER() OVER (_window) = 1
+            AND FIRST_VALUE(action) over (_window) <> 'd'
+        WINDOW _window AS ( PARTITION BY mg_id
+            ORDER BY synced_at DESC, IF(action = 'd', 3, IF(action = 'u', 2, 1)) DESC, last_updated_time DESC
+        )
+    )
+
+-- step 2: get necessary columns to calculate price for seller
+    , get_columns as (
+        select
+            a.sku_code,
+            a.sales_region_code,
+            c.seller_code,
+            sel.supplier_type,
+            a.platform_fee,
+            a.logistic_fee,
+            a.retail_price_type,
+            a.retail_price_value,
+            b.deal_code,
+            b.deal_type,
+            b.charge_deal_fee,
+            b.campaign_price,
+            b.deal_price,
+            a.display_price,
+            a.delivery_region_fee_value,
+            c.sku_level,
+            e.product_category_code,
+            f.fulfillment_fee_percent AS fullfilment_fee_seller,
+            f.sale_fee_percent
+            , case
+                when campaign_price is not null and deal_price is not null then GREATEST(campaign_price, deal_price)
+                else COALESCE(campaign_price, deal_price)
+            end as promotion_price,
+            a.sku_key_sales_region_code,
+            a.sku_key
+        from ${ref('adhoc_pricing_display_price')} AS a
+            left join ${ref('adhoc_pricing_promotion_price')} AS b
+                on a.sku_code = b.sku_code and a.sales_region_code = b.sales_region_code
+            left join ${ref('dim_sku_sales_region_current')} AS c
+                on a.sku_code = c.sku_code and a.sales_region_code = c.sales_region_code
+            left join ${ref('dim_supplier')} AS sel
+                on c.seller_code = sel.supplier_code
+            left join ${ref('dim_product')} AS e
+                on c.product_id = e.product_id
+            left join cte_category_seller_level AS f
+                on concat(e.product_category_code,"_",IF(sel.supplier_type = "MARKET", "MARKET", c.sku_level)) = f.cate_level_code
+        where sel.supplier_class = "EXTERNAL"
+    )
+
+-- step 3: calculate price by BU's logic
+select
+    *,
+    -- calculate seller_fee (percentage)
+    if(
+        supplier_type in ("MARKET", "BIZ_HOUSEHOLD"),
+        fullfilment_fee_seller + sale_fee_percent + 1.5,
+        fullfilment_fee_seller + sale_fee_percent
+    ) as seller_fee_tax,
+
+    if(
+        supplier_type in ("MARKET", "BIZ_HOUSEHOLD"),
+        1.5,
+        null
+    ) as seller_tax,
+
+    fullfilment_fee_seller + sale_fee_percent as seller_fee,
+
+    -- calculate price_seller_original
+    if(
+        promotion_price is not null,
+        promotion_price,
+        if (retail_price_value > 1, retail_price_value, null)
+    ) as price_seller_original,
+
+    display_price as display_price_seller_without_promo,
+    promotion_price AS display_price_seller_with_promo,
+
+    -- calculate seller received without promotion = retail_price_value * (1 - seller_fee)
+    if (
+        retail_price_value > 1,
+        if(
+            supplier_type in ("MARKET", "BIZ_HOUSEHOLD"),
+            retail_price_value * (1 - (fullfilment_fee_seller + sale_fee_percent + 1.5) / 100),
+            retail_price_value * (1 - (fullfilment_fee_seller + sale_fee_percent ) / 100)
+        ),
+        null
+    ) as seller_received_without_promo,
+
+    if (
+        retail_price_value > 1,
+        if(
+            supplier_type in ("MARKET", "BIZ_HOUSEHOLD"),
+            retail_price_value * 1.5 / 100,
+            null
+        ),
+        null
+    ) as tax_without_promo,
+
+    if (
+        retail_price_value > 1,
+        retail_price_value * (fullfilment_fee_seller + sale_fee_percent ) / 100,
+        null
+    ) as fee_without_promo,
+
+    -- calculate seller received with promotion
+    -- Nếu bên chịu phí (tức field charge_deal_fee) là thuocsi.vn (tức value = "MARKETPLACE") thì lấy giá retail_price_value * (1 - seller_fee)
+    -- Nếu bên chịu phí là seller (tức value <> "MARKETPLACE") thì lấy giá promotion * (1 - seller_fee)
+    if (
+        promotion_price is not null ,
+        case
+            when charge_deal_fee = 'MARKETPLACE' and supplier_type in ("MARKET", "BIZ_HOUSEHOLD")
+                then retail_price_value * (1 - (fullfilment_fee_seller + sale_fee_percent + 1.5) / 100)
+            when charge_deal_fee = 'MARKETPLACE' and supplier_type not in ("MARKET", "BIZ_HOUSEHOLD")
+                then retail_price_value * (1 - (fullfilment_fee_seller + sale_fee_percent) / 100)
+            when charge_deal_fee != 'MARKETPLACE' and supplier_type in ("MARKET", "BIZ_HOUSEHOLD")
+                then ( promotion_price - logistic_fee - platform_fee ) * (1 - (fullfilment_fee_seller + sale_fee_percent + 1.5) / 100)
+            when charge_deal_fee != 'MARKETPLACE' and supplier_type not in ("MARKET", "BIZ_HOUSEHOLD")
+                then ( promotion_price - logistic_fee - platform_fee ) * (1 - (fullfilment_fee_seller + sale_fee_percent) / 100)
+        end,
+        null
+    ) as seller_received_with_promo,
+
+    if (
+        promotion_price is not null ,
+        case
+            when charge_deal_fee = 'MARKETPLACE' and supplier_type in ("MARKET", "BIZ_HOUSEHOLD")
+                then retail_price_value *  1.5 / 100
+            when charge_deal_fee != 'MARKETPLACE' and supplier_type in ("MARKET", "BIZ_HOUSEHOLD")
+                then ( promotion_price - logistic_fee - platform_fee) *  1.5 / 100
+        end,
+        null
+    ) as tax_with_promo,
+
+    if (
+        promotion_price is not null ,
+        case
+            when charge_deal_fee = 'MARKETPLACE'
+                then retail_price_value *  (fullfilment_fee_seller + sale_fee_percent) / 100
+            when charge_deal_fee != 'MARKETPLACE'
+                then ( promotion_price - logistic_fee - platform_fee) *  (fullfilment_fee_seller + sale_fee_percent) / 100
+        end,
+        null
+    ) as fee_with_promo
+from get_columns

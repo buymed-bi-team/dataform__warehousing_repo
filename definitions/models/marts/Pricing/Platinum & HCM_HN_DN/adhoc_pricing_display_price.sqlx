@@ -41,7 +41,7 @@ with
         select
             code as customer_level,
             fee_value
-        from ${source.silver}.marketplace_prd_pricing_v2_setting
+        from ${source.platinum}.marketplace_prd_pricing_v2_setting
         where
             type = 'CUSTOMER_LEVEL'
             and upper(code) = 'LEVEL_PLATINUM' -- LEVEL_PLATINUM LEVEL_SILVER
@@ -58,7 +58,7 @@ with
                 when b.province_code = "79" then "MIENNAM"
                 when b.province_code = "48" then "MIENTRUNG"
             end as sales_region_code
-        from ${source.silver}.marketplace_prd_pricing_v2_setting as a
+        from ${source.platinum}.marketplace_prd_pricing_v2_setting as a
             left join ${ref('dim_province')} as b on a.code = b.province_code
         where
             a.type = 'DELIVERY_REGION'
@@ -71,7 +71,7 @@ with
 -- table price_level doesn't have row fee_value for price range over 100.000.000. I use this solution because I use cross join in below section code
     , get_price_range_fee as (
         select from_price, to_price ,fee_value, false as flag
-        from ${source.silver}.marketplace_prd_pricing_v2_price_level
+        from ${source.platinum}.marketplace_prd_pricing_v2_price_level
         QUALIFY ROW_NUMBER() OVER (PARTITION BY code ORDER BY ingest_time desc) = 1
         UNION ALL
         SELECT
@@ -130,7 +130,7 @@ with
         from ${ref('dim_sku_sales_region_current')} AS a
             left join (
                 select *
-                from  ${source.silver}.marketplace_prd_pricing_v2_dynamic_level
+                from  ${source.platinum}.marketplace_prd_pricing_v2_dynamic_level
                 QUALIFY ROW_NUMBER() OVER (PARTITION BY level ORDER BY ingest_time desc) = 1
             ) AS b on a.dynamic_pricing_level = b.level
             cross join get_price_range_fee AS c
@@ -148,15 +148,18 @@ select
         when retail_price_type = "FIXED_PRICE" and retail_price_value > 1 then 0
         when retail_price_value > 1 then platform_fee + logistic_fee
     end as service_fee,
-    CASE
-        when retail_price_value is null or retail_price_value > 100000000 or dynamic_pricing_level_fee_value is null then retail_price_value
-        when retail_price_type = "FIXED_PRICE" and retail_price_value > 1 then retail_price_value
-        when retail_price_type = "CUSTOM_FEE" and retail_price_value > 1 then
-            CASE
-                WHEN fee_code = '1BRTE9AQ1PG' THEN retail_price_value + platform_fee
-                WHEN fee_code = '3WQD9UBW961' THEN retail_price_value + logistic_fee
-                ELSE retail_price_value + platform_fee + logistic_fee
-            END
-        when retail_price_value > 1 then retail_price_value + platform_fee + logistic_fee
-    end as display_price
+   ROUND( 
+        CASE
+            when retail_price_value is null or retail_price_value > 100000000 or dynamic_pricing_level_fee_value is null then retail_price_value
+            when retail_price_type = "FIXED_PRICE" and retail_price_value > 1 then retail_price_value
+            when retail_price_type = "CUSTOM_FEE" and retail_price_value > 1 then
+                CASE
+                    WHEN fee_code = '1BRTE9AQ1PG' THEN retail_price_value + platform_fee
+                    WHEN fee_code = '3WQD9UBW961' THEN retail_price_value + logistic_fee
+                    ELSE retail_price_value + platform_fee + logistic_fee
+                END
+            when retail_price_value > 1 then retail_price_value + platform_fee + logistic_fee
+        end, 
+        -2
+    ) as display_price
 from get_columns
