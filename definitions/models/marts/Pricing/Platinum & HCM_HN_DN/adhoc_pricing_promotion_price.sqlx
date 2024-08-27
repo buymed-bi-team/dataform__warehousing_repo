@@ -243,4 +243,8 @@ WITH
                 on a.sku_code = b.sku_code and a.sales_region_code = b.sales_region_code
     )
 
-select * from final_step
+select 
+    * EXCEPT(campaign_price, deal_price)
+    , FLOOR(campaign_price) AS campaign_price 
+    , FLOOR(deal_price) AS deal_price 
+from final_step
