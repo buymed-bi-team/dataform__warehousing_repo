@@ -1,0 +1,91 @@
+config {
+    name: "fact_sd_order_item_tender",
+    type: "table",
+    description: "fact_order_item from the last 15 days, refreshing every 30 minutes || PIC: Minh.luu; model_type: table; schedule: every 30m from 9h am to 18h pm and every 1h otherwise",
+    columns:{
+        order_id: "Unique identifier for the order",
+        customer_id: "Unique identifier for the customer who placed the order", 
+        created_at: "Timestamp indicating when the order item was created. The time zone is set to 'Asia/Ho_Chi_Minh'",
+        product_id: "Unique identifier for the product associated with the order item",
+        sku_code: "The unique identifier for each SKU",
+        item_code: "Code representing the specific item in the order",
+        fc_code: "Code for the fulfillment center (warehouse) from which the order is processed",
+        item_type: "Type of the item in the order",
+        demand_quantity: "Total quantity of the item demanded in the order",
+        reserved_quantity: "Quantity of the item reserved for the order",
+        outbound_quantity: "Quantity of the item that has been shipped out",
+        returned_quantity: "Quantity of the item that has been returned by the customer",
+        unit_price: "Price per unit of the item in the order",
+        promotion_code: "Code for the promotion applied to the order item, derived from deal_code or extra_props",
+        promotion_amount: "Amount of discount or promotion applied to the order item, derived from charge_deal_fee_value or extra_props",
+        seller_code: "Code representing the seller of the item",
+        seller_class: "Classification of the seller"
+    },
+    tags: ["custom_30min_6to24"]
+}
+
+WITH stg_order_item as (
+    select 
+    oi.order_id,
+    "T" || o.receiver_id as customer_id,
+    DATETIME(oi.created_time,"+7") as created_at,
+    oi.product_id,
+    oi.sku as sku_code,
+    oi.item_code,
+    oi.type as item_type,
+    oi.quantity as demand_quantity,
+    oi.reserved_quantity,
+    oi.outbound_quantity,
+    oi.returned_quantity,
+    oi.price as unit_price,
+    coalesce(deal_code, json_value(extra_props, '$.campaign_code') ) as promotion_code,
+    coalesce(charge_deal_fee_value,cast(json_value(extra_props, '$.campaign_fee_value') as int64)) as promotion_amount,
+    oi.seller_code,
+    oi.seller_class
+ 
+    from ${source.platinum}.tender_prd_core_tender_order_items oi
+    left join ${source.platinum}.tender_prd_core_tender_orders o USING (order_id)
+    where TIMESTAMP_ADD(oi.created_time, interval 7 hour) > TIMESTAMP(CURRENT_DATE("+7") - INTERVAL 31 DAY)  
+    AND TIMESTAMP_ADD(o.created_time, interval 7 hour) > TIMESTAMP(CURRENT_DATE("+7") - INTERVAL 31 DAY)  
+  ),
+ 
+stg_order as (
+    select mg_id,synced_at,last_updated_time,
+ 
+    order_id,
+    warehouse_code as fc_code
+ 
+ 
+    from ${source.silver}.marketplace_prd_order_v2_order  
+    where TIMESTAMP_ADD(ingest_time, interval 7 hour) > TIMESTAMP(CURRENT_DATE("+7") - INTERVAL 31 DAY)  
+    QUALIFY ROW_NUMBER() OVER(_window) = 1 AND FIRST_VALUE(action) over(_window) <> 'd'
+    WINDOW _window AS (PARTITION BY mg_id ORDER BY synced_at DESC, IF(action='d',3,IF(action='u',2,1)) DESC
+    , last_updated_time DESC)
+  )
+ 
+SELECT
+    current_datetime('+7') as current_time,
+    oi.order_id,
+    oi.customer_id,
+    oi.created_at,
+    oi.product_id,
+    oi.sku_code,
+    oi.item_code,
+    o .fc_code,
+    oi.item_type,
+    oi.demand_quantity,
+    oi.reserved_quantity,
+    oi.outbound_quantity,
+    oi.returned_quantity,
+    oi.unit_price,
+    oi.promotion_code,
+    oi.promotion_amount,
+    oi.seller_code,
+    s.supplier_class as seller_class  
+FROM stg_order_item oi
+LEFT JOIN stg_order o
+    ON oi.order_id = o.order_id
+LEFT JOIN `lakehouse-prod-394907.gold_buymed_vn2.dim_supplier` s
+    ON oi.seller_code = s.supplier_code
+WHERE oi.created_at > CURRENT_DATE("+7") - INTERVAL 31 DAY
+AND seller_class in ("EXTERNAL","INTERNAL")
