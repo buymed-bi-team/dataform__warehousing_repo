@@ -114,7 +114,9 @@ with
 SELECT
     * 
 FROM fv_vendor
+WHERE rebate_date_get_at IS NOT NULL
 UNION DISTINCT
 SELECT
     * 
 FROM other_vendor
+WHERE rebate_date_get_at IS NOT NULL
