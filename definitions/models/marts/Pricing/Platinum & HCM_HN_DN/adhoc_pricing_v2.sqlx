@@ -19,10 +19,11 @@ SELECT
     d.rebate_date_get_at,
     a.product_id,
     a.sku_code,
-    a.supplier_class,
+    a.seller_class,
     a.product_name,
     a.sales_region_code,
-    CONCAT(a.product_id, "_", a.seller_code, "_", a.sales_region_code) AS sku_key_sales_region_code,
+    a.sku_key_sales_region_code,
+    a.sku_key,
     a.cic_name, 
     a.retail_price_value,
     a.purchase_price,
@@ -39,14 +40,14 @@ SELECT
     c.seller_received_with_promo,
     c.seller_received_without_promo,
     IF(
-        supplier_class = 'INTERNAL',
+        seller_class = 'INTERNAL',
         COALESCE( b.campaign_price, b.deal_price, a.display_price),
         COALESCE(c.display_price_seller_with_promo, c.display_price_seller_without_promo)
     ) AS sku_display_price
-FROM ${source.gold}.adhoc_pricing_display_price_v2 AS a
-    LEFT JOIN ${source.gold}.adhoc_pricing_promotion_price_v2 AS b 
+FROM ${ref('adhoc_pricing_display_price')} AS a
+    LEFT JOIN ${ref('adhoc_pricing_promotion_price')} AS b 
         ON a.sku_code = b.sku_code AND a.sales_region_code = b.sales_region_code
-    LEFT JOIN ${source.gold}.adhoc_pricing_seller_pricing_v2 AS c 
+    LEFT JOIN ${ref('adhoc_pricing_seller_price')} AS c 
         ON a.sku_code = c.sku_code AND a.sales_region_code = c.sales_region_code
-    LEFT JOIN ${source.gold}.adhoc_pricing_rebate_price AS d 
+    LEFT JOIN ${ref('adhoc_pricing_price_after_rebate')} AS d 
         ON a.sku_code = d.sku_code AND a.sales_region_code = d.sales_region_code
