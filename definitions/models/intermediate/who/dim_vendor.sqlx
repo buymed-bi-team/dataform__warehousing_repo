@@ -1,0 +1,13 @@
+config {
+    type: "view",
+    description: "View from <Dim_Supplier>"
+}
+
+select *,
+    if(line_manager is not null and line_manager != ""
+        , line_manager
+        , supplier_code
+    ) as line_manager_combine
+from ${ ref('dim_supplier')} as s
+where
+    s.supplier_class = 'VENDOR'

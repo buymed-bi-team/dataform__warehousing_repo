@@ -9,9 +9,9 @@ config {
         Source: 
             ${source.ref}.dim_sku_sales_region_current,
             ${source.ref}.adhoc_pricing_display_price,
-            ${source.silver}.marketplace_prd_promotion_campaign,
-            ${source.silver}.marketplace_prd_promotion_campaign_product, 
-            ${source.silver}.marketplace_prd_product_v2_deal
+            ${source.platinum}.marketplace_prd_promotion_campaign,
+            ${source.platinum}.marketplace_prd_promotion_campaign_product, 
+            ${source.platinum}.marketplace_prd_product_v2_deal
         `,
     tags: ["custom_1h_past5", "PRICING"],
 
@@ -38,18 +38,9 @@ WITH
             b.campaign_price,
             b.percentage_discount,
             JSON_VALUE(a.regions, '$.0') as regions
-        from (
-            select *
-            from ${source.silver}.marketplace_prd_promotion_campaign a
-            QUALIFY ROW_NUMBER() OVER (partition by mg_id order by synced_at desc, if(action = 'd',3, if(action = 'u',2,1)) desc, last_updated_time desc) = 1
-                and action <> 'd'
-        ) a
-            left join (
-                select *
-                from ${source.silver}.marketplace_prd_promotion_campaign_product b
-                QUALIFY ROW_NUMBER() OVER (partition by mg_id order by synced_at desc, if(action = 'd',3, if(action = 'u',2,1)) desc, last_updated_time desc) = 1
-                    and action <> 'd'
-            ) b ON a.campaign_id = b.campaign_id
+        from ${source.platinum}.marketplace_prd_promotion_campaign a
+            left join ${source.platinum}.marketplace_prd_promotion_campaign_product b
+                ON a.campaign_id = b.campaign_id
         where
         -- condition to get active campaign
             b.is_active = true and upper(b.status) = "NORMAL"
@@ -91,13 +82,10 @@ WITH
                 else sr.sales_region_code
             end as sales_region_code
         from (
-            select *
-            from ${source.silver}.marketplace_prd_product_v2_deal
+            SELECT *
+            FROM ${source.platinum}.marketplace_prd_product_v2_deal 
             where 
-                ingest_time >= (select start_date from cte_date) and
-                (created_time >= (select start_date from cte_date) or created_time is null)
-            QUALIFY ROW_NUMBER() OVER (partition by mg_id order by synced_at desc, if(action = 'd',3, if(action = 'u',2,1)) desc, last_updated_time desc) = 1
-            and action <> 'd'
+                created_date >= (select DATE(start_date) from cte_date) 
         ) a
             left join unnest(JSON_QUERY_ARRAY(a.skus)) as sku_json
             left join unnest (JSON_QUERY_ARRAY(a.area_codes)) area_code
@@ -105,8 +93,8 @@ WITH
         where  -- condition to get active deal
             status = "ACTIVE"
             and (select current_timestamp_ from cte_date) between TIMESTAMP_ADD(start_time,INTERVAL 7 HOUR) and TIMESTAMP_ADD(end_time,INTERVAL 7 HOUR)
-        qualify row_number() over (partition by code,sku_code,sales_region_code order by ingest_time desc) = 1
-            and action <> 'd'
+        qualify 
+            row_number() over (partition by code,sku_code,sales_region_code order by ingest_time desc) = 1
     )
 
 -- step 3: skus in step 1 join to sku_sales_region with key sku and sales_region_code (I want to modeling data with 1-1 dim_sku_sales_region_current in powerbi model layer)
@@ -187,14 +175,15 @@ WITH
             if (
                 b.campaign_code is not null,
                 case
-                    WHEN  upper(b.campaign_type) = "PERCENTAGE" then
-                        if (
-                            -- external
-                            a.seller_class = "EXTERNAL",
-                            a.retail_price_value * ( 1 - b.campaign_value / 100),
-                            -- internal
-                            a.display_price * ( 1 - b.campaign_value / 100)
-                        )
+                    WHEN  upper(b.campaign_type) = "PERCENTAGE" 
+                        then a.display_price * ( 1 - b.campaign_value / 100)
+                        -- if (
+                        --     -- external
+                        --     a.seller_class = "EXTERNAL",
+                        --     a.retail_price_value * ( 1 - b.campaign_value / 100),
+                        --     -- internal
+                        --     a.display_price * ( 1 - b.campaign_value / 100)
+                        -- )
                     WHEN  upper(b.campaign_type) = "ABSOLUTE" then
         -- +  In that code line "b.campaign_value > b.retail_price_value / 2", some situations campaign_value will use for display price
         -- but sometime display price = retail_price - campaign_value. This is cheat code
@@ -202,7 +191,8 @@ WITH
                             -- external and internal are same formula
                             b.campaign_value > b.retail_price_value / 2,
                             b.campaign_value,
-                            b.retail_price_value - b.campaign_value
+                            -- b.retail_price_value - b.campaign_value
+                            a.display_price - b.campaign_value
                         )
                     WHEN  upper(b.campaign_type) = "PRICE" then b.campaign_value  -- external and internal are same formula
                 end ,
@@ -217,22 +207,31 @@ WITH
         -- +  In situations, if discount price of a sku after appling deal is larger than max_discount_value field in a deal, we use max_discount_value replace deal value for deal_price
                         case
                             when a.seller_class = "EXTERNAL"
-                                and a.retail_price_value * (b.deal_value / 100) > max_discount_value
+                                -- and a.retail_price_value * (b.deal_value / 100) > max_discount_value
+                                and a.display_price * (b.deal_value / 100) > max_discount_value
                                 and max_discount_value > 0
-                            then a.retail_price_value - max_discount_value
+                            -- then a.retail_price_value - max_discount_value
+                            then a.display_price - max_discount_value
 
                             when a.seller_class = "EXTERNAL"
-                            then a.retail_price_value * ( 1 - b.deal_value / 100)
+                            -- then a.retail_price_value * ( 1 - b.deal_value / 100)
+                            then a.display_price * ( 1 - b.deal_value / 100)
 
                             when a.seller_class = "INTERNAL"
-                                and a.retail_price_value * (b.deal_value / 100) > max_discount_value
+                                -- and a.retail_price_value * (b.deal_value / 100) > max_discount_value
+                                and a.display_price * (b.deal_value / 100) > max_discount_value
                                 and max_discount_value > 0
-                            then a.retail_price_value - max_discount_value
+                            -- then a.retail_price_value - max_discount_value
+                            then a.display_price - max_discount_value
 
                             when a.seller_class = "INTERNAL"
                             then a.display_price * ( 1 - b.deal_value / 100)
                         end
-                    WHEN  upper(b.deal_type) = "ABSOLUTE" then b.deal_value
+                    WHEN  upper(b.deal_type) = "ABSOLUTE" then 
+                        CASE b.charge_deal_fee 
+                            WHEN "MARKETPLACE" THEN b.deal_value
+                            WHEN "SELLER" THEN b.deal_value + a.logistic_fee + a.platform_fee
+                        END
                 end ,
                 null
             ) as deal_price,
