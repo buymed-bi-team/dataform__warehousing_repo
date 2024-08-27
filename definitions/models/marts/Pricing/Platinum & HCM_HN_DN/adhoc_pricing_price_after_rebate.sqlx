@@ -15,8 +15,8 @@ config {
     tags: ["custom_1h_past5", "PRICING"],
 
     assertions: {
-      uniqueKey: ["product_sales_region_code"],
-      nonNull: ["sku_code", "sku_key", "sales_region_code"]
+      uniqueKey: ["product_sales_region_code", "sku_key_sales_region_code"],
+      nonNull: ["sku_code", "sales_region_code"]
     }
 }
 
@@ -75,7 +75,7 @@ with
             g.price_after_rebate_with_adhoc_promotion,
             g.price_contract,
             CONCAT(a.product_id, "_", a.sales_region_code) AS product_sales_region_code,
-            a.sku_key
+            a.sku_key_sales_region_code
         from ${ref('dim_sku_sales_region_current')} a
             left join ${ref('dim_vendor')} vend on a.fv_code = vend.supplier_code
             left join get_rebate_price g
@@ -100,7 +100,7 @@ with
             g.price_after_rebate_with_adhoc_promotion,
             g.price_contract,
             CONCAT(a.product_id, "_", a.sales_region_code) AS product_sales_region_code,
-            a.sku_key
+            a.sku_key_sales_region_code
         from ${ref('dim_sku_sales_region_current')} a
             left join ${ref('dim_vendor')} vend on a.fv_code = vend.supplier_code
             left join get_rebate_price g on a.sales_region_code = g.sales_region_code and a.product_id = g.product_id
