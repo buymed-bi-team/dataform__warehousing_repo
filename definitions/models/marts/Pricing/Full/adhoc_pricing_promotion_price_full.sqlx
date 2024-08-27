@@ -2,7 +2,7 @@ config {
     type: "table", 
     description: 
         `
-        Deal price & Campaign price of SKUs;
+        All Deal prices & Campaign prices of SKUs for 3 customer levels (SILVER, PLATINUM, DIAMOND) & 4 delivery fee coefficients;
         PIC: nguyen.tran; 
         Type: Table; 
         Refresh Schedule: hourly;
@@ -13,12 +13,7 @@ config {
             ${source.platinum}.marketplace_prd_promotion_campaign_product, 
             ${source.platinum}.marketplace_prd_product_v2_deal
         `,
-    tags: ["custom_1h_past5", "PRICING"],
-
-    assertions: {
-      uniqueKey: ["sku_key_sales_region_code"],
-      nonNull: ["sku_code", "sku_key", "sales_region_code"]
-    }
+    tags: ["custom_1h_past5", "PRICING"]
 }
 
 WITH
@@ -171,6 +166,7 @@ WITH
     , final_step as (
         select
             b.* except(retail_price_value),
+            a.prices,
         -- calculate campaign_price
             if (
                 b.campaign_code is not null,
@@ -236,11 +232,11 @@ WITH
                         END
                 end ,
                 null
-            ) as deal_price,
+            ) as deal_price
 
         from dedup_promotion b
             -- we need some field in display_price to calculate promtion price for external seller
-            left join ${ref('adhoc_pricing_display_price')} a
+            left join ${ref('adhoc_pricing_display_price_full')} a
                 on a.sku_code = b.sku_code and a.sales_region_code = b.sales_region_code
     )
 
