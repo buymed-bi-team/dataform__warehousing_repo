@@ -1,0 +1,27 @@
+config {
+  type: "view",
+  description: 
+        `
+        Details of the items in the order, with combos split into normal products and its prices recalculated according to the corresponding combo;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: daily at 8h30, 10h30, 12h30, 15h30, 18h, 20h30;
+        Source: 
+            ${source.platinum}.marketplace_prd_order_v2_order_item,
+            ${source.ref}.fact_order
+        `,
+  columns: {
+    created_timekey: "Foreign-Key to Dim_DateTime ",
+    created_at: "UTC, When the item was placed",
+    item_type: "Normal: type + Combo: sub_type",
+    promotion_code: "deal_code + campaign_code",
+    sku_orignal_code: "Combo sku_code if buyers placed combo items",
+    sku_code: "Single/BOM sku_code if its original is a combo one",
+    product_id: "Single/BOM producdt_id if it original is a combo one",
+    demand_quantity: "Quantity by BOM SKUs",
+    sales_price: "UnitPrice by BOM SKUs"
+  },
+  schema: "buymed_AI_ML",
+}
+
+select * from gold_buymed_vn2.fact_order_item

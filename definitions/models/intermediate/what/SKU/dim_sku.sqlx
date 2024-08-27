@@ -81,6 +81,6 @@ WHERE
     --     and REGEXP_CONTAINS(sku_code, r'[a-z]')
     -- )
 
--- post_operations {                
---     ALTER TABLE ${self()} ADD PRIMARY KEY (sku_key) NOT ENFORCED;
--- }
+post_operations {                
+    ALTER TABLE ${self()} ADD PRIMARY KEY (sku_key) NOT ENFORCED;
+}
