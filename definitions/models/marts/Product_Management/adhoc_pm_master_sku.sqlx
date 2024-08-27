@@ -1,0 +1,101 @@
+config {
+    type: "table", 
+    description: 
+        `
+        Master SKUs;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.ref}.dim_sku_sales_region_current,
+            ${source.ref}.dim_sku_reason_turn_off, 
+            ${source.ref}.dim_supplier_fc,
+            ${source.collector}.data_prd
+        `,
+    tags: ["custom_1h_past5", "PRODUCT_MANAGEMENT", "PRICING"],
+
+    assertions: {
+        uniqueKey: ["sku_key_sales_region_code"],
+        nonNull: ["sku_code", "sku_key", "sales_region_code"]
+    }
+}
+
+with
+
+-- get unstable product ---
+    unstable_product as (
+        SELECT DISTINCT
+            concat(c.sku_code,"_",c.sales_region_code) as sku_sales_region_code
+            , a.value
+        FROM (
+            SELECT
+                code
+                , type
+                , NULLIF(value, 'NAN') as value
+            FROM ${source.collector}.data_prd
+            WHERE
+                object = 'SKU'
+                AND type = 'UNSTABLE'
+                AND code is not null
+                AND upper(code) not like '%CIRCA%'
+                AND upper(code) not like '%.0%'
+                AND upper(code) not like '%NAN%'
+            QUALIFY ROW_NUMBER() over (PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
+        ) a
+        JOIN ${ref('dim_sku_sales_region_current')} AS c ON concat(c.product_id,"_",c.seller_code,"_",c.fc_code) = a.code
+    ),
+
+-- get it product ---
+    it_list as (
+        select distinct concat(c.sku_code,"_",c.sales_region_code) as sku_sales_region_code, a.type
+        from (
+            select max(submit_id) as id,
+                code,
+                type
+            from ${source.collector}.data_prd
+            where code is not null
+                and upper(code) not like '%CIRCA%'
+                and upper(code) not like '%.0%'
+                and upper(code) not like '%NAN%'
+                and upper(type) = "INTERNAL_TRANSFER"
+            group by 2,3
+        ) a
+        inner join ${source.collector}.data_prd b on b.submit_id = a.id
+        inner join ${ref('dim_sku_sales_region_current')} c on a.code = concat(c.product_id,"_",c.seller_code,"_",c.fc_code)
+        where upper(value) = "INTERNAL_TRANSFER"
+    ),
+
+-- get reason_turn_off column for sku
+    sku_reason_turnoff as (
+        select *
+        from ${ref('dim_sku_reason_turn_off')}
+    ),
+
+-- get pic and cic information for sku
+    vendor_pic_cic as (
+        SELECT *
+        FROM ${ref('dim_supplier_fc')}
+        where supplier_class = "VENDOR"
+            and fc_code in ("HN","BD", 'DN')
+    )
+
+select
+    sku.*
+    , uns.value as unstable
+    , it.type as internal_transfer
+    , reason.reason_turnoff
+    , vcpic.cic_category_username as vendor_cic_name
+    , vcpic.pic_purchase_username as vendor_pic_name
+    , TIMESTAMP( JSON_EXTRACT_SCALAR(JSON_QUERY(level_.extra_props, '$.level_special'), '$.time_start_apply_level')) as time_start_apply_level
+    , TIMESTAMP( JSON_EXTRACT_SCALAR(JSON_QUERY(level_.extra_props, '$.level_special'), '$.time_end_apply_level')) as time_end_apply_level
+from ${ref('dim_sku_sales_region_current')} AS sku
+    left join sku_reason_turnoff AS reason
+        on sku.sku_code = reason.sku_code and sku.sales_region_code = reason.sales_region_code
+    left join vendor_pic_cic AS vcpic
+        on sku.fv_code = vcpic.supplier_code and sku.sales_region_code = vcpic.sales_region_code
+    left join ${source.platinum}.marketplace_prd_product_v2_sku AS level_
+        on sku.mg_id = level_.mg_id
+    left join unstable_product AS uns
+        on sku.sku_sales_region_code = uns.sku_sales_region_code
+    left join it_list AS it
+        on sku.sku_sales_region_code = it.sku_sales_region_code

@@ -26,12 +26,16 @@ select requester_code,
        JSON_EXTRACT_SCALAR(JSON_EXTRACT(decision_selecteds,'$[0]'),'$.name') as first_decision_name,
        JSON_EXTRACT_SCALAR(JSON_EXTRACT(decision_selecteds,'$[1]'),'$.name') as senconde_decision_name,
        created_date,
-       requester_type,
+       case when requester_type is null then  JSON_EXTRACT_SCALAR(input_data,'$.REQUESTER_TYPE') 
+       else requester_type
+       end as requester_type,
        created_by_account_name,
        assignee_account_name,
        assignee_account_email,
        template_module_code,
-       branch_code,partner_code,
+       branch_code,
+       case when created_by_account_id > 0 then "Internal"
+       else "Pharmacy" end as creator_type , partner_code,
        DATETIME(picked_time, "Asia/Ho_Chi_Minh") AS picked_time,
        DATETIME(created_time, "Asia/Ho_Chi_Minh") AS created_time,
        DATETIME(deadline_time, "Asia/Ho_Chi_Minh") AS deadline_time,

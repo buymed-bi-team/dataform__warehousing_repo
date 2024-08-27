@@ -1,0 +1,72 @@
+config {
+    type: "table", 
+    description: 
+        `
+        Aggregate GMV of SKUs in the last 30 days;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.ref}.fact_order_item
+        `,
+    tags: ["0h00", "PRICING"]
+}
+
+WITH 
+    target_date as (
+        select  TIMESTAMP (  date_sub( current_date('+7'), interval 30 day)  )  as start_date
+    ),
+
+    last_order AS (
+        SELECT
+            oi.product_id
+            , oi.seller_code
+            , oi.sku_code
+            , oi.sales_region_code
+            , MAX(oi.created_at) AS latest_order
+        FROM ${ref('fact_order_item')}  oi
+            LEFT JOIN ${ref('fact_order')} o ON oi.order_id = o.order_id
+        WHERE
+             o.order_status <> 'CANCEL'
+        GROUP BY 1, 2, 3, 4
+    ),
+    
+    gmv AS ( 
+        SELECT
+            oi.product_id
+            , oi.seller_code
+            , oi.sku_code
+            , oi.sales_region_code
+            , SUM(oi.demand_quantity * oi.sales_price) as GMV_30D
+            , SUM(
+                IF(oi.created_at >= TIMESTAMP(DATE_SUB(CURRENT_DATE("+7"), INTERVAL 7 DAY))
+                    , oi.demand_quantity * oi.sales_price
+                    , NULL
+                )
+              ) AS GMV_7D
+            , SUM(
+                IF(oi.created_at >= TIMESTAMP(DATE_SUB(CURRENT_DATE("+7"), INTERVAL 15 DAY))
+                    , oi.demand_quantity * oi.sales_price
+                    , NULL
+                )
+              ) AS GMV_15D
+        FROM ${ref('fact_order_item')}  oi
+            LEFT JOIN ${ref('fact_order')} o ON oi.order_id = o.order_id
+        WHERE 
+            oi.created_at >= (SELECT start_date FROM target_date)
+            AND o.order_status <> 'CANCEL'
+        GROUP BY 1, 2, 3, 4
+    )
+
+SELECT
+    a.*
+    , CONCAT(a.sku_code, "_", a.sales_region_code) AS sku_sales_region_code
+    , b.GMV_30D
+    , b.GMV_15D
+    , b.GMV_7D
+FROM last_order AS a
+    LEFT JOIN gmv AS b ON a.sku_code = b.sku_code AND a.sales_region_code = b.sales_region_code
+    LEFT JOIN ${ref('dim_sku')} AS s ON s.sku_code = a.sku_code
+WHERE a.product_id IS NOT NULL
+    AND s.sku_code IS NOT NULL
+QUALIFY ROW_NUMBER() OVER(PARTITION BY sku_sales_region_code ORDER BY a.latest_order DESC) = 1

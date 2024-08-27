@@ -1,0 +1,35 @@
+config {
+    type: "table", 
+    description: 
+        `
+        Crawled Price of Competitors;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.silver}.marketplace_prd_product_v2_product_market_price
+        `,
+    tags: ["custom_1h_past5", "PRICING"]
+}
+
+SELECT
+    TIMESTAMP_ADD(TIMESTAMP(JSON_VALUE(extra_props, '$.created_time')), INTERVAL 7 HOUR) AS crawled_at
+    , JSON_VALUE(extra_props, '$.source') AS competitor
+    , JSON_VALUE(extra_props, '$.market_name') AS competitor_product_name
+    , SAFE_CAST(JSON_VALUE(extra_props, '$.market_price') AS INT64) AS competitor_price
+    , SAFE_CAST(JSON_VALUE(extra_props, '$.product_id') AS INT64) AS product_id
+    , IF(
+        LOWER(JSON_VALUE(extra_props, '$.market_data.unit'))= ''
+        , NULL
+        , LOWER(JSON_VALUE(extra_props, '$.market_data.unit'))
+      )  AS competitor_unit
+FROM (
+    SELECT
+        *
+    FROM ${source.silver}.marketplace_prd_product_v2_product_market_price
+    QUALIFY ROW_NUMBER() over ( _window ) = 1 AND FIRST_VALUE(action) over (_window) <> 'd'
+    WINDOW _window AS (PARTITION BY mg_id ORDER BY synced_at DESC, last_updated_time DESC)
+)
+WHERE 
+    JSON_VALUE(extra_props, '$.source') IS NOT NULL
+QUALIFY ROW_NUMBER() over (PARTITION BY product_id, competitor, competitor_unit ORDER BY crawled_at DESC) = 1
