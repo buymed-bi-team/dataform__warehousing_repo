@@ -1,5 +1,5 @@
 config {
-    type: 'incremental',
+    type: 'table',
     name: "fact_user_event_tracking",
     description: `Started time: 20240601 | PIC: tu.dang; schedule: 0h00 daily; model type: table
     Source:
@@ -38,15 +38,12 @@ WITH stg AS (
         JSON_EXTRACT_SCALAR(extra_props, '$.metadata.host') AS host,
         ingest_time
     FROM
-        `${source.silver}.monitoring_prd_collector_user_stats`
-    
-     ${
-    when(incremental(), 
-      `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) `,
-      `WHERE DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh')) >= '2024-06-01' and ingest_time >= "2024-05-31" `)
-  }
-)
-
+    `${source.silver}.monitoring_prd_collector_user_stats_*`
+  WHERE
+    _TABLE_SUFFIX BETWEEN '20240701'
+    AND FORMAT_DATE('%Y%m%d', CURRENT_DATE())
+    -- AND event IN ( "ADD_TO_CART","SKU_DETAIL_VIEW","SKU_IMPRESSION") 
+    )
 SELECT
     event,
     customer_id,
