@@ -4,7 +4,7 @@ config {
     Source
         ${source.ref}.marketplace_prd_order_v2_order
         ${source.ref}.tender_prd_core_tender_orders`,
-    tags: ["0h00"],
+    // tags: ["0h00"],
     columns: {
         order_id : "NonNull",
         // ordered_quantity: "The total quantity of items ordered"

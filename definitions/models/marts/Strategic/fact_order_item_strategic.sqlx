@@ -2,36 +2,33 @@ config {
     type: "table",
     description: `PIC: minh.luu, schedule: 0h00 daily
     Source
-        ${source.ref}.fact_bill`,
+        ${source.ref}.marketplace_prd_order_v2_order
+        ${source.ref}.tender_prd_core_tender_orders
+        ${source.ref}.marketplace_prd_order_v2_order_item
+        ${source.ref}.tender_prd_core_tender_order_items
+        ${source.ref}.dim_supplier
+        ${source.ref}.dim_sku`,
     columns: {
         order_id: "NonNull",
         product_id: "Nullable",
-        created_time: "NonNull | Timezone in +7",
-        outbound_time: "Nullable | from bill | Timezone in +7 ",
-        outbound_quantity: "Nullable | Retrieve from accounting system | the quantity of products have be shipped from warehouse",
-        price: "Nullable",
-        outbound_amount: "Nullable | Retrieve from  accounting system | outbound_quatity * price for each product"
+        order_status: "Nullable | Null means unknown",
+        supplier_class: `Nullable | COALESCE(  supplier_class from the seller_code field first, the supplier_class from the sku field's seller_code - by join dim_sku and use sku.seller_code to join dim supplier, the order_item seller_class field ) as supplier_class `,
+        order_created_time: "NonNull | Timezone in +7",
+        demand_quantity: "NonNull |",
+        returned_quantity : "Nullable | The item quantity was returned by the customer. However, there are some orders that still have returns, but the system marked them as canceled, making it difficult to calculate revenue",
+        outbound_time: "Nullable | The datetime that item has been delivered out of warehouse ",
+        outbound_quantity: "Nullable | the quantity of products have be shipped from warehouse",
+        price: "Nullable"
     },
     tags: ('0h00'),
     bigquery: {
         partitionBy: "DATE(order_created_time)"
     }
 }
--- js {
---     const checkpoint_start_created_time = `"2024-05-01"`;
---     const checkpoint_end_created_time   = `"2024-06-01"`;
 
---     if ( checkpoint_start_created_time !== null && checkpoint_end_created_time!== null) {
---         const where_condition = `WHERE created_time BETWEEN ${checkpoint_start_created_time} AND ${checkpoint_end_created_time}`;
---     }
---     else if (checkpoint_start_created_time !== null ) {
---         const where_condition = `created_time > ${checkpoint_start_created_time}`;
---     }
---     else if (checkpoint_end_created_time!== null) {
---         const where_condition = `created_time < ${checkpoint_end_created_time}`;
---     }
---     else {const where_condition = ``;}
--- }
+js {
+    const event_checkpoint_date = `"2021-01-01"`
+}
 
 
 WITH 
@@ -47,7 +44,7 @@ WITH
 -- , 
 mkp_o AS ( 
     SELECT 
-        o.order_id,
+        o.order_id, 
         o.status,
         ${utils.ToTimezone(`o.outbound_date`)} as outbound_time,
         ${utils.ToTimezone(`o.created_time`)} as order_created_time,
@@ -58,8 +55,7 @@ mkp_o AS (
         ${source.platinum}.marketplace_prd_order_v2_order o
     LEFT JOIN ${ref(`dim_order`)} do ON do.order_id = o.order_id
     -- LEFT JOIN bill ON o.order_id = bill.order_id
-    -- WHERE 
-    --     created_date > ${event_checkpoint_date}
+
 )
 , mkp_oi AS (
     SELECT 
@@ -71,13 +67,13 @@ mkp_o AS (
         seller_class, 
         outbound_quantity,
         quantity AS demand_quantity,
+        returned_quantity,
         price
     FROM 
         ${source.platinum}.marketplace_prd_order_v2_order_item
     
-    -- WHERE
-    --     -- created_date > ${event_checkpoint_date}
-    --     created_date between "2024-05-01" and "2024-06-01"
+    WHERE created_date > ${event_checkpoint_date}
+
 )
 , tender_o AS (
     SELECT 
@@ -99,15 +95,15 @@ mkp_o AS (
         seller_code,
         'notneednow' AS sku,
         seller_class, 
-        quantity AS outbound_quantity, -- temp, not find, not check, not test
+        quantity AS outbound_quantity, -- Assumption: Tender will return all outbound 
         quantity AS demand_quantity,
+        0 as returned_quantity,
         price
     FROM 
         ${source.platinum}.tender_prd_core_tender_order_items oi
-    
-    -- WHERE
-    --     -- created_date > ${event_checkpoint_date}
-    --     created_date between "2024-05-01" and "2024-06-01"
+    WHERE
+        created_date > ${event_checkpoint_date}
+
 )
 , o AS (
     SELECT * FROM mkp_o 
@@ -123,29 +119,27 @@ SELECT
     -- oi.mg_id,
     oi.order_id,
     oi.product_id,
-    oi.seller_code as supplier_code,
+    -- oi.seller_code as supplier_code,
+    o.status as order_status,
     COALESCE(
         ds1.supplier_class,
         ds2.supplier_class,
         oi.seller_class
     ) as supplier_class,
-    oi.sku,
+    -- oi.sku,
     o.outbound_time,
     oi.outbound_quantity,
     oi.demand_quantity, 
+    oi.returned_quantity,
     oi.price,
-    CASE 
-        WHEN o.status <> "CANCEL" and o.status <> "CANCELLED" and o.order_channel <> "CONSIGNMENT-RECOGNITION" THEN oi.demand_quantity * oi.price
-        ELSE NULL
-    END AS gmv ,
-    CASE 
-        WHEN o.order_channel <> "CONSIGNMENT-RECOGNITION" THEN oi.demand_quantity * oi.price
-        ELSE NULL 
-    END AS gmv_before_cancel,
-    -- vat
-    (oi.outbound_quantity * oi.price ) AS outbound_amount,
-    
-    -- o.bill_created_time,
+    -- CASE 
+    --     WHEN o.status <> "CANCEL" and o.status <> "CANCELLED" and o.order_channel <> "CONSIGNMENT-RECOGNITION" THEN oi.demand_quantity * oi.price
+    --     ELSE NULL
+    -- END AS gmv ,
+    -- CASE 
+    --     WHEN o.order_channel <> "CONSIGNMENT-RECOGNITION" THEN oi.demand_quantity * oi.price
+    --     ELSE NULL 
+    -- END AS gmv_before_cancel,
     o.order_created_time
 
 
@@ -155,6 +149,7 @@ LEFT JOIN ${ref(`dim_supplier`)} ds1 ON oi.seller_code = ds1.supplier_code
 LEFT JOIN ${ref(`dim_sku`)} dsku ON dsku.sku_code = oi.sku 
 LEFT JOIN ${ref(`dim_supplier`)} ds2 ON ds2.supplier_code = dsku.seller_code
 
+WHERE o.order_channel <> "CONSIGNMENT-RECOGNITION"
 
 
 
