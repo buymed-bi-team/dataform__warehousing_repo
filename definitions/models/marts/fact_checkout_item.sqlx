@@ -32,6 +32,7 @@ WITH stg_order_item as   ${dedup.dedup(
       source.silver + `.marketplace_prd_order_v2_order_item`,
       `
       order_id,
+      product_id,
       customer_id,
       sku,
       item_code,
@@ -63,6 +64,7 @@ stg_order as ${dedup.dedup(
  
 SELECT
   a.order_id,
+  a.product_id,
   b.status as order_status,
   a.customer_id,
   a.sku,
