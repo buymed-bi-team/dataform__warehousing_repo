@@ -1,0 +1,45 @@
+config {
+    type: "view", 
+    description: 
+        `PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.platinum}.marketplace_prd_order_v2_order,
+            ${source.platinum}.marketplace_prd_customer_customer_rating,
+            ${source.gold}.fact_outbound_ticket,
+            ${source.platinum}.accounting_prd_core_credit_note,
+            ${source.platinum}.accounting_prd_core_bill
+        `,
+    columns: {
+        created_at: "The date and time when the order was placed, timezone +7",
+        last_updated_time: "The last and time when the record was updated, timezone +7",
+        confirmed_time: "The date and time when the record was confirmed, timezone +7",
+        customer_id: "Foregin key for dim_customer, a unique identifier for customer who placed the order",
+        order_id: "Primary key, a unique identifier for the order",
+        so_code: "A code representing the sales order, another unique identifier for the order, it has more meaning with the fulfillment system than order_id",
+        order_status: "The current status of the order in our e-commerce marketplace user interface, WAIT_TO_CONFIRM: Order received, awaiting sys confirmation,PROCESSING: Order confirmed, being prepared for fulfillment,WAIT_TO_DELIVER: Ready for delivery, not yet shipped,DELIVERING: Shipped and en route to the customer,DELIVERED: Successfully delivered to the customer,COMPLETED: Order and all associated processes fully complete,CANCEL: Order cancelled by customer",
+        so_status: "The current status of the order in our fulfillment process system,RETURNED: Item returned, awaiting system review for inspection or refund actions,CHECKING: Under system inspection for quality or order accuracy before further action,DELIVERING: Item en route, indicating active delivery from warehouse to customer,TRANSPORTING: In transit, covering item's journey from origin to delivery point,CANCEL: Cancelled by system or customer, stopping all order processing and delivery,DELIVERED: Successfully reached customer, marking completion of delivery process,WAIT_TO_DELIVERY: Packed and ready, pending delivery service pickup for dispatch,COMPLETED: Order fully processed, including post-delivery actions like payment settlement",
+        ordered_line_items: "The total number of stock-keeping units (SKUs) placed",
+        ordered_quantity: "The total quantity of items ordered",
+        ordered_amount: "The total valuation, the original valuation of all product in the order",
+        ordered_amount_aft_discount: "The total valuation of the order after discounts and fees have been applied",
+        notional_amount: "The notional or theoretical or potential delivered amount of the order",
+        has_deal: "Indicates whether the order includes a special deal or promotion",
+        payment_method: "The method of payment used for the order",
+        shipping_address: "Full text detail of shipping address provided by the customer",
+        shipping_province_code: "Foregin key for dim_province, the code for the province in the shipping address, under region level",
+        shipping_disitrict_code: "Foregin key for dim_district, the code for the district in the shipping address, under province level",
+        shipping_ward_code: "Foregin key for dim_ward and dim_location, the code for the ward in the shipping address, under district level",
+        customer_order_index: "The number of orders related to the customer at the moment he/she placed the order",
+        fc_code: "Foregin key for dim_fc, the code for the fulfillment center or warehouse from which the order is shipped",
+        order_type: "Indicate the type of order, classified as either a 'split_order' or 'normal_order' otherwise",
+        assist_order: "True or False, Indicate whether the order was placed by the assistance from salesperson",
+        return_amount: "the amount associated with a return, if appicable",
+        employee_id: "Foregin key for dim_employee, a unique identifier for salesperson who helped customer placing the order"
+    },
+    schema: "buymed_AI_ML",
+}
+
+
+select * from gold_buymed_vn2.fact_order 
