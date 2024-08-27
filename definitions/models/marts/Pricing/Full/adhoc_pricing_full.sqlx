@@ -1,0 +1,45 @@
+config {
+    type: "table", 
+    description: 
+        `
+        All possible prices of SKUs;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.silver}.marketplace_prd_product_v2_product_market_price
+        `,
+    tags: ["custom_1h_past5", "PRICING"]
+}
+
+WITH 
+  price_full AS (
+      select 
+        a.product_id,
+        a.sku_code,
+        a.sales_region_code,
+        a.prices,
+        if(supplier_class = 'INTERNAL',
+            COALESCE(b.campaign_price, b.deal_price,  a.display_price),
+            COALESCE(c.display_price_seller_with_promo, c.display_price_seller_without_promo)
+        ) as sku_display_price
+        , CONCAT(a.product_id, "_", SPLIT(a.sku_code, ".")[SAFE_OFFSET(0)], "_", a.sales_region_code) AS sku_key_sales_region_code
+    from ${source.gold}.adhoc_pricing_display_price_v3 a
+    left join ${source.gold}.adhoc_pricing_promotion_price_v3 b 
+      on a.sku_code = b.sku_code 
+      and a.sales_region_code = b.sales_region_code
+      AND a.prices = b.prices
+    left join ${source.gold}.adhoc_pricing_seller_pricing_v3 c 
+      on a.sku_code = c.sku_code 
+      and a.sales_region_code = c.sales_region_code
+      AND a.prices = c.prices
+)
+
+SELECT
+  *
+FROM price_full
+PIVOT ( SUM(sku_display_price) FOR prices IN (
+        "LEVEL_DIAMOND_&_Delivery_Fee_1", "LEVEL_DIAMOND_&_Delivery_Fee_2", "LEVEL_DIAMOND_&_Delivery_Fee_3","LEVEL_DIAMOND_&_Delivery_Fee_4", 
+        "LEVEL_PLATINUM_&_Delivery_Fee_1", "LEVEL_PLATINUM_&_Delivery_Fee_2","LEVEL_PLATINUM_&_Delivery_Fee_3", "LEVEL_PLATINUM_&_Delivery_Fee_4", 
+        "LEVEL_SILVER_&_Delivery_Fee_1", "LEVEL_SILVER_&_Delivery_Fee_2", "LEVEL_SILVER_&_Delivery_Fee_3", "LEVEL_SILVER_&_Delivery_Fee_4"
+))
