@@ -24,7 +24,7 @@ config {
 
 js {
     if ( `${datetime.isDaysOfWeek(0,6)}` == 'true') {
-        delete_interval = "INTERVAL 4 HOUR"
+        delete_interval = "INTERVAL 7 HOUR"
     }
     else {
         delete_interval = "INTERVAL 3 HOUR"
