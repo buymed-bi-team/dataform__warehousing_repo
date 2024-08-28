@@ -9,7 +9,7 @@ config {
             ${source.platinum}.warehouse_prd_inventory_transfer_sku,
             ${source.platinum}.warehouse_prd_inventory_transfer
         `,
-    tags: ["weekly_assertion"],
+    tags: ["weekly_assertion", "monthly"],
 
     bigquery: {
       partitionBy: "DATE(ts_created)",

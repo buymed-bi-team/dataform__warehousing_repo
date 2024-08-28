@@ -22,9 +22,8 @@ FROM (
                 , fc_code
                 , amt_missing AS amt_missing1
                 , qty_missing AS qty_missing1
-                , year_month_budget
             FROM gold_buymed_vn2.dim_sku_stock_budgeting
-            WHERE year_month_budget = FORMAT_DATE("%Y-%m", DATE_SUB(CURRENT_DATE("+7"), INTERVAL 1 MONTH))
+            WHERE year_month_budget = FORMAT_DATE("%Y-%m", DATE_SUB(CURRENT_DATE("+7"), INTERVAL 2 MONTH))
         ),
 
         missing_out AS (
@@ -33,11 +32,10 @@ FROM (
                 , fc_code
                 , SUM(done_quantity * price_unit) * -1 AS amt_missing1
                 , SUM(done_quantity) * -1 AS qty_missing1
-                , year_month_missing AS year_month_budget
-            FROM gold_buymed_vn2.fact_stock_moving_item
+            FROM ${ref('fact_stock_moving_item')}
             WHERE
                 missing_type = 'MISSING-OUT'
-                AND year_month_missing = FORMAT_DATE("%Y-%m", DATE_SUB(CURRENT_DATE("+7"), INTERVAL 1 MONTH))
+                AND year_month_missing = FORMAT_DATE("%Y-%m", DATE_SUB(CURRENT_DATE("+7"), INTERVAL 2 MONTH))
             GROUP BY ALL
         ),
 
@@ -47,11 +45,10 @@ FROM (
                 , fc_code
                 , SUM(done_quantity * price_unit)  AS amt_missing1
                 , SUM(done_quantity)  AS qty_missing1
-                , year_month_missing AS year_month_budget
-            FROM gold_buymed_vn2.fact_stock_moving_item
+            FROM ${ref('fact_stock_moving_item')}
             WHERE
                 missing_type = 'MISSING-IN'
-                AND year_month_missing = FORMAT_DATE("%Y-%m", DATE_SUB(CURRENT_DATE("+7"), INTERVAL 1 MONTH))
+                AND year_month_missing = FORMAT_DATE("%Y-%m", DATE_SUB(CURRENT_DATE("+7"), INTERVAL 2 MONTH))
             GROUP BY ALL
         ),
 
@@ -61,11 +58,10 @@ FROM (
                 , fc_code
                 , SUM(done_quantity * price_unit)  AS amt_missing1
                 , SUM(done_quantity)  AS qty_missing1
-                , year_month_missing AS year_month_budget
-            FROM gold_buymed_vn2.fact_stock_moving_item
+            FROM ${ref('fact_stock_moving_item')}
             WHERE
                 missing_type = 'MISSING-OTHER'
-                AND year_month_missing = FORMAT_DATE("%Y-%m", DATE_SUB(CURRENT_DATE("+7"), INTERVAL 1 MONTH))
+                AND year_month_missing = FORMAT_DATE("%Y-%m", DATE_SUB(CURRENT_DATE("+7"), INTERVAL 2 MONTH))
             GROUP BY ALL
         ),
 
@@ -82,9 +78,9 @@ FROM (
     SELECT
         sku_code
         , fc_code
-        , year_month_budget
-        , SUM(qty_missing1) AS qty_missing
         , SUM(amt_missing1) AS amt_missing
+        , SUM(qty_missing1) AS qty_missing
+        , FORMAT_DATE("%Y-%m", DATE_SUB(CURRENT_DATE("+7"), INTERVAL 1 MONTH)) AS year_month_budget
     FROM combine
     GROUP BY ALL
     HAVING qty_missing < 0
