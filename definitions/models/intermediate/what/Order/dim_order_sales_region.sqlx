@@ -117,23 +117,36 @@ WITH
                 ON a.customer_province_code = dim_fc_service_area2.service_area_code
         LEFT JOIN ${ref(`dim_fc`)} dim_fc2
             ON dim_fc_service_area2.fc_code = dim_fc2.fc_code
+), 
+js {
+  function choose_new(column_name){
+    /*
+      Because in real time, we allow user to fix order, this make order_id have 2 created time
+      So that to ensure order_id is unique, we will group by it and get all new data along with new created_time
+    */
+    return `ARRAY_AGG( ${column_name} ORDER BY created_time DESC)[0] AS ${column_name}`
+  }
+}
+    order_tbl AS (
+        SELECT 
+            order_id,
+            ${utils.ToTimezone(`max(created_time)`)} AS created_dt,
+            ${choose_new(`location_code`)},
+            ${choose_new(`shipping_location_code`)},
+            ${choose_new(`sales_region_code`)}
+        FROM 
+            order_sales_region_code
+        GROUP BY 1
 )
 SELECT 
     order_id,
-    ward_code,
-    district_code,
-    province_code,
-    customer_ward_code as shipping_ward_code,
-    customer_district_code as shipping_district_code,
-    customer_province_code as shipping_province_code,
     location_code,
     shipping_location_code,
     sales_region_code,
-    ${utils.ToTimezone(`created_time`)} AS created_dt
-FROM order_sales_region_code
-
+    created_dt
+FROM order_tbl
 ${when(incremental(),
-   `WHERE ${utils.ToTimezone(`created_time`)} > (SELECT MAX(created_dt) FROM ${self()})`,
+   `WHERE created_dt > (SELECT MAX(created_dt) FROM ${self()})`,
    ``)}
 
 
