@@ -3,7 +3,7 @@ config {
   tags: ['assertion_weekly']
 }
 /*
-    I hope that this assert will not alert and you don't need to read my stupid explain:
+    I hope that this assert will not alert and you don't need to read my stupid explain,
         I assume that:
             current_time is  x
             created_time of oder is y
@@ -19,8 +19,9 @@ config {
             all order which system created time in "x - period_time - delaytime to x - period_time" will cannot be capture
             because we just capture "x - period_time to x"
             It means if order captured has long delay cannot be capture
-    
-    This assertion will checkit 
+
+        If you didn't understand after read this, I willing to explain to you, don't hesitate to fix me and my stupid logic
+    This assertion will check it 
 */
 
 
