@@ -1,0 +1,161 @@
+config {
+    type: "incremental",
+    description: `PIC: minh.luu; model_type: incremental; Schedule: each 5 min from 9 to 18 and each 1h from 18 to 9 am
+    Source:
+      ${source.silver}.marketplace_prd_order_v2_order
+      ${source.silver}.tender_prd_core_tender_orders`,
+    assertions: {
+        uniqueKey: ["order_id"],
+        nonNull:["order_id","order_channel"]
+    },
+    tags: ["custom_5min_9to18","custom_1h_18to9","Weekend"],
+    columns: {
+        order_id:"NonNull | Unique identifier for each order",
+        order_channel: "NonNull | Category of the order based on the tags and source.  'TENDER' if customer_tags contains 'TENDER', 'DISTRIBUTION' if source is 'brand-portal' or 'clinic-portal', 'CONSIGNMENT-RECOGNITION' if tags contains 'SO_INTERNAL', 'CONSIGNMENT' if source is 'internal-portal','CIRCA' if customer_tags contains 'CIRCA', otherwise 'MARKETPLACE'",
+        order_type: "NonNull | SO, CO, TENDER, DO",
+        created_dt: "Nullable | Timezone in +7"
+
+    },
+    bigquery: {
+        partitionBy: "DATE(created_dt)"
+    }
+}
+
+js {
+    if ( `${datetime.isDaysOfWeek(0,6)}` == 'true') {
+        delete_interval = "INTERVAL 7 HOUR"
+    }
+    else {
+        delete_interval = "INTERVAL 3 HOUR"
+    }
+
+}
+
+
+pre_operations {
+  ${
+    when(
+      incremental(),
+      `
+      DELETE ${self()}
+      WHERE created_dt > CURRENT_DATETIME("+7") - ${delete_interval}
+      `,
+      ``
+    )
+  }
+}
+
+WITH 
+    order_mkp AS (
+        SELECT 
+            * EXCEPT ( mg_id, synced_at, last_updated_time)
+        FROM ${dedup.dedup(
+        source.silver + `.marketplace_prd_order_v2_order`,
+        `
+            order_id, 
+            source, 
+            TO_JSON_STRING(JSON_VALUE_ARRAY(extra_props, '$.customer_tags')) as customer_tags,
+            TO_JSON_STRING(tags) as tags,
+            customer_id,
+            JSON_VALUE(extra_props, "\$.brand_code") AS brand_code,
+            created_time,
+            'MKP' AS crm_system
+        `,
+        start_timestamp= when(incremental(),
+            ` TIMESTAMP(current_datetime() - INTERVAL 2 DAY )`, 
+            ` TIMESTAMP_SECONDS(0)`)                           
+    )}
+)
+,
+    order_tender AS (
+        SELECT 
+            order_id,
+            CAST( null AS STRING ) as source, -- don't need, so fake it
+            CAST( null AS STRING ) as customer_tags, -- don't need, so fake it
+            CAST( null AS STRING ) as tags, -- don't need, so fake it
+            CAST( null AS INTEGER ) as customer_id, -- don't need, so fake it
+            CAST( null AS STRING ) as brand_code, -- don't need, so fake it
+            created_time,
+            'TENDER' AS crm_system
+        FROM ${source.platinum}.tender_prd_core_tender_orders 
+        WHERE created_time >= ${ when(incremental(),
+            ` TIMESTAMP(current_datetime() - INTERVAL 2 DAY )`, 
+            ` TIMESTAMP_SECONDS(0)`)                           
+        }
+)
+,   
+    union_order AS (
+        SELECT * FROM order_mkp
+        UNION ALL 
+        SELECT * FROM order_tender
+)
+,
+    order_channel AS (
+        SELECT
+            * EXCEPT ( crm_system ),
+            CASE
+                WHEN crm_system like 'TENDER' THEN 'TENDER'
+                WHEN customer_tags LIKE '%TENDER%' THEN 'TENDER'
+                WHEN source = 'brand-portal' AND brand_code IN ('Q8HDUVQX', '2E84FW961P', 'PG961P') THEN 'TENDER'
+                WHEN source in ('brand-portal', 'clinic-portal') THEN 'DISTRIBUTION'
+                WHEN REGEXP_CONTAINS(tags,'SO_INTERNAL')  THEN 'CONSIGNMENT-RECOGNITION' -- replace consignment
+                WHEN created_time >= "2023-10-01" AND source = 'internal-portal' THEN 'CONSIGNMENT'  
+                WHEN created_time >= "2023-10-01" AND customer_id = 241098 THEN 'CONSIGNMENT'
+                WHEN customer_tags LIKE "%TERMINATE_CIRCA%" THEN "MARKETPLACE"
+                WHEN customer_tags LIKE '%CIRCA%'  THEN 'CIRCA'
+                ELSE 'MARKETPLACE'
+            END AS order_channel,
+            CASE -- same with above
+                WHEN crm_system like 'TENDER' THEN 'TENDER'
+                WHEN customer_tags LIKE '%TENDER%' THEN 'TENDER'
+                WHEN source = 'brand-portal' AND brand_code IN ('Q8HDUVQX', '2E84FW961P', 'PG961P') THEN 'TENDER'
+                WHEN source in ('brand-portal', 'clinic-portal') THEN 'SO'
+                WHEN created_time >= "2023-10-01" AND source = 'internal-portal' THEN 'CO'  -- Dự án CONSIGNMENT đã bể
+                WHEN created_time >= "2023-10-01" AND customer_id = 241098 THEN 'CO'
+                WHEN customer_tags LIKE "%TERMINATE_CIRCA%" THEN "SO"
+                WHEN customer_tags LIKE '%"CIRCA"%'  THEN 'SO'
+                ELSE 'SO'
+            END AS order_type
+        FROM union_order 
+), 
+js {
+  function choose_new(column_name){
+    /*
+      Because in real time, we allow user to fix order, this make order_id have 2 created time
+      So that to ensure order_id is unique, we will group by it and get all new data along with new created_time
+    */
+    return `ARRAY_AGG( ${column_name} ORDER BY created_time DESC)[0] AS ${column_name}`
+  }
+}
+    order_tbl AS (
+        SELECT 
+            order_id,
+            ${utils.ToTimezone(`max(created_time)`)} AS created_dt,
+            ${choose_new(`order_channel`)},
+            ${choose_new(`order_type`)}
+        FROM 
+            order_channel
+        GROUP BY 1
+)
+SELECT 
+    order_id,
+    created_dt,
+    order_channel,
+    order_type
+FROM order_tbl
+${when(incremental(),
+   `WHERE created_dt > (SELECT MAX(created_dt) FROM ${self()})`,
+   ``)}
+
+
+post_operations {                
+  ${
+    when(incremental(),
+      "",
+      `
+      ALTER TABLE ${self()} 
+        ADD PRIMARY KEY (order_id) NOT ENFORCED;
+      `
+    )
+  }
+}
