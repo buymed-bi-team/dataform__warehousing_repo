@@ -57,7 +57,7 @@ dedup_credit_note AS (
       DATETIME(a.created_time, 'Asia/Ho_Chi_Minh') AS created_at,
       DATETIME(a.last_updated_time, 'Asia/Ho_Chi_Minh') AS last_updated_time,
       DATETIME(a.confirmation_date,'Asia/Ho_Chi_Minh' ) AS confirmed_time,
-      a.receiver_id * 1000 as customer_id, /*Mình thấy trong powerBI của tú lấy được chính xác bv nào nhận cùng customer_id, đó có phải là customer_id hay receiver_id*/
+      a.receiver_id * 1000 as customer_id, /*Tú lấy beneficial_name, nó không phải customer trong bảng của tender, câu hỏi là nên lấy customer là ai, là người đại diện hay bệnh viện*/
       a.receiver_name as customer_name, -- Không được xóa, vì name này là shipping_name khác với customer_name trong dim_customer
       a.receiver_phone_number as customer_phone,-- Không được xóa, vì phone này là shipping_phone khác với customer_phone trong dim_customer
       a.order_id,
