@@ -1,0 +1,50 @@
+config {
+  type: "assertion",
+  tags: ['assertion_weekly']
+}
+/*
+    I hope that this assert will not alert and you don't need to read my stupid explain:
+        I assume that:
+            current_time is  x
+            created_time of oder is y
+        Suppose that System will capture order as soon as it created in real world, 
+            So if the time order created it will be "x = y"
+            After a period update time of my incremental logic it will be "x - period_time = y"
+            all order in "x - period_time to x" will be capture
+            That is my incremental logic
+
+        But if System capture order too slower as it created in real world
+            That mean the time order created in our system will be "x = y + delay_time"
+            After a period update time of my incremental logic it will be "x - period_time = y + delay_time"
+            all order which system created time in "x - period_time - delaytime to x - period_time" will cannot be capture
+            because we just capture "x - period_time to x"
+            It means if order captured has long delay cannot be capture
+    
+    This assertion will checkit 
+*/
+
+
+(
+    SELECT 
+        order_id 
+    FROM ${source.platinum}.marketplace_prd_order_v2_order o
+    -- WHERE 
+    --     created_date BETWEEN CURRENT_DATE('+7') - INTERVAL 1 DAY  AND CURRENT_DATE('+7') - INTERVAL 1 MONTH
+    EXCEPT DISTINCT 
+    SELECT 
+        order_id
+    FROM ${ref(`dim_order_sales_region`)} do
+    -- WHERE 
+    --     created_dt BETWEEN CURRENT_DATETIME('+7') - INTERVAL 1 DAY AND CURRENT_DATETIME('+7') - INTERVAL 1 MONTH
+)
+UNION ALL 
+(
+    SELECT 
+        order_id 
+    FROM ${source.platinum}.tender_prd_core_tender_orders
+    EXCEPT DISTINCT 
+    SELECT
+        order_id 
+    FROM ${ref(`dim_order_sales_region`)} 
+
+)
