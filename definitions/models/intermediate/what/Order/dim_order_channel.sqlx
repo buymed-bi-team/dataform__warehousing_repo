@@ -90,7 +90,7 @@ WITH
         SELECT * FROM order_tender
 )
 ,
-    order_channel AS (
+    order_channel_tbl AS (
         SELECT
             * EXCEPT ( crm_system ),
             CASE
@@ -134,7 +134,7 @@ js {
             ${choose_new(`order_channel`)},
             ${choose_new(`order_type`)}
         FROM 
-            order_channel
+            order_channel_tbl
         GROUP BY 1
 )
 SELECT 
