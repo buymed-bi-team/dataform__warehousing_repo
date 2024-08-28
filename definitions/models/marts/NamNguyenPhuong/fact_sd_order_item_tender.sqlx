@@ -21,7 +21,7 @@ config {
         seller_code: "Code representing the seller of the item",
         seller_class: "Classification of the seller"
     },
-    tags: ["custom_30min_6to24"]
+    // tags: ["custom_30min_6to24"]
 }
 
 WITH stg_order_item as (
@@ -30,37 +30,37 @@ WITH stg_order_item as (
     "T" || o.receiver_id as customer_id,
     DATETIME(oi.created_time,"+7") as created_at,
     oi.product_id,
-    oi.sku as sku_code,
+    dsku.sku_code,
     oi.item_code,
     oi.type as item_type,
     oi.quantity as demand_quantity,
-    oi.reserved_quantity,
-    oi.outbound_quantity,
-    oi.returned_quantity,
+    oi.quantity as reserved_quantity, /*reserved_quantity là gì*/
+    oi.quantity as outbound_quantity, /*suppose that tender has 100% outbound, it means no return */
+    0 as returned_quantity,
     oi.price as unit_price,
-    coalesce(deal_code, json_value(extra_props, '$.campaign_code') ) as promotion_code,
-    coalesce(charge_deal_fee_value,cast(json_value(extra_props, '$.campaign_fee_value') as int64)) as promotion_amount,
+    coalesce( json_value(oi.extra_props, '$.campaign_code') ) as promotion_code,
+    coalesce( cast(json_value(oi.extra_props, '$.campaign_fee_value') as int64)) as promotion_amount,
     oi.seller_code,
     oi.seller_class
  
     from ${source.platinum}.tender_prd_core_tender_order_items oi
     left join ${source.platinum}.tender_prd_core_tender_orders o USING (order_id)
+    left join ${source.ref}.dim_sku dsku ON dsku.product_id = oi.product_id AND dsku.seller_code = oi.seller_code
     where TIMESTAMP_ADD(oi.created_time, interval 7 hour) > TIMESTAMP(CURRENT_DATE("+7") - INTERVAL 31 DAY)  
     AND TIMESTAMP_ADD(o.created_time, interval 7 hour) > TIMESTAMP(CURRENT_DATE("+7") - INTERVAL 31 DAY)  
   ),
  
 stg_order as (
-    select mg_id,synced_at,last_updated_time,
+    select 
  
     order_id,
-    warehouse_code as fc_code
+    fc_code 
  
  
-    from ${source.silver}.marketplace_prd_order_v2_order  
+    from ${source.platinum}.tender_prd_core_tender_orders  o
+    left join ${source.gold}.dim_fc_service_area d ON o.province_code = d.service_area_code
     where TIMESTAMP_ADD(ingest_time, interval 7 hour) > TIMESTAMP(CURRENT_DATE("+7") - INTERVAL 31 DAY)  
-    QUALIFY ROW_NUMBER() OVER(_window) = 1 AND FIRST_VALUE(action) over(_window) <> 'd'
-    WINDOW _window AS (PARTITION BY mg_id ORDER BY synced_at DESC, IF(action='d',3,IF(action='u',2,1)) DESC
-    , last_updated_time DESC)
+    AND TIMESTAMP_ADD(o.created_time,interval 7 hour) > TIMESTAMP(CURRENT_DATE("+7") - INTERVAL 31 DAY)  
   )
  
 SELECT
