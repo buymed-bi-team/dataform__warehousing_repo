@@ -5,7 +5,7 @@ config {
     assertions: {
       uniqueKey: ["sku_fc_key"]
     },
-    tags: ["0h00", "12h00"],
+    tags: ["9h00", "11h00", "13h00", "16h00"],
     columns: {
        sku_fc_key: "primary-key, concatenation of product_id, seller_code, and fc_code",
        sku_sr_key: "concatenation of sku and sales region code",

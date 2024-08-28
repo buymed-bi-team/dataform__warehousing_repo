@@ -19,17 +19,18 @@ WITH
         a.sku_code,
         a.sales_region_code,
         a.prices,
-        if(supplier_class = 'INTERNAL',
-            COALESCE(b.campaign_price, b.deal_price,  a.display_price),
-            COALESCE(c.display_price_seller_with_promo, c.display_price_seller_without_promo)
-        ) as sku_display_price
-        , CONCAT(a.product_id, "_", SPLIT(a.sku_code, ".")[SAFE_OFFSET(0)], "_", a.sales_region_code) AS sku_key_sales_region_code
-    from ${source.gold}.adhoc_pricing_display_price_v3 a
-    left join ${source.gold}.adhoc_pricing_promotion_price_v3 b 
+        -- if(seller_class = 'INTERNAL',
+        --     COALESCE(b.campaign_price, b.deal_price,  a.display_price),
+        --     COALESCE(c.display_price_seller_with_promo, c.display_price_seller_without_promo)
+        -- ) as sku_display_price
+        COALESCE(b.campaign_price, b.deal_price,  a.display_price) as sku_display_price,
+        a.sku_key_sales_region_code
+    from ${ref('adhoc_pricing_display_price_full')} a
+    left join ${ref('adhoc_pricing_promotion_price_full')} b 
       on a.sku_code = b.sku_code 
       and a.sales_region_code = b.sales_region_code
       AND a.prices = b.prices
-    left join ${source.gold}.adhoc_pricing_seller_pricing_v3 c 
+    left join ${ref('adhoc_pricing_seller_price_full')} c 
       on a.sku_code = c.sku_code 
       and a.sales_region_code = c.sales_region_code
       AND a.prices = c.prices

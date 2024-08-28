@@ -9,7 +9,7 @@ config {
         Source: 
             ${source.ref}.dim_sku_sales_region_current,
             ${source.ref}.dim_vendor,
-            ${source.silver}.seller_prd_purchasing_contract_price,
+            ${source.platinum}.seller_prd_purchasing_contract_price,
             ${source.platinum}.seller_prd_promotion_log_price_after_rebate
         `,
     tags: ["custom_1h_past5", "PRICING"],
@@ -32,7 +32,7 @@ with
             contract_price_code
             , start_time
             , end_time
-        FROM ${source.silver}.seller_prd_purchasing_contract_price
+        FROM ${source.platinum}.seller_prd_purchasing_contract_price
         QUALIFY ROW_NUMBER() over (PARTITION BY mg_id ORDER BY synced_at DESC) = 1
             AND FIRST_VALUE(action) over (PARTITION BY mg_id ORDER BY synced_at DESC) <> 'd'
     )

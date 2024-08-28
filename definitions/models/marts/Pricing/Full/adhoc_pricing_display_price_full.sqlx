@@ -2,7 +2,7 @@ config {
     type: "table", 
     description: 
         `
-        The display price of SKUs (calculated according to the pricing formula) for PLATINUM-level customers in 3 cities HCM, HN, DN;
+        All display prices of SKUs for 3 customer levels (SILVER, PLATINUM, DIAMOND) & 4 delivery fee coefficients;
         PIC: nguyen.tran; 
         Type: Table; 
         Refresh Schedule: hourly;
@@ -12,31 +12,12 @@ config {
             ${source.platinum}.marketplace_prd_pricing_v2_price_level, 
             ${source.platinum}.marketplace_prd_pricing_v2_dynamic_level
         `,
-    tags: ["custom_1h_past5", "PRICING"],
-    columns: {
-      customer_level_fee_value: "Fee value corresponding to PLATINUM level",
-      dynamic_pricing_level_fee_value: "Fee value corresponding to dynamic pricing level", 
-      pricing_price_level_fee_value: "Fee value corresponding to price range", 
-      delivery_region_fee_value: "Fee value corresponding to delivery region",
-      platform_fee: "Formula: SETTING_PRICE * 0.02 * CUSTOMER_LEVEL * DYNAMIC_LEVEL * PRICE_RANGE * PRICING_STRATEGY ",
-      delivery_fee: "Formula: SETTING_PRICE * 0.01 * DELIVERY_REGION * DYNAMIC_LEVEL * PRICE_RANGE",
-      service_fee: "Total fees added to the setting price",
-      display_price: "Price of SKUs on thuocsi.vn after added service fees"
-    },
-
-    assertions: {
-      uniqueKey: ["sku_key_sales_region_code"],
-      nonNull: ["sku_code", "sku_key", "sales_region_code"]
-    }
+    tags: ["custom_1h_past5", "PRICING"]
 }
 
--- Get current_time
 with
---     cte_date as (
---       SELECT TIMESTAMP_SUB(TIMESTAMP_TRUNC(current_timestamp(),day), interval 7 HOUR) as trunc_timestamp
---     )
 
--- Get customer level fee. Using LEVEL_PLATINUM to apply all calculate pricing.
+-- Get customer level fee.
     get_customer_level_fee as (
         select
             code as customer_level,
@@ -44,27 +25,30 @@ with
         from ${source.platinum}.marketplace_prd_pricing_v2_setting
         where
             type = 'CUSTOMER_LEVEL'
-            and upper(code) = 'LEVEL_PLATINUM' -- LEVEL_PLATINUM LEVEL_SILVER
+            and upper(code) IN ('LEVEL_PLATINUM', 'LEVEL_SILVER', 'LEVEL_DIAMOND') -- LEVEL_PLATINUM LEVEL_SILVER
         QUALIFY ROW_NUMBER() OVER (PARTITION BY type, code ORDER BY ingest_time DESC) = 1
     )
 
--- Get delivery fee. Depending on sale_region_code to get this fee. If MIENBAC then get fee following Ha Noi city, MIENTRUNG - Da Nang City and MIENNAM - HCM 
+-- Get delivery fee. 
     , get_delivery_fee as (
-        select
-            b.province_name as province_level,
-            a.fee_value,
-            case
-                when b.province_code = "01" then "MIENBAC"
-                when b.province_code = "79" then "MIENNAM"
-                when b.province_code = "48" then "MIENTRUNG"
-            end as sales_region_code
-        from ${source.platinum}.marketplace_prd_pricing_v2_setting as a
-            left join ${ref('dim_province')} as b on a.code = b.province_code
-        where
-            a.type = 'DELIVERY_REGION'
-            and b.province_code IN ("01","79","48")
-        QUALIFY
-            ROW_NUMBER() OVER (PARTITION BY a.type, a.code ORDER BY a.ingest_time DESC) = 1
+        SELECT DISTINCT
+            b.sales_region_code
+            , a.fee_value
+            , DENSE_RANK() over (ORDER BY a.fee_value) as delivery_level
+        FROM (
+            SELECT
+                code as province_code
+                , fee_value
+            FROM ${source.platinum}.marketplace_prd_pricing_v2_setting
+            WHERE
+                type = 'DELIVERY_REGION' OR type is null
+            QUALIFY ROW_NUMBER() over (_window) = 1 AND FIRST_VALUE(action) over (_window) <> 'd'
+            WINDOW _window AS (PARTITION BY type, code ORDER BY synced_at DESC, last_updated_time DESC)
+        ) as a
+            LEFT JOIN ${ref('dim_fc_service_area')} as b 
+                ON a.province_code = b.service_area_code
+        WHERE
+            b.sales_region_code is not null
     )
 
 -- Get price range. In this code section, appending a row with all null values. This row applies for sku that have price over 100.000.000 because
@@ -86,27 +70,15 @@ with
 -- Note: I use cross join because deserting apply fees to all sku.
     , get_columns as (
         select 
-            TIMESTAMP_ADD(current_timestamp(), INTERVAL 7 HOUR) AS transformed_at,
-            a.sku_last_updated_at,
             a.product_id,
             a.sku_code,
-            a.product_name,
             a.sales_region_code,
-            a.seller_code,
             a.seller_class,
-            a.fv_code,
-            a.cic_name,
-            a.purchase_price,
-            a.purchase_price * (1 + a.vat/100) as purchase_price_after_VAT, -- [.Purchase_Price]*(1+[.VAT]/100)
-            a.retail_price_value,
+            CONCAT(d.customer_level, "_&_Delivery_Fee_", e.delivery_level) AS prices,
+
             a.retail_price_type,
-            a.dynamic_pricing_level,
-            d.customer_level,
-            d.fee_value as customer_level_fee_value,
-            a.pricing_strategy,
+            a.retail_price_value,
             b.fee_value as dynamic_pricing_level_fee_value,
-            c.fee_value as pricing_price_level_fee_value,
-            e.fee_value as delivery_region_fee_value,
 
             -- platform fee
             if (

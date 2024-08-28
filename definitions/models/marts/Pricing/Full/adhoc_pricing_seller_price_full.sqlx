@@ -2,7 +2,7 @@ config {
     type: "table", 
     description: 
         `
-        Display price of the External SKUs, Net price received by the Seller after deducting taxes and fees;
+        All Display prices of the External SKUs for 3 customer levels (SILVER, PLATINUM, DIAMOND) & 4 delivery fee coefficients;
         PIC: nguyen.tran; 
         Type: Table; 
         Refresh Schedule: hourly;
@@ -14,12 +14,7 @@ config {
             ${source.ref}.adhoc_pricing_promotion_price,
             ${source.platinum}.marketplace_prd_product_v2_seller_category_level
         `,
-    tags: ["custom_1h_past5", "PRICING"],
-
-    assertions: {
-      uniqueKey: ["sku_key_sales_region_code"],
-      nonNull: ["sku_code", "sku_key", "sales_region_code"]
-    }
+    tags: ["custom_1h_past5", "PRICING"]
 }
 
 -- step 1: get some fee to calculate seller_received_value
@@ -56,17 +51,18 @@ with
             b.campaign_price,
             b.deal_price,
             a.display_price,
-            a.delivery_region_fee_value,
+            -- a.delivery_region_fee_value,
             c.sku_level,
             e.product_category_code,
+            a.prices,
             f.fulfillment_fee_percent AS fullfilment_fee_seller,
             f.sale_fee_percent,
             COALESCE(campaign_price, deal_price) as promotion_price,
             a.sku_key_sales_region_code,
             a.sku_key
-        from ${ref('adhoc_pricing_display_price')} AS a
-            left join ${ref('adhoc_pricing_promotion_price')} AS b
-                on a.sku_code = b.sku_code and a.sales_region_code = b.sales_region_code
+        from ${ref('adhoc_pricing_display_price_full')} AS a
+            left join ${ref('adhoc_pricing_promotion_price_full')} AS b
+                on a.sku_code = b.sku_code and a.sales_region_code = b.sales_region_code and a.prices = b.prices
             left join ${ref('dim_sku_sales_region_current')} AS c
                 on a.sku_code = c.sku_code and a.sales_region_code = c.sales_region_code
             left join ${ref('dim_supplier')} AS sel
