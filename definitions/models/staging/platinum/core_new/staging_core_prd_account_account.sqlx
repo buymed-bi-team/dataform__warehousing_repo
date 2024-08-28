@@ -28,10 +28,19 @@ pre_operations {
 
 
       CREATE OR REPLACE TEMP TABLE range_created_time_table AS (
-       SELECT MIN(DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))) AS min_created_date,
-        MAX(DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))) AS max_created_date
-        FROM ${source.silver}.core_prd_account_account 
-        WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) AND action != "d"
+        SELECT 
+          MIN(created_date) AS min_created_date, 
+          MAX(created_date) AS max_created_date 
+        FROM (
+          SELECT  
+            CASE 
+              WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh')) 
+              ELSE DATE("2099-01-01") 
+            END AS created_date
+          FROM ${source.silver}.core_prd_account_account 
+          WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) 
+           AND action != "d"    
+        )
       );
 
       CREATE OR REPLACE TEMP TABLE get_deleted_record AS (
