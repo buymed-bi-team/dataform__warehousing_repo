@@ -75,7 +75,7 @@ WITH
 
 SELECT
     a.order_id,
-    a.CRM_status,
+    IF(a.CRM_status LIKE "CANCELLED","CANCEL",a.CRM_status) as CRM_status,
     b.WMS_status
     -- c.WMS_Delivery_status,
     -- d.ACCOUNTING_status,
