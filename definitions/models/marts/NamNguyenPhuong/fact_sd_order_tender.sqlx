@@ -70,52 +70,30 @@ dedup_credit_note AS (
       oi.price AS notional_amount, /*Suppose outbound 100%*/
       False AS has_deal, /*Has deal là gì*/
       a.payment_method,
-      -- a.payment_method_percentage, /*Chưa hiểu ý nghĩa của field này*/
+      -- 0 as payment_method_percentage, /* Giả định trả sau hết, trong marketplace_prd thì tất cả đơn tender đều trả sau*/
       a.receiver_shipping_address AS shipping_address,
       a.district_code AS shiping_district_code,
       -- CASE
       --   WHEN SAFE_CAST(a.customer_ward_code AS integer) > 1 THEN a.customer_ward_code
       --   ELSE
       --     a.customer_district_code
-      -- END
+      -- END,
       COALESCE(a.ward_code, a.district_code)  AS shipping_ward_code,
       a.ward_code AS original_shipping_ward_code,
       a.province_code AS shipping_province_code,
-      -- a.customer_order_index, /*Chưa hiểu ý nghĩa của field này*/
+      -- 1 as customer_order_index, /* Chưa được ghi nhận */ -- not need
       CASE
         WHEN (fc_code IS NULL) OR (fc_code ="") THEN "BD" -- huong.dang add
         ELSE fc_code
       END
         AS fc_code,
-      -- a.sale_order_status AS so_status,
-      -- JSON_VALUE(a.extra_props, '$.note') AS note,
-      -- JSON_VALUE(a.extra_props, '$.auto_cancel_overdue_transfer') AS auto_cancel_overdue_transfer,
-      -- a.system_display,
-      -- JSON_VALUE(a.source_detail, '$.platform') AS source_detail_platform,
+      dos.wms_status AS so_status,
+      JSON_VALUE(a.extra_props, '$.note') AS note,
+      JSON_VALUE(a.extra_props, '$.auto_cancel_overdue_transfer') AS auto_cancel_overdue_transfer,
       a.source,
-      -- CASE
-      --   WHEN TO_JSON_STRING(a.tags) LIKE '%MULTIPLE_DELIVERY_ORDER%' THEN 'split_order'
-      --   ELSE
-      --     'normal_order'
-      -- END
-      --   AS order_type,
-      -- CASE
-      --   WHEN TO_JSON_STRING(a.tags) LIKE '%ORDER_ASSIST%' THEN TRUE
-      --   ELSE
-      --     FALSE
-      -- END
-      -- AS assist_order,
-      -- r.type,
-      -- JSON_VALUE(a.extra_props,"$.confirm_type") AS confirm_type,-- tung.vu added
-      -- JSON_VALUE(a.extra_props,"$.note") AS customer_note,
-      -- JSON_VALUE(a.invoice, '$.invoice_request') AS invoice_request,-- tung.vu added
-      -- JSON_VALUE(a.invoice, '$.company_address') AS company_invoice_address,
-      -- JSON_VALUE(a.invoice, '$.company_name') AS company_invoice_name,-- nguyen.tran added
-      -- r.point,
-      -- r.feedback,
-      -- DATETIME(TIMESTAMP(JSON_VALUE(a.extra_props, '$.cancel_time')),'Asia/Ho_Chi_Minh') AS cancel_time,
-      -- DATETIME(TIMESTAMP(JSON_VALUE(a.extra_props, '$.completed_time')),'Asia/Ho_Chi_Minh') AS completed_time,
-      -- DATETIME(a.outbound_date, 'Asia/Ho_Chi_Minh') AS outbound_time,
+      'normal_order' AS order_type, -- Currently
+      DATETIME(TIMESTAMP(JSON_VALUE(a.extra_props, '$.completed_time')),'Asia/Ho_Chi_Minh') AS completed_time,
+      DATETIME(a.outbound_date, 'Asia/Ho_Chi_Minh') AS outbound_time,
       -- JSON_VALUE(a.extra_props, "$.employee_id") AS employee_id,
       --For order which is created by an employee instead of customer (order_assist)
       -- DATETIME(a.delivered_time,'Asia/Ho_Chi_Minh') AS expected_delivery_time,
@@ -123,28 +101,17 @@ dedup_credit_note AS (
       JSON_VALUE(a.extra_props, "$.brand_code") AS brand_code,
       -- created_by_account_id,
       -- is_split_delivery_order,
-      -- total_discount,
+      0 as total_discount, -- 29-08-2024, Currently don't provide discount
       0 as return_amount,
       -- c.invoice_amount,
-      -- COALESCE(a.status, a.sale_order_status) AS sales_status,
-      -- e.carrier_name,
       a.province_code,
-      -- a.redeem_code,
+      null redeem_code, -- 29-08-2024, Currently don't provide discount
 
     FROM ${source.platinum}.tender_prd_core_tender_orders AS a
     LEFT JOIN order_item AS oi ON a.order_id = oi.order_id
-    left join ${source.gold}.dim_fc_service_area dfc ON a.province_code = dfc.service_area_code
-    LEFT JOIN ${source.platinum}.marketplace_prd_customer_customer_rating r ON a.order_id=r.order_id
-    LEFT JOIN return_amount AS b ON a.order_id = b.order_id
+    left join ${source.ref}.dim_fc_service_area dfc ON a.province_code = dfc.service_area_code
+    left join ${source.ref}.dim_order_status dos ON a.order_id = dos.order_id
     LEFT JOIN invoice_amount AS c ON a.order_id = c.order_id
-    LEFT JOIN (
-      SELECT
-        order_id, carrier_name
-      FROM ${source.gold}.fact_outbound_ticket
-      WHERE
-        REGEXP_CONTAINS(reference_code, r'-F|-P1') 
-      QUALIFY ROW_NUMBER() OVER(PARTITION BY order_id, reference_code ) = 1
-    ) e ON e.order_id = a.order_id
     WHERE
       a.created_date > current_date('+7') - INTERVAL 32 DAY 
       AND a.status <> 'REVERTING'  and a.created_time >= TIMESTAMP(current_datetime() - INTERVAL 31 DAY )

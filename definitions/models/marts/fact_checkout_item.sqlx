@@ -48,7 +48,7 @@ WITH stg_order_item as   ${dedup.dedup(
       `,
       start_timestamp= when(incremental(),
               ` TIMESTAMP(current_datetime() - INTERVAL 2 DAY )`,
-              ` TIMESTAMP_SECONDS(0)`)                          
+              ` "2024-01-01"`)                          
  
 )}
 ,
@@ -58,7 +58,7 @@ stg_order as ${dedup.dedup(
   "order_id, province_code, status",
   start_timestamp= when(incremental(),
             ` TIMESTAMP(current_datetime() - INTERVAL 2 DAY )`,
-            ` TIMESTAMP_SECONDS(0)`)
+            ` "2024-01-01"`)
 )}
  
  
@@ -117,7 +117,7 @@ LEFT JOIN stg_order b
 ${
   when(incremental(),
    `WHERE order_item_created_time > (SELECT MAX(order_item_created_time) FROM ${self()})`,
-   `WHERE order_item_created_time > DATE_TRUNC(CURRENT_DATETIME('+7') - INTERVAL 6 MONTH,  MONTH)`)
+   `WHERE order_item_created_time > "2024-01-01"`)
 }
  
 post_operations {
