@@ -175,4 +175,5 @@ SELECT
        else 'NEED CHECK'
   end as payment_method
 FROM fact_order a
-
+UNION ALL
+SELECT * FROM ${ref(`fact_sd_order_tender`)}

@@ -91,3 +91,7 @@ LEFT JOIN `lakehouse-prod-394907.gold_buymed_vn2.dim_supplier` s
     ON oi.seller_code = s.supplier_code
 WHERE oi.created_at > CURRENT_DATE("+7") - INTERVAL 31 DAY
 AND seller_class in ("EXTERNAL","INTERNAL")
+
+UNION ALL 
+
+SELECT * FROM ${ref(`fact_sd_order_item_tender`)}

@@ -3,7 +3,7 @@ config {
     description: "PIC: Minh.luu; model_type:table; schedule: every 30m from 9h am to 18h pm and every 1h otherwise",
     uniqueKey: ["mg_id"],
     name: "fact_sd_order_tender",
-    // tags: ["custom_30min_6to24"],
+    tags: ["custom_30min_6to24"],
     bigquery: {
         partitionBy: "DATETIME_TRUNC((created_time),month)"
     }
@@ -103,9 +103,9 @@ dedup_credit_note AS (
       -- is_split_delivery_order,
       0 as total_discount, -- 29-08-2024, Currently don't provide discount
       0 as return_amount,
-      -- c.invoice_amount,
+      a.total_amount as invoice_amount,
       a.province_code,
-      null redeem_code, -- 29-08-2024, Currently don't provide discount
+      null as redeem_code, -- 29-08-2024, Currently don't provide discount
 
     FROM ${source.platinum}.tender_prd_core_tender_orders AS a
     LEFT JOIN order_item AS oi ON a.order_id = oi.order_id
@@ -114,7 +114,7 @@ dedup_credit_note AS (
     LEFT JOIN invoice_amount AS c ON a.order_id = c.order_id
     WHERE
       a.created_date > current_date('+7') - INTERVAL 32 DAY 
-      AND a.status <> 'REVERTING'  and a.created_time >= TIMESTAMP(current_datetime() - INTERVAL 31 DAY )
+      AND a.status NOT IN ('REVERTING',"WAIT_TO_CONFIRM","DELETING")  and a.created_time >= TIMESTAMP(current_datetime() - INTERVAL 31 DAY )
   )
 
 SELECT
@@ -148,4 +148,3 @@ SELECT
        else 'NEED CHECK'
   end as payment_method
 FROM fact_order a
-

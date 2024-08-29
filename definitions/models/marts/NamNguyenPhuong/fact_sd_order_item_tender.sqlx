@@ -21,7 +21,7 @@ config {
         seller_code: "Code representing the seller of the item",
         seller_class: "Classification of the seller"
     },
-    // tags: ["custom_30min_6to24"]
+    tags: ["custom_30min_6to24"]
 }
 
 WITH stg_order_item as (
@@ -47,7 +47,7 @@ WITH stg_order_item as (
     left join ${source.platinum}.tender_prd_core_tender_orders o USING (order_id)
     left join ${source.ref}.dim_sku dsku ON dsku.product_id = oi.product_id AND dsku.seller_code = oi.seller_code
     where TIMESTAMP_ADD(oi.created_time, interval 7 hour) > TIMESTAMP(CURRENT_DATE("+7") - INTERVAL 31 DAY)  
-    AND TIMESTAMP_ADD(o.created_time, interval 7 hour) > TIMESTAMP(CURRENT_DATE("+7") - INTERVAL 31 DAY)  
+    AND TIMESTAMP_ADD(o.created_time, interval 7 hour) > TIMESTAMP(CURRENT_DATE("+7") - INTERVAL 31 DAY) 
   ),
  
 stg_order as (
