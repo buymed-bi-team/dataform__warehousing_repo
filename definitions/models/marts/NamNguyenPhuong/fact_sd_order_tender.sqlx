@@ -105,7 +105,7 @@ dedup_credit_note AS (
       0 as return_amount,
       a.total_amount as invoice_amount,
       a.province_code,
-      null as redeem_code, -- 29-08-2024, Currently don't provide discount
+      CAST(null AS JSON) as redeem_code -- 29-08-2024, Currently don't provide discount
 
     FROM ${source.platinum}.tender_prd_core_tender_orders AS a
     LEFT JOIN order_item AS oi ON a.order_id = oi.order_id
