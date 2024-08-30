@@ -55,7 +55,7 @@ WITH stg_order_item as   ${dedup.dedup(
  
 stg_order as ${dedup.dedup(
   source.silver + `.marketplace_prd_order_v2_order`,
-  "order_id, province_code, status",
+  "order_id, province_code, status, source",
   start_timestamp= when(incremental(),
             ` TIMESTAMP(current_datetime() - INTERVAL 2 DAY )`,
             ` "2024-01-01"`)
@@ -79,6 +79,7 @@ SELECT
   a.tags,
   b.province_code,
   a.sku_key,
+  b.source as platform,
   CASE
     WHEN EXISTS (
       SELECT 1
