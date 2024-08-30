@@ -1,0 +1,250 @@
+config {
+    type: "table",
+    description: `PIC: minh.luu, schedule: 0h00 daily
+    Source
+        ${source.ref}.marketplace_prd_order_v2_order
+        ${source.ref}.tender_prd_core_tender_orders
+        ${source.ref}.marketplace_prd_order_v2_order_item
+        ${source.ref}.tender_prd_core_tender_order_items
+        ${source.ref}.dim_supplier
+        ${source.ref}.dim_sku`,
+    columns: {
+        order_id: "NonNull",
+        product_id: "Nullable",
+        order_status: "Nullable | Null means unknown",
+        supplier_class: `Nullable | COALESCE(  supplier_class from the seller_code field first, the supplier_class from the sku field's seller_code - by join dim_sku and use sku.seller_code to join dim supplier, the order_item seller_class field ) as supplier_class `,
+        created_dt: "NonNull | Timezone in +7",
+        demand_quantity: "NonNull |",
+        returned_quantity : "Nullable | The item quantity was returned by the customer. However, there are some orders that still have returns, but the system marked them as canceled, making it difficult to calculate revenue",
+        outbound_dt: "Nullable | The datetime that item has been delivered out of warehouse ",
+        outbound_quantity: "Nullable | the quantity of products have be shipped from warehouse",
+        price: "Nullable"
+    },
+    tags: ('0h00'),
+    bigquery: {
+        partitionBy: "DATE(created_dt)"
+    }
+}
+
+js {
+    const start_date = `"2024-07-01"`
+    const end_date = `"2024-08-01"`
+}
+
+WITH 
+mkp_o AS ( 
+    SELECT 
+        o.order_id, 
+        o.status,
+        ${utils.ToTimezone(`o.outbound_date`)} as outbound_dt,
+        ${utils.ToTimezone(`o.created_time`)} as created_dt,
+        ${utils.ToTimezone(`o.confirmation_date`)} as confirmation_dt,
+        "MKP" as system
+    FROM
+        ${source.platinum}.marketplace_prd_order_v2_order o
+    LEFT JOIN ${ref(`dim_order`)} do ON do.order_id = o.order_id
+    WHERE created_date BETWEEN ${start_date} AND ${end_date}
+
+)
+, mkp_oi AS (
+    SELECT 
+        'mkp' || mg_id as oiid, 
+        order_id,
+        product_id,
+        -- item_code, -- currently, This is unnecessary
+        -- oi.type, -- currently, This is unnecessary
+        sku as sku_code,
+        seller_code,
+        seller_class, 
+        outbound_quantity,
+        quantity AS demand_quantity,
+        returned_quantity,
+        extra_props,
+        price
+    FROM 
+        ${source.platinum}.marketplace_prd_order_v2_order_item oi
+    WHERE created_date BETWEEN ${start_date} AND ${end_date}
+)
+, tender_o AS (
+    SELECT 
+        o.order_id,
+        o.status,
+        ${utils.ToTimezone(`o.outbound_date`)} as outbound_dt,
+        ${utils.ToTimezone(`o.created_time`)} as order_created_dt,
+        ${utils.ToTimezone(`o.confirmation_date`)} as confirmation_dt,
+        -- bill.bill_created_time,
+        "TENDER" AS system
+        
+    FROM
+        ${source.platinum}.tender_prd_core_tender_orders o
+    WHERE created_date BETWEEN ${start_date} AND ${end_date}
+)
+, tender_oi AS (
+    SELECT 
+        'tender' || mg_id as oiid, 
+        oi.order_id,
+        oi.product_id,
+        -- oi.item_code,  -- currently, This is unnecessary
+        -- oi.type, -- currently, This is unnecessary
+        dsku.sku_code,
+        oi.seller_code,
+        oi.seller_class, 
+        oi.quantity AS outbound_quantity, -- Assumption: Tender will return all outbound 
+        oi.quantity AS demand_quantity,
+        0 as returned_quantity,
+        oi.extra_props,
+        oi.price
+    FROM 
+        ${source.platinum}.tender_prd_core_tender_order_items oi
+    LEFT JOIN ${source.ref}.dim_sku dsku
+        ON oi.product_id = dsku.product_id AND oi.seller_code = dsku.seller_code
+    WHERE created_date BETWEEN ${start_date} AND ${end_date}
+
+)
+, o AS (
+    SELECT * FROM mkp_o 
+    UNION ALL 
+    SELECT * FROM tender_o 
+)
+, oi AS (
+    SELECT * FROM mkp_oi 
+    UNION ALL
+    SELECT * FROM tender_oi
+)
+, oi_combo AS (
+    SELECT 
+        oi.oiid,
+        oi.order_id,
+        oi.product_id,
+        oi.sku_code,
+        -- oi.item_code,  -- currently, This is unnecessary
+        -- oi.type as item_type,  -- currently, This is unnecessary
+        JSON_EXTRACT_SCALAR( ois.sku ) as sku_single_code,
+        SAFE_CAST( JSON_VALUE( ois.product_id ) as INT64 ) as product_single_id,
+        -- JSON_VALUE( ois.item_code) as item_single_code, -- currently, This is unnecessary
+        -- JSON_EXTRACT_SCALAR( ois.type ) as item_single_type,  -- currently, This is unnecessary
+
+        JSON_VALUE(ois.seller_code) as product_single_seller_code,
+        JSON_VALUE(ois.seller_class) as product_single_seller_class,
+        SAFE_CAST( JSON_VALUE( ois.seller_price ) as INT64 ) as product_single_seller_price, 
+        SAFE_CAST( JSON_VALUE( ois.quantity ) as INT64 )  as product_single_demand_quantity, -- is this is percentage < 1
+        SAFE_CAST( JSON_VALUE( ois.price ) as INT64 ) as product_single_price,
+        oi.seller_code,
+        oi.seller_class,
+        oi.outbound_quantity,
+        oi.demand_quantity,
+        oi.returned_quantity,
+        oi.price
+    FROM oi
+    , unnest( json_query_array(oi.extra_props, "$.sub_items") ) as ois -- order item single
+)
+, oi_combo_calculated AS (
+    SELECT 
+        oiid,
+        order_id,
+        product_id as product_id_original,
+        sku_code as sku_code_original,
+        seller_code as seller_code_original,
+        seller_class as seller_class_original,
+        product_single_id as product_id,
+        sku_single_code as sku_code, 
+        product_single_seller_code as seller_code,
+        product_single_seller_class as seller_class,
+
+        -- demand_quantity as demand_quantity_original, -- tại sao số bị thay đổi so với quantity ở platinum
+        -- price as price_original, -- như dòng trên 
+        
+        -- product_single_seller_price as seller_price, -- currently, This is unnecessary
+        -- demand_quantity / COUNT(1) OVER(PARTITION BY order_id, sku_code) as combo_quantity, -- currently, This is unnecessary
+
+        demand_quantity * product_single_demand_quantity as demand_quantity, 
+        outbound_quantity * product_single_demand_quantity as outbound_quantity,
+        returned_quantity * product_single_demand_quantity as returned_quantity,
+        product_single_price * LEAST(
+            (price / sum(product_single_demand_quantity * product_single_price) over (partition by order_id, sku_code))
+            , 1
+        ) as price
+
+    FROM oi_combo
+)
+, oi_not_combo AS (
+    SELECT 
+        oiid,
+        order_id,
+        product_id as product_id_original,
+        sku_code as sku_code_original,
+        seller_code as seller_code_original,
+        seller_class as seller_class_original,
+        product_id,
+        sku_code,
+        seller_code,
+        seller_class,
+        -- demand_quantity as demand_quantity_original,
+        -- price as price_original,
+        demand_quantity,
+        outbound_quantity,
+        returned_quantity,
+        price
+    FROM oi 
+    WHERE oiid not in (SELECT oiid FROM oi_combo)
+)
+, oi_final AS (
+    SELECT * FROM oi_combo_calculated
+    UNION ALL 
+    SELECT * FROM oi_not_combo
+)   
+
+SELECT
+    oi.oiid,
+    oi.order_id,
+    oi.product_id_original,
+    oi.sku_code_original,
+    oi.seller_code_original as supplier_code_original,
+    oi.product_id,
+    oi.sku_code,
+    oi.seller_code as supplier_code,
+    -- demand_quantity as demand_quantity_original,
+    -- price as price_original,
+
+    o.status as order_status,
+    COALESCE(
+        ds1.supplier_class,
+        ds3.supplier_class,
+        ds2.supplier_class,
+        ds4.supplier_class,
+        oi.seller_class
+    ) as supplier_class,
+
+    o.outbound_dt,
+    oi.outbound_quantity,
+    oi.demand_quantity, 
+    oi.returned_quantity,
+    oi.price,
+    o.created_dt,
+    o.confirmation_dt
+
+FROM oi_final oi
+LEFT JOIN o ON o.order_id = oi.order_id
+LEFT JOIN ${ref(`dim_supplier`)} ds1 ON oi.seller_code = ds1.supplier_code
+LEFT JOIN ${ref(`dim_supplier`)} ds2 ON oi.seller_code_original = ds2.supplier_code 
+LEFT JOIN ${ref(`dim_sku`)} dsku3 ON dsku3.sku_code = oi.sku_code
+LEFT JOIN ${ref(`dim_supplier`)} ds3 ON ds3.supplier_code = dsku3.seller_code
+LEFT JOIN ${ref(`dim_sku`)} dsku4 ON dsku4.sku_code = oi.sku_code_original
+LEFT JOIN ${ref(`dim_supplier`)} ds4 ON ds4.supplier_code = dsku4.seller_code
+
+-- WHERE o.order_channel <> "CONSIGNMENT-RECOGNITION"
+WHERE COALESCE(
+        ds1.supplier_class,
+        ds3.supplier_class,
+        ds2.supplier_class,
+        ds4.supplier_class,
+        oi.seller_class
+    ) <> "TECH"
+
+
+
+-- post_operations {
+--     ALTER TABLE ${self()} 
+--     ADD FOREIGN KEY (order_id) references ${ref(`dim_order`)}(order_id) NOT ENFORCED,
+--     ADD FOREIGN KEY (product_id) references ${ref(`dim_product`)}(product_id) NOT ENFORCED;
+-- }
