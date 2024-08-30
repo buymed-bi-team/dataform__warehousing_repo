@@ -20,7 +20,7 @@ SELECT
     CASE
         WHEN dosr.sales_region_code LIKE "MIENNAM" THEN "SOUTHERN"
         WHEN dosr.sales_region_code LIKE "MIENTRUNG" THEN "CENTRAL"
-        WHEN dosr.sales_region_code LIKE "MIENBAC" THEN "NOTHERN"
+        WHEN dosr.sales_region_code LIKE "MIENBAC" THEN "NORTHERN"
         ELSE "GMV-VN-REGION-UNKNOWN" 
     END AS location,
     CASE 
