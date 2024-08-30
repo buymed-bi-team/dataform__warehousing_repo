@@ -27,7 +27,7 @@ SELECT
         WHEN doc.order_channel IN ("MARKETPLACE","CONSIGNMENT" ) THEN "MARKETPLACE"
         ELSE doc.order_channel
     END AS channel,
-    'GMV-BEFORE-CANCEL' AS measure,
+    'GMV-BACKLOG' AS measure,
     -- IF( order_status like 'CANCEL', 'CANCEL','GMV') as is_cancel,
 
     SUM((demand_quantity - outbound_quantity) * price) as value
@@ -53,7 +53,7 @@ SELECT
         ELSE "GMV-VN-REGION-UNKNOWN" 
     END AS location,
     order_channel as channel,
-    'GMV-BEFORE-CANCEL' AS measure,
+    'GMV-BACKLOG' AS measure,
     -- IF( order_status like 'CANCEL', 'CANCEL','GMV') as is_cancel,
 
     SUM((demand_quantity - outbound_quantity) * price) as value
