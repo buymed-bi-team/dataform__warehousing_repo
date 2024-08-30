@@ -8,9 +8,11 @@ config {
         ${source.ref}.dim_calendar
         ${source.ref}.fact_strategic_sale_order_item_single`,
     columns: {
-        metric_code: "NonNull | Concat of SalesRegion and metric lv2 column",
         date: "NonNull | End of month",
-        value: "NonNull | gmv"
+        location: "Nullable | sales_region_code, sometime orders had not assign yet",
+        channel: "NonNull | order_channel",
+        measure: "NonNull | GMV-BEFORE-CANCEL",
+        value: "NonNull | backlog amount = demand_amount - outbound_amount when order is delivering, delivered or completed ,Note: In tender systems, we don't consider orders valid until they are confirmed by the customer, as their confirmation is essential to making the order valuable to actionable. On the other hand, in marketplace, orders become valid upon creation, as our system handles the confirmation process, not the customer."
     }
 }
 SELECT 
