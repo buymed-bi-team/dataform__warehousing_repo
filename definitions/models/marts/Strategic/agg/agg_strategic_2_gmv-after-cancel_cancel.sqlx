@@ -1,5 +1,6 @@
 config {
     type: "view",
+    name: "agg_strategic_gmv-after-cancel_cancel",
     description: `PIC: minh.luu, model_type: view"
     Source
         ${source.ref}.dim_order_channel
@@ -24,9 +25,9 @@ SELECT
         WHEN doc.order_channel IN ("MARKETPLACE","CONSIGNMENT" ) THEN "MARKETPLACE"
         ELSE doc.order_channel
     END AS order_channel,
-    'GMV-FULFILLED' AS measure,
+    IF ( dos.crm_status LIKE "CANCEL","CANCEL","GMV-AFTER-CANCEL") AS measure,
 
-    SUM((outbound_quantity - returned_quantity) * price ) AS value
+    SUM(price * demand_quantity) as value
 
 FROM ${ref(`fact_strategic_sale_order_item_single`)} ois 
 LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = ois.order_id 
@@ -48,8 +49,9 @@ SELECT
         ELSE "GMV-VN-REGION-UNKNOWN" 
     END AS sales_region_code,
     order_channel,
-    'GMV-FULFILLED' AS measure,
-    SUM((outbound_quantity - returned_quantity) * price ) AS value
+    IF ( dos.crm_status LIKE "CANCEL","CANCEL","GMV-AFTER-CANCEL") AS measure,
+
+    SUM(price * demand_quantity) as value
 
 FROM ${ref(`fact_strategic_sale_order_item_single`)} ois 
 LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = ois.order_id 

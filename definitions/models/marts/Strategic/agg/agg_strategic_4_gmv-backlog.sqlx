@@ -1,5 +1,6 @@
 config {
     type: "view",
+    name: "agg_strategic_gmv-backlog",
     description: `PIC: minh.luu, model_type: view"
     Source
         ${source.ref}.dim_order_channel
@@ -24,7 +25,9 @@ SELECT
         WHEN doc.order_channel IN ("MARKETPLACE","CONSIGNMENT" ) THEN "MARKETPLACE"
         ELSE doc.order_channel
     END AS order_channel,
-    'GMV-UNFF' AS measure,
+    'GMV-BEFORE-CANCEL' AS measure,
+    -- IF( order_status like 'CANCEL', 'CANCEL','GMV') as is_cancel,
+
     SUM((demand_quantity - outbound_quantity) * price) as value
 
 FROM ${ref(`fact_strategic_sale_order_item_single`)} ois 
@@ -32,12 +35,35 @@ LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = ois.order_id
 LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON ois.order_id = dosr.order_id 
 LEFT JOIN ${ref(`dim_order_status`)} dos ON dos.order_id = ois.order_id
 LEFT JOIN ${ref(`dim_calendar`)} dc ON date(ois.created_dt) = dc.date
-WHERE  doc.order_channel NOT LIKE "CONSIGNMENT-RECOGNITION"
+WHERE  doc.order_channel NOT IN ("TENDER","CONSIGNMENT-RECOGNITION")
 AND doc.order_channel is not null
-AND dos.crm_status in ("DELIVERING","DELIVERED","COMPLETED")
+AND dos.crm_status not in ("DELIVERING","DELIVERED","COMPLETED")
 GROUP BY 1,2,3,4
 
+UNION ALL 
 
+SELECT 
+    dc.eom as date,
+    CASE
+        WHEN dosr.sales_region_code LIKE "MIENNAM" THEN "SOUTHERN"
+        WHEN dosr.sales_region_code LIKE "MIENTRUNG" THEN "CENTRAL"
+        WHEN dosr.sales_region_code LIKE "MIENBAC" THEN "NOTHERN"
+        ELSE "GMV-VN-REGION-UNKNOWN" 
+    END AS sales_region_code,
+    order_channel,
+    'GMV-BEFORE-CANCEL' AS measure,
+    -- IF( order_status like 'CANCEL', 'CANCEL','GMV') as is_cancel,
 
+    SUM((demand_quantity - outbound_quantity) * price) as value
+
+FROM ${ref(`fact_strategic_sale_order_item_single`)} ois 
+LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = ois.order_id 
+LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON ois.order_id = dosr.order_id 
+LEFT JOIN ${ref(`dim_order_status`)} dos ON dos.order_id = ois.order_id
+LEFT JOIN ${ref(`dim_calendar`)} dc ON date(ois.confirmation_dt) = dc.date
+WHERE  doc.order_channel LIKE "TENDER"
+AND dos.crm_status not like "WAIT_TO_CONFIRM"
+AND dos.crm_status not in ("DELIVERING","DELIVERED","COMPLETED")
+GROUP BY 1,2,3,4
 
 
