@@ -38,6 +38,7 @@ LEFT JOIN ${ref(`dim_calendar`)} dc ON date(ois.created_dt) = dc.date
 WHERE  doc.order_channel NOT LIKE "CONSIGNMENT-RECOGNITION"
 AND doc.order_channel is not null
 AND dos.crm_status in ("DELIVERING","DELIVERED","COMPLETED")
+AND dos.crm_status not like "CANCEL"
 GROUP BY 1,2,3,4
 
 

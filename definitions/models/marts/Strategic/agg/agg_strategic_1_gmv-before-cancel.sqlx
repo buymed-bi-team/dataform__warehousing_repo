@@ -28,7 +28,6 @@ SELECT
         ELSE doc.order_channel
     END AS channel,
     'GMV-BEFORE-CANCEL' AS measure,
-    -- IF( order_status like 'CANCEL', 'CANCEL','GMV') as is_cancel,
 
     SUM(price * demand_quantity) as value
 
@@ -53,7 +52,6 @@ SELECT
     END AS location,
     doc.order_channel as channel,
     'GMV-BEFORE-CANCEL' AS measure,
-    -- IF( order_status like 'CANCEL', 'CANCEL','GMV') as is_cancel,
 
     SUM(price * demand_quantity) as value
 
