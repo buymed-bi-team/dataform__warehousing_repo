@@ -50,8 +50,8 @@ SELECT
         WHEN dosr.sales_region_code LIKE "MIENTRUNG" THEN "CENTRAL"
         WHEN dosr.sales_region_code LIKE "MIENBAC" THEN "NOTHERN"
         ELSE "GMV-VN-REGION-UNKNOWN" 
-    END AS sales_region_code,
-    order_channel,
+    END AS location,
+    doc.order_channel as channel,
     'GMV-BEFORE-CANCEL' AS measure,
     -- IF( order_status like 'CANCEL', 'CANCEL','GMV') as is_cancel,
 

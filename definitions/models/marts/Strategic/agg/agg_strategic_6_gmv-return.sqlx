@@ -22,11 +22,11 @@ SELECT
         WHEN dosr.sales_region_code LIKE "MIENTRUNG" THEN "CENTRAL"
         WHEN dosr.sales_region_code LIKE "MIENBAC" THEN "NOTHERN"
         ELSE "GMV-VN-REGION-UNKNOWN" 
-    END AS sales_region_code,
+    END AS location,
     CASE 
         WHEN doc.order_channel IN ("MARKETPLACE","CONSIGNMENT" ) THEN "MARKETPLACE"
         ELSE doc.order_channel
-    END AS order_channel,
+    END AS channel,
     'GMV-RETURN' AS measure,
 
     SUM(price * returned_quantity) as value
@@ -49,8 +49,8 @@ SELECT
         WHEN dosr.sales_region_code LIKE "MIENTRUNG" THEN "CENTRAL"
         WHEN dosr.sales_region_code LIKE "MIENBAC" THEN "NOTHERN"
         ELSE "GMV-VN-REGION-UNKNOWN" 
-    END AS sales_region_code,
-    order_channel,
+    END AS location,
+    order_channel  as channel,
     'GMV-RETURN' AS measure,
     SUM(price * returned_quantity) as value
 
