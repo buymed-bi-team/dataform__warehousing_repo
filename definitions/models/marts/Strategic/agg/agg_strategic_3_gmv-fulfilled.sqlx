@@ -1,6 +1,6 @@
 config {
     type: "view",
-    name: "agg_strategic_gmv-fulfulled",
+    name: "agg_strategic_gmv-fulfilled",
     description: `PIC: minh.luu, model_type: view"
     Source
         ${source.ref}.dim_order_channel
