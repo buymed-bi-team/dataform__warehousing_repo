@@ -2,7 +2,7 @@
 -- new
 config {
     type: "incremental",
-    name: "staging_marketplace_prd_promotion_checkin_log",
+    name: "marketplace_prd_promotion_checkin_log",
     schema: "platinum_buymed_vn",
     assertions: {
         uniqueKey: 'mg_id'
