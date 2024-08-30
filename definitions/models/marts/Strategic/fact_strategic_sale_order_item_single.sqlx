@@ -27,7 +27,7 @@ config {
 }
 
 js {
-    const start_date = `"2024-01-01"`
+    const start_date = `"2023-01-01"`
     const end_date = `"2030-08-01"`
 }
 
