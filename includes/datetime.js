@@ -1,7 +1,25 @@
 function current_date() {
     var d = new Date();
-    var strDate = d.getFullYear().toString() + ("0" + (d.getMonth() + 1)).slice(-2) + d.getDate().toString();
+    var strDate = d.getFullYear().toString() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + d.getDate().toString();
     return strDate
+}
+
+function getPastDate(intervalDays = 0, intervalMonths = 0) {
+    // Get today's date
+    const today = new Date();
+
+    // Subtract the specified number of days
+    today.setDate(today.getDate() - intervalDays);
+
+    // Subtract the specified number of months
+    today.setMonth(today.getMonth() - intervalMonths);
+
+    // Return the resulting date in YYYY-MM-DD format
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+    const day = String(today.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
 }
 
 function isDaysOfWeek(...DaysOfWeek) {
@@ -86,7 +104,7 @@ function isCurrentTimeInRange(startTime, endTime) {
     return currentHours >= startHours && currentHours < endHours;
 }
 
-module.exports = { current_date , isDaysOfWeek , isCurrentTimeInRange };
+module.exports = { current_date , getPastDate , isDaysOfWeek , isCurrentTimeInRange };
 
 // action_key = 
 // var sold_ = 'Fact_Seller_Selling_Suggestion'[hasEverSold]

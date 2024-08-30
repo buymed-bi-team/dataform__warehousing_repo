@@ -27,39 +27,41 @@ config {
         partitionBy: "DATETIME_TRUNC((order_item_created_time),MONTH)"
     }
 }
- 
-WITH stg_order_item as   ${dedup.dedup(
-      source.silver + `.marketplace_prd_order_v2_order_item`,
-      `
-      order_id,
-      product_id,
-      customer_id,
-      sku,
-      item_code,
-      price,
-      quantity,
-      DATETIME(created_time, 'Asia/Ho_Chi_Minh') as order_item_created_time,
-      DATETIME(cart_item_created_time, 'Asia/Ho_Chi_Minh') as cart_item_created_time,
-      page,
-      event_source,
-      event_screen,
-      tags,
-      product_id || "_" || seller_code as sku_key
-      `,
-      start_timestamp= when(incremental(),
-              ` TIMESTAMP(current_datetime() - INTERVAL 2 DAY )`,
-              ` "2024-01-01"`)                          
- 
-)}
+
+
+WITH stg_order_item as (
+  SELECT 
+    order_id,
+    product_id,
+    customer_id,
+    sku,
+    item_code,
+    price,
+    quantity,
+    DATETIME(created_time, 'Asia/Ho_Chi_Minh') as order_item_created_time,
+    DATETIME(cart_item_created_time, 'Asia/Ho_Chi_Minh') as cart_item_created_time,
+    page,
+    event_source,
+    event_screen,
+    tags,
+    product_id || "_" || seller_code as sku_key
+
+  FROM ${source.platinum}.marketplace_prd_order_v2_order_item
+  ${when(incremental(),`WHERE created_date >= "${datetime.getPastDate(intervalDays=2)}"`)}
+
+) 
 ,
  
-stg_order as ${dedup.dedup(
-  source.silver + `.marketplace_prd_order_v2_order`,
-  "order_id, province_code, status, source",
-  start_timestamp= when(incremental(),
-            ` TIMESTAMP(current_datetime() - INTERVAL 2 DAY )`,
-            ` "2024-01-01"`)
-)}
+stg_order as (
+  SELECT 
+    order_id,
+    province_code, 
+    status, 
+    source
+  FROM
+    ${source.platinum}.marketplace_prd_order_v2_order
+  ${when(incremental(),`WHERE created_date >= "${datetime.getPastDate(intervalDays=2)}"`)}
+)
  
  
 SELECT
@@ -114,12 +116,7 @@ SELECT
 FROM stg_order_item a
 LEFT JOIN stg_order b
   ON a.order_id = b.order_id
- 
-${
-  when(incremental(),
-   `WHERE order_item_created_time > (SELECT MAX(order_item_created_time) FROM ${self()})`,
-   `WHERE order_item_created_time > "2024-01-01"`)
-}
+${when(incremental(),`WHERE order_item_created_time > (SELECT MAX(order_item_created_time) FROM ${self()})`)}
  
 post_operations {
   ${
