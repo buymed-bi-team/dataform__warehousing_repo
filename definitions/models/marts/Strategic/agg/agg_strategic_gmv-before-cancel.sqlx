@@ -27,7 +27,7 @@ SELECT
     'GMV-BEFORE-CANCEL' AS measure,
     -- IF( order_status like 'CANCEL', 'CANCEL','GMV') as is_cancel,
 
-    SUM(price * demand_quantity)
+    SUM(price * demand_quantity) as value
 
 FROM ${ref(`fact_strategic_sale_order_item_single`)} ois 
 LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = ois.order_id 
@@ -52,7 +52,7 @@ SELECT
     'GMV-BEFORE-CANCEL' AS measure,
     -- IF( order_status like 'CANCEL', 'CANCEL','GMV') as is_cancel,
 
-    SUM(price * demand_quantity)
+    SUM(price * demand_quantity) as value
 
 FROM ${ref(`fact_strategic_sale_order_item_single`)} ois 
 LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = ois.order_id 
