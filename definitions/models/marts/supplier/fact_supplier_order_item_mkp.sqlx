@@ -1,0 +1,97 @@
+config {
+    type: "view",
+    description: `PIC:Minhluu
+    SOURCE:
+      ${source.platinum}.marketplace_prd_order_v2_order
+      ${source.platinum}.markteplace_prd_order_v2_order_item`,
+    columns: {
+      order_id: "",
+      created_at: "",
+      customer_id: "",
+      item_type: "",
+      promotion_code: "",
+      promotion_amount: "",
+      sku_code: "",
+      product_id: "",
+      demand_qty: "",
+      outbound_qty: "",
+      returned_qty: "",
+      gmv_order: "",
+      discount: "",
+      seller_code: "",
+      seller_class: "",
+      discount_per_item: "",
+      price_unit: "",
+      tags: "",
+      sku_trading_so: "",
+      prd_date_code: "",
+      prd_week_code: "",
+      prd_month_code: ""
+    }
+}
+with order_item as 
+	(
+		select  
+      order_id,
+      timestamp_add(created_time, interval 7 hour) as created_at,
+      customer_id,
+      type as item_type, 
+      coalesce( deal_code, json_value(extra_props, '$.campaign_code') ) as promotion_code,
+      coalesce( charge_deal_fee_value, cast(json_value(extra_props, '$.charge_campaign_fee_value') as int64) ) as promotion_amount,
+      sku as sku_code,
+      product_id, 
+      quantity as demand_qty,
+      outbound_quantity as outbound_qty,
+      returned_quantity as returned_qty,
+      seller_code,
+      seller_class,
+      cast(JSON_EXTRACT_SCALAR(extra_props, '$.discount_detail.voucher_details[0].discount_value') as int64) as discount_per_item,
+      price as price_unit,
+      tags,
+      case when vat <= 0 then 'Non-Trading'
+		   when vat > 0 then 'Trading' else 'Non-Trading' 
+       end as sku_trading_so,
+      ( product_id || '_' || format_date('%d/%m/%Y',(timestamp_add(created_time, interval 7 hour))) ) as prd_date_code,
+      ( product_id || '_' || format_date('%d/%m/%Y', date(date_trunc(timestamp_add(created_time, interval 7 hour), week(Monday)))) ) as prd_week_code,
+      ( product_id || '_' || format_date('%Y-%m', timestamp_add(created_time, interval 7 hour)) ) as prd_month_code,
+ 
+    from `${source.platinum}.marketplace_prd_order_v2_order_item` 
+		where created_date >= "2024-01-01"
+    and created_time is not null
+	),
+orders as
+	(
+		select 
+      order_id,
+      price as gmv_order,
+      total_discount as discount
+    from `${source.platinum}.marketplace_prd_order_v2_order` 
+    where created_date >= "2024-01-01"
+    and created_time is not null
+	)
+ select 
+  a.order_id, 
+  a.created_at, 
+  a.customer_id, 
+	a.item_type, 
+	/*STRING*/ a.promotion_code,
+	/*INTEGER*/ a.promotion_amount,
+  a.sku_code,
+  a.product_id, 
+  a.demand_qty,
+  a.outbound_qty,
+  a.returned_qty,
+  b.gmv_order,
+  b.discount,
+  a.seller_code,
+  a.seller_class,
+  /*INTEGER*/ a.discount_per_item,
+  a.price_unit,
+	a.tags,
+	a.sku_trading_so,
+  a.prd_date_code,
+  a.prd_week_code,
+  a.prd_month_code
+from order_item as a
+left join orders as b
+  on a.order_id = b.order_id
