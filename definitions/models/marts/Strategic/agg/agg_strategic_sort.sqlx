@@ -1,0 +1,65 @@
+-- WITH oi AS (
+--     SELECT 
+--         order_id,
+--         COUNTIF(outbound_quantity = quantity) / COUNT(*) AS fulfill_rate
+--     FROM 
+--         lakehouse-prod-394907.platinum_buymed_vn.marketplace_prd_order_v2_order_item 
+--     WHERE created_date > "2022-12-31"
+--     AND created_time is not null
+--     GROUP BY 1
+-- ), tender_oi AS (
+--     SELECT 
+--         order_id,
+--         1 AS fulfill_rate
+--     FROM 
+--         lakehouse-prod-394907.platinum_buymed_vn.tender_prd_core_tender_order_items 
+--     WHERE created_date > "2022-12-31"
+--     AND created_time is not null
+--     GROUP BY 1
+-- )
+
+SELECT 
+    FORMAT_DATE("%y-%m",o.created_time + INTERVAL 7 HOUR) order_created_month,
+    dosr.sales_region_code,
+    CASE 
+        WHEN doc.order_channel IN ("MARKETPLACE","CONSIGNMENT" ) THEN "MARKETPLACE"
+        ELSE doc.order_channel
+    END AS channel,
+    
+    -- COUNTIF(oi.fulfill_rate = 1) / COUNT(*) AS SORT 
+    SUM(outbound_quantity) / SUM(quantity) AS SORT_ITEM
+
+FROM lakehouse-prod-394907.platinum_buymed_vn.marketplace_prd_order_v2_order o
+LEFT JOIN `lakehouse-prod-394907.gold_buymed_vn2.dim_order_channel` doc ON doc.order_id = o.order_id 
+LEFT JOIN `lakehouse-prod-394907.gold_buymed_vn2.dim_order_sales_region` dosr ON o.order_id = dosr.order_id 
+LEFT JOIN `lakehouse-prod-394907.gold_buymed_vn2.dim_order_status` dos ON dos.order_id = o.order_id
+LEFT JOIN platinum_buymed_vn.marketplace_prd_order_v2_order_item  oi ON o.order_id = oi.order_id
+WHERE  doc.order_channel NOT IN ("CONSIGNMENT-RECOGNITION")
+AND doc.order_channel is not null
+AND oi.created_date > "2022-12-31"
+AND o.created_date > "2022-12-31"
+AND o.created_time is not null
+GROUP BY 1,2,3
+
+UNION ALL 
+
+SELECT 
+    FORMAT_DATE("%y-%m",o.confirmation_date + INTERVAL 7 HOUR) order_created_month,
+    dosr.sales_region_code,
+    "TENDER" as channel,
+
+    -- COUNTIF(oi.fulfill_rate = 1) / COUNT(*) AS SORT 
+    1 AS SORT_ITEM
+
+FROM lakehouse-prod-394907.platinum_buymed_vn.tender_prd_core_tender_orders o
+LEFT JOIN `lakehouse-prod-394907.gold_buymed_vn2.dim_order_channel` doc ON doc.order_id = o.order_id 
+LEFT JOIN `lakehouse-prod-394907.gold_buymed_vn2.dim_order_sales_region` dosr ON o.order_id = dosr.order_id 
+LEFT JOIN `lakehouse-prod-394907.gold_buymed_vn2.dim_order_status` dos ON dos.order_id = o.order_id
+LEFT JOIN platinum_buymed_vn.tender_prd_core_tender_orders oi ON o.order_id = oi.order_id
+AND dos.crm_status not like "WAIT_TO_CONFIRM"
+AND o.created_date > "2022-12-31"
+AND o.created_time is not null
+AND o.confirmation_date is not null
+GROUP BY 1,2,3
+
+ORDER BY order_created_month, sales_region_code, channel
