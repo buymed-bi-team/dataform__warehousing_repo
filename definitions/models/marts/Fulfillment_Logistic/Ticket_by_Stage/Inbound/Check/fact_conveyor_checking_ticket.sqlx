@@ -1,0 +1,49 @@
+config {
+    type: "view",
+    description: 
+        `
+        The start conveyor checking time and end conveyor checking of receipt session (PO) (the start time & done time of the conveyor checking stage);
+        PIC: nguyen.tran; 
+        Type: View; 
+        Source: 
+            ${source.platinum}.warehouse_prd_inbound_receipt,
+            ${source.platinum}.warehouse_prd_inbound_receipt_session
+        `,
+    tags: ["INBOUND"]
+}
+
+WITH cte_date AS (
+    SELECT
+		  date_sub(timestamp(date_trunc(date_sub( current_date('+7'), interval 3 month), month)) , interval 7 hour) as start_date
+)
+
+, cte_conveyor_checking_ts as (
+	select receipt_session_code, min(start_time) as start_conveyor_checking_ts,
+	max(end_time) as end_conveyor_checking_ts
+	-- from buymed_vn.wh_inbound_receipt_prd 
+  from (
+    select *
+    from ${source.platinum}.warehouse_prd_inbound_receipt
+	where created_date  >= (select DATE(start_date) from cte_date)
+  ) 
+	where
+    status <> 'CANCEL'
+		and type = 'CONVEYOR_CHECKING'
+        and warehouse_code is not null
+		-- and warehouse_code = destination_warehouse_code
+	group by receipt_session_code
+)
+
+select
+    '6' as stage_id,
+	a.po_code as inbound_code,
+    timestamp_add(c.start_conveyor_checking_ts, interval 7 hour) as started_at,
+	timestamp_add(c.end_conveyor_checking_ts, interval 7 hour) as done_at,
+from (
+	select *
+	from ${source.platinum}.warehouse_prd_inbound_receipt_session
+    where created_date  >= (select DATE(start_date) from cte_date)
+) a
+-- left join cte_app_checking_ts as b on a.code = b.receipt_session_code
+left join cte_conveyor_checking_ts as c on a.code=c.receipt_session_code
+where c.end_conveyor_checking_ts is not null

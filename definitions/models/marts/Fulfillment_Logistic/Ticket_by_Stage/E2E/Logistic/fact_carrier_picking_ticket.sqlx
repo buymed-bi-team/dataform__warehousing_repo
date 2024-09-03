@@ -1,0 +1,44 @@
+config {
+    type: "view",
+    description: 
+        `
+        The created time of transporting shipping order and carrier pick time of each ticket (SO) (the start time & done time of the carrier pick stage);
+        PIC: nguyen.tran; 
+        Type: View; 
+        Source: 
+            ${source.platinum}.warehouse_prd_picking_pick_ticket,
+            ${source.platinum}.warehouse_prd_core_delivery_order,
+            ${source.platinum}.delivery_prd_transporting_shipping_order
+        `,
+    tags: ["E2E_STAGE"]
+}
+
+WITH cte_date AS (
+    SELECT
+		  date_sub(timestamp(date_trunc(date_sub( current_date('+7'), interval 3 month), month)) , interval 7 hour) as start_date
+)
+
+select 
+    11 as stage_id, 
+    sh.reference_code,
+    p.ticket_id,
+    timestamp_add(sh.created_time, interval 7 hour) as started_at,
+    timestamp_add(timestamp_seconds(cast(sh.picked_time as int64)), interval 7 hour) as done_at
+from (
+    select *
+    from ${source.platinum}.warehouse_prd_picking_pick_ticket
+    where created_date >= (select DATE(start_date) from cte_date) 
+) p
+    left join (
+        select *
+        from ${source.platinum}.warehouse_prd_core_delivery_order
+        where created_date >= (select DATE(start_date) from cte_date) 
+    ) as do on p.ticket_id = do.reference_id and do.status <> 'MERGED'
+    left join (
+        select *
+        from ${source.platinum}.delivery_prd_transporting_shipping_order
+        where created_date >= (select DATE(start_date) from cte_date) 
+    ) sh on sh.reference_code = do.delivery_order_code
+where 
+    sh.created_time is not null
+    and coalesce(picked_time, 0) > 0
