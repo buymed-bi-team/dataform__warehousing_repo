@@ -2,7 +2,7 @@ config {
     type: "view",
     description: 
         `
-        The start qc time and end qc time of each ticket (SO) (the start time & done time of the qc stage);
+        The start qc time and end qc time of each outbound ticket (SO) (the start time & done time of the qc stage);
         PIC: nguyen.tran; 
         Type: View; 
         Source: 

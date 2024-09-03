@@ -2,7 +2,7 @@ config {
     type: "view",
     description: 
         `
-        The activation time and start pick time of each ticket (SO) (the start time & done time of the pick awaiting stage);
+        The activation time and start pick time of each outbound ticket (SO) (the start time & done time of the pick awaiting stage);
         PIC: nguyen.tran; 
         Type: View; 
         Source: 

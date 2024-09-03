@@ -2,7 +2,7 @@ config {
     type: "view",
     description: 
         `
-        The end pick time and start qc time of each ticket (SO) (the start time & done time of the qc awaiting stage);
+        The end pick time and start qc time of each outbound ticket (SO) (the start time & done time of the qc awaiting stage);
         PIC: nguyen.tran; 
         Type: View; 
         Source: 

@@ -2,7 +2,7 @@ config {
     type: "view",
     description: 
         `
-        The end qc time and start pack time of each ticket (SO) (the start time & done time of the pack awaiting stage);
+        The end qc time and start pack time of each outbound ticket (SO) (the start time & done time of the pack awaiting stage);
         PIC: nguyen.tran; 
         Type: View; 
         Source: 

@@ -1,0 +1,41 @@
+config {
+    type: "view",
+    description: 
+        `
+        PIC: nguyen.tran; 
+        Type: View; 
+        `,
+    tags: ["INBOUND"],
+}
+
+
+WITH cte_date AS (
+    SELECT
+		  timestamp(date_trunc(date_sub( current_date('+7'), interval 3 month), month)) as start_date
+)
+
+, parse_table as (
+  SELECT *
+  FROM (
+    SELECT inbound_code, stage, started_at, done_at 
+    FROM ${ref(`fact_procurement_ticket`)} a
+    left join ${ref(`dim_stage_procurement`)} b on cast(a.stage_id as int64) = b.stage_id
+  ) a
+  PIVOT(
+    min(started_at) as started_at, max(done_at) as done_at 
+    FOR stage IN ("partner_shipping","hub_transporting","app_check_awaiting","app_checking","conveyor_check_awaiting","conveyor_checking","put_awaiting","put")
+  )
+)
+
+select a.po_confirmed_ts, 
+  a.po_code,
+  a.inbound_code,
+  a.fc_code,
+  a.inbound_status,
+  a.po_status,
+  a.inbound_type,
+  a.order_type,
+  b.* except(inbound_code)
+from ${ref(`fact_inbound_ticket`)} a
+left join parse_table b on a.po_code = b.inbound_code
+where a.po_confirmed_ts >= (select start_date from cte_date)

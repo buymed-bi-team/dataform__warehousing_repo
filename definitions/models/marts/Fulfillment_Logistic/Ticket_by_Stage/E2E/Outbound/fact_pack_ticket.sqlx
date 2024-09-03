@@ -2,7 +2,7 @@ config {
     type: "view",
     description: 
         `
-        The start pack time and end pack time of each ticket (SO) (the start time & done time of the pack stage);
+        The start pack time and end pack time of each outbound ticket (SO) (the start time & done time of the pack stage);
         PIC: nguyen.tran; 
         Type: View; 
         Source: 

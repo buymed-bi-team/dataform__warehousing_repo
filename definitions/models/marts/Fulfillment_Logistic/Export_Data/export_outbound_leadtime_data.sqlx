@@ -1,0 +1,53 @@
+config {
+    type: "view",
+    description: 
+        `
+        PIC: nguyen.tran; 
+        Type: View; 
+        `,
+    tags: ["E2E_STAGE"],
+}
+
+WITH cte_date AS (
+    SELECT
+		  timestamp(date_trunc(date_sub( current_date('+7'), interval 3 month), month)) as start_date
+)
+
+, parse_table as (
+  SELECT *
+  FROM (
+    SELECT so_code, stage, done_at 
+    FROM ${ref(`fact_fulfillment_ticket`)} a
+    left join ${ref(`dim_stage_fulfillment`)} b on cast(a.stage_id as int64) = b.stage_id
+    where cast(a.stage_id as int64) >= 10
+      and a.done_at >= (select start_date from cte_date)
+  ) a
+  PIVOT(max(done_at) as done_at FOR stage IN ("booking","picking","transporting","delivering"))
+)
+
+select 
+    a.order_code,
+    a.reference_code,
+    a.ticket_id,
+    a.fc_code,
+    a.do_status,
+    a.order_status,
+    a.order_type,
+    a.order_created_at,
+    a.so_confirmed_at,
+    a.active_at,
+    a.ready_for_pick_at,
+    a.start_to_pick_at,
+    a.pick_done_at,
+    a.start_to_qc_at,
+    a.qc_done_at,
+    a.start_to_pack_at,
+    a.pack_done_at,
+    a.do_created_at,
+    b.done_at_booking as booking_done_at,
+    b.done_at_picking as carrier_pick_done_at,
+    b.done_at_transporting as transporting_done_at,
+    b.done_at_delivering as delivery_done_at
+from ${ref(`fact_outbound_ticket`)} a
+left join parse_table b on a.reference_code = b.so_code
+where a.order_created_at >= (select start_date from cte_date)

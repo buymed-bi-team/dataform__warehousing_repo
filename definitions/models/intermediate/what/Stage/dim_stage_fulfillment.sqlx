@@ -1,0 +1,36 @@
+config {
+    type: "view",
+    description: 
+        `
+        E2E Stages Dimension Table;
+        PIC: nguyen.tran; 
+        Type: View
+        `,
+    tags: ["E2E_STAGE"],
+}
+
+with cte_init_data as (
+    SELECT * 
+    FROM UNNEST([
+    STRUCT
+        ('confirm' AS stage, '1.confirm' as e2e_business_process_index),
+        ('reserving','2.reserving'),
+        ('active_awaiting','2.reserving'),
+        ('pick_awaiting','3.outbound'),
+        ('pick','3.outbound'),
+        ('qc_awaiting','3.outbound'),
+        ('qc','3.outbound'),
+        ('pack_awaiting','3.outbound'),
+        ('pack','3.outbound'),
+        ('booking','4.logistic'),
+        ('picking','4.logistic'),
+        ('transporting','4.logistic'),
+        ('delivering','4.logistic')
+])
+)
+
+select row_number() over() as stage_id, 
+    LPAD(CAST(row_number() over() AS STRING), 2, '0') || '_' || stage AS stage_index,
+    *, 
+    SPLIT(e2e_business_process_index, '.')[SAFE_OFFSET(1)] AS e2e_business_process
+from cte_init_data
