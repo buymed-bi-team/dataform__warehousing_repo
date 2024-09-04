@@ -5,6 +5,7 @@ config {
         The start time & done time of all stages for each inbound code (PO);
         PIC: nguyen.tran; 
         Type: Table; 
+        Refresh Schedule: hourly;
         Source: 
             ${source.ref}.fact_hub_transporting_ticket,
             ${source.ref}.fact_partner_shipping_ticket,

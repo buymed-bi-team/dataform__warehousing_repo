@@ -5,6 +5,7 @@ config {
         Detailed information of the inbound tickets;
         PIC: nguyen.tran; 
         Type: Table; 
+		Refresh Schedule: hourly;
         Source: 
             ${source.platinum}.seller_prd_purchasing_purchase_order,
             ${source.platinum}.warehouse_prd_inbound_inbound_ticket

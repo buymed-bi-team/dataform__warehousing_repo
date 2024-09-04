@@ -5,6 +5,7 @@ config {
         Leadtime of Put tickets;
         PIC: nguyen.tran; 
         Type: Table; 
+        Refresh Schedule: hourly;
         Source: 
             ${source.platinum}.warehouse_prd_inbound_put_ticket,
             ${source.platinum}.warehouse_prd_inbound_receipt,

@@ -5,6 +5,7 @@ config {
         Detailed information of the outbound tickets;
         PIC: nguyen.tran; 
         Type: Table; 
+		Refresh Schedule: hourly;
         Source: 
             ${source.platinum}.warehouse_prd_core_sale_order,
             ${source.platinum}.marketplace_prd_order_v2_order,
@@ -13,7 +14,7 @@ config {
             ${source.platinum}.warehouse_prd_core_delivery_order,
             ${source.platinum}.delivery_prd_transporting_shipping_order
         `,
-    tags: ["E2E_STAGE", "custom_1h_past5"],
+    tags: ["E2E_STAGE", "custom_1h_past5", "FFM_CUTOFF"],
     bigquery: {
 		partitionBy: "DATE(order_created_at)"
 	},
@@ -246,6 +247,6 @@ SELECT
         , NULL
     ) AS fulfill_status_cut_off
 FROM outbound_ticket AS ot
-	LEFT JOIN gold_buymed_vn.dim_outbound_cutoff_route AS o ON ot.ticket_id = o.ticket_id
-	LEFT JOIN gold_buymed_vn.dim_delivery_cutoff_route AS d ON ot.ticket_id = d.ticket_id
-	LEFT JOIN gold_buymed_vn.dim_fulfill_cutoff_route AS f ON ot.ticket_id = f.ticket_id
+	LEFT JOIN ${ref('dim_outbound_cutoff_route')} AS o ON ot.ticket_id = o.ticket_id
+	LEFT JOIN ${ref('dim_delivery_cutoff_route')} AS d ON ot.ticket_id = d.ticket_id
+	LEFT JOIN ${ref('dim_fulfill_cutoff_route')} AS f ON ot.ticket_id = f.ticket_id
