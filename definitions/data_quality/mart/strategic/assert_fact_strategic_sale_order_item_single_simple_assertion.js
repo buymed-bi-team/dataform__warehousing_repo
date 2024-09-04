@@ -34,7 +34,7 @@ assert(
 ).query(
     ctx => `
 SELECT
-    'order_id IS NOT UNIQUE',
+    'order_id IS NOT UNIQUE' as failing_reason,
     order_id
 FROM ${ctx.ref(`fact_strategic_sale_order_item_single`)}
 GROUP BY order_id

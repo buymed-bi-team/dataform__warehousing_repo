@@ -33,7 +33,7 @@ SELECT
     des.order_id,
     created_dt,
     product_id_original,
-    des.total_price,
-    raw.total_price
+    des.total_price as strategic_total_price,
+    raw.total_price as raw_total_price
 FROM des LEFT JOIN raw USING(order_id,created_dt,product_id_original)
 WHERE SAFE_DIVIDE(des.total_price -   raw.total_price, raw.total_price)   > 1/100 
