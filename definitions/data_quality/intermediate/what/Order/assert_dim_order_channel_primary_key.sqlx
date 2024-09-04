@@ -2,10 +2,13 @@ config {
   type: "assertion",
   tags: ["custom_5min_9to18","custom_1h_18to9","Weekend"]
 }
+
+
+
 SELECT
   'order_id IS NOT NULL' AS failing_row_condition,
   order_id
-FROM `lakehouse-prod-394907.gold_buymed_vn2.dim_order_sales_region`
+FROM ${ref(`dim_order_channel`)}
 WHERE NOT (order_id IS NOT NULL)
 
 
@@ -14,6 +17,6 @@ UNION ALL
 SELECT
     'order_id IS NOT UNIQUE',
     order_id
-FROM `lakehouse-prod-394907.gold_buymed_vn2.dim_order_sales_region`
+FROM  ${ref(`dim_order_channel`)}
 GROUP BY order_id
 HAVING COUNT(1) > 1
