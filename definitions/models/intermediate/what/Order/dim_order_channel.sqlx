@@ -4,10 +4,6 @@ config {
     Source:
       ${source.silver}.marketplace_prd_order_v2_order
       ${source.silver}.tender_prd_core_tender_orders`,
-    assertions: {
-        uniqueKey: ["order_id"],
-        nonNull:["order_id","order_channel"]
-    },
     tags: ["custom_5min_9to18","custom_1h_18to9","Weekend"],
     columns: {
         order_id:"NonNull | Unique identifier for each order",
