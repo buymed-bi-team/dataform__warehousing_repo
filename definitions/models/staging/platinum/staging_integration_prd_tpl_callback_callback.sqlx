@@ -6,6 +6,9 @@ config {
     schema: "platinum_buymed_vn",
     assertions: {
         uniqueKey: 'mg_id'
+    },
+    bigquery: {
+      partitionBy: "DATE(ingest_time)",
     }
 }
 
