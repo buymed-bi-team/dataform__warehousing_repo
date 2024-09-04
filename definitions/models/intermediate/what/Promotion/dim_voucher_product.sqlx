@@ -10,7 +10,7 @@ config {
             ${source.ref}.dim_voucher,
             ${source.ref}.dim_sku_tag
         `,
-    tags: ["custom_1h_past5"]
+    tags: ["custom_1h_past5","PROMOTION_MKP"]
 }
 
 SELECT

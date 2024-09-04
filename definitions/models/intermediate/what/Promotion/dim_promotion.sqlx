@@ -12,7 +12,7 @@ config {
     tags: ["custom_1h_past5"],
 
     assertions : {
-        uniqueKey: ["promotion_id"]
+        uniqueKey: ["promotion_id","PROMOTION_MKP"]
     }
 }
 
