@@ -9,14 +9,21 @@ config {
         ${source.ref}.dim_supplier
         ${source.ref}.dim_sku`,
     columns: {
+        oiid: "NonNull| to join mkp order_item table using mg_id = oiid. Else if join tender order_item table using mg_id = SUBSTR(oiid, 7) ",
         order_id: "NonNull",
-        product_id: "Nullable",
+        product_id: "NonNull | The product_id after separate combo item",
+        sku_code:"NonNull | ",
+        supplier_code:"NonNull | seller code",
+        product_id_original:"NonNull | The product_id before separate combo item",
+        sku_code_original:"NonNull | ",
+        supplier_code_original	: "NonNull |",
         order_status: "Nullable | Null means unknown",
         supplier_class: `Nullable | COALESCE(  supplier_class from the seller_code field first, the supplier_class from the sku field's seller_code - by join dim_sku and use sku.seller_code to join dim supplier, the order_item seller_class field ) as supplier_class `,
         created_dt: "NonNull | Timezone in +7",
         demand_quantity: "NonNull |",
         returned_quantity : "Nullable | The item quantity was returned by the customer. However, there are some orders that still have returns, but the system marked them as canceled, making it difficult to calculate revenue",
         outbound_dt: "Nullable | The datetime that item has been delivered out of warehouse ",
+        confirmation_dt: "Nullable | confirmation datetime, timezone in +7",
         outbound_quantity: "Nullable | the quantity of products have be shipped from warehouse",
         price: "Nullable"
     },
@@ -42,8 +49,8 @@ mkp_o AS (
         "MKP" as system
     FROM
         ${source.platinum}.marketplace_prd_order_v2_order o
-    LEFT JOIN ${ref(`dim_order`)} do ON do.order_id = o.order_id
-    WHERE created_date BETWEEN ${start_date} AND ${end_date}
+    WHERE o.created_date BETWEEN ${start_date} AND ${end_date}
+    AND o.created_time is not null
 
 )
 , mkp_oi AS (
@@ -64,6 +71,7 @@ mkp_o AS (
     FROM 
         ${source.platinum}.marketplace_prd_order_v2_order_item oi
     WHERE created_date BETWEEN ${start_date} AND ${end_date}
+    AND created_time is not null
 )
 , tender_o AS (
     SELECT 
@@ -77,7 +85,8 @@ mkp_o AS (
         
     FROM
         ${source.platinum}.tender_prd_core_tender_orders o
-    WHERE created_date BETWEEN ${start_date} AND ${end_date}
+    WHERE o.created_date BETWEEN ${start_date} AND ${end_date}
+    AND o.created_time is not null
 )
 , tender_oi AS (
     SELECT 
@@ -98,7 +107,8 @@ mkp_o AS (
         ${source.platinum}.tender_prd_core_tender_order_items oi
     LEFT JOIN ${source.ref}.dim_sku dsku
         ON oi.product_id = dsku.product_id AND oi.seller_code = dsku.seller_code
-    WHERE created_date BETWEEN ${start_date} AND ${end_date}
+    WHERE oi.created_date BETWEEN ${start_date} AND ${end_date}
+    AND oi.created_time is not null
 
 )
 , o AS (
@@ -243,8 +253,8 @@ WHERE COALESCE(
 
 
 
--- post_operations {
---     ALTER TABLE ${self()} 
---     ADD FOREIGN KEY (order_id) references ${ref(`dim_order`)}(order_id) NOT ENFORCED,
---     ADD FOREIGN KEY (product_id) references ${ref(`dim_product`)}(product_id) NOT ENFORCED;
--- }
+post_operations {
+    ALTER TABLE ${self()} 
+    ADD FOREIGN KEY (order_id) references ${ref(`dim_order`)}(order_id) NOT ENFORCED,
+    ADD FOREIGN KEY (product_id) references ${ref(`dim_product`)}(product_id) NOT ENFORCED;
+}
