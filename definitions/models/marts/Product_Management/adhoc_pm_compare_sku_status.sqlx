@@ -1,6 +1,6 @@
 config {
   type: "table",
-  description: "The Ad-hoc to compare status between now and previous month",
+  description: "PIC: tu.dang; The Ad-hoc to compare status between now and previous month",
   tags: "adhoc-office"
 }
 
