@@ -11,7 +11,7 @@ config {
             ${source.ref}.fact_order
         `,
 
-  tags: ["8h30", "10h30", "12h30", "15h30" ,"18h", "20h30", "PROMOTION_MKP"]
+  tags: ["8h30", "10h30", "12h30", "15h30" ,"18h00", "20h30", "PROMOTION_MKP"]
 }
 
 SELECT

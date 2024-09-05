@@ -1,0 +1,79 @@
+config {
+    type: "table",
+    description: 
+        `
+        Fulfillment Cut Off Route of each ticket (SO);
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.platinum}.warehouse_prd_picking_pick_ticket
+        `,
+    tags: ["FFM_CUTOFF", "custom_1h_past5"],
+}
+
+WITH
+    route AS (
+        SELECT
+            ticket_id
+            , TIMESTAMP_ADD(COALESCE(ready_for_pick_time, activation_time, start_time), INTERVAL 7 HOUR) AS ready_for_pick_time
+            , TIMESTAMP_ADD(end_time, INTERVAL 7 HOUR) AS pack_done_time
+            , CASE EXTRACT(DAYOFWEEK FROM TIMESTAMP_ADD(COALESCE(ready_for_pick_time, activation_time, start_time), INTERVAL 7 HOUR))
+                WHEN 1 THEN "Sunday"
+                WHEN 2 THEN "Monday"
+                WHEN 3 THEN "Tuesday"
+                WHEN 4 THEN "Wednesday"
+                WHEN 5 THEN "Thursday"
+                WHEN 6 THEN "Friday"
+                WHEN 7 THEN "Saturday"
+              END AS dow_ready_for_pick
+            , SAFE_CAST( JSON_VALUE(r, '$.from_time') AS INT64 ) / 3600 AS start_time
+            , SAFE_CAST( JSON_VALUE(r, '$.cut_off_time') AS INT64 ) / 3600 AS cut_off_time
+            , JSON_VALUE(r, '$.route_name') AS route_name
+            , REGEXP_REPLACE(TO_JSON_STRING(JSON_QUERY(r, '$.day_of_week')), r'\[|\]|\"', "") AS list_day_of_week
+        FROM ${source.platinum}.warehouse_prd_picking_pick_ticket
+            , UNNEST(JSON_QUERY_ARRAY(extra_props, '$.route_details')) AS r
+        -- WHERE end_time IS NOT NULL
+    ),
+
+    cut_off_route AS (
+        SELECT
+            *
+            , IF(
+                EXTRACT(HOUR FROM ready_for_pick_time) + EXTRACT(MINUTE FROM ready_for_pick_time) / 60 + EXTRACT(SECOND FROM ready_for_pick_time) / 3600
+                    <= cut_off_time - 0.25
+                AND STRPOS(list_day_of_week, dow_ready_for_pick) > 0
+                , TRUE
+                , FALSE
+              ) AS flag
+            , EXTRACT(HOUR FROM pack_done_time) + EXTRACT(MINUTE FROM pack_done_time) / 60 + EXTRACT(SECOND FROM pack_done_time) / 3600
+                AS pack_done_hour
+        FROM route
+        QUALIFY ROW_NUMBER() over (PARTITION BY ticket_id ORDER BY flag DESC, cut_off_time) = 1
+    )
+
+SELECT
+    *
+    , IF(
+        flag
+        , PARSE_TIMESTAMP("%Y-%m-%d %H:%M", CONCAT(DATE(ready_for_pick_time), " ", FLOOR(cut_off_time), ":", FLOOR((cut_off_time - FLOOR(cut_off_time)) * 60)))
+        , PARSE_TIMESTAMP("%Y-%m-%d %H:%M", CONCAT(DATE_ADD(DATE(ready_for_pick_time), INTERVAL 1 DAY), " ", FLOOR(cut_off_time), ":", FLOOR((cut_off_time - FLOOR(cut_off_time)) * 60)))
+      ) AS cut_off_ts
+    , IF(
+        pack_done_time IS NOT NULL,
+        IF(
+            flag
+            , IF(
+                TIMESTAMP_TRUNC(ready_for_pick_time, DAY) = TIMESTAMP_TRUNC(pack_done_time, DAY)
+                , IF( pack_done_hour <= cut_off_time, "ON_TIME", "LATE" )
+                , "LATE"
+              )
+            , IF(
+                TIMESTAMP_TRUNC(ready_for_pick_time, DAY) = TIMESTAMP_TRUNC(pack_done_time, DAY)
+                , "ON_TIME"
+                , IF( pack_done_hour <= cut_off_time, "ON_TIME", "LATE" )
+              )
+        ),
+        NULL
+    ) AS status_cut_off
+FROM cut_off_route

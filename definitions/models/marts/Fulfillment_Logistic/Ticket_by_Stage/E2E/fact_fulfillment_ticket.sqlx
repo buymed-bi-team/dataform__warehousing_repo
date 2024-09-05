@@ -5,6 +5,7 @@ config {
         The start time & done time of all stages for each outbound ticket (SO);
         PIC: nguyen.tran; 
         Type: Table; 
+        Refresh Schedule: hourly;
         Source: 
             ${source.ref}.fact_confirm_ticket,
             ${source.ref}.fact_reserving_ticket,

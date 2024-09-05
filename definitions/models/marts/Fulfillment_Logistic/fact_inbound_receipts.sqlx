@@ -5,6 +5,7 @@ config {
         The receipt sessions of each PO/PGH/TO;
         PIC: nguyen.tran; 
         Type: Table; 
+		Refresh Schedule: hourly;
         Source: 
             ${source.platinum}.warehouse_prd_inbound_receipt,
             ${source.platinum}.warehouse_prd_inbound_receipt_session,
