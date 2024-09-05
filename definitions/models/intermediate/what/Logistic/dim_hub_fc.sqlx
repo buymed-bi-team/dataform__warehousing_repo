@@ -1,0 +1,59 @@
+config {
+    type: "table",
+    description: 
+        `
+        Logistic HUBs of each FC;
+        PIC: nguyen.tran; 
+        Type: Table;
+        Schedule Refresh: daily at 0h
+        `,
+    tags:["0h00"],
+    columns: {
+        hub_code: "Primary-Key. The code of HUB",
+        hub_name: "The Name of HUB",
+        fc_code: 'FC of HUB'
+    }
+}
+
+with 
+    cte_parse_fc_province as (
+        select  
+            fc_code as fc,
+            province_code
+        from ${ref('dim_fc')}
+            left join unnest(json_value_array(service_areas)) province_code
+    )
+
+    , cte_fc as (
+        select distinct(fc_code)
+        from ${ref('dim_fc')}
+    )
+
+-- map hub to fc and shuffle 3 fc into hub
+    , cte_hub_fc as ( 
+        select
+            a.hub_code,
+            a.hub_name,
+            c.fc_code,
+            b.fc as main_fc
+        from ${ref('dim_hub')} as a
+            left join cte_parse_fc_province as b ON a.province_code = b.province_code
+            , cte_fc as c  
+    )
+
+-- In fc DN, one hub served for 3 fc
+select hub_code, hub_name, fc_code
+from cte_hub_fc
+where 
+  (main_fc = 'DN' or (fc_code = main_fc))
+
+-- Additional, we make 3HUB from 3FC.
+UNION ALL
+(
+	SELECT * 
+	FROM (
+        SELECT 'BD' AS fc_code, 'BD' AS hub_code, 'BD' AS hub_name UNION ALL
+        SELECT 'HN' AS fc_code, 'HN' AS hub_code, 'HN' AS hub_name UNION ALL
+        SELECT 'DN' AS fc_code, 'DN' AS hub_code, 'DN' AS hub_name
+    )
+)

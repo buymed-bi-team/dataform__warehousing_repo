@@ -1,0 +1,40 @@
+config {
+    type: "table",
+    description: 
+        `
+        Bin is one of our main package and delivery method;
+        PIC: nguyen.tran; 
+        Type: Table;
+        Schedule Refresh: hourly;
+        Source:
+            ${source.platinum}.warehouse_prd_inventory_location
+        `,
+    tags:["custom_1h_past5"],
+    columns: {
+        bin_code: "Primary-key. The unique identifier of BIN",
+		bin_name: "The Name of BIN",
+		fc_code: "FC that BIN is served",
+        bin_created_at: "The date & time BIN was created",
+        last_updated_at: "The last time BIN was updated",
+        bin_available_status: "The status of BIN (AVAILABLE or USED)",
+        pick_ticket_id: 'Id of Pick ticket used BIN (null if BIN available)',
+        type: 'The type of BIN'
+    }
+}
+
+select 
+    a.mg_id
+    , a.code as bin_code
+    , a.name as bin_name
+    , a.warehouse_code as fc_code
+    , timestamp_add(a.created_time, interval 7 hour)  as bin_created_at
+    , timestamp_add(a.last_updated_time, interval 7 hour) as last_updated_at
+    , case
+        when a.is_used is true then 'USED'
+        else 'AVAILABLE'
+    end bin_available_status
+    , a.status as bin_system_status
+    , json_value(a.reference, "$.code") as pick_ticket_id
+    , json_value(a.reference, "$.type") as type
+from ${source.platinum}.warehouse_prd_inventory_location AS a
+where a.type = 'BIN'

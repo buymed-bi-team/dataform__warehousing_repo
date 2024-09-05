@@ -1,0 +1,17 @@
+config {
+    type:"view",
+    description: "PIC: tu.dang; model_type: view"
+}
+select
+    cast(cast(FORMAT_DATE('%Y-%m', oi.created_at)as string)||"-01" as date ) as start_of_month,
+    customer_id,
+    count(distinct product_id) as no_products,
+    -- sum(sales_price* demand_quantity)as order_amount,
+    -- count(distinct oi.order_id) as no_orders,
+    sum(sales_price* demand_quantity)/count(distinct oi.order_id) as average_order_value
+from ${source.ref}.fact_order_item oi
+left join ${source.ref}.dim_order_status o on oi.order_id = o.order_id
+where 
+-- date (created_at)>= "2024-01-01" and 
+CRM_status not in  ("CANCEL","RETURNED")
+group by all
