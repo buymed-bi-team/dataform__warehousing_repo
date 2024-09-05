@@ -1,7 +1,7 @@
 config {
     type: "table",
-    description: "Action in product_management. Use for alert policy changes some field of HN-SKU",
-    tags: ['3HOUR',"PRODUCT"],
+    description: "PIC:tu.dang; Action in product_management. Use for alert policy changes some field of HN-SKU",
+    tags: ['adhoc-office'],
 	columns: {
 		
 	}
@@ -10,7 +10,7 @@ config {
 -- step 1: get skus from internal_transfer list that is imported by other teams
 
 with get_sku_from_it_list as (
-    select sku_code
+    select sku_code, sku_key
     from ${source.ref}.adhoc_pm_master_sku 
     where upper(internal_transfer) = "INTERNAL_TRANSFER"
 )
@@ -54,7 +54,7 @@ with get_sku_from_it_list as (
 )
 
 , get_neccessery_columns as (
-    select sku.sku_code,
+    select sku.sku_code,sku.sku_key,
         mienbacsku.purchase_status as mienbac_purchase_status,
         miennamsku.purchase_status as miennam_purchase_status,
         mienbacsku.sku_trading_by_fv as mienbac_sku_trading,
