@@ -1,0 +1,97 @@
+config {
+    type: "table",
+    description: "Action for product_management. Use to change status and active for a sku",
+    tags: ["adhoc-office"],
+	columns: {
+		
+	}
+}
+
+-- step 1: get nescessery columns
+with trans_fc_to_sales_region as (
+    -- select *
+    -- from (
+        select a.*,
+            case 
+                when warehouse_code = "HN" then "MIENBAC"
+                when warehouse_code = "BD" then "MIENNAM"
+            end as sales_region_code,
+            -- row_number() over (partition by sku, warehouse_code order by last_updated_time) as row_num
+        -- from lakehouse-prod-394907.buymed_vn.wh_sku_prd a
+        from ${source.platinum}.warehouse_prd_inventory_sku a
+    -- )
+    -- where row_num = 1
+),
+
+get_columns as (
+    select sku.sku_code,
+        sku.sales_region_code,
+        sku.seller_code,
+        sel.supplier_class as seller_class,
+        sku.purchase_status,
+        rto.reason_turnoff,
+        sku.sku_system_status,
+        sku.sku_system_active,
+        COALESCE(stock.available_quantity,0) as stock_quantity -- mislanding naming, need to change it
+    from ${source.ref}.dim_sku_sales_region_current sku
+    left join ${source.ref}.dim_sku_reason_turn_off rto on sku.sku_code = rto.sku_code and sku.sales_region_code = rto.sales_region_code 
+    left join trans_fc_to_sales_region stock on sku.sku_code = stock.sku and stock.sales_region_code = sku.sales_region_code 
+    left join ${source.ref}.dim_supplier sel on upper(sku.seller_code) = upper(sel.supplier_code)
+)
+
+-- -- step 2: create action.
+select distinct * 
+from (
+    select a.*,
+        if ( upper(purchase_status) = "OFF" and upper(seller_class) = "INTERNAL", 
+            case 
+                when upper(a.reason_turnoff) not in ("PROMOTION", "CLEAR_STOCK", "NEAR_EXPIRATION","TRANFER_TO_SELLER" )
+                    then 
+                    case 
+                            when a.sku_system_status in ("NORMAL","OUT_OF_STOCK") 
+                                    and a.sku_system_active = true 
+                                    and a.stock_quantity > 0
+                                then "SET LIMIT - SUSPENDED"
+                            when a.sku_system_status in ("NORMAL","OUT_OF_STOCK","LIMIT") 
+                                    and a.sku_system_active = true 
+                                    and a.stock_quantity = 0
+                                then "SET SUSPENDED"    
+                            when a.sku_system_active = false 
+                                    and a.sku_system_status != "SUSPENDED"
+                                then "SET SUSPENDED" 
+                            else null
+                        end 
+                when a.reason_turnoff in ("PROMOTION", "NEAR_EXPIRATION" )
+                    then if(
+                        a.sku_system_status = "NORMAL", "SET OUT_OF_STOCK", null
+                    )
+                when a.reason_turnoff = "CLEAR_STOCK"
+                    then case 
+                            when a.sku_system_status = "NORMAL" and a.sku_system_active = true 
+                                then "SET LIMIT - OUT_OF_STOCK"
+                            when a.sku_system_status = "NORMAL" and a.sku_system_active = false 
+                                then "SET OUT_OF_STOCK"
+                            else null
+                        end 
+                when a.reason_turnoff = "TRANFER_TO_SELLER"
+                    then case 
+                            when a.sku_system_status in ("OUT_OF_STOCK","NORMAL") and a.sku_system_active = true
+                                then "SET SUSPENDED"
+                            when a.sku_system_status in ("NORMAL","OUT_OF_STOCK","LIMIT") and a.sku_system_active = false 
+                                then "SET SUSPENDED"
+                            else null   
+                        end 
+                else null
+            end ,
+            null
+        ) as action_turnoff_purchase
+        
+    from get_columns a
+)
+where action_turnoff_purchase is not null
+
+
+
+
+
+

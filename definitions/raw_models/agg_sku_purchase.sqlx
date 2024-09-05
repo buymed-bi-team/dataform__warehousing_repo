@@ -15,7 +15,7 @@ with cte_date as (
 
 stg_quotation_export as (  -- prepare: dedup, filter time
     select 
-      sku,
+      sku,product_id, seller_code,
       warehouse_code,
       vendor_expect_quantity,
       quantity_expect,
@@ -36,6 +36,7 @@ stg_admin_pushing_group as ( -- prepare: dedup
 int_quotation as (  -- int: join and group
     select
         a.sku as sku_code,
+        a.product_id||"_"||a.seller_code  as sku_key,
         a.warehouse_code,
         case
             when (sum(a.vendor_expect_quantity) = 0 or sum(a.vendor_expect_quantity) is Null) 
@@ -56,7 +57,7 @@ int_quotation as (  -- int: join and group
     -- where
     --     d.confirmed_time is not null
     --     and a.quantity_expect > 0
-    group by 1, a.warehouse_code
+    group by 1, a.warehouse_code,a.product_id,a.seller_code
 ),
 
 stg_purchase_order_item as ( -- int: join and group
@@ -108,7 +109,7 @@ int_po as (
 
 stg_adhoc_pm_master_sku as (
   SELECT
-    sku_sales_region_code,
+    sku_sales_region_code,sku_key_sales_region_code,sku_key,
     sku_system_status,
     sku_system_active,
     internal_transfer,
@@ -126,7 +127,9 @@ stg_adhoc_pm_master_sku as (
 SELECT
   TIMESTAMP_ADD(current_timestamp(), interval 7 hour) as transformed_at,
   stg_adhoc_pm_master_sku.sku_sales_region_code,
+  stg_adhoc_pm_master_sku.sku_key_sales_region_code,
   int_quotation.sku_code,
+  stg_adhoc_pm_master_sku.sku_key,
   int_quotation.qty_gen_session_id,
   stg_adhoc_pm_master_sku.sku_system_status,
   stg_adhoc_pm_master_sku.sku_system_active,
@@ -146,7 +149,7 @@ SELECT
 FROM
   stg_adhoc_pm_master_sku
 LEFT JOIN int_quotation 
-  ON stg_adhoc_pm_master_sku.sku_code = int_quotation.sku_code
+  ON stg_adhoc_pm_master_sku.sku_key = int_quotation.sku_key
   AND stg_adhoc_pm_master_sku.sales_region_code = int_quotation.sales_region_code
 LEFT JOIN int_po
   ON int_po.sku_code = int_quotation.sku_code
