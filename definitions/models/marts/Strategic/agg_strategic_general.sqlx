@@ -26,6 +26,9 @@ js {
         'agg_strategic_gmv-unff',
         'agg_strategic_gmv-return',
         'agg_strategic_gmv-backlog',
+        'agg_strategic_so',
+        'agg_strategic_do',
+        'agg_strategic_item-sold',
     ]
 }
 
