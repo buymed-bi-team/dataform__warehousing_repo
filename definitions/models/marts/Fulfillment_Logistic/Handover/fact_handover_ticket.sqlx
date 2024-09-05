@@ -7,8 +7,7 @@ config {
         Type: Table; 
 		Refresh Schedule: each 2h from 6 to 22;
         Source: 
-            ${source.platinum}.seller_prd_purchasing_purchase_order,
-            ${source.platinum}.warehouse_prd_inbound_inbound_ticket
+            ${source.platinum}.delivery_prd_transporting_handover_ticket
         `,
     tags: ["custom_2h_past5"],
     columns: {
