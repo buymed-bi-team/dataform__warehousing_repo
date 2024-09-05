@@ -34,7 +34,7 @@ config {
 }
 
 js {
-    const start_date = `"2024-07-01"`
+    const start_date = `"2022-12-31"`
     const end_date = `"2030-08-01"`
 }
 
@@ -253,7 +253,7 @@ WHERE COALESCE(
         oi.seller_class
     ) <> "TECH"
 
-
+AND created_dt >= "2023-01-01"
 
 post_operations {
     ALTER TABLE ${self()} 
