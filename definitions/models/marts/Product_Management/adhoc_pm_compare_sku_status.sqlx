@@ -1,0 +1,54 @@
+config {
+  type: "table",
+  description: "The Ad-hoc to compare status between now and previous month",
+  tags: "adhoc-office"
+}
+
+with sku_status as (
+    select
+		row_number() over (partition by item_code   order by last_updated_time desc) as id,
+		product_id,
+		code as sku_code,
+		status,
+		item_code,
+		TIMESTAMP_ADD(last_updated_time, INTERVAL 7 HOUR) AS created_time
+    from ${source.silver}.marketplace_prd_product_v2_sku_status_historical
+),
+
+last_status as (
+    select item_code, min(id) as last
+    from sku_status
+    where  date(created_time) < TIMESTAMP_TRUNC(CURRENT_DATE(), MONTH)
+    group by 1
+),
+join_last_status_to_sku_status as (
+    select a.*
+    from sku_status a
+    join last_status b on b.item_code = a.item_code and b.last = a.id
+),
+
+get_region_code as (
+	select sku_created_at,sub_sku_code, sales_region_code, product_id, sku_code, sku_system_status
+	from (
+		select * ,
+        -- except (row_num),
+			  row_number() over (partition by sub_sku_code order by sales_region_code desc) as row_num_1
+		from ${source.ref}.dim_sku_sales_region_current
+	)
+	where row_num_1 = 1
+)
+
+select
+    a.product_id,
+    a.sku_code,
+    a.sub_sku_code,
+    concat(a.sku_code,"_",a.sales_region_code) as sku_sales_region_code,
+    case when b.status is null then
+        case when date(timestamp_add(a.sku_created_at, interval 7 hour)) < TIMESTAMP_TRUNC(CURRENT_DATE(), MONTH) then a.sku_system_status end
+        else b.status 
+    end as status_last_month,
+    a.sku_system_status as current_status
+-- from lakehouse-prod-394907.buymed_vn.sku_v2_prd a
+from get_region_code a
+left join join_last_status_to_sku_status b on a.sub_sku_code = b.item_code
+-- left join get_region_code c on a.item_code = c.sub_sku_code 
