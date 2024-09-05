@@ -1,0 +1,30 @@
+config {
+    type: "table",
+    description: 
+        `
+        Logistic HUBs Dimension Table;
+        PIC: nguyen.tran; 
+        Type: Table;
+        Schedule Refresh: daily at 0h;
+        Source:
+            ${source.silver}.delivery_prd_transporting_hub
+        `,
+    tags:["0h00"],
+    columns: {
+        hub_code: "primary-key",
+        province_code: "extract from address field"
+    }
+}
+
+
+select 
+    h.mg_id
+    , h.code as hub_code
+    , h.hub_id
+    , timestamp_add(h.created_time, interval 7 hour) as created_at
+    , timestamp_add(h.last_updated_time, interval 7 hour) as last_updated_at
+    , h.name as hub_name
+    , h.active as hub_system_active
+    , h.address
+    , json_value(h.address, '$.province_code') as province_code
+from ${source.silver}.delivery_prd_transporting_hub as h
