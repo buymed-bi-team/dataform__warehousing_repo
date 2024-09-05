@@ -9,10 +9,10 @@ config {
         Source: 
             ${source.platinum}.marketplace_prd_promotion_promotion
         `,
-    tags: ["custom_1h_past5"],
+    tags: ["custom_1h_past5","PROMOTION_MKP"],
 
     assertions : {
-        uniqueKey: ["promotion_id","PROMOTION_MKP"]
+        uniqueKey: ["promotion_id"]
     }
 }
 
