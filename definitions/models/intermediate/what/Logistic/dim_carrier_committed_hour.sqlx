@@ -1,0 +1,38 @@
+config {
+    type: "table",
+    description: 
+        `
+        Delivery Commitment Time of Carrier;
+        PIC: nguyen.tran; 
+        Type: Table;
+        Schedule Refresh: each 2h from 6 to 22;
+        Source:
+            ${source.silver}.delivery_prd_transporting_config_lead_time
+        `,
+    tags:["custom_2h_past5"],
+    columns: {
+        from_hub: "Delivery HUB",
+        carrier_code: "The unique identifier for carrier",
+        carrier_name: 'The Name of Carrier',
+        province_code: 'Shipping Province Code',
+        province_name: 'Shipping Province Name',
+        committed_hours: 'Delivery Commitment Time of Carrier'
+    }
+}
+
+SELECT 
+    from_hub,
+    carrier_name,
+    carrier_code,
+    JSON_EXTRACT_SCALAR(province, "$.name") as province_name,
+    JSON_EXTRACT_SCALAR(province, "$.code") as province_code,
+    CAST(JSON_EXTRACT_SCALAR(province, "$.configured_lead_time") as INT)/60/60 as committed_hours
+FROM
+  (
+    SELECT *
+    FROM ${source.silver}.delivery_prd_transporting_config_lead_time
+    qualify row_number() over (partition by mg_id order by synced_at desc, last_updated_time desc ) = 1
+  )
+WHERE 
+  JSON_EXTRACT_SCALAR(extra_props, "$.is_deleted") = "false"
+  and compute_method = 'CONFIG'

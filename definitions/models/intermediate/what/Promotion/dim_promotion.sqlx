@@ -63,4 +63,4 @@ LEFT JOIN (
     QUALIFY ROW_NUMBER() over (PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
 ) AS b ON a.promotion_id = b.promotion_id
 WHERE
-    a.created_time >= TIMESTAMP_SUB('2023-01-01', INTERVAL 7 HOUR)
+    a.end_time >= TIMESTAMP_SUB('2023-01-01', INTERVAL 7 HOUR)

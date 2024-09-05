@@ -1,0 +1,62 @@
+config {
+    type: "table",
+    description: 
+        `
+        Delivery Transporting Route;
+        PIC: nguyen.tran; 
+        Type: Table;
+        Schedule Refresh: each 2h from 6 to 22;
+        Source:
+            ${source.silver}.delivery_prd_transporting_route
+        `,
+    tags:["custom_2h_past5"],
+    columns: {
+        route_code: "The unique identifier for each Route",
+        from_department_code: "HUB Start",
+        to_department_code: 'HUB End',
+        started_at: 'Estimated Start Time',
+        est_hour_transporting: 'Estimated Transporting Time'
+    }
+}
+
+with 
+    cte_data as (
+        select route_code,
+            route_name,
+            json_value(b,"$.code") as hub_code,
+            TIME(timestamp_seconds((cast(json_value(b,"$.estimated_drop_off_time") as int)))) as est_drop_off_at,
+            json_value(b,"$.type") as type  
+        from (
+            select *
+            from ${source.silver}.delivery_prd_transporting_route
+            QUALIFY ROW_NUMBER() OVER (partition by mg_id  order by synced_at desc, if(action = 'd',3, if(action = 'u',2,1)) desc, last_updated_time desc) = 1
+            and action != 'd'
+        ) a 
+        left join unnest(json_extract_array(drop_off_points)) b
+    )
+
+
+select 
+    a.route_code, 
+    a.hub_code as from_department_code, 
+    b.hub_code as to_department_code, 
+    a.est_drop_off_at as started_at, 
+    b.est_drop_off_at, 
+    if(safe_divide(TIME_DIFF(b.est_drop_off_at, a.est_drop_off_at,minute),60) > 0 ,
+        safe_divide(TIME_DIFF(b.est_drop_off_at, a.est_drop_off_at,minute),60),
+        24 + safe_divide(TIME_DIFF(b.est_drop_off_at, a.est_drop_off_at,minute),60)
+    ) as est_hour_transporting
+from (
+  select route_code, 
+    hub_code, 
+    est_drop_off_at 
+  from cte_data
+  where type = "START"
+) a
+left join (
+  select route_code, 
+    hub_code, 
+    est_drop_off_at 
+  from cte_data
+  where type <> "START"
+) b on a.route_code = b.route_code
