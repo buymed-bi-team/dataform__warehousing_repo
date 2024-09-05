@@ -3,7 +3,7 @@ config {
     description: "PIC: tu.dang; model_type: view"
 }
 select
-    cast(FORMAT_DATE('%Y-%m', oi.created_at)as string) as year_month,
+    cast(cast(FORMAT_DATE('%Y-%m', oi.created_at)as string)||"-01" as date ) as start_of_month,
     customer_id,
     count(distinct product_id) as no_products,
     -- sum(sales_price* demand_quantity)as order_amount,
