@@ -1,0 +1,59 @@
+config {
+    type: "table",
+    description: 
+        `
+        Log of changing status of a SO;
+        PIC: nguyen.tran; 
+        Type: Table; 
+		Refresh Schedule: hourly;
+        Source: 
+            ${source.platinum}.integration_prd_tpl_callback_callback
+        `,
+    tags: ["custom_1h_past5"],
+    columns: {
+        transformed_at: 'Thời gian transform dữ liệu',
+        so_code: 'Mã SO',
+        tracking_code: 'Mã theo dõi giao vận',
+        delivery_status: 'Trạng thái của một mã vận đơn',
+        status_name: 'Tên trạng thái của một mã vận đơn',
+        delivery_ts: 'Thời gian ghi nhận trạng thái'
+    }
+}
+
+with cte_date as (
+	select CAST(date_trunc(date_sub(current_date(),interval 3 month), month) as timestamp) as date_scan
+	, CAST(date_trunc(date_sub(current_date(),interval 6 month), month) as timestamp) as date_scan_2
+	, timestamp_sub(CAST(current_date() as timestamp), interval 7 hour) as current_date_,
+)
+
+, cte_data as (
+	select so,
+		action_time,
+		tpl_code,
+		status,
+		status_name,
+		logs,
+	from ${source.platinum}.integration_prd_tpl_callback_callback
+	where ingest_time >= (select date_scan_2 from cte_date)
+)
+
+select  
+    TIMESTAMP_ADD(current_timestamp(),interval 7 hour) as transformed_at,
+	so as so_code, 
+	tpl_code as tracking_code,
+	status as delivery_status,
+	status_name,
+	timestamp_add(action_time, interval 7 hour) as delivery_ts
+from cte_data
+
+union all
+
+select 
+    TIMESTAMP_ADD(current_timestamp(),interval 7 hour) as transformed_at,
+	a.so as so_code, 
+	json_value(b,"$.tpl_code") as tracking_code,
+    json_value(b,"$.status") as delivery_status,
+    json_value(b,"$.status_name") as status_name,
+    timestamp_add(timestamp(json_value(b,"$.action_time")), interval 7 hour) as delivery_ts
+from cte_data a
+left join unnest(json_extract_array(a.logs)) b

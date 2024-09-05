@@ -1,0 +1,41 @@
+config {
+    type: "table",
+    description: 
+        `;
+        PIC: nguyen.tran; 
+        Type: Table; 
+		Refresh Schedule: hourly;
+        Source: 
+            ${source.ref}.fact_hub_order
+        `,
+    tags: ["custom_1h_past5"]
+}
+
+select
+	SPLIT(reference_code, '-')[SAFE_OFFSET(0)] as po_code,
+	reference_code,
+	tracking_code,
+	hub_code,
+	do_created_at,
+	tpl_code as carrier_code,
+	tpl_name as carrier_name,
+  	tpl_service_id as carrier_id, 
+	type,
+	action,
+	action_name,
+	from_customer_code,
+	from_customer_name, 
+	from_ward_code,
+	to_customer_code,
+	driver_id,
+	driver_name,
+	num_package ,
+	weight,
+	cod_amount,
+	reason,
+	do_status as delivery_status
+from ${ref("fact_hub_order")}
+where
+  status <> 'CANCEL'
+	and (do_type = 'FMPO' or sub_type = 'FMPO')
+qualify row_number() over (partition by po_code order by created_at asc) = 1
