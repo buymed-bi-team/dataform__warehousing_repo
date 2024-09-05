@@ -1,0 +1,64 @@
+config {
+    type: "view",
+    description: 
+        `
+        The confirmed time and finish reserving time of each outbound ticket (SO) (the start time & done time of the order reserving stage);
+        PIC: nguyen.tran; 
+        Type: View; 
+        Source: 
+            ${source.platinum}.warehouse_prd_picking_pick_ticket,
+            ${source.platinum}.warehouse_prd_picking_pick_ticket_item,
+            ${source.platinum}.warehouse_prd_core_sale_order,
+            ${source.ref}.fact_order
+        `,
+    tags: ["E2E_STAGE"]
+}
+
+WITH
+    cte_date AS (
+        SELECT
+              date_sub(timestamp(date_trunc(date_sub( current_date('+7'), interval 7 month), month)) , interval 7 hour) as start_date
+    ),
+
+    finish_reserving AS (
+        SELECT
+            ticket_id
+            , MAX(finish_full_reserving_time) AS finish_full_reserving_time
+        FROM (
+            SELECT *
+            FROM ${source.platinum}.warehouse_prd_picking_pick_ticket_item
+            WHERE  created_date >= (SELECT DATE(start_date) FROM cte_date)
+        )
+        WHERE reserve_status = 'FINISH'
+        GROUP BY ticket_id
+    ),
+
+    reserving_ticket AS (
+        select
+            2 as stage_id,
+            so.sale_order_code as so_code,
+            p.ticket_id,
+            timestamp_add(so.sale_order_time, interval 7 hour) as started_at,
+            timestamp_add(coalesce(fr.finish_full_reserving_time, p.activation_time, p.ready_for_pick_time), interval 7 hour) as done_at,
+            so.warehouse_code as location_code,
+        from ${ref('fact_order')} o
+            left join (
+                select *
+                from ${source.platinum}.warehouse_prd_core_sale_order
+                where created_date >= (select DATE(start_date) from cte_date)
+            ) so on so.sale_order_code = o.so_code
+            left join (
+                select *
+                from ${source.platinum}.warehouse_prd_picking_pick_ticket
+                where created_date >= (select DATE(start_date) from cte_date)
+            ) p on so.admin_id = p.admin_id
+            left join finish_reserving AS fr ON fr.ticket_id = p.ticket_id AND p.sort = 100
+        where 
+            coalesce(p.ready_for_pick_time,p.activation_time) is not null
+            and so.sale_order_time >= (select start_date from cte_date)
+    )
+
+SELECT
+    *,
+    TIMESTAMP_DIFF(done_at, started_at, SECOND)/3600 AS leadtime_hrs
+FROM reserving_ticket

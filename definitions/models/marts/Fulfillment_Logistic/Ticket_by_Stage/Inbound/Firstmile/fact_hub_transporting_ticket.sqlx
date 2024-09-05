@@ -1,0 +1,47 @@
+config {
+    type: "view",
+    description: 
+        `
+        The first recevied time and last received time of inbound code (PO) (the start time & done time of the hub transporting stage);
+        PIC: nguyen.tran; 
+        Type: View; 
+        Source: 
+            ${source.platinum}.warehouse_prd_inbound_inbound_ticket,
+            ${source.platinum}.warehouse_prd_inbound_receipt_session
+        `,
+    tags: ["INBOUND"]
+}
+
+WITH cte_date AS (
+    SELECT
+		  date_sub(timestamp(date_trunc(date_sub( current_date('+7'), interval 3 month), month)) , interval 7 hour) as start_date
+)
+
+select
+    '2' as stage_id,
+	i.po_code as inbound_code,
+    re.check_in_code,
+    coalesce(
+        min(timestamp_add(re_lk.received_time, interval 7 hour)),
+        min(timestamp_add(re.received_time, interval 7 hour))
+    ) as started_at,
+    max(timestamp_add(re.received_time, interval 7 hour)) as done_at
+from (
+    select *
+    from ${source.platinum}.warehouse_prd_inbound_inbound_ticket
+    where created_date >= (select DATE(start_date) from cte_date) 
+) as i
+    left join (
+        select *
+        from ${source.platinum}.warehouse_prd_inbound_receipt_session
+        where created_date >= (select DATE(start_date) from cte_date) 
+    ) as re  on re.inbound_ticket_id = i.ticket_id
+    left join (
+        select *
+        from ${source.platinum}.warehouse_prd_inbound_receipt_session
+        where created_date >= (select DATE(start_date) from cte_date) 
+    ) re_lk on re.reference_code = re_lk.code
+where 
+    re.received_time is not null
+    and i.external_type <> 'TRANSFER'
+group by all

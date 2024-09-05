@@ -10,7 +10,7 @@ config {
             ${source.platinum}.marketplace_prd_promotion_gamification,
             ${source.platinum}.marketplace_prd_promotion_gamification_detail
         `,
-    tags: ["custom_1h_past5"]
+    tags: ["custom_1h_past5","PROMOTION_MKP"]
 }
 
 SELECT

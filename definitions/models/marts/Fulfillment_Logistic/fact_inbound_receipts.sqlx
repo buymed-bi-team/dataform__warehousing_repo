@@ -1,0 +1,117 @@
+config {
+    type: "table",
+    description: 
+        `
+        The receipt sessions of each PO/PGH/TO;
+        PIC: nguyen.tran; 
+        Type: Table; 
+		Refresh Schedule: hourly;
+        Source: 
+            ${source.platinum}.warehouse_prd_inbound_receipt,
+            ${source.platinum}.warehouse_prd_inbound_receipt_session,
+            ${source.platinum}.delivery_prd_transporting_handover_ticket,
+            ${source.platinum}.warehouse_prd_inbound_inbound_ticket
+        `,
+    tags: ["INBOUND", "custom_1h_past5"],
+    columns: {
+        created_ts: "The timestamp when the receipt session was created",
+        received_ts: "The time of receiving from the vendor/seller",
+        start_app_checking_ts: "The timestamp start checking by app (In a receipt session, there may be multiple receipt tickets, so get the earliest time for each receipt session)",
+        end_app_checking_ts: "The timestamp end checking by app (In a receipt session, there may be multiple receipt tickets, so get the latest time for each receipt session)",
+        start_conveyor_checking_ts: "The timestamp start checking by conveyor (In a receipt session, there may be multiple receipt tickets, so get the earliest time for each receipt session)",
+        end_conveyor_checking_ts: "The timestamp end checking by conveyor (In a receipt session, there may be multiple receipt tickets, so get the latest time for each receipt session)",
+        po_code: "PO/PGH/TO",
+        receipt_code: 'Receipt Session Code',
+        inbound_ticket_id: 'ID of inbound ticket',
+        employee_id: 'ID of employee who receiving goods from the vendor/seller',
+        employee_name: 'Name of employee who receiving goods from the vendor/seller',
+        fc_code: 'fc_code of inbound ticket',
+        hub_code: 'Mã hub nhận hàng',
+		receipt_fc_code: 'fc code of receipt session (the fc where goods are received)',
+		destination_location: 'The inbound FC of PO/PGH/TO',
+		status: 'The status of receipt session',
+		type: 'Receipt Session type',
+		received_packages: 'Number of received packages',
+		transport_code: 'Transport Code of Hand over orders (For orders delivered from the Hub to the FC)',
+		created_transport_ts: 'The timestamp when Hand over order was created ',
+		done_handover_ts: 'The timestamp hand over to the carrier',
+		completed_transport_ts: 'The timestamp completed hand over order'
+    }
+}
+
+WITH cte_date AS (
+    SELECT
+		  date_sub(timestamp(date_trunc(date_sub( current_date('+7'), interval 3 month), month)) , interval 7 hour) as start_date
+)
+
+, cte_app_checking_ts as ( 
+    select 
+        receipt_session_code, min(start_time) as start_app_checking_ts,
+        min(end_time) as end_app_checking_ts
+    from (
+        select *
+        from ${source.platinum}.warehouse_prd_inbound_receipt
+        where created_date >= (select DATE(start_date) from cte_date)
+    ) 
+    where 
+        status <> 'CANCEL'
+        and type='MANUAL_CHECKING'
+        and warehouse_code is not null
+    group by receipt_session_code
+)
+
+, cte_conveyor_checking_ts as(
+	select receipt_session_code, min(start_time) as start_conveyor_checking_ts,
+	max(end_time) as end_conveyor_checking_ts
+  	from (
+		select *
+		from ${source.platinum}.warehouse_prd_inbound_receipt
+		where created_date >= (select DATE(start_date) from cte_date)
+  )
+	where
+		status <> 'CANCEL'
+			and type='CONVEYOR_CHECKING'
+	group by receipt_session_code
+)
+
+select
+	timestamp_add(b.created_time, interval 7 hour) as created_ts,
+	timestamp_add(b.received_time, interval 7 hour) as received_ts,
+	timestamp_add(c.start_app_checking_ts, interval 7 hour) as start_app_checking_ts,
+	timestamp_add(c.end_app_checking_ts, interval 7 hour) as end_app_checking_ts,
+	timestamp_add(d.start_conveyor_checking_ts, interval 7 hour) as start_conveyor_checking_ts,
+	timestamp_add(d.end_conveyor_checking_ts, interval 7 hour) as end_conveyor_checking_ts,
+	a.po_code,
+	b.code as receipt_code,
+	b.inbound_ticket_id,
+	b.employee_id,
+	b.employee as employee_name,
+	a.warehouse_code as fc_code,
+	split(b.code,'-')[SAFE_OFFSET(1)] as hub_code, --b.hub_code, -- split code
+	b.warehouse_code as receipt_fc_code,
+	b.destination_warehouse_code as destination_location,
+	b.status,
+	b.type,
+	b.received_package_quantity as received_packages,
+  	b.transport_code,
+  	timestamp_add(h.action_time,interval 7 hour) as created_transport_ts,
+	timestamp_add(h.done_handover_time,interval 7 hour) as done_handover_ts,
+	timestamp_add(coalesce(h.delivered_time,h.completed_time),interval 7 hour) as completed_transport_ts,
+    row_number() over (partition by inbound_ticket_id order by a.created_time) as rank_session
+from (
+    select *
+    from ${source.platinum}.warehouse_prd_inbound_inbound_ticket
+	where created_date >= (select DATE(start_date) from cte_date)
+) a
+left join (
+	select *
+	from ${source.platinum}.warehouse_prd_inbound_receipt_session
+	where created_date >= (select DATE(start_date) from cte_date)
+) b on a.po_code = b.po_code
+left join cte_app_checking_ts as c on b.code = c.receipt_session_code
+left join cte_conveyor_checking_ts as d on b.code = d.receipt_session_code
+left join (
+	select *
+	from ${source.platinum}.delivery_prd_transporting_handover_ticket
+	where created_date >= (select DATE(start_date) from cte_date)
+) as h on h.code=b.transport_code

@@ -2,14 +2,15 @@
 -- new
 config {
     type: "incremental",
-    name: "staging_marketplace_prd_sales_check_in_history",
+    name: "marketplace_prd_sales_check_in_history",
     schema: "platinum_buymed_vn",
     assertions: {
         uniqueKey: 'mg_id'
     },
     bigquery: {
         partitionBy: "created_date"
-    }
+    },
+    tags:["custom_2h_past5"]
 }
 
 pre_operations {

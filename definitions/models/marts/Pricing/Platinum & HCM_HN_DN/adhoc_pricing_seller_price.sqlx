@@ -12,7 +12,7 @@ config {
             ${source.ref}.dim_product, 
             ${source.ref}.adhoc_pricing_display_price,
             ${source.ref}.adhoc_pricing_promotion_price,
-            ${source.silver}.marketplace_prd_product_v2_seller_category_level
+            ${source.platinum}.marketplace_prd_product_v2_seller_category_level
         `,
     tags: ["custom_1h_past5", "PRICING"],
 
@@ -30,7 +30,7 @@ with
             JSON_EXTRACT_SCALAR(a.extra_props, '$.category_code') || '_' || level as cate_level_code,
             sale_fee_percent,
             fulfillment_fee_percent
-        from ${source.silver}.marketplace_prd_product_v2_seller_category_level AS a
+        from ${source.platinum}.marketplace_prd_product_v2_seller_category_level AS a
         QUALIFY ROW_NUMBER() OVER (_window) = 1
             AND FIRST_VALUE(action) over (_window) <> 'd'
         WINDOW _window AS ( PARTITION BY mg_id
@@ -47,6 +47,7 @@ with
             sel.supplier_type,
             a.platform_fee,
             a.logistic_fee,
+            a.service_fee,
             a.retail_price_type,
             a.retail_price_value,
             b.deal_code,
@@ -59,11 +60,8 @@ with
             c.sku_level,
             e.product_category_code,
             f.fulfillment_fee_percent AS fullfilment_fee_seller,
-            f.sale_fee_percent
-            , case
-                when campaign_price is not null and deal_price is not null then GREATEST(campaign_price, deal_price)
-                else COALESCE(campaign_price, deal_price)
-            end as promotion_price,
+            f.sale_fee_percent,
+            COALESCE(campaign_price, deal_price) as promotion_price,
             a.sku_key_sales_region_code,
             a.sku_key
         from ${ref('adhoc_pricing_display_price')} AS a
@@ -101,7 +99,7 @@ select
     -- calculate price_seller_original
     if(
         promotion_price is not null,
-        promotion_price,
+        promotion_price - service_fee,
         if (retail_price_value > 1, retail_price_value, null)
     ) as price_seller_original,
 
@@ -146,9 +144,9 @@ select
             when charge_deal_fee = 'MARKETPLACE' and supplier_type not in ("MARKET", "BIZ_HOUSEHOLD")
                 then retail_price_value * (1 - (fullfilment_fee_seller + sale_fee_percent) / 100)
             when charge_deal_fee != 'MARKETPLACE' and supplier_type in ("MARKET", "BIZ_HOUSEHOLD")
-                then ( promotion_price - logistic_fee - platform_fee ) * (1 - (fullfilment_fee_seller + sale_fee_percent + 1.5) / 100)
+                then ( promotion_price - service_fee ) * (1 - (fullfilment_fee_seller + sale_fee_percent + 1.5) / 100)
             when charge_deal_fee != 'MARKETPLACE' and supplier_type not in ("MARKET", "BIZ_HOUSEHOLD")
-                then ( promotion_price - logistic_fee - platform_fee ) * (1 - (fullfilment_fee_seller + sale_fee_percent) / 100)
+                then ( promotion_price - service_fee ) * (1 - (fullfilment_fee_seller + sale_fee_percent) / 100)
         end,
         null
     ) as seller_received_with_promo,
@@ -159,7 +157,7 @@ select
             when charge_deal_fee = 'MARKETPLACE' and supplier_type in ("MARKET", "BIZ_HOUSEHOLD")
                 then retail_price_value *  1.5 / 100
             when charge_deal_fee != 'MARKETPLACE' and supplier_type in ("MARKET", "BIZ_HOUSEHOLD")
-                then ( promotion_price - logistic_fee - platform_fee) *  1.5 / 100
+                then ( promotion_price - service_fee) *  1.5 / 100
         end,
         null
     ) as tax_with_promo,
@@ -170,7 +168,7 @@ select
             when charge_deal_fee = 'MARKETPLACE'
                 then retail_price_value *  (fullfilment_fee_seller + sale_fee_percent) / 100
             when charge_deal_fee != 'MARKETPLACE'
-                then ( promotion_price - logistic_fee - platform_fee) *  (fullfilment_fee_seller + sale_fee_percent) / 100
+                then ( promotion_price - service_fee) *  (fullfilment_fee_seller + sale_fee_percent) / 100
         end,
         null
     ) as fee_with_promo

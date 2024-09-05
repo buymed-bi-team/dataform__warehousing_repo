@@ -36,3 +36,4 @@ ON pti.so = so.sale_order_code
 WHERE pti.created_date >= (SELECT start_date FROM cte_date)
 AND pt.created_date >= (SELECT start_date FROM cte_date)
 AND pt.status in ("ONHOLD", "WAIT_CS")
+AND pti.so NOT LIKE "RO%"

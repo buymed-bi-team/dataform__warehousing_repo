@@ -1,0 +1,150 @@
+config {
+    type: "table",
+    description: "PIC: Minh.luu; model_type:table; schedule: every 30m from 9h am to 18h pm and every 1h otherwise",
+    uniqueKey: ["mg_id"],
+    name: "fact_sd_order_tender",
+    tags: ["custom_30min_6to24"],
+    bigquery: {
+        partitionBy: "DATETIME_TRUNC((created_time),month)"
+    }
+}
+
+WITH
+dedup_credit_note AS (
+    SELECT 
+        order_id, 
+        amount,
+        type
+    FROM ${source.silver}.accounting_prd_core_credit_note
+)
+,
+  return_amount AS (
+  SELECT order_id, SUM(amount) AS return_amount
+  FROM dedup_credit_note
+  WHERE type ="RETURN"
+  GROUP BY 1 
+),
+  dedup_bill AS (
+    SELECT 
+      order_id,
+      total_order_amount,
+      status 
+    FROM ${source.platinum}.accounting_prd_core_bill
+    WHERE created_time >= TIMESTAMP(current_datetime() - INTERVAL 32 DAY )
+  )
+,
+  invoice_amount AS(
+    SELECT order_id, SUM(total_order_amount) AS invoice_amount
+    FROM dedup_bill
+    WHERE status <> "CANCEL"
+    GROUP BY 1 
+  )
+, 
+  order_item AS (
+    SELECT 
+      order_id, 
+      COUNT(distinct item_id) as total_item,
+      SUM(quantity) as total_quantity,
+      SUM(price * quantity) as price
+    FROM ${source.platinum}.tender_prd_core_tender_order_items
+    GROUP BY 1    
+  )
+,
+
+  fact_order AS(
+    SELECT
+      current_datetime('+7') as current_time,
+      DATETIME(a.created_time, 'Asia/Ho_Chi_Minh') AS created_at,
+      DATETIME(a.last_updated_time, 'Asia/Ho_Chi_Minh') AS last_updated_time,
+      DATETIME(a.confirmation_date,'Asia/Ho_Chi_Minh' ) AS confirmed_time,
+      a.receiver_id * 1000 as customer_id, /*Tú lấy beneficial_name, nó không phải customer trong bảng của tender, câu hỏi là nên lấy customer là ai, là người đại diện hay bệnh viện*/
+      a.receiver_name as customer_name, -- Không được xóa, vì name này là shipping_name khác với customer_name trong dim_customer
+      a.receiver_phone_number as customer_phone,-- Không được xóa, vì phone này là shipping_phone khác với customer_phone trong dim_customer
+      a.order_id,
+      a.sale_order_code AS so_code,
+      a.status AS order_status,
+      oi.total_item AS ordered_line_items,
+      oi.total_quantity AS ordered_quantity,
+      oi.price AS ordered_amount,
+      a.total_amount AS ordered_amount_aft_discount, /*Chưa thật sự kiểm tra*/
+      oi.price AS notional_amount, /*Suppose outbound 100%*/
+      False AS has_deal, /*Has deal là gì*/
+      a.payment_method,
+      -- 0 as payment_method_percentage, /* Giả định trả sau hết, trong marketplace_prd thì tất cả đơn tender đều trả sau*/
+      a.receiver_shipping_address AS shipping_address,
+      a.district_code AS shiping_district_code,
+      -- CASE
+      --   WHEN SAFE_CAST(a.customer_ward_code AS integer) > 1 THEN a.customer_ward_code
+      --   ELSE
+      --     a.customer_district_code
+      -- END,
+      COALESCE(a.ward_code, a.district_code)  AS shipping_ward_code,
+      a.ward_code AS original_shipping_ward_code,
+      a.province_code AS shipping_province_code,
+      -- 1 as customer_order_index, /* Chưa được ghi nhận */ -- not need
+      CASE
+        WHEN (fc_code IS NULL) OR (fc_code ="") THEN "BD" -- huong.dang add
+        ELSE fc_code
+      END
+        AS fc_code,
+      dos.wms_status AS so_status,
+      JSON_VALUE(a.extra_props, '$.note') AS note,
+      JSON_VALUE(a.extra_props, '$.auto_cancel_overdue_transfer') AS auto_cancel_overdue_transfer,
+      a.source,
+      'normal_order' AS order_type, -- Currently
+      DATETIME(TIMESTAMP(JSON_VALUE(a.extra_props, '$.completed_time')),'Asia/Ho_Chi_Minh') AS completed_time,
+      DATETIME(a.outbound_date, 'Asia/Ho_Chi_Minh') AS outbound_time,
+      -- JSON_VALUE(a.extra_props, "$.employee_id") AS employee_id,
+      --For order which is created by an employee instead of customer (order_assist)
+      -- DATETIME(a.delivered_time,'Asia/Ho_Chi_Minh') AS expected_delivery_time,
+      DATETIME(a.delivered_time,'Asia/Ho_Chi_Minh') AS delivered_time,
+      JSON_VALUE(a.extra_props, "$.brand_code") AS brand_code,
+      -- created_by_account_id,
+      -- is_split_delivery_order,
+      0 as total_discount, -- 29-08-2024, Currently don't provide discount
+      0 as return_amount,
+      a.total_amount as invoice_amount,
+      a.province_code,
+      CAST(null AS JSON) as redeem_code -- 29-08-2024, Currently don't provide discount
+
+    FROM ${source.platinum}.tender_prd_core_tender_orders AS a
+    LEFT JOIN order_item AS oi ON a.order_id = oi.order_id
+    left join ${source.ref}.dim_fc_service_area dfc ON a.province_code = dfc.service_area_code
+    left join ${source.ref}.dim_order_status dos ON a.order_id = dos.order_id
+    LEFT JOIN invoice_amount AS c ON a.order_id = c.order_id
+    WHERE
+      a.created_date > current_date('+7') - INTERVAL 32 DAY 
+      AND a.status NOT IN ('REVERTING',"WAIT_TO_CONFIRM","DELETING")  and a.created_time >= TIMESTAMP(current_datetime() - INTERVAL 31 DAY )
+  )
+
+SELECT
+  a.created_at as created_time,
+  date(a.created_at) as created_date,
+  a.confirmed_time,
+  date(a.confirmed_time) as confirmed_date,
+  a.completed_time,
+  a.outbound_time,
+  a.delivered_time,
+  a.customer_id,
+  a.order_id,
+  a.order_status,
+  a.so_code,
+  a.so_status,
+  a.total_discount,
+  a.redeem_code,
+  a.ordered_amount as gmv,
+  a.ordered_amount_aft_discount as gmv_after_discount,
+  a.invoice_amount,
+  a.return_amount,
+  (coalesce(a.invoice_amount ,0) - coalesce(a.return_amount,0) ) as actual_received_amount,
+  cast(a.shiping_district_code as int64) as shipping_district_code,
+  cast(a.shipping_ward_code as int64) as shipping_ward_code,
+  cast(a.shipping_province_code as int64) as shipping_province_code,
+  a.fc_code,
+  a.has_deal,
+  case when a.payment_method in ('MOMO', 'QR_CODE', 'PAYMENT_METHOD_BANK', 'MASTERCARD', 'PAYMENT_METHOD_CREDIT', 'ATM_BANK_ACCOUNT', 'PAYMENT_METHOD_BANK_1', 'VISA', 'ZALOPAY') then 'BANK'
+       when a.payment_method is null then 'CASH'
+       when a.payment_method = 'PAYMENT_METHOD_NORMAL' then 'CASH'
+       else 'NEED CHECK'
+  end as payment_method
+FROM fact_order a

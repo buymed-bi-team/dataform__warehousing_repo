@@ -69,7 +69,7 @@ WITH calendar AS (
     END AS past_now_future,
     FORMAT_DATE('%B', Date) AS month_name,
     CAST(EXTRACT(DAY FROM Date) AS INT64) AS day,
-    CAST(EXTRACT(WEEK FROM Date) AS INT64) AS week_number,
+    CAST(EXTRACT(WEEK(MONDAY) FROM Date) AS INT64) AS week_number,
     CAST(EXTRACT(YEAR FROM Date) * 12 + EXTRACT(MONTH FROM Date) - 1 AS INT64) AS year_month_number,
     -CAST(EXTRACT(DAY FROM Date) AS INT64) AS date_sort,
     DATE_DIFF(CURRENT_DATE("+7"), Date, DAY) AS aging_day,

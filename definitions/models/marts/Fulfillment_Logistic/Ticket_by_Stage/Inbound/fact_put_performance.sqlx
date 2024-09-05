@@ -1,0 +1,30 @@
+config {
+    type: "table",
+    description: 
+        `
+        Leadtime of Put tickets;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.platinum}.warehouse_prd_inbound_put_ticket,
+            ${source.platinum}.warehouse_prd_inbound_receipt,
+            ${source.ref}.export_inbound_leadtime_data,
+        `,
+    tags: ["INBOUND", "custom_1h_past5"]
+}
+
+SELECT
+    ticket_id
+    , put_code
+    , inbound_code
+    , ts_done
+    , EXTRACT(HOUR FROM ts_done) AS hour
+    , done_date 
+    , DATETIME_DIFF(done_at_app_check_awaiting, started_at_app_check_awaiting, SECOND ) / 3600 AS app_check_awaiting_Hrs
+    , DATETIME_DIFF(done_at_app_checking, started_at_app_checking, SECOND ) / 3600 AS app_checking_Hrs
+    , DATETIME_DIFF(done_at_conveyor_check_awaiting, started_at_conveyor_check_awaiting, SECOND ) / 3600 AS conveyor_check_awaiting_Hrs
+    , DATETIME_DIFF(done_at_conveyor_checking, started_at_conveyor_checking, SECOND ) / 3600 AS conveyor_checking_Hrs
+    , DATETIME_DIFF(ts_start, ts_created, SECOND ) / 3600 AS put_awating_Hrs
+    , DATETIME_DIFF(ts_done, ts_start, SECOND ) / 3600 AS put_Hrs
+FROM ${ref('fact_put_ticket_detail')}

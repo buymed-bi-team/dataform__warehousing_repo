@@ -46,10 +46,11 @@ left join ${source.platinum}.tender_prd_core_tender_orders o on oi.order_id = o.
     sum( oi.demand_quantity * sales_price) as total_amount ,
 --     o.receiver_name,
     oi.customer_id as receiver_id,
-    o.province_code,
+    gl.province_code,
     "INTERNAL-THUOCSI" as source_type
     from ${source.gold}.fact_order_item oi
     left join ${source.ref}.dim_order o on oi.order_id = o.order_id
+    left join ${source.ref}.dim_geo_location gl on o.location_code = gl.location_code
     left join ${source.gold}.dim_seller s on oi.seller_code = s.supplier_code
     where
      o.order_channel like "%TENDER%"

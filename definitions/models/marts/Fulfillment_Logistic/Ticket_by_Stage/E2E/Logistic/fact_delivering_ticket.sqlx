@@ -1,0 +1,67 @@
+config {
+    type: "view",
+    description: 
+        `
+        The stored at last mile hub time and delivered time of each outbound ticket (SO) (the start time & done time of the delivering stage);
+        PIC: nguyen.tran; 
+        Type: View; 
+        Source: 
+            ${source.platinum}.warehouse_prd_picking_pick_ticket,
+            ${source.platinum}.warehouse_prd_core_delivery_order,
+            ${source.platinum}.delivery_prd_transporting_shipping_order
+        `,
+    tags: ["E2E_STAGE"]
+}
+
+WITH cte_date AS (
+    SELECT
+		  date_sub(timestamp(date_trunc(date_sub( current_date('+7'), interval 3 month), month)) , interval 7 hour) as start_date
+),
+
+cte_data_delivery_ts as (
+  select *
+  from (
+    select * except (transformed_at)
+    from gold_buymed_vn.fact_delivery_evolving 
+    where delivery_status = 'DELIVERING'
+      and delivery_ts >= (select start_date from cte_date)
+    union all
+    select * except (transformed_at)
+    from gold_buymed_vn.fact_delivery_evolving_unique
+    where delivery_status = 'DELIVERING'
+      and delivery_ts >= (select start_date from cte_date)
+  )
+  qualify row_number() over (partition by so_code order by delivery_ts desc) = 1
+)
+
+select 
+    *
+from (
+    select 
+        13 as stage_id, 
+        sh.reference_code,
+        p.ticket_id,
+        coalesce(
+            timestamp_add(timestamp_seconds(nullif(cast(sh.stored_at_lm_hub_time as int64),0)), interval 7 hour),
+            dts.delivery_ts
+        ) started_at ,
+        timestamp_add(timestamp_seconds(nullif(cast(sh.delivered_time as int64),0)), interval 7 hour) as done_at,
+    from (
+        select *
+        from ${source.platinum}.warehouse_prd_picking_pick_ticket
+        where created_date >= (select DATE(start_date) from cte_date) 
+    ) p
+    left join (
+        select *
+        from ${source.platinum}.warehouse_prd_core_delivery_order
+        where created_date >= (select DATE(start_date) from cte_date) 
+    ) as do on p.ticket_id = do.reference_id and do.status <> 'MERGED'
+    left join (
+        select *
+        from ${source.platinum}.delivery_prd_transporting_shipping_order
+        where created_date >= (select DATE(start_date) from cte_date) 
+    ) sh on sh.reference_code = do.delivery_order_code
+    left join cte_data_delivery_ts dts on sh.reference_code = dts.so_code 
+    where sh.created_time is not null
+)
+where done_at is not null

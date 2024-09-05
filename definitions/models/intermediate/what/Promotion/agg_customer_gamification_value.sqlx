@@ -9,7 +9,7 @@ config {
         Source: 
             ${source.ref}.agg_order_gamification
         `,
-    tags: ["custom_1h_past5"]
+    tags: ["custom_1h_past5","PROMOTION_MKP"]
 }
 
 SELECT

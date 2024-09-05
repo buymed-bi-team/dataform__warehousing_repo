@@ -1,0 +1,95 @@
+config {
+    type: "table",
+    description: `PIC: minh.luu; model_type: table; schedule 0h00, 9h00, 12h00, 16h00
+    Source:
+        ${source.platinum}.marketplace_prd_order_v2_order
+        ${source.platinum}.warehouse_prd_core_sale_order
+        ${source.platinum}.accounting_prd_core_bill
+        ${source.platinum}.warehouse_prd_core_delivery_order`,
+    name: "dim_order_status",
+    tags: ["0h00","9h00","12h00","16h00"],
+    columns: {
+        order_id : "Id của order",
+        crm_status : "Nullable | In (WAIT_TO_CONFIRM, CONFIRMED, PROCESSING, WAIT_TO_DELIVER, DELIVERING, DELIVERED, COMPLETED, CANCEL, CANCELED)",
+        warehouse_status : "Nullable | In (RESERVING, WAIT_TO_PICK, PICKING, WAIT_TO_CHECK, CHECKING, WAIT_TO_PACK, PACKING, WAIT_TO_DELIVERY, DELIVERING, DELIVERED, CANCEL, COMPLETED, RETURN, RETURNING, RETURNED, LOST, DRAFT , WAIT_TO_LIQUIDATION, LIQUIDATED)",
+        accounting_status : "Nullable | status trên hệ thống ACCOUNTING",
+        delivery_status: "Nullable | "
+    },
+    assertions: {
+        uniqueKey: "order_id",
+        nonNull: ("order_id")
+    }
+}
+WITH 
+    MKP_order_CRM AS (
+        SELECT
+            order_id,
+            sale_order_code,
+            status as CRM_status,
+            created_time
+        FROM 
+            ${source.platinum}.marketplace_prd_order_v2_order
+)
+, 
+    tender_order_CRM AS (
+        SELECT 
+            order_id,
+            sale_order_code,
+            status as CRM_status,
+            created_time 
+        FROM 
+            ${source.platinum}.tender_prd_core_tender_orders
+)
+,
+    order_CRM AS (
+        SELECT * FROM MKP_order_CRM
+        UNION ALL
+        SELECT * FROM tender_order_CRM
+)
+,
+    order_WMS AS (
+        SELECT 
+            sale_order_code,
+            -- REGEXP_REPLACE(sale_order_code, r'\d+', '') AS warehouse_order_code,
+            ARRAY_AGG( status ORDER BY created_time DESC)[0] AS WMS_status
+        FROM ${source.platinum}.warehouse_prd_core_sale_order
+        GROUP BY 1
+)
+-- ,
+--     stg_order_ACCOUNTING AS (
+--             SELECT order_id, 
+--                 ARRAY_AGG( status ORDER BY created_time DESC)[0] AS ACCOUNTING_status
+--             FROM ${source.platinum}.accounting_prd_core_bill
+--             GROUP BY 1
+--         )
+-- ,
+--     stg_order_WMS_Delivery AS (
+--         SELECT 
+--             CAST( REGEXP_EXTRACT(sale_order_code, r'(\d+)') AS INT64 ) AS order_id,
+--             ARRAY_AGG( status ORDER BY created_time DESC)[0] AS WMS_Delivery_status
+--         FROM  ${source.platinum}.warehouse_prd_core_delivery_order
+--         GROUP BY 1
+--     )
+
+
+
+SELECT
+    a.order_id,
+    IF(a.CRM_status LIKE "CANCELLED","CANCEL",a.CRM_status) as CRM_status,
+    b.WMS_status
+    -- c.WMS_Delivery_status,
+    -- d.ACCOUNTING_status,
+    -- a.created_time
+
+FROM order_CRM a
+LEFT JOIN order_WMS b
+    ON a.sale_order_code = b.sale_order_code
+-- LEFT JOIN stg_order_WMS_Delivery c 
+--     ON a.order_id = c.order_id
+-- LEFT JOIN stg_order_ACCOUNTING d
+--     ON a.order_id = d.order_id
+
+
+post_operations {                
+  ALTER TABLE ${self()} ADD PRIMARY KEY (order_id) NOT ENFORCED;
+}

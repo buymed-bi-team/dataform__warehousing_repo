@@ -1,0 +1,41 @@
+config {
+    type: "view",
+    description: 
+        `
+        The created time and confirmed time of each outbound ticket (SO) (start time & done time of the order confirmation stage);
+        PIC: nguyen.tran; 
+        Type: View; 
+        Source: 
+            ${source.platinum}.warehouse_prd_picking_pick_ticket,
+            ${source.platinum}.warehouse_prd_core_sale_order,
+            ${source.ref}.fact_order
+        `,
+    tags: ["E2E_STAGE"]
+}
+
+WITH cte_date AS (
+    SELECT
+		  date_sub(timestamp(date_trunc(date_sub( current_date('+7'), interval 3 month), month)) , interval 7 hour) as start_date
+)
+
+select
+    1 as stage_id,
+    o.so_code as so_code,
+    p.ticket_id,
+    timestamp(created_at) as started_at,
+    timestamp_add(so.sale_order_time, interval 7 hour) as done_at,
+from ${ref('fact_order')} AS o
+    left join (
+        select *
+        from ${source.platinum}.warehouse_prd_core_sale_order
+        where created_date >= (select DATE(start_date) from cte_date)
+    ) AS so on so.sale_order_code = o.so_code
+    left join (
+        select *
+        from ${source.platinum}.warehouse_prd_picking_pick_ticket
+        where created_date >= (select DATE(start_date) from cte_date)
+    ) AS p on so.admin_id = p.admin_id
+where
+    so.sale_order_time is not null
+    and o.created_at >= (select datetime(start_date) from cte_date)
+qualify row_number() over (partition by so_code) = 1

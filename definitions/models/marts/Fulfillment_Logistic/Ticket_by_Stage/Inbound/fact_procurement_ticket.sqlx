@@ -1,0 +1,39 @@
+config {
+    type: "table",
+    description: 
+        `
+        The start time & done time of all stages for each inbound code (PO);
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.ref}.fact_hub_transporting_ticket,
+            ${source.ref}.fact_partner_shipping_ticket,
+            ${source.ref}.fact_app_check_awaiting_ticket,
+            ${source.ref}.fact_app_checking_ticket,
+            ${source.ref}.fact_conveyor_check_awaiting_ticket,
+            ${source.ref}.fact_conveyor_checking_ticket,
+            ${source.ref}.fact_put_awaiting_ticket,
+            ${source.ref}.fact_put_ticket
+        `,
+    tags: ["INBOUND", "custom_1h_past5"],
+    bigquery: {
+        partitionBy: "DATE(done_at)"
+    }
+}
+
+select * except(check_in_code), null as put_code from ${ref('fact_hub_transporting_ticket')}
+union all
+select *, null as put_code from ${ref('fact_partner_shipping_ticket')}
+union all
+select *, null as put_code from ${ref('fact_app_check_awaiting_ticket')}
+union all
+select *, null as put_code from ${ref('fact_app_checking_ticket')}
+union all
+select *, null as put_code from ${ref('fact_conveyor_check_awaiting_ticket')}
+union all
+select *, null as put_code from ${ref('fact_conveyor_checking_ticket')}
+union all
+select * from ${ref('fact_put_awaiting_ticket')}
+union all
+select * from ${ref('fact_put_ticket')}

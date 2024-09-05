@@ -1,0 +1,105 @@
+config {
+    type: "table",
+    description: 
+        `
+        Detailed information of the inbound tickets;
+        PIC: nguyen.tran; 
+        Type: Table; 
+		Refresh Schedule: hourly;
+        Source: 
+            ${source.platinum}.seller_prd_purchasing_purchase_order,
+            ${source.platinum}.warehouse_prd_inbound_inbound_ticket
+        `,
+    tags: ["INBOUND", "custom_1h_past5"],
+    columns: {
+		ticket_id: 'inbound ticket ID',
+		fc_code: 'fc_code of ticket',
+		inbound_code: "inbound ticket code",
+		po_code: 'Purchase Order/PGH of Seller/Transfer Order',
+		partner_code: "Vendor code for PO, Seller code for PGH",
+		order_type: 'Including PO, PGH, TO & OTHER',
+		inbound_type: "Including NORMAL, REPLENISHMENT, RECEIPTGIFTPRODUCTS, HEDGING, IT",
+		inbound_priority: 'The priority level of inbound ticket',
+		inbound_status: 'The status of inbound ticket',
+		po_confirmed_ts: 'The timestamp when PO/PGH/TO was confirmed',
+		total_sku: 'Number of SKUs in inbound ticket',
+		total_item: 'Total Quantity in inbound ticket',
+		po_status: 'The status of PO',
+		po_bill_status: 'The payment status of the bill for PO/PGH/TO'
+	}
+}
+
+WITH cte_date AS (
+    SELECT
+		  date_sub(timestamp_sub(timestamp(date_trunc(date_sub( current_date('+7'), interval 3 month), month)),interval 14 day) , interval 7 hour) as start_date
+),
+
+	check_it_popgh AS (
+		with cte_data as (
+			select po_code, 
+				created_ts, -- as receipt_at , 
+				receipt_code, -- b.code,
+				receipt_fc_code, --b.warehouse_code,
+				destination_location, -- b.destination_warehouse_code,
+				SPLIT(receipt_code, '-')[OFFSET(1)] as received_hub, 
+				case 
+					when receipt_fc_code is null then null
+					when receipt_fc_code = 'TTN' and destination_location = 'BD' then false
+					when receipt_fc_code != destination_location then true
+					else false
+				end as flag_check
+				from ${ref('fact_inbound_receipts')}
+			)
+
+		select *, -- except (flag_check),
+			max(flag_check) over (partition by po_code) as is_it_po_pgh
+		from cte_data
+		qualify row_number() over (partition by po_code order by created_ts) = 1 -- and is_across_region = true
+	)
+
+select
+	i.ticket_id,
+	i.warehouse_code as fc_code,
+	i.code as inbound_code,
+	i.po_code,
+	case
+		when i.seller_code in ('MEDX-HN', 'MEDX', 'MED_NT', 'MEDX_E', 'MARKETING', 'TENDER') then p.vendor_code
+		else i.seller_code
+	end partner_code,
+    case when i.external_type = 'PURCHASE_SYS' then 'PO'
+        when i.external_type = 'SELLER' then 'PGH'
+        when i.external_type = 'TRANSFER' then 'TO'
+        else 'OTHER'
+	end as order_type, 
+	CASE
+		when i.external_type = 'PURCHASE_SYS' then 'INTERNAL'
+        when i.external_type = 'SELLER' then 'EXTERNAL'
+		when i.external_type = 'TRANSFER' then 'TO'
+	END AS seller_class,
+	i.type as inbound_type,
+	i.priority as inbound_priority,
+	i.status as inbound_status,
+	timestamp_add(i.created_time, interval 7 hour) as po_confirmed_ts,
+	i.total_sku,
+	i.total_item,
+	to_json_string(i.tags) as tags,
+	p.source_document,
+	p.status as po_status,
+	p.bill_status as po_bill_status,
+--     ps.total_so AS total_so_reference,
+-- 	IF(ps.total_so >= 10, "Priority PO", "Normal PO") AS po_priority,
+	c.created_ts AS first_received_check_in,
+	c.received_hub AS first_received_location,
+	c.is_it_po_pgh
+from (
+    select *
+    from ${source.platinum}.warehouse_prd_inbound_inbound_ticket
+    where created_date >= (select DATE(start_date) from cte_date)
+) i
+    left join (
+        select *
+        from ${source.platinum}.seller_prd_purchasing_purchase_order
+        where created_date >= (select DATE(start_date) from cte_date)
+    ) as p on i.po_code = p.po_code
+    LEFT JOIN check_it_popgh AS c ON c.po_code = i.po_code
+-- LEFT JOIN lakehouse-prod-394907.gold_buymed_vn.agg_po_so AS ps ON ps.po_code = i.po_code

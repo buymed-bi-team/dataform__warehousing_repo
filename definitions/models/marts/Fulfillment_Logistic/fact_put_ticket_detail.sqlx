@@ -1,0 +1,80 @@
+config {
+    type: "table",
+    description: 
+        `
+        Detailed information of the put tickets;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.platinum}.warehouse_prd_inbound_put_ticket,
+            ${source.platinum}.warehouse_prd_inbound_receipt,
+            ${source.ref}.export_inbound_leadtime_data,
+        `,
+    tags: ["INBOUND", "custom_1h_past5"],
+    columns:{
+        ticket_id: 'Put ticket ID',
+        put_code: 'Put ticket code',
+        inbound_code: 'PO/PGH/TO corresponding to PUT code',
+        source_location: 'The picking location to Put goods on the shelf',
+        ts_start: 'Start put time',
+        ts_done: 'End put time',
+        ts_created: 'The Created time of put ticket',
+    }
+}
+
+WITH cte_date AS (
+    SELECT
+		  date_sub(timestamp(date_trunc(date_sub( current_date('+7'), interval 4 month), month)) , interval 7 hour) as start_date
+),
+
+    put_details AS (
+        select 
+            p.ticket_id
+            , p.code as put_code
+            , json_value(p.extra_props,"$.inbound_code") as inbound_code
+            , reference AS reference_code
+            , p.warehouse_code as fc_code
+            , p.source_location
+            , p.status 
+            , timestamp_add(p.start_put_time, interval 7 hour) as ts_start
+            , timestamp_add(p.end_time, interval 7 hour) as ts_done
+            , timestamp_add(p.created_time, interval 7 hour) as ts_created
+            , p.basket_code
+            , p.extra_props
+        from ${source.platinum}.warehouse_prd_inbound_put_ticket as p
+        where 
+            created_date >= (select date(start_date) from cte_date)
+            and p.end_time >= (select timestamp(start_date) from cte_date)
+    ),
+
+    conveyor AS (
+        SELECT
+            put_code
+            , MIN(TIMESTAMP_ADD(start_time, INTERVAL 7 HOUR)) AS started_at_conveyor_checking
+            , MAX(TIMESTAMP_ADD(end_time, INTERVAL 7 HOUR)) AS done_at_conveyor_checking
+        FROM  ${source.platinum}.warehouse_prd_inbound_receipt
+        WHERE
+            created_date >= (select date(start_date) from cte_date)
+            and status <> 'CANCEL'
+            and type = 'CONVEYOR_CHECKING'
+            and warehouse_code is not null
+        GROUP BY 1
+
+    )
+
+select
+    a.*
+    , b.started_at_app_check_awaiting
+    , b.done_at_app_check_awaiting
+    , b.started_at_app_checking
+    , b.done_at_app_checking
+    , COALESCE(b.done_at_app_checking, b.done_at_hub_transporting, b.done_at_partner_shipping) AS started_at_conveyor_check_awaiting
+    , c.started_at_conveyor_checking AS done_at_conveyor_check_awaiting
+    , c.started_at_conveyor_checking
+    , c.done_at_conveyor_checking
+    , DATE(ts_done) AS done_date
+from put_details AS a
+left join ${ref('export_inbound_leadtime_data')} AS b ON a.inbound_code = b.po_code
+left join conveyor AS c ON a.put_code = c.put_code
+

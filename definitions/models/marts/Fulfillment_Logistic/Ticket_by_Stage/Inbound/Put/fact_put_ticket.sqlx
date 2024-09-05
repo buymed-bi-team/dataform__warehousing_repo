@@ -1,0 +1,29 @@
+config {
+    type: "view",
+    description: 
+        `
+        The start put time and end put time of put ticket (PO) (the start time & done time of the put stage);
+        PIC: nguyen.tran; 
+        Type: View; 
+        Source: 
+            ${source.platinum}.warehouse_prd_inbound_put_ticket
+        `,
+    tags: ["INBOUND"]
+}
+
+WITH cte_date AS (
+    SELECT
+		  date_sub(timestamp(date_trunc(date_sub( current_date('+7'), interval 3 month), month)) , interval 7 hour) as start_date
+)
+
+select 
+    '8' as stage_id
+	, json_value(p.extra_props,"$.inbound_code") as inbound_code
+	, timestamp_add(p.start_put_time, interval 7 hour) as started_at
+	, timestamp_add(p.end_time, interval 7 hour) as done_at
+	, p.code as put_code
+from ${source.platinum}.warehouse_prd_inbound_put_ticket AS p
+where
+    created_date >= (select date(start_date) from cte_date)
+	and start_put_time is not null 
+    and end_time is not null 

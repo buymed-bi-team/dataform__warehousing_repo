@@ -1,0 +1,252 @@
+config {
+    type: "table",
+    description: 
+        `
+        Detailed information of the outbound tickets;
+        PIC: nguyen.tran; 
+        Type: Table; 
+		Refresh Schedule: hourly;
+        Source: 
+            ${source.platinum}.warehouse_prd_core_sale_order,
+            ${source.platinum}.marketplace_prd_order_v2_order,
+            ${source.platinum}.warehouse_prd_picking_pick_ticket,
+            ${source.platinum}.warehouse_prd_picking_pick_ticket_item,
+            ${source.platinum}.warehouse_prd_core_delivery_order,
+            ${source.platinum}.delivery_prd_transporting_shipping_order
+        `,
+    tags: ["E2E_STAGE", "custom_1h_past5", "FFM_CUTOFF"],
+    bigquery: {
+		partitionBy: "DATE(order_created_at)"
+	},
+    columns: {
+        order_created_at: 'Thời gian khác hàng đặt đơn',
+		so_confirmed_at: 'Thời gian đơn SO được confirm',
+		start_to_reserve_at: 'Thời gian bắt đầu reserve hàng',
+		ready_for_pick_at: 'Thời gian sẵn sàng có thể pick hàng',
+		reserve_done_at: 'Thời gian reserve hàng kết thúc',
+		active_at: "Thời gian active phiếu pick",
+		start_to_pick_at: "Thời gian bắt đàu pick hàng",
+		pick_done_at: "Thời gian pick hàng xong",
+		start_to_qc_at: 'Thời gian bắt đàu qc hàng',
+		qc_done_at: "Thời gian qc hàng xong",
+		start_to_pack_at: 'Thời gian bắt đầu pack hàng',
+		pack_done_at: 'Thời gian pack hàng xong',
+		do_created_at: 'Thời gian tạo phiếu giao vận',
+		carrier_picked_at: 'Thời gian nhà vận chuyến lấy hàng tại kho',
+		stored_at_lm_hub_time: 'Thời gian hàng được lưu kho ở hub cuối cùng trước khi giao cho khách',
+		order_id: 'Id đơn hàng',
+		order_code: 'Mã đơn hàng (SO Code)',
+		fc_code: 'FC pick hàng',
+		ticket_id: 'ID phiếu pick',
+		delivery_order_code: 'Mã giao vận (Từ bảng warehouse_prd_core_delivery_order)',
+		reference_code: 'Mã tham chiếu (Trong ngữ cảnh này được hiểu là mã giao vận từ bảng warehouse_prd_core_shipping_order)',
+		tracking_code: 'Mã theo dõi giao vận',
+		parent_reference_code: 'Mã tham chiếu gốc (Cần dùng trong một vài ngữ cảnh)',
+		customer_code: 'Mã khách hàng',
+		customer_id: 'ID khách hàng',
+		customer_name: 'Tên khách hàng',
+		customer_phone:'SDT Khách hàng',
+		customer_email: 'Email Khách hàng',
+		delivery_mode: "",
+		order_type: 'Loại đơn',
+		create_source: 'Nguồn tạo đơn',
+		order_status: 'Trạng thái đơn đặt của khách hàng',
+		do_status: 'Trạng thái đơn giao vận',
+		do_type: 'Loại giao vận',
+		shipping_ward_code: 'Mã phường của địa chỉ giao cho khách hàng',
+		shipping_district_code: 'Mã huyện của đại chỉ giao cho khách hàng',
+		shipping_province_code: 'Mã tỉnh của đại chỉ giao cho khách hàng',
+		is_manual_activation: 'Đơn active thủ công hay thông qua hệ thống',
+		tags: '',
+		sort: 'Tỉ lệ hàng có sẵn trong kho để giao cho khách hàng',
+		hub_code: '',
+		current_hub: 'Hub hiện tại hàng được lưu kho',
+		carrier_code: 'Code nhà vận chuyển',
+		carrier_name: 'Tên nhà vận chuyển',
+		carrier_id: 'ID nhà vận chuyển',
+		total_cod_amount: 'COD (Nếu có)',
+		total_packages: 'Số kiện hàng gửi',
+		total_weights: 'Khối lượng tổng các kiện hàng',
+		fee_amount: 'Phí của đơn hàng',
+		delivery_amount: '',
+		reason: '',
+		driver_activities: 'Log hoạt động của tài xế giao hàng',
+		extra_props: '',
+    }
+}
+
+with cte_date as (
+    SELECT
+		  date_sub(timestamp(date_trunc(date_sub( current_date('+7'), interval 9 month), month)) , interval 7 hour) as start_date,
+		  date_sub(timestamp(date_sub(date_trunc(date_sub( current_date('+7'), interval 9 month), month), interval 14 day)) , interval 7 hour) as start_date_2
+	),
+
+	finish_reserving AS (
+        SELECT
+            ticket_id
+            , MAX(finish_full_reserving_time) AS finish_full_reserving_time
+        FROM (
+            SELECT *
+            FROM ${source.platinum}.warehouse_prd_picking_pick_ticket_item
+            WHERE  
+				created_date >= (select DATE(start_date_2) from cte_date)
+        )
+        WHERE reserve_status = 'FINISH'
+        GROUP BY ticket_id
+    ),
+
+	outbound_ticket AS (
+		select 
+			timestamp_add(coalesce(o.created_time,so.created_time), interval 7 hour) as order_created_at,
+			timestamp_add(so.sale_order_time, interval 7 hour) as so_confirmed_at,
+			timestamp_add(p.scheduled_date, interval 7 hour) as start_to_reserve_at,
+			timestamp_add(p.ready_for_pick_time, interval 7 hour) as ready_for_pick_at,
+			timestamp_add(coalesce(fr.finish_full_reserving_time, p.activation_time, p.ready_for_pick_time,p.start_time), interval 7 hour) as reserve_done_at,
+			timestamp_add(p.activation_time, interval 7 hour) as active_at,
+			timestamp_add(p.start_time, interval 7 hour) as start_to_pick_at,
+			timestamp_add(p.end_pick_time, interval 7 hour) as pick_done_at,
+			timestamp_add(p.start_qc_time, interval 7 hour) as start_to_qc_at,
+			timestamp_add(p.end_qc_time, interval 7 hour) as qc_done_at,
+			timestamp_add(p.start_pack_time, interval 7 hour) as start_to_pack_at,
+			timestamp_add(p.end_time, interval 7 hour) as pack_done_at,
+			timestamp_add(do_1.created_time, interval 7 hour) as do_created_at,
+			timestamp_add(timestamp_seconds(nullif(cast(do_1.picked_time as int64),0)), interval 7 hour) as carrier_picked_at,
+			timestamp_add(timestamp_seconds(nullif(cast(do_1.stored_at_lm_hub_time as int64),0)), interval 7 hour) as stored_at_lm_hub_time,
+			timestamp_add(coalesce(wd.completed_time, TIMESTAMP(JSON_VALUE(o.extra_props, '$.completed_time'))), interval 7 hour) as order_completed_at,
+			so.admin_id as order_id,
+			so.sale_order_code as order_code,
+			so.warehouse_code as fc_code,
+			p.ticket_id,
+			wd.delivery_order_code,
+			do_1.reference_code,
+			do_1.tracking_code as tracking_code,
+			do_1.parent_reference_code,
+
+			COALESCE(o.customer_code, JSON_VALUE(so.customer.code)) AS customer_code,
+			COALESCE(o.customer_id, SAFE_CAST(JSON_VALUE(so.customer.code) AS INT64)) AS customer_id,
+			COALESCE(o.customer_phone, JSON_VALUE(so.customer.phone)) AS customer_phone,
+			COALESCE(o.customer_email, JSON_VALUE(so.customer.email)) AS customer_email,
+			COALESCE(o.customer_name, JSON_VALUE(so.customer.name)) AS customer_name,
+
+			json_value(p.customer,"$.delivery_mode") as delivery_mode,
+			case 
+				when so.type is null then 'SO'
+				when so.type = 'NORMAL' then 'SO'
+				when so.type = 'TRANSFER' then 'TO'
+				when so.type = 'CONSIGNMENT' then 'CO'
+			else 'RO'
+			end as order_type,
+			so.create_source,
+			so.status as order_status,
+			do_1.status as do_status,
+			do_1.type as do_type,
+			coalesce(
+				nullif(o.customer_ward_code,'0'), o.customer_district_code,
+				nullif(do_1.customer_ward_code,'0'), do_1.customer_district_code
+			) as shipping_ward_code,
+			coalesce(o.customer_district_code,do_1.customer_district_code) as shipping_district_code,
+			coalesce(o.customer_province_code,do_1.customer_province_code) as shipping_province_code,
+			coalesce(o.customer_shipping_address,do_1.customer_shipping_address) as shipping_address,
+			case 
+				when activation_by > 0 then True 
+				else False 
+			end as is_manual_activation,
+			p.tags,
+			p.sort,
+			case 
+				when p.warehouse_code = 'BD' then 'HUBVSIPII'
+				when p.warehouse_code = 'HN' then 'HUBVSIPBACNINH'
+				when p.warehouse_code = 'DN' then 'HUBHOACAM_DANANG'
+				else null
+			end as hub_code,
+			do_1.current_hub,
+			do_1.tpl_code as carrier_code,
+			do_1.tpl_name as carrier_name,
+			do_1.tpl_service_id as carrier_id,
+			do_1.cod_amount as total_cod_amount,
+			do_1.num_package as total_packages,
+			do_1.weight as total_weights,
+			do_1.fee_amount as fee_amount,
+			do_1.delivery_amount as delivery_amount,
+			do_1.reason as reason,
+			do_1.driver_activities,
+			do_1.extra_props
+		from (
+			select *
+			from ${source.platinum}.warehouse_prd_core_sale_order
+			where 
+				created_date >= (select DATE(start_date_2) from cte_date)
+		) so
+		left join (
+			select *
+			from ${source.platinum}.marketplace_prd_order_v2_order
+			where 
+				created_date >= (select DATE(start_date_2) from cte_date)
+		) as o on so.sale_order_code = o.sale_order_code
+		left join 
+		(
+			select *
+			from ${source.platinum}.warehouse_prd_picking_pick_ticket
+			where 
+				created_date >= (select DATE(start_date_2) from cte_date)
+		) 
+		as p on so.admin_id = p.admin_id
+		left join (
+			select distinct reference_id, status, delivery_order_code, completed_time -- cheat code to remove some wrong cases in mongoDB 
+			from ${source.platinum}.warehouse_prd_core_delivery_order 
+			where 
+				created_date >= (select DATE(start_date_2) from cte_date)
+		) 
+		as wd on p.ticket_id = wd.reference_id and wd.status <> 'MERGED'
+		left join (
+			select *  
+			from ${source.platinum}.delivery_prd_transporting_shipping_order
+			where 
+				created_date >= (select DATE(start_date_2) from cte_date)
+		) as do_1 on do_1.reference_code = wd.delivery_order_code
+		left join finish_reserving AS fr ON fr.ticket_id = p.ticket_id AND p.sort = 100
+	)
+
+SELECT
+	ot.*
+	, o.cut_off_ts AS outbound_cut_off_time
+	, o.route_name AS outbound_route_name
+	, o.status_cut_off AS outbound_status_cut_off
+	, d.cut_off_ts AS delivery_cut_off_time
+	, d.route_name AS delivery_route_name
+	, IF(
+        ot.carrier_picked_at IS NOT NULL,
+        IF(
+            d.flag
+            , IF(
+                TIMESTAMP_TRUNC(d.pack_done_time, DAY) = TIMESTAMP_TRUNC(ot.carrier_picked_at, DAY)
+                , IF( EXTRACT(HOUR FROM ot.carrier_picked_at) + EXTRACT(MINUTE FROM ot.carrier_picked_at) / 60 + EXTRACT(SECOND FROM ot.carrier_picked_at) / 3600
+                     <= d.cut_off_time + 3, "ON_TIME", "LATE" )
+				, IF( EXTRACT(HOUR FROM ot.carrier_picked_at) + EXTRACT(MINUTE FROM ot.carrier_picked_at) / 60 + EXTRACT(SECOND FROM ot.carrier_picked_at) / 3600 + 24
+                     <= d.cut_off_time + 3, "ON_TIME", "LATE" )
+              )
+            , IF(
+                TIMESTAMP_TRUNC(d.pack_done_time, DAY) = TIMESTAMP_TRUNC(ot.carrier_picked_at, DAY)
+                , "ON_TIME"
+                , IF( EXTRACT(HOUR FROM ot.carrier_picked_at) + EXTRACT(MINUTE FROM ot.carrier_picked_at) / 60 + EXTRACT(SECOND FROM ot.carrier_picked_at) / 3600
+                     <= d.cut_off_time + 3, "ON_TIME", "LATE" )
+              )
+        ),
+        NULL
+    ) AS delivery_status_cut_off
+	, f.cut_off_ts AS fulfill_cut_off_time
+	, f.route_name AS fulfill_route_name
+	, IF(
+        ot.carrier_picked_at IS NOT NULL
+	    , IF(
+                ot.carrier_picked_at <= TIMESTAMP_ADD(TIMESTAMP_ADD(f.cut_off_ts, INTERVAL 3 HOUR), INTERVAL 30 MINUTE )
+	            , "ON_TIME"
+	            , "LATE"
+	      )
+
+        , NULL
+    ) AS fulfill_status_cut_off
+FROM outbound_ticket AS ot
+	LEFT JOIN ${ref('dim_outbound_cutoff_route')} AS o ON ot.ticket_id = o.ticket_id
+	LEFT JOIN ${ref('dim_delivery_cutoff_route')} AS d ON ot.ticket_id = d.ticket_id
+	LEFT JOIN ${ref('dim_fulfill_cutoff_route')} AS f ON ot.ticket_id = f.ticket_id

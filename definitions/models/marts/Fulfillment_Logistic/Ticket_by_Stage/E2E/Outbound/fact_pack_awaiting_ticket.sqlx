@@ -1,0 +1,37 @@
+config {
+    type: "view",
+    description: 
+        `
+        The end qc time and start pack time of each outbound ticket (SO) (the start time & done time of the pack awaiting stage);
+        PIC: nguyen.tran; 
+        Type: View; 
+        Source: 
+            ${source.platinum}.warehouse_prd_picking_pick_ticket,
+            ${source.ref}.fact_order
+        `,
+    tags: ["E2E_STAGE"]
+}
+
+WITH cte_date AS (
+	    SELECT
+		  date_sub(timestamp(date_trunc(date_sub( current_date('+7'), interval 3 month), month)) , interval 7 hour) as start_date
+)
+
+select 
+    8 as stage_id, 
+    p.so as so_code,
+    p.ticket_id,
+    timestamp_add(p.end_qc_time , interval 7 hour) as started_at,
+    timestamp_add(p.start_pack_time , interval 7 hour) as done_at,
+from ${ref('fact_order')} o
+left join (
+  select *
+  from ${source.platinum}.warehouse_prd_core_sale_order
+  where created_date  >= (select DATE(start_date) from cte_date)
+) so on so.sale_order_code = o.so_code
+    left join (
+        SELECT *
+        FROM ${source.platinum}.warehouse_prd_picking_pick_ticket
+        where created_date  >= (select DATE(start_date) from cte_date)
+    ) p on so.admin_id = p.admin_id
+where p.start_pack_time is not null

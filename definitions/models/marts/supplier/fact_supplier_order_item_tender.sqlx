@@ -1,0 +1,99 @@
+config {
+    type: "view",
+    description: `PIC:Minhluu
+    SOURCE:
+      ${source.platinum}.tender_prd_core_tender_orders
+      ${source.platinum}.tender_prd_core_tender_order_items`,
+    columns: {
+      order_id: "nonull",
+      created_at: "nonull",
+      customer_id: "nullable| This field is receiver_id in tender order, these id seem like mkp customer but actually differrent, so I add T character as head to distinct with mkp customer id ",
+      item_type: "nullable",
+      promotion_code: "nullable| At 02-09-2024, tender doesn't offer any promotion or discount",
+      promotion_amount: "nullable| At 02-09-2024, tender doesn't offer any promotion or discount",
+      sku_code: "nullable| This field is from dim_sku by using seller_code and product_id",
+      product_id: "nonull",
+      demand_qty: "nullable",
+      outbound_qty: "nullable| At 02-09-2024, We assume that outbound 100% so it = demand qty",
+      returned_qty: "nullable| At 02-09-2024, We assume that outbound 100% so return = 0",
+      gmv_order: "nullable| This field is total_amount in tender_orders not price, tender order doesn't has price field",
+      discount: "nullable| At 02-09-2024, tender doesn't offer any promotion or discount",
+      seller_code: "nullable",
+      seller_class: "nullable",
+      discount_per_item: "nullable| At 02-09-2024, tender doesn't offer any promotion or discount",
+      price_unit: "nullable",
+      tags: "nullable| tender order_item doesn't have tags, so there are all null",
+      sku_trading_so: "nullable",
+      prd_date_code: "nullable",
+      prd_week_code: "nullable",
+      prd_month_code: "nullable"
+    }
+}
+with order_item as 
+	(
+    select  
+      a.order_id,
+      timestamp_add(created_time, interval 7 hour) as created_at,
+      a.type as item_type, 
+      coalesce( json_value(a.extra_props, '$.campaign_code') ) as promotion_code,
+      coalesce( cast(json_value(a.extra_props, '$.charge_campaign_fee_value') as int64) ) as promotion_amount,
+      b.sku_code,
+      a.product_id, 
+      a.quantity as demand_qty,
+      a.quantity as outbound_qty, -- assume that outbound of tender order is 100%
+      0 as returned_qty,
+      a.seller_code,
+      a.seller_class,
+      cast(JSON_EXTRACT_SCALAR(a.extra_props, '$.discount_detail.voucher_details[0].discount_value') as int64) as discount_per_item,
+      a.price as price_unit,
+      CAST(null as JSON) as tags,
+      case when a.vat <= 0 then 'Non-Trading'
+		   when a.vat > 0 then 'Trading' else 'Non-Trading' 
+       end as sku_trading_so,
+      ( a.product_id || '_' || format_date('%d/%m/%Y',(timestamp_add(a.created_time, interval 7 hour))) ) as prd_date_code,
+      ( a.product_id || '_' || format_date('%d/%m/%Y', date(date_trunc(timestamp_add(a.created_time, interval 7 hour), week(Monday)))) ) as prd_week_code,
+      ( a.product_id || '_' || format_date('%Y-%m', timestamp_add(a.created_time, interval 7 hour)) ) as prd_month_code
+ 
+    from `${source.platinum}.tender_prd_core_tender_order_items` a
+    left join ${source.ref}.dim_sku b
+        on a.product_id = b.product_id and a.seller_code = b.seller_code
+    where created_date >= "2024-01-01"
+    and created_time is not null
+	),
+orders as
+	(
+    select 
+      order_id,
+      "T" || receiver_id as customer_id,
+      total_amount as gmv_order, 
+      0 as discount -- currently at 02-09-2024, tender order doesn't offer discount order
+    from `${source.platinum}.tender_prd_core_tender_orders` 
+    where created_date >= "2024-01-01"
+    and created_time is not null
+	)
+ select 
+    a.order_id, 
+    a.created_at, 
+    b.customer_id, 
+    a.item_type, 
+    a.promotion_code,
+    a.promotion_amount,
+    a.sku_code,
+    a.product_id, 
+    a.demand_qty,
+    a.outbound_qty,
+    a.returned_qty,
+    b.gmv_order,
+    b.discount,
+    a.seller_code,
+    a.seller_class,
+    a.discount_per_item,
+    a.price_unit,
+    a.tags,
+    a.sku_trading_so,
+    a.prd_date_code,
+    a.prd_week_code,
+    a.prd_month_code
+from order_item as a
+left join orders as b
+  on a.order_id = b.order_id

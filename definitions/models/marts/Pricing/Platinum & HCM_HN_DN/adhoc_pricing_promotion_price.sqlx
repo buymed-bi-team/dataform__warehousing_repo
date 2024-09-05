@@ -175,15 +175,16 @@ WITH
             if (
                 b.campaign_code is not null,
                 case
-                    WHEN  upper(b.campaign_type) = "PERCENTAGE" 
-                        then a.display_price * ( 1 - b.campaign_value / 100)
-                        -- if (
-                        --     -- external
-                        --     a.seller_class = "EXTERNAL",
-                        --     a.retail_price_value * ( 1 - b.campaign_value / 100),
-                        --     -- internal
-                        --     a.display_price * ( 1 - b.campaign_value / 100)
-                        -- )
+                    WHEN  upper(b.campaign_type) = "PERCENTAGE"
+                        then
+                        --  a.display_price * ( 1 - b.campaign_value / 100)
+                        if (
+                            -- external
+                            a.seller_class = "EXTERNAL",
+                            a.retail_price_value * ( 1 - b.campaign_value / 100) + a.service_fee,
+                            -- internal
+                            a.display_price * ( 1 - b.campaign_value / 100)
+                        )
                     WHEN  upper(b.campaign_type) = "ABSOLUTE" then
         -- +  In that code line "b.campaign_value > b.retail_price_value / 2", some situations campaign_value will use for display price
         -- but sometime display price = retail_price - campaign_value. This is cheat code
@@ -192,7 +193,7 @@ WITH
                             b.campaign_value > b.retail_price_value / 2,
                             b.campaign_value,
                             -- b.retail_price_value - b.campaign_value
-                            a.display_price - b.campaign_value
+                            a.retail_price_value - b.campaign_value + a.service_fee
                         )
                     WHEN  upper(b.campaign_type) = "PRICE" then b.campaign_value  -- external and internal are same formula
                 end ,
@@ -207,15 +208,15 @@ WITH
         -- +  In situations, if discount price of a sku after appling deal is larger than max_discount_value field in a deal, we use max_discount_value replace deal value for deal_price
                         case
                             when a.seller_class = "EXTERNAL"
-                                -- and a.retail_price_value * (b.deal_value / 100) > max_discount_value
-                                and a.display_price * (b.deal_value / 100) > max_discount_value
+                                and a.retail_price_value * (b.deal_value / 100) > max_discount_value
+                                -- and a.display_price * (b.deal_value / 100) > max_discount_value
                                 and max_discount_value > 0
-                            -- then a.retail_price_value - max_discount_value
+                            -- then a.retail_price_value - max_discount_value + a.service_fee
                             then a.display_price - max_discount_value
 
                             when a.seller_class = "EXTERNAL"
-                            -- then a.retail_price_value * ( 1 - b.deal_value / 100)
-                            then a.display_price * ( 1 - b.deal_value / 100)
+                            then a.retail_price_value * ( 1 - b.deal_value / 100) + a.service_fee
+                            -- then a.display_price * ( 1 - b.deal_value / 100)
 
                             when a.seller_class = "INTERNAL"
                                 -- and a.retail_price_value * (b.deal_value / 100) > max_discount_value
@@ -225,12 +226,13 @@ WITH
                             then a.display_price - max_discount_value
 
                             when a.seller_class = "INTERNAL"
-                            then a.display_price * ( 1 - b.deal_value / 100)
+                            -- then a.display_price * ( 1 - b.deal_value / 100)
+                            then a.retail_price_value * ( 1 - b.deal_value / 100) + a.service_fee
                         end
-                    WHEN  upper(b.deal_type) = "ABSOLUTE" then 
-                        CASE b.charge_deal_fee 
+                    WHEN  upper(b.deal_type) = "ABSOLUTE" then
+                        CASE b.charge_deal_fee
                             WHEN "MARKETPLACE" THEN b.deal_value
-                            WHEN "SELLER" THEN b.deal_value + a.logistic_fee + a.platform_fee
+                            WHEN "SELLER" THEN b.deal_value + a.service_fee
                         END
                 end ,
                 null
@@ -242,4 +244,8 @@ WITH
                 on a.sku_code = b.sku_code and a.sales_region_code = b.sales_region_code
     )
 
-select * from final_step
+select 
+    * EXCEPT(campaign_price, deal_price)
+    , FLOOR(campaign_price) AS campaign_price 
+    , FLOOR(deal_price) AS deal_price 
+from final_step

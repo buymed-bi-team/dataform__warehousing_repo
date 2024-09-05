@@ -7,7 +7,7 @@ config {
         Type: Table; 
         Refresh Schedule: hourly;
         Source: 
-            ${source.silver}.marketplace_prd_product_v2_product_market_price
+            ${source.platinum}.marketplace_prd_product_v2_product_market_price
         `,
     tags: ["custom_1h_past5", "PRICING"]
 }
@@ -23,13 +23,7 @@ SELECT
         , NULL
         , LOWER(JSON_VALUE(extra_props, '$.market_data.unit'))
       )  AS competitor_unit
-FROM (
-    SELECT
-        *
-    FROM ${source.silver}.marketplace_prd_product_v2_product_market_price
-    QUALIFY ROW_NUMBER() over ( _window ) = 1 AND FIRST_VALUE(action) over (_window) <> 'd'
-    WINDOW _window AS (PARTITION BY mg_id ORDER BY synced_at DESC, last_updated_time DESC)
-)
+FROM ${source.platinum}.marketplace_prd_product_v2_product_market_price
 WHERE 
     JSON_VALUE(extra_props, '$.source') IS NOT NULL
 QUALIFY ROW_NUMBER() over (PARTITION BY product_id, competitor, competitor_unit ORDER BY crawled_at DESC) = 1

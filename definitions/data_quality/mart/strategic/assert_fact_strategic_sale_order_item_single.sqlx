@@ -1,0 +1,39 @@
+config {
+  type: "assertion",
+  tags: ["0h00"],
+  description: `PIC: minh.luu, schedule: 0h00 daily, 
+  Check if total price of each item in combo is equal the item level at least 99%`
+}
+
+with des as (
+SELECT 
+  order_id,
+  created_dt,
+  product_id_original,
+  SUM(price * demand_quantity) as total_price
+FROM ${ref(`fact_strategic_sale_order_item_single`)}
+WHERE created_dt = "2024-09-01"
+and created_dt is not null
+GROUP BY 1,2,3
+), raw as (
+  SELECT 
+    oi.order_id,
+    DATETIME(o.created_time,"+7") as created_dt,
+    oi.product_id as product_id_original,
+    SUM(oi.price * oi.quantity) as total_price
+  FROM ${source.platinum}.marketplace_prd_order_v2_order_item oi
+  LEFT JOIN ${source.platinum}.marketplace_prd_order_v2_order o USING(order_id)
+  WHERE oi.created_date = "2024-09-01"
+  AND o.created_date = "2024-09-01"
+  AND oi.created_time is not null
+  GROUP BY 1,2,3
+)
+
+SELECT 
+    des.order_id,
+    created_dt,
+    product_id_original,
+    des.total_price as strategic_total_price,
+    raw.total_price as raw_total_price
+FROM des LEFT JOIN raw USING(order_id,created_dt,product_id_original)
+WHERE SAFE_DIVIDE(des.total_price -   raw.total_price, raw.total_price)   > 1/100 

@@ -8,9 +8,9 @@ config {
         Refresh Schedule: hourly;
         Source: 
             ${source.ref}.dim_sku_sales_region_current,
-            ${source.silver}.marketplace_prd_pricing_v2_setting,
-            ${source.silver}.marketplace_prd_pricing_v2_price_level, 
-            ${source.silver}.marketplace_prd_pricing_v2_dynamic_level
+            ${source.platinum}.marketplace_prd_pricing_v2_setting,
+            ${source.platinum}.marketplace_prd_pricing_v2_price_level, 
+            ${source.platinum}.marketplace_prd_pricing_v2_dynamic_level
         `,
     tags: ["custom_1h_past5", "PRICING"],
     columns: {
@@ -144,11 +144,20 @@ with
   -- calculate display price 
 select 
     *,
+
     CASE
+        when retail_price_value is null or retail_price_value > 100000000 or dynamic_pricing_level_fee_value is null then 0
         when retail_price_type = "FIXED_PRICE" and retail_price_value > 1 then 0
+        when retail_price_type = "CUSTOM_FEE" and retail_price_value > 1 then
+            CASE
+                WHEN fee_code = '1BRTE9AQ1PG' THEN platform_fee
+                WHEN fee_code = '3WQD9UBW961' THEN logistic_fee
+                ELSE platform_fee + logistic_fee
+            END
         when retail_price_value > 1 then platform_fee + logistic_fee
     end as service_fee,
-   ROUND( 
+    
+    ROUND( 
         CASE
             when retail_price_value is null or retail_price_value > 100000000 or dynamic_pricing_level_fee_value is null then retail_price_value
             when retail_price_type = "FIXED_PRICE" and retail_price_value > 1 then retail_price_value

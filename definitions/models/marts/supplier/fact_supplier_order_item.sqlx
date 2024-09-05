@@ -1,0 +1,40 @@
+config {
+    type: "table",
+    description: `PIC:Minhluu
+    SOURCE:
+        ${source.platinum}.tender_prd_core_tender_orders
+        ${source.platinum}.tender_prd_core_tender_order_items
+        ${source.platinum}.marketplace_prd_order_v2_order
+        ${source.platinum}.markteplace_prd_order_v2_order_item`,
+    columns: {
+        order_id: "nonull",
+        created_at: "nonull",
+        customer_id: "nullable| Customer id is string rather than integer. Because this field is receiver_id in tender order, these id seem like mkp customer but actually differrent, so I add T character as head to distinct with mkp customer id ",
+        item_type: "nullable",
+        promotion_code: "nullable| At 02-09-2024, tender doesn't offer any promotion or discount",
+        promotion_amount: "nullable| At 02-09-2024, tender doesn't offer any promotion or discount",
+        sku_code: "nullable| This field is from dim_sku by using seller_code and product_id",
+        product_id: "nonull",
+        demand_qty: "nullable",
+        outbound_qty: "nullable| At 02-09-2024, We assume order from tender system can outbound 100% so it = demand qty",
+        returned_qty: "nullable| At 02-09-2024, We assume order from tender system can outbound 100% so return = 0",
+        gmv_order: "nullable| In tender system, This field is total_amount in tender_orders not price, tender order doesn't has price field",
+        discount: "nullable| At 02-09-2024, tender doesn't offer any promotion or discount",
+        seller_code: "nullable",
+        seller_class: "nullable",
+        discount_per_item: "nullable| At 02-09-2024, tender doesn't offer any promotion or discount",
+        price_unit: "nullable",
+        tags: "nullable| tender order_item doesn't have tags",
+        sku_trading_so: "nullable",
+        prd_date_code: "nullable",
+        prd_week_code: "nullable",
+        prd_month_code: "nullable"
+    },
+    bigquery: {
+        partitionBy: "DATE(created_at)"
+    },
+    tags: ["0h00"]
+}
+SELECT * EXCEPT(customer_id), CAST(customer_id as STRING) AS customer_id FROM ${ref(`fact_supplier_order_item_mkp`)}
+UNION ALL 
+SELECT * EXCEPT(customer_id), customer_id FROM ${ref(`fact_supplier_order_item_tender`)}

@@ -1,4 +1,5 @@
 
+-- new
 config {
     type: "incremental",
     name: "marketplace_prd_promotion_checkin_log",
@@ -6,12 +7,23 @@ config {
     assertions: {
         uniqueKey: 'mg_id'
     },
-    tags:["custom_1h_past5"],
     bigquery: {
         partitionBy: "created_date"
     }
 }
 
+pre_operations {
+  ${
+    when(incremental(),
+      `
+      CREATE OR REPLACE TEMP TABLE range_created_time_table AS
+      SELECT MIN(DATE(created_time)) AS min_created_date, MAX(DATE(created_time)) AS max_created_date
+      FROM ${source.silver}.marketplace_prd_promotion_checkin_log WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()});
+      `,
+      ``
+    )
+  }
+}
 
 SELECT
  *,
@@ -31,4 +43,28 @@ WINDOW
     IF
       (action='u',2,1)) DESC)
 
-
+post_operations {
+  ${
+    when(incremental(),
+      `
+      -- Delete rows using the temporary table
+      DELETE FROM ${self()}
+      WHERE created_date BETWEEN (SELECT min_created_date FROM range_created_time_table) 
+        AND (SELECT max_created_date FROM range_created_time_table)
+          and 
+         (key) IN (
+        SELECT (key) FROM ${self()} where created_date BETWEEN (SELECT min_created_date FROM range_created_time_table) 
+        AND (SELECT max_created_date FROM range_created_time_table) 
+        QUALIFY ROW_NUMBER() OVER (_window) > 1
+        OR FIRST_VALUE(action) OVER (_window) = "d"
+      WINDOW _window AS (
+        PARTITION BY mg_id
+        ORDER BY synced_at DESC,
+        IF(action = 'd', 3, IF(action = 'u', 2, 1)) DESC
+      )
+      ) ;
+      `,
+      ``
+    )
+  }
+}

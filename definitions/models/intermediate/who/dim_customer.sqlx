@@ -262,6 +262,7 @@ LEFT JOIN (
 
 WHERE customer.name NOT LIKE '%test%'
 AND customer.name NOT LIKE '%TEST%'
+QUALIFY ROW_NUMBER() OVER(PARTITION BY customer_id) = 1
 
 post_operations {
     ALTER TABLE ${self()} 

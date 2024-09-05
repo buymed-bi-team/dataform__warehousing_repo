@@ -1,0 +1,31 @@
+config {
+    type: "view",
+    description: 
+        `
+        Inbound Stages Dimension Table;
+        PIC: nguyen.tran; 
+        Type: View
+        `,
+    tags: ["INBOUND"],
+}
+
+with cte_init_data as (
+    SELECT * 
+    FROM UNNEST([
+    STRUCT
+        ('partner_shipping' AS stage, '1.first_mile' as procurement_process_index),
+        ('hub_transporting','1.first_mile'),
+        ('app_check_awaiting','2.inbound'),
+        ('app_checking','2.inbound'),
+        ('conveyor_check_awaiting','2.inbound'),
+        ('conveyor_checking','2.inbound'),
+        ('put_awaiting','3.put'),
+        ('put','3.put')
+    ])
+)
+
+select row_number() over() as stage_id, 
+    LPAD(CAST(row_number() over() AS STRING), 2, '0') || '_' || stage AS stage_index,
+    *, 
+    SPLIT(procurement_process_index, '.')[SAFE_OFFSET(1)] AS procurement_process
+from cte_init_data

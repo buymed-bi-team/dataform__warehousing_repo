@@ -1,0 +1,54 @@
+config {
+    type: "table",
+    description: 
+        `
+        The start time & done time of all stages for each outbound ticket (SO);
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.ref}.fact_confirm_ticket,
+            ${source.ref}.fact_reserving_ticket,
+            ${source.ref}.fact_active_awaiting_ticket,
+            ${source.ref}.fact_pick_awaiting_ticket,
+            ${source.ref}.fact_pick_ticket,
+            ${source.ref}.fact_qc_awaiting_ticket,
+            ${source.ref}.fact_qc_ticket,
+            ${source.ref}.fact_pack_awaiting_ticket,
+            ${source.ref}.fact_pack_ticket,
+            ${source.ref}.fact_booking_ticket,
+            ${source.ref}.fact_carrier_picking_ticket,
+            ${source.ref}.fact_transporting_ticket,
+            ${source.ref}.fact_delivering_ticket
+        `,
+    tags: ["E2E_STAGE", "custom_1h_past5"],
+    bigquery: {
+        partitionBy: "DATE(done_at)"
+    }
+}
+
+select * from ${ref('fact_confirm_ticket')}
+union all
+select * except(location_code, leadtime_hrs) from ${ref('fact_reserving_ticket')} 
+union all
+select * from ${ref('fact_active_awaiting_ticket')} 
+union all
+select * from ${ref('fact_pick_awaiting_ticket')} 
+union all
+select * from ${ref('fact_pick_ticket')} 
+union all
+select * from ${ref('fact_qc_awaiting_ticket')} 
+union all
+select * from ${ref('fact_qc_ticket')} 
+union all
+select * from ${ref('fact_pack_awaiting_ticket')} 
+union all
+select * from ${ref('fact_pack_ticket')} 
+union all
+select * from ${ref('fact_booking_ticket')} 
+union all
+select * from ${ref('fact_carrier_picking_ticket')} 
+union all
+select * from ${ref('fact_transporting_ticket')} 
+union all
+select * from ${ref('fact_delivering_ticket')} 
