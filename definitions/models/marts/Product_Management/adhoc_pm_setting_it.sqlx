@@ -1,0 +1,189 @@
+config {
+    type: "table",
+    description: "Action in product_management. Use for alert policy changes some field of HN-SKU",
+    tags: ['3HOUR',"PRODUCT"],
+	columns: {
+		
+	}
+}
+
+-- step 1: get skus from internal_transfer list that is imported by other teams
+
+with get_sku_from_it_list as (
+    select sku_code
+    from ${source.ref}.adhoc_pm_master_sku 
+    where upper(internal_transfer) = "INTERNAL_TRANSFER"
+)
+
+-- step 2: get neccessery columns to create action
+, date_cte as (
+    select current_date() as current_date_,
+        DATE_SUB(CURRENT_DATE(), INTERVAL 3 DAY) AS current_date_3
+)
+
+, threed_demand_agg as (
+    select  a.sku as sku_code,
+        b.warehouse_code as fc_code,
+        sum(a.order_quantity) / 3 as avg_demand_L3D
+    from (
+    select *
+    from (
+        SELECT *
+        FROM ${source.platinum}.warehouse_prd_picking_pick_ticket
+        WHERE 
+            ingest_time >= TIMESTAMP_SUB(TIMESTAMP(DATE_SUB(current_date(), interval 3 day)), interval 7 hour)
+            AND (created_time >= TIMESTAMP_SUB(TIMESTAMP(DATE_SUB(current_date(), interval 3 day)), interval 7 hour) OR created_time is null)
+
+    ) b 
+    WHERE date(TIMESTAMP_ADD(b.created_time, interval 7 hour )) between current_date () - 3 and current_date ()
+        and b.instance_code = "HN"
+    ) b
+    left join (
+        select *
+        from (
+            SELECT * 
+            FROM ${source.platinum}.warehouse_prd_picking_pick_ticket_item
+            WHERE 
+                ingest_time >= TIMESTAMP_SUB(TIMESTAMP(DATE_SUB(current_date(), interval 3 day)), interval 7 hour)
+                AND (created_time >= TIMESTAMP_SUB(TIMESTAMP(DATE_SUB(current_date(), interval 3 day)), interval 7 hour)
+                    OR created_time is null)
+        ) a
+        where date(TIMESTAMP_ADD(a.created_time, interval 7 hour )) between current_date () - 3 and current_date ()
+    ) a ON a.ticket_id = b.ticket_id
+    GROUP BY 1, 2
+)
+
+, get_neccessery_columns as (
+    select sku.sku_code,
+        mienbacsku.purchase_status as mienbac_purchase_status,
+        miennamsku.purchase_status as miennam_purchase_status,
+        mienbacsku.sku_trading_by_fv as mienbac_sku_trading,
+        miennamsku.sku_trading_by_fv as miennam_sku_trading,
+        mienbacsku.fv_code as mienbac_fv_code,
+        miennamsku.fv_code as miennam_fv_code,
+        miennamsku.fv_code as miennam_fv_id,
+        miennamsku.fv_code as miennam_fv_name,
+        mienbacsku.retail_price_type as mienbac_retail_price_type,
+        miennamsku.retail_price_type as miennam_retail_price_type,
+        mienbacsku.catm_group as mienbac_catm,
+        miennamsku.catm_group as miennam_catm,
+        mienbacsku.retail_price_value as mienbac_retail_price_value,
+        miennamsku.retail_price_value as miennam_retail_price_value,
+        mienbacsku.vat as mienbac_vat,
+        miennamsku.vat as miennam_vat,
+        mienbacsku.sku_system_status as mienbac_status,
+        miennamsku.sku_system_status as miennam_status,
+        mienbacsku.sku_system_active as mienbac_active,
+        miennamsku.sku_system_active as miennam_active,
+        COALESCE(mienbacdemand.avg_demand_L3D,0) as mienbac_avg_demand_L3D,
+        COALESCE(mienbacsku.available_qty,0) as mienbac_stock_quantity,
+        mienbacsku.reason_turnoff as mienbac_region_turnoff,
+        miennamsku.reason_turnoff as miennam_region_turnoff,
+        mienbacsku.is_near_expired as mienbac_is_near_expired,
+        case 
+            when miennamexp.is_near_expired = true and miennamexp.diff_day <=365 then "TICK"
+            when miennamexp.is_near_expired = false and miennamexp.diff_day > 365 then "NO TICK"
+            else null
+        end as review_is_near_expired_miennam, 
+        case 
+            when upper(mienbacsku.purchase_status) = 'ON'
+                    and (
+                        mienbacsku.vat <> 0 and mienbacsku.vat is not null 
+                        and miennamsku.vat <> 0 and miennamsku.vat is not null
+                    ) 
+                then true
+            else false
+        end as condition_it_sku_status,
+        if (upper(mienbacsku.purchase_status) = 'ON'
+                and not (upper(miennamsku.sku_system_status) = "SUSPENDED" and miennamsku.sku_system_active = false and upper(miennamsku.reason_turnoff) = "TRANFER_TO_SELLER") 
+            ,true
+            ,false
+        ) as condition_it_sku_active
+    from get_sku_from_it_list sku 
+    left join ${source.ref}.adhoc_pm_master_sku mienbacsku on sku.sku_code = mienbacsku.sku_code and mienbacsku.sales_region_code = "MIENBAC"
+    left join ${source.ref}.adhoc_pm_master_sku miennamsku on sku.sku_code = miennamsku.sku_code and miennamsku.sales_region_code = "MIENNAM"
+    left join threed_demand_agg mienbacdemand on sku.sku_code = mienbacdemand.sku_code
+    left join ${source.ref}.adhoc_pm_expiration_status miennamexp on sku.sku_code = miennamexp.sku and miennamexp.sales_region_code = "MIENNAM" 
+
+)
+
+-- step 3: create action column
+, make_logic as (
+    select a.*,
+    -- action it sku status
+        if( a.condition_it_sku_status,
+            case 
+                when a.miennam_status = 'NORMAL' and SAFE_DIVIDE(a.mienbac_stock_quantity,a.mienbac_avg_demand_L3D) <= 3 
+                    then case 
+                            when a.mienbac_stock_quantity = 0 and a.mienbac_status <> "OUT_OF_STOCK" then "OUT_OF_STOCK"
+                            when a.mienbac_stock_quantity > 0 and a.mienbac_status <> "LIMIT" then "LIMIT"
+                        end
+                when a.miennam_status = 'NORMAL' and SAFE_DIVIDE(a.mienbac_stock_quantity,a.mienbac_avg_demand_L3D) > 3 and a.mienbac_status <> "NORMAL"
+                    then 'NORMAL'
+                when a.miennam_status = 'LIMIT' and mienbac_status = "NORMAL" then "LIMIT"
+                when a.miennam_status = 'OUT_OF_STOCK' and a.mienbac_status = 'NORMAL' then "LIMIT"
+                -- when a.miennam_status = 'OUT_OF_STOCK' and a.mienbac_status = 'LIMIT' then "OUT_OF_STOCK"
+            end,
+            null
+        ) as it_action_sku_status,
+
+    -- action it purchase status
+        if (
+            upper(a.miennam_purchase_status) = "OFF" 
+            and upper(a.miennam_region_turnoff) <> "TRANFER_TO_SELLER"
+            and upper(a.mienbac_purchase_status) = "ON",
+            if (upper(a.miennam_region_turnoff) <> upper (a.mienbac_region_turnoff),
+                CONCAT("OFF with REASON: ",a.miennam_region_turnoff),
+                "OFF"),
+            null
+        ) as it_action_sku_purchase_status,
+    
+       -- action it sku active
+        if (
+            a.condition_it_sku_active,
+            case 
+                when a.miennam_active = false and a.mienbac_active = true then "Gỡ ACTIVE"
+                when a.miennam_active = true and a.mienbac_active = false then "Gắn ACTIVE"
+            end,
+            null 
+        ) as it_action_sku_active,
+
+        -- action it near expired
+        if (
+            upper(a.mienbac_purchase_status) = "ON",
+            case 
+                When a.mienbac_is_near_expired = true and review_is_near_expired_miennam  <> "TICK" then "CẦN GẮN TICK"
+                When (a.mienbac_is_near_expired = false or a.mienbac_is_near_expired is null )  and review_is_near_expired_miennam  <> "NO TICK" then "CẦN BỎ TICK"
+                else null
+            end,
+            null 
+        ) as it_action_sku_is_near_expired, 
+
+        -- action it sku_vendor
+        if (
+            upper(a.mienbac_purchase_status) = "ON",
+            case  
+                when (a.mienbac_sku_trading = "NON TRADING" or a.mienbac_sku_trading is null) and a.miennam_sku_trading = "TRADING" then "CHUYEN VENDOR HN GIONG BD"
+                when a.mienbac_sku_trading = "NON TRADING" and (a.miennam_sku_trading = "NON TRADING" or a.miennam_sku_trading is null) then "KHONG DIEU CHINH"
+                else "QUAY INTERNAL TRANS NON-TRADING"
+            end ,
+            null 
+        ) as it_action_sku_trading,
+
+        -- action it retail_price_value
+        if (
+            mienbac_retail_price_value != miennam_retail_price_value,
+            case 
+                when upper(mienbac_sku_trading) = "TRADING" and upper(mienbac_catm) != "MARVELON" and upper(miennam_catm) != "MARVELON" and mienbac_retail_price_value < miennam_retail_price_value
+                    then GREATEST(mienbac_retail_price_value,miennam_retail_price_value) 
+                when (mienbac_fv_code is null or mienbac_fv_code = "") and mienbac_retail_price_value < miennam_retail_price_value
+                    then GREATEST(mienbac_retail_price_value,miennam_retail_price_value) 
+                else null
+            end ,
+            null
+        ) AS it_action_retail_price_value
+
+    from get_neccessery_columns a
+)
+
+select distinct * from make_logic
