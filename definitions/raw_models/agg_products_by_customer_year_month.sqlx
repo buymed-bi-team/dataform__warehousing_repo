@@ -3,12 +3,13 @@ config {
     description: "PIC: tu.dang; model_type: view"
 }
 select
-    cast(FORMAT_DATE('%Y-%m', created_at)as string) as year_month,
+    cast(FORMAT_DATE('%Y-%m', oi.created_at)as string) as year_month,
     customer_id,
     count(distinct product_id) as no_products,
-    sum(sales_price* demand_quantity)as order_amount,
-    count(distinct order_id) as no_orders,
-    sum(sales_price* demand_quantity)/count(distinct order_id) as average_order_value
-from gold_buymed_vn2.fact_order_item
-where date (created_at)> "2024-01-01"
+    -- sum(sales_price* demand_quantity)as order_amount,
+    -- count(distinct oi.order_id) as no_orders,
+    sum(sales_price* demand_quantity)/count(distinct oi.order_id) as average_order_value
+from ${source.ref}.fact_order_item oi
+left join ${source.ref}.dim_order_status o on oi.order_id = o.order_id
+where date (created_at)> "2024-01-01" and CRM_status <> "CANCEL%"
 group by all
