@@ -82,7 +82,7 @@ select
 		"CHANGE"
 	) as change_status
 	, concat(a.sku_code,"_",b.sales_region_code) as sku_sales_region_code
-    , b.product_id
+    , b.sku_key_sales_region_code
 from union_all_parts a
 left join ${ref('dim_sku_sales_region_current')} b on a.item_code = b.sub_sku_code
 
