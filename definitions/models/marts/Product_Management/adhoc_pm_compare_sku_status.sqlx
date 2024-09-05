@@ -28,7 +28,7 @@ join_last_status_to_sku_status as (
 ),
 
 get_region_code as (
-	select sku_created_at,sub_sku_code, sales_region_code, product_id, sku_code, sku_system_status
+	select sku_created_at,sub_sku_code, sales_region_code, product_id, sku_code, sku_system_status,sku_key_sales_region_code
 	from (
 		select * ,
         -- except (row_num),
@@ -42,7 +42,7 @@ select
     a.product_id,
     a.sku_code,
     a.sub_sku_code,
-    concat(a.sku_code,"_",a.sales_region_code) as sku_sales_region_code,
+    a.sku_key_sales_region_code,
     case when b.status is null then
         case when date(timestamp_add(a.sku_created_at, interval 7 hour)) < TIMESTAMP_TRUNC(CURRENT_DATE(), MONTH) then a.sku_system_status end
         else b.status 
