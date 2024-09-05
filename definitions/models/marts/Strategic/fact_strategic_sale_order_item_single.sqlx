@@ -34,7 +34,7 @@ config {
 }
 
 js {
-    const start_date = `"2023-01-01"`
+    const start_date = `"2024-07-01"`
     const end_date = `"2030-08-01"`
 }
 
@@ -46,6 +46,7 @@ mkp_o AS (
         ${utils.ToTimezone(`o.outbound_date`)} as outbound_dt,
         ${utils.ToTimezone(`o.created_time`)} as created_dt,
         ${utils.ToTimezone(`o.confirmation_date`)} as confirmation_dt,
+        ${utils.ToTimezone(`o.delivered_time`)} as delivered_dt,
         "MKP" as system
     FROM
         ${source.platinum}.marketplace_prd_order_v2_order o
@@ -80,7 +81,7 @@ mkp_o AS (
         ${utils.ToTimezone(`o.outbound_date`)} as outbound_dt,
         ${utils.ToTimezone(`o.created_time`)} as order_created_dt,
         ${utils.ToTimezone(`o.confirmation_date`)} as confirmation_dt,
-        -- bill.bill_created_time,
+        ${utils.ToTimezone(`o.delivered_time`)} as delivered_dt,
         "TENDER" AS system
         
     FROM
@@ -231,7 +232,8 @@ SELECT
     oi.returned_quantity,
     oi.price,
     o.created_dt,
-    o.confirmation_dt
+    o.confirmation_dt,
+    o.delivered_dt
 
 FROM oi_final oi
 LEFT JOIN o ON o.order_id = oi.order_id
