@@ -1,5 +1,3 @@
-
--- new
 config {
     type: "incremental",
     name: "integration_prd_tpl_callback_callback",
