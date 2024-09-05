@@ -1,0 +1,130 @@
+config {
+    type: "table",
+    description: 
+        `
+        PIC: nguyen.tran; 
+        Type: Table;
+        Schedule Refresh: each 2h from 6 to 22;
+        Source:
+            ${source.platinum}.delivery_prd_transporting_shipping_order
+        `,
+    tags:["custom_2h_past5"],
+    columns: {
+        created_at: "Thời gian tạo phiếu bàn giao (handover)",
+        done_handover_at: "Thời gian bàn giao xong cho đơn vị vận chuyển",
+        delivered_at: "Thời gian giao hàng thành công",
+        completed_at: "Thời gian hoàng thành phiếu bàn giao (handover)",
+        code: "Mã phiếu bàn giao",
+        from_department_code: "Hub bàn giao kiện",
+        to_department_code: 'Hub được bàn giao kiện',
+        reference_code: 'Mã tham chiếu của các loại đơn. Có thể là đơn SO (khách đặt); Hub Order (thu hồi BIN về kho)',
+        original_status: 'Trạng thái đơn gốc của mã tham chiếu',
+        num_bin:'Số lượng bin trong 1 phiếu bàn giao',
+        last_mile_hub_code: 'Hub code nhận phiếu cuối cùng. (Trường hợp ngoài lệ, cho những đơn ban giao gửi về các hub ở khu vực miền tây thì buộc phải qua hub cần thơ. Chúng ta cần field này để xác định nhưng đơn như thế này)',
+        carrier_code: 'Mã nhà vận chuyển',
+        carrier_name: 'Tên nhà vận chuyển',
+        in_out_type: 'Filed xác định kiểu của in out của bin',
+        fc_code: 'FC quản lý phiếu handover'
+    }
+}
+
+with 
+    cte_date as (
+        SELECT
+                date_sub(timestamp(date_trunc(date_sub( current_date('+7'), interval 1 month), month)) , interval 7 hour) as start_date,
+    )
+
+-- get info of tickets that transport bin among hubs
+    , cte_data_handover as (
+        select 
+            created_at,
+            done_handover_at,
+            delivered_at,
+            completed_at,
+            code, 
+            from_department_code,
+            to_department_code,
+            so_code as reference_code,
+            num_bin,
+            original_status
+        from ${ref('fact_handover_ticket')}
+        where created_at >= (select start_date from cte_date)
+            and num_bin > 0
+    )
+
+-- get infor of shipping orders
+  , cte_data_shipping_order as (
+      select 
+          tracking_code,
+          last_mile_hub_code,	
+          scope,
+          tpl_code as carrier_code,
+          tpl_name as carrier_name,
+          reference_code,
+          parent_reference_code
+      from ${source.platinum}.delivery_prd_transporting_shipping_order -- lấy thông tin phiếu shipping order 
+      where created_date >= (select DATE(start_date) from cte_date)
+  )
+
+-- join handover ticket with shipping orders to get delivery infor for handover ticket 
+  , cte_data as (
+      select 
+          a.*,
+          b.last_mile_hub_code, -- last mile hub code for SO,
+          b.scope,
+          b.carrier_name,
+          b.carrier_code
+      from cte_data_handover a
+      left join cte_data_shipping_order b on b.reference_code = a.reference_code 
+  )
+
+-- make that logic to summarize the number of bins in/out of a hub or fc: 
+-- + From one handover ticket, we make 2 lines. 1st line is in fc/hub, 2nd line is out fc/hub (Read details in documentation)
+
+, final_data as (
+    select 
+        * except (scope), 
+        json_value(json_extract_array(scope)[offset(0)]) as opposite_hub_code, -- get first hub that sent transport orders to another 
+        case 
+          when to_department_code in ('HUBVSIPBACNINH','HUBTRUONGDINH','HUBVSIPII','HUBHOACAM_DANANG') then "IN_FC"
+          when to_department_code not in ('HUBVSIPBACNINH','HUBTRUONGDINH','HUBVSIPII','HUBHOACAM_DANANG') then 'IN_HUB'
+          else null
+        end as in_out_type,
+        case 
+          when from_department_code  in ('HUBVSIPBACNINH','HUBTRUONGDINH') or to_department_code in ('HUBVSIPBACNINH','HUBTRUONGDINH') then 'HN'	
+          when from_department_code = 'HUBVSIPII' or to_department_code = 'HUBVSIPII' then 'BD'
+          when from_department_code = 'HUBHOACAM_DANANG' or to_department_code = 'HUBHOACAM_DANANG' then 'DN' 
+          else null 
+        end as fc_code,
+    from cte_data
+
+    union all
+
+    select 
+        *  except (scope),
+        json_value(json_extract_array(scope)[offset(array_length(json_extract_array(scope))-1)]) as opposite_hub_code, -- get last hub that sent transport orders to another 
+        case 
+          when from_department_code in ('HUBVSIPBACNINH','HUBTRUONGDINH','HUBVSIPII','HUBHOACAM_DANANG') then "OUT_FC"
+          when from_department_code not in ('HUBVSIPBACNINH','HUBTRUONGDINH','HUBVSIPII','HUBHOACAM_DANANG') then "OUT_HUB"
+          else null
+        end as in_out_type,
+          case 
+            when from_department_code  in ('HUBVSIPBACNINH','HUBTRUONGDINH') or to_department_code in ('HUBVSIPBACNINH','HUBTRUONGDINH') then 'HN'	
+            when from_department_code = 'HUBVSIPII' or to_department_code = 'HUBVSIPII' then 'BD'
+            when from_department_code = 'HUBHOACAM_DANANG' or to_department_code = 'HUBHOACAM_DANANG' then 'DN' 
+          else null 
+        end as fc_code,
+    from cte_data
+)
+
+select * 
+from final_data
+where
+  -- Exclude Handover Ticket Handover between 2 HUB 
+  fc_code is not null
+  -- Exclude Handover Ticket Handover between 2 FC 
+  and (
+    not (from_department_code in ("HUBVSIPBACNINH","HUBTRUONGDINH","HUBVSIPII","HUBHOACAM_DANANG")
+      and to_department_code in ("HUBVSIPBACNINH","HUBTRUONGDINH","HUBVSIPII","HUBHOACAM_DANANG")
+  ))
+
