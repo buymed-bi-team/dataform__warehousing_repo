@@ -81,6 +81,7 @@ with
 
 select
     sku.*
+    , vcpic.commitment_leadtime
     , uns.value as unstable
     , it.type as internal_transfer
     , reason.reason_turnoff
