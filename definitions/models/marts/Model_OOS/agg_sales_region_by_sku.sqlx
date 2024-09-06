@@ -1,0 +1,85 @@
+config {
+    type: "view",
+    description: "PIC: Tu Dang",
+
+}
+with cte_full as
+(
+
+  SELECT
+        -- mg_id,
+          s.sku_code
+          , s.product_id
+          , s.product_code
+          , s.seller_code
+          , s.seller_id
+          , s.product_sales_region_code
+          , s.sku_sales_region_code
+          , CONCAT(s.sub_sku_code,"_",coalesce(s.sales_region_code,"")) AS sub_sku_sales_region_code
+          , s.sub_sku_code
+          , s.sku_system_active
+          , s.sku_system_status
+          , s.sku_type
+          , s.sku_level
+          , s.sku_key_sales_region_code
+          -- , current_timestamp() as transformed_at
+          -- , STRING(a) as service_area_code
+          , s.sales_region_code
+          , datetime(sku_approved_at) as approved_date
+          , sku_last_updated_at
+          , s.product_name
+        --   , s.level AS sku_level
+          , s.catm_group
+        FROM ${ref(`adhoc_pm_master_sku`)} AS s
+
+  where
+    sku_code NOT IN ('MEDX.AGI-AGi-001','MEDX.test')
+)
+, product_seller as 
+(
+    select 
+        sr.product_sales_region_code,
+        safe_cast (count(distinct sr.seller_code) as string) as no_seller,
+        string_agg( sr.seller_code,", ") as list_seller_in_product
+    from cte_full as sr
+    where sr.sku_system_active = true
+    group by 1
+    qualify row_number() over(partition by product_sales_region_code)=1
+)
+, product_seller_oos as 
+(
+    select 
+        sr.product_sales_region_code,
+        safe_cast (count(distinct sr.seller_code) as string) as no_seller_oos,
+        string_agg( sr.seller_code,", ") as list_seller_oos_in_product
+    from cte_full as sr
+    where sr.sku_system_active = true and  sr.sku_system_status = "OUT_OF_STOCK"
+    group by 1
+    qualify row_number() over(partition by product_sales_region_code)=1
+)
+select cf.*, 
+case 
+  when sku_system_active = true then ps.list_seller_in_product
+  else '' end as list_seller_in_product,
+case 
+  when sku_system_active = true then ps.no_seller
+  else '' end as no_seller,
+  -- cf.catm_group,
+case 
+  when sku_system_active = true then po.no_seller_oos
+  else '' end as no_seller_oos,
+case 
+  when sku_system_active = true then po.list_seller_oos_in_product
+  else '' end as list_seller_oos_in_product
+
+from cte_full cf
+left join product_seller ps on cf.product_sales_region_code = ps.product_sales_region_code
+left join product_seller_oos po on cf.product_sales_region_code = po.product_sales_region_code
+-- left join ${ref(`adhoc_pm_master_sku`)} as sf on cf.sku_key_sales_region_code = sf.sku_key_sales_region_code
+
+
+
+
+
+
+

@@ -1,0 +1,83 @@
+config {
+    type: "table",
+    tags: ["adhoc-office"],
+    description: "SKU out of stock current according to sale region dim table. PIC: Tu Dang",
+
+}
+
+with product_code_incombo as -- danh sách những product dang được bán trong combo
+(
+    select
+        safe_cast(sc.product_code as int64) as product_id
+        , string_agg(safe_cast(sc.product_combo_id as string),", ") as list_product_combo_id
+        , count (distinct(sc.product_combo_id)) as no_combo_in_product
+    from ${ref('dim_sku_combo')} as sc
+    where sc.status = "NORMAL" and is_active = true
+    group by all
+)
+, sku_code_incombo as -- danh sách những sku dang được bán trong combo
+(
+    select
+        sc.sku_code as sku_code
+        -- , sc.sale_region
+        , string_agg(sc.sku_combo_code ,", ") as list_sku_combo_id
+        , count (distinct(sc.sku_combo_code)) as no_combo_in_sku
+    from ${ref('dim_sku_combo')} as sc
+    where sc.status = "NORMAL" and is_active = true
+    group by all
+)
+, order_sku as
+    (
+        select
+            oi.sku_code,
+            pc.region_code,
+            oi.order_id,
+            date(oi.created_at) as created_date
+        from ${ref('fact_order_item')} oi
+        left join `gold_buymed_vn.dim_sales_region_province_code` pc
+            on oi.province_code = pc.province_code
+        where date(oi.created_at) > '2024-01-01'
+    )
+
+select
+      datetime(timestamp( current_datetime()), 'Asia/Ho_Chi_Minh') as last_updated_at,
+      ss.product_id,
+      ss.product_code,
+      ss.sku_code,
+      ss.sales_region_code,
+      ss.sku_sales_region_code,
+      ss.seller_id,seller_code,
+      ss.seller_id || '_' || ss.sales_region_code as seller_id_sales_region_code,
+      ss.seller_id || '_' || ss.product_id || '_' || sales_region_code as seller_product_sales_region_code,
+      ss.product_sales_region_code,
+      ss.sub_sku_code,
+      ss.sku_type,
+      ss.sub_sku_sales_region_code,
+      pi.list_product_combo_id,
+      pi.no_combo_in_product,
+      si.list_sku_combo_id,
+      si.no_combo_in_sku,
+      case
+          when  no_combo_in_product > 0 then "IN-COMBO"
+          when ss.no_seller <>"1" and ss.no_seller > ss.no_seller_oos then "OVERLAPPING"
+          else "REAL" end as label_product,
+      ss.list_seller_in_product,
+      ss.list_seller_oos_in_product,
+      ss.no_seller_oos,
+      ss.no_seller,
+      case
+          when ss.no_seller = ss.no_seller_oos then product_code
+          else "" end as product_oos_absolute,
+      COUNT(distinct order_id) as no_orders_l15d
+from ${ref('agg_sales_region_by_sku')} as ss
+left join order_sku as os
+    on ss.sku_code = os.sku_code and ss.sales_region_code = os.region_code
+           and os.created_date between DATE_ADD(current_date(), interval -60 day) and DATE_ADD(current_date(), interval -15 day)
+left join product_code_incombo as pi
+    on pi.product_id = ss.product_id
+left join sku_code_incombo as si
+    on si.sku_code = ss.sku_code
+where
+sku_system_status like "OUT_OF_STOCK"  and ss.sku_system_active = true
+group by all
+
