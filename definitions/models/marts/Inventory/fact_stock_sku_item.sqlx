@@ -1,6 +1,6 @@
 config {
     type: "table",
-    description: "Source: warehouse_prd_inventory_sku_location_merge | Schedule: every 30 mins from 9am to 6pm | PIC: dong.le",
+    description: "Source: warehouse_prd_inventory_sku_location | Schedule: every 30 mins from 9am to 6pm | PIC: dong.le",
     name: "fact_stock_sku_item",
     tags: ["custom_30min_9to18"],
     columns: {
@@ -9,10 +9,12 @@ config {
 }
 
 WITH
-  dedup_inventory_sku_location AS ${dedup.dedup(
-  source.silver + `.warehouse_prd_inventory_sku_location_merge`,
-  "sku, warehouse_code, location_code, stock_quantity"
-)}
+  dedup_inventory_sku_location AS (
+    SELECT 
+      sku, warehouse_code, location_code, stock_quantity
+    FROM ${source.platinum}.warehouse_prd_inventory_sku_location
+  )
+
 
 SELECT
   CONCAT(b.sku_key, "_", a.warehouse_code) as sku_fc_key,

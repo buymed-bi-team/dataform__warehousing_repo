@@ -2,7 +2,7 @@ config {
   type: "table",
   name: "fact_changed_sku_internal_status",
   description: "pic: tu.dang; ",
-  tags: "custom_1h_past5"
+  tags: ["custom_1h_past5", "PRODUCT_MANAGEMENT"]
 }
 
 WITH

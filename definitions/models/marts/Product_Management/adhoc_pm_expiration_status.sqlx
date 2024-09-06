@@ -1,7 +1,8 @@
 config {
     type: "table",
     description: "PIC: tu.dang; Action in product_management. Use for alert policy change field is_near_expired for a sku",
-    /*tags: ['adhoc-office'],*/
+    
+    tags: ["adhoc-office", "PRODUCT_MANAGEMENT"],
 	columns: {
 		
 	}

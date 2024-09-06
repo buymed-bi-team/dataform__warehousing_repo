@@ -1,7 +1,7 @@
 config {
   type: "table",
   name: "fact_sku_status",
-  tags: "3HOUR"
+  tags: ["3HOUR", "PRODUCT_MANAGEMENT"]
 }
 
 with cte_ds as (
