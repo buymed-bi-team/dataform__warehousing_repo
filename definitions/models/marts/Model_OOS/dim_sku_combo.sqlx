@@ -1,0 +1,50 @@
+config {
+    type: "table",
+    description: "Sku Incombo Dimension. PIC: Tu Dang",
+    tags: ['adhoc-office']
+}
+with raw_sku_combo_dedup as
+(
+  SELECT
+    created_time
+    , code as sku_combo_code
+    , product_id
+    , seller_code
+    , is_combo
+    , mg_id
+    , last_updated_time
+    , is_active
+    , status
+    , type
+    , skus
+    FROM ${source.platinum}.marketplace_prd_product_v2_sku_main_v2
+  -- FROM lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_product_v2_sku_main_v2
+  where is_combo is not null
+  -- QUALIFY ROW_NUMBER() OVER(_window) = 1 AND FIRST_VALUE(action) over(_window) <> 'd'
+  -- WINDOW _window AS (PARTITION BY mg_id ORDER BY synced_at DESC, IF(action='d',3,IF(action='u',2,1)) DESC, last_updated_time DESC)
+)
+, cte_sku_combo_detail as 
+(
+  select 
+    created_time
+    , sku_combo_code
+    , product_id as product_combo_id
+    , seller_code
+    , is_combo
+    , mg_id
+    , last_updated_time
+    , is_active
+    , status
+    , type
+    , json_extract_scalar(skus, '$.sku') AS sku_code
+    , json_extract_scalar(skus, '$.product_id') AS product_code
+    -- , string_agg(json_extract_scalar(sku_items, '$.item_code'),", ") AS list_item_code_incombo
+    -- , string_agg(json_extract_scalar(sku_items, '$.product_id'),", ") AS product_code_incombo
+  from raw_sku_combo_dedup as rk,
+  unnest( json_query_array(rk.skus) ) as skus
+--   ,
+--   unnest(json_query_array (rk.sku_items)) as sku_items
+  group by all
+)
+select *
+from cte_sku_combo_detail
