@@ -24,8 +24,10 @@ with trans_fc_to_sales_region as (
 ),
 
 get_columns as (
-    select sku.sku_code,
+    select 
+        sku.sku_code,
         sku.sales_region_code,
+        sku.sku_key_sales_region_code,
         sku.seller_code,
         sel.supplier_class as seller_class,
         sku.purchase_status,
