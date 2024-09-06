@@ -81,9 +81,9 @@ get_column as (
                 WHEN c.category_code = '7E72AXHR2A' THEN 'vật tư và thiết bị y tế'
                 ELSE 'sản phẩm khác'
             END AS category_for_set_limit
-        from ${source.ref}.dim_sku_sales_region_current a
-        left join ${source.ref}.dim_product b on a.product_id = b.product_id
-        left join ${source.ref}.dim_product_category  c on b.product_id = c.product_id
+        from ${ref('dim_sku_sales_region_current')} a
+        left join ${ref('dim_product')} b on a.product_id = b.product_id
+        left join ${ref('dim_product_category')}  c on b.product_id = c.product_id
         left join no_orders d on a.sku_code = d.sku_code and a.sales_region_code = d.sales_region_code
     )
 ),

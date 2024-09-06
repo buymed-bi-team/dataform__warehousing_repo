@@ -54,5 +54,5 @@ select
         null
     ) AS setting_oos_action
   
-from  ${source.ref}.agg_sku_purchase a
+from  ${ref('agg_sku_purchase')} a
 -- where sku_code = 'MEDX.DMTS-JAN-NIZ-004'
