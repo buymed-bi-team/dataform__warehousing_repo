@@ -1,7 +1,7 @@
 config {
     type: "table",
     description: "Action in product_management. Use for alert policy change field max_quantity_per_order",
-    tags: ['adhoc-office'],
+    tags: ["adhoc-office", "PRODUCT_MANAGEMENT"],
 	columns: {
 	}
 }
