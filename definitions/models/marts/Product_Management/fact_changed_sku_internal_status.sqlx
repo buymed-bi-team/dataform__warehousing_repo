@@ -14,6 +14,7 @@ WITH
 SELECT
     b.product_id
     , a.sku AS sku_code
+    , b.sku_key_sales_region_code
     , a.status
     , a.item_code
     , b.sales_region_code
