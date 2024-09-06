@@ -10,7 +10,8 @@ with order_amt as
       where date(created_at)>date_add(current_date(), INTERVAL -76 day) and order_status <> 'CANCEL%'
 )
 select   
-      sku_code || '_' || r.region_code as sku_sales_region_code
+      sku_code || '_' || r.region_code as sku_sales_region_code,
+      product_id || '_' || r.seller_code|| '_' || r.region_code as sku_key_sales_region_code
       , sum(nc.demand_quantity * nc.sales_price ) as total_amount
       , sum (oa.sales_amount) as order_amount
 from ${ref('fact_order_item')} as nc
