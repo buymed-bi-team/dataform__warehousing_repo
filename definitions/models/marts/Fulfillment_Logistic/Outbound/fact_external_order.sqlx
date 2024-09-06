@@ -1,0 +1,73 @@
+config {
+	type: "table",
+    description: 
+        `
+        PIC: nguyen.tran; 
+        Type: Table; 
+		Refresh Schedule: hourly;
+        Source: 
+            ${source.ref}.fact_hub_order,
+            ${source.platinum}.delivery_prd_transporting_hub_shipping_order
+        `,
+    tags: ["custom_1h_past5"]
+}
+
+with cte_date as (
+  SELECT
+		date_sub(timestamp(date_trunc(date_sub( current_date('+7'), interval 3 month), month)) , interval 7 hour) as start_date,
+)
+
+select 
+	ho.reference_code,
+	ho.tracking_code,
+	ho.tpl_code as carrier_code,
+	ho.tpl_name as carrier_name,
+	ho.tpl_service_id as carrier_id,
+	ho.type as order_type,
+	ho.status,
+    ho.created_by,
+	ho.hub_code as hub_pickup,
+	d.hub_code as hub_delivery,
+	ho.driver_id as pickup_driver_id,
+	ho.driver_name as pickup_driver_name,
+	ho.from_customer_name as order_placer_name,
+	coalesce(ho.from_customer_phone,d.from_customer_phone) as order_placer_phone,
+	coalesce(ho.from_customer_address,d.from_customer_address) as order_placer_address,
+	coalesce(ho.from_ward_code,d.from_ward_code) as order_placer_ward_code,
+	coalesce(ho.from_ward_name,d.from_ward_name) as order_placer_ward_name,
+	coalesce(ho.from_district_code,d.from_district_code) as order_placer_district_code,
+	coalesce(ho.from_district_name,d.from_district_name) as order_placer_district_name,
+	coalesce(ho.from_province_code,d.from_province_code) as order_placer_province_code,
+	ho.from_province_name as order_placer_province_name,
+	d.driver_id as delivery_driver_id,
+	d.driver_name as delivery_driver_name,
+	coalesce(ho.to_customer_name,d.to_customer_name) as receiver_name,
+	coalesce(ho.to_customer_address,d.to_customer_address) as receiver_address,
+	coalesce(ho.to_customer_phone,d.to_customer_phone) as receiver_phone,
+	coalesce(ho.to_ward_code,d.to_ward_code) as receiver_ward_code,
+	coalesce(ho.to_ward_name,d.to_ward_name) as receiver_ward_name,
+	coalesce(ho.to_district_code,d.to_district_code) as receiver_district_code,
+	coalesce(ho.to_district_name,d.to_district_name) as receiver_district_name,
+	coalesce(ho.to_province_code,d.to_province_code) as receiver_province_code,
+	coalesce(ho.to_province_name,d.to_province_name) as receiver_province_name,
+	ho.payment_method,
+	ho.total_amount,
+	ho.cod_amount as total_cod_amount,
+	ho.num_package as total_packages,
+	ho.weight as total_weights,
+	ho.delivery_amount,
+	ho.fee_amount,
+	ho.reason,
+  ho.customer_code as customer_id
+from (
+	select *
+	from ${ref('fact_hub_order')}
+	qualify row_number() over (partition by reference_code order by created_at asc) = 1
+) ho
+left join (
+    select * 
+    from ${source.platinum}.delivery_prd_transporting_hub_shipping_order
+    where created_date >= (select DATE(start_date) from cte_date)
+	qualify row_number() over (partition by reference_code order by created_time desc) = 1
+) as d on d.reference_code = ho.reference_code
+where ho.do_type = 'EO'

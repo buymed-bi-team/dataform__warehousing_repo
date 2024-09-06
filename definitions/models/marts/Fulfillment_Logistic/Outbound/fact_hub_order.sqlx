@@ -1,0 +1,150 @@
+config {
+    type: "table",
+    description: 
+        `;
+        PIC: nguyen.tran; 
+        Type: Table; 
+		Refresh Schedule: hourly;
+        Source: 
+            ${source.platinum}.delivery_prd_transporting_shipping_order,
+            ${source.platinum}.delivery_prd_transporting_hub_shipping_order
+        `,
+    tags: ["custom_1h_past5"],
+    columns : {
+        created_at: 'Thời gian tạo đơn hub order',
+        do_created_at: 'Thời gian tạo đơn giao vận cho hub order',
+        do_last_updated_at: 'Thời gian cập nhận đơn giao vận mới nhất',
+        reference_code: 'Mã tham chiếu của hub order',
+        tracking_code: 'Mã theo dõi đơn giao vận',
+        do_reference_code: 'Mã tham chiếu của hub order',
+        do_tracking_code: 'Mã theo dõi đơn giao vận',
+		do_parent_reference_code: '',
+		customer_code: 'Mã khách hàng',
+		customer_name: 'Tên khách hàng',
+		customer_ward_code: 'Mã phường/xã của khách hàng',
+		customer_district_code: 'Mã huyện nhận hàng của khách hàng',
+		customer_province_code: 'Mã tỉnh nhận hàng của khách hàng',
+		created_by: '',
+		hub_code: 'Mã hub',
+		tpl_code: 'Mã đơn vị vận chuyển',
+		tpl_name: 'Tên đon vị vận chuyển',
+		tpl_service_id: '',
+		type: 'Loại đơn hub order',
+		do_type: 'Loại đơn giao vận',
+		sub_type: '',
+		action: '',
+		action_name: '',
+		products: 'Thông tin hàng vận chuyển',
+		from_customer_code: 'Mã khách hàng gửi hàng',
+		from_customer_name: 'Tên khách hàng gửi hàng ',
+		from_customer_phone: 'SDT khách hàng gửi hàng' ,
+		from_customer_address: 'Địa chỉ cụ thể của khách hàng gửi hàng',
+		from_ward_code: 'Mã phường/xã gửi hàng',
+		from_district_code: 'Mã huyện gửi hàng',
+		from_province_code: "Mã tỉnh gửi hàng",
+		to_customer_code: 'Mã khách hàng nhận hàng',
+		to_customer_name: 'Tên khách hàng nhận hàng',
+		to_customer_address: 'Địa chỉ chi tiết khách hàng nhận hàng',
+		to_ward_code: 'Mã phường/xã nhận hàng',
+		to_ward_name: 'Tên phường/xã nhận hàng',
+		to_district_code: "Mã huyện nhận hàng",
+		to_district_name: 'Tên huyện nhận hàng',
+		to_province_code: "Mã tỉnh nhận hàng",
+		to_province_name: "Tên tỉnh nhận hàng",
+		payment_method: "Phương thức thanh toán",
+		total_amount: "",
+		delivery_amount: "",
+		fee_amount: "",
+		driver_id: 'ID tài xế vận chuyển',
+		driver_name: 'Tên tài xế vận chuyển',
+		num_package: 'Số lượng kiện',
+		weight: 'Khối lượng kiện',
+		cod_amount: '',
+		reason: '',
+		status: 'Trạng thái đơn hub order',
+		do_status: 'Trạng thái đơn giao vận của hub order'
+    }
+}
+
+with cte_date as (
+  SELECT
+		date_sub(timestamp(date_trunc(date_sub( current_date('+7'), interval 3 month), month)) , interval 7 hour) as start_date,
+)
+
+select 
+	timestamp_add(ho.created_time, interval 7 hour) as created_at,
+	timestamp_add(d.created_time, interval 7 hour) as do_created_at,
+	timestamp_add(d.last_updated_time, interval 7 hour) as do_last_updated_at,
+	ho.reference_code,
+	ho.tracking_code,
+	d.reference_code as do_reference_code,
+	d.tracking_code as do_tracking_code,
+	d.parent_reference_code as do_parent_reference_code,
+	d.customer_code,
+	d.customer_name,
+	case 
+		when d.customer_ward_code = '0' then d.customer_district_name 
+		else d.customer_ward_code
+	end as customer_ward_code,
+	customer_ward_name,
+	customer_district_name,
+	customer_province_name,
+	d.created_by,
+	ho.hub_code,
+	d.tpl_code, 
+	d.tpl_name ,
+    d.tpl_service_id, 
+	ho.type,
+	d.type as do_type,
+	ho.sub_type, 
+	ho.action,
+	ho.action_name,
+	case 
+		when ho.type = "PICKUP" then d.products
+		else null 
+	end products,
+	ho.from_customer_code,
+	ho.from_customer_name,
+	ho.from_customer_phone, 
+	ho.from_customer_address, 
+	case 
+		when ho.from_ward_code = '0' then ho.from_district_name 
+		else ho.from_ward_code 
+	end as from_ward_code,
+	ho.from_district_code,
+	ho.from_province_code,
+	ho.from_ward_name, 
+	ho.from_district_name, 
+	ho.from_province_name,
+	ho.to_customer_code,
+	ho.to_customer_name,
+	ho.to_customer_phone,
+	ho.to_customer_address,
+	ho.to_ward_name,
+	ho.to_ward_code,
+	ho.to_district_code,
+	ho.to_district_name,
+	ho.to_province_code,
+	ho.to_province_name,
+	ho.payment_method,
+	ho.total_amount,
+	ho.delivery_amount,
+	ho.fee_amount,
+	ho.driver_id,
+	ho.driver_name,
+	ho.num_package,
+	ho.weight,
+	ho.cod_amount,
+	ho.reason,
+	d.status as do_status,
+	ho.status
+from (
+  select * 
+  from ${source.platinum}.delivery_prd_transporting_hub_shipping_order
+  where created_date >= (select DATE(start_date) from cte_date)
+) ho 
+left join (
+  select * 
+  from ${source.platinum}.delivery_prd_transporting_shipping_order
+  where created_date >= (select DATE(start_date) from cte_date)
+) as d on d.reference_code = ho.reference_code

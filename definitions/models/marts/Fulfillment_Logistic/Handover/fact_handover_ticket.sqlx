@@ -1,0 +1,67 @@
+config {
+    type: "table",
+    description: 
+        `
+        Detailed information of the handover tickets;
+        PIC: nguyen.tran; 
+        Type: Table; 
+		Refresh Schedule: each 2h from 6 to 22;
+        Source: 
+            ${source.platinum}.delivery_prd_transporting_handover_ticket
+        `,
+    tags: ["custom_2h_past5"],
+    columns: {
+		created_at: "Thời gian tạo phiếu bàn giao (handover)",
+        done_handover_at: "Thời gian bàn giao xong cho đơn vị vận chuyển",
+        delivered_at: "Thời gian giao hàng thành công",
+        completed_at: "Thời gian hoàng thành phiếu bàn giao (handover)",
+        code: "Mã phiếu bàn giao",
+        from_department_code: "Hub bàn giao kiện",
+        to_department_code: 'Hub được bàn giao kiện',
+        reference_code: 'Mã tham chiếu của các loại đơn. Có thể là đơn SO (khách đặt); Hub Order (thu hồi BIN về kho)',
+        original_status: 'Trạng thái đơn gốc của mã tham chiếu',
+        num_bin:'Số lượng bin trong 1 phiếu bàn giao',
+        last_mile_hub_code: 'Hub code nhận phiếu cuối cùng. (Trường hợp ngoài lệ, cho những đơn ban giao gửi về các hub ở khu vực miền tây thì buộc phải qua hub cần thơ. Chúng ta cần field này để xác định nhưng đơn như thế này)',
+        carrier_code: 'Mã nhà vận chuyển',
+        carrier_name: 'Tên nhà vận chuyển',
+        in_out_type: 'Filed xác định kiểu của in out của bin',
+        fc_code: 'FC quản lý phiếu handover'
+	}
+}
+
+with cte_date as (
+  SELECT
+		date_sub(timestamp(date_trunc(date_sub( current_date('+7'), interval 3 month), month)) , interval 7 hour) as start_date,
+)
+
+select 
+    timestamp_add(a.created_time, interval 7 hour) as created_at,
+    timestamp_add(a.done_handover_time, interval 7 hour) as done_handover_at,
+    timestamp_add(a.delivered_time, interval 7 hour) as delivered_at,
+    timestamp_add(a.completed_time,interval 7 hour) as completed_at,
+    a.ticket_id,
+    a.code,
+    SPLIT(a.code, '-')[SAFE_OFFSET(0)] AS ticket_type,
+    item_type,
+    a.route_code,
+    a.route_name,
+    a.from_department_code,
+    a.to_department_code,
+    a.trip_code,
+    a.status,
+    a.created_by as handover_employee_id,
+    a.driver_id,
+    a.driver_name,
+    JSON_VALUE(extra_props, '$.carrier_name') AS carrier_name,
+    -- case when b.pod is null then 'Updating' else 'With attached image' end as delivery_image,
+    -- case when b.pop is null then 'Updating' else 'With attached image' end as pick_up_image,
+    null as delivery_image,
+    null as pick_up_image,
+    cast(json_value(a_l,"$.num_package") as int64) as num_packages,
+    cast(json_value(a_l,"$.scanned_quantity") as int64) as scanned_packages,
+    json_value(a_l,"$.so") as so_code,
+    json_value(a_l, "$.status") as original_status,
+    array_length(json_extract_array(a_l,"$.baskets")) as num_bin,
+from ${source.platinum}.delivery_prd_transporting_handover_ticket AS a
+   , unnest(json_extract_array(a.so_list)) AS a_l
+where created_date >= (select DATE(start_date) from cte_date)

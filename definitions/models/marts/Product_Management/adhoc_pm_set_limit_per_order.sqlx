@@ -1,0 +1,168 @@
+config {
+    type: "table",
+    description: "Action in product_management. Use for alert policy change field max_quantity_per_order",
+    tags: ['adhoc-office'],
+	columns: {
+	}
+}
+
+-- step 1: get necessary columns to make logic
+WITH target_date AS (
+  SELECT TIMESTAMP_TRUNC(TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 100 DAY), MONTH) AS start_date
+),
+
+no_orders as (
+    select sku_code,
+	    product_id,
+ 	    fc_code,
+        CASE
+            when fc_code = "HN" then "MIENBAC"
+            when fc_code = "BD" then "MIENNAM"
+            when fc_code = 'DN' then 'MIENTRUNG'
+            ELSE null
+        end as sales_region_code,
+        no_quantity_per_so
+    from (
+        select
+            b.sku as sku_code,
+            b.product_id,
+            DIV(cast(sum(b.order_quantity) as INT64) ,count(b.admin_id)) as no_quantity_per_so, 
+            c.warehouse_code as fc_code
+        from ${source.platinum}.warehouse_prd_core_sale_order as c
+        -- left join lakehouse-prod-394907.buymed_vn.wh_sale_order_item_prd as b on b.admin_id = c.admin_id
+        left join (
+            select admin_id,
+                sku,
+                product_id,
+                order_quantity
+            from ${source.platinum}.warehouse_prd_core_sale_order_item
+            where created_time >= (select start_date from target_date)
+        ) as b on b.admin_id = c.admin_id
+        -- where  b.created_time >= (select start_date from target_date)
+        group by b.sku, c.warehouse_code, b.product_id
+    )   
+),
+
+
+get_column as (
+    select *
+        , case
+            when CONTAINS_SUBSTR(volumes,'ml') then CAST(REGEXP_EXTRACT(volumes, r"\d+\s*ml") as STRING) 
+            when weight is not null then CAST(weight as STRING)
+            when category_for_set_limit = "khẩu trang" then 
+                if( 
+                    CONTAINS_SUBSTR(volumes,'100'),
+                    "100",
+                    "<100"
+                )
+         end as volumes_convert
+    from (
+        select a.sub_sku_code
+            , a.seller_code
+            , b.product_id
+            , b.product_name
+            , b.unit
+            , b.volumes
+            , b.weight
+            , a.max_quantity_per_order as current_limit
+            , d.no_quantity_per_so
+            , CASE
+                WHEN LOWER(b.product_name) LIKE '%cồn 70 độ%' THEN 'cồn 70 độ'
+                WHEN LOWER(b.product_name) LIKE '%cồn 90 độ%' THEN 'cồn 90 độ'
+                WHEN LOWER(b.product_name) LIKE '%oxy già%' THEN 'oxy già'
+                WHEN LOWER(b.product_name) LIKE '%povidin%' THEN 'povidin'
+                WHEN LOWER(b.product_name) LIKE '%nhỏ mắt%' THEN 'nhỏ mắt các loại'
+                WHEN LOWER(b.product_name) LIKE '%dung dịch vệ sinh%' THEN 'dung dịch vệ sinh'
+                WHEN LOWER(b.product_name) LIKE '%sữa rửa mặt%' THEN 'sữa rửa mặt'
+                WHEN LOWER(b.product_name) LIKE '%nước súc miệng%' THEN 'nước súc miệng'
+                WHEN LOWER(b.product_name) LIKE '%nước muối%' THEN 'nước muối'
+                WHEN LOWER(b.product_name) LIKE '%dịch truyền%' THEN 'dịch truyền'
+                WHEN LOWER(b.product_name) LIKE '%khẩu trang%' THEN 'khẩu trang'
+                WHEN c.category_code = '7E72AXHR2A' THEN 'vật tư và thiết bị y tế'
+                ELSE 'sản phẩm khác'
+            END AS category_for_set_limit
+        from ${ref('dim_sku_sales_region_current')} a
+        left join ${ref('dim_product')} b on a.product_id = b.product_id
+        left join ${ref('dim_product_category')}  c on b.product_id = c.product_id
+        left join no_orders d on a.sku_code = d.sku_code and a.sales_region_code = d.sales_region_code
+    )
+),
+-- step 2: create limit_per_SO and limit_per_SO_quantity column according to logic set limit
+
+create_set_limit_logic as (
+    select *,
+        CASE
+            WHEN volumes_convert IS NOT NULL AND LOWER(volumes_convert) LIKE '%ml%' THEN
+            CASE
+                WHEN unit = 'Lốc' THEN '10'
+                WHEN unit = 'Thùng' THEN '1'
+                WHEN unit = 'Chai' THEN
+                CASE
+                    WHEN volumes_convert IS NOT NULL  
+                        AND CAST(REPLACE(volumes_convert, 'ml', '') AS INT64) < 500 
+                        AND CAST(REPLACE(volumes_convert, 'ml', '') AS INT64) >= 250 
+                     THEN '10'
+                    WHEN volumes_convert IS NOT NULL  
+                        AND CAST(REPLACE(volumes_convert, 'ml', '') AS INT64) >= 500 
+                     THEN '5'
+                    ELSE '10000'
+                END
+                ELSE '10000'
+            END
+            WHEN category_for_set_limit = 'khẩu trang' 
+                AND volumes_convert = '100' 
+                AND unit = 'Hộp' 
+                AND volumes_convert IS NOT NULL 
+             THEN '10'
+            WHEN category_for_set_limit = 'vật tư và thiết bị y tế' 
+                AND NOT (LOWER(volumes_convert) LIKE '%ml%') 
+                AND CAST(volumes_convert AS INT64) > 1000 
+                AND unit = 'Cái' 
+                AND volumes_convert IS NOT NULL 
+             THEN '1'
+            WHEN category_for_set_limit = 'sản phẩm khác' 
+                AND NOT (LOWER(volumes_convert) LIKE '%ml%') 
+                AND CAST(volumes_convert AS INT64) >= 500 
+                AND (unit = 'Chai' OR unit = 'Lốc' OR unit = 'Thùng') 
+                AND volumes_convert IS NOT NULL 
+             THEN 'Số lượng trung bình đơn hàng'
+            WHEN volumes_convert IS NULL THEN 'Sản phẩm thiếu thông tin (volume, unit, ...)'
+            ELSE '10000'
+        END AS limit_per_SO
+    from get_column
+),
+
+
+create_set_limit_quantity as 
+(
+    select *,
+        CASE
+            WHEN category_for_set_limit = 'sản phẩm khác' AND limit_per_SO = 'Số lượng trung bình đơn hàng' THEN
+            CASE
+                WHEN no_quantity_per_so is null then 'Chưa có đơn đặt hàng nào'
+                WHEN ROUND(no_quantity_per_so,0) > 0 AND ROUND(no_quantity_per_so,0) < 6 THEN '5'
+                WHEN ROUND(no_quantity_per_so,0) > 5 AND ROUND(no_quantity_per_so,0) < 11 THEN '10'
+                WHEN ROUND(no_quantity_per_so,0) > 9 AND ROUND(no_quantity_per_so,0) < 16 THEN '15'
+                WHEN ROUND(no_quantity_per_so,0) > 15 AND ROUND(no_quantity_per_so,0) < 21 THEN '20'
+                ELSE CAST(ROUND(no_quantity_per_so, -1) AS STRING)
+            END
+            ELSE limit_per_SO
+    END AS limit_per_SO_quantity
+    from create_set_limit_logic
+)
+-- step 4: make alert action column
+select *,
+    CASE
+        WHEN limit_per_SO_quantity = 'Sản phẩm thiếu thông tin (volume, unit, ...)' then "Kiểm tra lại thông tin sản phẩm"
+        WHEN limit_per_SO_quantity = "10000" and current_limit >=10000 then "OK"
+        WHEN current_limit = 0 or current_limit is null then "Sửa lại limit"
+        WHEN category_for_set_limit != "sản phẩm khác" and current_limit = safe_cast(limit_per_SO_quantity as INT64) then "OK"
+        WHEN category_for_set_limit = "sản phẩm khác" and current_limit BETWEEN safe_cast(limit_per_SO_quantity as INT64) and safe_cast(limit_per_SO_quantity as INT64) * 3 then "OK"
+        ELSE "Sửa lại limit"
+    END as action_set_limit      
+from create_set_limit_quantity
+-- where sub_sku_code = '6YSTYACBVI.UFYV84FW.1'
+
+
+
+

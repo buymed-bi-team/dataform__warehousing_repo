@@ -1,0 +1,142 @@
+config {
+	type: "table",
+    description: 
+        `
+        PIC: nguyen.tran; 
+        Type: Table; 
+		Refresh Schedule: hourly;
+        Source: 
+            ${source.platinum}.delivery_prd_transporting_shipping_order,
+            ${source.platinum}.delivery_prd_transporting_hub_shipping_order,
+            ${source.platinum}.marketplace_prd_ticket_return_ticket
+        `,
+    tags: ["custom_1h_past5"],
+    columns: {
+        created_ts: "Thời gian tạo phiếu return từ khách hàng",
+        completed_ts: 'Thời gian hoàn thành phiếu return từ khách hàng',
+        last_updated_ts: 'Thời gian cập nhật phiếu return gần nhất',
+        ticket_id: "ID đơn recall",
+		reference_code: "Mã tham chiếu",
+		tracking_code: "Mã theo dõi đơn giao phiếu return",
+		sale_order_code: 'Mã đơn return từ khách hàng',
+		order_id: 'Id Order mà khách hàng đặt ban đầu',
+		fc_code: 'FC code',
+		ticket_status: 'Trạng thái phiếu return',
+		status: 'Trạng thái mã vận đơn luân chuyển hàng về',
+		ho_status: 'Trạng thái đơn hub order luân chuyển hàng về',
+		from_customer_code: 'Mã khách hàng gửi hàng',
+		from_customer_name: 'Tên khách hàng gửi hàng ',
+		from_customer_phone: 'SDT khách hàng gửi hàng' ,
+		from_customer_address: 'Địa chỉ cụ thể của khách hàng gửi hàng',
+		from_ward_code: 'Mã phường/xã gửi hàng',
+		from_district_code: 'Mã huyện gửi hàng',
+		from_province_code: "Mã tỉnh gửi hàng",
+		source: '',
+		reason: 'Lý do khách trả hàng',
+		return_method: 'Phương thức trả hàng',
+		fee_collect_method: 'Phương thức trả lại tiền cho khách',
+		is_partial_return: 'Cột xác định đơn trả một phần hay toàn bộ',
+		total_quantity: 'Tổng số lượng hàng',
+		total_amount: 'Số lượng giá trị',
+		approved_quantity: 'Số lượng sản phẩm được chấp nhận',
+		approved_amount: 'Giá trị hàng được chấp nhận',
+		actual_package_quantity: 'Số lượng kiện hàng thức tế',
+		redelivery: '',
+		hub_code: '',
+		tpl_code: 'Mã nhà vận chuyển',
+		tpl_name: 'Tên nhà vận chuyển',
+		tpl_service_id: '',
+		type: 'Loại đơn trả hàng',
+		num_package: 'Số lượng kiện',
+		driver_id: 'ID tài xế vận chuyển',
+		driver_name: 'Tên tài xế vận chuyển',
+		fee_amount: '',
+		action: '',
+		action_name: '',
+		reason_note: '',
+		customer_ward_code: ''
+    }
+}
+
+with cte_date as (
+  SELECT
+		date_sub(timestamp(date_trunc(date_sub( current_date('+7'), interval 2 month), month)) , interval 7 hour) as start_date,
+)
+  
+, cte_completed_ts as 
+(
+	select 
+		reference_code,
+		max(TIMESTAMP_ADD(TIMESTAMP_SECONDS(action_time),INTERVAL 7 HOUR)) as completed_ts
+  from (
+    select * 
+    from ${source.platinum}.delivery_prd_transporting_hub_shipping_order
+    where created_date >= (select DATE(start_date) from cte_date)
+  )
+	where status = 'COMPLETED'
+	group by reference_code 
+)
+
+select 
+	timestamp_add(a.created_time, interval 7 hour) as created_ts,
+ 	timestamp_add(c.completed_ts, interval 7 hour) as completed_ts,
+	timestamp_add(a.last_updated_time, interval 7 hour) as last_updated_ts,
+	m.ticket_id,
+	COALESCE(m.reference_code, CAST(m.ticket_id AS STRING)) AS reference_code,
+	m.tracking_code,
+	m.sale_order_code,
+	m.order_id,
+	m.warehouse_code as fc_code,
+	m.status as ticket_status,
+	d.status,
+	a.status as ho_status,
+	a.from_customer_name ,
+	a.from_customer_phone ,
+	a.from_customer_address,
+	a.from_ward_name ,
+	a.from_district_name ,
+	a.from_province_name ,
+	m.source,
+	-- COALESCE(a.reason_note, m.note) as reason,
+	a.reason,
+	m.return_method,
+	m.fee_collect_method,
+	m.is_partial_return,
+	m.total_quantity,
+	m.total_amount,
+	m.approved_quantity,
+	m.approved_amount,
+	m.actual_package_quantity,
+	m.redelivery,
+	a.hub_code,
+	d.tpl_code as carrier_code,
+	d.tpl_name as carrier_name,
+  	d.tpl_service_id as carrier_id,
+	a.type,
+	a.num_package,
+	a.driver_id,
+	a.driver_name,
+	a.fee_amount,
+	a.from_customer_address as cust_address,
+	a.action,
+	a.action_name,
+	m.reason_note,
+	case when m.customer_ward_code = '0' then m.customer_district_code
+		else m.customer_ward_code end as customer_ward_code
+from (
+  select *
+  from ${source.platinum}.marketplace_prd_ticket_return_ticket as m
+  where created_date >= (select DATE(start_date) from cte_date)
+) m
+left join (
+  select * 
+  from ${source.platinum}.delivery_prd_transporting_hub_shipping_order
+  where created_date >= (select DATE(start_date) from cte_date)
+) as a on a.reference_code = m.reference_code and a.type = 'PICKUP' and a.status <> 'CANCEL'
+left join (
+  select * 
+  from ${source.platinum}.delivery_prd_transporting_shipping_order
+  where created_date >= (select DATE(start_date) from cte_date)
+) as d on d.reference_code = a.reference_code
+left join cte_completed_ts as c on c.reference_code = a.reference_code
+where a.created_time >= (select TIMESTAMP(start_date) from cte_date)

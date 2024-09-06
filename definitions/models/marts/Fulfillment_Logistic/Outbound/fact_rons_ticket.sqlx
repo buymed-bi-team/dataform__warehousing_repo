@@ -1,0 +1,107 @@
+config {
+    type: "table",
+    description: 
+        `
+        PIC: nguyen.tran; 
+        Type: Table;
+        Schedule Refresh: hourly;
+        Source:
+            ${source.platinum}.warehouse_prd_inbound_pre_inbound_return_order,
+            ${source.platinum}.delivery_prd_transporting_shipping_order
+        `,
+    tags:["custom_1h_past5"],
+    columns:{
+        order_created_ts: 'Thời gian tạo đơn trả hàng từ kho',
+		do_created_ts: 'Thời gian tạo phiếu giao vận',
+		carrier_picked_ts: 'Thời gian nhà vận chuyến lấy hàng tại kho',
+		carrier_transported_ts: 'Thời gian ban giao hàng cho nhà vận chuyển',
+        carrier_delivered_ts: 'Thời gian giao hàng thành công',
+		order_id: 'Id đơn hàng',
+		order_code: 'Mã đơn hàng (SO Code)',
+		fc_code: 'FC pick hàng',
+		reference_code: 'Mã tham chiếu (Trong ngữ cảnh này được hiểu là mã giao vận từ bảng warehouse_prd_core_shipping_order)',
+		tracking_code: 'Mã theo dõi giao vận',
+		parent_reference_code: 'Mã tham chiếu gốc (Cần dùng trong một vài ngữ cảnh)',
+		customer_code: 'Mã khách hàng',
+		customer_id: 'ID khách hàng',
+		customer_name: 'Tên khách hàng',
+		customer_phone:'SDT Khách hàng',
+		customer_email: 'Email Khách hàng',
+		type: 'Loại đơn giao vận',
+		create_source: 'Nguồn tạo đơn',
+		order_status: 'Trạng thái đơn đặt của khách hàng',
+		do_status: 'Trạng thái đơn giao vận',
+		ward_code: 'Mã phường của địa chỉ giao cho khách hàng',
+		district_code: 'Mã huyện của đại chỉ giao cho khách hàng',
+		province_code: 'Mã tỉnh của đại chỉ giao cho khách hàng',
+		current_hub: 'Hub hiện tại hàng được lưu kho',
+		carrier_code: 'Code nhà vận chuyển',
+		carrier_name: 'Tên nhà vận chuyển',
+		carrier_id: 'ID nhà vận chuyển',
+		total_cod_amount: 'COD (Nếu có)',
+		total_packages: 'Số kiện hàng gửi',
+		total_weights: 'Khối lượng tổng các kiện hàng',
+		fee_amount: 'Phí của đơn hàng',
+		delivery_amount: '',
+		reason: '',
+        need_verify_receiver: '',
+        shipping_method: 'Phương thức giao vận'
+    }
+}
+
+with cte_date as (
+  SELECT
+		date_sub(timestamp(date_trunc(date_sub( current_date('+7'), interval 3 month), month)) , interval 7 hour) as start_date,
+)
+
+select 
+    timestamp_add(pre.created_time, interval 7 hour) as order_created_ts,
+    TIMESTAMP_ADD(do.created_time, interval 7 hour) as do_created_ts,
+    if (do.picked_time >0,TIMESTAMP_ADD(TIMESTAMP_SECONDS(cast(do.picked_time as integer)), interval 7 hour),null) as carrier_picked_ts,
+    if (do.handover_time >0,TIMESTAMP_ADD(TIMESTAMP_SECONDS(cast(do.handover_time as integer)), interval 7 hour), null) as carrier_transported_ts,
+    if (do.delivered_time > 0,TIMESTAMP_ADD(TIMESTAMP_SECONDS(cast(do.delivered_time as integer)), interval 7 hour), null) as carrier_delivered_ts,
+    "RONS" as order_type,
+    pre.order_id,
+    pre.order_code,
+    pre.warehouse_code as fc_code,
+    pre.status as order_status,
+    do.reference_code,
+    do.tracking_code,
+    do.parent_reference_code,
+    do.type,
+    do.status as do_status,
+    do.customer_code as customer_id,
+    do.customer_code,
+    string(json_query(customer,"$.name")) as customer_name,
+    do.customer_phone,
+    do.customer_email,		
+    do.customer_ward_code as ward_code,
+    do.customer_district_code as district_code,
+	do.customer_province_code as province_code,
+    json_value(json_extract_array(do.driver_activities)[0],"$.driver_id") as driver_id,
+	json_value(json_extract_array(do.driver_activities)[0],"$.driver_name") as driver_name, 
+    do.current_hub as current_hub,
+    do.tpl_service_id as carrier_id,
+    do.tpl_code as carrier_code,
+    do.tpl_name as carrier_name,
+    do.cod_amount as total_cod_amount,
+    do.num_package as total_packages,
+    do.weight as total_weights,
+    do.fee_amount as fee_amount,
+    do.delivery_amount as delivery_amount,
+    do.reason as reason,
+	cast(json_value(do.extra_props,"$.need_verify_receiver") as bool) as need_verify_receiver,
+    pre.shipping_method			
+from (
+  select *
+  from ${source.silver}.warehouse_prd_inbound_pre_inbound_return_order
+  where ingest_time >= (select start_date from cte_date)
+    and (created_time >= (select start_date from cte_date) or created_time is null)  
+  qualify row_number() over(partition by mg_id order by synced_at desc,if(action = 'd',3, if(action = 'u',2,1)) desc, last_updated_time desc) = 1
+    and action != 'd'
+) pre
+left join (
+  select * 
+  from ${source.platinum}.delivery_prd_transporting_shipping_order
+  where created_date >= (select DATE(start_date) from cte_date)
+) as do on pre.shipping_order_code = do.reference_code

@@ -1,0 +1,100 @@
+config {
+    type: "table",
+    description: "PIC:tu.dang Action in product_management. Use for alert policy change field is_near_expired for a sku",
+    tags: ['adhoc-office'],
+	columns: {
+		
+	},
+    bigquery: {
+        partitionBy: "DATE(put_done_at)"
+    }
+}
+
+with cte_date
+    as (SELECT date_sub(timestamp(date_trunc(date_sub(current_date('+7'), interval 6 month), month)), interval 7
+                        hour) as start_date)
+
+-- step 1: get put ticket data
+   , merge_sku_to_put_ticket as (select b.sku                                                as sku_code
+                                      -- , b.product_id
+                                      -- , b.seller_code
+                                      
+     , b.product_id || "_" || b.seller_code                                  sku_key
+                                      , CASE
+                                            when a.warehouse_code = "HN" then "MIENBAC"
+                                            when a.warehouse_code = "BD" then "MIENNAM"
+                                            when a.warehouse_code = "DN" then "MIENTRUNG"
+                                            else null
+        END
+                                                                                             as sales_region_code
+                                      , a.warehouse_code                                     as fc_code
+                                      , b.ticket_id                                          as ticket_id
+                                      , a.code                                               as put_code
+                                      , JSON_EXTRACT_SCALAR(a.extra_props, '$.inbound_code') as inbound_code
+                                      , b.lot                                                as lot
+                                      , b.expired_date
+                                      , CASE
+                                            WHEN REGEXP_CONTAINS(b.expired_date,
+                                                                 r'^(0[1-9]|[12][0-9]|3[01])-(0[1-9]|1[0-2])-\d{4}$')
+                                                THEN PARSE_DATE('%d-%m-%Y', b.expired_date)
+                                            WHEN REGEXP_CONTAINS(b.expired_date,
+                                                                 r'^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$')
+                                                THEN PARSE_DATE('%Y-%m-%d', b.expired_date)
+        END                                                                                  as expired_date_convert
+                                      , TIMESTAMP_ADD(a.last_updated_time, interval 7 hour)  as put_done_at
+                                 from (select *
+                                       from ${source.platinum}.warehouse_prd_inbound_put_ticket
+                                       where ingest_time >= (select TIMESTAMP(start_date) from cte_date)
+                                         and (created_time >= (select TIMESTAMP(start_date) from cte_date) or
+                                              created_time is null)) a
+                                          left join (select *
+                                                     from ${source.platinum}.warehouse_prd_inbound_put_ticket_item
+                                                     where ingest_time >= (select TIMESTAMP(start_date) from cte_date)
+                                                       and (
+                                                         created_time >= (select TIMESTAMP(start_date) from cte_date) or
+                                                         created_time is null)) as b on a.ticket_id = b.ticket_id
+                                 where a.status = "COMPLETED"
+                                   and a.warehouse_code in ("BD", "HN", "DN")
+                                   and JSON_EXTRACT_SCALAR(a.extra_props, '$.inbound_code') is not null
+                                   and b.done_quantity > 0
+                                   and length(b.expired_date) = 10
+                                   and b.expired_date is not null
+                                   and b.sku is not null
+                                   and b.sku <> 'MEDX.AGI-AGi-001')
+
+-- step 2: convert date
+   , convert_format_expired_date AS (SELECT a.*,
+                                            -- PARSE_DATE('%d%m%Y', a.expired_date) AS expired_date_convert,
+                                            -- DATE_DIFF(PARSE_DATE('%d%m%Y', a.expired_date), CURRENT_DATE(), DAY) AS diff_day
+                                            DATE_DIFF(expired_date_convert, CURRENT_DATE(), DAY) as diff_day
+                                     FROM merge_sku_to_put_ticket a)
+
+-- step 4: create logic
+   , create_col_to_class AS (select a.*
+   
+     , a.sku_key || "_" || a.sales_region_code as sku_key_sales_region_code
+                                  , case
+                                        when diff_day is null then null
+                                        when diff_day < 0 then "EXPIRED"
+                                        when diff_day < 30 then "UNDER_1_MONTH"
+                                        when diff_day < 93 then "UNDER_3_MONTHS"
+                                        when diff_day < 365 then "UNDER_12_MONTHS"
+                                        else null
+        end as expired_status
+                             from convert_format_expired_date a)
+-- step 5: add-on cols
+select a.*
+-- , c.avai_qty 
+     , b.product_id
+     , b.product_name
+     , b.sku_system_status
+     , b.sku_system_active
+     , c.available_quantity                                               as available_qty
+from create_col_to_class a
+-- left join get_avai_quantity c on a.sku_code = c.sku_code and a.fc_code = c.fc_code
+         left join ${ref('dim_inventory_sku')} c on c.sku_key = a.sku_key and a.fc_code = c.fc_code
+         left join ${ref('dim_sku_sales_region_current')} b
+                   on b.sku_key_sales_region_code = a.sku_key_sales_region_code
+-- where a.sku_code = 'MEDX.111GEQ1P'
+
+

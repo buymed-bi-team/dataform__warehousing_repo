@@ -1,0 +1,27 @@
+config {
+  type: "table",
+  name: "fact_changed_sku_internal_status",
+  description: "pic: tu.dang; ",
+  tags: "custom_1h_past5"
+}
+
+WITH
+    target_date AS (
+        SELECT
+            TIMESTAMP(DATETIME_SUB(DATETIME_SUB(CURRENT_DATE("+7"), INTERVAL 10 DAY), INTERVAL 7 HOUR)) AS start_date
+    )
+
+SELECT
+    b.product_id
+    , a.sku AS sku_code
+    , b.sku_key_sales_region_code
+    , a.status
+    , a.item_code
+    , b.sales_region_code
+    , b.sku_sales_region_code
+    , TIMESTAMP_ADD(created_time, INTERVAL 7 HOUR) AS created_time
+    , ROW_NUMBER() over (ORDER BY a.item_code, a.created_time DESC) AS id
+FROM ${ref('staging_sku_status_history')} AS a
+    LEFT JOIN ${ref('dim_sku_sales_region_current')} AS b ON a.item_code = b.sub_sku_code
+WHERE a.created_time >= (SELECT start_date FROM target_date)
+ORDER BY a.created_time DESC

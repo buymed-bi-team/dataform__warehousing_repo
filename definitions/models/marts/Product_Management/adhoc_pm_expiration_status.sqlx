@@ -1,0 +1,143 @@
+config {
+    type: "table",
+    description: "PIC: tu.dang; Action in product_management. Use for alert policy change field is_near_expired for a sku",
+    /*tags: ['adhoc-office'],*/
+	columns: {
+		
+	}
+}
+
+-- Step 1: get data from put ticket
+with cte_date as (
+    SELECT
+		  date_sub(timestamp(date_trunc(date_sub( current_date('+7'), interval 24 month), month)) , interval 7 hour) as start_date
+)
+
+, get_info_from_latest_put_ticket as (
+    SELECT
+        *,
+        DATE_DIFF(expired_date_convert, CURRENT_DATE(), DAY) as diff_day
+    FROM (
+        Select 
+            b.sku as sku_code
+            , case 
+                when a.warehouse_code = 'HN' then "MIENBAC"
+                when a.warehouse_code = 'BD' then "MIENNAM"
+                when a.warehouse_code = 'DN' then "MIENTRUNG"
+                else null
+            end as sales_region_code
+            , a.warehouse_code as fc_code 
+            , a.ticket_id as ticket_id 
+            , a.code as put_code
+            , JSON_EXTRACT_SCALAR(a.extra_props, '$.inbound_code') as inbound_code 
+            , b.lot as lot 
+            , b.expired_date
+            , CASE
+                WHEN REGEXP_CONTAINS(b.expired_date, r'^(0[1-9]|[12][0-9]|3[01])-(0[1-9]|1[0-2])-\d{4}$') THEN PARSE_DATE('%d-%m-%Y', b.expired_date)
+                -- WHEN expired_date like '00-__-____' OR expired_date like '-__-____'  THEN null
+                WHEN REGEXP_CONTAINS(b.expired_date, r'^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$') THEN PARSE_DATE('%Y-%m-%d', b.expired_date)
+              END as expired_date_convert
+            -- , PARSE_DATE('%d-%m-%Y', b.expired_date) AS expired_date_convert
+            -- , DATE_DIFF(PARSE_DATE('%d-%m-%Y', b.expired_date), CURRENT_DATE(), DAY) AS diff_day
+            , TIMESTAMP_ADD(a.last_updated_time, interval 7 hour) as put_done_at
+        -- from buymed_vn.wh_put_ticket_prd as a
+        from (
+            select *
+            from ${source.platinum}.warehouse_prd_inbound_put_ticket 
+            where ingest_time >= (select TIMESTAMP(start_date) from cte_date)
+                and (created_time >= (select TIMESTAMP(start_date) from cte_date) or created_time is null )
+        ) a
+        -- left join buymed_vn.wh_put_ticket_item_prd as b on a.ticket_id = b.ticket_id
+        left join (
+            select *
+            from ${source.platinum}.warehouse_prd_inbound_put_ticket_item
+            where ingest_time >= (select TIMESTAMP(start_date) from cte_date)
+                and (created_time >= (select TIMESTAMP(start_date) from cte_date) or created_time is null )
+        ) as b on a.ticket_id = b.ticket_id
+        where a.status = "COMPLETED"
+            and a.warehouse_code in ("BD", "HN",'DN')
+            and JSON_EXTRACT_SCALAR(a.extra_props, '$.inbound_code') is not null
+            and b.done_quantity > 0
+            and length(b.expired_date) = 10
+            and b.expired_date is not null
+            and b.sku is not null
+            and b.sku <> 'MEDX.AGI-AGi-001'
+        QUALIFY row_number() over (partition by sku_code, fc_code order by a.created_time desc) = 1
+    ) a
+)
+
+-- Step 2: Merge to sku_fc 
+, merge_to_sku_sales_region_current as (
+    select 
+        c.sku
+        , c.product_id 
+        , c.product_name
+        , c.fc_code
+        , c.sku_key_sales_region
+        , c.seller_code
+        , a.sku_system_status
+        , b.* EXCEPT (sku_code, fc_code)
+        , a.is_near_expired
+        , c.available_quantity as available_qty
+        , PARSE_DATE('%F', ld.expired_date) as expired_date_internal
+    from ${ref('dim_inventory_sku')}  c
+    left join ${ref('dim_sku_sales_region_current')} a on a.sku_key_sales_region_code = c.sku_key_sales_region
+    left join get_info_from_latest_put_ticket b on c.sku = b.sku_code and c.fc_code = b.fc_code
+    left join 
+    (
+        select mg_id,
+            JSON_EXTRACT_SCALAR(lot_dates, '$[0].expired_date') as expired_date
+        from ${source.platinum}.marketplace_prd_product_v2_sku
+        where length(JSON_EXTRACT_SCALAR(lot_dates, '$[0].expired_date')) = 10
+        -- QUALIFY row_number() over (partition by mg_id order by pg_sync_time desc) = 1
+    ) as ld on a.mg_id = ld.mg_id 
+    -- left join 
+    -- (
+    --     select mg_id,
+    --         expired_date
+    --     from buymed_vn.sku_v2_status_data_lot_date_prd
+    --     where length(expired_date) = 10
+    --     QUALIFY row_number() over (partition by mg_id order by pg_sync_time desc) = 1
+    -- ) as ld on a.mg_id = ld.mg_id 
+    
+)
+
+-- Step 3: create action column 
+, alert_action as (
+    select timestamp_add(current_timestamp(), interval 7 hour) as transformed_at
+        , a.* 
+        , case 
+            when IFNULL(diff_day, null) is null then null
+            when diff_day < 0 then "EXPIRED"
+            when diff_day < 20 then "NEED_CHECK"
+            when diff_day < 93 then "UNDER_3_MONTHS"
+            when diff_day < 186 then "UNDER_6_MONTHS"
+            when diff_day < 366 then "UNDER_1_YEAR"
+            else "OK"
+         end as expired_status
+        , if ( expired_date_convert != expired_date_internal,
+                "NEED_CHECK",
+                "OKE"
+        ) as compare_expired_date
+        , case 
+            when IFNULL(diff_day, null) is null then null
+            when diff_day > 365 then 
+                case 
+                    when IFNULL(is_near_expired, null) is null then null
+                    when is_near_expired = True then "CẦN GỠ TICK"
+                    when is_near_expired = False then "OK"
+                end 
+            when diff_day <= 365 then 
+                case 
+                    when IFNULL(is_near_expired, null) is null then "CẦN GẮN TICK"
+                    when is_near_expired = True then "OK"
+                    when is_near_expired = False then "CẦN GẮN TICK"
+                end
+         end as action_is_near_expired
+    from merge_to_sku_sales_region_current a
+)
+
+select * from alert_action 
+-- where sku_code = 'MEDX.F69HR2AX'
+
+

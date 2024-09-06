@@ -1,0 +1,88 @@
+config {
+  type: "table",
+  name: "fact_sku_status",
+  tags: "3HOUR"
+}
+
+with cte_ds as (
+	select
+		row_number() over (order by item_code, created_time desc) as id,
+		sku as sku_code,
+		status,
+		item_code,
+		TIMESTAMP_ADD(created_time, interval 7 HOUR) AS created_time
+	from  ${ref('staging_sku_status_history')}
+),
+
+cte_min as (
+	select
+		item_code,
+		min(id) as min_id
+	from cte_ds
+	group by 1
+),
+
+cte_changed as (
+	select
+		a.id,
+		a.sku_code,
+		a.item_code,
+		b.status as status_t0,
+		a.status as status_t1,
+		b.created_time as t0,
+		a.created_time as t1
+	from cte_ds as a
+	inner join cte_ds as b on
+		a.item_code = b.item_code and
+		a.id+1 = b.id
+),
+
+cte_never_change as (
+	select
+		1000000 as id,
+		a.code as sku_code,
+		a.item_code,
+		a.status as status_t0,
+		a.status as status_t1,
+		timestamp_add(a.created_time, interval 7 hour) as t0,
+		timestamp_add(cast(current_timestamp as timestamp), interval 7 hour) as t1
+	from ${source.silver}.marketplace_prd_product_v2_sku_merge as a
+	left join ${ref('staging_sku_status_history')} as b on a.item_code = b.item_code
+	where
+		b.item_code is null
+),
+
+union_all_parts as (
+	select
+		b.id * (-1) as id,
+		b.sku_code,
+		b.item_code,
+		b.status as status_t0,
+		b.status as status_t1,
+		timestamp_add(b.created_time, interval 7 hour) as t0,
+		timestamp_add(cast(current_timestamp as timestamp), interval 7 hour) as t1
+	from cte_min as a
+	left join cte_ds as b on a.min_id = b.id
+
+	union all
+	select *
+	from cte_changed
+
+	union all
+	select *
+	from cte_never_change
+)
+
+
+select
+    a.*
+	, if(
+		a.status_t0 = a.status_t1,
+		"NOT_CHANGE",
+		"CHANGE"
+	) as change_status
+	, concat(a.sku_code,"_",b.sales_region_code) as sku_sales_region_code
+    , b.sku_key_sales_region_code
+from union_all_parts a
+left join ${ref('dim_sku_sales_region_current')} b on a.item_code = b.sub_sku_code
+
