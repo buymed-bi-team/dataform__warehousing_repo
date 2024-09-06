@@ -1,6 +1,6 @@
 config {
     type: "table",
-    description: "Action in product_management. Use for alert policy change field is_near_expired for a sku",
+    description: "PIC:tu.dang Action in product_management. Use for alert policy change field is_near_expired for a sku",
     tags: ['adhoc-office'],
 	columns: {
 		
@@ -16,11 +16,14 @@ with cte_date
 
 -- step 1: get put ticket data
    , merge_sku_to_put_ticket as (select b.sku                                                as sku_code
-                                    --   , b.product_id
-                                    --   , b.seller_code
+                                      -- , b.product_id
+                                      -- , b.seller_code
+                                      
+     , b.product_id || "_" || b.seller_code                                  sku_key
                                       , CASE
                                             when a.warehouse_code = "HN" then "MIENBAC"
                                             when a.warehouse_code = "BD" then "MIENNAM"
+                                            when a.warehouse_code = "DN" then "MIENTRUNG"
                                             else null
         END
                                                                                              as sales_region_code
@@ -68,6 +71,8 @@ with cte_date
 
 -- step 4: create logic
    , create_col_to_class AS (select a.*
+   
+     , a.sku_key || "_" || a.sales_region_code as sku_key_sales_region_code
                                   , case
                                         when diff_day is null then null
                                         when diff_day < 0 then "EXPIRED"
@@ -79,8 +84,6 @@ with cte_date
                              from convert_format_expired_date a)
 -- step 5: add-on cols
 select a.*
-     , a.product_id || "_" || a.seller_code                                  sku_key
-     , a.product_id || "_" || a.seller_code || "_" || a.sales_region_code as sku_key_sales_region_code
 -- , c.avai_qty 
      , b.product_id
      , b.product_name
@@ -89,9 +92,9 @@ select a.*
      , c.available_quantity                                               as available_qty
 from create_col_to_class a
 -- left join get_avai_quantity c on a.sku_code = c.sku_code and a.fc_code = c.fc_code
-         left join ${source.ref}.dim_inventory_sku c on c.sku = a.sku_code and a.fc_code = c.fc_code
+         left join ${source.ref}.dim_inventory_sku c on c.sku_key = a.sku_key and a.fc_code = c.fc_code
          left join ${source.ref}.dim_sku_sales_region_current b
-                   on b.sku_code = a.sku_code and a.sales_region_code = b.sales_region_code
+                   on b.sku_key_sales_region_code = a.sku_key_sales_region_code
 -- where a.sku_code = 'MEDX.111GEQ1P'
 
 
