@@ -128,6 +128,7 @@ SELECT
     sv.vendor_type AS sku_trading_by_fv,
     COALESCE(sv.purchase_status, "Off") AS purchase_status ,
     sv.min_per_step,
+    CONCAT(sv.vendor_code,"_",cte.fc_code) AS vendor_fc_code,
     s.status AS sku_system_status,
     s.is_active AS sku_system_active,
     s.level AS sku_level,
