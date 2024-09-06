@@ -92,8 +92,8 @@ select a.*
      , c.available_quantity                                               as available_qty
 from create_col_to_class a
 -- left join get_avai_quantity c on a.sku_code = c.sku_code and a.fc_code = c.fc_code
-         left join ${source.ref}.dim_inventory_sku c on c.sku_key = a.sku_key and a.fc_code = c.fc_code
-         left join ${source.ref}.dim_sku_sales_region_current b
+         left join ${ref('dim_inventory_sku')} c on c.sku_key = a.sku_key and a.fc_code = c.fc_code
+         left join ${ref('dim_sku_sales_region_current')} b
                    on b.sku_key_sales_region_code = a.sku_key_sales_region_code
 -- where a.sku_code = 'MEDX.111GEQ1P'
 

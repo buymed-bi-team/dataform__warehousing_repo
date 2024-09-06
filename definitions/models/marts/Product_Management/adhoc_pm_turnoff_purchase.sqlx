@@ -36,10 +36,10 @@ get_columns as (
         sku.sku_system_active,
         sku.sku_key_sales_region_code,
         COALESCE(stock.available_quantity,0) as stock_quantity -- mislanding naming, need to change it
-    from ${source.ref}.dim_sku_sales_region_current sku
-    left join ${source.ref}.dim_sku_reason_turn_off rto on sku.sku_key = rto.sku_key and sku.sales_region_code = rto.sales_region_code 
+    from ${ref('dim_sku_sales_region_current')} sku
+    left join ${ref('dim_sku_reason_turn_off')} rto on sku.sku_key = rto.sku_key and sku.sales_region_code = rto.sales_region_code 
     left join trans_fc_to_sales_region stock on sku.sku_key = stock.sku_key and stock.sales_region_code = sku.sales_region_code 
-    left join ${source.ref}.dim_supplier sel on upper(sku.seller_code) = upper(sel.supplier_code)
+    left join ${ref('dim_supplier')} sel on upper(sku.seller_code) = upper(sel.supplier_code)
 )
 
 -- -- step 2: create action.

@@ -100,10 +100,10 @@ with get_sku_from_it_list as (
             ,false
         ) as condition_it_sku_active
     from get_sku_from_it_list sku 
-    left join ${source.ref}.adhoc_pm_master_sku mienbacsku on sku.sku_code = mienbacsku.sku_code and mienbacsku.sales_region_code = "MIENBAC"
-    left join ${source.ref}.adhoc_pm_master_sku miennamsku on sku.sku_code = miennamsku.sku_code and miennamsku.sales_region_code = "MIENNAM"
+    left join ${ref('adhoc_pm_master_sku')} mienbacsku on sku.sku_code = mienbacsku.sku_code and mienbacsku.sales_region_code = "MIENBAC"
+    left join ${ref('adhoc_pm_master_sku')} miennamsku on sku.sku_code = miennamsku.sku_code and miennamsku.sales_region_code = "MIENNAM"
     left join threed_demand_agg mienbacdemand on sku.sku_code = mienbacdemand.sku_code
-    left join ${source.ref}.adhoc_pm_expiration_status miennamexp on sku.sku_code = miennamexp.sku and miennamexp.sales_region_code = "MIENNAM" 
+    left join ${ref('adhoc_pm_expiration_status')} miennamexp on sku.sku_code = miennamexp.sku and miennamexp.sales_region_code = "MIENNAM" 
 
 )
 

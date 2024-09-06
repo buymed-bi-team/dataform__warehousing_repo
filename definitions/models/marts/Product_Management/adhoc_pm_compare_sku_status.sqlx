@@ -31,9 +31,9 @@ get_region_code as (
 	select sku_created_at,sub_sku_code, sales_region_code, product_id, sku_code, sku_system_status,sku_key_sales_region_code
 	from (
 		select * ,
-        -- except (row_num),
+        -- except (row_num), ${ref('
 			  row_number() over (partition by sub_sku_code order by sales_region_code desc) as row_num_1
-		from ${source.ref}.dim_sku_sales_region_current
+		from ${ref('dim_sku_sales_region_current')}
 	)
 	where row_num_1 = 1
 )
