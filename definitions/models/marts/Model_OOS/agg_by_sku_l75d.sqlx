@@ -1,0 +1,22 @@
+config {
+    type: "view",
+    description: "Sales Last 75 days by SKU Sales Region PIC: Tu Dang",
+
+}
+with order_amt as 
+(
+      select order_id, sales_amount
+      from ${ref('fact_order')}
+      where date(created_at)>date_add(current_date(), INTERVAL -76 day) and order_status <> 'CANCEL%'
+)
+select   
+      sku_code || '_' || r.region_code as sku_sales_region_code
+      , sum(nc.demand_quantity * nc.sales_price ) as total_amount
+      , sum (oa.sales_amount) as order_amount
+from ${ref('fact_order_item')} as nc
+right join  ${ref('fact_order')} as oi on nc.order_id = oi.order_id and date(oi.created_at)>date_add(current_date(), INTERVAL -76 day) and oi.order_status <> 'CANCEL%'
+left join order_amt oa on nc.order_id = oa.order_id
+left join `gold_buymed_vn.dim_sales_region_province_code` r 
+      on  oi.province_code = r.province_code
+where  date(oi.created_at)>date_add(current_date(), INTERVAL -76 day)
+group by all
