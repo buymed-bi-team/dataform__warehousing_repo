@@ -62,6 +62,7 @@ LEFT JOIN ${ref(`dim_supplier_fc_person_in_charge`)} pic
     ON dim_fc.fc_code = pic.fc_code
     AND dim_supplier.supplier_code = pic.supplier_code
 LEFT JOIN UNNEST(JSON_EXTRACT_ARRAY(dim_supplier.inbound_addresses)) as lt on  dim_fc.fc_code = JSON_EXTRACT_SCALAR(lt.warehouse_code)
+QUALIFY ROW_NUMBER() OVER(PARTITION BY supplier_fc_code) = 1
 
 
 post_operations {                
