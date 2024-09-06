@@ -1,0 +1,18 @@
+config {
+    type: "view",
+    description: "Agg SKU InCombo Dimension. PIC: Tu Dang",
+
+}
+
+with cte_sku_incombo as 
+(
+  select 
+      sc.sku_code
+      , count(distinct (sc.sku_combo_code)) as no_combo_current
+  from ${ref('dim_sku_combo')} sc
+  where status in ('NORMAL', 'LIMIT') AND is_active = true
+  group by 1
+)
+select oc.*, sc.no_combo_current
+from ${ref('dim_oos_current')} as oc
+left join cte_sku_incombo as sc on sc.sku_code = oc.sku_code
