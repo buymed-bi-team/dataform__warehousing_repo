@@ -1,6 +1,6 @@
 config {
     type: "table",
-    description: "Action for product_management. Use to change status and active for a sku",
+    description: "pic: tu.dang; Action for product_management. Use to change status and active for a sku",
     tags: ["adhoc-office", "PRODUCT_MANAGEMENT"],
 	columns: {
 		
@@ -36,7 +36,7 @@ get_columns as (
         rto.reason_turnoff,
         sku.sku_system_status,
         sku.sku_system_active,
-        sku.sku_key_sales_region_code,
+        -- sku.sku_key_sales_region_code,
         COALESCE(stock.available_quantity,0) as stock_quantity -- mislanding naming, need to change it
     from ${ref('dim_sku_sales_region_current')} sku
     left join ${ref('dim_sku_reason_turn_off')} rto on sku.sku_key = rto.sku_key and sku.sales_region_code = rto.sales_region_code 
