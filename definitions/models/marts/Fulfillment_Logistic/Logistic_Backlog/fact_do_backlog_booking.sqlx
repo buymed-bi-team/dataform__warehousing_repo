@@ -1,0 +1,60 @@
+config {
+    type: "table",
+    description: 
+        `
+        Fact DO Backlog Booking;
+        PIC: nguyen.tran; 
+        Type: Table;
+        Schedule Refresh: hourly
+        `,
+    tags:["LOGISTIC_BACKLOG", "custom_1h_past5"],
+    columns: {
+
+    }
+}
+
+with cte_date as (
+  SELECT
+		date_sub(timestamp(date_trunc(date_sub( current_date('+7'), interval 3 month), month)) , interval 7 hour) as start_date,
+)
+
+select
+	o.order_code,
+	o.delivery_order_code as reference_code,
+	o.ticket_id,
+	o.order_created_at,
+	o.fc_code,
+	case
+		when o.order_code like 'SO%' then 'SO'
+		when o.order_code like 'RO%' then 'RO'
+		when o.order_code like 'TO%' then 'TO'
+		when o.order_code like 'CO%' then 'CO'
+	else 'BIN'
+	end type_order,
+	o.order_status,
+	o.do_status as logistic_status,
+	o.pack_done_at,
+	o.customer_name,
+	o.customer_phone,
+	o.customer_email,
+	o.tags,
+	m.reason_internal,
+	o.shipping_ward_code,
+	o.shipping_district_code,
+	o.shipping_province_code,
+from (
+	select *
+	from ${ref('fact_outbound_ticket')} 
+	where order_created_at >= (select start_date from cte_date)
+) o
+left join (
+  select *
+  from ${source.platinum}.marketplace_prd_ticket_ticket
+  where created_date >= (select DATE(start_date) from cte_date)  
+) as m on m.order_id = o.order_id and m.reason_internal = 'Hủy đơn tách' and m.status <> 'CANCELLED'
+where o.pack_done_at is not null
+	and (o.reference_code is null or do_status = 'CANCEL')
+	and o.customer_id <> 248960 --tech test
+	and o.order_status in ('WAIT_TO_DELIVERY', 'DELIVERING')
+	and o.fc_code <> 'HCM'
+	and o.delivery_order_code is not null

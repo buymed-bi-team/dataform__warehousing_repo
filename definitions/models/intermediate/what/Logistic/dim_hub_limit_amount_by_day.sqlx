@@ -1,0 +1,32 @@
+config {
+    type: "table",
+    description: 
+        `
+        PIC: nguyen.tran; 
+        Type: Table;
+        Schedule Refresh: daily at 0h00;
+        Source:
+            ${source.platinum}.delivery_prd_transporting_hub
+        `,
+    tags:["0h00"],
+    columns: {
+
+    }
+}
+
+select *
+from (
+  select 
+    code as hub_code,
+    JSON_EXTRACT_SCALAR(limit_amount_by_weekday, '$.Monday') AS Monday,
+    JSON_EXTRACT_SCALAR(limit_amount_by_weekday, '$.Tuesday') AS Tuesday,
+    JSON_EXTRACT_SCALAR(limit_amount_by_weekday, '$.Wednesday') AS Wednesday,
+    JSON_EXTRACT_SCALAR(limit_amount_by_weekday, '$.Thursday') AS Thursday,
+    JSON_EXTRACT_SCALAR(limit_amount_by_weekday, '$.Friday') AS Friday,
+    JSON_EXTRACT_SCALAR(limit_amount_by_weekday, '$.Saturday') AS Saturday, 
+    JSON_EXTRACT_SCALAR(limit_amount_by_weekday, '$.Sunday') AS Sunday
+  from ${source.platinum}.delivery_prd_transporting_hub
+  where limit_amount_by_weekday is not null
+    and limit_status = 'ACTIVE'
+)sales
+UNPIVOT( amount FOR weekday IN (Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday))

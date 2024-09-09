@@ -27,12 +27,7 @@ SELECT
     JSON_EXTRACT_SCALAR(province, "$.name") as province_name,
     JSON_EXTRACT_SCALAR(province, "$.code") as province_code,
     CAST(JSON_EXTRACT_SCALAR(province, "$.configured_lead_time") as INT)/60/60 as committed_hours
-FROM
-  (
-    SELECT *
-    FROM ${source.silver}.delivery_prd_transporting_config_lead_time
-    qualify row_number() over (partition by mg_id order by synced_at desc, last_updated_time desc ) = 1
-  )
+FROM ${source.platinum}.delivery_prd_transporting_config_lead_time
 WHERE 
   JSON_EXTRACT_SCALAR(extra_props, "$.is_deleted") = "false"
   and compute_method = 'CONFIG'

@@ -1,0 +1,58 @@
+config {
+    type: "table",
+    description: 
+        `
+        Fact DO RONS Backlog Picking Delivering;
+        PIC: nguyen.tran; 
+        Type: Table;
+        Schedule Refresh: hourly
+        `,
+    tags:["LOGISTIC_BACKLOG", "custom_1h_past5"],
+    columns: {
+
+    }
+}
+
+with cte_date as (
+  select timestamp_sub(CURRENT_TIMESTAMP(), interval 100 day) as date_back
+)
+
+select 
+	ro.order_code,
+	ro.reference_code,
+	ro.tracking_code,
+	ro.order_created_ts,
+    timestamp(null) as done_pack_ts,
+    ro.carrier_picked_ts,
+	ro.fc_code,
+	"RONS" as type_order,
+	ro.carrier_code,
+	ro.carrier_name,
+	ro.do_status as logistic_status,
+	ro.order_status,
+	ro.do_created_ts,
+	ro.reason as reason,
+	ro.current_hub,
+	ro.total_packages as num_package, 
+	ro.customer_code,
+	ro.ward_code as customer_ward_code,
+	ro.district_code as customer_district_code, 
+	ro.province_code as customer_province_code,
+	ro.driver_id,
+	ro.driver_name, 
+	ro.customer_name,
+	ro.customer_phone,
+	ro.customer_email, 
+	CAST(null AS JSON) as tags,
+	ro.need_verify_receiver,
+	string(null) as create_source,
+   coalesce(ro.shipping_method,pre_sel.delivery_method) as return_shipping_method
+from ${ref('fact_rons_ticket')} ro
+left join (
+	select *
+	from ${source.platinum}.seller_prd_wis_withdraw_ticket
+	where
+		created_date >= (select DATE(date_back) from cte_date)
+) as pre_sel on pre_sel.return_order_code = ro.parent_reference_code
+where ro.do_status NOT IN ('CANCEL', 'DELIVERED', 'COMPLETED', 'MERGED', 'RETURNED', 'RETURN', 'RETURNING')
+  	and ro.type IN ('DELIVERY', 'INTERNAL_TRANS')

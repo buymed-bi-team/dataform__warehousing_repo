@@ -1,0 +1,72 @@
+config {
+    type: "table",
+    description: 
+        `
+        Fact DO Backlog;
+        PIC: nguyen.tran; 
+        Type: Table;
+        Schedule Refresh: hourly
+        `,
+    tags:["LOGISTIC_BACKLOG", "custom_1h_past5"],
+    columns: {
+
+    }
+}
+
+with cte_date as (
+  SELECT
+		date_sub(timestamp(date_trunc(date_sub( current_date('+7'), interval 3 month), month)) , interval 7 hour) as start_date,
+)
+
+select 
+    a.customer_code as fc_code,
+    a.customer_name as fc_name,
+    a.bin_code,
+    a.reference_code, 
+    a.tracking_code,
+    a.do_parent_reference_code as parent_reference_code,
+    coalesce(a.do_parent_reference_code, a.reference_code) as tracking_code_of_so,
+    ob.reference_code as reference_code_of_so,
+    a.do_status as backlog_status, -- do status 
+    a.hub_code,
+    a.do_created_at,
+    a.do_last_updated_at,
+    a.tpl_code as carrier_code,
+    a.tpl_name as carrier_name,
+    a.status, -- status của đơn thu hồi BIN
+    a.action,
+    a.action_name,
+    a.num_package,
+    a.driver_id as employee_id,
+    a.driver_name as employee_name,
+    e.customer_id as cust_id,
+    a.from_customer_name as cust_name,
+    e.customer_id || '_' || a.from_customer_name AS customer,
+    a.from_customer_phone as cust_phone,
+    a.from_customer_address as cust_address,
+    a.from_ward_name as cust_ward,
+    a.from_district_name as cust_district,
+    a.from_province_name as cust_province,
+    a.reason,
+from (
+  select 
+      a.*,
+      json_value(prd,"$.sku") as bin_code,
+  from (
+    select *
+    from ${ref("fact_hub_order")} a
+    where
+      a.type = 'PICKUP'
+      and a.do_status not in ('COMPLETED', 'CANCEL') 
+      and a.hub_code not in ('HUBVSIPII', 'HUBHOACAM_DANANG', 'HUBVSIPBACNINH')
+  ) a
+  left join unnest(json_extract_array(products)) prd 
+  qualify row_number() over (partition by reference_code,bin_code) = 1 
+    and json_value(prd,"$.category") = "BIN"
+) a
+left join (
+  select *
+  from ${source.platinum}.delivery_prd_transporting_customer
+  where created_date >= (select DATE(start_date) from cte_date)
+) as e on e.code = a.customer_code
+left join ${ref("fact_outbound_ticket")} as ob on coalesce(a.do_parent_reference_code, a.do_reference_code) = ob.tracking_code
