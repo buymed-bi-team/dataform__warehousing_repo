@@ -1,0 +1,50 @@
+config {
+    type: "table",
+    description: 
+        `
+        Fact Reconcile SO Backlog;
+        PIC: nguyen.tran; 
+        Type: Table;
+        Schedule Refresh: hourly
+        `,
+    tags:["LOGISTIC_BACKLOG", "custom_1h_past5"],
+    columns: {
+
+    }
+}
+
+with cte_date as (
+  SELECT
+		date_sub(timestamp(date_trunc(date_sub( current_date('+7'), interval 2 month), month)) , interval 7 hour) as start_date,
+)
+
+select 
+    o.reconcile_code,
+    SPLIT(o.reconcile_code, '/')[OFFSET(1)] as hub_code,
+    SPLIT(o.reconcile_code, '/')[OFFSET(2)] as short_code,
+    s.carrier_code,
+    s.user_id as employee_id,
+    acc.fullname as employee_name,
+    s.status as session_status,
+    timestamp_add(o.created_time, interval 7 hour) as created_ts,
+    timestamp_add(o.last_updated_time, interval 7 hour) as last_updated_ts,
+    timestamp_add(o.delivered_time, interval 7 hour) as delivered_ts,
+    o.status as session_order_status,
+    o.reference_code as so_code,
+    o.tracking_code,
+    o.payment_method,
+    o.cod_amount,
+    o.received_cod_amount
+from (
+	select *
+	from ${source.platinum}.accounting_prd_core_reconcile_session_order
+    where created_date >= (select DATE(start_date) from cte_date)
+) o
+left join (
+	select *
+	from ${source.platinum}.accounting_prd_core_reconcile_session
+    where created_date >= (select DATE(start_date) from cte_date)
+) as s on o.reconcile_code = s.code
+left join ${ref('dim_employee')} as acc on s.user_id = acc.branch_account_id
+where
+s.status not in ('DONE', 'CANCEL')

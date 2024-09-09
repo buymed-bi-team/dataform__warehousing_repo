@@ -1,0 +1,55 @@
+config {
+    type: "table",
+    description: 
+        `
+        Fact Recall Order Backlog;
+        PIC: nguyen.tran; 
+        Type: Table;
+        Schedule Refresh: hourly
+        `,
+    tags:["LOGISTIC_BACKLOG", "custom_1h_past5"],
+    columns: {
+
+    }
+}
+
+with cte_date as (
+  SELECT
+		date_sub(timestamp(date_trunc(date_sub( current_date('+7'), interval 2 month), month)) , interval 7 hour) as start_date,
+)
+
+select 
+	ticket_id,
+	reference_code,
+	sale_order_code,
+	order_id,
+	tracking_code,
+	hub_code,
+	created_ts,
+	last_updated_ts,
+	carrier_code,
+	carrier_name,
+	ho_status as status,
+	action,
+	action_name,
+	num_package,
+	driver_id as employee_id,
+	driver_name as employee_name,
+	from_customer_name as cust_name,
+	from_customer_phone as cust_phone,
+	from_customer_address as cust_address,
+	from_ward_name as cust_ward,
+	from_district_name as cust_district,
+	from_province_name as cust_province,
+	reason,
+	ticket_status as recall_ticket_status,
+	reason_note,
+	return_method,
+	fee_collect_method,
+	is_partial_return,
+	fc_code
+from ${ref('fact_recall_order')}
+where
+	type = 'PICKUP'
+	and ho_status NOT IN ('CANCEL', 'COMPLETED')
+	and ticket_status NOT IN ('CANCELLED', 'COMPLETED', 'RETURNED')
