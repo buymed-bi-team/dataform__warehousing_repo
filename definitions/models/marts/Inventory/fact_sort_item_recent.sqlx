@@ -74,7 +74,7 @@ agg_sale_order_item AS (
     ON JSON_VALUE(a1.sku) = c.sku_code
   LEFT JOIN ${ref("dim_order")} d 
     ON b.admin_id = d.order_id
-  WHERE d.order_type = "SO" 
+  WHERE d.order_type = "SO" AND b.status <> "CANCEL"
     AND a.created_time >= TIMESTAMP(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH))
 ),
 
