@@ -103,7 +103,17 @@ select
 	f.first_checkin_destination_fc,
 	-- c.destination_location AS destination_fc_code,
 	c.is_it_po_pgh,
-    TIMESTAMP_ADD(TIMESTAMP(JSON_VALUE(i.extra_props, '$.add_urgent_tag_time')), INTERVAL 7 HOUR) AS add_urgent_tag_time
+    TIMESTAMP_ADD(TIMESTAMP(JSON_VALUE(i.extra_props, '$.add_urgent_tag_time')), INTERVAL 7 HOUR) AS add_urgent_tag_time,
+	CASE
+        WHEN f.first_checkin_destination_fc IS NOT NULL AND TIMESTAMP(JSON_VALUE(i.extra_props, '$.add_urgent_tag_time')) IS NOT NULL THEN 
+            IF(
+				TIMESTAMP_ADD(TIMESTAMP(JSON_VALUE(i.extra_props, '$.add_urgent_tag_time')), INTERVAL 7 HOUR) 
+					<= f.first_checkin_destination_fc
+				, "URGENT_AT_CHECK-IN"
+				, "URGENT_AFTER_INBOUND"
+			) 
+	END AS po_urgent
+
 from (
     select *
     from ${source.platinum}.warehouse_prd_inbound_inbound_ticket
