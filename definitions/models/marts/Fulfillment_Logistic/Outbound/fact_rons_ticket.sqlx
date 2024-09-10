@@ -94,11 +94,8 @@ select
     pre.shipping_method			
 from (
   select *
-  from ${source.silver}.warehouse_prd_inbound_pre_inbound_return_order
-  where ingest_time >= (select start_date from cte_date)
-    and (created_time >= (select start_date from cte_date) or created_time is null)  
-  qualify row_number() over(partition by mg_id order by synced_at desc,if(action = 'd',3, if(action = 'u',2,1)) desc, last_updated_time desc) = 1
-    and action != 'd'
+  from ${source.platinum}.warehouse_prd_inbound_pre_inbound_return_order
+  where created_date >= (select DATE(start_date) from cte_date)
 ) pre
 left join (
   select * 

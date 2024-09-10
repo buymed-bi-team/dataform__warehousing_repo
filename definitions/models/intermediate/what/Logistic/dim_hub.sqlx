@@ -7,7 +7,7 @@ config {
         Type: Table;
         Schedule Refresh: daily at 0h;
         Source:
-            ${source.silver}.delivery_prd_transporting_hub
+            ${source.platinum}.delivery_prd_transporting_hub
         `,
     tags:["0h00"],
     columns: {
@@ -27,4 +27,6 @@ select
     , h.active as hub_system_active
     , h.address
     , json_value(h.address, '$.province_code') as province_code
-from ${source.silver}.delivery_prd_transporting_hub as h
+from ${source.platinum}.delivery_prd_transporting_hub as h
+-- QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> "d" 
+-- WINDOW _window AS (PARTITION BY mg_id ORDER BY synced_at DESC, IF(action="d",3,IF(action="u",2,1)) DESC, last_updated_time DESC)

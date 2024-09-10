@@ -74,6 +74,7 @@ agg_sale_order_item AS (
     ON b.admin_id = d.order_id
   WHERE d.order_type = "SO" 
     AND a.created_time >= TIMESTAMP(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH))
+    AND b.status <> "CANCEL"
 ),
 
 

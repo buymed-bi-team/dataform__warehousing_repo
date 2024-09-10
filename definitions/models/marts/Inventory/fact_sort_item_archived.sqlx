@@ -52,7 +52,9 @@ agg_sale_order_item AS (
     d.order_channel,
     CONCAT(c.sku_key, "_", b.fc_code) AS sku_fc_key,
     JSON_VALUE(a1.sku) AS sku_code,
+    b.fc_code,
     a.unit_price,
+    a.unit_price * a.order_quantity AS gmv,
     CAST(JSON_VALUE(a1.order_quantity) AS INT64) AS order_quantity,
     CAST(JSON_VALUE(a1.reserved_quantity) AS INT64) AS reserved_quantity,
     LEAST(CAST(JSON_VALUE(a1.first_reserved_quantity) AS INT64), CAST(JSON_VALUE(a1.order_quantity) AS INT64)) AS first_reserved_quantity, -- Force frq to be <= oq
@@ -72,7 +74,7 @@ agg_sale_order_item AS (
     ON JSON_VALUE(a1.sku) = c.sku_code
   LEFT JOIN ${ref("dim_order")} d 
     ON b.admin_id = d.order_id
-  WHERE d.order_type = "SO" 
+  WHERE d.order_type = "SO" AND b.status <> "CANCEL"
 ),
 
 
