@@ -1,6 +1,14 @@
 config {
     type:"view",
-    description: "PIC: tu.dang; model_type: view"
+    description: "PIC: tu.dang; model_type: view",
+    columns :
+    {
+        "start_of_month":"represent the first day of that month",
+        "customer_id":"the unique identifier of the customer",
+        "no_products":"Counts the distinct number of different products",
+        "average_order_value" :"the average value of each order placed by a customer"
+
+    }
 }
 select
     cast(cast(FORMAT_DATE('%Y-%m', oi.created_at)as string)||"-01" as date ) as start_of_month,
