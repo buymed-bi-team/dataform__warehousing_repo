@@ -30,6 +30,7 @@ with product_code_incombo as -- danh sách những product dang được bán tr
     (
         select
             oi.sku_code,
+            oi.product_id || '_' || oi.seller_code as sku_key,
             pc.region_code,
             oi.order_id,
             date(oi.created_at) as created_date
@@ -49,6 +50,7 @@ select
       ss.seller_id,seller_code,
       ss.seller_id || '_' || ss.sales_region_code as seller_id_sales_region_code,
       ss.seller_id || '_' || ss.product_id || '_' || sales_region_code as seller_product_sales_region_code,
+      ss.product_id || '_' ||ss.seller_id || '_' ||  sales_region_code as sku_key_sales_region_code,
       ss.product_sales_region_code,
       ss.sub_sku_code,
       ss.sku_type,
@@ -71,7 +73,7 @@ select
       COUNT(distinct order_id) as no_orders_l15d
 from ${ref('agg_sales_region_by_sku')} as ss
 left join order_sku as os
-    on ss.sku_code = os.sku_code and ss.sales_region_code = os.region_code
+    on ss.sku_key = os.sku_key and ss.sales_region_code = os.region_code
            and os.created_date between DATE_ADD(current_date(), interval -60 day) and DATE_ADD(current_date(), interval -15 day)
 left join product_code_incombo as pi
     on pi.product_id = ss.product_id

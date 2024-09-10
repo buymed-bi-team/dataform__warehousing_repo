@@ -90,7 +90,10 @@ select
 -- 	IF(ps.total_so >= 10, "Priority PO", "Normal PO") AS po_priority,
 	c.created_ts AS first_received_check_in,
 	c.received_hub AS first_received_location,
-	c.is_it_po_pgh
+	c.receipt_fc_code,
+	-- c.destination_location AS destination_fc_code,
+	c.is_it_po_pgh,
+    TIMESTAMP_ADD(TIMESTAMP(JSON_VALUE(i.extra_props, '$.add_urgent_tag_time')), INTERVAL 7 HOUR) AS add_urgent_tag_time
 from (
     select *
     from ${source.platinum}.warehouse_prd_inbound_inbound_ticket

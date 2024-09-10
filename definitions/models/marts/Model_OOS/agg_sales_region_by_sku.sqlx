@@ -22,6 +22,7 @@ with cte_full as
           , s.sku_type
           , s.sku_level
           , s.sku_key_sales_region_code
+          , s.sku_key
           -- , current_timestamp() as transformed_at
           -- , STRING(a) as service_area_code
           , s.sales_region_code

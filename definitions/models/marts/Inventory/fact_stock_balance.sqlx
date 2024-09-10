@@ -8,25 +8,53 @@ config {
     }
 }
 
+WITH agg_stock_in AS (
+    SELECT
+        sku_code,
+        fc_code,
+        location,
+        l.lot,
+        e.expired_date,
+        SUM(location_done_quantity) as incoming_qty,
+        STRING_AGG(i.po_code, ', ') AS po_codes
+    FROM ${ref("fact_stock_lotdate_incoming")} AS i
+    LEFT JOIN ${ref("dim_lot")} l ON i.lot = l.lot
+    LEFT JOIN ${ref("dim_expired_date")} e ON i.expired_date = e.expired_date
+    GROUP BY ALL
+),
+
+agg_stock_out AS (
+    SELECT
+        sku_code,
+        fc_code,
+        location,
+        l.lot,
+        e.expired_date,
+        SUM(location_done_quantity) as outgoing_qty,
+        STRING_AGG(o.so_code, ', ') AS so_codes
+    FROM ${ref("fact_stock_lotdate_outgoing")} AS o
+    LEFT JOIN ${ref("dim_lot")} l ON o.lot = l.lot
+    LEFT JOIN ${ref("dim_expired_date")} e ON o.expired_date = e.expired_date
+    GROUP BY ALL
+)
+
 SELECT
     COALESCE(i.sku_code, o.sku_code) AS sku_code,
     COALESCE(i.fc_code, o.fc_code) AS fc_code,
     COALESCE(i.location, o.location) AS location,
-    l.cleaned_lot AS lot,
-    e.formatted_expdate AS expired_date,
-    SUM(IFNULL(i.location_done_quantity, 0)) AS incoming_qty,
-    SUM(IFNULL(o.location_done_quantity, 0)) AS outgoing_qty,
-    STRING_AGG(i.po_code, ', ') AS po_codes,
-    STRING_AGG(o.so_code, ', ') AS so_codes
+    COALESCE(i.lot, o.lot) AS lot,
+    COALESCE(i.expired_date, o.expired_date) AS expired_date,
+    i.incoming_qty,
+    o.outgoing_qty,
+    i.incoming_qty - o.outgoing_qty as balance_qty,
+    i.po_codes,
+    o.so_codes
 FROM
-    ${ref("fact_stock_lotdate_incoming")} AS i
+    agg_stock_in AS i
 FULL OUTER JOIN
-    ${ref("fact_stock_lotdate_outgoing")} AS o
+    agg_stock_out AS o
 ON i.sku_code = o.sku_code
    AND i.fc_code = o.fc_code
    AND i.location = o.location
    AND i.lot = o.lot
    AND i.expired_date = o.expired_date
-LEFT JOIN ${ref("dim_lot")} l ON COALESCE(i.lot, o.lot) = l.lot
-LEFT JOIN ${ref("dim_expired_date")} e ON COALESCE(i.expired_date, o.expired_date) = e.expired_date
-GROUP BY ALL

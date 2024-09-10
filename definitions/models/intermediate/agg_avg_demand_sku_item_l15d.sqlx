@@ -30,23 +30,13 @@ filtered_data AS (
     LEFT JOIN dedup_pick_ticket AS a ON b.ticket_id = a.ticket_id
     LEFT JOIN ${ref("dim_sku")} AS c ON b.sku_code = c.sku_code
     WHERE a.so LIKE "%SO%"
-),
-
-daily_outgoing AS (
-    SELECT
-        sku_code,
-        fc_code,
-        created_date,
-        SUM(outgoing_quantity) AS total_daily_outgoing
-    FROM filtered_data
-    GROUP BY sku_code, fc_code, created_date
 )
 
 SELECT
     sku_code,
     fc_code,
-    AVG(total_daily_outgoing) AS avg_demand_l15d
-FROM daily_outgoing
+    SUM(outgoing_quantity)/15 AS avg_demand_l15d
+FROM filtered_data
 GROUP BY sku_code, fc_code
 
 
