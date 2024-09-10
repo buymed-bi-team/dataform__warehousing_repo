@@ -1,0 +1,80 @@
+
+-- Tạo 1 bảng lấy delivery order là chính, có thể làm thành view nếu không có logic phức tạp
+config {
+    type: "view",
+    description: `PIC: Minhluu
+    Source: 
+        ${source.platinum}.warehouse_prd_core_delivery_order`,
+    columns : {
+        sale_order_code: "Nullable",
+        delivery_order_code: "Nullable",
+        qc_done_time: "Nullable"
+    }   
+}
+
+/*
+    Chú ý khi lấy distinct cho deliver_order_code, Khi đó sẽ có trường hợp delivery_order_code bị duplicate thành 2 rows riêng biệt với 2 mg_id khác nhau,
+    Cách lấy đúng là lây rows có đầy đủ action_time và một số tracking field
+    May mắn là chỉ có 2 delivery_order_code bị điều này:
+        - delivery_order_code in ("SOHN33752896-F","SOHN33760323-F") AND created_date = "2023-08-29"
+
+    Nhiều Mã RO trong delivery_order table Không có trong marketplace_order
+    - Sale_order_code có chứa Mã RO không?
+        - Nếu có thì 1 mã order_id sẽ có thời gian đầu là SO sau đó là RO đúng không?
+        - Vậy order_id có tổng đơn delivery = đơn delivery đi SO  + đơn delivery về không?
+    - RO kiểm tra trên hệ thống internal thế nào?
+        - Vì Một số đơn RO chỉ có trong hệ thống warehouse mà không có trong CRM nên chưa map được
+    - RO có được tính trong delivery_order không?
+    
+*/
+js {
+    const start_date = `"2022-12-31"`
+    const end_date = `"2030-08-01"`
+}
+
+
+WITH mkp_o AS (
+    SELECT 
+        order_id,
+        sale_order_code,
+        created_time ,
+        confirmation_date
+    FROM 
+        ${source.platinum}.marketplace_prd_order_v2_order
+    WHERE created_date BETWEEN ${start_date} AND ${end_date}
+    AND created_time is not null
+)
+, tender_o AS (
+    SELECT 
+        order_id,
+        sale_order_code,
+        created_time ,
+        confirmation_date
+    FROM
+        ${source.platinum}.tender_prd_core_tender_orders
+    WHERE created_date BETWEEN ${start_date} AND ${end_date}
+    AND created_time is not null
+)
+, o AS (
+    SELECT * FROM mkp_o 
+    UNION ALL 
+    SELECT * FROM tender_o
+)
+
+SELECT 
+    DISTINCT 
+    o.order_id,
+    o.sale_order_code,
+    do.delivery_order_code,
+    ${utils.ToTimezone(`do.created_time`)} as qc_done_dt,
+    ${utils.ToTimezone(`o.confirmation_date`)} as confirmation_dt,
+    ${utils.ToTimezone(`o.created_time`)} as created_dt
+FROM  o 
+LEFT JOIN ${source.platinum}.warehouse_prd_core_delivery_order do ON o.sale_order_code = do.sale_order_code
+-- WHERE do.mg_id not in (
+--     SELECT mg_id
+--     FROM ${source.platinum}.warehouse_prd_core_delivery_order AS sub
+--     WHERE sub.delivery_order_code IN ('SOHN33752896-F', 'SOHN33760323-F')
+--     AND sub.action_time IS NULL
+--     AND created_date = "2023-08-29"
+-- )
