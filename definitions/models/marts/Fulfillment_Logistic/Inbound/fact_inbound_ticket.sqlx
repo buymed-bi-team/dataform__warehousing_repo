@@ -91,7 +91,7 @@ select
 	c.created_ts AS first_received_check_in,
 	c.received_hub AS first_received_location,
 	c.receipt_fc_code,
-	c.destination_location AS destination_fc_code,
+	-- c.destination_location AS destination_fc_code,
 	c.is_it_po_pgh,
     TIMESTAMP(JSON_VALUE(i.extra_props, '$.add_urgent_tag_time')) AS add_urgent_tag_time
 from (
