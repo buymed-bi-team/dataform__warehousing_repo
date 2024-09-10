@@ -136,7 +136,7 @@ post_operations {
 
         DELETE FROM ${self()} 
         WHERE created_date = "2099-01-01" and
-          action = "d"
+          action = "d";
       END IF;
       `,
       ``
