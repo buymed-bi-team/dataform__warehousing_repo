@@ -2,10 +2,12 @@ config {
     type: "table",
     description: `PIC:Minhluu
     SOURCE:
-        ${source.platinum}.tender_prd_core_tender_orders
-        ${source.platinum}.tender_prd_core_tender_order_items
-        ${source.platinum}.marketplace_prd_order_v2_order
-        ${source.platinum}.markteplace_prd_order_v2_order_item`,
+        ${source.ref}.fact_supplier_order_item_tender
+            ${source.platinum}.tender_prd_core_tender_orders
+            ${source.platinum}.tender_prd_core_tender_order_items
+        ${source.ref}.fact_supplier_order_item_mkp
+            ${source.platinum}.marketplace_prd_order_v2_order
+            ${source.platinum}.markteplace_prd_order_v2_order_item`,
     columns: {
         order_id: "nonull",
         created_at: "nonull",
