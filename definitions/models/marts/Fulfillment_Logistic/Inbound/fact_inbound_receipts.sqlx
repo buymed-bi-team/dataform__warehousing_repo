@@ -88,7 +88,7 @@ select
 	b.employee as employee_name,
 	a.warehouse_code as fc_code,
 	split(b.code,'-')[SAFE_OFFSET(1)] as hub_code, --b.hub_code, -- split code
-	b.warehouse_code as receipt_fc_code,
+	COALESCE(b.warehouse_code, hf.fc_code) as receipt_fc_code,
 	b.destination_warehouse_code as destination_location,
 	b.status,
 	b.type,
@@ -115,3 +115,5 @@ left join (
 	from ${source.platinum}.delivery_prd_transporting_handover_ticket
 	where created_date >= (select DATE(start_date) from cte_date)
 ) as h on h.code=b.transport_code
+left join ${ref('dim_hub_fc')} AS hf ON hf.hub_code = split(b.code,'-')[SAFE_OFFSET(1)] AND hf.main_fc = hf.fc_code
+WHERE b.code IS NOT NULL
