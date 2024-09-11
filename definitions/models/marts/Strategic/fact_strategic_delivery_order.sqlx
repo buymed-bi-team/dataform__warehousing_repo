@@ -42,6 +42,7 @@ WITH mkp_o AS (
     FROM 
         ${source.platinum}.marketplace_prd_order_v2_order
     WHERE created_date BETWEEN ${start_date} AND ${end_date}
+    AND created_time + INTERVAL 7 HOUR BETWEEN ${start_date} AND ${end_date}
     AND created_time is not null
 )
 , tender_o AS (
@@ -53,6 +54,7 @@ WITH mkp_o AS (
     FROM
         ${source.platinum}.tender_prd_core_tender_orders
     WHERE created_date BETWEEN ${start_date} AND ${end_date}
+    AND created_time + INTERVAL 7 HOUR BETWEEN ${start_date} AND ${end_date}
     AND created_time is not null
 )
 , o AS (
