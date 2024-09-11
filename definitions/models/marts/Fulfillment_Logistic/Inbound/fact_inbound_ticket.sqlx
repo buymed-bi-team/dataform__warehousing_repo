@@ -46,7 +46,8 @@ WITH cte_date AS (
 					when receipt_fc_code is null then null
 					when receipt_fc_code = 'TTN' and destination_location = 'BD' then false
 					when receipt_fc_code != destination_location then true
-					else false
+					when receipt_fc_code = destination_location then false
+					-- else false
 				end as flag_check
 				from ${ref('fact_inbound_receipts')}
 			)
