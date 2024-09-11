@@ -19,7 +19,7 @@ WITH dedup_pick_ticket AS (
     end_pick_time,
     warehouse_code as fc_code,
   FROM ${source.platinum}.warehouse_prd_picking_pick_ticket
-  WHERE created_date >= "2024-01-01" AND created_date <= current_date
+  -- WHERE created_date >= "2024-01-01" AND created_date <= current_date
 ),
 
 dedup_pick_ticket_item AS (
@@ -31,7 +31,7 @@ dedup_pick_ticket_item AS (
     location_details,
     warehouse_code as fc_code
   FROM ${source.platinum}.warehouse_prd_picking_pick_ticket_item
-  WHERE created_date >= "2024-01-01" AND created_date <= current_date
+  -- WHERE created_date >= "2024-01-01" AND created_date <= current_date
 )
 
 SELECT

@@ -41,6 +41,7 @@ agg_stock_out AS (
 SELECT
     COALESCE(i.sku_code, o.sku_code) AS sku_code,
     COALESCE(i.fc_code, o.fc_code) AS fc_code,
+    CONCAT(COALESCE(i.sku_code, o.sku_code), "_", COALESCE(i.fc_code, o.fc_code)) AS sku_fc_key,
     COALESCE(i.location, o.location) AS location,
     COALESCE(i.lot, o.lot) AS lot,
     COALESCE(i.expired_date, o.expired_date) AS expired_date,
