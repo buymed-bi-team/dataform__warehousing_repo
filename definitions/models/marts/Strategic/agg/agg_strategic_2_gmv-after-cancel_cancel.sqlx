@@ -38,6 +38,7 @@ LEFT JOIN ${ref(`dim_order_status`)} dos ON dos.order_id = ois.order_id
 LEFT JOIN ${ref(`dim_calendar`)} dc ON date(ois.created_dt) = dc.date
 WHERE  doc.order_channel NOT IN ("TENDER","CONSIGNMENT-RECOGNITION")
 AND doc.order_channel is not null
+AND ois.supplier_class not like "TECH"
 GROUP BY 1,2,3,4
 
 UNION ALL 
@@ -62,6 +63,7 @@ LEFT JOIN ${ref(`dim_order_status`)} dos ON dos.order_id = ois.order_id
 LEFT JOIN ${ref(`dim_calendar`)} dc ON date(ois.confirmation_dt) = dc.date
 WHERE  doc.order_channel LIKE "TENDER"
 AND dos.crm_status not like "WAIT_TO_CONFIRM"
+AND ois.supplier_class not like "TECH"
 GROUP BY 1,2,3,4
 
 
