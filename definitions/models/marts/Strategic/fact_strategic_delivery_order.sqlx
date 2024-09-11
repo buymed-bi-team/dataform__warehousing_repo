@@ -42,7 +42,6 @@ WITH mkp_o AS (
     FROM 
         ${source.platinum}.marketplace_prd_order_v2_order
     WHERE created_date BETWEEN ${start_date} AND ${end_date}
-    AND created_time + INTERVAL 7 HOUR BETWEEN ${start_date} AND ${end_date}
     AND created_time is not null
 )
 , tender_o AS (
@@ -54,7 +53,6 @@ WITH mkp_o AS (
     FROM
         ${source.platinum}.tender_prd_core_tender_orders
     WHERE created_date BETWEEN ${start_date} AND ${end_date}
-    AND created_time + INTERVAL 7 HOUR BETWEEN ${start_date} AND ${end_date}
     AND created_time is not null
 )
 , o AS (
@@ -73,6 +71,7 @@ SELECT
     ${utils.ToTimezone(`o.created_time`)} as created_dt
 FROM  o 
 LEFT JOIN ${source.platinum}.warehouse_prd_core_delivery_order do ON o.sale_order_code = do.sale_order_code
+WHERE ${utils.ToTimezone(`created_time`)} >= "2023-01-01"
 -- WHERE do.mg_id not in (
 --     SELECT mg_id
 --     FROM ${source.platinum}.warehouse_prd_core_delivery_order AS sub
