@@ -38,6 +38,7 @@ WITH cte_date AS (
 		with cte_data as (
 			select po_code, 
 				created_ts, -- as receipt_at , 
+				received_ts,
 				receipt_code, -- b.code,
 				receipt_fc_code, --b.warehouse_code,
 				destination_location, -- b.destination_warehouse_code,
@@ -61,7 +62,7 @@ WITH cte_date AS (
 	first_checkin_destination_fc AS (
 		SELECT
 			po_code
-			, MIN(created_ts) AS first_checkin_destination_fc
+			, MIN(received_ts) AS first_checkin_destination_fc
 		FROM ${ref('fact_inbound_receipts')}
 		WHERE receipt_fc_code = destination_location
 		GROUP BY 1
@@ -98,7 +99,7 @@ select
 	p.bill_status as po_bill_status,
 --     ps.total_so AS total_so_reference,
 -- 	IF(ps.total_so >= 10, "Priority PO", "Normal PO") AS po_priority,
-	c.created_ts AS first_received_check_in,
+	c.received_ts AS first_received_check_in,
 	c.received_hub AS first_received_location,
 	c.receipt_fc_code,
 	f.first_checkin_destination_fc,

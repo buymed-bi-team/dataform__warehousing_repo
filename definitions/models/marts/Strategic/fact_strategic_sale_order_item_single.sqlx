@@ -1,6 +1,9 @@
 config {
     type: "table",
     description: `PIC: minh.luu, schedule: 0h00 daily
+    Fact Sale Order Item after Combo Separation
+    Remember exclude all order item with supplier_class=TECH
+    I keep these record, because other Fact Strategic have not supplier_class to filter
     Source
         ${source.ref}.marketplace_prd_order_v2_order
         ${source.ref}.tender_prd_core_tender_orders
@@ -211,7 +214,7 @@ mkp_o AS (
 SELECT
     oi.oiid,
     oi.order_id,
-    -- o.sale_order_code,
+    o.sale_order_code,
     oi.product_id_original,
     oi.sku_code_original,
     oi.seller_code_original as supplier_code_original,
@@ -236,9 +239,9 @@ SELECT
     oi.outbound_quantity,
     oi.demand_quantity, 
     oi.returned_quantity,
-    oi.price,
-FROM oi_final oi
-LEFT JOIN o ON o.order_id = oi.order_id
+    oi.price
+FROM o
+LEFT JOIN oi_final oi ON o.order_id = oi.order_id
 LEFT JOIN ${ref(`dim_supplier`)} ds1 ON oi.seller_code = ds1.supplier_code
 LEFT JOIN ${ref(`dim_supplier`)} ds2 ON oi.seller_code_original = ds2.supplier_code 
 LEFT JOIN ${ref(`dim_sku`)} dsku3 ON dsku3.sku_code = oi.sku_code
@@ -247,15 +250,7 @@ LEFT JOIN ${ref(`dim_sku`)} dsku4 ON dsku4.sku_code = oi.sku_code_original
 LEFT JOIN ${ref(`dim_supplier`)} ds4 ON ds4.supplier_code = dsku4.seller_code
 
 -- WHERE o.order_channel <> "CONSIGNMENT-RECOGNITION"
-WHERE COALESCE(
-        ds1.supplier_class,
-        ds3.supplier_class,
-        ds2.supplier_class,
-        ds4.supplier_class,
-        oi.seller_class
-    ) <> "TECH"
-
-AND ${utils.ToTimezone(`o.created_time`)} >= "2023-01-01"
+WHERE ${utils.ToTimezone(`o.created_time`)} >= "2023-01-01"
 
 post_operations {
     ALTER TABLE ${self()} 

@@ -31,11 +31,6 @@ with
             sale_fee_percent,
             fulfillment_fee_percent
         from ${source.platinum}.marketplace_prd_product_v2_seller_category_level AS a
-        QUALIFY ROW_NUMBER() OVER (_window) = 1
-            AND FIRST_VALUE(action) over (_window) <> 'd'
-        WINDOW _window AS ( PARTITION BY mg_id
-            ORDER BY synced_at DESC, IF(action = 'd', 3, IF(action = 'u', 2, 1)) DESC, last_updated_time DESC
-        )
     )
 
 -- step 2: get necessary columns to calculate price for seller

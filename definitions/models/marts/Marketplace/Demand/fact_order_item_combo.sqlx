@@ -166,9 +166,9 @@ cte_normal_item as (
       , oi.deal_code
     ) as promotion_code
     , coalesce(
-    safe_cast( json_extract_scalar( oi.extra_props, "$.charge_campaign_fee_value" ) as INT64 )
-    , oi.charge_deal_fee_value
-  ) as promotion_amount
+        safe_cast( json_extract_scalar( oi.extra_props, "$.charge_campaign_fee_value" ) as INT64 )
+        , oi.charge_deal_fee_value
+    ) as promotion_amount
     , oi.seller_code
     , oi.sku_code as sku_orignal_code
     , oi.sku_key as sku_orignal_key
