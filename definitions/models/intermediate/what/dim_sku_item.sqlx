@@ -110,6 +110,14 @@ cte_sku_item AS (
   FROM cte_sku_fc sf
   LEFT JOIN cte_sku_ranked sr
   ON sf.sku_code = sr.sku AND sf.fc_code = sr.fc_code AND sr.row_num = 1
+),
+
+cte_sku_fc_location AS (
+  SELECT
+    sku_fc_key,
+    STRING_AGG(location_code, ', ') AS location_codes
+  FROM ${ref("fact_stock_sku_item")}
+  GROUP BY sku_fc_key
 )
 
 SELECT
@@ -135,7 +143,8 @@ SELECT
     CASE
       WHEN g.seller_class = "EXTERNAL" THEN retail_price_value
       WHEN g.seller_class = "INTERNAL" THEN purchase_price
-    END, 999) AS inventory_price
+    END, 999) AS inventory_price,
+  h.location_codes
 FROM cte_sku_item a
 LEFT JOIN ${ref("dim_stock_classification")} b
 ON a.sku_code = b.sku_code AND a.fc_code = b.fc_code
@@ -149,6 +158,8 @@ LEFT JOIN ${ref("dim_sku_item_person_in_charge")} f
 ON a.sku_code = f.sku_code AND a.fc_code = f.fc_code
 LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_sku g
 ON a.item_code = g.item_code
+LEFT JOIN cte_sku_fc_location h
+ON a.sku_fc_key = h.sku_fc_key
 
 post_operations {
     ALTER TABLE ${self()} ADD PRIMARY KEY (sku_fc_key) NOT ENFORCED;

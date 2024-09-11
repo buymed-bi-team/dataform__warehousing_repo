@@ -12,9 +12,9 @@ WITH agg_stock_in AS (
     SELECT
         sku_code,
         fc_code,
-        location,
-        l.lot,
-        e.expired_date,
+        COALESCE(l.lot, "N/A") as lot,
+        COALESCE(expiration_status, "N/A") as expiration_status,
+        COALESCE(STRING(e.formatted_expdate), "N/A") as expired_date,
         SUM(location_done_quantity) as incoming_qty,
         STRING_AGG(i.po_code, ', ') AS po_codes
     FROM ${ref("fact_stock_lotdate_incoming")} AS i
@@ -27,9 +27,9 @@ agg_stock_out AS (
     SELECT
         sku_code,
         fc_code,
-        location,
-        l.lot,
-        e.expired_date,
+        COALESCE(l.lot, "N/A") as lot,
+        COALESCE(expiration_status, "N/A") as expiration_status,
+        COALESCE(STRING(e.formatted_expdate), "N/A") as expired_date,
         SUM(location_done_quantity) as outgoing_qty,
         STRING_AGG(o.so_code, ', ') AS so_codes
     FROM ${ref("fact_stock_lotdate_outgoing")} AS o
@@ -41,9 +41,8 @@ agg_stock_out AS (
 SELECT
     COALESCE(i.sku_code, o.sku_code) AS sku_code,
     COALESCE(i.fc_code, o.fc_code) AS fc_code,
-    CONCAT(COALESCE(i.sku_code, o.sku_code), "_", COALESCE(i.fc_code, o.fc_code)) AS sku_fc_key,
-    COALESCE(i.location, o.location) AS location,
     COALESCE(i.lot, o.lot) AS lot,
+    COALESCE(i.expiration_status, o.expiration_status) AS expiration_status,
     COALESCE(i.expired_date, o.expired_date) AS expired_date,
     i.incoming_qty,
     o.outgoing_qty,
@@ -56,6 +55,5 @@ FULL OUTER JOIN
     agg_stock_out AS o
 ON i.sku_code = o.sku_code
    AND i.fc_code = o.fc_code
-   AND i.location = o.location
    AND i.lot = o.lot
    AND i.expired_date = o.expired_date
