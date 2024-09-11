@@ -75,12 +75,13 @@ with
             e.product_id
             , JSON_EXTRACT_SCALAR(f, '$.warehouse_code') as fc_code
             , JSON_EXTRACT_SCALAR(f, '$.category_in_charge') as cic_account_id
-            , acc3.fullname as cic_name
+            -- , acc3.fullname as cic_name
+            , acc3.user_name as cic_name
             , JSON_EXTRACT_SCALAR(f, '$.category_management') as brand_type
         FROM ${source.platinum}.marketplace_prd_product_v2_product_category_in_charge as e
         LEFT JOIN UNNEST(JSON_EXTRACT_ARRAY(e.category_in_charge_data)) as f
-        LEFT JOIN `lakehouse-prod-394907.gold_buymed_vn.dim_employee` acc3
-            ON acc3.employee_id = SAFE_CAST(JSON_EXTRACT_SCALAR(f, '$.category_in_charge') as INT64)
+        LEFT JOIN ${ref('dim_employee')} acc3
+            ON acc3.branch_account_id = SAFE_CAST(JSON_EXTRACT_SCALAR(f, '$.category_in_charge') as INT64)
         QUALIFY ROW_NUMBER() OVER(PARTITION BY product_id, fc_code) = 1
     ),
 
