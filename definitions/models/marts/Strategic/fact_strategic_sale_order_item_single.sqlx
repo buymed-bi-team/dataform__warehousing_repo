@@ -214,7 +214,7 @@ mkp_o AS (
 SELECT
     oi.oiid,
     oi.order_id,
-    -- o.sale_order_code,
+    o.sale_order_code,
     oi.product_id_original,
     oi.sku_code_original,
     oi.seller_code_original as supplier_code_original,
@@ -240,8 +240,8 @@ SELECT
     oi.demand_quantity, 
     oi.returned_quantity,
     oi.price
-FROM oi_final oi
-LEFT JOIN o ON o.order_id = oi.order_id
+FROM o
+LEFT JOIN oi_final oi ON o.order_id = oi.order_id
 LEFT JOIN ${ref(`dim_supplier`)} ds1 ON oi.seller_code = ds1.supplier_code
 LEFT JOIN ${ref(`dim_supplier`)} ds2 ON oi.seller_code_original = ds2.supplier_code 
 LEFT JOIN ${ref(`dim_sku`)} dsku3 ON dsku3.sku_code = oi.sku_code
