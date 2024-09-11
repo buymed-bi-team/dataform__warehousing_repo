@@ -114,8 +114,8 @@ SELECT
     ds.product_name,
     s.item_code AS sub_sku_code,
     s.seller_code,
-    s.seller_class,
-    s.seller_id,
+    sup.supplier_class AS seller_class,
+    sup.supplier_id AS seller_id,
     cte.sales_region_code,
     cte.fc_code,
     CONCAT(s.product_id, "_", s.seller_code) AS sku_key,
@@ -220,6 +220,8 @@ FROM cte_full AS cte
         ON bill.sku_code = cte.sku_code AND bill.sales_region_code = cte.sales_region_code
     LEFT JOIN ${ref('dim_sku')} AS ds
         ON ds.sku_code = cte.sku_code
+    LEFT JOIN ${ref('dim_supplier')} AS sup
+        ON sup.supplier_code = s.seller_code
 WHERE 
     cte.sales_region_code IS NOT NULL
 QUALIFY ROW_NUMBER() OVER(PARTITION BY sku_key_sales_region_code) = 1
