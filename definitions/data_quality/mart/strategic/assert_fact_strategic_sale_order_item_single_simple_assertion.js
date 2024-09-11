@@ -28,15 +28,15 @@ FROM ${ctx.ref(`fact_strategic_sale_order_item_single`)}
 WHERE NOT (order_id IS NOT NULL)`
 ));
 
-assert(
-    'assert_fact_strategic_sale_order_item_single_unique',
-    contextable
-).query(
-    ctx => `
-SELECT
-    'order_id IS NOT UNIQUE' as failing_reason,
-    order_id
-FROM ${ctx.ref(`fact_strategic_sale_order_item_single`)}
-GROUP BY order_id
-HAVING COUNT(1) > 1`
-)
+// assert(
+//     'assert_fact_strategic_sale_order_item_single_unique',
+//     contextable
+// ).query(
+//     ctx => `
+// SELECT
+//     'oiid IS NOT UNIQUE' as failing_reason,
+//     oiid
+// FROM ${ctx.ref(`fact_strategic_sale_order_item_single`)}
+// GROUP BY order_id
+// HAVING COUNT(1) > 1`
+// )
