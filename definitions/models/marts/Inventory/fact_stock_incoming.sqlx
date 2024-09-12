@@ -2,7 +2,7 @@ config {
   type: "table",
   description: "Source: warehouse_prd_inbound_inbound_ticket, warehouse_prd_inbound_inbound_ticket_item, only select tickets with status not in (CANCEL, COMPLETED) | Schedule: every 30 mins from 9am-6pm | PIC: dong.le",
   name: "fact_stock_incoming",
-  tags: ["custom_30min_9to18"],
+  tags: ["custom_1h_past5"],
   columns: {
     po_code: "associated purchase order code with the pick ticket",
     ib_status: "status of the pick ticket",
