@@ -1,0 +1,53 @@
+
+-- new
+config {
+    type: "incremental",
+    name: "marketplace_prd_promotion_customer_lucky_wheel",
+    schema: "platinum_buymed_vn",
+    assertions: {
+        uniqueKey: 'mg_id'
+    },
+    
+    tags: ["custom_1h_past5"]
+}
+
+
+SELECT
+ *,
+FROM ${source.silver}.marketplace_prd_promotion_customer_lucky_wheel o 
+  ${ when(incremental(), `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()})`)}
+  QUALIFY ROW_NUMBER() OVER (_window) = 1
+  AND FIRST_VALUE(action) OVER (_window) <> 'd'
+WINDOW
+  _window AS (
+  PARTITION BY
+    mg_id
+  ORDER BY
+    synced_at DESC,
+  IF
+    (action='d',3,
+    IF
+      (action='u',2,1)) DESC)
+
+post_operations {
+  ${
+    when(incremental(),
+      `
+      -- Delete rows using the temporary table
+      DELETE FROM ${self()}
+      WHERE 
+         (key) IN (
+        SELECT (key) FROM ${self()}
+        QUALIFY ROW_NUMBER() OVER (_window) > 1
+        OR FIRST_VALUE(action) OVER (_window) = "d"
+      WINDOW _window AS (
+        PARTITION BY mg_id
+        ORDER BY synced_at DESC,
+        IF(action = 'd', 3, IF(action = 'u', 2, 1)) DESC
+      )
+      ) ;
+      `,
+      ``
+    )
+  }
+}
