@@ -1,0 +1,17 @@
+config {
+    type: "operations",
+    description: "PIC:minh.luu"
+}
+
+
+CREATE SNAPSHOT TABLE dataform_assertions.dim_order_channel_${datetime.current_datetime()}
+CLONE ${ref(`dim_order_channel`)};
+
+
+CREATE OR REPLACE TABLE ${source.ref}.dim_order_channel AS
+(
+    SELECT *
+    FROM ` ${source.ref}.dim_order_channel`
+    QUALIFY ROW_NUMBER() OVER (WINDOW_PARTITION) = 1
+    WINDOW WINDOW_PARTITION AS (PARTITION BY order_id)
+);

@@ -1,0 +1,18 @@
+config {
+    type: "operations",
+    description: "PIC:minh.luu"
+}
+
+
+CREATE SNAPSHOT TABLE dataform_assertions.dim_order_sales_region_${datetime.current_datetime()}
+CLONE ${ref(`dim_order_sales_region`)};
+
+CREATE OR REPLACE TABLE `${source.ref}.dim_order_sales_region` 
+PARTITION BY DATE(created_time)
+AS
+(
+    SELECT *
+    FROM ${source.ref}.dim_order_sales_region
+    QUALIFY ROW_NUMBER() OVER (WINDOW_PARTITION) = 1
+    WINDOW WINDOW_PARTITION AS (PARTITION BY order_id)
+);
