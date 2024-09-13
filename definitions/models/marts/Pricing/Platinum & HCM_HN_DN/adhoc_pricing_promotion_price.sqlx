@@ -226,8 +226,8 @@ WITH
                             then a.display_price - max_discount_value
 
                             when a.seller_class = "INTERNAL"
-                            -- then a.display_price * ( 1 - b.deal_value / 100)
-                            then a.retail_price_value * ( 1 - b.deal_value / 100) + a.service_fee
+                            then a.display_price * ( 1 - b.deal_value / 100)
+                            -- then a.retail_price_value * ( 1 - b.deal_value / 100) + a.service_fee
                         end
                     WHEN  upper(b.deal_type) = "ABSOLUTE" then
                         CASE b.charge_deal_fee
