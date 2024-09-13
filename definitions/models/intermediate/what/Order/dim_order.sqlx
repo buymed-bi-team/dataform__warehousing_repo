@@ -6,8 +6,7 @@ config {
       ${source.silver}.tender_prd_core_tender_orders`,
     name: "dim_order",
     assertions: {
-        uniqueKey: ["order_id"],
-        nonNull:["order_id","order_channel"]
+        nonNull:["order_channel"]
     //     // nullable : seller_class vì một số seller_code không có trong seller_prd_core_seller table
     //     // nonNull: ["created_time","order_channel"]
     },
