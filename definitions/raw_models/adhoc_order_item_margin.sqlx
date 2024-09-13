@@ -1,7 +1,7 @@
 config {
     type: "table",
     description: "PIC: tu.dang,",
-    tags:"0h30",
+    //tags:"0h30",
     columns:{
 
     }
@@ -47,7 +47,18 @@ with outbound_list as
                    left join po_list pl on ol.po_code = pl.po_code and ol.sku_code = pl.sku
           group by all
     )
-select *
+select order_id,
+customer_id,
+sales_price,
+sku_code,
+sum(outbound_quantity) as outbound_quantity,
+sku_key,
+ward_code,
+purchase_price,
+sum(purchase_amount) as purchase_amount,
+sum(sale_amount) as sale_amount,
+sum(profit) as profit,
+
 from cte_full
 
--- group by all
+group by all
