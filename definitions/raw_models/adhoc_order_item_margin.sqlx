@@ -15,7 +15,8 @@ with outbound_list as
                  fbi.outbound_quantity,
                  fbi.po_code,
                  fbi.product_id ||"_"|| fbi.seller_code as sku_key,
-                 fbi.product_id ||"_"|| fbi.seller_code ||"_"|| ds.sales_region_code as sku_key_sales_region_code
+                 fbi.product_id ||"_"|| fbi.seller_code ||"_"|| ds.sales_region_code as sku_key_sales_region_code,
+                 ds.sales_region_code
           from gold_buymed_vn2.fact_outbound_item fbi
           left join gold_buymed_vn2.dim_order_sales_region ds on fbi.order_id = ds.order_id
 --                    left join gold_buymed_vn2.dim_customer c on fbi.customer_id = c.customer_id
