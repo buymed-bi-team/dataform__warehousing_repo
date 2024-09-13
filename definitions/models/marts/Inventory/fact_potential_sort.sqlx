@@ -31,14 +31,14 @@ config {
 
 WITH dedup_sale_order AS (
   SELECT
-    sale_order_code, admin_id, warehouse_code as fc_code, status, created_time, type
+    sale_order_code, admin_id, warehouse_code as fc_code, status, created_time, created_date, type
   FROM ${source.platinum}.warehouse_prd_core_sale_order
   WHERE created_date >= DATE(timestamp(date_sub(current_date(),interval 1 month)))
 ),
 
 dedup_sale_order_item AS (
   SELECT
-    sale_order_code, sku as sku_code, reserved_quantity, order_quantity, unit_price, created_time, pick_items
+    sale_order_code, sku as sku_code, reserved_quantity, order_quantity, unit_price, created_time, created_date, pick_items
   FROM ${source.platinum}.warehouse_prd_core_sale_order_item
   WHERE created_date >= DATE(timestamp(date_sub(current_date(),interval 1 month)))
 ),
@@ -55,7 +55,7 @@ dedup_dim_order AS (
 agg_sale_order_item AS (
   SELECT
     a.sale_order_code,
-    DATE(a.created_time, "Asia/Ho_Chi_Minh") AS created_date,
+    a.created_date,
     TIMESTAMP(DATETIME(a.created_time, "Asia/Ho_Chi_Minh")) AS created_time,
     b.status,
     d.order_channel,
@@ -82,7 +82,6 @@ agg_sale_order_item AS (
   LEFT JOIN dedup_dim_order d 
     ON b.admin_id = d.order_id
   WHERE d.order_type = "SO" 
-    AND a.created_time >= TIMESTAMP(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH))
     AND b.status <> "CANCEL"
 ),
 
