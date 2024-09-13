@@ -1,0 +1,36 @@
+config {
+    type: "incremental",
+    protected: true,
+    description: "PIC nguyen.tran",
+    tags: ["0h00"],
+    bigquery: {
+        partitionBy: "snapshot_date",
+        clusterBy: ["sku_code"]
+    }
+}
+
+SELECT 
+    CURRENT_DATE() as snapshot_date    ,
+    product_id                         ,
+    sku_code                           ,
+    seller_class AS supplier_class     ,
+    product_name                       ,
+    sales_region_code                  ,
+    cic_name                           ,
+    retail_price_value                 ,
+    purchase_price                     ,
+    purchase_price_after_VAT           ,
+    rebate_price                       ,
+    rebate_price_with_adhoc_promotion  ,
+    display_price                      ,
+    campaign_price                     ,
+    deal_price                         ,
+    display_price_seller_with_promo    ,
+    display_price_seller_without_promo ,
+    seller_received_with_promo         ,
+    seller_received_without_promo      ,
+    sku_display_price                  
+
+FROM ${ref('adhoc_pricing_v2')}
+
+${when(incremental(), `WHERE CURRENT_DATE() > (SELECT MAX(snapshot_date) FROM ${self()})`) }
