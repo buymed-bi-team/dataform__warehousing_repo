@@ -43,6 +43,15 @@ dedup_sale_order_item AS (
   WHERE created_date >= DATE(timestamp(date_sub(current_date(),interval 1 month)))
 ),
 
+dedup_dim_order AS (
+  SELECT
+    order_id,
+    order_type,
+    order_channel
+  FROM ${ref("dim_order")} 
+  QUALIFY ROW_NUMBER() OVER (PARTITION BY order_id) = 1
+),
+
 agg_sale_order_item AS (
   SELECT
     a.sale_order_code,
@@ -70,7 +79,7 @@ agg_sale_order_item AS (
     ON a.sale_order_code = b.sale_order_code
   LEFT JOIN ${ref("dim_sku")} c 
     ON JSON_VALUE(a1.sku) = c.sku_code
-  LEFT JOIN ${ref("dim_order")} d 
+  LEFT JOIN dedup_dim_order d 
     ON b.admin_id = d.order_id
   WHERE d.order_type = "SO" 
     AND a.created_time >= TIMESTAMP(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH))
