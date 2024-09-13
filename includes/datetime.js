@@ -3,6 +3,15 @@ function current_date() {
     var strDate = d.getFullYear().toString() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + d.getDate().toString();
     return strDate
 }
+function current_datetime() {
+    var d = new Date();
+    function twoNum(num) {
+        return ("0" + (num + 1)).slice(-2)
+    }
+    var strDate = d.getFullYear().toString() + twoNum(d.getMonth()) + d.getDate().toString();
+    var strTime = twoNum(d.getHours() + 6) + twoNum(d.getMinutes());
+    return strDate + '_' + strTime
+}
 
 function getPastDate(intervalDays = 0, intervalMonths = 0) {
     // Get today's date
@@ -104,7 +113,7 @@ function isCurrentTimeInRange(startTime, endTime) {
     return currentHours >= startHours && currentHours < endHours;
 }
 
-module.exports = { current_date , getPastDate , isDaysOfWeek , isCurrentTimeInRange };
+module.exports = { current_date , getPastDate , isDaysOfWeek , isCurrentTimeInRange, current_datetime };
 
 // action_key = 
 // var sold_ = 'Fact_Seller_Selling_Suggestion'[hasEverSold]
