@@ -42,7 +42,7 @@ with
     )
 
 -- In fc DN, one hub served for 3 fc
-select hub_code, hub_name, fc_code
+select hub_code, hub_name, fc_code, main_fc
 from cte_hub_fc
 where 
   (main_fc = 'DN' or (fc_code = main_fc))
@@ -52,8 +52,8 @@ UNION ALL
 (
 	SELECT * 
 	FROM (
-        SELECT 'BD' AS fc_code, 'BD' AS hub_code, 'BD' AS hub_name UNION ALL
-        SELECT 'HN' AS fc_code, 'HN' AS hub_code, 'HN' AS hub_name UNION ALL
-        SELECT 'DN' AS fc_code, 'DN' AS hub_code, 'DN' AS hub_name
+        SELECT 'BD' AS fc_code, 'BD' AS hub_code, 'BD' AS hub_name, 'BD' AS main_fc UNION ALL
+        SELECT 'HN' AS fc_code, 'HN' AS hub_code, 'HN' AS hub_name, 'HN' AS main_fc UNION ALL
+        SELECT 'DN' AS fc_code, 'DN' AS hub_code, 'DN' AS hub_name, 'DN' AS main_fc
     )
 )

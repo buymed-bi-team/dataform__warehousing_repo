@@ -1,7 +1,7 @@
 config {
   type: "table",
   name: "fact_purchasing_backlog_prh",
-  tags: ["0h00"]
+  tags: ["6h00", "14h00", "18h00"]
 }
 
 SELECT 

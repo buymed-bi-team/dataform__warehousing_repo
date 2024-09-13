@@ -29,6 +29,9 @@ js {
         'agg_strategic_so',
         'agg_strategic_do',
         'agg_strategic_item-sold',
+        // 'agg_strategic_cancel-so', //hide
+        'agg_strategic_cancel-before-ffm',
+        'agg_strategic_cancel-after-ffm'
     ]
 }
 

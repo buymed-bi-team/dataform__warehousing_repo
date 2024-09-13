@@ -3,6 +3,15 @@ function current_date() {
     var strDate = d.getFullYear().toString() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + d.getDate().toString();
     return strDate
 }
+function current_datetime() {
+    var d = new Date();
+    function twoNum(num) {
+        return ("0" + (num + 1)).slice(-2)
+    }
+    var strDate = d.getFullYear().toString() + twoNum(d.getMonth()) + d.getDate().toString();
+    var strTime = twoNum(d.getHours() + 6) + twoNum(d.getMinutes());
+    return strDate + '_' + strTime
+}
 
 function getPastDate(intervalDays = 0, intervalMonths = 0) {
     // Get today's date
@@ -20,6 +29,29 @@ function getPastDate(intervalDays = 0, intervalMonths = 0) {
     const day = String(today.getDate()).padStart(2, '0');
 
     return `${year}-${month}-${day}`;
+}
+function getPastDatetime({intervalDays = 0, intervalMonths = 0 , intervalHours = 0, intervalMinutes = 0 } = {}) {
+    // Not support Second, because it too small
+    
+    // Get today's date
+    const today = new Date();
+    today.setHours(today.getHours() +7); // Timezone
+
+    // Subtract
+    today.setDate(today.getDate() - intervalDays);
+    today.setMonth(today.getMonth() - intervalMonths);
+    today.setHours(today.getHours() - intervalHours);
+    today.setMinutes(today.getMinutes() - intervalMinutes);
+
+    // Return the resulting date in YYYY-MM-DD format
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+    const day = String(today.getDate()).padStart(2, '0');
+
+    const hours = String(today.getHours()).padStart(2, '0');
+    const minutes = String(today.getMinutes()).padStart(2, '0');
+    
+    return `${year}-${month}-${day}T${hours}:${minutes}:00`;
 }
 
 function isDaysOfWeek(...DaysOfWeek) {
@@ -104,7 +136,7 @@ function isCurrentTimeInRange(startTime, endTime) {
     return currentHours >= startHours && currentHours < endHours;
 }
 
-module.exports = { current_date , getPastDate , isDaysOfWeek , isCurrentTimeInRange };
+module.exports = { current_date , getPastDate , getPastDatetime , isDaysOfWeek , isCurrentTimeInRange, current_datetime };
 
 // action_key = 
 // var sold_ = 'Fact_Seller_Selling_Suggestion'[hasEverSold]

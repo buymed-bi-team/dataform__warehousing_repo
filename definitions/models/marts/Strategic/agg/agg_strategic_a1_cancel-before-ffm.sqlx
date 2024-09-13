@@ -1,7 +1,8 @@
 config {
     type: "view",
-    name: "agg_strategic_gmv-unff",
+    name: "agg_strategic_cancel-before-ffm",
     description: `PIC: minh.luu, model_type: view
+    Count Item Sold Before Cancel
     Source
         ${source.ref}.dim_order_channel
         ${source.ref}.dim_order_sales_region
@@ -12,7 +13,7 @@ config {
         location: "Nullable | sales_region_code, sometime orders had not assign yet",
         channel: "NonNull | order_channel",
         measure: "NonNull | GMV-BEFORE-CANCEL",
-        value: "NonNull | unfulfilled amount = demand_amount - outbound_amount when order isn't delivering, delivered or completed ,Note: In tender systems, we don't consider orders valid until they are confirmed by the customer, as their confirmation is essential to making the order valuable to actionable. On the other hand, in marketplace, orders become valid upon creation, as our system handles the confirmation process, not the customer."
+        value: "NonNull | "
     }
 }
 SELECT 
@@ -23,25 +24,22 @@ SELECT
         WHEN dosr.sales_region_code LIKE "MIENBAC" THEN "NORTHERN"
         ELSE "GMV-VN-REGION-UNKNOWN" 
     END AS location,
-    CASE 
+    CASE
         WHEN doc.order_channel IN ("MARKETPLACE","CONSIGNMENT" ) THEN "MARKETPLACE"
         ELSE doc.order_channel
     END AS channel,
-    'GMV-UNFF' AS measure,
-    SUM((demand_quantity - outbound_quantity) * price) as value
+    'CANCEL-BEFORE-FFM' AS measure,
+    SUM( IF(dos.crm_status LIKE "CANCEL" AND ois.sale_order_code is null,price * demand_quantity, 0)) value
 
 FROM ${ref(`fact_strategic_sale_order_item_single`)} ois 
 LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = ois.order_id 
 LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON ois.order_id = dosr.order_id 
 LEFT JOIN ${ref(`dim_order_status`)} dos ON dos.order_id = ois.order_id
 LEFT JOIN ${ref(`dim_calendar`)} dc ON date(ois.created_dt) = dc.date
-WHERE  doc.order_channel NOT IN ("TENDER", "CONSIGNMENT-RECOGNITION")
+WHERE  doc.order_channel NOT IN ("TENDER","CONSIGNMENT-RECOGNITION")
 AND doc.order_channel is not null
-AND dos.crm_status in ("DELIVERING","DELIVERED","COMPLETED")
-AND dos.crm_status not like "CANCEL"
 AND ois.supplier_class not like "TECH"
 GROUP BY 1,2,3,4
-
 
 UNION ALL 
 
@@ -53,11 +51,10 @@ SELECT
         WHEN dosr.sales_region_code LIKE "MIENBAC" THEN "NORTHERN"
         ELSE "GMV-VN-REGION-UNKNOWN" 
     END AS location,
-    order_channel as channel,
-    'GMV-BACKLOG' AS measure,
-    -- IF( order_status like 'CANCEL', 'CANCEL','GMV') as is_cancel,
+    order_channel  as channel,
+    'CANCEL-BEFORE-FFM' AS measure,
 
-    SUM((demand_quantity - outbound_quantity) * price) as value
+    SUM( IF(dos.crm_status LIKE "CANCEL" AND ois.sale_order_code is null,price * demand_quantity, 0)) value
 
 FROM ${ref(`fact_strategic_sale_order_item_single`)} ois 
 LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = ois.order_id 
@@ -66,9 +63,5 @@ LEFT JOIN ${ref(`dim_order_status`)} dos ON dos.order_id = ois.order_id
 LEFT JOIN ${ref(`dim_calendar`)} dc ON date(ois.confirmation_dt) = dc.date
 WHERE  doc.order_channel LIKE "TENDER"
 AND dos.crm_status not like "WAIT_TO_CONFIRM"
-AND dos.crm_status in ("DELIVERING","DELIVERED","COMPLETED")
-AND dos.crm_status not like "CANCEL"
 AND ois.supplier_class not like "TECH"
 GROUP BY 1,2,3,4
-
-

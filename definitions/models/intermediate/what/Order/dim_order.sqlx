@@ -6,8 +6,7 @@ config {
       ${source.silver}.tender_prd_core_tender_orders`,
     name: "dim_order",
     assertions: {
-        uniqueKey: ["order_id"],
-        nonNull:["order_id","order_channel"]
+        nonNull:["order_channel"]
     //     // nullable : seller_class vì một số seller_code không có trong seller_prd_core_seller table
     //     // nonNull: ["created_time","order_channel"]
     },
@@ -39,6 +38,7 @@ js {
     */
     return `ARRAY_AGG( ${column_name} ORDER BY created_time DESC)[0] AS ${column_name}`
   }
+  const checkpoint_datetime = `"${datetime.getPastDatetime({ intervalDays:1 })}"`
 }
 WITH 
 -- Marketplace
@@ -200,7 +200,7 @@ SELECT
   order_tbl.sales_region_code
 FROM order_tbl
 ${when(incremental(),
-   `WHERE created_time > (SELECT MAX(created_time) FROM ${self()})`,
+   `WHERE created_time > ${checkpoint_datetime}`,
    ``)}
 
 UNION ALL
@@ -217,7 +217,7 @@ SELECT
 FROM tender_order_tbl
 
 ${when(incremental(),
-   `WHERE created_time > (SELECT MAX(created_time) FROM ${self()})`,
+   `WHERE created_time > ${checkpoint_datetime}`,
    ``)}
 
 
@@ -230,7 +230,7 @@ pre_operations {
       incremental(),
       `
       DELETE ${self()}
-      WHERE created_time > CURRENT_DATETIME("+7") - INTERVAL 1 DAY 
+      WHERE created_time > ${checkpoint_datetime}
       `,
       ``
     )

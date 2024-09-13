@@ -16,6 +16,15 @@ config {
         value: "NonNull | "
     }
 }
+WITH ois AS ( -- actually, it just exclude 36 order, so if you query raw, don't need this, the error is very small, but in agg_general, dataform take all fact_strategic, so I will include it
+    -- I just exclude the orders that is contains all test item
+    SELECT 
+        order_id,
+        STRING_AGG(DISTINCT supplier_class) supplier_class
+    FROM ${ref(`fact_strategic_sale_order_item_single`)} ois 
+    GROUP BY 1
+)
+
 SELECT 
     dc.eom as date,
     CASE
@@ -29,16 +38,17 @@ SELECT
         ELSE doc.order_channel
     END AS channel,
     'DO' AS measure,
-    
-    ARRAY_LENGTH(ARRAY_AGG(distinct IF(ois.delivered_dt is not null, ois.order_id, null) IGNORE NULLS)) value
+    COUNT(DISTINCT do.delivery_order_code) as value
 
-FROM ${ref(`fact_strategic_sale_order_item_single`)} ois 
-LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = ois.order_id 
-LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON ois.order_id = dosr.order_id 
-LEFT JOIN ${ref(`dim_order_status`)} dos ON dos.order_id = ois.order_id
-LEFT JOIN ${ref(`dim_calendar`)} dc ON date(ois.created_dt) = dc.date
+FROM ${ref(`fact_strategic_delivery_order`)} do 
+LEFT JOIN ois ON do.order_id = ois.order_id
+LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = do.order_id 
+LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON do.order_id = dosr.order_id 
+LEFT JOIN ${ref(`dim_order_status`)} dos ON dos.order_id = do.order_id
+LEFT JOIN ${ref(`dim_calendar`)} dc ON date(do.created_dt) = dc.date
 WHERE  doc.order_channel NOT IN ("TENDER","CONSIGNMENT-RECOGNITION")
 AND doc.order_channel is not null
+AND ois.supplier_class not like "TECH"
 GROUP BY 1,2,3,4
 
 UNION ALL 
@@ -53,15 +63,16 @@ SELECT
     END AS location,
     order_channel  as channel,
     'DO' AS measure,
+    COUNT(DISTINCT do.delivery_order_code) as value
 
-    ARRAY_LENGTH(ARRAY_AGG(distinct IF(ois.delivered_dt is not null, ois.order_id, null) IGNORE NULLS)) value
 
-
-FROM ${ref(`fact_strategic_sale_order_item_single`)} ois 
-LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = ois.order_id 
-LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON ois.order_id = dosr.order_id 
-LEFT JOIN ${ref(`dim_order_status`)} dos ON dos.order_id = ois.order_id
-LEFT JOIN ${ref(`dim_calendar`)} dc ON date(ois.confirmation_dt) = dc.date
+FROM ${ref(`fact_strategic_delivery_order`)} do 
+LEFT JOIN ois ON do.order_id = ois.order_id
+LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = do.order_id 
+LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON do.order_id = dosr.order_id 
+LEFT JOIN ${ref(`dim_order_status`)} dos ON dos.order_id = do.order_id
+LEFT JOIN ${ref(`dim_calendar`)} dc ON date(do.confirmation_dt) = dc.date
 WHERE  doc.order_channel LIKE "TENDER"
 AND dos.crm_status not like "WAIT_TO_CONFIRM"
+AND ois.supplier_class not like "TECH"
 GROUP BY 1,2,3,4

@@ -38,6 +38,7 @@ WITH cte_date AS (
 		with cte_data as (
 			select po_code, 
 				created_ts, -- as receipt_at , 
+				received_ts,
 				receipt_code, -- b.code,
 				receipt_fc_code, --b.warehouse_code,
 				destination_location, -- b.destination_warehouse_code,
@@ -46,7 +47,8 @@ WITH cte_date AS (
 					when receipt_fc_code is null then null
 					when receipt_fc_code = 'TTN' and destination_location = 'BD' then false
 					when receipt_fc_code != destination_location then true
-					else false
+					when receipt_fc_code = destination_location then false
+					-- else false
 				end as flag_check
 				from ${ref('fact_inbound_receipts')}
 			)
@@ -55,6 +57,15 @@ WITH cte_date AS (
 			max(flag_check) over (partition by po_code) as is_it_po_pgh
 		from cte_data
 		qualify row_number() over (partition by po_code order by created_ts) = 1 -- and is_across_region = true
+	),
+
+	first_checkin_destination_fc AS (
+		SELECT
+			po_code
+			, MIN(received_ts) AS first_checkin_destination_fc
+		FROM ${ref('fact_inbound_receipts')}
+		WHERE receipt_fc_code = destination_location
+		GROUP BY 1
 	)
 
 select
@@ -88,12 +99,23 @@ select
 	p.bill_status as po_bill_status,
 --     ps.total_so AS total_so_reference,
 -- 	IF(ps.total_so >= 10, "Priority PO", "Normal PO") AS po_priority,
-	c.created_ts AS first_received_check_in,
+	c.received_ts AS first_received_check_in,
 	c.received_hub AS first_received_location,
 	c.receipt_fc_code,
+	f.first_checkin_destination_fc,
 	-- c.destination_location AS destination_fc_code,
 	c.is_it_po_pgh,
-    TIMESTAMP_ADD(TIMESTAMP(JSON_VALUE(i.extra_props, '$.add_urgent_tag_time')), INTERVAL 7 HOUR) AS add_urgent_tag_time
+    TIMESTAMP_ADD(TIMESTAMP(JSON_VALUE(i.extra_props, '$.add_urgent_tag_time')), INTERVAL 7 HOUR) AS add_urgent_tag_time,
+	CASE
+        WHEN f.first_checkin_destination_fc IS NOT NULL AND TIMESTAMP(JSON_VALUE(i.extra_props, '$.add_urgent_tag_time')) IS NOT NULL THEN 
+            IF(
+				TIMESTAMP_ADD(TIMESTAMP(JSON_VALUE(i.extra_props, '$.add_urgent_tag_time')), INTERVAL 7 HOUR) 
+					<= f.first_checkin_destination_fc
+				, "URGENT_AT_CHECK-IN"
+				, "URGENT_AFTER_INBOUND"
+			) 
+	END AS po_urgent
+
 from (
     select *
     from ${source.platinum}.warehouse_prd_inbound_inbound_ticket
@@ -105,4 +127,5 @@ from (
         where created_date >= (select DATE(start_date) from cte_date)
     ) as p on i.po_code = p.po_code
     LEFT JOIN check_it_popgh AS c ON c.po_code = i.po_code
+	LEFT JOIN first_checkin_destination_fc AS f ON f.po_code = i.po_code
 -- LEFT JOIN lakehouse-prod-394907.gold_buymed_vn.agg_po_so AS ps ON ps.po_code = i.po_code
