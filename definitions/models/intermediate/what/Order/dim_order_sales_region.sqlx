@@ -25,7 +25,7 @@ js {
     // else {
     //     delete_interval = "INTERVAL 3 HOUR"
     // }
-    const delete_interval = "INTERVAL 7 HOUR"
+    const checkpoint_datetime = `"${datetime.getPastDatetime({ intervalHours: 7 })}"`
 
 }
 
@@ -36,7 +36,7 @@ pre_operations {
       incremental(),
       `
       DELETE ${self()}
-      WHERE created_dt > CURRENT_DATETIME("+7") - ${delete_interval}
+      WHERE created_dt > ${checkpoint_datetime}
       `,
       ``
     )
@@ -143,7 +143,7 @@ SELECT
     created_dt
 FROM order_tbl
 ${when(incremental(),
-   `WHERE created_dt > (SELECT MAX(created_dt) FROM ${self()})`,
+   `WHERE created_dt > ${checkpoint_datetime}`,
    ``)}
 
 

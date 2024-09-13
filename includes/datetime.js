@@ -30,6 +30,29 @@ function getPastDate(intervalDays = 0, intervalMonths = 0) {
 
     return `${year}-${month}-${day}`;
 }
+function getPastDatetime({intervalDays = 0, intervalMonths = 0 , intervalHours = 0, intervalMinutes = 0 } = {}) {
+    // Not support Second, because it too small
+    
+    // Get today's date
+    const today = new Date();
+    today.setHours(today.getHours() +7); // Timezone
+
+    // Subtract
+    today.setDate(today.getDate() - intervalDays);
+    today.setMonth(today.getMonth() - intervalMonths);
+    today.setHours(today.getHours() - intervalHours);
+    today.setMinutes(today.getMinutes() - intervalMinutes);
+
+    // Return the resulting date in YYYY-MM-DD format
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+    const day = String(today.getDate()).padStart(2, '0');
+
+    const hours = String(today.getHours()).padStart(2, '0');
+    const minutes = String(today.getMinutes()).padStart(2, '0');
+    
+    return `${year}-${month}-${day}T${hours}:${minutes}:00`;
+}
 
 function isDaysOfWeek(...DaysOfWeek) {
     const today = new Date().getDay();
@@ -113,7 +136,7 @@ function isCurrentTimeInRange(startTime, endTime) {
     return currentHours >= startHours && currentHours < endHours;
 }
 
-module.exports = { current_date , getPastDate , isDaysOfWeek , isCurrentTimeInRange, current_datetime };
+module.exports = { current_date , getPastDate , getPastDatetime , isDaysOfWeek , isCurrentTimeInRange, current_datetime };
 
 // action_key = 
 // var sold_ = 'Fact_Seller_Selling_Suggestion'[hasEverSold]
