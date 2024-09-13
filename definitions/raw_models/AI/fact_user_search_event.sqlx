@@ -1,11 +1,11 @@
 config {
     type: 'table',
-    name: "fact_user_event_tracking",
+    name: "fact_user_search_event",
     description: `Started time: 20240601 | PIC: tu.dang; schedule: 0h00 daily; model type: table
     Source:
         ${source.silver}.monitoring_prd_collector_user_stats_*`,
     columns: {
-        event: `NonNull | Customer Events IN ( "ADD_TO_CART","SKU_DETAIL_VIEW","SKU_IMPRESSION") `,
+        event: `NonNull | In all Customer Search Action`,
         customer_id: "NonNull | The unique identifier for the customer",
         created_time: "NonNull | The datetime when the event was created, adjusted to the 'Asia/Ho_Chi_Minh' timezone",
         product_id: "NonNull | Unique identifier for each product",
@@ -15,7 +15,7 @@ config {
         sku_code: "NonNull" | docs.sku,
         is_sku_customer_first_interaction_in_30_days: "NonNull | A boolean indicating whether this is the customer's first interaction with the SKU in the past 30 days. It's determined by checking if there are any previous interactions with the same customer_id, sku_code, and event within 30 days before the current created_time.",
     },
-    tags: ['0h00'],
+    /* tags: ['0h00'],*/
     bigquery: {
         partitionBy: "date(created_time)",
         clusterBy: ["event", "customer_id"]
@@ -29,10 +29,10 @@ WITH stg AS (
         created_time,
         JSON_EXTRACT_SCALAR(extra_props, '$.user_metadata.LOCATION') AS province_code,
         JSON_EXTRACT_SCALAR(extra_props, '$.metadata.screen') AS screen,
-        JSON_EXTRACT_SCALAR(extra_props, '$.metadata.source') AS SOURCE,
-        JSON_EXTRACT_SCALAR(extra_props, '$.metadata.product_id') AS product_id,
-        JSON_EXTRACT_SCALAR(extra_props, '$.metadata.seller_id') AS seller_id,
-        JSON_EXTRACT_SCALAR(extra_props, '$.metadata.sku') AS sku_code,
+        JSON_EXTRACT_SCALAR(extra_props, '$.metadata.source') AS source,
+        JSON_EXTRACT_SCALAR(extra_props, '$.metadata.content') AS search_content,
+        JSON_EXTRACT_SCALAR(extra_props, '$.metadata.status') AS search_status,
+        -- JSON_EXTRACT_SCALAR(extra_props, '$.metadata.sku') AS sku_code,
         JSON_EXTRACT_SCALAR(extra_props, '$.ua_metadata.CLIENT') AS client,    
         JSON_EXTRACT_SCALAR(extra_props, '$.ua_metadata.PLATFORM') AS platform,
         JSON_EXTRACT_SCALAR(extra_props, '$.metadata.host') AS host,
@@ -42,7 +42,7 @@ WITH stg AS (
   WHERE
     _TABLE_SUFFIX BETWEEN '20240701'
     AND FORMAT_DATE('%Y%m%d', CURRENT_DATE())
-    AND event IN ( "ADD_TO_CART","SKU_DETAIL_VIEW","SKU_IMPRESSION") 
+    AND event IN ( "SEARCH") 
     )
 SELECT
     event,
@@ -50,33 +50,33 @@ SELECT
     DATETIME(created_time, "Asia/Ho_Chi_Minh") AS created_time,
     province_code,
     screen,
-    SOURCE,
+    source,
     client,
     platform,
     host,
-    seller_id,
-    product_id,
-    sku_code,
-    ingest_time,
-    CASE 
-        WHEN STRPOS(sku_code, ".") > 0 
-        THEN LEFT(sku_code, STRPOS(sku_code, ".") - 1)
-        ELSE sku_code 
-    END AS seller_code,
-    CASE
-        WHEN EXISTS (
-            SELECT 1
-            FROM stg AS sub
-            WHERE sub.customer_id = stg.customer_id
-              AND sub.sku_code = stg.sku_code
-              AND sub.event = stg.event
-              AND sub.created_time BETWEEN
-                DATETIME_SUB(stg.created_time, INTERVAL 30 DAY)
-                AND stg.created_time
-              AND sub.created_time != stg.created_time
-        ) THEN FALSE
-        ELSE TRUE
-    END AS is_sku_customer_first_interaction_in_30_days
+    search_content,
+    search_status,
+    -- sku_code,
+    -- ingest_time,
+    -- CASE 
+    --     WHEN STRPOS(sku_code, ".") > 0 
+    --     THEN LEFT(sku_code, STRPOS(sku_code, ".") - 1)
+    --     ELSE sku_code 
+    -- END AS seller_code,
+    -- CASE
+    --     WHEN EXISTS (
+    --         SELECT 1
+    --         FROM stg AS sub
+    --         WHERE sub.customer_id = stg.customer_id
+    --           AND sub.sku_code = stg.sku_code
+    --           AND sub.event = stg.event
+    --           AND sub.created_time BETWEEN
+    --             DATETIME_SUB(stg.created_time, INTERVAL 30 DAY)
+    --             AND stg.created_time
+    --           AND sub.created_time != stg.created_time
+    --     ) THEN FALSE
+    --     ELSE TRUE
+    -- END AS is_sku_customer_first_interaction_in_30_days
 FROM
     stg
 where customer_id >0

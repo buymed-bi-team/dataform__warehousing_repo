@@ -1,0 +1,70 @@
+config {
+    type: "table",
+    description: 
+        `
+        Detailed information of the cs tickets;
+        PIC: nguyen.tran; 
+        Type: Table; 
+		    Refresh Schedule: hourly;
+        Source: 
+            ${source.platinum}.marketplace_prd_ticket_ticket
+        `,
+    tags: ['custom_1h_past5', "CS"],
+    columns: {}
+}
+
+WITH
+  A AS (
+    WITH
+      cte_date AS (
+        SELECT
+          DATETIME_SUB(DATETIME_SUB(DATETIME_TRUNC(CURRENT_DATETIME(), MONTH), INTERVAL 7 MONTH), INTERVAL 7 HOUR) AS start_date 
+      )
+
+    SELECT
+      a.ticket_id,
+      a.code AS ticket_code,
+      JSON_VALUE(a.extra_props, '$.parent_ticket_code') AS parent_ticket_code,
+      DATE(TIMESTAMP_ADD(a.created_time, INTERVAL 7 hour)) AS created_date,
+      TIMESTAMP_ADD(a.created_time, INTERVAL 7 hour) AS created_ts,
+      TIMESTAMP_ADD(a.due_date, INTERVAL 7 hour) AS due_ts,
+      TIMESTAMP_ADD(a.completed_time, INTERVAL 7 hour) AS completed_ts,
+      DATE(TIMESTAMP_ADD(a.completed_time, INTERVAL 7 hour)) AS completed_date,
+      a.created_by_account_id AS requestor_id,
+      a.department_code AS pic_department,
+      a.assigned_account_id AS pic_id,
+      a.order_id,
+      a.customer_id,
+      a.source,
+      COALESCE(JSON_EXTRACT_SCALAR(a.reason_codes, '$[0]'),JSON_EXTRACT_SCALAR(a.extra_props, '$[tags][0]')) AS first_reason_code,
+      a.reason_internal AS sub_reason,
+      a.cause,
+      a.type AS issue_type,
+      a.status,
+      CAST(JSON_VALUE(a.extra_props, '$.seller_id') AS integer) AS seller_id,
+      a.feedback_content,
+      a.note AS cs_note,
+      JSON_VALUE(a.extra_props, '$.notes.0') AS notes,
+      JSON_VALUE(a.extra_props, '$.description') AS description,
+      a.department_code,
+      CAST(JSON_VALUE(a.extra_props, '$.evaluate_point') AS integer) AS evaluate_point,
+      JSON_VALUE(a.extra_props, '$.evaluate_content') AS evaluate_content,
+      COALESCE(JSON_VALUE(a.extra_props, '$.scope'), "SUPPORT_CUSTOMER") AS ticket_type,
+      b.shipping_ward_code,
+      b.so_code
+    FROM ${source.platinum}.marketplace_prd_ticket_ticket AS a
+      LEFT JOIN ${ref('fact_order')} AS b
+        ON a.order_id = b.order_id
+    WHERE
+      a.created_date >= ( SELECT DATE(start_date) FROM cte_date )
+  )
+
+SELECT
+  *,
+  CASE
+    WHEN due_ts IS NULL OR completed_ts IS NULL THEN NULL
+    WHEN completed_ts <= due_ts THEN 'On-Time'
+    ELSE 'Late'
+  END
+    AS is_late_or_ontime
+FROM A

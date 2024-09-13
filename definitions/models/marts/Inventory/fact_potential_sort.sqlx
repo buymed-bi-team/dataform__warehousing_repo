@@ -53,7 +53,7 @@ dedup_dim_order AS (
 ),
 
 agg_sale_order_item AS (
-  SELECT
+  SELECT DISTINCT
     a.sale_order_code,
     a.created_date,
     TIMESTAMP(DATETIME(a.created_time, "Asia/Ho_Chi_Minh")) AS created_time,
