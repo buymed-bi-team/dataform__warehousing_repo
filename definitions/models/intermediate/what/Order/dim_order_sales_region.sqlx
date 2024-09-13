@@ -19,12 +19,13 @@ config {
 }
 
 js {
-    if ( `${datetime.isDaysOfWeek(0,6)}` == 'true') {
-        delete_interval = "INTERVAL 7 HOUR"
-    }
-    else {
-        delete_interval = "INTERVAL 3 HOUR"
-    }
+    // if ( `${datetime.isDaysOfWeek(0,6)}` == 'true') {
+    //     delete_interval = "INTERVAL 7 HOUR"
+    // }
+    // else {
+    //     delete_interval = "INTERVAL 3 HOUR"
+    // }
+    const delete_interval = "INTERVAL 7 HOUR"
 
 }
 
