@@ -119,7 +119,7 @@ stg_adhoc_pm_master_sku as (
     available_qty,
     sku_code
   FROM
-    ${source.ref}.adhoc_pm_master_sku
+    ${ref('adhoc_pm_master_sku')}
 )
 
 -- step 2: Action
