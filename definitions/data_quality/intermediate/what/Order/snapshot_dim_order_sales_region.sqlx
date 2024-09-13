@@ -8,7 +8,7 @@ CREATE SNAPSHOT TABLE dataform_assertions.dim_order_sales_region_${datetime.curr
 CLONE ${ref(`dim_order_sales_region`)};
 
 CREATE OR REPLACE TABLE `${source.ref}.dim_order_sales_region` 
-PARTITION BY DATE(created_time)
+PARTITION BY DATE(created_dt)
 AS
 (
     SELECT *
