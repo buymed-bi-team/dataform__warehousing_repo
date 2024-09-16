@@ -10,7 +10,7 @@ WITH
   SELECT
     *
   FROM
-    ${source.silver}.marketplace_prd_product_v2_history_update_price
+    ${ref('marketplace_prd_product_v2_history_update_price')}
   QUALIFY
     ROW_NUMBER() OVER(_window) = 1
     AND FIRST_VALUE(action) OVER(_window) <> "d"
@@ -29,7 +29,7 @@ WITH
       created_time DESC ))
 
 SELECT
-  DISTINCT DATE(MAX(created_time)) AS date,
+  DATE(created_time) AS date,
   code,
   product_id,
   MAX(SAFE_CAST(JSON_VALUE(next, '$.purchase_price') AS INT64)) AS purchase_price,
@@ -38,8 +38,5 @@ FROM
 WHERE
   seller_code ="MEDX" AND 
   SAFE_CAST(JSON_VALUE(next, '$.purchase_price') AS INT64) > 1000
-GROUP BY
-  ALL
-ORDER BY
-  1,
-  2
+GROUP BY ALL
+ORDER BY 1, 2
