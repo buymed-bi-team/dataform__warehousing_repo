@@ -135,14 +135,14 @@ SELECT
   d.avg_demand_l15d,
   COALESCE(e.vendor_code, a.supplier_code) as fv_vendor_code,
   IF (e.vendor_code IS NULL, "NON-TRADING", "TRADING") as trading_type,
-  f.pic_purchase_id,
+  SAFE_CAST(f.pic_purchase_id AS INT64) as pic_purchase_id,
   f.pic_purchase_name,
-  f.pic_category_id,
-  f.pic_category_name,
+  COALESCE(SAFE_CAST(i.cic_account_id AS INT64), f.pic_category_id) as pic_category_id,
+  COALESCE(i.cic_name, f.pic_category_name) as pic_category_name,
   COALESCE(
     CASE
-      WHEN g.seller_class = "EXTERNAL" THEN retail_price_value
-      WHEN g.seller_class = "INTERNAL" THEN purchase_price
+      WHEN g.seller_class = "EXTERNAL" THEN g.retail_price_value
+      WHEN g.seller_class = "INTERNAL" THEN g.purchase_price
     END, 999) AS inventory_price,
   h.location_codes
 FROM cte_sku_item a
@@ -160,6 +160,8 @@ LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_sku g
 ON a.item_code = g.item_code
 LEFT JOIN cte_sku_fc_location h
 ON a.sku_fc_key = h.sku_fc_key
+LEFT JOIN ${ref("dim_sku_sales_region_current")} i 
+ON a.sku_code = i.sku_code AND a.fc_code = i.fc_code
 
 post_operations {
     ALTER TABLE ${self()} ADD PRIMARY KEY (sku_fc_key) NOT ENFORCED;
