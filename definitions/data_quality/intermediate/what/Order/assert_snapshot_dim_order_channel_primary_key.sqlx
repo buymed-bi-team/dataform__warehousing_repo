@@ -43,7 +43,7 @@ BEGIN
  
 
 IF (
-    ( SELECT COUNT(1) FROM `lakehouse-prod-394907.dataform_assertions.assert_dim_order_channel_primary_key` ) = 0) 
+    ( SELECT COUNT(1) FROM `lakehouse-prod-394907.dataform_assertions.assert_dim_order_channel_primary_key` ) <> 0) 
 THEN 
     CREATE SNAPSHOT TABLE dataform_assertions.dim_order_channel_${datetime.current_datetime()}
     CLONE ${ref(`dim_order_channel`)};
