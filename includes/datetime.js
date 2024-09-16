@@ -14,6 +14,8 @@ function current_datetime() {
 }
 
 function getPastDate(intervalDays = 0, intervalMonths = 0) {
+    // WHERE date > ${getPastDate({intervalDays:10})} == WHERE data > CURRENT_DATE() - INTERVAL 10 DAY 
+    // For ex: today = 2024-09-16 ->  ${getPastDate({intervalDays:10})} = 2024-09-06
     // Get today's date
     const today = new Date();
 
