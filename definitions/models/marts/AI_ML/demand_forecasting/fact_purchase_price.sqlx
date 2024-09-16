@@ -1,0 +1,44 @@
+config {
+    type: "table",
+    description: "PIC: huong.dang, schedule 0:00am daily",
+    schema: "gold_ml",
+    tags: ["0h00"]
+}
+
+WITH
+  dedup_table AS (
+  SELECT
+    *
+  FROM
+    ${source.silver}.marketplace_prd_product_v2_history_update_price
+  QUALIFY
+    ROW_NUMBER() OVER(_window) = 1
+    AND FIRST_VALUE(action) OVER(_window) <> "d"
+  WINDOW
+    _window AS (
+    PARTITION BY
+      mg_id,
+      created_time,
+      status
+    ORDER BY
+      synced_at DESC,
+    IF
+      (action='d',3,
+      IF
+        (action='u',2,1)) DESC,
+      created_time DESC ))
+SELECT
+  DISTINCT DATE(MAX(created_time)) AS date,
+  code,
+  product_id,
+  MAX(SAFE_CAST(JSON_VALUE(next, '$.retail_price_value') AS INT64)) AS purchase_price,
+FROM
+  dedup_table
+WHERE
+  seller_code ="MEDX" AND 
+  SAFE_CAST(JSON_VALUE(next, '$.retail_price_value') AS INT64) > 1000
+GROUP BY
+  ALL
+ORDER BY
+  1,
+  2
