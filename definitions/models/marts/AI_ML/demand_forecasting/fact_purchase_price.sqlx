@@ -27,16 +27,17 @@ WITH
       IF
         (action='u',2,1)) DESC,
       created_time DESC ))
+
 SELECT
   DISTINCT DATE(MAX(created_time)) AS date,
   code,
   product_id,
-  MAX(SAFE_CAST(JSON_VALUE(next, '$.retail_price_value') AS INT64)) AS purchase_price,
+  MAX(SAFE_CAST(JSON_VALUE(next, '$.purchase_price') AS INT64)) AS purchase_price,
 FROM
   dedup_table
 WHERE
   seller_code ="MEDX" AND 
-  SAFE_CAST(JSON_VALUE(next, '$.retail_price_value') AS INT64) > 1000
+  SAFE_CAST(JSON_VALUE(next, '$.purchase_price') AS INT64) > 1000
 GROUP BY
   ALL
 ORDER BY
