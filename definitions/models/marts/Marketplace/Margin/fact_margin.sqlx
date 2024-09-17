@@ -1,0 +1,112 @@
+config {
+    type: "table", 
+    description: 
+        `
+        Sales Price, Purchase Price, Price after rebate of MEDX's Products in each Order (serving the purpose of calculating margin)
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.silver}.monitoring_prd_realtime_supply_margin_sku
+        `,
+    columns: {
+    },
+    tags: ["custom_1h_past5"],
+    bigquery: {
+        partitionBy: "DATE(created_at)",
+        clusterBy: ["sku_code", "product_id"]
+
+    },
+    assertions: {
+        nonNull: ["created_at", "product_id", "sku_code", "po_code"]
+  
+    }
+}
+
+WITH
+    outbound_item AS (
+        SELECT
+            mg_id
+            , order_id
+            , created_at
+            , sku_code AS sku_code_original
+            , sku_bom_code AS sku_code
+            , product_id AS product_id_original
+            , product_bom_id AS product_id
+            , seller_code
+            , outbound_quantity
+            , po_code
+        FROM ${ref('fact_outbound_item')}
+        WHERE
+            created_at >= '2024-06-01'
+    )
+
+    , order_item AS (
+        SELECT
+            mg_id
+            , order_id
+            , sku_orignal_code AS sku_code_original
+            , sku_code
+            , product_id
+            , sales_price AS unit_price
+            , sales_price_original AS unit_price_original
+            , item_type
+        FROM ${ref('fact_order_item')}
+        WHERE
+            created_at >= '2024-06-01'
+    )
+
+    , purchase_price AS (
+        SELECT
+            a.po_code
+            , a.product_id
+            , a.sku_code
+            , a.fc_code
+            , a.price_unit_vat AS vb_purchase_price
+            , b.avg_unit_price AS po_purchase_price
+            , DATE(b.created_time) AS po_created_date
+            , b.vendor_code
+            , b.line_manager_combine
+        FROM ${ref('fact_vendor_bill_item')} AS a
+            LEFT JOIN ${ref('fact_po_item')} AS b ON a.po_code = b.po_code AND a.sku_code = b.sku
+        GROUP BY ALL
+    )
+
+    , price_after_rebate AS (
+        SELECT
+            rebate_date
+            , a.product_id
+            , b.sku_code
+            , fc_code
+            , vendor_code
+            , price_after_rebate
+            , price_after_rebate_with_adhoc_promotion
+        FROM ${ref('fact_price_after_rebate')} AS a
+            LEFT JOIN ${ref('dim_sku')} AS b ON a.product_id = b.product_id AND b.seller_code = "MEDX"
+    )
+
+SELECT
+    ob.created_at
+    , ob.order_id
+    , ob.sku_code_original
+    , ob.sku_code
+    , ob.product_id_original
+    , ob.product_id
+    , ob.seller_code
+    , oi.unit_price
+    , ob.outbound_quantity
+    , ob.po_code
+    , p.po_purchase_price
+    , p.vb_purchase_price
+    , p.fc_code AS po_fc_code
+    , r.price_after_rebate
+    , r.price_after_rebate_with_adhoc_promotion
+    , oi.item_type
+FROM outbound_item AS ob
+    LEFT JOIN order_item AS oi ON ob.mg_id = oi.mg_id AND ob.sku_code = oi.sku_code
+    LEFT JOIN purchase_price AS p ON p.po_code = ob.po_code AND p.sku_code = ob.sku_code
+    LEFT JOIN price_after_rebate AS r
+        ON r.sku_code = ob.sku_code
+        AND r.vendor_code = p.line_manager_combine
+        AND r.fc_code = p.fc_code
+        AND r.rebate_date = p.po_created_date
