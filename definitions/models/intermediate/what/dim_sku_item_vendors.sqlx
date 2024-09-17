@@ -14,12 +14,6 @@ config {
     }
 }
 
-WITH
-  dedup_marketplace_sku AS ${dedup.dedup(
-  source.silver + `.seller_prd_purchasing_sku_config`,
-  "sku, seller_code, product_id, purchaser_code, vendors, is_active"
-)}
-
 SELECT
   s.product_id,
   s.sku AS sku_code,
@@ -38,7 +32,7 @@ SELECT
     when s.is_active is null then 'On' 
   end as purchase_status
 FROM
-  dedup_marketplace_sku s
+  ${source.platinum}.seller_prd_purchasing_sku_config s
 LEFT JOIN
   UNNEST(JSON_EXTRACT_ARRAY(s.vendors)) AS vendor
 LEFT JOIN
