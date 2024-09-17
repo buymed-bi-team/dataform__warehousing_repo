@@ -19,7 +19,7 @@ config {
         total_quantity: "Total ordered quantity of SKU in Margin Date",
         sales_region_code: "NON-NULL",
     },
-    schema: "buymed_AI_ML",
+    schema: "buymed_product_recommendation",
 }
 
 select * from gold_buymed_vn2.fact_margin_by_sku_date_provice

@@ -22,7 +22,7 @@ config {
     province_code: "Nullable | Province code",
     is_sku_customer_first_place_in_30_days: "NonNull | True if the customer has not purchased the SKU within the past 30 days"
   },
-  schema: "buymed_AI_ML"
+  schema: "buymed_product_recommendation"
 }
 
 

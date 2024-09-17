@@ -38,7 +38,7 @@ config {
         return_amount: "the amount associated with a return, if appicable",
         employee_id: "Foregin key for dim_employee, a unique identifier for salesperson who helped customer placing the order"
     },
-    schema: "buymed_AI_ML",
+    schema: "buymed_product_recommendation",
 }
 
 
