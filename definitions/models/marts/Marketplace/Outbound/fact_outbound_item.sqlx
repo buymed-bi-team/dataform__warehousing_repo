@@ -50,7 +50,7 @@ select
   , a.order_id
   , safe_cast( json_extract_scalar( item.customer_id ) as INT64 ) as customer_id
 --   , a.outbound_infos
-  , ob AS outbound_infos
+  , JSON_QUERY(item, '$.outbound_infos') AS outbound_infos
   , a.extra_props
   , a.sku_code
   , a.product_id
