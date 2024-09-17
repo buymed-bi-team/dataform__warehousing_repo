@@ -5,38 +5,14 @@ config {
     tags: ["0h00"]
 }
 
-WITH
-  dedup_table AS (
-  SELECT
-    *
-  FROM
-    ${ref('marketplace_prd_product_v2_history_update_price')}
-  QUALIFY
-    ROW_NUMBER() OVER(_window) = 1
-    AND FIRST_VALUE(action) OVER(_window) <> "d"
-  WINDOW
-    _window AS (
-    PARTITION BY
-      mg_id,
-      created_time,
-      status
-    ORDER BY
-      synced_at DESC,
-    IF
-      (action='d',3,
-      IF
-        (action='u',2,1)) DESC,
-      created_time DESC ))
-
 SELECT
-  DATE(created_time) AS date,
+  date,
   code,
   product_id,
-  MAX(SAFE_CAST(JSON_VALUE(next, '$.purchase_price') AS INT64)) AS purchase_price,
+  purchase_price
 FROM
-  dedup_table
+  ${ref('staging_sku_purchase_price_history')}
 WHERE
-  seller_code ="MEDX" AND 
-  SAFE_CAST(JSON_VALUE(next, '$.purchase_price') AS INT64) > 1000
+  seller_code ="MEDX" AND purchase_price > 1000
 GROUP BY ALL
-ORDER BY 1, 2
+ORDER BY 2
