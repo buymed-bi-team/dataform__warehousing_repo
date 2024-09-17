@@ -21,7 +21,7 @@ config {
     demand_quantity: "Quantity by BOM SKUs",
     sales_price: "UnitPrice by BOM SKUs"
   },
-  schema: "buymed_AI_ML",
+  schema: "buymed_product_recommendation",
 }
 
 select * from gold_buymed_vn2.fact_order_item

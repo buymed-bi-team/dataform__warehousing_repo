@@ -6,7 +6,7 @@ config {
       ${source.silver}.seller_prd_core_seller
     `,
     name: "dim_product_view",
-    schema: "buymed_AI_ML",
+    schema: "buymed_product_recommendation",
     columns: {
         product_id: "Unique identifier for each product",
         product_name: "Name of the product",
