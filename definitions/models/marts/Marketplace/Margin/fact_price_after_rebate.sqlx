@@ -1,0 +1,52 @@
+config {
+  type: "table",
+  description: 
+        `
+        Price after rebate of MEDX's products by date, warehouse, vendor
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.platinum}.seller_prd_purchasing_purchase_order,
+            ${source.platinum}.seller_prd_purchasing_purchase_order_item
+        `,
+  bigquery: {
+    partitionBy: "rebate_date",
+    clusterBy: ["fc_code", "product_id"]
+  },
+  tags: ["custom_2h_past5"]
+}
+
+WITH
+    contract_price as (
+        SELECT
+            contract_price_code
+            , start_time
+            , end_time
+        FROM ${source.platinum}.seller_prd_purchasing_contract_price
+    )
+
+
+SELECT
+    DATE(TIMESTAMP_ADD(created_time, interval 7 HOUR)) AS rebate_date,
+    TIMESTAMP_ADD(last_updated_time, INTERVAL 7 HOUR) AS last_updated_at,
+    TIMESTAMP_ADD(ingest_time, INTERVAL 7 HOUR) AS ingest_at,
+    product_id,
+    vendor_code,
+    warehouse_code AS fc_code,
+    CASE
+        WHEN warehouse_code = "HN" THEN "MIENBAC"
+        WHEN warehouse_code = "BD" THEN 'MIENNAM'
+        WHEN warehouse_code = "DN" THEN 'MIENTRUNG'
+    END AS sales_region_code,
+    price_after_rebate,
+    price_after_rebate_with_adhoc_promotion,
+    price_contract,
+    TIMESTAMP_ADD(start_time, INTERVAL 7 HOUR) AS start_time
+FROM ${ref('seller_prd_promotion_log_price_after_rebate')} AS a
+    LEFT JOIN contract_price AS b ON a.contract_price_code = b.contract_price_code
+WHERE
+    created_date >= '2024-01-01'
+    AND warehouse_code IN ('BD', 'HN', 'DN')
+QUALIFY ROW_NUMBER() OVER (PARTITION BY product_id, warehouse_code,vendor_code, rebate_date ORDER BY start_time DESC, last_updated_time DESC) = 1
+

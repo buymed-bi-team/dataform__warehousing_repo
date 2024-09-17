@@ -1,7 +1,7 @@
 config {
   type: "view",
   name: "dim_customer_view",
-  schema: "buymed_AI_ML",
+  schema: "buymed_product_recommendation",
   description: `PIC: minh.luu; model_type: table; schedule 0h00
     Source:
         ${source.silver}.marketplace_prd_customer_customer customer

@@ -7,7 +7,7 @@ config {
         ${source.silver}.core_prd_master_data_province
         ${source.silver}.core_prd_master_data_region`,
     name: "dim_geo_location_view",
-    schema: "buymed_AI_ML",
+    schema: "buymed_product_recommendation",
     columns: {
         location_code: "NonNull",
         location_name: "NonNull",
