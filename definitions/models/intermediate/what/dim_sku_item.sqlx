@@ -1,6 +1,18 @@
 config {
     type: "table",
-    description: "Schedule: hourly | PIC: dong.le",
+    description: `Schedule: hourly | PIC: dong.le
+    Source:
+      ${source.platinum}.marketplace_prd_product_v2_sku,
+      ${source.ref}.dim_fc_service_area
+      ${source.ref}.dim_fc
+      ${source.ref}.dim_sku
+      ${source.ref}.fact_stock_sku_item
+      ${source.ref}.dim_stock_classification
+      ${source.ref}.dim_product_fc_catm
+      ${source.ref}.agg_avg_demand_sku_item_l15d
+      ${source.ref}.dim_sku_item_fv_vendor
+      ${source.ref}.dim_sku_item_person_in_charge
+      ${source.ref}.dim_sku_sales_region_current`,
     name: "dim_sku_item",
     assertions: {
       uniqueKey: ["sku_fc_key"]
@@ -63,7 +75,7 @@ cte_sku_sr_code AS (
       WHEN a.location_code IN ("MIENBAC", "MIENTRUNG", "MIENNAM") THEN a.location_code
     END AS sales_region_code
   FROM cte_sku a
-  LEFT JOIN gold_buymed_vn2.dim_fc_service_area b
+  LEFT JOIN ${ref("dim_fc_service_area")} b
   ON a.location_code = b.service_area_code
   WHERE a.location_code NOT IN ("MN_ADM", "MB_ADM")
 
