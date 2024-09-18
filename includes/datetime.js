@@ -10,7 +10,7 @@ function current_datetime() {
     }
     var strDate = d.getFullYear().toString() + twoNum(d.getMonth()) + d.getDate().toString();
     var strTime = twoNum(d.getHours() + 6) + twoNum(d.getMinutes());
-    return strDate + '_' + strTime
+    return strDate + strTime
 }
 
 function getPastDate(intervalDays = 0, intervalMonths = 0) {
