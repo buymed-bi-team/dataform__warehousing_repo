@@ -151,3 +151,4 @@ FROM outbound_item AS ob
         AND r.vendor_code = p.line_manager_combine
         AND r.fc_code = p.fc_code
         AND r.rebate_date = p.po_created_date
+WHERE ob.seller_code = 'MEDX'
