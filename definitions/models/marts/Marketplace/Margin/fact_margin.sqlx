@@ -51,6 +51,7 @@ WITH
         WHERE
             created_at >= '2024-06-01'
             AND outbound_time >= TIMESTAMP_SUB('2024-06-01', INTERVAL 7 HOUR)
+            AND a.seller_code = 'MEDX'
     )
 
     , order_item AS (
@@ -107,13 +108,13 @@ WITH
         SELECT
             rebate_date
             , a.product_id
-            , b.sku_code
             , fc_code
             , vendor_code
             , price_after_rebate
             , price_after_rebate_with_adhoc_promotion
+            , MAX(price_after_rebate_with_adhoc_promotion) OVER
+        (PARTITION BY fc_code, vendor_code, product_id, FORMAT_DATE("%Y-%m", rebate_date)) AS highest_price_of_month
         FROM ${ref('fact_price_after_rebate')} AS a
-            LEFT JOIN ${ref('dim_sku')} AS b ON a.product_id = b.product_id AND b.seller_code = "MEDX"
     )
 
 SELECT
@@ -134,6 +135,7 @@ SELECT
     , p.fc_code AS po_fc_code
     , r.price_after_rebate
     , r.price_after_rebate_with_adhoc_promotion
+    , COALESCE(r.price_after_rebate_with_adhoc_promotion, r.price_after_rebate, r.highest_price_of_month) AS final_price_after_rebate
     , oi.item_type
 FROM outbound_item AS ob
     LEFT JOIN order_item AS oi 
@@ -145,10 +147,11 @@ FROM outbound_item AS ob
     LEFT JOIN vb_prev_month AS vpm 
         ON vpm.product_id = ob.product_id 
         AND FORMAT_DATE("%Y-%m", ob.outbound_date) = vpm.ym_issued
-        AND ob.seller_code = 'MEDX'
+        -- AND ob.seller_code = 'MEDX'
     LEFT JOIN price_after_rebate AS r
-        ON r.sku_code = ob.sku_code
+        ON r.product_id = ob.product_id
         AND r.vendor_code = p.line_manager_combine
         AND r.fc_code = p.fc_code
         AND r.rebate_date = p.po_created_date
-WHERE ob.seller_code = 'MEDX'
+        -- AND ob.seller_code = "MEDX"
+-- WHERE ob.seller_code = 'MEDX'
