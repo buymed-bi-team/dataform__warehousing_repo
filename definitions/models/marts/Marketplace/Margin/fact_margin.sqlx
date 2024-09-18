@@ -112,8 +112,8 @@ WITH
             , vendor_code
             , price_after_rebate
             , price_after_rebate_with_adhoc_promotion
-            , MAX(price_after_rebate_with_adhoc_promotion) OVER
-        (PARTITION BY fc_code, vendor_code, product_id, FORMAT_DATE("%Y-%m", rebate_date)) AS highest_price_of_month
+            , MAX(COALESCE(price_after_rebate_with_adhoc_promotion, price_after_rebate)) OVER
+                (PARTITION BY fc_code, vendor_code, product_id, FORMAT_DATE("%Y-%m", rebate_date)) AS highest_price_of_month
         FROM ${ref('fact_price_after_rebate')} AS a
     )
 
