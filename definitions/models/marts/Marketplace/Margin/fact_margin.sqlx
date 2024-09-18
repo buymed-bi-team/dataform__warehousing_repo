@@ -63,6 +63,7 @@ WITH
             , sales_price AS unit_price
             , sales_price_original AS unit_price_original
             , item_type
+            , seller_price
         FROM ${ref('fact_order_item')}
         WHERE
             created_at >= '2024-06-01'
@@ -128,7 +129,8 @@ SELECT
     , ob.outbound_quantity
     , ob.po_code
     , p.po_purchase_price
-    , COALESCE(v.vb_purchase_price, vpm.avg_vb_price) AS vb_purchase_price
+    , v.vb_purchase_price
+    , COALESCE(v.vb_purchase_price, p.po_purchase_price, vpm.avg_vb_price, oi.seller_price) AS purchase_price
     , p.fc_code AS po_fc_code
     , r.price_after_rebate
     , r.price_after_rebate_with_adhoc_promotion
@@ -149,3 +151,4 @@ FROM outbound_item AS ob
         AND r.vendor_code = p.line_manager_combine
         AND r.fc_code = p.fc_code
         AND r.rebate_date = p.po_created_date
+WHERE ob.seller_code = 'MEDX'
