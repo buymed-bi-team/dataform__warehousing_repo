@@ -4,7 +4,7 @@ config {
     Source:
         ${source.silver}.monitoring_prd_collector_user_stats_*`,
     name: "fact_user_event_tracking_view",
-    schema: "buymed_AI_ML",
+    schema: "buymed_product_recommendation",
     columns: {
         event: `NonNull | IN ("ADD_TO_CART", "SKU_DETAIL_VIEW") `,
         customer_id: " NonNull | The unique identifier for the customer",

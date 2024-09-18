@@ -36,24 +36,32 @@ agg_stock_out AS (
     LEFT JOIN ${ref("dim_lot")} l ON o.lot = l.lot
     LEFT JOIN ${ref("dim_expired_date")} e ON o.expired_date = e.expired_date
     GROUP BY ALL
+),
+
+agg_stock_in_out AS (
+    SELECT
+        COALESCE(i.sku_code, o.sku_code) AS sku_code,
+        COALESCE(i.fc_code, o.fc_code) AS fc_code,
+        COALESCE(i.lot, o.lot) AS lot,
+        COALESCE(i.expiration_status, o.expiration_status) AS expiration_status,
+        COALESCE(i.expired_date, o.expired_date) AS expired_date,
+        i.incoming_qty,
+        o.outgoing_qty,
+        i.incoming_qty - o.outgoing_qty as balance_qty,
+        i.po_codes,
+        o.so_codes
+    FROM
+        agg_stock_in AS i
+    FULL OUTER JOIN
+        agg_stock_out AS o
+    ON i.sku_code = o.sku_code
+    AND i.fc_code = o.fc_code
+    AND i.lot = o.lot
+    AND i.expired_date = o.expired_date
 )
 
 SELECT
-    COALESCE(i.sku_code, o.sku_code) AS sku_code,
-    COALESCE(i.fc_code, o.fc_code) AS fc_code,
-    COALESCE(i.lot, o.lot) AS lot,
-    COALESCE(i.expiration_status, o.expiration_status) AS expiration_status,
-    COALESCE(i.expired_date, o.expired_date) AS expired_date,
-    i.incoming_qty,
-    o.outgoing_qty,
-    i.incoming_qty - o.outgoing_qty as balance_qty,
-    i.po_codes,
-    o.so_codes
-FROM
-    agg_stock_in AS i
-FULL OUTER JOIN
-    agg_stock_out AS o
-ON i.sku_code = o.sku_code
-   AND i.fc_code = o.fc_code
-   AND i.lot = o.lot
-   AND i.expired_date = o.expired_date
+    b.*,
+    s.sku_fc_key from agg_stock_in_out b
+left join ${ref("dim_sku_item")} s
+on b.sku_code = s.sku_code and b.fc_code = s.fc_code

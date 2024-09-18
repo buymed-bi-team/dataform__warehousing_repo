@@ -1,6 +1,18 @@
 config {
     type: "table",
-    description: "Schedule: daily at 12am, 12pm | PIC: dong.le",
+    description: `Schedule: hourly | PIC: dong.le
+    Source:
+      ${source.platinum}.marketplace_prd_product_v2_sku,
+      ${source.ref}.dim_fc_service_area
+      ${source.ref}.dim_fc
+      ${source.ref}.dim_sku
+      ${source.ref}.fact_stock_sku_item
+      ${source.ref}.dim_stock_classification
+      ${source.ref}.dim_product_fc_catm
+      ${source.ref}.agg_avg_demand_sku_item_l15d
+      ${source.ref}.dim_sku_item_fv_vendor
+      ${source.ref}.dim_sku_item_person_in_charge
+      ${source.ref}.dim_sku_sales_region_current`,
     name: "dim_sku_item",
     assertions: {
       uniqueKey: ["sku_fc_key"]
@@ -10,7 +22,34 @@ config {
        sku_fc_key: "primary-key, concatenation of product_id, seller_code, and fc_code",
        sku_sr_key: "concatenation of sku and sales region code",
        item_system_active: "the status of sku_item in system ( ACTIVE or INACTIVE )",
-       inventory_price: "COALESCE(WHEN supplier_class = “EXTERNAL” THEN setting_price, WHEN supplier_class = “INTERNAL” THEN purchase_price END, 999)"
+       inventory_price: "COALESCE(WHEN supplier_class = “EXTERNAL” THEN setting_price, WHEN supplier_class = “INTERNAL” THEN purchase_price END, 999)",
+       sku_code: "sku identifier",
+       product_id: "product identifier",
+       sales_region_code: "active sales region of sku_item",
+       fc_code: "warehouse code",
+       supplier_code: "seller_code from dim_sku",
+       supplier_class: "seller_class from dim_sku",
+       item_code: "item_code from marketplace_prd_product_v2_sku",
+       item_status: "status from marketplace_prd_product_v2_sku",
+       item_is_active: "is_active from marketplace_prd_product_v2_sku",
+       item_system_active: "if item_status IN ('NORMAL', 'LIMIT') AND item_is_active IS TRUE, 'ACTIVE', else 'INACTIVE'",
+       demand_classification_code: "extra_props.demand_classification_code from marketplace_prd_product_v2_sku",
+       latest_put_time: "last end_put_time from put_ticket",
+       aging_put_days: "date difference from today to latest_put_time",
+       latest_pick_time: "last created_time from pick_ticket",
+       aging_pick_days: "date difference from today to latest_pick_time",
+       note: "PO, SO, and ticket details for aging classification",
+       type_stock_aging: "type_stock_aging for dim_stock_classification",
+       catm_group: "category management group for product_fc",
+       avg_demand_l15d: "average daily order quantity for SKU in the last 15 days",
+       fv_vendor_code: "vendor_code with seller_prd_purchasing_sku_config.vendor.priority = 0",
+       trading_type: "IF fv_vendor_code IS NULL, 'NON-TRADING', else 'TRADING'",
+       pic_purchase_id: "pic_purchase_id from dim_sku_item_person_in_charge",
+       pic_purchase_name: "corresponding username",
+       pic_category_id: "cic_account_id from dim_sku_sales_region_current",
+       pic_category_name: "corresponding username"
+
+
     }
 }
 
@@ -24,7 +63,7 @@ WITH cte_sku AS (
     is_active,
     JSON_EXTRACT_SCALAR(extra_props, "$.demand_classification_code") as demand_classification_code,
     STRING(codes) AS location_code
-  FROM gold_buymed_vn2.dedup_marketplace_prd_product_v2_sku_merge s,
+  FROM ${source.platinum}.marketplace_prd_product_v2_sku s,
   UNNEST(JSON_EXTRACT_ARRAY(s.location_codes)) codes
 ),
 
@@ -36,7 +75,7 @@ cte_sku_sr_code AS (
       WHEN a.location_code IN ("MIENBAC", "MIENTRUNG", "MIENNAM") THEN a.location_code
     END AS sales_region_code
   FROM cte_sku a
-  LEFT JOIN gold_buymed_vn2.dim_fc_service_area b
+  LEFT JOIN ${ref("dim_fc_service_area")} b
   ON a.location_code = b.service_area_code
   WHERE a.location_code NOT IN ("MN_ADM", "MB_ADM")
 
@@ -135,14 +174,14 @@ SELECT
   d.avg_demand_l15d,
   COALESCE(e.vendor_code, a.supplier_code) as fv_vendor_code,
   IF (e.vendor_code IS NULL, "NON-TRADING", "TRADING") as trading_type,
-  f.pic_purchase_id,
+  SAFE_CAST(f.pic_purchase_id AS INT64) as pic_purchase_id,
   f.pic_purchase_name,
-  f.pic_category_id,
-  f.pic_category_name,
+  COALESCE(SAFE_CAST(i.cic_account_id AS INT64), f.pic_category_id) as pic_category_id,
+  COALESCE(i.cic_name, f.pic_category_name) as pic_category_name,
   COALESCE(
     CASE
-      WHEN g.seller_class = "EXTERNAL" THEN retail_price_value
-      WHEN g.seller_class = "INTERNAL" THEN purchase_price
+      WHEN g.seller_class = "EXTERNAL" THEN g.retail_price_value
+      WHEN g.seller_class = "INTERNAL" THEN g.purchase_price
     END, 999) AS inventory_price,
   h.location_codes
 FROM cte_sku_item a
@@ -160,6 +199,8 @@ LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_sku g
 ON a.item_code = g.item_code
 LEFT JOIN cte_sku_fc_location h
 ON a.sku_fc_key = h.sku_fc_key
+LEFT JOIN ${ref("dim_sku_sales_region_current")} i 
+ON a.sku_code = i.sku_code AND a.fc_code = i.fc_code
 
 post_operations {
     ALTER TABLE ${self()} ADD PRIMARY KEY (sku_fc_key) NOT ENFORCED;

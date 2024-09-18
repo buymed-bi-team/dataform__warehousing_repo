@@ -1,0 +1,51 @@
+config {
+    type: "incremental",
+    description: "PIC:minhluu",
+    columns: {},
+    tags: ["custom_2h_past_5"],
+    bigquery: {
+        partitionBy: "date"
+    }
+}
+WITH src AS (
+    SELECT 
+        mg_id,
+        code,
+        seller_code,
+        product_id,
+        JSON_VALUE(extra_props, "$.sku") AS sku,
+        JSON_VALUE(extra_props, "$.item_code") AS item_code,
+        SAFE_CAST(JSON_VALUE(next, '$.purchase_price') AS INT64) AS purchase_price,
+        action,
+        DATETIME(created_time,'+7') created_time, 
+        synced_at
+    FROM ${source.silver}.marketplace_prd_product_v2_history_update_price
+    WHERE SAFE_CAST(JSON_VALUE(next, '$.purchase_price') AS INT64) is not null
+    AND ingest_time >= ${when(incremental(),
+        `"${datetime.getPastDate({intervalDays:2})}"`,
+        `"2020-01-01"`)}
+    -- QUALIFY ROW_NUMBER() OVER (w) = 1 AND FIRST_VALUE(action) OVER(w) <> "d"
+    -- WINDOW w AS (PARTITION BY mg_id ORDER BY ORDER BY synced_at DESC, IF (action='d',3,IF(action='u',2,1) DESC)
+)
+
+SELECT 
+    DATE(created_time) AS date,
+    code,
+    seller_code,
+    product_id,
+    sku,
+    item_code,
+    ARRAY_AGG(purchase_price order by created_time desc limit 1)[0] as purchase_price
+FROM src
+${when(incremental(),`WHERE DATE(created_time) = CURRENT_DATE()`)}
+GROUP BY ALL
+
+post_operations {
+    ${when(incremental(),
+    `
+        DELETE ${self()}
+        WHERE date = "${datetime.current_date()}"
+    `
+    )}
+}
+

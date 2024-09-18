@@ -1,23 +1,26 @@
-function current_date() {
+function current_date(timezone=7) {
     var d = new Date();
+    d.setHours(d.getHours() +timezone); // Timezone
     var strDate = d.getFullYear().toString() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + d.getDate().toString();
     return strDate
 }
-function current_datetime() {
+function current_datetime(timezone=7) {
     var d = new Date();
     function twoNum(num) {
         return ("0" + (num + 1)).slice(-2)
     }
+    d.setHours(d.getHours() + timezone)
     var strDate = d.getFullYear().toString() + twoNum(d.getMonth()) + d.getDate().toString();
     var strTime = twoNum(d.getHours() + 6) + twoNum(d.getMinutes());
     return strDate + strTime
 }
 
-function getPastDate(intervalDays = 0, intervalMonths = 0) {
+function getPastDate({intervalDays = 0, intervalMonths = 0, timezone=7}) {
     // WHERE date > ${getPastDate({intervalDays:10})} == WHERE data > CURRENT_DATE() - INTERVAL 10 DAY 
     // For ex: today = 2024-09-16 ->  ${getPastDate({intervalDays:10})} = 2024-09-06
     // Get today's date
     const today = new Date();
+    today.setHours(today.getHours() +timezone); // Timezone
 
     // Subtract the specified number of days
     today.setDate(today.getDate() - intervalDays);
@@ -32,12 +35,12 @@ function getPastDate(intervalDays = 0, intervalMonths = 0) {
 
     return `${year}-${month}-${day}`;
 }
-function getPastDatetime({intervalDays = 0, intervalMonths = 0 , intervalHours = 0, intervalMinutes = 0 } = {}) {
+function getPastDatetime({intervalDays = 0, intervalMonths = 0 , intervalHours = 0, intervalMinutes = 0, timezone=7 } = {}) {
     // Not support Second, because it too small
     
     // Get today's date
     const today = new Date();
-    today.setHours(today.getHours() +7); // Timezone
+    today.setHours(today.getHours() +timezone); // Timezone
 
     // Subtract
     today.setDate(today.getDate() - intervalDays);

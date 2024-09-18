@@ -1,0 +1,34 @@
+config {
+    type: "table",
+    description: 
+        `
+        RLS by location for BDM & Sales Rep;
+        PIC: nguyen.tran; 
+        Type: Table;
+        Schedule Refresh: hourly;
+        Source:
+            ${source.platinum}.marketplace_prd_customer_pic
+        `,
+    tags:["custom_1h_past5"],
+}
+
+WITH
+  unnest_ward AS (
+    SELECT
+        account_id,
+        type,
+        COALESCE(JSON_VALUE(w), JSON_VALUE(d.district_code), JSON_VALUE(p.province_code)) AS code
+    FROM ${ref('marketplace_prd_customer_pic')} c
+        , UNNEST(JSON_EXTRACT_ARRAY(provinces, '$')) AS p
+        LEFT JOIN UNNEST(JSON_QUERY_ARRAY(p.district_code,'$')) AS d
+        LEFT JOIN UNNEST(JSON_QUERY_ARRAY(d.ward_codes,'$')) AS w 
+)
+
+SELECT
+  account_id,
+  type,
+  COALESCE(d1.location_code, d2.location_code) AS ward_code
+FROM unnest_ward p
+    LEFT JOIN ${ref('dim_geo_location')} d1 ON p.code=d1.province_code AND d1.province_code IS NOT NULL
+    LEFT JOIN ${ref('dim_geo_location')} d2 ON p.code=d2.district_code AND d2.district_code IS NOT NULL
+

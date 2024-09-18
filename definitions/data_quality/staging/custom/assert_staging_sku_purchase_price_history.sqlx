@@ -1,0 +1,20 @@
+config {
+    type: "assertion",
+    description: "PIC:minhluu",
+    tags: ["weekly"]
+}
+
+/*
+    If assertion raise, then it means purchase price of item_code is not true, because we get the last item_code 
+        rather than mg_id, but the mg_id of item_code can be delete it means that record and all related 
+        aren't valuable anymore.
+    If so, then you can consider to get 2 final mg_id of that item order by created_time, if the first one - I mean 
+        the last one - isn't valuable then get next one's purchase price  
+*/
+
+SELECT 
+    action
+    -- mg_id, ingest_time
+FROM ${source.silver}.marketplace_prd_product_v2_history_update_price
+WHERE action like "d"
+AND ingest_time >= TIMESTAMP(CURRENT_DATETIME() - INTERVAL 10 DAY)
