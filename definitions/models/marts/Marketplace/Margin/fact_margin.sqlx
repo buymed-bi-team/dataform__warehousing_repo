@@ -22,7 +22,7 @@ config {
 
     },
     assertions: {
-        nonNull: ["created_at", "product_id", "sku_code", "po_code"]
+        nonNull: ["created_at", "product_id", "sku_code"]
   
     }
 }
@@ -93,6 +93,15 @@ WITH
         GROUP BY ALL
     )
 
+    , vb_prev_month AS (
+        SELECT
+            FORMAT_DATE("%Y-%m", issued_date) AS ym_issued
+            , product_id
+            , IFNULL(SAFE_DIVIDE(SUM(total_amount), SUM(quantity)), 0) AS avg_vb_price
+        FROM ${ref('fact_vendor_bill_item')} 
+        GROUP BY 1, 2
+    )
+
     , price_after_rebate AS (
         SELECT
             rebate_date
@@ -119,7 +128,7 @@ SELECT
     , ob.outbound_quantity
     , ob.po_code
     , p.po_purchase_price
-    , v.vb_purchase_price
+    , COALESCE(v.vb_purchase_price, vpm.avg_vb_price) AS vb_purchase_price
     , p.fc_code AS po_fc_code
     , r.price_after_rebate
     , r.price_after_rebate_with_adhoc_promotion
@@ -131,6 +140,10 @@ FROM outbound_item AS ob
         ON v.po_code = ob.po_code AND v.sku_code = ob.sku_code
     LEFT JOIN po_price AS p 
         ON p.po_code = ob.po_code AND p.sku_code = ob.sku_code
+    LEFT JOIN vb_prev_month AS vpm 
+        ON vpm.product_id = ob.product_id 
+        AND FORMAT_DATE("%Y-%m", ob.outbound_date) = vpm.ym_issued
+        AND ob.seller_code = 'MEDX'
     LEFT JOIN price_after_rebate AS r
         ON r.sku_code = ob.sku_code
         AND r.vendor_code = p.line_manager_combine
