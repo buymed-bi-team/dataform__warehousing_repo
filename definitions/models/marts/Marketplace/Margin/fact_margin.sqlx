@@ -131,11 +131,24 @@ SELECT
     , ob.po_code
     , p.po_purchase_price
     , v.vb_purchase_price
-    , COALESCE(v.vb_purchase_price, p.po_purchase_price, vpm.avg_vb_price, oi.seller_price) AS purchase_price
+    , COALESCE(
+        v.vb_purchase_price
+        , p.po_purchase_price
+        , vpm.avg_vb_price
+        , oi.seller_price
+      ) AS purchase_price
     , p.fc_code AS po_fc_code
     , r.price_after_rebate
     , r.price_after_rebate_with_adhoc_promotion
-    , COALESCE(r.price_after_rebate_with_adhoc_promotion, r.price_after_rebate, r.highest_price_of_month) AS final_price_after_rebate
+    , COALESCE(
+        r.price_after_rebate_with_adhoc_promotion
+        , r.price_after_rebate
+        , r.highest_price_of_month
+        , v.vb_purchase_price
+        , p.po_purchase_price
+        , vpm.avg_vb_price
+        , oi.seller_price
+      ) AS final_price_after_rebate
     , oi.item_type
 FROM outbound_item AS ob
     LEFT JOIN order_item AS oi 
