@@ -153,6 +153,8 @@ SELECT
 FROM outbound_item AS ob
     LEFT JOIN order_item AS oi 
         ON ob.mg_id = oi.mg_id AND ob.sku_code = oi.sku_code
+    LEFT JOIN ${ref('fact_order')} AS o 
+        ON ob.order_id = o.order_id
     LEFT JOIN vendor_bill_price AS v
         ON v.po_code = ob.po_code AND v.sku_code = ob.sku_code
     LEFT JOIN po_price AS p 
@@ -167,4 +169,6 @@ FROM outbound_item AS ob
         AND r.fc_code = p.fc_code
         AND r.rebate_date = p.po_created_date
         -- AND ob.seller_code = "MEDX"
--- WHERE ob.seller_code = 'MEDX'
+WHERE 
+    o.order_status <> 'CANCEL'
+-- ob.seller_code = 'MEDX'
