@@ -243,8 +243,7 @@ SELECT
 	            , "ON_TIME"
 	            , "LATE"
 	      )
-
-        , NULL
+        , IF(f.cut_off_ts < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR), "LATE", NULL) 
     ) AS fulfill_status_cut_off
 FROM outbound_ticket AS ot
 	LEFT JOIN ${ref('dim_outbound_cutoff_route')} AS o ON ot.ticket_id = o.ticket_id
