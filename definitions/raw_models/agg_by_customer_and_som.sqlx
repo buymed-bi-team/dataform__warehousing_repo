@@ -15,7 +15,7 @@ select
     customer_id,
     count(distinct product_id) as no_products,
     -- sum(sales_price* demand_quantity)as order_amount,
-    -- count(distinct oi.order_id) as no_orders,
+    count(distinct oi.order_id) as no_orders,
     sum(sales_price* demand_quantity)/count(distinct oi.order_id) as average_order_value,
     sum(sales_price* demand_quantity) as order_amount
 from ${source.ref}.fact_order_item oi
