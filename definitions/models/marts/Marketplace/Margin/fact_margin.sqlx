@@ -65,9 +65,11 @@ WITH
             , sales_price_original AS unit_price_original
             , item_type
             , seller_price
+            , sku_key_sales_region_code
         FROM ${ref('fact_order_item')}
         WHERE
             created_at >= '2024-06-01'
+            AND seller_code = 'MEDX'
     )
 
     , po_price AS (
@@ -137,7 +139,7 @@ SELECT
         , vpm.avg_vb_price
         , oi.seller_price
       ) AS purchase_price
-    , p.fc_code AS po_fc_code
+    -- , p.fc_code AS po_fc_code
     , r.price_after_rebate
     , r.price_after_rebate_with_adhoc_promotion
     , COALESCE(
@@ -150,6 +152,7 @@ SELECT
         , oi.seller_price
       ) AS final_price_after_rebate
     , oi.item_type
+    , oi.sku_key_sales_region_code
 FROM outbound_item AS ob
     LEFT JOIN order_item AS oi 
         ON ob.mg_id = oi.mg_id AND ob.sku_code = oi.sku_code
