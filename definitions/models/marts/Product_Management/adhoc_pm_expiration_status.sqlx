@@ -139,6 +139,7 @@ with cte_date as (
 )
 
 select * from alert_action 
+qualify row_number() over(partition by sku_key_sales_region) = 1
 -- where sku_code = 'MEDX.F69HR2AX'
 
 

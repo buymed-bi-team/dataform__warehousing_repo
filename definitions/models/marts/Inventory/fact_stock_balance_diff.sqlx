@@ -1,0 +1,50 @@
+config {
+    type: "table",
+    description: "Schedule: daily at 12am, 12pm | PIC: dong.le",
+    name: "fact_stock_balance_diff",
+    tags: ["0h00"],
+    columns: {
+        // Specify columns here as needed
+    }
+}
+
+WITH balance AS (
+  SELECT 
+    sku_code, 
+    fc_code, 
+     SUM(incoming_qty) as incoming_qty,
+      SUM(outgoing_qty) as outgoing_qty,
+    SUM(incoming_qty) - SUM(outgoing_qty) AS balance_qty
+  FROM ${ref("fact_stock_balance")}
+  GROUP BY sku_code, fc_code
+),
+stock AS (
+  SELECT 
+    sku_code, 
+    fc_code, 
+    SUM(stock_quantity) AS stock_qty
+  FROM ${ref("fact_stock_sku_item")}
+  GROUP BY sku_code, fc_code
+),
+-- Join the balance and stock CTEs to calculate the percentage difference
+difference AS (
+  SELECT 
+    s.sku_code, 
+    s.fc_code,
+    si.sku_fc_key,
+    b.incoming_qty,
+    b.outgoing_qty,
+    b.balance_qty,
+    s.stock_qty,
+    -- Calculate absolute percentage difference
+    ABS((b.balance_qty - s.stock_qty) / s.stock_qty) AS percent_difference,
+    ABS(COALESCE(b.balance_qty, 0) - COALESCE(s.stock_qty, 0)) AS actual_difference
+  FROM stock s
+  LEFT JOIN balance b 
+    ON b.sku_code = s.sku_code 
+    AND b.fc_code = s.fc_code
+  LEFT JOIN ${ref("dim_sku_item")} si
+    ON s.sku_code = si.sku_code 
+    AND s.fc_code = si.fc_code)
+
+SELECT * FROM difference

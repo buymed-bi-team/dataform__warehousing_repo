@@ -1,0 +1,34 @@
+config {
+    type: "table",
+    description: "PIC: huong.dang, schedule 0:00am daily",
+    schema: "gold_ml",
+    tags: ["0h00"]
+}
+
+
+  WITH DATA AS(
+    SELECT
+      b.product_id,
+      b.voucher_code,
+      a.start_date,
+      a.end_date
+    FROM ${ref('dim_voucher')} AS a
+    LEFT JOIN ${ref('dim_voucher_product')} AS b ON a.voucher_code = b.voucher_code
+    WHERE (EXTRACT(year FROM start_date) >= 2024
+        AND a.promotion_organizer="BUYMED"
+        AND b.product_id IS NOT NULL )),
+    date_range AS (
+    SELECT
+      product_id,
+      voucher_code,
+      start_date,
+      end_date,
+      GENERATE_DATE_ARRAY(start_date, end_date, INTERVAL 1 DAY) AS date_array
+    FROM DATA )
+  SELECT
+    product_id,
+    voucher_code,
+    date
+  FROM
+    date_range,
+    UNNEST(date_array) AS date 

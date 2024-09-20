@@ -93,5 +93,7 @@ with
     )
 
 SELECT
-    *
-FROM final
+    a.*
+    , v.line_manager_combine
+FROM final AS a
+    LEFT JOIN ${ref('dim_vendor')} AS v ON a.vendor_code = v.supplier_code

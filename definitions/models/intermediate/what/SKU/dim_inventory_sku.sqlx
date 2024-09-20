@@ -66,3 +66,4 @@ SELECT
     , b.incoming_quantity
 FROM inventory AS a
     LEFT JOIN incoming AS b ON a.sku = b.sku AND a.fc_code = b.fc_code
+QUALIFY ROW_NUMBER() OVER(PARTITION BY sku_key_sales_region) = 1

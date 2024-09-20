@@ -2,7 +2,7 @@ config {
     type: "view",
     description: "Schedule: daily at 12am, 12pm | PIC: dong.le",
     name: "dim_sku_item_view",
-    schema: "buymed_AI_ML",
+    schema: "buymed_product_recommendation",
      columns: {
        sku_fc_key: "primary-key, concatenation of product_id, seller_code, and fc_code",
        sku_sr_key: "concatenation of sku and sales region code",

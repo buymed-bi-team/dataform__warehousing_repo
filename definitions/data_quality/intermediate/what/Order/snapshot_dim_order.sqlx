@@ -1,18 +1,31 @@
 config {
     type: "operations",
-    description: "PIC:minh.luu"
+    description: "PIC:minh.luu",
+    tags: ["custom_5min_9to18","custom_1h_18to9","Weekend"]
 }
 
 
-CREATE SNAPSHOT TABLE dataform_assertions.dim_order_${datetime.current_datetime()}
-CLONE ${ref(`dim_order`)};
+IF (
+    ( SELECT COUNT(1) FROM `lakehouse-prod-394907.dataform_assertions.assert_dim_order_primary_key` ) <> 0) 
+THEN 
+    CREATE SNAPSHOT TABLE dataform_assertions.dim_order_${datetime.current_datetime()}
+    CLONE ${ref(`dim_order`)};
 
-CREATE OR REPLACE TABLE `${source.ref}.dim_order` 
-PARTITION BY DATE(created_time)
-AS
-(
-    SELECT *
-    FROM ${source.ref}.dim_order
-    QUALIFY ROW_NUMBER() OVER (WINDOW_PARTITION) = 1
-    WINDOW WINDOW_PARTITION AS (PARTITION BY order_id)
-);
+    CREATE OR REPLACE TABLE dataform_assertions.marketplace_prd_order_v2_order_dim_order_${datetime.current_datetime()}
+    AS (
+        SELECT * FROM ${source.platinum}.marketplace_prd_order_v2_order
+        WHERE created_date >= "${datetime.getPastDate(intervalDays=1)}"
+    );
+
+    CREATE OR REPLACE TABLE ${source.ref}.dim_order 
+    PARTITION BY DATE(created_dt)
+    AS
+    (
+        SELECT *
+        FROM ${source.ref}.dim_order
+        QUALIFY ROW_NUMBER() OVER (WINDOW_PARTITION) = 1
+        WINDOW WINDOW_PARTITION AS (PARTITION BY order_id)
+    );
+END IF;
+
+ASSERT ( (SELECT COUNT(1) FROM `lakehouse-prod-394907.dataform_assertions.assert_dim_order_primary_key` ) = 0 ) AS "Assertion failed, expected zero rows.";

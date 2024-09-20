@@ -23,7 +23,8 @@ with
             fc_code,
             po_code,
             status,
-            created_time
+            created_time,
+            issued_date
         from ${ref('fact_vendor_bill')}
     ),
 
@@ -55,6 +56,7 @@ with
             , quantity * price as raw_amount
             , vb.created_time
             , vb.status
+            , vb.issued_date
         from bill_item vi
             left join bill_dedup vb on vb.vendor_bill_id = vi.vendor_bill_id
         where

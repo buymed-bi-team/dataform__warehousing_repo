@@ -1,0 +1,18 @@
+config {
+    type: "table",
+    description: "PIC: huong.dang, schedule 0:00am daily",
+    schema: "gold_ml",
+    tags: ["0h00"]
+}
+
+SELECT
+  date,
+  code,
+  product_id,
+  purchase_price
+FROM
+  ${ref('staging_sku_purchase_price_history')}
+WHERE
+  seller_code ="MEDX" AND purchase_price > 1000
+GROUP BY ALL
+ORDER BY 2
