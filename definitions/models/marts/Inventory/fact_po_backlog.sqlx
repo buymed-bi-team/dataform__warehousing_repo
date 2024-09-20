@@ -1,7 +1,10 @@
 config {
     type: "table",
     description: "Schedule: daily at 12am, 12pm | PIC: dong.le",
-    tags: ["6h00", "14h00", "18h00"]
+    tags: ["custom_1h_past5"],
+	bigquery: {
+		partitionBy: "DATE(po_confirmed_ts)"
+	}
 }
 
 WITH cte_date AS (
