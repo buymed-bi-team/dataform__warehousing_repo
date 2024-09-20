@@ -251,3 +251,4 @@ FROM outbound_ticket AS ot
 	LEFT JOIN ${ref('dim_outbound_cutoff_route')} AS o ON ot.ticket_id = o.ticket_id
 	LEFT JOIN ${ref('dim_delivery_cutoff_route')} AS d ON ot.ticket_id = d.ticket_id
 	LEFT JOIN ${ref('dim_fulfill_cutoff_route')} AS f ON ot.ticket_id = f.ticket_id
+QUALIFY ROW_NUMBER() OVER(PARTITION BY ticket_id) = 1
