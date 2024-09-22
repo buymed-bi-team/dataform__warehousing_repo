@@ -11,7 +11,7 @@ config {
 
 with get_sku_from_it_list as (
     select sku_code, sku_key
-    from ${source.ref}.adhoc_pm_master_sku 
+    from ${ref('adhoc_pm_master_sku')}
     where upper(internal_transfer) = "INTERNAL_TRANSFER"
 )
 
