@@ -4,12 +4,12 @@ config {
         ` 
         PIC: nguyen.tran; 
         Type: Table; 
-        Refresh Schedule: daily at 0h30 & 7h30;
+        Refresh Schedule: daily at 7h30 & 3h30
         Source: 
             ${source.platinum}.warehouse_prd_inventory_transfer_sku,
             ${source.platinum}.warehouse_prd_inventory_transfer
         `,
-    tags: ["0h30", "7h30"],
+    tags: ["7h30", "3h00"],
 
     bigquery: {
       partitionBy: "DATE(ts_created)",
