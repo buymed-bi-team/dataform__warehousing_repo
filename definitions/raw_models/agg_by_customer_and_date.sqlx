@@ -13,13 +13,13 @@ config {
     }
 }
 select
-    -- cast(cast(FORMAT_DATE('%Y-%m', oi.created_at)as string)||"-01" as date ) as start_of_month,
+    cast(cast(FORMAT_DATE('%Y-%m', oi.created_at)as string)||"-01" as date ) as start_of_month,
     date(oi.created_at) as date,
     customer_id,
     count(distinct sku_code ) as no_skus,
     sum (demand_quantity) as  order_qty,
     count(distinct oi.order_id) as no_orders,
-    sum(sales_price* demand_quantity)/count(distinct oi.order_id) as average_order_value,
+    -- sum(sales_price* demand_quantity)/count(distinct oi.order_id) as average_order_value,
     sum(sales_price* demand_quantity) as order_amount
 from ${ref('fact_order_item')} oi
 left join ${ref('dim_order_status')} o on oi.order_id = o.order_id
