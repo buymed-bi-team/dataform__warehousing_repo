@@ -16,7 +16,7 @@ config {
 
 SELECT
     oi.order_id
-    , oi.product_original_id
+    , oi.product_original_id AS producdt_id
     , COALESCE(oi.combo_quantity, oi.demand_quantity) AS qty_ordered
     , oi.sales_price AS price_unit
     , ov.redeem_code AS voucher_code
