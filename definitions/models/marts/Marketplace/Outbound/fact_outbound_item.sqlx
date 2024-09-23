@@ -13,7 +13,7 @@ config {
     partitionBy: "date(created_at)",
     clusterBy: ["order_id", "sku_bom_code"]
   },
-  tags: ["8h30", "10h30", "12h30", "15h30" ,"18h00"]
+  tags: ["8h30", "10h30", "12h30", "15h30" ,"17h30"]
 }
 
 with cte_date as (
