@@ -14,7 +14,7 @@ config {
     partitionBy: "date(created_at)",
     clusterBy: ["order_id", "sku_code"]
   },
-  tags: ["8h30", "10h30", "12h30", "15h30" ,"17h00", "20h30"],
+  tags: ["8h30", "10h30", "12h30", "15h30" ,"17h30", "20h30"],
   columns: {
     created_timekey: "Foreign-Key to Dim_DateTime ",
     created_at: "UTC, When the item was placed",
