@@ -65,7 +65,7 @@ select
     , oi.charge_deal_fee_value
   ) as promotion_amount
   , oi.seller_code
-  -- , oi.product_id
+  , oi.product_id
   , safe_cast( json_extract_scalar( bom.product_id ) as INT64 ) as product_bom_id
   , oi.sku_code
   , oi.sku_key
@@ -112,6 +112,7 @@ select
   , promotion_code
   , promotion_amount
   , seller_code
+  , product_id AS product_original_id
   , sku_code as sku_orignal_code
   , sku_key as sku_orignal_key
   , item_code as item_original_code
@@ -167,6 +168,7 @@ cte_normal_item as (
         , oi.charge_deal_fee_value
     ) as promotion_amount
     , oi.seller_code
+    , oi.product_id AS product_original_id
     , oi.sku_code as sku_orignal_code
     , oi.sku_key as sku_orignal_key
     , oi.item_code as item_original_code
