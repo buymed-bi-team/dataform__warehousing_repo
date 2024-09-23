@@ -127,7 +127,7 @@ select
     (combo_price / sum(bom_quantity * bom_price) over (partition by order_id, sku_code))
     , 1
    ) as sales_price
-  , price_after_discount * LEAST(
+  , bom_price * LEAST(
     (price_after_discount / sum(bom_quantity * bom_price) over (partition by order_id, sku_code))
     , 1
    ) as price_after_discount
