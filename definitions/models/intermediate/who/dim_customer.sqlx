@@ -154,6 +154,7 @@ SELECT
     customer.phone AS customer_phone,
     customer.mst,
     customer.status AS user_system_status,
+    
 
     customer.refer_code,
     customer.scope AS business_scope,
@@ -174,10 +175,12 @@ SELECT
     JSON_VALUE(customer.extra_props, "$.create_account_pic") AS create_account_pic,
     JSON_VALUE(customer.extra_props, "$.first_order_pic") AS first_order_pic,
     LEFT(JSON_VALUE(customer.extra_props, "$.date_of_birth"), LENGTH(JSON_VALUE(customer.extra_props, "$.date_of_birth")) - 10)  AS date_of_birth,
+    DATE_DIFF(CURRENT_DATE(), PARSE_DATE('%Y-%m-%d', LEFT(JSON_VALUE(customer.extra_props, "$.date_of_birth"), LENGTH(JSON_VALUE(customer.extra_props, "$.date_of_birth")) - 10)), YEAR) AS age,
     customer.legal_representative,
     customer.company_name,
     customer.point AS loyalty_point,
     customer.is_active,
+    
 
     note.content AS customer_note,
     CASE
