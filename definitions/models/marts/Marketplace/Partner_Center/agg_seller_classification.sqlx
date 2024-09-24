@@ -65,6 +65,7 @@ WITH
         SELECT DISTINCT
             s.supplier_id
             , c.year_month
+            , c.som
         FROM ${ref('dim_supplier')} AS s
             , ${ref('dim_calendar')} AS c
         WHERE
@@ -72,13 +73,24 @@ WITH
             AND s.supplier_class = 'EXTERNAL'
     )
 
+    , final AS (
+        SELECT
+            a.*
+            , IF(ac.ym_active IS NULL, 0, 1) AS active_seller
+            , IF(n.ym_new IS NULL, 0, 1) AS new_seller
+            , IF(ac.ym_active IS NULL, 0, 1) -  IF(n.ym_new IS NULL, 0, 1) AS repeat_seller
+            , IF(c.ym_churn IS NULL, 0, 1) AS churn_seller
+        FROM seller_ym AS a
+            LEFT JOIN active_seller AS ac ON a.supplier_id = ac.supplier_id AND a.year_month = ac.ym_active
+            LEFT JOIN new_seller AS n ON a.supplier_id = n.supplier_id AND a.year_month = n.ym_new
+            LEFT JOIN churn_seller AS c ON a.supplier_id = c.supplier_id AND a.year_month = c.ym_churn
+    )
+
 SELECT
-    a.*
-    , IF(ac.ym_active IS NULL, 0, 1) AS active_seller
-    , IF(n.ym_new IS NULL, 0, 1) AS new_seller
-    , IF(ac.ym_active IS NULL, 0, 1) -  IF(n.ym_new IS NULL, 0, 1) AS repeat_seller
-    , IF(c.ym_churn IS NULL, 0, 1) AS churn_seller
-FROM seller_ym AS a
-    LEFT JOIN active_seller AS ac ON a.supplier_id = ac.supplier_id AND a.year_month = ac.ym_active
-    LEFT JOIN new_seller AS n ON a.supplier_id = n.supplier_id AND a.year_month = n.ym_new
-    LEFT JOIN churn_seller AS c ON a.supplier_id = c.supplier_id AND a.year_month = c.ym_churn
+    *
+    , CASE
+        WHEN new_seller = 1 THEN "NEW_SELLER"
+        WHEN repeat_seller = 1 THEN "REPEAT_SELLER"
+        WHEN churn_seller = 1 THEN "CHURN_SELLER"
+      END AS seller_classification
+FROM final
