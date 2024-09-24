@@ -1,0 +1,80 @@
+config {
+  type: "table",
+  description: 
+        `
+        The Price after rebate from favourite vendor (or the highest price among other vendors if the favourite vendor's price is not available) by date, warehouse
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.ref}.fact_price_after_rebate,
+            ${source.ref}.dim_sku_sales_region_current,
+            ${source.ref}.dim_vendor
+        `,
+  bigquery: {
+    partitionBy: "rebate_date",
+    clusterBy: ["sales_region_code", "product_id"]
+  },
+  tags: ["custom_1h_past5"]
+}
+
+with
+---------- Retrieve price after rebate of products from favourite vendor --------------------------------------
+    fv_vendor AS (
+        select
+            g.rebate_date,
+            g.last_updated_at,
+            g.ingest_at,
+            a.product_id,
+            a.sku_code,
+            a.sales_region_code,
+            g.vendor_code,
+            g.price_after_rebate,
+            g.price_after_rebate_with_adhoc_promotion,
+            g.price_contract,
+            CONCAT(a.product_id, "_", a.sales_region_code) AS product_sales_region_code,
+            a.sku_key_sales_region_code
+        from ${ref('dim_sku_sales_region_full')} a
+            left join ${ref('dim_vendor')} vend on a.fv_code = vend.supplier_code
+            left join ${ref('fact_price_after_rebate')} g
+                on a.sales_region_code = g.sales_region_code
+                and a.product_id = g.product_id
+                and vend.line_manager_combine = g.vendor_code
+        where g.sales_region_code is not null
+            AND a.seller_code = 'MEDX'
+    )
+
+------------ Retrieve max price after rebate of products from other vendors in case there are no price after rebate from favourite vendor --------
+    , other_vendor AS (
+        select
+            g.rebate_date,
+            g.last_updated_at,
+            g.ingest_at,
+            a.product_id,
+            a.sku_code,
+            a.sales_region_code,
+            g.vendor_code,
+            g.price_after_rebate,
+            g.price_after_rebate_with_adhoc_promotion,
+            g.price_contract,
+            CONCAT(a.product_id, "_", a.sales_region_code) AS product_sales_region_code,
+            a.sku_key_sales_region_code
+        from ${ref('dim_sku_sales_region_full')} a
+            left join ${ref('dim_vendor')} vend on a.fv_code = vend.supplier_code
+            left join ${ref('fact_price_after_rebate')} g on a.sales_region_code = g.sales_region_code and a.product_id = g.product_id
+        where (vend.line_manager_combine <> g.vendor_code OR vend.line_manager_combine IS NULL)
+            AND CONCAT(a.product_id, "_", a.sales_region_code) NOT IN (SELECT product_sales_region_code FROM fv_vendor)
+            AND a.seller_code = 'MEDX'
+        qualify ROW_NUMBER() over (partition by a.product_id, a.sales_region_code, g.rebate_date order by g.price_after_rebate_with_adhoc_promotion DESC) = 1
+    )
+
+-------- Append 2 tables to get final price after rebate of products -------------------
+SELECT
+    * 
+FROM fv_vendor
+WHERE rebate_date IS NOT NULL
+UNION DISTINCT
+SELECT
+    * 
+FROM other_vendor
+WHERE rebate_date IS NOT NULL

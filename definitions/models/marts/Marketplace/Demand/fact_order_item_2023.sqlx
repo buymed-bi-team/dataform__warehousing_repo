@@ -1,13 +1,17 @@
 config {
-  type: "view",
-  name: "fact_order_item_combo"
+  type: "table",
+  description: 
+        `
+        Details of the items in the order in 2023, with combos split into normal products and its prices recalculated according to the corresponding combo;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Source: 
+            ${source.platinum}.marketplace_prd_order_v2_order_item,
+            ${source.ref}.fact_order
+        `
 }
 
-
-with cte_date as (
-	select timestamp( date_trunc( date_sub( current_date('+7'), interval 12 month) , month ) ) as start_date
-),
-
+with 
 cte_order_item as (
     select 
         oi.mg_id
@@ -41,7 +45,7 @@ cte_order_item as (
         , DATETIME(oi.cart_item_created_time, "Asia/Ho_Chi_Minh") AS incart_at
     FROM ${source.platinum}.marketplace_prd_order_v2_order_item as oi
     where
-        created_date >= (select DATE(start_date) from cte_date)
+        created_date BETWEEN '2023-01-01' AND '2023-12-31'
 ),
 
 cte_combo_item as (
@@ -198,8 +202,25 @@ cte_normal_item as (
   from cte_order_item as oi
   where
     oi.mg_id not in ( select mg_id from cte_combo_item_pricing )
+),
+
+final AS (
+  select * from cte_combo_item_pricing
+  union all
+  select * from cte_normal_item
 )
 
-select * from cte_combo_item_pricing
-union all
-select * from cte_normal_item
+
+
+
+SELECT 
+    oi.*
+    , o.order_status
+    , CONCAT(product_id, "_", seller_code) AS sku_key
+    , o.shipping_province_code AS province_code
+    , fc.sales_region_code
+    , CONCAT(oi.product_id, "_", oi.seller_code, "_", fc.sales_region_code) AS sku_key_sales_region_code
+FROM final AS oi 
+    LEFT JOIN ${ref('fact_order')} AS o ON oi.order_id = o.order_id
+    LEFT JOIN ${ref('dim_fc_service_area')} AS fc ON fc.service_area_code = o.shipping_province_code
+WHERE seller_code = 'MEDX'

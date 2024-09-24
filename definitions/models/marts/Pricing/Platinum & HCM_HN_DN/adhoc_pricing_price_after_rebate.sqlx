@@ -2,7 +2,7 @@ config {
     type: "table", 
     description: 
         `
-        Price After Rebate of MEDX SKUs;
+        Price After Rebate of MEDX SKUs on current date (the price after rebate from the favourite vendor, or the highest price among other vendors if the favourite vendor's price is not available);
         PIC: nguyen.tran; 
         Type: Table; 
         Refresh Schedule: hourly;
@@ -24,99 +24,122 @@ with
 ----------- Only retrieve the price after rebate of the last 2 days ----------------------------------------
     cte_date as (
         SELECT TIMESTAMP_SUB(TIMESTAMP_TRUNC(current_timestamp(),day), interval 1 DAY) as trunc_timestamp
-    ),
-
---------- Retrieve start date of price contract ---------------------
-    contract_price as (
-        SELECT
-            contract_price_code
-            , start_time
-            , end_time
-        FROM ${source.platinum}.seller_prd_purchasing_contract_price
-        QUALIFY ROW_NUMBER() over (PARTITION BY mg_id ORDER BY synced_at DESC) = 1
-            AND FIRST_VALUE(action) over (PARTITION BY mg_id ORDER BY synced_at DESC) <> 'd'
     )
 
---------- Retrieve price after rebate of products from all vendors from the latest price contract in  BD, HN, DN warehouses --------------------------
-    , get_rebate_price as (
-        select
-            DATE(TIMESTAMP_ADD(created_time, interval 7 HOUR)) as rebate_date_get_at,
-            TIMESTAMP_ADD(last_updated_time, INTERVAL 7 HOUR) as last_updated_at,
-            TIMESTAMP_ADD(ingest_time, INTERVAL 7 HOUR) as ingest_at,
-            product_id,
-            vendor_code,
-            warehouse_code,
-            case
-                when warehouse_code = "HN" then "MIENBAC"
-                when warehouse_code = "BD" then 'MIENNAM'
-                when warehouse_code = "DN" then 'MIENTRUNG'
-            end as sales_region_code,
-            price_after_rebate,
-            price_after_rebate_with_adhoc_promotion,
-            price_contract,
-            start_time
-        from ${source.platinum}.seller_prd_promotion_log_price_after_rebate AS a
-            left join contract_price AS b ON a.contract_price_code = b.contract_price_code
-        where created_date >= (select DATE(TIMESTAMP_SUB(trunc_timestamp, interval 7 hour)) from cte_date)
-            AND warehouse_code IN ('BD', 'HN', 'DN')
-        QUALIFY ROW_NUMBER() OVER (PARTITION BY product_id, warehouse_code,vendor_code ORDER BY start_time DESC, last_updated_time DESC) = 1
-    )
----------- Retrieve price after rebate of products from favourite vendor --------------------------------------
-    , fv_vendor AS (
-        select
-            g.rebate_date_get_at,
-            g.last_updated_at,
-            g.ingest_at,
-            a.product_id,
-            a.sku_code,
-            a.sales_region_code,
-            g.vendor_code,
-            g.price_after_rebate,
-            g.price_after_rebate_with_adhoc_promotion,
-            g.price_contract,
-            CONCAT(a.product_id, "_", a.sales_region_code) AS product_sales_region_code,
-            a.sku_key_sales_region_code
-        from ${ref('dim_sku_sales_region_current')} a
-            left join ${ref('dim_vendor')} vend on a.fv_code = vend.supplier_code
-            left join get_rebate_price g
-                on a.sales_region_code = g.sales_region_code
-                and a.product_id = g.product_id
-                and vend.line_manager_combine = g.vendor_code
-        where g.sales_region_code is not null
-            AND a.seller_code = 'MEDX'
-    )
+SELECT 
+    rebate_date AS rebate_date_get_at,
+    last_updated_at,
+    ingest_at,
+    product_id,
+    sku_code,
+    sales_region_code,
+    vendor_code,
+    price_after_rebate,
+    price_after_rebate_with_adhoc_promotion,
+    price_contract,
+    product_sales_region_code,
+    sku_key_sales_region_code
+FROM ${ref('fact_price_after_rebate_fv_vendor')}
+WHERE rebate_date > (select DATE(TIMESTAMP_SUB(trunc_timestamp, interval 7 hour)) from cte_date)
+QUALIFY ROW_NUMBER() OVER(PARTITION BY product_id, sales_region_code ORDER BY last_updated_at DESC) = 1
 
------------- Retrieve max price after rebate of products from other vendors in case there are no price after rebate from favourite vendor --------
-    , other_vendor AS (
-        select
-            g.rebate_date_get_at,
-            g.last_updated_at,
-            g.ingest_at,
-            a.product_id,
-            a.sku_code,
-            a.sales_region_code,
-            g.vendor_code,
-            g.price_after_rebate,
-            g.price_after_rebate_with_adhoc_promotion,
-            g.price_contract,
-            CONCAT(a.product_id, "_", a.sales_region_code) AS product_sales_region_code,
-            a.sku_key_sales_region_code
-        from ${ref('dim_sku_sales_region_current')} a
-            left join ${ref('dim_vendor')} vend on a.fv_code = vend.supplier_code
-            left join get_rebate_price g on a.sales_region_code = g.sales_region_code and a.product_id = g.product_id
-        where (vend.line_manager_combine <> g.vendor_code OR vend.line_manager_combine IS NULL)
-            AND CONCAT(a.product_id, "_", a.sales_region_code) NOT IN (SELECT product_sales_region_code FROM fv_vendor)
-            AND a.seller_code = 'MEDX'
-        qualify ROW_NUMBER() over (partition by a.product_id, a.sales_region_code order by g.price_after_rebate DESC) = 1
-    )
+-- with
+-- ----------- Only retrieve the price after rebate of the last 2 days ----------------------------------------
+--     cte_date as (
+--         SELECT TIMESTAMP_SUB(TIMESTAMP_TRUNC(current_timestamp(),day), interval 1 DAY) as trunc_timestamp
+--     ),
 
--------- Append 2 tables to get final price after rebate of products -------------------
-SELECT
-    * 
-FROM fv_vendor
-WHERE rebate_date_get_at IS NOT NULL
-UNION DISTINCT
-SELECT
-    * 
-FROM other_vendor
-WHERE rebate_date_get_at IS NOT NULL
+-- --------- Retrieve start date of price contract ---------------------
+--     contract_price as (
+--         SELECT
+--             contract_price_code
+--             , start_time
+--             , end_time
+--         FROM ${source.platinum}.seller_prd_purchasing_contract_price
+--         QUALIFY ROW_NUMBER() over (PARTITION BY mg_id ORDER BY synced_at DESC) = 1
+--             AND FIRST_VALUE(action) over (PARTITION BY mg_id ORDER BY synced_at DESC) <> 'd'
+--     )
+
+-- --------- Retrieve price after rebate of products from all vendors from the latest price contract in  BD, HN, DN warehouses --------------------------
+--     , get_rebate_price as (
+--         select
+--             DATE(TIMESTAMP_ADD(created_time, interval 7 HOUR)) as rebate_date_get_at,
+--             TIMESTAMP_ADD(last_updated_time, INTERVAL 7 HOUR) as last_updated_at,
+--             TIMESTAMP_ADD(ingest_time, INTERVAL 7 HOUR) as ingest_at,
+--             product_id,
+--             vendor_code,
+--             warehouse_code,
+--             case
+--                 when warehouse_code = "HN" then "MIENBAC"
+--                 when warehouse_code = "BD" then 'MIENNAM'
+--                 when warehouse_code = "DN" then 'MIENTRUNG'
+--             end as sales_region_code,
+--             price_after_rebate,
+--             price_after_rebate_with_adhoc_promotion,
+--             price_contract,
+--             start_time
+--         from ${source.platinum}.seller_prd_promotion_log_price_after_rebate AS a
+--             left join contract_price AS b ON a.contract_price_code = b.contract_price_code
+--         where created_date >= (select DATE(TIMESTAMP_SUB(trunc_timestamp, interval 7 hour)) from cte_date)
+--             AND warehouse_code IN ('BD', 'HN', 'DN')
+--         QUALIFY ROW_NUMBER() OVER (PARTITION BY product_id, warehouse_code,vendor_code ORDER BY start_time DESC, last_updated_time DESC) = 1
+--     )
+-- ---------- Retrieve price after rebate of products from favourite vendor --------------------------------------
+--     , fv_vendor AS (
+--         select
+--             g.rebate_date_get_at,
+--             g.last_updated_at,
+--             g.ingest_at,
+--             a.product_id,
+--             a.sku_code,
+--             a.sales_region_code,
+--             g.vendor_code,
+--             g.price_after_rebate,
+--             g.price_after_rebate_with_adhoc_promotion,
+--             g.price_contract,
+--             CONCAT(a.product_id, "_", a.sales_region_code) AS product_sales_region_code,
+--             a.sku_key_sales_region_code
+--         from ${ref('dim_sku_sales_region_current')} a
+--             left join ${ref('dim_vendor')} vend on a.fv_code = vend.supplier_code
+--             left join get_rebate_price g
+--                 on a.sales_region_code = g.sales_region_code
+--                 and a.product_id = g.product_id
+--                 and vend.line_manager_combine = g.vendor_code
+--         where g.sales_region_code is not null
+--             AND a.seller_code = 'MEDX'
+--     )
+
+-- ------------ Retrieve max price after rebate of products from other vendors in case there are no price after rebate from favourite vendor --------
+--     , other_vendor AS (
+--         select
+--             g.rebate_date_get_at,
+--             g.last_updated_at,
+--             g.ingest_at,
+--             a.product_id,
+--             a.sku_code,
+--             a.sales_region_code,
+--             g.vendor_code,
+--             g.price_after_rebate,
+--             g.price_after_rebate_with_adhoc_promotion,
+--             g.price_contract,
+--             CONCAT(a.product_id, "_", a.sales_region_code) AS product_sales_region_code,
+--             a.sku_key_sales_region_code
+--         from ${ref('dim_sku_sales_region_current')} a
+--             left join ${ref('dim_vendor')} vend on a.fv_code = vend.supplier_code
+--             left join get_rebate_price g on a.sales_region_code = g.sales_region_code and a.product_id = g.product_id
+--         where (vend.line_manager_combine <> g.vendor_code OR vend.line_manager_combine IS NULL)
+--             AND CONCAT(a.product_id, "_", a.sales_region_code) NOT IN (SELECT product_sales_region_code FROM fv_vendor)
+--             AND a.seller_code = 'MEDX'
+--         qualify ROW_NUMBER() over (partition by a.product_id, a.sales_region_code order by g.price_after_rebate DESC) = 1
+--     )
+
+-- -------- Append 2 tables to get final price after rebate of products -------------------
+-- SELECT
+--     * 
+-- FROM fv_vendor
+-- WHERE rebate_date_get_at IS NOT NULL
+-- UNION DISTINCT
+-- SELECT
+--     * 
+-- FROM other_vendor
+-- WHERE rebate_date_get_at IS NOT NULL
