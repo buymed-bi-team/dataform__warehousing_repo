@@ -5,7 +5,7 @@ config {
         Details of the items in the order, with combos split into normal products and its prices recalculated according to the corresponding combo;
         PIC: nguyen.tran; 
         Type: Table; 
-        Refresh Schedule: daily at 8h30, 10h30, 12h30, 15h30, 17h, 20h30;
+        Refresh Schedule: daily at 8h30, 10h30, 12h30, 15h30, 17h30, 20h30;
         Source: 
             ${source.platinum}.marketplace_prd_order_v2_order_item,
             ${source.ref}.fact_order
