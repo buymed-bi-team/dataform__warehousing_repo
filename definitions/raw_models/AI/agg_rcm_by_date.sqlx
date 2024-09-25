@@ -15,7 +15,8 @@ WITH DateSeries AS
 , order_item_rcm as
     (select date(oi.created_at)                                              as created_date,
             sum(oi.sales_price * oi.demand_quantity)                         as amt_checkout_rcm,                                                  
-            count(distinct oi.product_id)                                       as no_products_rcm,
+            count(distinct oi.product_id)                                       as no_orders_rcm,
+            count(distinct oi.order_id)                                       as no_products_rcm,
             count(distinct oi.customer_id)                                      as no_customers_rcm,
             sum(sales_price * demand_quantity) / count(distinct oi.order_id) as average_order_value_rcm,
             sum(
@@ -24,9 +25,9 @@ WITH DateSeries AS
             else 0
             end) as amt_longtail_rcm
 
-     from gold_buymed_vn2.fact_order_item oi
-    left join gold_buymed_vn2.dim_order_status do on oi.order_id = do.order_id
-     left join gold_buymed_vn2.dim_sku_sales_region_current sp on  oi.sku_key_sales_region_code = sp.sku_key_sales_region_code
+     from ${ref('fact_order_item')}  oi
+    left join ${ref('dim_order_status')}  do on oi.order_id = do.order_id
+     left join ${ref('dim_sku_sales_region_current')}  sp on  oi.sku_key_sales_region_code = sp.sku_key_sales_region_code
 
      where do.CRM_status not in ("CANCEL", "RETURNED")
        and date(oi.created_at) >= DATE(DATE_TRUNC(current_date(), MONTH) - INTERVAL 4 MONTH)
@@ -41,7 +42,8 @@ WITH DateSeries AS
 --                         then oi.sales_price * oi.demand_quantity
 --                     else 0
 --                 end)                                                         as amt_checkout_previous_month,
-            count(distinct oi.product_id)                                       as no_products,
+            count(distinct oi.product_id)                                       as no_products,                                                  
+            count(distinct oi.product_id)                                       as no_orders_rcm,
             count(distinct oi.customer_id)                                      as no_customers,
             sum(sales_price * demand_quantity) / count(distinct oi.order_id) as average_order_value,
             sum(
@@ -50,9 +52,9 @@ WITH DateSeries AS
             else 0
             end) as amt_longtail
 
-     from gold_buymed_vn2.fact_order_item oi
-    left join gold_buymed_vn2.dim_order_status do on oi.order_id = do.order_id
-     left join gold_buymed_vn2.dim_sku_sales_region_current sp on  oi.sku_key_sales_region_code = sp.sku_key_sales_region_code
+     from ${ref('fact_order_item')}  oi
+    left join ${ref('dim_order_status')}  do on oi.order_id = do.order_id
+     left join ${ref('dim_sku_sales_region_current')}  sp on  oi.sku_key_sales_region_code = sp.sku_key_sales_region_code
 
      where do.CRM_status not in ("CANCEL", "RETURNED")
        and date(oi.created_at) >= DATE(DATE_TRUNC(current_date(), MONTH) - INTERVAL 4 MONTH)
@@ -79,7 +81,7 @@ WITH DateSeries AS
             case
                 when event = "SKU_IMPRESSION"  then 1 else 0 end
             ) as count_sku_impression
-        from gold_buymed_vn2.fact_user_event_tracking
+        from ${ref('fact_user_event_tracking')} 
         where  created_date >= DATE(DATE_TRUNC(current_date(), MONTH) - INTERVAL 4 MONTH)
 --             and source like "recommendation%"
         group by 1
@@ -90,6 +92,7 @@ SELECT
     -- Metrics from order_item_rcm
     oir.amt_checkout_rcm,
     oir.no_products_rcm,
+    oir.no_orders_rcm,
     oir.no_customers_rcm,
     oir.average_order_value_rcm,
     oir.amt_longtail_rcm,
@@ -97,6 +100,7 @@ SELECT
     -- Metrics from order_item
     oi.amt_checkout,
     oi.no_products,
+    oi.no_orders_rcm,
     oi.no_customers,
     oi.average_order_value,
     oi.amt_longtail,
