@@ -17,6 +17,7 @@ select
     date(oi.created_at) as date,
     customer_id,
     count(distinct sku_code ) as no_skus,
+    count(distinct product_id ) as no_products,
     sum (demand_quantity) as  order_qty,
     count(distinct oi.order_id) as no_orders,
     -- sum(sales_price* demand_quantity)/count(distinct oi.order_id) as average_order_value,
