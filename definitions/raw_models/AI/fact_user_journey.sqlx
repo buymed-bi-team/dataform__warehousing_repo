@@ -12,7 +12,7 @@ config {
         screen: "Nullable | The screen on which the event occurred. This provides additional context on the user interface interaction",
         source: "Nullable | The source of the event, indicating how the item was created",
             },
-tags: ['2h00'],
+/*tags: ['2h00'],*/
     bigquery: {
         partitionBy: "date(created_time)",
         clusterBy: ["event", "customer_id"]
