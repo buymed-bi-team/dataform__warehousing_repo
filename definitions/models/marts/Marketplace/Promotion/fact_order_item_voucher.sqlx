@@ -33,4 +33,4 @@ WHERE
     AND vp.product_id IS NOT NULL 
     AND oi.created_at >= '2024-05-01'
     -- AND oi.item_type <> 'IN_COMBO'
-    AND vp.campaign_brand IS NOT NULL
+    -- AND vp.campaign_brand IS NOT NULL

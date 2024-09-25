@@ -82,8 +82,8 @@ select
 	d.parent_reference_code as do_parent_reference_code,
 	d.customer_code,
 	d.customer_name,
-	case 
-		when d.customer_ward_code = '0' then d.customer_district_name 
+	case
+		when d.customer_ward_code = '0' then d.customer_district_name
 		else d.customer_ward_code
 	end as customer_ward_code,
 	customer_ward_name,
@@ -91,30 +91,29 @@ select
 	customer_province_name,
 	d.created_by,
 	ho.hub_code,
-	d.tpl_code, 
+	d.tpl_code,
 	d.tpl_name ,
-    d.tpl_service_id, 
+    d.tpl_service_id,
 	ho.type,
 	d.type as do_type,
-	ho.sub_type, 
+	ho.sub_type,
 	ho.action,
 	ho.action_name,
-	case 
+	case
 		when ho.type = "PICKUP" then d.products
-		else null 
 	end products,
 	ho.from_customer_code,
 	ho.from_customer_name,
-	ho.from_customer_phone, 
-	ho.from_customer_address, 
-	case 
-		when ho.from_ward_code = '0' then ho.from_district_name 
-		else ho.from_ward_code 
+	ho.from_customer_phone,
+	ho.from_customer_address,
+	case
+		when ho.from_ward_code = '0' then ho.from_district_name
+		else ho.from_ward_code
 	end as from_ward_code,
 	ho.from_district_code,
 	ho.from_province_code,
-	ho.from_ward_name, 
-	ho.from_district_name, 
+	ho.from_ward_name,
+	ho.from_district_name,
 	ho.from_province_name,
 	ho.to_customer_code,
 	ho.to_customer_name,
@@ -130,8 +129,10 @@ select
 	ho.total_amount,
 	ho.delivery_amount,
 	ho.fee_amount,
-	ho.driver_id,
-	ho.driver_name,
+-- 	ho.driver_id,
+	COALESCE(NULLIF(SAFE_CAST(JSON_VALUE(d.driver_activities, '$.0.driver_id') AS INT64), 0), ho.driver_id) AS driver_id,
+-- 	ho.driver_name,
+    COALESCE(e.fullname, ho.driver_name) AS driver_name,
 	ho.num_package,
 	ho.weight,
 	ho.cod_amount,
@@ -148,3 +149,4 @@ left join (
   from ${source.platinum}.delivery_prd_transporting_shipping_order
   where created_date >= (select DATE(start_date) from cte_date)
 ) as d on d.reference_code = ho.reference_code
+LEFT JOIN ${ref('dim_employee')} AS e ON e.branch_account_id = SAFE_CAST(JSON_VALUE(d.driver_activities, '$.0.driver_id') AS INT64)
