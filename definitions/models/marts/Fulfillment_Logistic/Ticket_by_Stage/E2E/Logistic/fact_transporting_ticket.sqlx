@@ -19,19 +19,11 @@ WITH cte_date AS (
 ),
 
 cte_data_delivery_ts as (
-  select *
-  from (
     select * except (transformed_at)
-    from gold_buymed_vn.fact_delivery_evolving 
+    from ${ref('fact_delivery_evolving')} 
     where delivery_status = 'DELIVERING'
       and delivery_ts >= (select start_date from cte_date)
-    union all
-    select * except (transformed_at)
-    from gold_buymed_vn.fact_delivery_evolving_unique
-    where delivery_status = 'DELIVERING'
-      and delivery_ts >= (select start_date from cte_date)
-  )
-  qualify row_number() over (partition by so_code order by delivery_ts desc) = 1
+    qualify row_number() over (partition by so_code order by delivery_ts desc) = 1
 )
 
 select 
