@@ -120,7 +120,8 @@ WITH
     )
 
 SELECT
-    ob.created_at
+    ob.mg_id
+    , ob.created_at
     , ob.outbound_date
     , ob.order_id
     , ob.sku_code_original
