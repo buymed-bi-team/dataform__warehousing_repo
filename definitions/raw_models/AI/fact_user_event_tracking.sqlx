@@ -1,7 +1,7 @@
 config {
     type: 'table',
     name: "fact_user_event_tracking",
-    description: `Started time: 20240801 | PIC: tu.dang; schedule: 0h00 daily; model type: table
+    description: `Started time: 20240701 | PIC: tu.dang; schedule: 0h00 daily; model type: table
     Source:
         ${source.silver}.monitoring_prd_collector_user_stats_*`,
     columns: { 
@@ -41,7 +41,7 @@ WITH stg AS (
     FROM
     `${source.silver}.monitoring_prd_collector_user_stats_*`
   WHERE
-    _TABLE_SUFFIX BETWEEN '20240801'
+    _TABLE_SUFFIX BETWEEN '20240601'
     AND FORMAT_DATE('%Y%m%d', CURRENT_DATE())        
     AND event IN ( "ADD_TO_CART","SKU_DETAIL_VIEW","SKU_IMPRESSION") 
     )
@@ -64,11 +64,11 @@ SELECT
         THEN LEFT(sku_code, STRPOS(sku_code, ".") - 1)
         ELSE sku_code 
     END AS seller_code,
-    client_user_time,
-    LEAD(event) over (partition by customer_id,created_date  order by created_time) next_act_1,
-    LEAD(event,2) over (partition by customer_id,created_date order by created_time) next_act_2,
-    LEAD(event,3) over (partition by customer_id,created_date order by created_time) next_act_3,
-    LEAD(event,4) over (partition by customer_id,created_date order by created_time) next_act_4
+    client_user_time
+    -- LEAD(event) over (partition by customer_id,created_date  order by created_time) next_act_1,
+    -- LEAD(event,2) over (partition by customer_id,created_date order by created_time) next_act_2,
+    -- LEAD(event,3) over (partition by customer_id,created_date order by created_time) next_act_3,
+    -- LEAD(event,4) over (partition by customer_id,created_date order by created_time) next_act_4
     -- CASE
     --     WHEN EXISTS (
     --         SELECT 1
