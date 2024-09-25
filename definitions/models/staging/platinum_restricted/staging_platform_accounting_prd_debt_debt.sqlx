@@ -6,6 +6,16 @@ config {
         uniqueKey: 'mg_id',
         nonNull: ["created_date"]
     },
+    columns: {
+        debt_template_code: "công thức công nợ",
+        creditor_entity_name: "công ty",
+        debtor_entity_name: "Khách hàng",
+        debt_limit: "hạn mức",
+        total_balance: "Dư nợ thực tế",
+        total_balance_temporary: "Dư nợ tạm tính",
+        total_debt: "công nợ thực tế",
+        total_debt_temporary: "công nợ tạm tính"
+    },
     bigquery: {
         partitionBy: "created_date"
     },
