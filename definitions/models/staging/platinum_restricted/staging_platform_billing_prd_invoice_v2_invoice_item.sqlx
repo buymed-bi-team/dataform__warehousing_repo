@@ -29,13 +29,13 @@ pre_operations {
       CREATE OR REPLACE TEMP TABLE range_created_time_table AS (
        SELECT MIN(DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))) AS min_created_date,
         MAX(DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))) AS max_created_date
-        FROM ${source.silver}.platform_billing_prd_invoice_v2_invoice_item 
+        FROM ${source.silver_restricted}.platform_billing_prd_invoice_v2_invoice_item 
         WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) AND action != "d"
       );
 
       CREATE OR REPLACE TEMP TABLE get_deleted_record AS (
           SELECT mg_id 
-          FROM ${source.silver}.platform_billing_prd_invoice_v2_invoice_item 
+          FROM ${source.silver_restricted}.platform_billing_prd_invoice_v2_invoice_item 
           WHERE  ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) and 
           created_time IS NULL AND last_updated_time IS NULL
         );
@@ -57,7 +57,7 @@ SELECT
     WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
     ELSE "2099-01-01"
   END AS created_date
-FROM ${source.silver}.platform_billing_prd_invoice_v2_invoice_item o 
+FROM ${source.silver_restricted}.platform_billing_prd_invoice_v2_invoice_item o 
  ${
     when(incremental(), 
       `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) 
