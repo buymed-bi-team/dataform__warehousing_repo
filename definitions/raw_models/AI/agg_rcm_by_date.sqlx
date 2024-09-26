@@ -43,7 +43,7 @@ WITH DateSeries AS
 --                     else 0
 --                 end)                                                         as amt_checkout_previous_month,
             count(distinct oi.product_id)                                       as no_products,                                                  
-            count(distinct oi.product_id)                                       as no_orders_rcm,
+            count(distinct oi.product_id)                                       as no_orders,
             count(distinct oi.customer_id)                                      as no_customers,
             sum(sales_price * demand_quantity) / count(distinct oi.order_id) as average_order_value,
             sum(
@@ -100,7 +100,7 @@ SELECT
     -- Metrics from order_item
     oi.amt_checkout,
     oi.no_products,
-    oi.no_orders_rcm,
+    oi.no_orders,
     oi.no_customers,
     oi.average_order_value,
     oi.amt_longtail,
