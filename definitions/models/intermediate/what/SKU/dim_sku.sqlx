@@ -45,7 +45,7 @@ WITH sku_special_case AS (
 SELECT
     ${utils.ToTimezone('sku_main.created_time')} as sku_created_at,
     ${utils.ToTimezone('sku_main.last_updated_time')} as sku_last_updated_at,
-    created_date AS sku_created_date,
+    sku_main.created_date AS sku_created_date,
     sku_main.code as sku_code,
     sku_main.product_id,
     product.name as product_name,
