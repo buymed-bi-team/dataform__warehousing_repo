@@ -20,11 +20,11 @@ config {
         event_screen: "Nullable | The screen on which the event occurred. This provides additional context on the user interface interaction",
         tags: "Nullable | Tags associated with the order item. These tags can be used for categorization and analysis purposes",
         sku_key: "NonNull | " + docs.sku_key,
-        province_code: "Nullable | " + docs.province_code
-    },
+        province_code: "Nullable | " + docs.province_code},
+ /*   },
     bigquery: {
-        partitionBy: "date(order_item_created_time)"
-    }
+        partitionBy: "date(created_at)"
+    }*/
 }
  
 
