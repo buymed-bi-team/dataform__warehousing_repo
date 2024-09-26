@@ -57,6 +57,7 @@ SELECT
     sku_main.status as sku_status,
     sku_main.is_active as sku_active,
     sku_main.manual_priorities,
+    sku_main.skus,
 
     IF( sku_main.code IN (SELECT * FROM sku_special_case), FALSE, TRUE) AS sku_in_v1 -- in version 1 doesn't contain duplicate of SKU (Uppercase and normal case)
 FROM ${source.platinum}.marketplace_prd_product_v2_sku_main_v2 sku_main
