@@ -25,7 +25,7 @@ WITH
     cte_date AS (
         select
             TIMESTAMP_ADD(current_timestamp(), interval 7 hour) as current_timestamp_,
-            timestamp_sub(current_timestamp(), interval 60 day) as start_date
+            timestamp_sub(current_timestamp(), interval 365 day) as start_date
     )
 
 -- step 1: Get skus in a campaign that is active on website.
