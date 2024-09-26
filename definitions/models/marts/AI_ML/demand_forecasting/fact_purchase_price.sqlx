@@ -9,7 +9,7 @@ SELECT
   date,
   code as sku_code,
   product_id,
-  MIN(purchase_price)
+  MIN(purchase_price) as purchase_price
 FROM
   ${ref('staging_sku_purchase_price_history')}
 WHERE
