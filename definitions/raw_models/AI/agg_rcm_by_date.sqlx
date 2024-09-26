@@ -23,9 +23,11 @@ WITH DateSeries AS
             case
                 when sp.catm_group = "LONGTAIL" then oi.sales_price * oi.demand_quantity
             else 0
-            end) as amt_longtail_rcm
+            end) as amt_longtail_rcm,
+            sum(outbound_amount) as amt_outbound_rcm,
+            sum(purchase_amount) as amt_purchase_rcm
 
-     from ${ref('fact_order_item')}  oi
+     from ${ref('fact_checkout_item')}  oi
     left join ${ref('dim_order_status')}  do on oi.order_id = do.order_id
      left join ${ref('dim_sku_sales_region_current')}  sp on  oi.sku_key_sales_region_code = sp.sku_key_sales_region_code
 
@@ -50,9 +52,11 @@ WITH DateSeries AS
             case
                 when sp.catm_group = "LONGTAIL" then oi.sales_price * oi.demand_quantity
             else 0
-            end) as amt_longtail
+            end) as amt_longtail,
+            sum(outbound_amount) as amt_outbound,
+            sum(purchase_amount) as amt_purchase
 
-     from ${ref('fact_order_item')}  oi
+     from ${ref('fact_checkout_item')}  oi
     left join ${ref('dim_order_status')}  do on oi.order_id = do.order_id
      left join ${ref('dim_sku_sales_region_current')}  sp on  oi.sku_key_sales_region_code = sp.sku_key_sales_region_code
 
@@ -96,6 +100,8 @@ SELECT
     oir.no_customers_rcm,
     oir.average_order_value_rcm,
     oir.amt_longtail_rcm,
+    amt_outbound_rcm,
+    amt_purchase_rcm,
 
     -- Metrics from order_item
     oi.amt_checkout,
@@ -104,6 +110,8 @@ SELECT
     oi.no_customers,
     oi.average_order_value,
     oi.amt_longtail,
+    amt_purchase,
+    amt_outbound,
 
     -- Metrics from user_event
     ue.count_add_cart_rcm,
