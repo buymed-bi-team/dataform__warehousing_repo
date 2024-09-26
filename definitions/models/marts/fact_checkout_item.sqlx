@@ -23,65 +23,41 @@ config {
         province_code: "Nullable | " + docs.province_code
     },
     bigquery: {
-        partitionBy: "date(order_item_created_time)"
+        partitionBy: "date(created_at)"
     }
 }
  
-WITH stg_order_item as   (
-    SELECT 
-        order_id,
-        customer_id,
-        product_id,
-        sku,
-        item_code,
-        outbound_infos,
-        extra_props,
-        price,
-        quantity,
-        DATETIME(created_time, 'Asia/Ho_Chi_Minh') as order_item_created_time,
-        DATETIME(cart_item_created_time, 'Asia/Ho_Chi_Minh') as cart_item_created_time,
-        page,
-        event_source,
-        event_screen,
-        tags,
-        product_id || "_" || seller_code as sku_key,
-        mg_id,
-        created_date
-    FROM ${source.platinum}.marketplace_prd_order_v2_order_item
-    where created_date >= "2024-07-01"
-)
-,
-stg_order as (
+
+with stg_order as (
   SELECT 
     order_id, 
     province_code, 
     status, 
     -- source,
     JSON_VALUE(source_detail, '$.platform') as platform
-  FROM ${source.platinum}.marketplace_prd_order_v2_order
-  where created_date >= "2024-07-01"
+  FROM  ${source.platinum}.marketplace_prd_order_v2_order
+  where created_date >= "2024-06-01"
 ) 
 
-SELECT
-  a.order_id,
-  b.status as order_status,
-  a.customer_id,
-  a.product_id,
-  a.sku,
-  a.item_code,
-  a.price,
-  a.quantity,
-  a.order_item_created_time,
-  a.cart_item_created_time,
-  a.page,
-  a.event_source,
-  a.event_screen,
-  a.tags,
-  b.province_code,
-  a.sku_key,
-  b.platform,
- 
-FROM stg_order_item a
-LEFT JOIN stg_order b
-  ON a.order_id = b.order_id
-where created_date >= "2024-07-01"
+SELECT  oi.order_id
+     , oi.customer_id
+     , oi.created_at
+     , date(oi.created_at) as created_date
+     , oi.seller_code
+     , oi.sku_code
+     , oi.product_id
+     , oi.demand_quantity
+     , oi.sales_price
+     , oi.event_source
+     , oi.event_screen
+     , oi.province_code
+     , oi.sku_key_sales_region_code
+     , o.platform
+     , o.status as order_status
+     , sum(fm.final_price_after_rebate* fm.outbound_quantity ) as purchase_amount,
+       sum(unit_price* fm.outbound_quantity) as outbound_amount
+FROM ${ref('fact_order_item')} oi
+left join stg_order o on oi.order_id = o.order_id
+left join ${ref('fact_margin')} fm on oi.mg_id = fm.mg_id and oi.sku_code= fm.sku_code
+where date(oi.created_at) >= "2024-06-01"
+group by all
