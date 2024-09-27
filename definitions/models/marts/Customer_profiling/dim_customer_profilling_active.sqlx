@@ -1,0 +1,14 @@
+config {
+    type: "view",
+    description: `Active Customer: Khách hàng có mua ít nhất 1 đơn không tính đơn Cancel.
+    PIC: Huong.Dang`
+}
+
+
+SELECT
+  customer_id,
+  year_month
+FROM
+   ${ref('agg_customer_profiling')}
+WHERE
+  has_purchase = true
