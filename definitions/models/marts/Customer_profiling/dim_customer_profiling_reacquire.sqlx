@@ -1,0 +1,17 @@
+config {
+    type: "view",
+    description: `Những khách hàng chưa mua hàng trong 1 tháng trở lên, tính từ tháng cuối cùng mua hàng tại thucosi, quay trở lại mua hàng,  loại trừ những đơn hàng CANCEL.
+Vd: Tháng 3/2024 khách A có mua hàng, tháng 4/2024 khách A không mua hàng, tháng 5/2024 quay lại mua hàng, khách A sẽ là Reacquire Customer trong tháng 5/2024..
+    PIC: Huong.Dang`
+}
+
+
+SELECT
+    a.customer_id,
+    a.year_month
+FROM ${ref('agg_customer_profiling')} as a
+LEFT JOIN ${ref('dim_customer_profiling_new')} as b on a.customer_id = b.customer_id and a.year_month = b.year_month
+WHERE 
+(b.customer_id is null and
+a.has_purchase = true
+and a.previous_month_purchase = false)

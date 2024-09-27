@@ -1,0 +1,22 @@
+config {
+    type: "view",
+    description: `New Customer: Những khách hàng có đơn hàng đầu tiên tại thuocsi trong tháng đó, stt đơn = COMPLETED.
+    Vd: Khách hàng A có đơn hàng đầu tiên & stt đơn = COMPLETED tại thuocsi vào tháng 5/2024, thì khách đó sẽ là New Customer trong tháng 5/2024.
+    PIC: Huong.Dang`
+}
+
+WITH
+  min_odder_date AS (
+  SELECT
+    a.customer_id,
+    Date(MIN(a.created_at)) as first_date_order
+  FROM
+    ${ref('fact_order')} AS a
+  WHERE order_status = "COMPLETED"
+  GROUP BY 1)
+
+SELECT
+  a.*,
+  DATE_TRUNC(first_date_order, MONTH) AS som_first_date_order,
+  CAST(FORMAT_DATE('%Y-%m', a.first_date_order) AS STRING) AS year_month
+FROM min_odder_date AS a
