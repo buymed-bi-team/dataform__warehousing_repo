@@ -1,0 +1,30 @@
+config {
+    type:"view",
+    description: "PIC: tu.dang; model_type: view",
+    columns :
+    {
+        "date":"daily date in calendar",
+        "customer_id":"the unique identifier of the customer",
+        "no_skus":"Counts the distinct number of different skus",
+        "no_orders":"Counts the distinct number of different orders",
+        "order_amount":"Total customer order amount",
+        "average_order_value" :"the average value of each order placed by a customer"
+
+    }
+}
+select
+    cast(cast(FORMAT_DATE('%Y-%m', oi.created_at)as string)||"-01" as date ) as start_of_month,
+    date(oi.created_at) as date,
+    customer_id,
+    count(distinct sku_code ) as no_skus,
+    count(distinct product_id ) as no_products,
+    sum (demand_quantity) as  order_qty,
+    count(distinct oi.order_id) as no_orders,
+    -- sum(sales_price* demand_quantity)/count(distinct oi.order_id) as average_order_value,
+    sum(sales_price* demand_quantity) as order_amount
+from ${ref('fact_order_item')} oi
+left join ${ref('dim_order_status')} o on oi.order_id = o.order_id
+where 
+-- date (date_trunc( date_sub( current_date('+7'), interval 12 month) , month ))<= date(oi.created_at) and 
+CRM_status not in  ("CANCEL","RETURNED")
+group by all

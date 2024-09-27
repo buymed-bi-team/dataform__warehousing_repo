@@ -1,0 +1,125 @@
+config {
+    type: "table",
+    tags: ["0h00"],
+    name: "agg_rcm_by_date",
+    description: "Recommendation Aggregate Table in last 3 months. PIC: Tu.Dang"
+    /* bigquery: {
+    partitionBy: "date"
+  }*/
+}
+WITH DateSeries AS 
+(
+  SELECT *
+  FROM UNNEST(GENERATE_DATE_ARRAY(DATE(DATE_TRUNC(current_date(), MONTH) - INTERVAL 4 MONTH), DATE(current_date()))) AS date
+)
+, order_item_rcm as
+    (select date(oi.created_at)                                              as created_date,
+            sum(oi.sales_price * oi.demand_quantity)                         as amt_checkout_rcm,                                                  
+            count(distinct oi.product_id)                                       as no_orders_rcm,
+            count(distinct oi.order_id)                                       as no_products_rcm,
+            count(distinct oi.customer_id)                                      as no_customers_rcm,
+            sum(sales_price * demand_quantity) / count(distinct oi.order_id) as average_order_value_rcm,
+            sum(
+            case
+                when sp.catm_group = "LONGTAIL" then oi.sales_price * oi.demand_quantity
+            else 0
+            end) as amt_longtail_rcm,
+            sum(outbound_amount) as amt_outbound_rcm,
+            sum(purchase_amount) as amt_purchase_rcm
+
+     from ${ref('fact_checkout_item')}  oi
+    left join ${ref('dim_order_status')}  do on oi.order_id = do.order_id
+     left join ${ref('dim_sku_sales_region_current')}  sp on  oi.sku_key_sales_region_code = sp.sku_key_sales_region_code
+
+     where do.CRM_status not in ("CANCEL", "RETURNED")
+       and date(oi.created_at) >= DATE(DATE_TRUNC(current_date(), MONTH) - INTERVAL 4 MONTH)
+     and event_source like "recommendation%"
+     group by 1
+    )
+   , order_item as
+    (select date(oi.created_at)                                              as created_date,
+            sum(oi.sales_price * oi.demand_quantity)                         as amt_checkout,
+--             sum(case
+--                     when date(oi.created_at) >= DATE_SUB(DATE_TRUNC(current_date(), MONTH), INTERVAL 1 MONTH)
+--                         then oi.sales_price * oi.demand_quantity
+--                     else 0
+--                 end)                                                         as amt_checkout_previous_month,
+            count(distinct oi.product_id)                                       as no_products,                                                  
+            count(distinct oi.product_id)                                       as no_orders,
+            count(distinct oi.customer_id)                                      as no_customers,
+            sum(sales_price * demand_quantity) / count(distinct oi.order_id) as average_order_value,
+            sum(
+            case
+                when sp.catm_group = "LONGTAIL" then oi.sales_price * oi.demand_quantity
+            else 0
+            end) as amt_longtail,
+            sum(outbound_amount) as amt_outbound,
+            sum(purchase_amount) as amt_purchase
+
+     from ${ref('fact_checkout_item')}  oi
+    left join ${ref('dim_order_status')}  do on oi.order_id = do.order_id
+     left join ${ref('dim_sku_sales_region_current')}  sp on  oi.sku_key_sales_region_code = sp.sku_key_sales_region_code
+
+     where do.CRM_status not in ("CANCEL", "RETURNED")
+       and date(oi.created_at) >= DATE(DATE_TRUNC(current_date(), MONTH) - INTERVAL 4 MONTH)
+--      and event_source like "recommendation%"
+     group by 1
+    )
+, user_event as
+    (
+        select
+            created_date,
+            sum(
+            case
+                when event = "ADD_TO_CART"and source like "recommendation%" then 1 else 0 end
+            ) as count_add_cart_rcm,
+            sum(
+            case
+                when event = "SKU_IMPRESSION" and source like "recommendation%" then 1 else 0 end
+            ) as count_sku_impression_rcm,
+            sum(
+            case
+                when event = "SKU_DETAIL_VIEW" and source like "recommendation%" then 1 else 0 end
+            ) as count_sku_detail_view_rcm,
+            sum(
+            case
+                when event = "SKU_IMPRESSION"  then 1 else 0 end
+            ) as count_sku_impression
+        from ${ref('fact_user_event_tracking')} 
+        where  created_date >= DATE(DATE_TRUNC(current_date(), MONTH) - INTERVAL 4 MONTH)
+--             and source like "recommendation%"
+        group by 1
+    )
+SELECT
+    COALESCE(ds.date, oir.created_date, oi.created_date, ue.created_date) AS date,
+
+    -- Metrics from order_item_rcm
+    oir.amt_checkout_rcm,
+    oir.no_products_rcm,
+    oir.no_orders_rcm,
+    oir.no_customers_rcm,
+    oir.average_order_value_rcm,
+    oir.amt_longtail_rcm,
+    amt_outbound_rcm,
+    amt_purchase_rcm,
+
+    -- Metrics from order_item
+    oi.amt_checkout,
+    oi.no_products,
+    oi.no_orders,
+    oi.no_customers,
+    oi.average_order_value,
+    oi.amt_longtail,
+    amt_purchase,
+    amt_outbound,
+
+    -- Metrics from user_event
+    ue.count_add_cart_rcm,
+    ue.count_sku_impression_rcm,
+    ue.count_sku_detail_view_rcm,
+    ue.count_sku_impression
+
+FROM DateSeries ds
+FULL OUTER JOIN order_item_rcm oir ON ds.date = oir.created_date
+FULL OUTER JOIN order_item oi ON ds.date = oi.created_date
+FULL OUTER JOIN user_event ue ON ds.date = ue.created_date

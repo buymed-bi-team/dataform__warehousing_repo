@@ -1,0 +1,32 @@
+config {
+  type: "view",
+  name: "dim_customer_ab_testing",
+  description: `PIC: tu.dang; model_type: view
+    Source:
+        ${source.silver}.marketplace_prd_customer_customer customer
+        ${source.silver}.marketplace_prd_order_v2_order order`,
+  columns: {
+    customer_id: "NonNull",
+    customer_report_category: `NonNull | Is one of TECH, TENDER, MARKETPLACE, or CIRCA? 
+      Category assigned to the customer based on specific conditions:
+      - TECH: If the customer's name contains keywords like 'TECH SELLER', 'TEST', 'TECH-QC', etc.
+      - TENDER: If the customer's tags contain 'TENDER'.
+      - MARKETPLACE: If the customer's tags contain 'TERMINATE_CIRCA' or as a default category.
+      - CIRCA: If the customer's tags contain 'CIRCA'.`,
+    customer_ward_code: `Nullable | If the customer doesn't have a ward_code, then get ward_code of last order of customer 
+      from the order table. Otherwise, return null.`,
+     business_scope: "Nullable | Null means UNKNOWN scope",
+     customer_status: "NonNull | Must be one of following: 'DELETED','ACTIVATE','INACTIVE'",
+     customer_ward_code: "Nullable | If the customer doesn't have a ward_code, then get ward_code of last order of customer from the order table. Otherwise, return null."
+
+  }
+}
+
+select dc.*, a.customer_ab_group
+from ${ref('dim_customer')} dc
+left join (select CAST(code as int) as customer_id,
+                  value as customer_ab_group
+           from ${source.collector}.data_prd
+           where object ="Customer_PIC" and type = "A_B_TESTING_GROUP"
+           qualify rank() over (partition by type order by submit_id desc)= 1) a
+on dc.customer_id = a.customer_id

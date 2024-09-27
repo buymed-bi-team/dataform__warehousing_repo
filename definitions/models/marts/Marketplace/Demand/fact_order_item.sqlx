@@ -5,7 +5,7 @@ config {
         Details of the items in the order, with combos split into normal products and its prices recalculated according to the corresponding combo;
         PIC: nguyen.tran; 
         Type: Table; 
-        Refresh Schedule: daily at 8h30, 10h30, 12h30, 15h30, 17h, 20h30;
+        Refresh Schedule: daily at 8h30, 10h30, 12h30, 15h30, 17h30, 20h30;
         Source: 
             ${source.platinum}.marketplace_prd_order_v2_order_item,
             ${source.ref}.fact_order
@@ -14,7 +14,7 @@ config {
     partitionBy: "date(created_at)",
     clusterBy: ["order_id", "sku_code"]
   },
-  tags: ["8h30", "10h30", "12h30", "15h30" ,"17h00", "20h30"],
+  tags: ["8h30", "10h30", "12h30", "15h30" ,"17h30", "20h30"],
   columns: {
     created_timekey: "Foreign-Key to Dim_DateTime ",
     created_at: "UTC, When the item was placed",
@@ -33,6 +33,7 @@ SELECT
     , CONCAT(product_id, "_", seller_code) AS sku_key
     , o.shipping_province_code AS province_code
     , fc.sales_region_code
+    , fc.fc_code
     , CONCAT(oi.product_id, "_", oi.seller_code, "_", fc.sales_region_code) AS sku_key_sales_region_code
     , CASE
         WHEN STRPOS(tag_code, "E7GB") > 0 OR STRPOS(sub_tag_code, "E7GB") > 0 THEN "E7GB_MIENBAC"

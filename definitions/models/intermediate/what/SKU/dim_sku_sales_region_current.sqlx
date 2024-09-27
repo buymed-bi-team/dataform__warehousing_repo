@@ -192,6 +192,7 @@ SELECT
         ELSE COALESCE(NULLIF(s.retail_price_value, 0), 1000)
     END AS inventory_price,
     JSON_VALUE(s.extra_props, '$.demand_classification_code') as sku_demand_class,
+    fv_vendor_fc.commitment_leadtime as fv_vendor_leadtime
 
 FROM cte_full AS cte
     LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_sku AS s
@@ -222,6 +223,8 @@ FROM cte_full AS cte
         ON ds.sku_code = cte.sku_code
     LEFT JOIN ${ref('dim_supplier')} AS sup
         ON sup.supplier_code = s.seller_code
+    LEFT JOIN ${ref('dim_supplier_fc')} AS fv_vendor_fc
+        ON CONCAT(sv.vendor_code, "_", cte.fc_code) = fv_vendor_fc.supplier_fc_code
 WHERE 
     cte.sales_region_code IS NOT NULL
 QUALIFY ROW_NUMBER() OVER(PARTITION BY sku_key_sales_region_code) = 1

@@ -2,7 +2,7 @@ config {
   type: "table",
   description: "Source: marketplace_prd_order_v2_order, marketplace_prd_order_v2_order_item | Schedule: every day at 12am | PIC: dong.le",
   name: "fact_sort_item_recent",
-  tags: ["custom_1h_past5"],
+  tags: [],
   columns: {
     "sale_order_code": "sales order code",
     "created_date": "date the sale order was created",

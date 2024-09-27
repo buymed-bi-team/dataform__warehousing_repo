@@ -1,0 +1,92 @@
+config {
+    type: "table",
+    description: `Last 12 month| PIC: tu.dang; model_type: Table ;schedule: At minute 5 past hour 6, 8, 10, 12, 14, 16, 18, 20 and 22`
+    /*Source:
+      ${source.silver}.marketplace_prd_order_v2_order_item
+      ${source.silver}.marketplace_prd_order_v2_order */,
+    tags: ["custom_2h_past5"],
+    name: "circa_fact_order_item",
+    columns: {
+        order_id: "NonNull |" + docs.order_id,
+        customer_id: "NonNull | The unique identifier for each customer"
+        
+    },
+    bigquery: {
+        partitionBy: "date(created_at)"
+    }
+}
+
+WITH base_data AS (
+    SELECT
+        a.id,
+        CASE WHEN c.type = 'ONLINE' THEN b.id ELSE a.id END AS item_id,--=llocation.item_ref_id
+        a.order_id,
+        c.code,
+        a.note,
+        c.type,
+        a.product_id,
+        a.unit,
+--         a.unit_id,
+--         a.location_id,
+        CASE WHEN c.type = 'ONLINE' THEN b.base_quantity ELSE a.base_quantity END AS base_quantity_original,
+        CASE
+            WHEN a.product_id = 1 THEN 1
+            WHEN a.lot_date = '' THEN b.quantity
+            ELSE a.quantity
+        END AS original_quantity,
+        a.unit_price,
+        case
+            when a.tax_rate <= 0 then 0
+                else a.tax_rate end as tax_rate,
+        a.discount_amount,
+        a.promotion_event_code,
+        CASE WHEN c.type = 'ONLINE' THEN b.lot_date ELSE a.lot_date END AS lot_date,
+        CASE WHEN c.type = 'ONLINE' THEN b.lot_id ELSE a.lot_id END AS lot_id,
+        CASE
+            WHEN a.quantity = 0 THEN 0
+            WHEN c.total_item_amount = 0 THEN 0
+            WHEN c.total_item_amount < c.discount_amount THEN a.unit_price
+            ELSE ROUND((a.unit_price / c.total_item_amount) * c.discount_amount, 4)
+        END AS discount_voucher_on_item,
+        DATETIME(a.created_at, "Asia/Ho_Chi_Minh") AS created_at
+    FROM ${source.circa}.order_order_item AS a
+    LEFT JOIN ${source.circa}.order_so_item_detail AS b ON a.id = b.item_id
+    LEFT JOIN ${source.circa}.order_order AS c ON c.id = a.order_id
+
+)
+,cte_not_online AS (
+    SELECT
+        a.*,
+        (a.discount_amount + a.unit_price) AS unit_price_before_discount,
+        CASE WHEN a.type = 'RETURN' THEN original_quantity * (-1) ELSE original_quantity END AS quantity,
+        CASE WHEN a.type = 'RETURN' THEN base_quantity_original * (-1) ELSE base_quantity_original END AS base_quantity,
+        CASE WHEN a.unit_price = 0 THEN 0 ELSE ia.cost_price_include_tax END AS cost_price_include_tax,
+        CASE WHEN a.unit_price = 0 THEN 0 ELSE ia.cost_price_without_tax END AS cost_price_without_tax,
+        il.location_type
+    FROM base_data AS a
+    LEFT JOIN ${source.circa}.inventory_allocation AS ia ON a.item_id = ia.item_ref_id
+    LEFT JOIN ${source.circa}.inventory_location AS il ON ia.location_id = il.id
+    WHERE a.type <> 'ONLINE'
+),
+cte_online AS (
+    SELECT
+        a.*,
+        (a.discount_amount + a.unit_price) AS unit_price_before_discount,
+        CASE WHEN a.type = 'RETURN' THEN original_quantity * (-1) ELSE original_quantity END AS quantity,
+        CASE WHEN a.type = 'RETURN' THEN base_quantity_original * (-1) ELSE base_quantity_original END AS base_quantity,
+        CASE WHEN a.unit_price = 0 THEN 0 ELSE ia.cost_price_include_tax END AS cost_price_include_tax,
+        CASE WHEN a.unit_price = 0 THEN 0 ELSE ia.cost_price_without_tax END AS cost_price_without_tax,
+        il.location_type
+    FROM base_data AS a
+    LEFT JOIN ${source.circa}.inventory_allocation AS ia ON a.item_id = ia.item_ref_id
+    LEFT JOIN ${source.circa}.inventory_location AS il ON ia.location_id = il.id
+    WHERE a.type = 'ONLINE'
+)
+select *, SAFE_DIVIDE(base_quantity,quantity) as convert_rate
+from (
+    SELECT * FROM cte_not_online
+    UNION ALL
+    SELECT * FROM cte_online
+    qualify row_number() over(partition by id) = 1) a
+where item_id  is not null or item_id <> ""
+and date(created_at) >= date( date_trunc( date_sub( current_date('+7'), interval 12 month) , month ) )

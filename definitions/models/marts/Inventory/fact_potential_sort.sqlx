@@ -33,14 +33,14 @@ WITH dedup_sale_order AS (
   SELECT
     sale_order_code, admin_id, warehouse_code as fc_code, status, created_time, created_date, type
   FROM ${source.platinum}.warehouse_prd_core_sale_order
-  WHERE created_date >= DATE(timestamp(date_sub(current_date(),interval 1 month)))
+  WHERE created_date >= DATE(timestamp(date_sub(current_date(),interval 45 day)))
 ),
 
 dedup_sale_order_item AS (
   SELECT
     sale_order_code, sku as sku_code, reserved_quantity, order_quantity, unit_price, created_time, created_date, pick_items
   FROM ${source.platinum}.warehouse_prd_core_sale_order_item
-  WHERE created_date >= DATE(timestamp(date_sub(current_date(),interval 1 month)))
+  WHERE created_date >= DATE(timestamp(date_sub(current_date(),interval 45 day)))
 ),
 
 dedup_dim_order AS (

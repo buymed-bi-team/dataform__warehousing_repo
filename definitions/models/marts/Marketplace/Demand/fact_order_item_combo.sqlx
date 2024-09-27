@@ -6,8 +6,6 @@ config {
 
 with cte_date as (
 	select timestamp( date_trunc( date_sub( current_date('+7'), interval 12 month) , month ) ) as start_date
-  -- select date_sub( timestamp( date_trunc( current_date('+7'), month ) ) , interval 7 hour ) as start_date
---   SELECT date_sub( timestamp( date_trunc( date_sub( current_date('+7'), interval 1 day) , day ) ) , interval 7 hour ) as start_date
 ),
 
 cte_order_item as (
@@ -15,9 +13,6 @@ cte_order_item as (
         oi.mg_id
         , oi.order_id
         , oi.customer_id
-        -- , timestamp_add( oi.ingest_time, interval 7 hour ) as ingested_at
-        -- , timestamp_add( oi.created_time, interval 7 hour ) as created_at
-        -- , timestamp_add( current_timestamp, interval 7 hour ) as transformed_at
         , FORMAT_TIMESTAMP("%Y%m%d%H", oi.created_time ) as created_timekey
         , TIMESTAMP_ADD(oi.created_time, INTERVAL 7 HOUR) as created_at
         , oi.ingest_time as ingested_at
@@ -32,6 +27,7 @@ cte_order_item as (
         , oi.deal_code
         , oi.quantity as demand_quantity
         , oi.price as sales_price
+        , SAFE_CAST(JSON_VALUE(oi.extra_props, '$.price_after_discount') AS INT64) AS price_after_discount
         , oi.charge_deal_fee_value
         , oi.reserved_quantity
         , oi.outbound_quantity
@@ -43,13 +39,11 @@ cte_order_item as (
         , to_json_string(oi.tags) as tag_code
         , oi.sku_status
         , DATETIME(oi.cart_item_created_time, "Asia/Ho_Chi_Minh") AS incart_at
+        , event_source
+        , event_screen
     FROM ${source.platinum}.marketplace_prd_order_v2_order_item as oi
     where
         created_date >= (select DATE(start_date) from cte_date)
-        -- oi.ingest_time >= (select start_date from cte_date)
-        -- and ifnull( oi.created_time, current_timestamp ) >= (select start_date from cte_date)
-    -- qualify row_number() over (_window) = 1 AND FIRST_VALUE(action) over(_window) <> 'd'
-    -- WINDOW _window AS (PARTITION BY oi.mg_id ORDER BY oi.synced_at DESC)
 ),
 
 cte_combo_item as (
@@ -73,12 +67,13 @@ select
     , oi.charge_deal_fee_value
   ) as promotion_amount
   , oi.seller_code
-  -- , oi.product_id
+  , oi.product_id
   , safe_cast( json_extract_scalar( bom.product_id ) as INT64 ) as product_bom_id
   , oi.sku_code
   , oi.sku_key
   , oi.item_code
   , oi.sales_price as combo_price
+  , oi.price_after_discount
   -- , oi.seller_price
   , SAFE_CAST( JSON_VALUE( bom.seller_price ) AS INT64 ) AS bom_seller_price
   , oi.demand_quantity AS  combo_quantity
@@ -102,6 +97,8 @@ select
   , sku_status
   , incart_at
   , TO_JSON_STRING(JSON_QUERY(bom, '$.tags')) AS sub_tag_code
+  , event_source
+  , event_screen
 from cte_order_item as oi
 , unnest( json_query_array(oi.extra_props, "$.sub_items") ) as bom
 ), 
@@ -119,6 +116,7 @@ select
   , promotion_code
   , promotion_amount
   , seller_code
+  , product_id AS product_original_id
   , sku_code as sku_orignal_code
   , sku_key as sku_orignal_key
   , item_code as item_original_code
@@ -134,6 +132,10 @@ select
     (combo_price / sum(bom_quantity * bom_price) over (partition by order_id, sku_code))
     , 1
    ) as sales_price
+  , bom_price * LEAST(
+    (price_after_discount / sum(bom_quantity * bom_price) over (partition by order_id, sku_code))
+    , 1
+   ) as price_after_discount
   , bom_price AS sales_price_original
   , bom_seller_price AS seller_price
   , combo_price
@@ -148,6 +150,8 @@ select
   , extra_props
   , incart_at
   , sub_tag_code
+  , event_source
+  , event_screen
 from cte_combo_item
 ),
 
@@ -170,6 +174,7 @@ cte_normal_item as (
         , oi.charge_deal_fee_value
     ) as promotion_amount
     , oi.seller_code
+    , oi.product_id AS product_original_id
     , oi.sku_code as sku_orignal_code
     , oi.sku_key as sku_orignal_key
     , oi.item_code as item_original_code
@@ -182,6 +187,7 @@ cte_normal_item as (
     , oi.outbound_quantity
     , oi.returned_quantity
     , oi.sales_price
+    , oi.price_after_discount
     , oi.sales_price as sales_price_original
     , oi.seller_price
     , oi.sales_price AS combo_price
@@ -195,6 +201,8 @@ cte_normal_item as (
     , extra_props
     , incart_at
     , tag_code AS sub_tag_code
+    , event_source
+    , event_screen
   from cte_order_item as oi
   where
     oi.mg_id not in ( select mg_id from cte_combo_item_pricing )

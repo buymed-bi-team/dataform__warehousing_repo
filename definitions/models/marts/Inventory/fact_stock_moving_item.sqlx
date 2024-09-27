@@ -4,12 +4,12 @@ config {
         ` 
         PIC: nguyen.tran; 
         Type: Table; 
-        Refresh Schedule: weekly on Monday;
+        Refresh Schedule: daily at 7h30 & 15h30
         Source: 
             ${source.platinum}.warehouse_prd_inventory_transfer_sku,
             ${source.platinum}.warehouse_prd_inventory_transfer
         `,
-    tags: ["weekly_assertion", "monthly"],
+    tags: ["7h30", "15h30"],
 
     bigquery: {
       partitionBy: "DATE(ts_created)",
@@ -17,118 +17,114 @@ config {
     },
 }
 
-WITH cte_date as (
-	-- select (current_timestamp + interval 7 hour - interval 1 day) - interval 7 hour as start_date
-  select timestamp( date_trunc( date_sub( current_date('+7'), interval 3 month) , month ) ) as start_date
-)
+WITH 
+    cte_date as (
+        select timestamp( date_trunc( date_sub( current_date('+7'), interval 3 month) , month ) ) as start_date
+    )
 
-, cte_origin AS (
-  SELECT 
-    iti.mg_id
-    , iti.transfer_id
-    , iti.reference
-    , timestamp_add(iti.created_time, interval 7 hour) ts_created
-    , iti.warehouse_code as fc_code
-    , iti.status
-    , iti.sku as sku_code
-    , iti.from_location as location_from
-    , iti.to_location as location_to
-    , iti.demand_quantity
-    , iti.done_quantity
-    , iti.location_details
-  FROM ${source.platinum}.warehouse_prd_inventory_transfer_sku AS iti
-  WHERE
-  iti.created_date >= (select DATE(start_date) from cte_date)
---   and ifnull( iti.created_time, current_timestamp ) >= (select start_date from cte_date)
-  -- and iti.transfer_id = 16630538
-  -- iti.created_time >= (select start_ts from cte_date)
--- QUALIFY row_number() over (_window) = 1 AND FIRST_VALUE(action) over(_window) <> 'd'
--- WINDOW _window AS (PARTITION BY iti.mg_id ORDER BY iti.synced_at DESC)
--- LIMIT 100
-)
+    , cte_origin AS (
+        SELECT 
+            iti.mg_id
+            , iti.transfer_id
+            , iti.reference
+            , timestamp_add(iti.created_time, interval 7 hour) ts_created
+            , iti.warehouse_code as fc_code
+            , iti.status
+            , iti.sku as sku_code
+            , iti.from_location as location_from
+            , iti.to_location as location_to
+            , iti.demand_quantity
+            , iti.done_quantity
+            , iti.location_details
+        FROM ${source.platinum}.warehouse_prd_inventory_transfer_sku AS iti
+        WHERE
+            iti.created_date >= (select DATE(start_date) from cte_date)
+    )
 
-, cte_LocationDetail AS (
-  SELECT 
-    a.mg_id
-    , a.transfer_id
-    , a.reference
-    , a.ts_created
-    , a.fc_code
-    , a.status
-    , a.sku_code
-    , COALESCE(a.location_from, json_value(item.location_code)) as location_from
-    , a.location_to
-    , a.demand_quantity
-    , COALESCE(a.done_quantity, SAFE_CAST(json_value(item.done_quantity) AS INT64)) as done_quantity
-  FROM 
-    cte_origin AS a,
-    UNNEST(json_query_array(location_details)) as item
-)
+    , cte_LocationDetail AS (
+        SELECT 
+            a.mg_id
+            , a.transfer_id
+            , a.reference
+            , a.ts_created
+            , a.fc_code
+            , a.status
+            , a.sku_code
+            , COALESCE(a.location_from, json_value(item.location_code)) as location_from
+            , a.location_to
+            , a.demand_quantity
+            , COALESCE(a.done_quantity, SAFE_CAST(json_value(item.done_quantity) AS INT64)) as done_quantity
+        FROM 
+            cte_origin AS a,
+            UNNEST(json_query_array(location_details)) as item
+    )
 
-, cte_Normal AS (
-  SELECT * EXCEPT (location_details)
-  FROM cte_origin AS a
-  WHERE
-    a.mg_id not in (SELECT mg_id FROM cte_LocationDetail)
-)
+    , cte_Normal AS (
+        SELECT * EXCEPT (location_details)
+        FROM cte_origin AS a
+        WHERE
+            a.mg_id not in (SELECT mg_id FROM cte_LocationDetail)
+    )
 
-, cte_Item AS (
-  SELECT * FROM cte_LocationDetail
-  UNION ALL
-  SELECT * FROM cte_Normal
-)
+    , cte_Item AS (
+        SELECT * FROM cte_LocationDetail
+        UNION ALL
+        SELECT * FROM cte_Normal
+    )
 
-, stock_moving AS (
-  SELECT 
-    a.*,
-    timestamp_add(b.transfer_finish_time, interval 7 hour) as ts_moving_done
-    , b.type
-    , b.source_location as area_from
-    , b.destination_location as area_to
-    , a.sku_code || "_" || a.fc_code as sku_fc_code
-    , a.location_from || "_" || a.fc_code as shelf_fc_code
-    , CASE
-        WHEN destination_location = "WH-MISSING" AND source_location = 'WH-MAIN' THEN "MISSING-IN"
-        WHEN source_location = "WH-MISSING" AND destination_location = 'WH-MAIN' THEN "MISSING-OUT"
-        WHEN destination_location = "WH-MISSING" AND source_location <> 'WH-MAIN' THEN "MISSING-OTHER"
-      END AS missing_type
-  FROM cte_Item AS a
-    LEFT JOIN ${source.platinum}.warehouse_prd_inventory_transfer AS b on a.transfer_id = b.transfer_id
-  WHERE
-    b.type in ('AUDIT', 'PICK', 'INBOUND', 'INTERNAL', 'CUSTOMER_RETURN', 'MISSING', 'DAMAGE_RETURN')
-)
+    , stock_moving AS (
+        SELECT 
+            a.*,
+            timestamp_add(b.transfer_finish_time, interval 7 hour) as ts_moving_done
+            , b.type
+            , b.source_location as area_from
+            , b.destination_location as area_to
+            , a.sku_code || "_" || a.fc_code as sku_fc_code
+            , a.location_from || "_" || a.fc_code as shelf_fc_code
+            , CASE
+                WHEN destination_location = "WH-MISSING" AND source_location = 'WH-MAIN' THEN "MISSING-IN"
+                WHEN source_location = "WH-MISSING" AND destination_location = 'WH-MAIN' THEN "MISSING-OUT"
+                WHEN destination_location = "WH-MISSING" AND source_location <> 'WH-MAIN' THEN "MISSING-OTHER"
+                WHEN destination_location = "WH-DAMAGE" THEN "DAMAGE-IN"
+                WHEN source_location = "WH-DAMAGE" THEN "DAMAGE-OUT"
+            END AS moving_type
+        FROM cte_Item AS a
+            LEFT JOIN ${source.platinum}.warehouse_prd_inventory_transfer AS b on a.transfer_id = b.transfer_id
+        WHERE
+            b.type in ('AUDIT', 'PICK', 'INBOUND', 'INTERNAL', 'CUSTOMER_RETURN', 'MISSING', 'DAMAGE_RETURN')
+    )
 
-, calculated_price AS (
-    SELECT
-        s.sku_code
-        , s.sales_region_code
-        , s.sku_sales_region_code
-        , COALESCE(NULLIF(i.price, 0), NULLIF(s.retail_price_value, 0), NULLIF(s.purchase_price, 0)) AS sales_price
-        , s.purchase_price
-        , s.retail_price_value AS setting_price
-        , s.seller_code
-        , s.seller_class
-        , s.fc_code
-    FROM ${ref('dim_sku_sales_region_full')} AS s
-        LEFT JOIN (
+    , calculated_price AS (
+        SELECT
+            s.sku_code
+            , s.sales_region_code
+            , s.sku_sales_region_code
+            , COALESCE(NULLIF(i.price, 0), NULLIF(s.retail_price_value, 0), NULLIF(s.purchase_price, 0)) AS sales_price
+            , s.purchase_price
+            , s.retail_price_value AS setting_price
+            , s.seller_code
+            , s.seller_class
+            , s.fc_code
+        FROM ${ref('dim_sku_sales_region_full')} AS s
+            LEFT JOIN (
+                SELECT
+                    sku_code
+                    , o.sales_region_code
+                    , SAFE_DIVIDE(SUM(demand_quantity * sales_price) , SUM(demand_quantity)) AS price
+                FROM ${ref('fact_order_item')} AS oi
+                    LEFT JOIN ${ref('dim_order')} AS o USING(order_id)
+                WHERE 
+                    oi.created_at >= '2024-06-01'
+                GROUP BY ALL
+            ) AS i USING(sku_code, sales_region_code)
+    )
+
+    , alt_price AS (
             SELECT
                 sku_code
-                , o.sales_region_code
-                , SAFE_DIVIDE(SUM(demand_quantity * sales_price) , SUM(demand_quantity)) AS price
-            FROM ${ref('fact_order_item')} AS oi
-                LEFT JOIN ${ref('dim_order')} AS o USING(order_id)
-            WHERE 
-                oi.created_at >= '2024-06-01'
-            GROUP BY ALL
-        ) AS i USING(sku_code, sales_region_code)
-  )
-
-  , alt_price AS (
-        SELECT
-            sku_code
-            , MIN(sales_price) AS alt_price
-        FROM calculated_price
-        GROUP BY sku_code
+                , MIN(sales_price) AS alt_price
+            FROM calculated_price
+            GROUP BY sku_code
     )
 
 SELECT
@@ -137,16 +133,24 @@ SELECT
     , IF(res > 0, res, b.alt_price) AS price_unit
     , CASE fc_code
           WHEN "HN" THEN
-              CASE missing_type
+              CASE moving_type
                   WHEN "MISSING-OUT" THEN FORMAT_DATE("%Y-%m", DATE(a.ts_moving_done))
                   ELSE IF(
-                      EXTRACT(DAY FROM DATE(a.ts_moving_done)) >= 27,
-                      FORMAT_DATE("%Y-%m", DATE_ADD(DATE(a.ts_moving_done), INTERVAL 1 MONTH)),
-                      FORMAT_DATE("%Y-%m", DATE(a.ts_moving_done))
+                    a.ts_moving_done >= '2024-08-27',
+                    IF(
+                        EXTRACT(DAY FROM DATE(a.ts_moving_done)) >= 16,
+                        FORMAT_DATE("%Y-%m", DATE_ADD(DATE(a.ts_moving_done), INTERVAL 1 MONTH)),
+                        FORMAT_DATE("%Y-%m", DATE(a.ts_moving_done))
+                    ),
+                    IF(
+                        EXTRACT(DAY FROM DATE(a.ts_moving_done)) >= 27,
+                        FORMAT_DATE("%Y-%m", DATE_ADD(DATE(a.ts_moving_done), INTERVAL 1 MONTH)),
+                        FORMAT_DATE("%Y-%m", DATE(a.ts_moving_done))
+                    )
                   )
               END
           ELSE
-              CASE missing_type
+              CASE moving_type
                   WHEN "MISSING-OUT" THEN FORMAT_DATE("%Y-%m", DATE(a.ts_moving_done))
                   ELSE IF(
                       EXTRACT(DAY FROM DATE(a.ts_moving_done)) >= 16,

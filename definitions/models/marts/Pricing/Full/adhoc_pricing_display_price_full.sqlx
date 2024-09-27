@@ -2,7 +2,7 @@ config {
     type: "table", 
     description: 
         `
-        All display prices of SKUs for 3 customer levels (SILVER, PLATINUM, DIAMOND) & 4 delivery fee coefficients;
+        All display prices of SKUs for 3 customer levels (SILVER, GOLD, DIAMOND) & 4 delivery fee coefficients;
         PIC: nguyen.tran; 
         Type: Table; 
         Refresh Schedule: hourly;
@@ -25,7 +25,7 @@ with
         from ${source.platinum}.marketplace_prd_pricing_v2_setting
         where
             type = 'CUSTOMER_LEVEL'
-            and upper(code) IN ('LEVEL_PLATINUM', 'LEVEL_SILVER', 'LEVEL_DIAMOND') -- LEVEL_PLATINUM LEVEL_SILVER
+            and upper(code) IN ('LEVEL_GOLD', 'LEVEL_SILVER', 'LEVEL_DIAMOND') 
         QUALIFY ROW_NUMBER() OVER (PARTITION BY type, code ORDER BY ingest_time DESC) = 1
     )
 

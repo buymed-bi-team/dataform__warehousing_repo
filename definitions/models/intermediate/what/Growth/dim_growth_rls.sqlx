@@ -27,8 +27,10 @@ WITH
 SELECT
   account_id,
   type,
-  COALESCE(d1.location_code, d2.location_code) AS ward_code
+  COALESCE(d1.location_code, d2.location_code) AS ward_code,
+  LEFT(e.email, STRPOS(email, '@') - 1) AS user_name
 FROM unnest_ward p
     LEFT JOIN ${ref('dim_geo_location')} d1 ON p.code=d1.province_code AND d1.province_code IS NOT NULL
     LEFT JOIN ${ref('dim_geo_location')} d2 ON p.code=d2.district_code AND d2.district_code IS NOT NULL
+LEFT JOIN ${ref('dim_employee')}  AS e ON e.branch_account_id = p.account_id
 

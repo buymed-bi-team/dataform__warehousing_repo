@@ -1,0 +1,25 @@
+config {
+  type: "table",
+  name: "fact_fc_backlog_return",
+  tags: ['custom_1h_past5']
+}
+
+select
+	*, concat(fc_code, "_", cast( aging_hour as string ) ) as fc_aging_code
+from (
+  select 
+    r.mg_id
+    , r.ticket_id
+    , r.code as ticket_code
+    , r.so as reference
+    , r.warehouse_code as fc_code
+    , timestamp_add( r.created_time, interval 7 hour ) as created_at
+    , timestamp_add( current_timestamp(), interval 7 hour ) as transformed_at
+    , least( ceil( safe_divide(timestamp_diff(current_timestamp(), r.created_time, minute), 60) ) , 121 ) as aging_hour
+    , r.total_sku
+    , r.total_item
+    , r.status
+    , row_number() over ( partition by r.ticket_id order by r.synced_at desc ) row_num
+  from  ${source.platinum}.warehouse_prd_inbound_return_ticket as r
+  where status not in ('CANCEL', 'COMPLETED')
+)

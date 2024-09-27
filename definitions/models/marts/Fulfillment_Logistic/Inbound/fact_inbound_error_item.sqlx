@@ -1,0 +1,47 @@
+config {
+    type: "table",
+    description: "PIC nguyen.tran",
+    tags: ["custom_1h_past5", "INBOUND_ERROR"]
+}
+
+with cte_date as (
+  select timestamp_sub(CAST(date_trunc(date_sub(current_date(),interval 3 month), month) as timestamp), interval 7 hour) as datetime_
+)
+select a.*,
+  case
+    when extract(hour from created_at) >= 0 and extract(hour from created_at) <= 5
+      then date_sub(date(created_at),interval 1 day)
+  else date(created_at)
+  end as shift_date,
+  case
+    when (extract(hour from created_at) >= 0 and extract(hour from created_at) <= 5)
+      or (extract(hour from created_at) >= 22 and extract(hour from created_at) <= 23)
+        then 3
+    when (extract(hour from created_at) >= 6 and extract(hour from created_at) <= 13)
+      then 1
+    when (extract(hour from created_at) >= 14 and extract(hour from created_at) <= 21)
+      then 2
+  end as shift
+from (
+  SELECT
+    created_by_name,
+    timestamp_add(created_time, interval 7 hour) as created_at,
+    synchronization_id,
+    po_code,
+    warehouse_code as fc_code,
+    status,
+    json_value(error, '$.sku') as sku,
+    json_value(error, '$.name') as product_name,
+    json_value(error, '$.error_type') as error_type,
+    SAFE_CAST(json_value(error, '$.quantity') AS INT64) as quantity,
+    json_value(error, '$.description') as description,
+    json_value(error, '$.note') as reason,
+    json_value(error, '$.status') as item_status
+  FROM (SELECT *
+        FROM ${source.platinum}.warehouse_prd_inbound_synchronization
+        WHERE created_date >= (select DATE(datetime_) from cte_date)
+      ) AS a
+  , unnest(json_extract_array(a.error_items)) as error
+) AS a
+LEFT JOIN ${ref('fact_inbound_ticket')} AS b ON b.po_code = a.po_code
+WHERE b.po_code IS NOT NULL

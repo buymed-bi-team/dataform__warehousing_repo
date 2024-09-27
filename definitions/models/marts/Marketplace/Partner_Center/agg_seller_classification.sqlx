@@ -1,0 +1,96 @@
+config {
+    type: "table",
+    description: 
+        `
+        Classify Seller to 3 Group: New, Repeat, Churn
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: daily at 8h30, 10h30, 12h30, 15h30, 17h30, 20h30;
+        Source: 
+            ${source.platinum}.marketplace_prd_order_v2_order_item,
+            ${source.ref}.fact_order
+        `,
+    tags: ["8h30", "10h30", "12h30", "15h30" ,"17h30", "20h30"],
+}
+
+WITH
+    active_seller AS (
+        SELECT
+            s.supplier_id
+            , FORMAT_TIMESTAMP("%Y-%m", oi.created_at) AS ym_active
+            , FORMAT_TIMESTAMP("%Y-%m", DATETIME_ADD(DATETIME(oi.created_at), INTERVAL 1 MONTH)) AS next_ym
+        FROM ${ref('dim_supplier')} AS s
+            LEFT JOIN ${ref('fact_order_item')} AS oi ON s.supplier_code = oi.seller_code
+            LEFT JOIN ${ref('fact_order')} AS o ON oi.order_id = o.order_id
+        WHERE
+            s.supplier_class = 'EXTERNAL'
+            AND o.order_status <> 'CANCEL'
+        GROUP BY ALL
+        HAVING ym_active IS NOT NULL
+    )
+
+    , new_seller AS (
+        SELECT
+            s.supplier_id
+            , MIN(ym_active) AS ym_new
+        FROM active_seller AS s
+        GROUP BY 1
+        HAVING ym_new IS NOT NULL
+    )
+
+    -- , repeat_seller AS (
+    --     SELECT
+    --         s.supplier_id
+    --         , FORMAT_TIMESTAMP("%Y-%m", MIN(oi.created_at)) AS ym_first
+    --         , FORMAT_TIMESTAMP("%Y-%m", MAX(oi.created_at)) AS ym_repeat
+    --     FROM gold_buymed_vn2.dim_supplier AS s
+    --         LEFT JOIN gold_buymed_vn2.fact_order_item AS oi ON s.supplier_code = oi.seller_code
+    --     WHERE
+    --         s.supplier_class = 'EXTERNAL'
+    --     GROUP BY 1
+    --     HAVING
+    --         ym_first <> ym_repeat
+    -- )
+
+    , churn_seller AS (
+        SELECT
+            s.supplier_id
+            , LEAD(ym_active) over (PARTITION BY supplier_id ORDER BY ym_active) AS next_ym_active
+            , next_ym AS ym_churn
+        FROM active_seller AS s
+        QUALIFY next_ym_active <> next_ym OR next_ym_active IS NULL
+    )
+
+    , seller_ym AS (
+        SELECT DISTINCT
+            s.supplier_id
+            , c.year_month
+            , c.som
+        FROM ${ref('dim_supplier')} AS s
+            , ${ref('dim_calendar')} AS c
+        WHERE
+            c.date BETWEEN DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 12 MONTH) AND CURRENT_DATE("+7")
+            AND s.supplier_class = 'EXTERNAL'
+    )
+
+    , final AS (
+        SELECT
+            a.*
+            , IF(ac.ym_active IS NULL, 0, 1) AS active_seller
+            , IF(n.ym_new IS NULL, 0, 1) AS new_seller
+            , IF(ac.ym_active IS NULL, 0, 1) -  IF(n.ym_new IS NULL, 0, 1) AS repeat_seller
+            , IF(c.ym_churn IS NULL, 0, 1) AS churn_seller
+        FROM seller_ym AS a
+            LEFT JOIN active_seller AS ac ON a.supplier_id = ac.supplier_id AND a.year_month = ac.ym_active
+            LEFT JOIN new_seller AS n ON a.supplier_id = n.supplier_id AND a.year_month = n.ym_new
+            LEFT JOIN churn_seller AS c ON a.supplier_id = c.supplier_id AND a.year_month = c.ym_churn
+    )
+
+SELECT
+    *
+    , CASE
+        WHEN new_seller = 1 THEN "NEW_SELLER"
+        WHEN repeat_seller = 1 THEN "REPEAT_SELLER"
+        WHEN churn_seller = 1 THEN "CHURN_SELLER"
+      END AS seller_classification
+FROM final

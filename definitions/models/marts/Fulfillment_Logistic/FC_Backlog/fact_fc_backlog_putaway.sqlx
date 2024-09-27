@@ -1,0 +1,25 @@
+config {
+  type: "table",
+  name: "fact_fc_backlog_putaway",
+  tags: ['custom_1h_past5']
+}
+
+select
+	*, concat(fc_code, "_", cast( aging_hour as string ) ) as fc_aging_code
+from (
+  select
+    p.mg_id
+    , p.ticket_id
+    , p.code as ticket_code
+    , p.warehouse_code as fc_code
+    , p.total_item
+    , timestamp_add( p.created_time, interval 7 hour ) as created_at
+    , timestamp_add( current_timestamp, interval 7 hour ) as transformed_at
+    , least( ceil( safe_divide(timestamp_diff(current_timestamp(), p.created_time, minute), 60) ) , 121 ) as aging_hour
+    , to_json_string(JSON_QUERY(p.extra_props, "$.tags")) as tag_code
+    , p.status
+    , p.source_location
+  from ${source.platinum}.warehouse_prd_inbound_put_ticket as p
+)
+where
+  status not in  ('COMPLETED', 'CANCEL', 'DRAFT')
