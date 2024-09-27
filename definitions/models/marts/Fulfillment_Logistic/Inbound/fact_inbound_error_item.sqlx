@@ -38,10 +38,9 @@ from (
     json_value(error, '$.note') as reason,
     json_value(error, '$.status') as item_status
   FROM (SELECT *
-        FROM ${source.silver}.warehouse_prd_inbound_synchronization
-        WHERE ingest_time >= (select datetime_ from cte_date)
-          and created_time >= (select datetime_ from cte_date)
-        QUALIFY ROW_NUMBER() over (PARTITION BY mg_id ORDER BY synced_at DESC, last_updated_time DESC) = 1) AS a
+        FROM ${source.platinum}.warehouse_prd_inbound_synchronization
+        WHERE created_date >= (select DATE(datetime_) from cte_date)
+      ) AS a
   , unnest(json_extract_array(a.error_items)) as error
 ) AS a
 LEFT JOIN ${ref('fact_inbound_ticket')} AS b ON b.po_code = a.po_code
