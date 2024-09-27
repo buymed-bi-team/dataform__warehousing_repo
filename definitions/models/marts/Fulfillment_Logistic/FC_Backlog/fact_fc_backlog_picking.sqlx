@@ -1,0 +1,42 @@
+config {
+  type: "table",
+  name: "fact_fc_backlog_picking",
+  tags: ['custom_1h_past5']
+}
+
+WITH cte_date AS (
+  SELECT date_sub(date_trunc(date_sub( current_timestamp() , interval 10 day), day), interval 7 hour)  as start_date
+),
+
+cte_main AS (
+SELECT
+  p.mg_id
+  , p.ticket_id
+  , p.so as order_code  
+  , p.warehouse_code as fc_code
+  , p.total_item
+  , p.total_sku
+  , timestamp_add( p.created_time, interval 7 hour ) as created_at
+  , timestamp_add( p.last_updated_time, interval 7 hour ) as last_action_at
+  , timestamp_add( current_timestamp, interval 7 hour ) as transformed_at
+  , case
+    when timestamp_diff(current_timestamp(), p.last_updated_time, minute) < 60 then round( safe_divide(timestamp_diff(current_timestamp(), p.last_updated_time, minute), 60), 1 )
+    else least( ceil( safe_divide(timestamp_diff(current_timestamp(), p.last_updated_time, minute), 60) ) , 121 )
+  end as aging_hour
+  , to_json_string(p.tags) as tag_code
+  , p.status
+  , case
+    when p.type = "TRANSFER" then "TO"
+    when p.type = "RETURN" then "RO"
+    when p.type = "NORMAL" then "SO"
+  end as ticket_type
+FROM ${source.platinum}.warehouse_prd_picking_pick_ticket AS p
+WHERE
+  p.ingest_time >= (select start_date from cte_date)
+  AND status NOT IN ('HIDE', 'CANCEL', 'DONE', 'DRAFT', 'WAIT_TO_DELIVERY', 'ONHOLD', 'WAIT_CS')
+)
+
+SELECT
+  *
+  , concat(fc_code, "_", cast( aging_hour as string ) ) as fc_aging_code
+FROM cte_main
