@@ -18,37 +18,244 @@ config {
     tags: ("0h00")
 }
 
+-- js {
+--     const source_list = [
+--         'agg_strategic_gmv-before-cancel',
+--         'agg_strategic_gmv-after-cancel_cancel',
+--         'agg_strategic_gmv-fulfilled',
+--         'agg_strategic_gmv-unff',
+--         'agg_strategic_gmv-return',
+--         'agg_strategic_gmv-backlog',
+--         'agg_strategic_so',
+--         'agg_strategic_do',
+--         'agg_strategic_item-sold',
+--         // 'agg_strategic_cancel-so', //hide
+--         'agg_strategic_cancel-before-ffm',
+--         'agg_strategic_cancel-after-ffm',
+--         'agg_strategic_gmv_with_listed_price'
+--     ]
+-- }
+
+-- ${
+--     source_list.map((source,i) =>`
+-- SELECT
+--     "${source}" as source,
+--     CURRENT_DATETIME("+7") AS refresh_time,
+--     date,
+--     location,
+--     channel,
+--     measure,
+--     value
+-- FROM
+--     ${ref(source)}
+-- WHERE date > "2023-01-01"
+-- ${i < source_list.length - 1 ? 'UNION ALL':''}
+-- `
+--     ).join('')
+-- }
+
 js {
-    const source_list = [
-        'agg_strategic_gmv-before-cancel',
-        'agg_strategic_gmv-after-cancel_cancel',
-        'agg_strategic_gmv-fulfilled',
-        'agg_strategic_gmv-unff',
-        'agg_strategic_gmv-return',
-        'agg_strategic_gmv-backlog',
-        'agg_strategic_so',
-        'agg_strategic_do',
-        'agg_strategic_item-sold',
-        // 'agg_strategic_cancel-so', //hide
-        'agg_strategic_cancel-before-ffm',
-        'agg_strategic_cancel-after-ffm'
+    measure_lst = [
+        {
+            name: "GMV-BEFORE-CANCEL",
+            logic: `SUM( fs.sales_price * demand_quantity )`
+        },
+        {
+            name: "GMV-AFTER-CANCEL",
+            logic: `SUM( 
+            ( fs.sales_price * demand_quantity )  
+            - IF( fs.order_status like "CANCEL" AND fs.sale_order_code is null, ( fs.sales_price * demand_quantity ),0 )
+            )`
+        },
+        {
+            name: "CANCEL",
+            logic: `SUM(IF( fs.order_status like "CANCEL", ( fs.sales_price * demand_quantity ), 0))`
+        },
+        {
+            name: "GMV-WITH-LISTED-PRICE",
+            logic: "SUM(fs.listed_price * fs.demand_quantity)"
+        },
+        {
+            name: "CANCEL-BEFORE-FFM",
+            logic: `SUM(IF( fs.order_status like "CANCEL" AND fs.sale_order_code is null, ( fs.sales_price * demand_quantity ),0 ))`
+        },
+        {
+            name: "CANCEL-AFTER-FFM",
+            logic: `SUM(IF( fs.order_status like "CANCEL" AND fs.sale_order_code is not null, ( fs.sales_price * demand_quantity ),0 ))`
+        },
+        {
+            name: "GMV-FULFILLED",
+            logic: `SUM(IF( fs.order_status not like "CANCEL" ,(fs.outbound_quantity - fs.returned_quantity),0) * fs.sales_price)`
+        },
+        {
+            name: "GMV-UNFF",
+            logic: `SUM(IF( fs.order_status not like "CANCEL" AND fs.order_status in ("DELIVERING","DELIVERED","COMPLETED"),(fs.demand_quantity - fs.outbound_quantity ) ,0 ) * fs.sales_price)`,
+        },
+        {
+            name: "GMV-BACKLOG",
+            logic: `SUM(IF( fs.order_status not like "CANCEL" AND fs.order_status not in ("DELIVERING","DELIVERED","COMPLETED"),  (fs.demand_quantity - fs.outbound_quantity ) ,0 ) * fs.sales_price)`,
+        },
+        {
+            name: "GMV-RETURN",
+            logic:`SUM(IF( fs.order_status not like "CANCEL" , fs.returned_quantity, 0) * fs.sales_price)`,
+        },
+        {
+            name: "NMV",
+            logic: `SUM(IF( fs.order_status like "CANCEL" AND fs.sale_order_code is not null, ( fs.sales_price * fs.demand_quantity ),0 ) -- AS cancel_after_ffm
+                + IF( fs.order_status not like "CANCEL" ,(fs.outbound_quantity - fs.returned_quantity),0) * fs.sales_price -- AS fulfilled_amount
+                + IF( fs.order_status not like "CANCEL" AND fs.order_status not in ("DELIVERING","DELIVERED","COMPLETED"),  (fs.demand_quantity - fs.outbound_quantity ) ,0 ) * fs.sales_price -- AS backlog_amount,
+                + IF( fs.order_status not like "CANCEL" , fs.returned_quantity, 0) * fs.sales_price)  -- AS returned_amount,`
+        },
+        {
+            name: "COMMERICAL-AMOUNT",
+            logic: `SUM((fs.listed_price - fs.sales_price) * fs.demand_quantity)`
+        },
+        {
+            name: "COMMERICAL-DEAL-AMOUNT",
+            logic: `SUM(IF( commercial_type = "DEAL", (fs.listed_price - fs.sales_price) * demand_quantity, 0))`
+        },
+        {
+            name: "COMMERICAL-CAMPAIGN-AMOUNT",
+            logic: `SUM(IF( commercial_type = "CAMPAIGN", (fs.listed_price - fs.sales_price) * demand_quantity, 0))`
+        },
+        {
+            name: "COMMERICAL-COMBO-AMOUNT",
+            logic: `SUM(IF( commercial_type = "COMBO",(fs.listed_price - fs.sales_price) * demand_quantity, 0))`
+        },
+        {
+            name: "SO",
+            logic: "COUNT(distinct fs.order_id)"
+        },
+        {
+            name: "ITEM-SOLD",
+            logic: "SUM(fs.demand_quantity)"
+        }
     ]
 }
 
+WITH ois AS ( -- FOR DO
+    -- actually, it just exclude 36 order, so if you query raw, don't need this, the error is very small, but in agg_general, dataform take all fact_strategic, so I will include it
+    -- I just exclude the orders that is contains all test item
+    SELECT 
+        order_id,
+        STRING_AGG(DISTINCT supplier_class) supplier_class
+    FROM ${ref(`fact_strategic_sale_order_item_single`)} ois 
+    GROUP BY 1
+)
+
 ${
-    source_list.map((source,i) =>`
-SELECT
-    "${source}" as source,
+    measure_lst.map((measure,i)=> `
+SELECT 
     CURRENT_DATETIME("+7") AS refresh_time,
-    date,
-    location,
-    channel,
-    measure,
-    value
-FROM
-    ${ref(source)}
-WHERE date > "2023-01-01"
-${i < source_list.length - 1 ? 'UNION ALL':''}
-`
-    ).join('')
+    dc.eom as date,
+    CASE
+        WHEN dosr.sales_region_code LIKE "MIENNAM" THEN "SOUTHERN"
+        WHEN dosr.sales_region_code LIKE "MIENTRUNG" THEN "CENTRAL"
+        WHEN dosr.sales_region_code LIKE "MIENBAC" THEN "NORTHERN"
+        ELSE "GMV-VN-REGION-UNKNOWN" 
+    END AS location,
+    CASE
+        WHEN doc.order_channel IN ("MARKETPLACE","CONSIGNMENT" ) THEN "MARKETPLACE"
+        ELSE doc.order_channel
+    END AS channel,
+    "${measure.name}" AS measure,
+    ${measure.logic} value
+
+FROM ${ref(`fact_strategic_sale_order_item_single`)} fs 
+LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = fs.order_id 
+LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON fs.order_id = dosr.order_id 
+LEFT JOIN ${ref(`dim_calendar`)} dc ON date(fs.created_dt) = dc.date
+WHERE  doc.order_channel NOT IN ("TENDER","CONSIGNMENT-RECOGNITION")
+AND doc.order_channel is not null
+AND fs.supplier_class not like "TECH"
+AND date > "2023-01-01"
+GROUP BY 1,2,3,4,5
+
+UNION ALL 
+
+SELECT 
+    CURRENT_DATETIME("+7") AS refresh_time,
+    dc.eom as date,
+    CASE
+        WHEN dosr.sales_region_code LIKE "MIENNAM" THEN "SOUTHERN"
+        WHEN dosr.sales_region_code LIKE "MIENTRUNG" THEN "CENTRAL"
+        WHEN dosr.sales_region_code LIKE "MIENBAC" THEN "NORTHERN"
+        ELSE "GMV-VN-REGION-UNKNOWN" 
+    END AS location,
+    order_channel  as channel,
+    "${measure.name}" AS measure,
+    ${measure.logic} value
+
+FROM ${ref(`fact_strategic_sale_order_item_single`)} fs 
+LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = fs.order_id 
+LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON fs.order_id = dosr.order_id 
+LEFT JOIN ${ref(`dim_calendar`)} dc ON date(fs.confirmation_dt) = dc.date
+WHERE  doc.order_channel LIKE "TENDER"
+AND fs.order_status not like "WAIT_TO_CONFIRM"
+AND fs.supplier_class not like "TECH"
+AND date > "2023-01-01"
+GROUP BY 1,2,3,4,5
+
+${i < measure_lst.length - 1 ? 'UNION ALL':''}
+    `).join('')
 }
+
+UNION ALL 
+
+-- DO
+
+SELECT 
+CURRENT_DATETIME("+7") AS refresh_time,
+    dc.eom as date,
+    CASE
+        WHEN dosr.sales_region_code LIKE "MIENNAM" THEN "SOUTHERN"
+        WHEN dosr.sales_region_code LIKE "MIENTRUNG" THEN "CENTRAL"
+        WHEN dosr.sales_region_code LIKE "MIENBAC" THEN "NORTHERN"
+        ELSE "GMV-VN-REGION-UNKNOWN" 
+    END AS location,
+    CASE
+        WHEN doc.order_channel IN ("MARKETPLACE","CONSIGNMENT" ) THEN "MARKETPLACE"
+        ELSE doc.order_channel
+    END AS channel,
+    'DO' AS measure,
+    COUNT(DISTINCT do.delivery_order_code) as value
+
+FROM ${ref(`fact_strategic_delivery_order`)} do 
+LEFT JOIN ois ON do.order_id = ois.order_id
+LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = do.order_id 
+LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON do.order_id = dosr.order_id 
+LEFT JOIN ${ref(`dim_order_status`)} dos ON dos.order_id = do.order_id
+LEFT JOIN ${ref(`dim_calendar`)} dc ON date(do.created_dt) = dc.date
+WHERE  doc.order_channel NOT IN ("TENDER","CONSIGNMENT-RECOGNITION")
+AND doc.order_channel is not null
+AND ois.supplier_class not like "TECH"
+AND date > "2023-01-01"
+GROUP BY 1,2,3,4,5
+
+UNION ALL 
+
+SELECT 
+CURRENT_DATETIME("+7") AS refresh_time,
+    dc.eom as date,
+    CASE
+        WHEN dosr.sales_region_code LIKE "MIENNAM" THEN "SOUTHERN"
+        WHEN dosr.sales_region_code LIKE "MIENTRUNG" THEN "CENTRAL"
+        WHEN dosr.sales_region_code LIKE "MIENBAC" THEN "NORTHERN"
+        ELSE "GMV-VN-REGION-UNKNOWN" 
+    END AS location,
+    order_channel  as channel,
+    'DO' AS measure,
+    COUNT(DISTINCT do.delivery_order_code) as value
+
+
+FROM ${ref(`fact_strategic_delivery_order`)} do 
+LEFT JOIN ois ON do.order_id = ois.order_id
+LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = do.order_id 
+LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON do.order_id = dosr.order_id 
+LEFT JOIN ${ref(`dim_order_status`)} dos ON dos.order_id = do.order_id
+LEFT JOIN ${ref(`dim_calendar`)} dc ON date(do.confirmation_dt) = dc.date
+WHERE  doc.order_channel LIKE "TENDER"
+AND dos.crm_status not like "WAIT_TO_CONFIRM"
+AND ois.supplier_class not like "TECH"
+AND date > "2023-01-01"
+GROUP BY 1,2,3,4,5

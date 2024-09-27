@@ -35,7 +35,6 @@ SELECT
 FROM ${ref(`fact_strategic_sale_order_item_single`)} ois 
 LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = ois.order_id 
 LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON ois.order_id = dosr.order_id 
-LEFT JOIN ${ref(`dim_order_status`)} dos ON dos.order_id = ois.order_id
 LEFT JOIN ${ref(`dim_calendar`)} dc ON date(ois.created_dt) = dc.date
 WHERE  doc.order_channel NOT IN ("TENDER","CONSIGNMENT-RECOGNITION")
 AND doc.order_channel is not null
@@ -54,15 +53,13 @@ SELECT
     END AS location,
     order_channel  as channel,
     'ITEM-SOLD' AS measure,
-
     SUM(ois.demand_quantity) value
 
 FROM ${ref(`fact_strategic_sale_order_item_single`)} ois 
 LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = ois.order_id 
 LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON ois.order_id = dosr.order_id 
-LEFT JOIN ${ref(`dim_order_status`)} dos ON dos.order_id = ois.order_id
 LEFT JOIN ${ref(`dim_calendar`)} dc ON date(ois.confirmation_dt) = dc.date
 WHERE  doc.order_channel LIKE "TENDER"
-AND dos.crm_status not like "WAIT_TO_CONFIRM"
+AND ois.order_status not like "WAIT_TO_CONFIRM"
 AND ois.supplier_class not like "TECH"
 GROUP BY 1,2,3,4
