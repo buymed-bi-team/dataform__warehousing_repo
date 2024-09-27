@@ -1,0 +1,54 @@
+config {
+  type: "table",
+  name: "fact_fc_backlog_put_item_missing",
+  tags: ['3HOUR']
+}
+
+with cte_date as (
+  select 
+      timestamp( date_sub( current_date("+7")  , interval 30 day ) ) as start_date_1
+      , timestamp( date_trunc( current_date("+7")  , isoweek ) ) as start_date_2
+)
+
+select * 
+from ( 
+  select
+    pi.ticket_id
+    , pi.sku as sku_code 
+    , pi.name as product_name
+    , pi.demand_quantity as put_start_quantity
+    , pi.done_quantity as put_done_quantity
+    , json_value(p.extra_props,"$.inbound_code") as inbound_code
+    , p.code as put_code
+    , p.status as ticket_status
+    , p.warehouse_code as fc_code
+    , p.source_location 
+    , timestamp_add( p.created_time, interval 7 hour ) as put_start_at
+    , timestamp_add( coalesce(p.end_put_time, p.end_time, p.last_updated_time) , interval 7 hour ) as put_done_at
+    , timestamp_add( current_timestamp, interval 7 hour ) as transformed_at
+  -- from ${ref("dedup_warehouse_prd_inbound_put_ticket_item")} as pi
+  from (
+    select * 
+    from ${source.platinum}.warehouse_prd_inbound_put_ticket_item
+    where ingest_time >= (select start_date_1 from cte_date) 
+      and (created_time >= (select start_date_1 from cte_date) or created_time is null)
+  ) pi
+  -- left join ${ref("dedup_warehouse_prd_inbound_put_ticket")} as p on pi.ticket_id = p.ticket_id
+  left join (
+    select * 
+    from ${source.platinum}.warehouse_prd_inbound_put_ticket
+    where ingest_time >= (select start_date_1 from cte_date) 
+      and (created_time >= (select start_date_1 from cte_date) or created_time is null)
+  ) as p on pi.ticket_id = p.ticket_id
+  where
+    pi.created_time >= (select start_date_1 from cte_date)
+    and coalesce(p.end_put_time, p.end_time, p.synced_at) >= (select start_date_2 from cte_date)
+    -- and pi.demand_quantity > pi.done_quantity
+    -- and p.status = "COMPLETED"
+    and json_value(p.extra_props,"$.parent_ref") is null
+    and p.source_location = "WH-INBOUND"
+    and p.warehouse_code <> "HCM"
+)
+where
+  put_start_quantity > put_done_quantity
+  and ticket_status = "COMPLETED"

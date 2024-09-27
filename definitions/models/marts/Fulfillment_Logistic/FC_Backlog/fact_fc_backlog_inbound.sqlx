@@ -1,0 +1,54 @@
+config {
+  type: "table",
+  name: "fact_fc_backlog_inbound",
+  tags: ['custom_1h_past5']
+}
+
+with cte_main as (
+	select
+		ib.ticket_id
+		, min(rs.received_time) as ib_checked_in_at
+	from ${source.platinum}.warehouse_prd_inbound_inbound_ticket as ib
+	left join ${source.platinum}.warehouse_prd_inbound_receipt_session as rs on ib.ticket_id = rs.inbound_ticket_id
+	where
+		rs.warehouse_code = rs.destination_warehouse_code
+	group by 1
+)
+
+select
+	*, concat(fc_code, "_", cast( aging_hour as string ) ) as fc_aging_code
+from (
+	select 
+		a.ticket_id
+		, ib.mg_id
+		, timestamp_add( current_timestamp, interval 7 hour ) as transformed_at
+		, timestamp_add( ib.created_time, interval 7 hour ) as po_confirmed_at
+		, timestamp_add( ib.synced_at, interval 7 hour ) as last_updated_at
+		, timestamp_add( a.ib_checked_in_at, interval 7 hour ) as ib_checked_in_at
+		-- , timestamp_diff(current_timestamp(), ib.created_time, minute) as setoff_minute
+		-- , least( ceil( safe_divide(timestamp_diff(current_timestamp(), ib.created_time, minute), 60) ) , 121 ) as aging_hour
+		, case
+			when ib.status in ('WAITING', 'IN_TRANSIT') then least( ceil( safe_divide(timestamp_diff(current_timestamp(), ib.created_time, minute), 60) ) , 121 )
+			else least( ceil( safe_divide(timestamp_diff(current_timestamp(), a.ib_checked_in_at, minute), 60) ) , 121 )
+		end as aging_hour
+		, ib.po_code
+		, ib.code as ticket_code
+		, ib.warehouse_code as fc_code
+		, ib.priority
+		, ib.type
+		, ib.status
+		, ib.total_item
+		, ib.total_sku
+		, to_json_string(ib.tags) as tag_code
+		, row_number() over (partition by ib.mg_id order by ib.synced_at desc) row_num
+	from cte_main as a
+	left join ${source.platinum}.warehouse_prd_inbound_inbound_ticket as ib on a.ticket_id = ib.ticket_id
+)
+where
+	row_num = 1 and
+	status not in ('CANCEL', 'COMPLETED', 'WAITING')
+
+
+
+
+

@@ -1,0 +1,32 @@
+config {
+  type: "table",
+  name: "fact_fc_backlog_qc_item_missing",
+  tags: ['3HOUR']
+}
+
+with cte_date as (
+  select 
+    date_sub( timestamp( date_sub( current_date("+7")  , interval 20 day ) ) , interval 7 hour ) as start_date_1
+    , date_sub( timestamp( date_trunc( current_date("+7")  , isoweek ) ) , interval 7 hour ) as start_date_2
+)
+
+select 
+  pi.ticket_id
+  , pi.sku as sku_code
+  , pi.name as product_name
+  , pi.fulfilled_quantity as pick_quantity
+  , pi.scanned_quantity as qc_quantity
+  , p.so as outbound_code
+  , p.warehouse_code as fc_code
+  , timestamp_add( p.end_pick_time , interval 7 hour ) as done_pick_at
+  , timestamp_add( p.end_qc_time , interval 7 hour ) as done_qc_at
+  , p.status as ticket_status
+  , timestamp_add( current_timestamp, interval 7 hour ) as transformed_at
+from ${source.platinum}.warehouse_prd_picking_pick_ticket_item as pi
+left join ${source.platinum}.warehouse_prd_picking_pick_ticket as p on pi.ticket_id = p.ticket_id
+where
+  pi.created_time >= (select start_date_1 from cte_date)
+  and coalesce( p.end_qc_time, p.end_pick_time ) >= (select start_date_2 from cte_date)
+  and pi.fulfilled_quantity > pi.scanned_quantity
+  and p.warehouse_code <> "HCM"
+  and p.status = "DONE"

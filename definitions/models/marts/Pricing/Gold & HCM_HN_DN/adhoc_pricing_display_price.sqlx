@@ -2,7 +2,7 @@ config {
     type: "table", 
     description: 
         `
-        The display price of SKUs (calculated according to the pricing formula) for PLATINUM-level customers in 3 cities HCM, HN, DN;
+        The display price of SKUs (calculated according to the pricing formula) for GOLD-level customers in 3 cities HCM, HN, DN;
         PIC: nguyen.tran; 
         Type: Table; 
         Refresh Schedule: hourly;
@@ -36,7 +36,7 @@ with
 --       SELECT TIMESTAMP_SUB(TIMESTAMP_TRUNC(current_timestamp(),day), interval 7 HOUR) as trunc_timestamp
 --     )
 
--- Get customer level fee. Using LEVEL_PLATINUM to apply all calculate pricing.
+-- Get customer level fee. Using LEVEL_GOLD to apply all calculate pricing.
     get_customer_level_fee as (
         select
             code as customer_level,
@@ -44,7 +44,7 @@ with
         from ${source.platinum}.marketplace_prd_pricing_v2_setting
         where
             type = 'CUSTOMER_LEVEL'
-            and upper(code) = 'LEVEL_PLATINUM' -- LEVEL_PLATINUM LEVEL_SILVER
+            and upper(code) = 'LEVEL_GOLD' -- LEVEL_PLATINUM LEVEL_SILVER
         QUALIFY ROW_NUMBER() OVER (PARTITION BY type, code ORDER BY ingest_time DESC) = 1
     )
 
