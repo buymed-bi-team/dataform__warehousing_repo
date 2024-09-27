@@ -1,25 +1,40 @@
 config {
-  type: "table",
-  name: "fact_purchasing_backlog_prh",
-  tags: ["6h00", "14h00", "18h00"]
+  type: "view",
+  name: "dim_tag",
 }
 
-SELECT 
-  wt.code as ticket_code
-  , wt.warehouse_code as fc_code
-  , wt.status as ticket_status
-  , wt.seller_code
-  -- , wt.overdue_date
-  , DATE_DIFF(wt.overdue_date, current_timestamp(), DAY) + 2 as day_left
-  , wt.note as ticket_note
-  , wi.sku_code
-  , wi.quantity
-  , wi.reason as sku_note
-  , timestamp_add( current_timestamp(), interval 7 hour ) as transformed_at
-FROM ${source.platinum}.seller_prd_wis_withdraw_ticket AS wt
-LEFT JOIN ${source.platinum}.seller_prd_wis_withdraw_item AS wi on wt.code = wi.withdraw_code
-WHERE 
-  TIMESTAMP_TRUNC(wt.ingest_time, DAY) >= TIMESTAMP("2023-11-01") 
-  AND wt.overdue_date >= current_timestamp()
-QUALIFY row_number() over (_window) = 1 AND FIRST_VALUE(wt.action) over(_window) <> 'd' AND FIRST_VALUE(wt.status) OVER(_window) = "WAIT_TO_UPDATE"
-WINDOW _window AS (PARTITION BY wt.code, wi.sku_code ORDER BY wt.synced_at DESC)
+
+
+with cte_combined as (
+  select
+    *
+    , row_number() over (partition by tag_code order by latest_created_at desc) row_num
+  from (
+    select ib.* from ${ref('dim_tag_inbound')} as ib
+    union all
+    select ob.* from ${ref('dim_tag_outbound')} as ob
+  )
+)
+
+
+select
+  a.*
+  , case 
+    when search( a.tag_code , "FRAGILE" ) then "FRAGILE"
+    else "NORMAL"
+  end is_fragile
+  , case 
+    when search( a.tag_code , "FROZEN" ) then "FROZEN"
+    else "NORMAL"
+  end is_frozen
+  , case 
+    when search( a.tag_code , "SAME_DAY" ) then "SAME_DAY"
+    else "NORMAL"
+  end is_sameday
+  , case 
+    when search( a.tag_code , "URGENT" ) then "URGENT"
+    else "NORMAL"
+  end is_urgent
+from cte_combined as a
+where
+  a.row_num = 1

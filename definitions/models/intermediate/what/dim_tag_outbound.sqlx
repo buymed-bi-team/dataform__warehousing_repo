@@ -1,0 +1,13 @@
+config {
+  type: "view",
+  name: "dim_tag_outbound"
+}
+
+select
+  to_json_string(p.tags) as tag_code
+  , timestamp_add( max(p.created_time), interval 7 hour ) as latest_created_at
+  , count(1) as count_
+from platinum_buymed_vn.warehouse_prd_picking_pick_ticket as p
+where
+  p.tags is not null
+group by 1
