@@ -33,6 +33,7 @@ SELECT
     , CONCAT(product_id, "_", seller_code) AS sku_key
     , o.shipping_province_code AS province_code
     , fc.sales_region_code
+    , fc.fc_code
     , CONCAT(oi.product_id, "_", oi.seller_code, "_", fc.sales_region_code) AS sku_key_sales_region_code
     , CASE
         WHEN STRPOS(tag_code, "E7GB") > 0 OR STRPOS(sub_tag_code, "E7GB") > 0 THEN "E7GB_MIENBAC"

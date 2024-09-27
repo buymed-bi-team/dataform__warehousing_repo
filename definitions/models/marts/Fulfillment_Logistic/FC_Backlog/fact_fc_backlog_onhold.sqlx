@@ -1,0 +1,54 @@
+config {
+  type: "table",
+  name: "fact_fc_backlog_onhold",
+  dependencies: ["dim_province", "fact_fc_picking_rule"],
+  tags: ["custom_1h_past5"]
+}
+
+WITH cte_date AS (
+  SELECT date_sub( current_date() , interval 7 day)  as start_date
+),
+
+cte_main AS (
+SELECT
+  p.mg_id
+  , p.ticket_id
+  -- , p.admin_id as order_id
+  , p.so as order_code  
+  , p.warehouse_code as fc_code
+  , p.total_item
+  , p.total_sku
+  , timestamp_add( p.created_time, interval 7 hour ) as created_at
+  , timestamp_add( p.last_updated_time, interval 7 hour ) as last_action_at
+  , timestamp_add( current_timestamp, interval 7 hour ) as transformed_at
+  , case
+      when timestamp_diff(current_timestamp(), p.created_time, minute) < 60 then round( safe_divide(timestamp_diff(current_timestamp(), p.created_time, minute), 60), 1 )
+      else least( ceil( safe_divide(timestamp_diff(current_timestamp(), p.created_time, minute), 60) ) , 121 )
+    end as aging_hour
+  , to_json_string(p.tags) as tag_code
+  , SAFE_CAST( ROUND(p.sort) AS INT64 ) AS sort_level_code
+  , JSON_EXTRACT_SCALAR(p.customer, "$.province_code") as province_code
+  , p.ready_tag
+from (
+    select *
+    from ${source.platinum}.warehouse_prd_picking_pick_ticket
+    where created_date >= (select start_date from cte_date)
+) p
+WHERE status = "ONHOLD"
+  AND type = "NORMAL"
+)
+
+SELECT
+  oh.*
+  , concat(oh.fc_code, "_", cast( aging_hour as string ) ) as fc_aging_code
+  , CASE
+      WHEN ready_tag IS TRUE THEN "READY"
+      WHEN aging_hour >= rule.awaiting_hours - 1 THEN "READY-GETTING"
+      ELSE "NOT-READY"
+    END AS picking_rule
+FROM cte_main as oh
+LEFT JOIN ${ref('dim_province')} as prov on oh.province_code = prov.province_code
+LEFT JOIN ${ref(`fact_fc_picking_rule`)} as rule on 
+  oh.fc_code = rule.fc_code 
+  and prov.picking_rule_location_code = rule.service_location_code
+  and oh.sort_level_code = rule.sort_level_code

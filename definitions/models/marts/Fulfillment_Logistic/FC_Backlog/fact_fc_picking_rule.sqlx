@@ -1,0 +1,82 @@
+config {
+  type: "table",
+  name: "fact_fc_picking_rule",
+  tags: ["0h00"]
+}
+
+WITH cte_dedup as (
+SELECT
+  warehouse_code as fc_code
+  , pick_ready_rule
+FROM ${source.platinum}.warehouse_prd_core_rule_factor
+WHERE 
+  warehouse_code in  ("BD", "HN")
+ORDER BY synced_at desc
+),
+
+cte_flattened_data AS (
+SELECT 
+  m.*
+  , value as flattened_values
+FROM cte_dedup AS m,
+UNNEST( (json_extract_array(pick_ready_rule, '$')) ) AS value
+),
+
+cte_union AS (
+SELECT 
+  f.fc_code
+  , JSON_EXTRACT_SCALAR( flattened_values["sort_max"] ) as sort_max
+  , JSON_EXTRACT_SCALAR( flattened_values["sort_min"] ) as sort_min
+  , CASE
+      WHEN f.fc_code = "BD" THEN "NON-HCM"
+      WHEN f.fc_code = "HN" THEN "NON-HN"
+    end AS service_location_code
+  , COALESCE(
+      JSON_EXTRACT_SCALAR( flattened_values["province_condition"]["DEFAULT"] ),
+      "0"
+   ) as awaiting_seconds
+FROM cte_flattened_data as f
+UNION ALL
+SELECT 
+  f.fc_code
+  , JSON_EXTRACT_SCALAR( flattened_values["sort_max"] ) as sort_max
+  , JSON_EXTRACT_SCALAR( flattened_values["sort_min"] ) as sort_min
+  , CASE
+      WHEN f.fc_code = "BD" THEN "HCM"
+      WHEN f.fc_code = "HN" THEN "HN"
+    end AS service_location_code
+  , COALESCE(
+    JSON_EXTRACT_SCALAR( flattened_values["province_condition"]["Thành phố Hồ Chí Minh"] ),
+    JSON_EXTRACT_SCALAR( flattened_values["province_condition"]["Thành phố Hà Nội"] )
+  ) as awaiting_seconds
+FROM cte_flattened_data as f
+),
+
+cte_conversion AS (
+SELECT 
+  u.fc_code
+  , u.service_location_code
+  -- , u.sort_min as sort_min_origin
+  , ROUND( SAFE_CAST( u.sort_min AS FLOAT64 ) )  AS sort_min
+  -- , u.sort_min as sort_max_origin
+  , FLOOR( SAFE_CAST( u.sort_max AS FLOAT64 ) ) AS sort_max
+  -- , CAST( u.sort_max AS int64 ) as sort_max
+  , ROUND( 
+      SAFE_DIVIDE(
+        SAFE_CAST( u.awaiting_seconds AS INTEGER ),
+        60*60
+    ))AS awaiting_hours
+FROM cte_union as u
+)
+
+SELECT
+  c.*
+  , value as sort_level_code
+  , concat(c.fc_code, "_", cast( awaiting_hours as string ) ) as fc_aging_code
+FROM cte_conversion as c
+CROSS JOIN UNNEST( GENERATE_ARRAY(c.sort_min, c.sort_max, 1 )) as value
+WHERE
+  c.awaiting_hours is not null
+
+
+  

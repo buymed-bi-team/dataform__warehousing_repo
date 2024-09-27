@@ -1,0 +1,36 @@
+config {
+  type: "table",
+  name: "fact_fc_backlog_stock_transfer",
+  tags: ['custom_1h_past5']
+}
+
+WITH cte_date AS (
+	SELECT
+		date_sub( timestamp( date_trunc( date_sub( current_date('+7'), interval 1 month) , month ) ) , interval 7 hour ) as start_date
+)
+
+select
+	*, concat(fc_code, "_", cast( aging_hour as string ) ) as fc_aging_code
+from (
+  select
+    i.mg_id
+    , i.transfer_id
+    , concat( i.type, "-", cast( i.transfer_id as string ) ) as transfer_code
+    , i.reference
+    , i.warehouse_code as fc_code
+    , i.type
+    , i.status
+    , i.source_location
+    , i.destination_location
+    , concat(i.source_location, "->", i.destination_location ) as transfer_road
+    , timestamp_add( i.transfer_created_time, interval 7 hour ) as created_at
+    , timestamp_add( current_timestamp(), interval 7 hour ) as transformed_at
+    , least( ceil( safe_divide(timestamp_diff(current_timestamp(), i.transfer_created_time, minute), 60) ) , 121 ) as aging_hour
+  from (
+    select *
+    from ${source.platinum}.warehouse_prd_inventory_transfer
+    where ingest_time >= (select timestamp(start_date) from cte_date)
+      and (created_time >= (select timestamp(start_date) from cte_date) or created_time is null) 
+  ) i
+)
+  where status in ('READY')

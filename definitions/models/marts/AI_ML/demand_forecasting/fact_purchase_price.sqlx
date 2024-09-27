@@ -7,12 +7,12 @@ config {
 
 SELECT
   date,
-  code,
+  code as sku_code,
   product_id,
-  purchase_price
+  MIN(purchase_price) as purchase_price
 FROM
   ${ref('staging_sku_purchase_price_history')}
 WHERE
   seller_code ="MEDX" AND purchase_price > 1000
-GROUP BY ALL
+GROUP BY 1,2,3
 ORDER BY 2

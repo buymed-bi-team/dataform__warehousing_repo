@@ -136,9 +136,17 @@ SELECT
               CASE moving_type
                   WHEN "MISSING-OUT" THEN FORMAT_DATE("%Y-%m", DATE(a.ts_moving_done))
                   ELSE IF(
-                      EXTRACT(DAY FROM DATE(a.ts_moving_done)) >= 27,
-                      FORMAT_DATE("%Y-%m", DATE_ADD(DATE(a.ts_moving_done), INTERVAL 1 MONTH)),
-                      FORMAT_DATE("%Y-%m", DATE(a.ts_moving_done))
+                    a.ts_moving_done >= '2024-08-27',
+                    IF(
+                        EXTRACT(DAY FROM DATE(a.ts_moving_done)) >= 16,
+                        FORMAT_DATE("%Y-%m", DATE_ADD(DATE(a.ts_moving_done), INTERVAL 1 MONTH)),
+                        FORMAT_DATE("%Y-%m", DATE(a.ts_moving_done))
+                    ),
+                    IF(
+                        EXTRACT(DAY FROM DATE(a.ts_moving_done)) >= 27,
+                        FORMAT_DATE("%Y-%m", DATE_ADD(DATE(a.ts_moving_done), INTERVAL 1 MONTH)),
+                        FORMAT_DATE("%Y-%m", DATE(a.ts_moving_done))
+                    )
                   )
               END
           ELSE
