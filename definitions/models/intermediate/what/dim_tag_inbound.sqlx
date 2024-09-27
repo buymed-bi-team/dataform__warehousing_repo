@@ -1,0 +1,13 @@
+config {
+  type: "view",
+  name: "dim_tag_inbound"
+}
+
+select
+  to_json_string(ib.tags) as tag_code
+  , timestamp_add( max(ib.created_time), interval 7 hour ) as latest_created_at
+  , count(1) as count_
+from `platinum_buymed_vn.warehouse_prd_inbound_inbound_ticket` as ib
+where
+  ib.tags is not null
+group by 1
