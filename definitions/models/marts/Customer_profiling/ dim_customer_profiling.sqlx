@@ -1,0 +1,42 @@
+config {
+    type: "table",
+    description: "PIC: Huong.Dang",
+    tags: ["6HOUR"],
+    columns: {
+        new_customer: "Những khách hàng có đơn hàng đầu tiên tại thuocsi trong tháng đó, stt đơn = COMPLETED. Vd: Khách hàng A có đơn hàng đầu tiên tại thuocsi vào tháng 5/2024, có stt đơn=COMPLETED, thì khách đó sẽ là New_Customer trong tháng 5/2024",
+        repeat_customer: "Những khách hàng có đơn hàng 2 tháng liên tiếp tại sàn thuocsi, loại trừ những đơn hàng CANCEL. Vd: Khách hàng A có đơn hàng trong 4 / 2024 và tháng 5 / 2024,thì type của khách hàng A trong tháng 5 / 2024 sẽ là Repeat Customer",
+        reacquire_customer: "Những khách hàng chưa mua hàng từ 1 tháng trở lên, tính từ tháng cuối cùng mua hàng tại thucosi, quay trở lại mua hàng, loại trừ những đơn hàng CANCEL.Vd: Tháng 3/2024 khách A có mua hàng, tháng 4/2024 khách A không mua hàng, tháng 5/2024 quay lại mua hàng, khách A sẽ là Reacquire Customer trong tháng 5/2024",
+        active_customer: "Khách hàng có mua ít nhất 1 đơn trong tháng không tính Cancel",
+        churn_customer: "Khách hàng tháng trước có mua ít nhất 1 đơn không tính đơn Cancel. Tháng kế tiếp không mua"
+    },
+    bigquery: {
+        partitionBy: "som",
+        clusterBy: ["customer_id"]
+    }
+}
+
+WITH
+  customer_calendar AS(
+  SELECT
+    customer_id,
+    year_month,
+    som
+  FROM
+    ${ref('agg_customer_profiling')} AS a)
+
+SELECT
+  a.customer_id,
+  a.year_month,
+  a.som,
+  COUNT (DISTINCT b.customer_id) AS new_customer,
+  COUNT (DISTINCT c.customer_id) AS repeat_customer,
+  COUNT (DISTINCT d.customer_id) AS reacquire_customer,
+  COUNT (DISTINCT e.customer_id) AS active_customer,
+  COUNT (DISTINCT f.customer_id) AS churn_customer
+FROM customer_calendar AS a
+LEFT JOIN ${ref('dim_customer_profiling_new')} AS b ON a.customer_id = b.customer_id AND a.year_month = b.year_month
+LEFT JOIN ${ref('dim_customer_profiling_repeat')} AS c ON a.customer_id = c.customer_id AND a.year_month = c.year_month
+LEFT JOIN ${ref('dim_customer_profiling_reacquire')} AS d ON a.customer_id = d.customer_id AND a.year_month = d.year_month
+LEFT JOIN ${ref('dim_customer_profilling_active')} AS e ON a.customer_id = e.customer_id AND a.year_month = e.year_month
+LEFT JOIN ${ref('dim_customer_churn')} AS f ON a.customer_id = f.customer_id AND a.year_month = f.year_month
+GROUP BY ALL
