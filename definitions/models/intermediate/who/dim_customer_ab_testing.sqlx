@@ -22,7 +22,7 @@ config {
   }
 }
 
-select *
+select dc.*, a.customer_ab_group
 from ${ref('dim_customer')} dc
 left join (select CAST(code as int) as customer_id,
                   value as customer_ab_group
