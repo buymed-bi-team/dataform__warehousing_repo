@@ -56,7 +56,8 @@ WITH cte_date AS (
 		select *, -- except (flag_check),
 			max(flag_check) over (partition by po_code) as is_it_po_pgh
 		from cte_data
-		qualify row_number() over (partition by po_code order by created_ts) = 1 -- and is_across_region = true
+        where receipt_fc_code IS NOT NULL
+		qualify row_number() over (partition by po_code order by received_ts) = 1 -- and is_across_region = true
 	),
 
 	first_checkin_destination_fc AS (
@@ -100,7 +101,7 @@ select
 --     ps.total_so AS total_so_reference,
 -- 	IF(ps.total_so >= 10, "Priority PO", "Normal PO") AS po_priority,
 	c.received_ts AS first_received_check_in,
-	c.received_hub AS first_received_location,
+	-- c.received_hub AS first_received_location,
 	c.receipt_fc_code,
 	f.first_checkin_destination_fc,
 	-- c.destination_location AS destination_fc_code,
