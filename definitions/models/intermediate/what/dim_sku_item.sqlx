@@ -183,7 +183,9 @@ SELECT
       WHEN g.seller_class = "EXTERNAL" THEN g.retail_price_value
       WHEN g.seller_class = "INTERNAL" THEN g.purchase_price
     END, 999) AS inventory_price,
-  h.location_codes
+  h.location_codes,
+  i.sku_stock_day as fv_vendor_stock_days,
+  i.sku_leadtime as fv_vendor_leadtime
 FROM cte_sku_item a
 LEFT JOIN ${ref("dim_stock_classification")} b
 ON a.sku_code = b.sku_code AND a.fc_code = b.fc_code
