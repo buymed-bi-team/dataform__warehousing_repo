@@ -88,7 +88,8 @@ select
 	b.employee as employee_name,
 	a.warehouse_code as fc_code,
 	split(b.code,'-')[SAFE_OFFSET(1)] as hub_code, --b.hub_code, -- split code
-	COALESCE(b.warehouse_code, hf.fc_code) as receipt_fc_code,
+	b.warehouse_code as receipt_fc_code,
+	hf.fc_code as receipt_hub_fc_code,
 	b.destination_warehouse_code as destination_location,
 	b.status,
 	b.type,
