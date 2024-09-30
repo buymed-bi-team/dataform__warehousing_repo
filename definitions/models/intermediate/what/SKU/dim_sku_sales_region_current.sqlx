@@ -77,11 +77,12 @@ with
             , JSON_EXTRACT_SCALAR(f, '$.category_in_charge') as cic_account_id
             -- , acc3.fullname as cic_name
             , acc3.user_name as cic_name
-            , JSON_EXTRACT_SCALAR(f, '$.category_management') as brand_type
+            , REGEXP_REPLACE(UPPER(JSON_EXTRACT_SCALAR(f, '$.category_management')), r'\_', '') as brand_type
         FROM ${source.platinum}.marketplace_prd_product_v2_product_category_in_charge as e
         LEFT JOIN UNNEST(JSON_EXTRACT_ARRAY(e.category_in_charge_data)) as f
         LEFT JOIN ${ref('dim_employee')} acc3
             ON acc3.branch_account_id = SAFE_CAST(JSON_EXTRACT_SCALAR(f, '$.category_in_charge') as INT64)
+        WHERE acc3.employee_status  = 'ACTIVE'
         QUALIFY ROW_NUMBER() OVER(PARTITION BY product_id, fc_code) = 1
     ),
 
@@ -151,6 +152,11 @@ SELECT
     cic.cic_account_id,
     cic.cic_name,
     cic.brand_type,
+    CASE
+        WHEN cic.brand_type IS NULL OR cic.brand_type IN ("#N/A", "") THEN NULL
+        WHEN cic.brand_type = 'BRANDNAME' THEN 'BRANDNAME'
+        ELSE "GENERIC"
+    END AS brand_type_group,
     catm.catm_group,
     isd.initial_stock,
     isd.origin_initial_stock AS initial_stock_default_quantity,
