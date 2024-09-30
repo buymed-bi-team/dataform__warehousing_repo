@@ -30,11 +30,12 @@ WITH stg AS (
         DATE(created_time, "Asia/Ho_Chi_Minh") AS created_date,
         JSON_EXTRACT_SCALAR(extra_props, '$.user_metadata.LOCATION') AS province_code,
         JSON_EXTRACT_SCALAR(extra_props, '$.metadata.screen') AS screen,
+        JSON_EXTRACT_SCALAR(extra_props, '$.metadata.block_code') AS block_code,
         JSON_EXTRACT_SCALAR(extra_props, '$.metadata.source') AS SOURCE,
         JSON_EXTRACT_SCALAR(extra_props, '$.metadata.product_id') AS product_id,
         JSON_EXTRACT_SCALAR(extra_props, '$.metadata.seller_id') AS seller_id,
         JSON_EXTRACT_SCALAR(extra_props, '$.metadata.sku') AS sku_code,
-        -- JSON_EXTRACT_SCALAR(extra_props, '$.ua_metadata.CLIENT') AS client,    
+        JSON_EXTRACT_SCALAR(extra_props, '$.ua_metadata.seller_code') AS seller_code,    
         JSON_EXTRACT_SCALAR(extra_props, '$.ua_metadata.PLATFORM') AS platform,
         -- JSON_EXTRACT_SCALAR(extra_props, '$.metadata.host') AS host,
         JSON_EXTRACT_SCALAR(extra_props, '$.client_user_time') AS client_user_time
@@ -53,17 +54,18 @@ SELECT
     province_code,
     screen,
     SOURCE,
-    -- client,
+    block_code,
     platform,
     -- host,
     seller_id,
     product_id,
     sku_code,
-    CASE 
-        WHEN STRPOS(sku_code, ".") > 0 
-        THEN LEFT(sku_code, STRPOS(sku_code, ".") - 1)
-        ELSE sku_code 
-    END AS seller_code,
+    seller_code,
+    -- CASE 
+    --     WHEN STRPOS(sku_code, ".") > 0 
+    --     THEN LEFT(sku_code, STRPOS(sku_code, ".") - 1)
+    --     ELSE sku_code 
+    -- END AS seller_code,
     client_user_time
     -- LEAD(event) over (partition by customer_id,created_date  order by created_time) next_act_1,
     -- LEAD(event,2) over (partition by customer_id,created_date order by created_time) next_act_2,
