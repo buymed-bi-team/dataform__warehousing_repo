@@ -3,8 +3,8 @@ config {
     description: `Last 13 month| PIC: tu.dang; model_type: Table ;schedule: At minute 5 past hour 6, 8, 10, 12, 14, 16, 18, 20 and 22`
     /*Source:
       ${source.silver}.marketplace_prd_order_v2_order_item
-      ${source.silver}.marketplace_prd_order_v2_order */,
-    tags: ["custom_2h_past5"],
+      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
+    tags: ["0h00"],
     name: "circa_fact_order",
     columns: {
         order_id: "NonNull |" + docs.order_id,
@@ -61,7 +61,7 @@ from ${source.circa}.order_delivery_info
 select A.* except (entity_phone),
 -- customer_phone,
 case
-    when entity_phone like "000000000" then di.customer_phone  else entity_phone end as customer_phone
+    when A.entity_phone like "000000000" then di.customer_phone  else A.entity_phone end as customer_phone
 --  customer_full_address
 From A
 left join delivery_infor di on a.order_id = di.order_id
