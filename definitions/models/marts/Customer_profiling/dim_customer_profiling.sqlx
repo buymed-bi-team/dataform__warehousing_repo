@@ -34,9 +34,11 @@ SELECT
   COUNT (DISTINCT e.customer_id) AS active_customer,
   COUNT (DISTINCT f.customer_id) AS churn_customer
 FROM customer_calendar AS a
+LEFT JOIN ${ref('dim_customer')} AS cust on a.customer_id = cust.customer_id
 LEFT JOIN ${ref('dim_customer_profiling_new')} AS b ON a.customer_id = b.customer_id AND a.year_month = b.year_month
 LEFT JOIN ${ref('dim_customer_profiling_repeat')} AS c ON a.customer_id = c.customer_id AND a.year_month = c.year_month
 LEFT JOIN ${ref('dim_customer_profiling_reacquire')} AS d ON a.customer_id = d.customer_id AND a.year_month = d.year_month
 LEFT JOIN ${ref('dim_customer_profilling_active')} AS e ON a.customer_id = e.customer_id AND a.year_month = e.year_month
 LEFT JOIN ${ref('dim_customer_churn')} AS f ON a.customer_id = f.customer_id AND a.year_month = f.year_month
+WHERE cust.customer_report_category <> "EMPLOYEE"
 GROUP BY ALL
