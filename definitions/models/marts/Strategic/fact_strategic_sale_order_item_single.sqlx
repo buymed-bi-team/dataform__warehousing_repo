@@ -3,6 +3,7 @@ config {
     description: `PIC: minh.luu, schedule: 0h00 daily
     Fact Sale Order Item after Combo Separation
     Remember exclude all order item with supplier_class=TECH
+    And Tender must exclude wait_to_confirmation
     I keep these record, because other Fact Strategic have not supplier_class to filter
     Source
         ${source.ref}.marketplace_prd_order_v2_order
@@ -37,9 +38,9 @@ config {
 }
 
 js {
-    const start_date = `"2022-12-31"`
-    // const start_date = `"2024-05-01"`
-    const end_date = `"2030-08-01"`
+    // const start_date = `"2023-12-31"`
+    const start_date = `"2023-01-01"`
+    const end_date = `"2030-09-25"`
 }
 
 WITH 
@@ -69,11 +70,14 @@ mkp_o AS (
         sku as sku_code,
         seller_code,
         seller_class, 
+        type,
         outbound_quantity,
         quantity AS demand_quantity,
         returned_quantity,
         extra_props,
-        price
+        price,
+        COALESCE(SAFE_CAST( JSON_EXTRACT_SCALAR(oi.extra_props, "$.charge_campaign_fee_value") AS int64),0) as charge_campaign_fee_value,
+        COALESCE(charge_deal_fee_value,0) AS charge_deal_fee_value
     FROM 
         ${source.platinum}.marketplace_prd_order_v2_order_item oi
     WHERE created_date BETWEEN ${start_date} AND ${end_date}
@@ -105,11 +109,14 @@ mkp_o AS (
         dsku.sku_code,
         oi.seller_code,
         oi.seller_class, 
+        oi.type,
         oi.quantity AS outbound_quantity, -- Assumption: Tender will return all outbound 
         oi.quantity AS demand_quantity,
         0 as returned_quantity,
         oi.extra_props,
-        oi.price
+        oi.price,
+        COALESCE(SAFE_CAST( JSON_EXTRACT_SCALAR(oi.extra_props, "$.charge_campaign_fee_value") AS int64),0) as charge_campaign_fee_value,
+        0 AS charge_deal_fee_value
     FROM 
         ${source.platinum}.tender_prd_core_tender_order_items oi
     LEFT JOIN ${source.ref}.dim_sku dsku
@@ -123,19 +130,33 @@ mkp_o AS (
     UNION ALL 
     SELECT * FROM tender_o 
 )
-, oi AS (
+, oi_1 AS (
     SELECT * FROM mkp_oi 
     UNION ALL
     SELECT * FROM tender_oi
 )
-, oi_combo AS (
+, oi AS (
+    SELECT 
+        *,
+        ""
+        || IF( charge_deal_fee_value < 0, "\ncharge_deal_fee_value is NEGATIVE","" )
+        || IF( charge_campaign_fee_value < 0, "\ncharge_campaign_fee_value is NEGATIVE","" )
+        AS note 
+        ,
+        ""
+        || IF( charge_deal_fee_value < 0, "\ncharge_deal_fee_value = " || CAST(charge_deal_fee_value AS STRING),"" )
+        || IF( charge_campaign_fee_value < 0, "\ncharge_campaign_fee_value = " || CAST(charge_campaign_fee_value AS STRING),"" )
+        AS more_note
+    FROM oi_1
+)
+, oi_combo_1 AS ( -- extract the original price or retail price of single item in combo
     SELECT 
         oi.oiid,
         oi.order_id,
         oi.product_id,
         oi.sku_code,
         -- oi.item_code,  -- currently, This is unnecessary
-        -- oi.type as item_type,  -- currently, This is unnecessary
+        oi.type, 
         JSON_EXTRACT_SCALAR( ois.sku ) as sku_single_code,
         SAFE_CAST( JSON_VALUE( ois.product_id ) as INT64 ) as product_single_id,
         -- JSON_VALUE( ois.item_code) as item_single_code, -- currently, This is unnecessary
@@ -148,14 +169,19 @@ mkp_o AS (
         SAFE_CAST( JSON_VALUE( ois.price ) as INT64 ) as product_single_price,
         oi.seller_code,
         oi.seller_class,
+        
         oi.outbound_quantity,
         oi.demand_quantity,
         oi.returned_quantity,
-        oi.price
+        oi.price,
+        oi.charge_campaign_fee_value,
+        oi.charge_deal_fee_value,
+        note,
+        more_note
     FROM oi
     , unnest( json_query_array(oi.extra_props, "$.sub_items") ) as ois -- order item single
 )
-, oi_combo_calculated AS (
+, oi_combo_2 AS ( -- rename column, and calculate the price,  original_campaign_fee ,  original_deal_fee and original_combo_fee of single item to match combo
     SELECT 
         oiid,
         order_id,
@@ -167,7 +193,8 @@ mkp_o AS (
         sku_single_code as sku_code, 
         product_single_seller_code as seller_code,
         product_single_seller_class as seller_class,
-
+        IF(type like "NORMAL", "COMBO", type) AS type ,
+    
         -- demand_quantity as demand_quantity_original, -- tại sao số bị thay đổi so với quantity ở platinum
         -- price as price_original, -- như dòng trên 
         
@@ -180,10 +207,33 @@ mkp_o AS (
         product_single_price * LEAST(
             (price / sum(product_single_demand_quantity * product_single_price) over (partition by order_id, sku_code))
             , 1
-        ) as price
+        ) as price,
 
-    FROM oi_combo
+        product_single_price - product_single_price  * LEAST(
+             (price / sum(product_single_demand_quantity * product_single_price) over (partition by order_id, sku_code))
+        ) as charge_combo_fee_value, 
+
+        0 as charge_deal_fee_value,
+        0 as charge_campaign_fee_value,
+        -- charge_campaign_fee_value * product_single_price / sum(product_single_demand_quantity * product_single_price) over (partition by order_id, sku_code) as charge_campaign_fee_value,
+        -- charge_deal_fee_value * product_single_price / sum(product_single_demand_quantity * product_single_price) over (partition by order_id, sku_code) as charge_deal_fee_value,
+        
+        note 
+        || IF(type like "NORMAL", "\nType: CRM <type> = <NORMAL> but Has nested combo item then <COMBO>", "")
+        || IF(charge_deal_fee_value <> 0 , "\nCharge_fee: Item is <COMBO> still have <deal>, charge_deal_fee_value" , "")
+        || IF(charge_campaign_fee_value <> 0 , "\nCharge_fee: Item is <COMBO> still have <deal>, charge_campaign_fee_value", "")
+        AS note ,
+        more_note
+        || IF(charge_deal_fee_value <> 0 ,"combo_charge_deal_fee_value="|| CAST(charge_deal_fee_value AS STRING), "")
+        || IF(charge_campaign_fee_value <> 0 ,"combo_charge_campaign_fee_value="|| CAST(charge_campaign_fee_value AS STRING), "")
+        AS more_note
+    FROM oi_combo_1
 )
+, oi_combo AS (
+    SELECT *
+    FROM oi_combo_2
+)
+
 , oi_not_combo AS (
     SELECT 
         oiid,
@@ -196,64 +246,184 @@ mkp_o AS (
         sku_code,
         seller_code,
         seller_class,
+        type,
         -- demand_quantity as demand_quantity_original,
         -- price as price_original,
         demand_quantity,
         outbound_quantity,
         returned_quantity,
-        price
+        price,
+        0 as charge_combo_fee_value,
+        charge_deal_fee_value,
+        charge_campaign_fee_value,
+        note,
+        more_note
     FROM oi 
     WHERE oiid not in (SELECT oiid FROM oi_combo)
 )
 , oi_final AS (
-    SELECT * FROM oi_combo_calculated
+    SELECT * FROM oi_combo
     UNION ALL 
     SELECT * FROM oi_not_combo
 )   
 
-SELECT
-    oi.oiid,
-    oi.order_id,
-    o.sale_order_code,
-    oi.product_id_original,
-    oi.sku_code_original,
-    oi.seller_code_original as supplier_code_original,
-    oi.product_id,
-    oi.sku_code,
-    oi.seller_code as supplier_code,
-    -- demand_quantity as demand_quantity_original,
-    -- price as price_original,
+, fact_strategic_1 AS (
+    SELECT
+        oi.oiid,
+        oi.order_id,
+        o.sale_order_code,
+        oi.product_id_original,
+        oi.sku_code_original,
+        oi.seller_code_original as supplier_code_original,
+        oi.product_id,
+        oi.sku_code,
+        oi.seller_code as supplier_code,
+        dstatus.crm_status as order_status,
+        oi.outbound_quantity,
+        oi.demand_quantity, 
+        oi.returned_quantity,
+        oi.price as sales_price,
+        oi.type AS commercial_type,
+        note,
+        more_note,
+        demand_quantity as demand_quantity_original,
+        price as price_original,
+        COALESCE(
+            ds1.supplier_class,
+            ds3.supplier_class,
+            ds2.supplier_class,
+            ds4.supplier_class,
+            oi.seller_class
+        ) as supplier_class,
+        ${utils.ToTimezone(`o.created_time`)} as created_dt,
+        ${utils.ToTimezone(`o.outbound_date`)} as outbound_dt,
+        ${utils.ToTimezone(`o.confirmation_date`)} as confirmation_dt,
+        ${utils.ToTimezone(`o.delivered_time`)} as delivered_dt,
 
-    o.status as order_status,
-    COALESCE(
-        ds1.supplier_class,
-        ds3.supplier_class,
-        ds2.supplier_class,
-        ds4.supplier_class,
-        oi.seller_class
-    ) as supplier_class,
-    ${utils.ToTimezone(`o.outbound_date`)} as outbound_dt,
-    ${utils.ToTimezone(`o.created_time`)} as created_dt,
-    ${utils.ToTimezone(`o.confirmation_date`)} as confirmation_dt,
-    ${utils.ToTimezone(`o.delivered_time`)} as delivered_dt,
-    oi.outbound_quantity,
-    oi.demand_quantity, 
-    oi.returned_quantity,
-    oi.price
-FROM o
-LEFT JOIN oi_final oi ON o.order_id = oi.order_id
-LEFT JOIN ${ref(`dim_supplier`)} ds1 ON oi.seller_code = ds1.supplier_code
-LEFT JOIN ${ref(`dim_supplier`)} ds2 ON oi.seller_code_original = ds2.supplier_code 
-LEFT JOIN ${ref(`dim_sku`)} dsku3 ON dsku3.sku_code = oi.sku_code
-LEFT JOIN ${ref(`dim_supplier`)} ds3 ON ds3.supplier_code = dsku3.seller_code
-LEFT JOIN ${ref(`dim_sku`)} dsku4 ON dsku4.sku_code = oi.sku_code_original
-LEFT JOIN ${ref(`dim_supplier`)} ds4 ON ds4.supplier_code = dsku4.seller_code
+        IF( oi.charge_campaign_fee_value <0, 0 , oi.charge_campaign_fee_value) charge_campaign_fee_value ,
+        IF( oi.charge_combo_fee_value <0, 0 , oi.charge_combo_fee_value) charge_combo_fee_value ,
+        IF( oi.charge_deal_fee_value <0, 0 , oi.charge_deal_fee_value) charge_deal_fee_value ,
+        
+    FROM o
+    LEFT JOIN oi_final oi ON o.order_id = oi.order_id
+    LEFT JOIN ${ref(`dim_supplier`)} ds1 ON oi.seller_code = ds1.supplier_code
+    LEFT JOIN ${ref(`dim_supplier`)} ds2 ON oi.seller_code_original = ds2.supplier_code 
+    LEFT JOIN ${ref(`dim_sku`)} dsku3 ON dsku3.sku_code = oi.sku_code
+    LEFT JOIN ${ref(`dim_supplier`)} ds3 ON ds3.supplier_code = dsku3.seller_code
+    LEFT JOIN ${ref(`dim_sku`)} dsku4 ON dsku4.sku_code = oi.sku_code_original
+    LEFT JOIN ${ref(`dim_supplier`)} ds4 ON ds4.supplier_code = dsku4.seller_code
+    LEFT JOIN ${ref(`dim_order_status`)} dstatus ON dstatus.order_id = o.order_id
 
--- WHERE o.order_channel <> "CONSIGNMENT-RECOGNITION"
-WHERE ${utils.ToTimezone(`o.created_time`)} >= "2023-01-01"
+    -- WHERE o.order_channel <> "CONSIGNMENT-RECOGNITION"
+    -- WHERE ${utils.ToTimezone(`o.created_time`)} >= "2023-01-01"
+    
+)
+, fact_strategic_2 AS (
+SELECT 
+    * EXCEPT( returned_quantity, note ) ,
+    fs.sales_price + fs.charge_campaign_fee_value + fs.charge_deal_fee_value + fs.charge_combo_fee_value AS listed_price,
 
-post_operations {
-    ALTER TABLE ${self()} 
-    ADD FOREIGN KEY (order_id) references ${ref(`dim_order`)}(order_id) NOT ENFORCED,
-    ADD FOREIGN KEY (product_id) references ${ref(`dim_product`)}(product_id) NOT ENFORCED;
-}
+    IF( fs.order_status like "CANCEL" AND fs.sale_order_code is null, demand_quantity, 0) as cancel_before_ffm_quantity,
+    IF( fs.order_status like "CANCEL" AND fs.sale_order_code is not null, demand_quantity, 0) as cancel_after_ffm_quantity,
+
+    IF( fs.order_status not like "CANCEL" ,(fs.outbound_quantity - fs.returned_quantity),0) as fulfilled_quantity,
+    IF( fs.order_status not like "CANCEL" AND fs.order_status in ("DELIVERING","DELIVERED","COMPLETED"),(fs.demand_quantity - fs.outbound_quantity ) ,0 ) as unfulfill_quantity,
+    IF( fs.order_status not like "CANCEL" AND fs.order_status not in ("DELIVERING","DELIVERED","COMPLETED"),  (fs.demand_quantity - fs.outbound_quantity ) ,0 ) as backlog_quantity,
+    IF( fs.order_status not like "CANCEL" , fs.returned_quantity, 0) AS returned_quantity,
+
+    note 
+    || CASE 
+        WHEN IF(fs.order_status not like "CANCEL" ,(fs.outbound_quantity - fs.returned_quantity),0) = demand_quantity THEN "\nOrder_Item_Note: Fully Fulfilled"
+        WHEN IF(fs.order_status not like "CANCEL" , fs.returned_quantity, 0) = demand_quantity THEN "\nOrder_Item_Note: Fully Returned"
+        WHEN fs.order_status like "CANCEL" AND fs.sale_order_code is null THEN "\nOrder_Item_Note: Cancel before FFM"
+        WHEN fs.order_status like "CANCEL" AND fs.sale_order_code is not null THEN "\nOrder_Item_Note: Cancel after FFM"
+        WHEN IF(fs.order_status not like "CANCEL" AND fs.order_status not in ("DELIVERING","DELIVERED","COMPLETED"),  (fs.demand_quantity - fs.outbound_quantity ) ,0 ) = demand_quantity THEN "\nOrder_Item_Note: Backlog"
+        ELSE "\nOrder_Item_Note: Partial Fulfilled"
+    END 
+    AS note
+FROM fact_strategic_1 as fs 
+    
+), fact_strategic_3 AS (
+    SELECT *
+    -- ( fs.sales_price * demand_quantity ) AS gmv_before_cancellation,
+    -- ( fs.sales_price * demand_quantity )  
+    -- - IF( fs.order_status like "CANCEL" AND fs.sale_order_code is null, ( fs.sales_price * demand_quantity ),0 ) -- cancellation_before_ffm
+    -- AS gmv_after_cancellation,
+    -- IF( fs.order_status like "CANCEL", ( fs.sales_price * demand_quantity ), 0) AS cancel,
+
+    -- IF( fs.order_status like "CANCEL" AND fs.sale_order_code is null, ( fs.sales_price * demand_quantity ),0 ) AS cancellation_before_ffm,
+    -- IF( fs.order_status like "CANCEL" AND fs.sale_order_code is not null, ( fs.sales_price * demand_quantity ),0 ) AS cancellation_after_ffm,
+
+    -- IF( fs.order_status not like "CANCEL" ,(fs.outbound_quantity - fs.returned_quantity),0) * fs.sales_price AS fulfilled_amount,
+    -- IF( fs.order_status not like "CANCEL" AND fs.order_status in ("DELIVERING","DELIVERED","COMPLETED"),(fs.demand_quantity - fs.outbound_quantity ) ,0 ) * fs.sales_price AS unfulfilled_amount,
+    -- IF( fs.order_status not like "CANCEL" AND fs.order_status not in ("DELIVERING","DELIVERED","COMPLETED"),  (fs.demand_quantity - fs.outbound_quantity ) ,0 ) * fs.sales_price AS backlog_amount,
+    -- IF( fs.order_status not like "CANCEL" , fs.returned_quantity, 0) * fs.sales_price AS returned_amount,
+
+    -- IF( fs.order_status like "CANCEL" AND fs.sale_order_code is not null, ( fs.sales_price * fs.demand_quantity ),0 ) -- AS cancel_after_ffm
+    -- + IF( fs.order_status not like "CANCEL" ,(fs.outbound_quantity - fs.returned_quantity),0) * fs.sales_price -- AS fulfilled_amount
+    -- + IF( fs.order_status not like "CANCEL" AND fs.order_status not in ("DELIVERING","DELIVERED","COMPLETED"),  (fs.demand_quantity - fs.outbound_quantity ) ,0 ) * fs.sales_price -- AS backlog_amount,
+    -- + IF( fs.order_status not like "CANCEL" , fs.returned_quantity, 0) * fs.sales_price  -- AS returned_amount,
+    -- AS nmv,
+
+    -- (fs.sales_price + fs.charge_campaign_fee_value + fs.charge_deal_fee_value + fs.charge_combo_fee_value) * fs.demand_quantity AS gmv_with_listed_price,
+    -- ((fs.listed_price - fs.sales_price) * fs.demand_quantity) AS commercial_amount,
+
+    -- IF( commercial_type = "DEAL", (fs.listed_price - fs.sales_price) * demand_quantity, 0) AS deal_amount,
+    -- IF( commercial_type = "CAMPAIGN", (fs.listed_price - fs.sales_price) * demand_quantity, 0) AS campaign_amount,
+    -- IF( commercial_type = "COMBO",(fs.listed_price - fs.sales_price) * demand_quantity, 0) AS combo_amount
+
+
+    FROM fact_strategic_2 as fs 
+)
+
+
+
+SELECT 
+  ois.order_id,
+  ois.sale_order_code,
+  ois.order_status,
+  ois.commercial_type,
+  ois.created_dt,
+  ois.confirmation_dt,
+  ois.sku_code_original,
+  ois.sku_code,
+  ois.supplier_class, -- For filter test
+  ois.note,
+  ois.more_note,
+  ois.listed_price,
+  ois.sales_price,
+  
+  ois.demand_quantity,
+  ois.backlog_quantity, 
+  ois.outbound_quantity,
+  ois.fulfilled_quantity, 
+  ois.returned_quantity,
+  ois.cancel_before_ffm_quantity, 
+  ois.cancel_after_ffm_quantity, 
+
+--   ois.gmv_with_listed_price,
+--   ois.commercial_amount,
+--   ois.deal_amount, 
+--   ois.campaign_amount,
+--   ois.combo_amount,
+--   -- ois.gift_amount,
+
+--   ois.gmv_before_cancellation,
+--   ois.cancellation_before_ffm,
+--   ois.gmv_after_cancellation,
+--   ois.unfulfilled_amount,
+--   ois.nmv, 
+  
+--   ois.fulfilled_amount,
+--   ois.backlog_amount,
+--   ois.returned_amount,
+--   ois.cancellation_after_ffm
+
+
+FROM fact_strategic_3 ois
+
+-- -- post_operations {
+-- --     ALTER TABLE ${self()} 
+-- --     ADD FOREIGN KEY (order_id) references ${ref(`dim_order`)}(order_id) NOT ENFORCED,
+-- --     ADD FOREIGN KEY (product_id) references ${ref(`dim_product`)}(product_id) NOT ENFORCED;
+-- -- }

@@ -36,5 +36,6 @@ select
     , a.status as bin_system_status
     , json_value(a.reference, "$.code") as pick_ticket_id
     , json_value(a.reference, "$.type") as type
+    , json_value(a.extra_props, '$.rf_id') AS rf_id
 from ${source.platinum}.warehouse_prd_inventory_location AS a
 where a.type = 'BIN'
