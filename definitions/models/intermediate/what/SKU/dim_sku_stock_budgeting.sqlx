@@ -10,7 +10,7 @@ config {
         Source: 
             ${source.ref}.fact_stock_moving_item
         `,
-    tags: ["monthly"]
+    tags: ["custom_1h_past5"]
 }
 
 SELECT *
@@ -34,7 +34,7 @@ FROM (
                 , SUM(done_quantity) * -1 AS qty_missing1
             FROM ${ref('fact_stock_moving_item')}
             WHERE
-                missing_type = 'MISSING-OUT'
+                moving_type = 'MISSING-OUT'
                 AND year_month_missing = FORMAT_DATE("%Y-%m", DATE_SUB(CURRENT_DATE("+7"), INTERVAL 2 MONTH))
             GROUP BY ALL
         ),
@@ -47,7 +47,7 @@ FROM (
                 , SUM(done_quantity)  AS qty_missing1
             FROM ${ref('fact_stock_moving_item')}
             WHERE
-                missing_type = 'MISSING-IN'
+                moving_type = 'MISSING-IN'
                 AND year_month_missing = FORMAT_DATE("%Y-%m", DATE_SUB(CURRENT_DATE("+7"), INTERVAL 2 MONTH))
             GROUP BY ALL
         ),
@@ -60,7 +60,7 @@ FROM (
                 , SUM(done_quantity)  AS qty_missing1
             FROM ${ref('fact_stock_moving_item')}
             WHERE
-                missing_type = 'MISSING-OTHER'
+                moving_type = 'MISSING-OTHER'
                 AND year_month_missing = FORMAT_DATE("%Y-%m", DATE_SUB(CURRENT_DATE("+7"), INTERVAL 2 MONTH))
             GROUP BY ALL
         ),
