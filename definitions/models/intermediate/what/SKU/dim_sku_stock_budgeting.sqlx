@@ -10,7 +10,7 @@ config {
         Source: 
             ${source.ref}.fact_stock_moving_item
         `,
-    tags: ["custom_1h_past5"]
+    tags: ["monthly"]
 }
 
 SELECT *
