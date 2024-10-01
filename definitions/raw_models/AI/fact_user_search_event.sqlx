@@ -42,7 +42,7 @@ WITH stg AS (
   WHERE
     _TABLE_SUFFIX BETWEEN '20240701'
     AND FORMAT_DATE('%Y%m%d', CURRENT_DATE())
-    AND event IN ( "SEARCH") 
+    -- AND event IN ( "SEARCH") 
     )
 SELECT
     event,
@@ -56,27 +56,12 @@ SELECT
     host,
     search_content,
     search_status,
-    -- sku_code,
-    -- ingest_time,
-    -- CASE 
-    --     WHEN STRPOS(sku_code, ".") > 0 
-    --     THEN LEFT(sku_code, STRPOS(sku_code, ".") - 1)
-    --     ELSE sku_code 
-    -- END AS seller_code,
-    -- CASE
-    --     WHEN EXISTS (
-    --         SELECT 1
-    --         FROM stg AS sub
-    --         WHERE sub.customer_id = stg.customer_id
-    --           AND sub.sku_code = stg.sku_code
-    --           AND sub.event = stg.event
-    --           AND sub.created_time BETWEEN
-    --             DATETIME_SUB(stg.created_time, INTERVAL 30 DAY)
-    --             AND stg.created_time
-    --           AND sub.created_time != stg.created_time
-    --     ) THEN FALSE
-    --     ELSE TRUE
-    -- END AS is_sku_customer_first_interaction_in_30_days
+    LEAD(event) over(order by created_time) as next_action
 FROM
     stg
-where customer_id >0
+where customer_id >0 AND event IN ( "SEARCH") 
+
+
+
+
+
