@@ -157,50 +157,58 @@ cte_sku_fc_location AS (
     STRING_AGG(location_code, ', ') AS location_codes
   FROM ${ref("fact_stock_sku_item")}
   GROUP BY sku_fc_key
+),
+
+cte_sku_fc_agg AS (
+  SELECT
+    a.*,
+    b.latest_put_time,
+    b.aging_put_days,
+    b.latest_pick_time,
+    b.aging_pick_days,
+    b.note,
+    b.type_stock_aging,
+    c.catm as catm_group,
+    c.height,
+    c.length,
+    c.width,
+    d.avg_demand_l15d,
+    COALESCE(e.vendor_code, a.supplier_code) as fv_vendor_code,
+    IF (e.vendor_code IS NULL, "NON-TRADING", "TRADING") as trading_type,
+    SAFE_CAST(f.pic_purchase_id AS INT64) as pic_purchase_id,
+    f.pic_purchase_name,
+    COALESCE(SAFE_CAST(i.cic_account_id AS INT64), f.pic_category_id) as pic_category_id,
+    COALESCE(i.cic_name, f.pic_category_name) as pic_category_name,
+    COALESCE(
+      CASE
+        WHEN g.seller_class = "EXTERNAL" THEN g.retail_price_value
+        WHEN g.seller_class = "INTERNAL" THEN g.purchase_price
+      END, 999) AS inventory_price,
+    h.location_codes,
+    i.sku_stock_day as fv_vendor_stock_days,
+    i.sku_leadtime as fv_vendor_leadtime
+  FROM cte_sku_item a
+  LEFT JOIN ${ref("dim_stock_classification")} b
+  ON a.sku_code = b.sku_code AND a.fc_code = b.fc_code
+  LEFT JOIN ${ref("dim_product_fc_catm")} c
+  ON a.product_id = c.product_id AND a.fc_code = c.fc_code
+  LEFT JOIN ${ref("agg_avg_demand_sku_item_l15d")} d
+  ON a.sku_code = d.sku_code AND a.fc_code = d.fc_code
+  LEFT JOIN ${ref("dim_sku_item_fv_vendor")} e
+  ON a.sku_code = e.sku_code AND a.fc_code = e.fc_code
+  LEFT JOIN ${ref("dim_sku_item_person_in_charge")} f
+  ON a.sku_code = f.sku_code AND a.fc_code = f.fc_code
+  LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_sku g
+  ON a.item_code = g.item_code
+  LEFT JOIN cte_sku_fc_location h
+  ON a.sku_fc_key = h.sku_fc_key
+  LEFT JOIN ${ref("dim_sku_sales_region_current")} i 
+  ON a.sku_code = i.sku_code AND a.fc_code = i.fc_code
 )
 
-SELECT
-  a.*,
-  b.latest_put_time,
-  b.aging_put_days,
-  b.latest_pick_time,
-  b.aging_pick_days,
-  b.note,
-  b.type_stock_aging,
-  c.catm as catm_group,
-  c.height,
-  c.length,
-  c.width,
-  d.avg_demand_l15d,
-  COALESCE(e.vendor_code, a.supplier_code) as fv_vendor_code,
-  IF (e.vendor_code IS NULL, "NON-TRADING", "TRADING") as trading_type,
-  SAFE_CAST(f.pic_purchase_id AS INT64) as pic_purchase_id,
-  f.pic_purchase_name,
-  COALESCE(SAFE_CAST(i.cic_account_id AS INT64), f.pic_category_id) as pic_category_id,
-  COALESCE(i.cic_name, f.pic_category_name) as pic_category_name,
-  COALESCE(
-    CASE
-      WHEN g.seller_class = "EXTERNAL" THEN g.retail_price_value
-      WHEN g.seller_class = "INTERNAL" THEN g.purchase_price
-    END, 999) AS inventory_price,
-  h.location_codes
-FROM cte_sku_item a
-LEFT JOIN ${ref("dim_stock_classification")} b
-ON a.sku_code = b.sku_code AND a.fc_code = b.fc_code
-LEFT JOIN ${ref("dim_product_fc_catm")} c
-ON a.product_id = c.product_id AND a.fc_code = c.fc_code
-LEFT JOIN ${ref("agg_avg_demand_sku_item_l15d")} d
-ON a.sku_code = d.sku_code AND a.fc_code = d.fc_code
-LEFT JOIN ${ref("dim_sku_item_fv_vendor")} e
-ON a.sku_code = e.sku_code AND a.fc_code = e.fc_code
-LEFT JOIN ${ref("dim_sku_item_person_in_charge")} f
-ON a.sku_code = f.sku_code AND a.fc_code = f.fc_code
-LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_sku g
-ON a.item_code = g.item_code
-LEFT JOIN cte_sku_fc_location h
-ON a.sku_fc_key = h.sku_fc_key
-LEFT JOIN ${ref("dim_sku_sales_region_current")} i 
-ON a.sku_code = i.sku_code AND a.fc_code = i.fc_code
+SELECT *
+FROM cte_sku_fc_agg
+qualify row_number() over (partition by sku_fc_key) = 1
 
 post_operations {
     ALTER TABLE ${self()} ADD PRIMARY KEY (sku_fc_key) NOT ENFORCED;
