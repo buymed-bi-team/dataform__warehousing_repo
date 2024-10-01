@@ -42,9 +42,9 @@ WITH stg AS (
     FROM
     `${source.silver}.monitoring_prd_collector_user_stats_*`
   WHERE
-    _TABLE_SUFFIX BETWEEN '20240601'
+    _TABLE_SUFFIX BETWEEN '20240701'
     AND FORMAT_DATE('%Y%m%d', CURRENT_DATE())        
-    AND event IN ( "ADD_TO_CART","SKU_DETAIL_VIEW","SKU_IMPRESSION") 
+    AND event IN ( "ADD_TO_CART","SKU_DETAIL_VIEW","SKU_IMPRESSION","REMOVE_FROM_CART") 
     )
 SELECT
     event,
