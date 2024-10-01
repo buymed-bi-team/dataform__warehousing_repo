@@ -58,7 +58,7 @@ js {
     measure_lst = [
         {
             name: "GMV-BEFORE-CANCEL",
-            logic: `SUM( fs.sales_price * demand_quantity )`
+            logic: `SUM( fs.sales_price * fs.demand_quantity )`
         },
         {
             name: "GMV-AFTER-CANCEL",
@@ -129,6 +129,26 @@ js {
         {
             name: "ITEM-SOLD",
             logic: "SUM(fs.demand_quantity)"
+        },
+        {
+            name: "FFM_RATE",
+            logic: `
+            (
+            SUM( 
+            ( fs.sales_price * demand_quantity )  
+            - IF( fs.order_status like "CANCEL" AND fs.sale_order_code is null, ( fs.sales_price * demand_quantity ),0 )
+            ) -- GMV AFTER CANCELLATION
+            
+            - SUM(IF( fs.order_status not like "CANCEL" AND fs.order_status in ("DELIVERING","DELIVERED","COMPLETED"),(fs.demand_quantity - fs.outbound_quantity ) ,0 ) * fs.sales_price)
+            )
+            /
+
+            SUM( 
+            ( fs.sales_price * demand_quantity )  
+            - IF( fs.order_status like "CANCEL" AND fs.sale_order_code is null, ( fs.sales_price * demand_quantity ),0 )
+            ) -- GMV AFTER CANCELLATION
+
+            `
         }
     ]
 }
@@ -259,3 +279,9 @@ AND dos.crm_status not like "WAIT_TO_CONFIRM"
 AND ois.supplier_class not like "TECH"
 AND date > "2023-01-01"
 GROUP BY 1,2,3,4,5
+
+
+UNION ALL 
+
+SELECT * FROM ${ref(`agg_strategic_customer`)}
+WHERE date >= "2023-01-01"

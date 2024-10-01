@@ -1,6 +1,8 @@
+
+
 config {
     type: "incremental",
-    name: "circa_online_prd_order_order",
+    name: "monitoring_prd_realtime_supply_margin",
     schema: "platinum_buymed_vn",
     assertions: {
         uniqueKey: 'mg_id',
@@ -9,7 +11,7 @@ config {
     bigquery: {
         partitionBy: "created_date"
     },
-    tags: ["custom_2h_past5"]
+    tags:["custom_2h_past5"]
 }
 
 pre_operations {
@@ -25,26 +27,17 @@ pre_operations {
 
 
       CREATE OR REPLACE TEMP TABLE range_created_time_table AS (
-        SELECT 
-          MIN(created_date) AS min_created_date, 
-          MAX(created_date) AS max_created_date 
-        FROM (
-          SELECT  
-            CASE 
-              WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh')) 
-              ELSE DATE("2099-01-01") 
-            END AS created_date
-          FROM ${source.silver}.circa_online_prd_order_order 
-          WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) 
-           AND action != "d"    
-        )
+       SELECT MIN(DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))) AS min_created_date,
+        MAX(DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))) AS max_created_date
+        FROM ${source.silver}.monitoring_prd_realtime_supply_margin 
+        WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) AND action != "d"
       );
 
       CREATE OR REPLACE TEMP TABLE get_deleted_record AS (
           SELECT mg_id 
-          FROM ${source.silver}.circa_online_prd_order_order 
+          FROM ${source.silver}.monitoring_prd_realtime_supply_margin 
           WHERE  ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) and 
-          created_time IS NULL AND last_updated_time IS NULL
+          created_time IS NULL
         );
 
      SET min_created_date = (SELECT min_created_date FROM range_created_time_table);
@@ -59,12 +52,12 @@ pre_operations {
 }
 
 SELECT
- * EXCEPT(timestamp_i),
+ * ,
  CASE 
     WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
     ELSE "2099-01-01"
   END AS created_date
-FROM ${source.silver}.circa_online_prd_order_order o 
+FROM ${source.silver}.monitoring_prd_realtime_supply_margin o 
  ${
     when(incremental(), 
       `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) 
@@ -82,8 +75,7 @@ WINDOW
   IF
     (action='d',3,
     IF
-      (action='u',2,1)) DESC,
-    last_updated_time DESC)
+      (action='u',2,1)) DESC)
 
 post_operations {
   ${
@@ -105,8 +97,7 @@ post_operations {
             WINDOW _window AS (
               PARTITION BY mg_id
               ORDER BY synced_at DESC,
-              IF(action = 'd', 3, IF(action = 'u', 2, 1)) DESC,
-              last_updated_time DESC
+              IF(action = 'd', 3, IF(action = 'u', 2, 1)) DESC
             )
           );
 
@@ -142,5 +133,4 @@ post_operations {
     )
   }
 }
-
 
