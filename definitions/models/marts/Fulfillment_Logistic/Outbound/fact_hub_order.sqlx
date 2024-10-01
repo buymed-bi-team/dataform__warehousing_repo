@@ -69,84 +69,96 @@ config {
 with cte_date as (
   SELECT
 		date_sub(timestamp(date_trunc(date_sub( current_date('+7'), interval 3 month), month)) , interval 7 hour) as start_date,
-)
+),
 
-select 
-	timestamp_add(ho.created_time, interval 7 hour) as created_at,
-	timestamp_add(d.created_time, interval 7 hour) as do_created_at,
-	timestamp_add(d.last_updated_time, interval 7 hour) as do_last_updated_at,
-	ho.reference_code,
-	ho.tracking_code,
-	d.reference_code as do_reference_code,
-	d.tracking_code as do_tracking_code,
-	d.parent_reference_code as do_parent_reference_code,
-	d.customer_code,
-	d.customer_name,
-	case
-		when d.customer_ward_code = '0' then d.customer_district_name
-		else d.customer_ward_code
-	end as customer_ward_code,
-	customer_ward_name,
-	customer_district_name,
-	customer_province_name,
-	d.created_by,
-	ho.hub_code,
-	d.tpl_code,
-	d.tpl_name ,
-    d.tpl_service_id,
-	ho.type,
-	d.type as do_type,
-	ho.sub_type,
-	ho.action,
-	ho.action_name,
-	case
-		when ho.type = "PICKUP" then d.products
-	end products,
-	ho.from_customer_code,
-	ho.from_customer_name,
-	ho.from_customer_phone,
-	ho.from_customer_address,
-	case
-		when ho.from_ward_code = '0' then ho.from_district_name
-		else ho.from_ward_code
-	end as from_ward_code,
-	ho.from_district_code,
-	ho.from_province_code,
-	ho.from_ward_name,
-	ho.from_district_name,
-	ho.from_province_name,
-	ho.to_customer_code,
-	ho.to_customer_name,
-	ho.to_customer_phone,
-	ho.to_customer_address,
-	ho.to_ward_name,
-	ho.to_ward_code,
-	ho.to_district_code,
-	ho.to_district_name,
-	ho.to_province_code,
-	ho.to_province_name,
-	ho.payment_method,
-	ho.total_amount,
-	ho.delivery_amount,
-	ho.fee_amount,
--- 	ho.driver_id,
-	COALESCE(NULLIF(SAFE_CAST(JSON_VALUE(d.driver_activities, '$.0.driver_id') AS INT64), 0), ho.driver_id) AS driver_id,
--- 	ho.driver_name,
-    COALESCE(ho.driver_name, e.fullname) AS driver_name, -- COALESCE(e.fullname, ho.driver_name) AS driver_name,
-	ho.num_package,
-	ho.weight,
-	ho.cod_amount,
-	ho.reason,
-	d.status as do_status,
-	ho.status
-from (
-  select * 
-  from ${source.platinum}.delivery_prd_transporting_hub_shipping_order
-  where created_date >= (select DATE(start_date) from cte_date)
-) ho 
-left join (
-  select * 
-  from ${source.platinum}.delivery_prd_transporting_shipping_order
-  where created_date >= (select DATE(start_date) from cte_date)
-) as d on d.reference_code = ho.reference_code
-LEFT JOIN ${ref('dim_employee')} AS e ON e.branch_account_id = SAFE_CAST(JSON_VALUE(d.driver_activities, '$.0.driver_id') AS INT64)
+	hub_order AS (
+		select 
+			timestamp_add(ho.created_time, interval 7 hour) as created_at,
+			timestamp_add(d.created_time, interval 7 hour) as do_created_at,
+			timestamp_add(d.last_updated_time, interval 7 hour) as do_last_updated_at,
+			ho.reference_code,
+			ho.tracking_code,
+			d.reference_code as do_reference_code,
+			d.tracking_code as do_tracking_code,
+			d.parent_reference_code as do_parent_reference_code,
+			d.customer_code,
+			d.customer_name,
+			case
+				when d.customer_ward_code = '0' then d.customer_district_name
+				else d.customer_ward_code
+			end as customer_ward_code,
+			customer_ward_name,
+			customer_district_name,
+			customer_province_name,
+			d.created_by,
+			ho.hub_code,
+			d.tpl_code,
+			d.tpl_name ,
+			d.tpl_service_id,
+			ho.type,
+			d.type as do_type,
+			ho.sub_type,
+			ho.action,
+			ho.action_name,
+			case
+				when ho.type = "PICKUP" then d.products
+			end products,
+			ho.from_customer_code,
+			ho.from_customer_name,
+			ho.from_customer_phone,
+			ho.from_customer_address,
+			case
+				when ho.from_ward_code = '0' then ho.from_district_name
+				else ho.from_ward_code
+			end as from_ward_code,
+			ho.from_district_code,
+			ho.from_province_code,
+			ho.from_ward_name,
+			ho.from_district_name,
+			ho.from_province_name,
+			ho.to_customer_code,
+			ho.to_customer_name,
+			ho.to_customer_phone,
+			ho.to_customer_address,
+			ho.to_ward_name,
+			ho.to_ward_code,
+			ho.to_district_code,
+			ho.to_district_name,
+			ho.to_province_code,
+			ho.to_province_name,
+			ho.payment_method,
+			ho.total_amount,
+			ho.delivery_amount,
+			ho.fee_amount,
+		-- 	ho.driver_id,
+			COALESCE(
+				SAFE_CAST(JSON_VALUE(ARRAY_REVERSE(JSON_QUERY_ARRAY(d.driver_activities))[SAFE_OFFSET(0)], '$.driver_id') AS INT64)
+				, ho.driver_id
+			) AS driver_id,
+			-- ho.driver_name,
+			-- COALESCE(ho.driver_name, e.fullname) AS driver_name, 
+			-- COALESCE(e.fullname, ho.driver_name) AS driver_name,
+			ho.num_package,
+			ho.weight,
+			ho.cod_amount,
+			ho.reason,
+			d.status as do_status,
+			ho.status
+		from (
+			select * 
+			from ${source.platinum}.delivery_prd_transporting_hub_shipping_order
+			where created_date >= (select DATE(start_date) from cte_date)
+		) ho 
+		left join (
+			select * 
+			from ${source.platinum}.delivery_prd_transporting_shipping_order
+			where created_date >= (select DATE(start_date) from cte_date)
+		) as d on d.reference_code = ho.reference_code
+	)
+
+SELECT 
+	h.*
+	, e.fullname AS driver_name
+	-- , COALESCE(e.fullname, h.driver_name) AS driver_name
+FROM hub_order AS h
+LEFT JOIN ${ref('dim_employee')} AS e ON e.branch_account_id = h.driver_id
