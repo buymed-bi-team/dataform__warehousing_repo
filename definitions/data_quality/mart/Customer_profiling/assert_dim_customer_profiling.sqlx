@@ -1,0 +1,60 @@
+config {
+    type:"assertion",
+    description: "PIC: HuongDang & MinhLuu",
+    tags: ["0h00","6h00","12h00","18h00"]
+}
+/*
+  Good Quality if all = 0
+*/
+-- SELECT 
+--   COUNTIF(new_customer > 1),
+--   COUNTIF(repeat_customer > 1),
+--   COUNTIF(reacquire_customer > 1),
+--   COUNTIF(churn_customer > 1),
+--   COUNTIF(active_customer > 1),
+--   COUNTIF(new_customer > 1 and repeat_customer > 1),
+--   COUNTIF(active_customer > 1 AND churn_customer > 1)
+-- FROM gold_buymed_vn2.dim_customer_profiling 
+
+SELECT 
+    som, 
+    "active_customer <> new_customer + reacquire_customer + repeat_customer" AS reason, 
+    "active_customer = "||CAST(SUM(active_customer) as STRING)
+    || ", new_customer + reacquire_customer + repeat_customer = " || CAST(SUM(new_customer + reacquire_customer + repeat_customer) AS STRING)
+    AS note
+FROM ${ref(`dim_customer_profiling`)} 
+GROUP BY som
+HAVING SUM(active_customer) <> SUM(new_customer + reacquire_customer + repeat_customer)
+
+UNION ALL 
+
+js {
+    columns = [
+        "new_customer",
+        "repeat_customer",
+        "reacquire_customer",
+        "churn_customer",
+        "active_customer",
+        "new_customer",
+        "repeat_customer",
+    ]
+}
+
+${
+    columns.map((measure,i)=> `
+    
+
+
+    `)
+
+}
+
+SELECT 
+    som, 
+    "new_customer > 1" AS reason,
+    "customer_id = " || customer_id AS note
+
+FROM ${ref(`dim_customer_profiling`)} 
+WHERE new_customer > 1
+
+
