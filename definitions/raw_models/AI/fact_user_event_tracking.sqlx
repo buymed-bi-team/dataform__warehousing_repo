@@ -15,7 +15,7 @@ config {
         sku_code: "NonNull" | docs.sku,
         is_sku_customer_first_interaction_in_30_days: "NonNull | A boolean indicating whether this is the customer's first interaction with the SKU in the past 30 days. It's determined by checking if there are any previous interactions with the same customer_id, sku_code, and event within 30 days before the current created_time.",
     },
-    tags: ['0h00'],
+    tags: ['12h00'],
     bigquery: {
         partitionBy: "date(created_time)",
         clusterBy: ["event", "customer_id"]
@@ -35,7 +35,7 @@ WITH stg AS (
         JSON_EXTRACT_SCALAR(extra_props, '$.metadata.product_id') AS product_id,
         JSON_EXTRACT_SCALAR(extra_props, '$.metadata.seller_id') AS seller_id,
         JSON_EXTRACT_SCALAR(extra_props, '$.metadata.sku') AS sku_code,
-        JSON_EXTRACT_SCALAR(extra_props, '$.metadata.seller_code') AS seller_code,    
+        -- JSON_EXTRACT_SCALAR(extra_props, '$.metadata.seller_code') AS seller_code,    
         JSON_EXTRACT_SCALAR(extra_props, '$.ua_metadata.PLATFORM') AS platform,
         -- JSON_EXTRACT_SCALAR(extra_props, '$.metadata.host') AS host,
         JSON_EXTRACT_SCALAR(extra_props, '$.client_user_time') AS client_user_time
@@ -60,12 +60,12 @@ SELECT
     seller_id,
     product_id,
     sku_code,
-    seller_code,
-    -- CASE 
-    --     WHEN STRPOS(sku_code, ".") > 0 
-    --     THEN LEFT(sku_code, STRPOS(sku_code, ".") - 1)
-    --     ELSE sku_code 
-    -- END AS seller_code,
+    -- seller_code,
+    CASE 
+        WHEN STRPOS(sku_code, ".") > 0 
+        THEN LEFT(sku_code, STRPOS(sku_code, ".") - 1)
+        ELSE sku_code 
+    END AS seller_code,
     client_user_time
     -- LEAD(event) over (partition by customer_id,created_date  order by created_time) next_act_1,
     -- LEAD(event,2) over (partition by customer_id,created_date order by created_time) next_act_2,
