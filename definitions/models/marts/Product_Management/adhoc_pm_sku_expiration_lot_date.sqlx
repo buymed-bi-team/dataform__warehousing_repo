@@ -82,6 +82,7 @@ with
                 when diff_day < 93 then "UNDER_3_MONTHS"
                 when diff_day < 183 then "UNDER_6_MONTHS"
                 when diff_day < 365 then "UNDER_12_MONTHS"
+                else "OK"
               end                                                                 as expired_status
         from convert_format_expired_date a
     )
