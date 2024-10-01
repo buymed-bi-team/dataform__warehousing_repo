@@ -132,7 +132,7 @@ select
 -- 	ho.driver_id,
 	COALESCE(NULLIF(SAFE_CAST(JSON_VALUE(d.driver_activities, '$.0.driver_id') AS INT64), 0), ho.driver_id) AS driver_id,
 -- 	ho.driver_name,
-    COALESCE(ho.driver_name, e.fullname) AS driver_name,
+    COALESCE(ho.driver_name, e.fullname) AS driver_name, -- COALESCE(e.fullname, ho.driver_name) AS driver_name,
 	ho.num_package,
 	ho.weight,
 	ho.cod_amount,
