@@ -50,7 +50,7 @@ select
       ss.seller_id,seller_code,
       ss.seller_id || '_' || ss.sales_region_code as seller_id_sales_region_code,
       ss.seller_id || '_' || ss.product_id || '_' || sales_region_code as seller_product_sales_region_code,
-      ss.product_id || '_' ||ss.seller_id || '_' ||  sales_region_code as sku_key_sales_region_code,
+      ss.product_id || '_' ||ss.seller_code || '_' ||  sales_region_code as sku_key_sales_region_code,
       ss.product_sales_region_code,
       ss.sub_sku_code,
       ss.sku_type,
