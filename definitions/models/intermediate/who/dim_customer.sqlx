@@ -88,26 +88,27 @@ c- circa_pos_code
 */
 WITH  
     customer_order AS (
-    SELECT
-        customer_id,
-        ARRAY_AGG(customer_shipping_address order by created_time desc)[0] AS customer_address,
-        ARRAY_AGG(customer_ward_code order by created_time desc)[0] AS customer_ward_code,
-        ARRAY_AGG(customer_district_code order by created_time desc)[0] AS customer_district_code,
-        SUM(price) AS ordered_amount,
-        SUM(1) AS no_orders,
-    FROM ${source.platinum}.marketplace_prd_order_v2_order
-    WHERE status <> 'CANCEL'
-    GROUP BY 1
-),
+      SELECT
+          customer_id,
+          ARRAY_AGG(customer_shipping_address order by created_time desc)[0] AS customer_address,
+          ARRAY_AGG(customer_ward_code order by created_time desc)[0] AS customer_ward_code,
+          ARRAY_AGG(customer_district_code order by created_time desc)[0] AS customer_district_code,
+          SUM(price) AS ordered_amount,
+          SUM(1) AS no_orders,
+          MAX(IF(status = 'COMPLETED', TIMESTAMP_ADD(created_time, INTERVAL 7 HOUR), NULL)) AS last_purchase
+      FROM ${source.platinum}.marketplace_prd_order_v2_order
+      WHERE status <> 'CANCEL'
+      GROUP BY 1
+  ),
     customer_event AS(
-    SELECT
-        a.phone AS registrant_phone,
-        b.event_name,
-        date(JSON_VALUE(b.extra_props, '$.start_time')) AS created_date_event,
-        ROW_NUMBER() OVER (PARTITION BY a.phone ORDER BY date(JSON_VALUE(b.extra_props, '$.start_time'))) as row_num
-    FROM ${dedup.dedup( source.silver + '.platform_event_prd_management_participant','*')} AS a  
-    LEFT JOIN ${dedup.dedup( source.silver + '.platform_event_prd_management_event','*')} AS b on a.event_id = b.event_id
-),
+      SELECT
+          a.phone AS registrant_phone,
+          b.event_name,
+          date(JSON_VALUE(b.extra_props, '$.start_time')) AS created_date_event,
+          ROW_NUMBER() OVER (PARTITION BY a.phone ORDER BY date(JSON_VALUE(b.extra_props, '$.start_time'))) as row_num
+      FROM ${dedup.dedup( source.silver + '.platform_event_prd_management_participant','*')} AS a  
+      LEFT JOIN ${dedup.dedup( source.silver + '.platform_event_prd_management_event','*')} AS b on a.event_id = b.event_id
+  ),
 stg_province AS (
     SELECT 
       DISTINCT
@@ -252,7 +253,8 @@ SELECT
     END AS customer_report_category,
 
     customer_order.ordered_amount,
-    customer_order.no_orders
+    customer_order.no_orders,
+    customer_order.last_purchase
 FROM ${source.platinum}.marketplace_prd_customer_customer customer
 LEFT JOIN customer_order ON customer.customer_id = customer_order.customer_id
 LEFT JOIN ${source.platinum}.core_prd_account_account AS b ON customer.account_id = b.account_id
