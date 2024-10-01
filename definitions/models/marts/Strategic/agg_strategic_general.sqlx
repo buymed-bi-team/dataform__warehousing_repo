@@ -284,3 +284,4 @@ GROUP BY 1,2,3,4,5
 UNION ALL 
 
 SELECT * FROM ${ref(`agg_strategic_customer`)}
+WHERE date >= "2023-01-01"
