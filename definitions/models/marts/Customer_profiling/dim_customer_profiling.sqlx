@@ -3,7 +3,7 @@ config {
     description: "PIC: Huong.Dang",
     tags: ["6HOUR"],
     columns: {
-        new_customer: "Những khách hàng có đơn hàng đầu tiên tại thuocsi trong tháng đó, stt đơn = COMPLETED. Vd: Khách hàng A có đơn hàng đầu tiên tại thuocsi vào tháng 5/2024, có stt đơn=COMPLETED, thì khách đó sẽ là New_Customer trong tháng 5/2024",
+        new_customer: "Những khách hàng có đơn hàng đầu tiên tại thuocsi trong tháng đó, stt đơn <> CANCEL. Vd: Khách hàng A có đơn hàng đầu tiên tại thuocsi vào tháng 5/2024, có stt đơn=COMPLETED, thì khách đó sẽ là New_Customer trong tháng 5/2024",
         repeat_customer: "Những khách hàng có đơn hàng 2 tháng liên tiếp tại sàn thuocsi, loại trừ những đơn hàng CANCEL. Vd: Khách hàng A có đơn hàng trong 4 / 2024 và tháng 5 / 2024,thì type của khách hàng A trong tháng 5 / 2024 sẽ là Repeat Customer",
         reacquire_customer: "Những khách hàng chưa mua hàng từ 1 tháng trở lên, tính từ tháng cuối cùng mua hàng tại thucosi, quay trở lại mua hàng, loại trừ những đơn hàng CANCEL.Vd: Tháng 3/2024 khách A có mua hàng, tháng 4/2024 khách A không mua hàng, tháng 5/2024 quay lại mua hàng, khách A sẽ là Reacquire Customer trong tháng 5/2024",
         active_customer: "Khách hàng có mua ít nhất 1 đơn trong tháng không tính Cancel",
