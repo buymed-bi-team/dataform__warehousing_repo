@@ -39,7 +39,7 @@ config {
 
 js {
     // const start_date = `"2023-12-31"`
-    const start_date = `"2023-01-01"`
+    const start_date = `"2022-12-31"`
     const end_date = `"2030-09-25"`
 }
 
@@ -47,7 +47,8 @@ WITH
 mkp_o AS ( 
     SELECT 
         o.order_id,
-        o.sale_order_code, 
+        o.sale_order_code,
+        o.customer_id, 
         o.status,
         outbound_date,
         created_time,
@@ -87,6 +88,7 @@ mkp_o AS (
     SELECT 
         o.order_id,
         o.sale_order_code, 
+        o.receiver_id * (10000) AS customer_id,
         o.status,
         outbound_date,
         created_time,
@@ -272,6 +274,7 @@ mkp_o AS (
         oi.oiid,
         oi.order_id,
         o.sale_order_code,
+        o.customer_id,
         oi.product_id_original,
         oi.sku_code_original,
         oi.seller_code_original as supplier_code_original,
@@ -379,7 +382,9 @@ FROM fact_strategic_1 as fs
 
 
 SELECT 
+    ois.oiid,
   ois.order_id,
+  ois.customer_id,
   ois.sale_order_code,
   ois.order_status,
   ois.commercial_type,
