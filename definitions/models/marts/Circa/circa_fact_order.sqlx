@@ -58,7 +58,7 @@ from ${source.circa}.order_delivery_info
 -- order by 1
     )
 
-select A.* except (entity_phone),
+select A.* except (entity_phone),di.customer_name
 -- customer_phone,
 case
     when A.entity_phone like "000000000" then di.customer_phone  else A.entity_phone end as customer_phone
