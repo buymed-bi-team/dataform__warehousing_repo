@@ -42,7 +42,7 @@ WITH cte_date AS (
 				receipt_code, -- b.code,
 				receipt_fc_code, --b.warehouse_code,
 				destination_location, -- b.destination_warehouse_code,
-				SPLIT(receipt_code, '-')[OFFSET(1)] as received_hub, 
+				-- SPLIT(receipt_code, '-')[OFFSET(1)] as received_hub, 
 				case 
 					when receipt_fc_code is null then null
 					when receipt_fc_code = 'TTN' and destination_location = 'BD' then false
@@ -56,7 +56,8 @@ WITH cte_date AS (
 		select *, -- except (flag_check),
 			max(flag_check) over (partition by po_code) as is_it_po_pgh
 		from cte_data
-		qualify row_number() over (partition by po_code order by created_ts) = 1 -- and is_across_region = true
+        where receipt_fc_code IS NOT NULL
+		qualify row_number() over (partition by po_code order by received_ts) = 1 -- and is_across_region = true
 	),
 
 	first_checkin_destination_fc AS (
@@ -65,6 +66,15 @@ WITH cte_date AS (
 			, MIN(received_ts) AS first_checkin_destination_fc
 		FROM ${ref('fact_inbound_receipts')}
 		WHERE receipt_fc_code = destination_location
+		GROUP BY 1
+	),
+
+	first_location AS (
+		SELECT
+			po_code
+			, MIN_BY(hub_code, created_ts) AS first_received_location
+		FROM ${ref('fact_inbound_receipts')}
+		-- WHERE receipt_fc_code = destination_location
 		GROUP BY 1
 	)
 
@@ -100,7 +110,7 @@ select
 --     ps.total_so AS total_so_reference,
 -- 	IF(ps.total_so >= 10, "Priority PO", "Normal PO") AS po_priority,
 	c.received_ts AS first_received_check_in,
-	c.received_hub AS first_received_location,
+	l.first_received_location,
 	c.receipt_fc_code,
 	f.first_checkin_destination_fc,
 	-- c.destination_location AS destination_fc_code,
@@ -128,4 +138,5 @@ from (
     ) as p on i.po_code = p.po_code
     LEFT JOIN check_it_popgh AS c ON c.po_code = i.po_code
 	LEFT JOIN first_checkin_destination_fc AS f ON f.po_code = i.po_code
+	LEFT JOIN first_location AS l ON l.po_code = i.po_code
 -- LEFT JOIN lakehouse-prod-394907.gold_buymed_vn.agg_po_so AS ps ON ps.po_code = i.po_code
