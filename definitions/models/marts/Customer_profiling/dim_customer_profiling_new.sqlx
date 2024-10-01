@@ -1,7 +1,7 @@
 config {
     type: "view",
-    description: `New Customer: Những khách hàng có đơn hàng đầu tiên tại thuocsi trong tháng đó, stt đơn = COMPLETED.
-    Vd: Khách hàng A có đơn hàng đầu tiên & stt đơn = COMPLETED tại thuocsi vào tháng 5/2024, thì khách đó sẽ là New Customer trong tháng 5/2024.
+    description: `New Customer: Những khách hàng có đơn hàng đầu tiên tại thuocsi trong tháng đó, stt đơn <> "CANCEL".
+    Vd: Khách hàng A có đơn hàng đầu tiên & stt đơn <> "CANCEL" tại thuocsi vào tháng 5/2024, thì khách đó sẽ là New Customer trong tháng 5/2024.
     PIC: Huong.Dang`
 }
 
@@ -12,7 +12,7 @@ WITH
     Date(MIN(a.created_at)) as first_date_order
   FROM
     ${ref('fact_order')} AS a
-  WHERE order_status = "COMPLETED"
+  WHERE order_status <> "CANCEL"
   GROUP BY 1)
 
 SELECT

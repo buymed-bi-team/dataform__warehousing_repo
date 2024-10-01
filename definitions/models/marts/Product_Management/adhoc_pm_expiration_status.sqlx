@@ -81,6 +81,7 @@ with cte_date as (
         , a.is_near_expired
         , c.available_quantity as available_qty
         , PARSE_DATE('%F', ld.expired_date) as expired_date_internal
+        , c.sku_key
     from ${ref('dim_inventory_sku')}  c
     left join ${ref('dim_sku_sales_region_current')} a on a.sku_key_sales_region_code = c.sku_key_sales_region
     left join get_info_from_latest_put_ticket b on c.sku = b.sku_code and c.fc_code = b.fc_code
