@@ -83,6 +83,7 @@ SELECT
     , g.region_code
     , g.region_name 
     , p.province_without_accent
+    , g.region_code AS area
     , CASE
     WHEN g.province_code = "01" THEN "HN"
     WHEN g.province_code = "79" THEN "HCM"
