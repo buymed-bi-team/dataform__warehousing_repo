@@ -7,7 +7,7 @@ config {
         Source: 
             ${source.platinum}.marketplace_prd_order_v2_order,
             ${source.platinum}.marketplace_prd_customer_customer_rating,
-            ${source.gold}.fact_outbound_ticket,
+            ${source.ref}.fact_outbound_ticket,
             ${source.platinum}.accounting_prd_core_credit_note,
             ${source.platinum}.accounting_prd_core_bill
         `,
@@ -208,7 +208,7 @@ WITH
       LEFT JOIN (
         SELECT
           order_id, carrier_name
-        FROM ${source.gold}.fact_outbound_ticket
+        FROM ${ref('fact_outbound_ticket')}
         WHERE
           REGEXP_CONTAINS(reference_code, r'-F|-P1')
         QUALIFY ROW_NUMBER() OVER(PARTITION BY order_id, reference_code ) = 1
