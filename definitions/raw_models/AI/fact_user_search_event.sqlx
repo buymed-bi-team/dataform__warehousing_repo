@@ -36,7 +36,9 @@ WITH stg AS (
         JSON_EXTRACT_SCALAR(extra_props, '$.ua_metadata.CLIENT') AS client,    
         JSON_EXTRACT_SCALAR(extra_props, '$.ua_metadata.PLATFORM') AS platform,
         JSON_EXTRACT_SCALAR(extra_props, '$.metadata.host') AS host,
-        ingest_time
+        ingest_time,
+    LEAD(event) over(partition by customer_id order by created_time) as next_action,
+    LEAD(datetime(created_time, "Asia/Ho_Chi_Minh")) over(partition by customer_id order by created_time) as next_action_created_time
     FROM
     `${source.silver}.monitoring_prd_collector_user_stats_*`
   WHERE
@@ -55,8 +57,8 @@ SELECT
     platform,
     host,
     search_content,
-    search_status,
-    LEAD(event) over(order by created_time) as next_action
+    search_status, 
+    next_action,next_action_created_time
 FROM
     stg
 where customer_id >0 AND event IN ( "SEARCH") 
