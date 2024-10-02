@@ -27,7 +27,7 @@ config {
     FROM DATA )
   SELECT
     product_id,
-    count(distinct voucher_code),
+    count(distinct voucher_code) as voucher_code,
     date
   FROM
     date_range,
