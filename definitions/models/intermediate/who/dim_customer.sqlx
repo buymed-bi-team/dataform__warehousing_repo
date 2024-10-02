@@ -219,7 +219,7 @@ SELECT
     customer.district_code,
     customer.ward_code,
     customer.address,
-    customer.email,
+    -- customer.email,
     customer.phone,
     customer.business_type,
     CASE
