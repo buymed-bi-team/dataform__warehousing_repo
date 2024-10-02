@@ -220,6 +220,7 @@ SELECT
     customer.ward_code,
     customer.address,
     customer.email,
+    customer.phone,
     CASE
         WHEN SAFE_CAST(customer.ward_code AS integer) > 0 THEN customer.ward_code
         WHEN SAFE_CAST(customer.district_code AS integer) > 0 THEN customer.district_code
