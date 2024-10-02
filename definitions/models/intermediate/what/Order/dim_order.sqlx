@@ -200,7 +200,7 @@ SELECT
   order_tbl.sales_region_code
 FROM order_tbl
 ${when(incremental(),
-   `WHERE created_time > ${checkpoint_datetime}`,
+   `WHERE created_time > (SELECT max(created_time) FROM ${self()})`,
    ``)}
 
 UNION ALL

@@ -63,7 +63,11 @@ config {
 		reason: '',
 		status: 'Trạng thái đơn hub order',
 		do_status: 'Trạng thái đơn giao vận của hub order'
-    }
+    },
+	bigquery: {
+		partitionBy: "DATE(created_at)",
+		clusterBy: ["reference_code"]
+	}
 }
 
 with cte_date as (

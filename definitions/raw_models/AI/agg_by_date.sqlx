@@ -1,8 +1,8 @@
 config {
     type: "table",
     tags: ["0h00"],
-    name: "agg_rcm_by_date",
-    description: "Recommendation Aggregate Table in last 3 months. PIC: Tu.Dang"
+    name: "agg_by_date",
+    description: "Aggregate Table by date in last 4 months. PIC: Tu.Dang"
     /* bigquery: {
     partitionBy: "date"
   }*/
