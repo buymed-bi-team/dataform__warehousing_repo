@@ -12,9 +12,15 @@ config {
 
     }
 }
-select
-    cast(cast(FORMAT_DATE('%Y-%m', oi.created_at)as string)||"-01" as date ) as start_of_month,
-    date(oi.created_at) as date,
+WITH DateSeries AS 
+(
+  SELECT *
+  FROM UNNEST(GENERATE_DATE_ARRAY(DATE(DATE_TRUNC(current_date(), MONTH) - INTERVAL 3 MONTH), DATE(current_date()))) AS date
+)
+, order_item as 
+(select
+    -- cast(cast(FORMAT_DATE('%Y-%m', oi.created_at)as string)||"-01" as date ) as start_of_month,
+    date(oi.created_at) as created_date,
     customer_id,
     count(distinct sku_code ) as no_skus,
     count(distinct product_id ) as no_products,
@@ -25,6 +31,37 @@ select
 from ${ref('fact_order_item')} oi
 left join ${ref('dim_order_status')} o on oi.order_id = o.order_id
 where 
--- date (date_trunc( date_sub( current_date('+7'), interval 12 month) , month ))<= date(oi.created_at) and 
+date (date_trunc( date_sub( current_date('+7'), interval 3 month) , month ))<= date(oi.created_at) and 
 CRM_status not in  ("CANCEL","RETURNED")
-group by all
+group by all)
+, user_event as 
+(
+    select 
+        created_date,
+        customer_id,
+        count(customer_id) as no_add_cart
+    from ${ref('fact_user_event_tracking')}
+    where 
+    date (date_trunc( date_sub( current_date('+7'), interval 3 month) , month ))<= created_date and 
+    event = "ADD_TO_CART"
+    group by 1, 2
+)
+SELECT 
+    COALESCE(ds.date, oi.created_date, ue.created_date) AS date,
+    COALESCE(oi.customer_id, ue.customer_id) AS customer_id,
+    
+    -- Metrics from order_item
+    oi.no_skus,
+    oi.no_products,
+    oi.order_qty,
+    oi.no_orders,
+    oi.order_amount,
+    
+    -- Metrics from user_event
+    ue.no_add_cart
+
+FROM DateSeries ds
+FULL OUTER JOIN order_item oi ON ds.date = oi.created_date
+FULL OUTER JOIN user_event ue ON ds.date = ue.created_date AND oi.customer_id = ue.customer_id
+WHERE COALESCE(oi.customer_id, ue.customer_id) IS NOT NULL
+ORDER BY date, customer_id

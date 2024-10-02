@@ -15,7 +15,7 @@ WITH
       ELSE a.fc_code
   END AS fc_code
   FROM  ${ref('fact_order')} AS a
-  LEFT JOIN ${ref(`dim_order`)} AS c USING (order_id)
+  LEFT JOIN ${ref(`dim_order_channel`)} AS c USING (order_id)
   WHERE EXTRACT(YEAR FROM a.created_at) >= 2024
     AND a.order_status <> "CANCEL"
     AND c.order_channel = "MARKETPLACE")
