@@ -27,8 +27,9 @@ config {
     FROM DATA )
   SELECT
     product_id,
-    voucher_code,
+    count(distinct voucher_code),
     date
   FROM
     date_range,
     UNNEST(date_array) AS date 
+  Group by 1, 3
