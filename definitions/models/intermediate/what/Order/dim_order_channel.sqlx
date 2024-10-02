@@ -140,7 +140,7 @@ SELECT
     order_type
 FROM order_tbl
 ${when(incremental(),
-   `WHERE created_dt > ${checkpoint_datetime}`,
+   `WHERE created_time > (SELECT max(created_time) FROM ${self()})`,
    ``)}
 
 
