@@ -95,7 +95,7 @@ WITH
           ARRAY_AGG(customer_district_code order by created_time desc)[0] AS customer_district_code,
           SUM(price) AS ordered_amount,
           SUM(1) AS no_orders,
-          MAX(IF(status = 'COMPLETED', TIMESTAMP_ADD(created_time, INTERVAL 7 HOUR), NULL)) AS last_purchase
+          MAX(TIMESTAMP_ADD(created_time, INTERVAL 7 HOUR)) AS last_purchase
       FROM ${source.platinum}.marketplace_prd_order_v2_order
       WHERE status <> 'CANCEL'
       GROUP BY 1
