@@ -17,7 +17,7 @@ THEN
     );
 
     CREATE OR REPLACE TABLE ${source.ref}.dim_order_channel 
-    PARTITION BY DATE(created_dt)
+    PARTITION BY DATE(created_time)
     AS
     (
         SELECT *
