@@ -77,6 +77,7 @@ SELECT
     , ${utils.ToTimezone('s.last_updated_time')} as last_updated_at
     , ${utils.ToTimezone('s.approved_time')} as approved_at
     , ${utils.ToTimezone('coalesce(s.confirmed_time, s.approved_time)')} as confirmed_at
+    , JSON_VALUE(s.extra_props, '$.accountant_email') AS accountant_email
 FROM    ${source.platinum}.seller_prd_core_seller s
 LEFT JOIN  ${source.platinum}.seller_prd_core_seller AS cmv on s.line_manager = cmv.code
 LEFT JOIN ${ref('dim_employee')} as acc on s.pic_account_id = acc.employee_id
