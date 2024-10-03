@@ -95,7 +95,7 @@ WITH
           ARRAY_AGG(customer_district_code order by created_time desc)[0] AS customer_district_code,
           SUM(price) AS ordered_amount,
           SUM(1) AS no_orders,
-          MAX(IF(status = 'COMPLETED', TIMESTAMP_ADD(created_time, INTERVAL 7 HOUR), NULL)) AS last_purchase
+          MAX(TIMESTAMP_ADD(created_time, INTERVAL 7 HOUR)) AS last_purchase
       FROM ${source.platinum}.marketplace_prd_order_v2_order
       WHERE status <> 'CANCEL'
       GROUP BY 1
@@ -178,8 +178,10 @@ SELECT
     customer.account_id,
     JSON_VALUE(customer.extra_props, "$.create_account_pic") AS create_account_pic,
     JSON_VALUE(customer.extra_props, "$.first_order_pic") AS first_order_pic,
-    LEFT(JSON_VALUE(customer.extra_props, "$.date_of_birth"), LENGTH(JSON_VALUE(customer.extra_props, "$.date_of_birth")) - 10)  AS date_of_birth,
-    DATE_DIFF(CURRENT_DATE(), PARSE_DATE('%Y-%m-%d', LEFT(JSON_VALUE(customer.extra_props, "$.date_of_birth"), LENGTH(JSON_VALUE(customer.extra_props, "$.date_of_birth")) - 10)), YEAR) AS age,
+    -- LEFT(JSON_VALUE(customer.extra_props, "$.date_of_birth"), LENGTH(JSON_VALUE(customer.extra_props, "$.date_of_birth")) - 10)  AS date_of_birth,
+    DATE(TIMESTAMP_ADD(TIMESTAMP(JSON_VALUE(customer.extra_props, '$.date_of_birth')), INTERVAL 7 HOUR))  AS date_of_birth,
+    -- DATE_DIFF(CURRENT_DATE(), PARSE_DATE('%Y-%m-%d', LEFT(JSON_VALUE(customer.extra_props, "$.date_of_birth"), LENGTH(JSON_VALUE(customer.extra_props, "$.date_of_birth")) - 10)), YEAR) AS age,
+    DATE_DIFF(CURRENT_DATE("+7"), DATE(TIMESTAMP_ADD(TIMESTAMP(JSON_VALUE(customer.extra_props, '$.date_of_birth')), INTERVAL 7 HOUR)), YEAR) AS age,
     customer.legal_representative,
     customer.company_name,
     customer.point AS loyalty_point,
@@ -219,8 +221,8 @@ SELECT
     customer.district_code,
     customer.ward_code,
     customer.address,
-    customer.email,
-    customer.phone,
+    -- customer.email,
+    -- customer.phone,
     customer.business_type,
     CASE
         WHEN SAFE_CAST(customer.ward_code AS integer) > 0 THEN customer.ward_code

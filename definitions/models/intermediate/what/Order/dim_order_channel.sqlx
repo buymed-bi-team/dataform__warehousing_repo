@@ -126,7 +126,7 @@ js {
     order_tbl AS (
         SELECT 
             order_id,
-            ${utils.ToTimezone(`max(created_time)`)} AS created_dt,
+            ${utils.ToTimezone(`max(created_time)`)} AS created_time,
             ${choose_new(`order_channel`)},
             ${choose_new(`order_type`)}
         FROM 
@@ -135,12 +135,12 @@ js {
 )
 SELECT 
     order_id,
-    created_dt,
+    created_time,
     order_channel,
     order_type
 FROM order_tbl
 ${when(incremental(),
-   `WHERE created_dt > ${checkpoint_datetime}`,
+   `WHERE created_time > (SELECT max(created_time) FROM ${self()})`,
    ``)}
 
 

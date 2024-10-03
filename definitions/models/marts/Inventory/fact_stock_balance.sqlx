@@ -12,6 +12,7 @@ WITH agg_stock_in AS (
     SELECT
         sku_code,
         fc_code,
+        location,
         COALESCE(l.lot, "N/A") as lot,
         COALESCE(expiration_status, "N/A") as expiration_status,
         COALESCE(STRING(e.formatted_expdate), "N/A") as expired_date,
@@ -27,6 +28,7 @@ agg_stock_out AS (
     SELECT
         sku_code,
         fc_code,
+        location,
         COALESCE(l.lot, "N/A") as lot,
         COALESCE(expiration_status, "N/A") as expiration_status,
         COALESCE(STRING(e.formatted_expdate), "N/A") as expired_date,
@@ -42,6 +44,7 @@ agg_stock_in_out AS (
     SELECT
         COALESCE(i.sku_code, o.sku_code) AS sku_code,
         COALESCE(i.fc_code, o.fc_code) AS fc_code,
+        COALESCE(i.location, o.location) AS location,
         COALESCE(i.lot, o.lot) AS lot,
         COALESCE(i.expiration_status, o.expiration_status) AS expiration_status,
         COALESCE(i.expired_date, o.expired_date) AS expired_date,
