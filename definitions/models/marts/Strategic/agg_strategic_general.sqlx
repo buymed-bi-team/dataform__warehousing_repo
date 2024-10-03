@@ -147,7 +147,7 @@ js {
             ( fs.sales_price * demand_quantity )  
             - IF( fs.order_status like "CANCEL" AND fs.sale_order_code is null, ( fs.sales_price * demand_quantity ),0 )
             ) -- GMV AFTER CANCELLATION
-
+            * 100
             `
         }
     ]
