@@ -10,11 +10,11 @@ config {
         location_code: "Nullable | Location code that the customer has registered",
         shipping_location_code: "Nullable | Order specific delivery location code",
         sales_region_code: "Nullable | Translate from the province code rather than the warehouse code, because assigning warehouse codes is not supported before 2022",
-        created_dt: "Nullable | Timezone in +7"
+        created_time: "Nullable | Timezone in +7"
 
     },
     bigquery: {
-        partitionBy: "DATE(created_dt)"
+        partitionBy: "DATE(created_time)"
     }
 }
 
@@ -36,7 +36,7 @@ pre_operations {
       incremental(),
       `
       DELETE ${self()}
-      WHERE created_dt > ${checkpoint_datetime}
+      WHERE created_time > ${checkpoint_datetime}
       `,
       ``
     )

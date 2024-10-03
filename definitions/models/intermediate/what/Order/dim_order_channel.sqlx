@@ -9,11 +9,11 @@ config {
         order_id:"NonNull | Unique identifier for each order",
         order_channel: "NonNull | Category of the order based on the tags and source.  'TENDER' if customer_tags contains 'TENDER', 'DISTRIBUTION' if source is 'brand-portal' or 'clinic-portal', 'CONSIGNMENT-RECOGNITION' if tags contains 'SO_INTERNAL', 'CONSIGNMENT' if source is 'internal-portal','CIRCA' if customer_tags contains 'CIRCA', otherwise 'MARKETPLACE'",
         order_type: "NonNull | SO, CO, TENDER, DO",
-        created_dt: "Nullable | Timezone in +7"
+        created_time: "Nullable | Timezone in +7"
 
     },
     bigquery: {
-        partitionBy: "DATE(created_dt)"
+        partitionBy: "DATE(created_time)"
     }
 }
 
@@ -34,7 +34,7 @@ pre_operations {
       incremental(),
       `
       DELETE ${self()}
-      WHERE created_dt > ${checkpoint_datetime}
+      WHERE created_time > ${checkpoint_datetime}
       `,
       ``
     )
