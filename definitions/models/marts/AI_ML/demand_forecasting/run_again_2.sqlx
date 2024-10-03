@@ -1,0 +1,51 @@
+config {
+    type:"operations",
+    description: "PIC:MinhLuu",
+    tags: ['2h00'],
+    dependencies: ["fact_voucher_sku"]
+}
+
+IF( (
+        select if(data_type!="INT64",0,1)
+        from lakehouse-prod-394907.gold_ml.INFORMATION_SCHEMA.COLUMNS
+        WHERE table_name = "fact_voucher_sku"
+        AND column_name = "voucher_code"
+    ) =0 )
+  THEN 
+    
+    Create table dataform_assertions.Huong_dim_voucher_product AS ( select * FROM ${ref(`dim_voucher_product`)});
+    Create table dataform_assertions.Huong_dim_voucher AS ( select * FROM ${ref(`dim_voucher`)});
+    
+    CREATE TABLE gold_buymed_vn2.agg_gmv_by_price_sku_fc_code AS (
+        WITH DATA AS(
+            SELECT
+            b.product_id,
+            b.voucher_code,
+            a.start_date,
+            a.end_date
+            FROM ${ref('dim_voucher')} AS a
+            LEFT JOIN ${ref('dim_voucher_product')} AS b ON a.voucher_code = b.voucher_code
+            WHERE (EXTRACT(year FROM start_date) >= 2024
+                AND a.promotion_organizer="BUYMED"
+                AND b.product_id IS NOT NULL )),
+            date_range AS (
+            SELECT
+            product_id,
+            voucher_code,
+            start_date,
+            end_date,
+            GENERATE_DATE_ARRAY(start_date, end_date, INTERVAL 1 DAY) AS date_array
+            FROM DATA )
+        SELECT
+            product_id,
+            count(distinct voucher_code) as voucher_code,
+            date
+        FROM
+            date_range,
+            UNNEST(date_array) AS date 
+        Group by 1, 3
+    );
+
+    ASSERT (SELECT FALSE) AS "Do ma đó chị Hương";
+
+  END IF;
