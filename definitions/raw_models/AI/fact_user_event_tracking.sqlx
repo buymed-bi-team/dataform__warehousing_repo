@@ -58,8 +58,9 @@ SELECT
     case
         when LENGTH(block_code) - LENGTH(REGEXP_REPLACE(block_code, r'_', '')) > 1 and LEFT(block_code, 12) like "product-list"
             then REGEXP_REPLACE(block_code, r'^([^_]+)_[^_]+_(.*)', r'\1_\2') 
-        when screen like "home" and LEFT(block_code, 12) like "product-list" then ""
-        when screen like "product-list" and LEFT(block_code, 4) like "home" then ""
+        when screen like "home" and LEFT(block_code, 12) like "product-list" then null
+        when screen like "product-list" and LEFT(block_code, 4) like "home" then null
+        when block_code = "" then null
         else block_code end as block_code,
     platform,
     -- host,
