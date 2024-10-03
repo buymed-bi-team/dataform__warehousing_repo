@@ -2,7 +2,7 @@ config {
     type: "table",
     description: 
         `
-        RLS by location for BDM & Sales Rep;
+        RLS based on location that was assigned to BDM, Account, Sales Rep;
         PIC: nguyen.tran; 
         Type: Table;
         Schedule Refresh: hourly;
@@ -10,6 +10,12 @@ config {
             ${source.platinum}.marketplace_prd_customer_pic
         `,
     tags:["custom_1h_past5"],
+    columns: {
+        account_id : "The account id of BDM, Account, Sales Rep",
+        type       : "Role of PIC: BDM/Account/Sales Rep",
+        ward_code  : "Location was assigned to BDM, Account, Sales Rep",
+        user_name  : "username based on email of PIC (before '@')"
+    }
 }
 
 WITH
