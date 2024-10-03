@@ -185,7 +185,7 @@ cte_sku_fc_agg AS (
         WHEN g.seller_class = "INTERNAL" THEN g.purchase_price
       END, 999) AS inventory_price,
     h.location_codes,
-    i.sku_stock_day as fv_vendor_stock_days,
+    i.fv_vendor_stock_days,
     i.sku_leadtime as fv_vendor_leadtime
   FROM cte_sku_item a
   LEFT JOIN ${ref("dim_stock_classification")} b
