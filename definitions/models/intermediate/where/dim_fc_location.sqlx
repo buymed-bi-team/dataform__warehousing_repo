@@ -5,7 +5,7 @@ config {
         ${source.silver}.warehouse_prd_inventory_location
         ${source.silver}.warehouse_prd_inventory_sku_location_merge`,
     name: "dim_fc_location",
-    tags: ["0h00"],
+    tags: ["custom_1h_past5"],
     assertions: {
       uniqueKey: ['location_fc_code'],
       nonNull: ['location_fc_code']
