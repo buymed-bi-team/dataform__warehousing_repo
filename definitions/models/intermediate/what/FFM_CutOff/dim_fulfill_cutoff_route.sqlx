@@ -20,8 +20,8 @@ config {
         end_time            : "The active end hour of cut-off route",
         route_name          : "The cut-off route name",
         list_day_of_week    : "The list day of week of cut-off route",
-        flag                : "Check the cut-off route is suitable with SO or not",
-        is_same_day         : "Check end active & cut-off hour are same day or not",
+        flag                : "Check if the cut-off route is suitable with SO ",
+        is_same_day         : "Check if end active & cut-off hour are same day",
         cut_off_ts          : "The date and time of cut-off route"
     }
 }
