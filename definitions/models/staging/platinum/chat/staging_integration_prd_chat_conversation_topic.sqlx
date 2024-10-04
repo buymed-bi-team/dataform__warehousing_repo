@@ -9,7 +9,15 @@ config {
     bigquery: {
         partitionBy: "created_date"
     },
-    tags: ["custom_2h_past5"]
+    tags: ["custom_2h_past5"],
+    description: `PIC: minhluu | schedule every 2h 
+    Internal : https://internal.thuocsi.vn/cs/chat
+    Conversation searching: https://internal.thuocsi.vn/cs/chat?conversation=`,
+    columns: {
+      'created_time': "The time that topic created, or the time of first message of customer in topic that you see in internal",
+      'customer_support_id': "Seem like employee_id, you can search conversation = 56469 and topic = 671351 and check employee_id",
+      'contain_cs_message': "Is the topic have CS human message",
+    }
 }
 
 pre_operations {
@@ -60,6 +68,13 @@ pre_operations {
 
 SELECT
  * ,
+--  IF(JSON_EXTRACT_SCALAR(extra_props,"$.fully_processed_by_ai") = 'true', TRUE, FALSE) fully_processed_by_ai,
+--  CASE(
+--     JSON_EXTRACT_SCALAR(extra_props,"$.contain_cs_message") contain_cs_message,
+  CAST(JSON_EXTRACT_SCALAR(extra_props,"$.fully_processed_by_ai") AS BOOL) fully_processed_by_ai,
+  CAST(JSON_EXTRACT_SCALAR(extra_props,"$.contain_cs_message") AS BOOL) contain_cs_message,
+  CAST(JSON_EXTRACT_SCALAR(extra_props,"$.contain_ai_message") AS BOOL) contain_ai_message,
+  CAST(JSON_EXTRACT_SCALAR(extra_props,"$.customer_support_id") AS INT64) customer_support_id, 
  CASE 
     WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
     ELSE "2099-01-01"
