@@ -268,7 +268,7 @@ SELECT
 
     CASE
         WHEN STRPOS(list_channel, "TENDER") > 0 THEN "TENDER"
-        WHEN STRPOS(list_channel, "DISTRIBUTION") > 0 THEN "DISTRIBUTION"
+        WHEN STRPOS(list_channel, "DISTRIBUTION") > 0 OR STRPOS(customer.name, "OPV") > 0 THEN "DISTRIBUTION"
         WHEN STRPOS(list_channel, "CONSIGNMENT") > 0 THEN "CONSIGNMENT"
         WHEN STRPOS(list_channel, "CIRCA") > 0 THEN "CIRCA"
         ELSE "MARKETPLACE"
