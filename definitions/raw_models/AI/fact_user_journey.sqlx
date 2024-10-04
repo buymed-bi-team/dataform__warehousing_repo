@@ -1,7 +1,7 @@
 config {
     type: 'table',
     name: "fact_user_journey",
-    description: `Started time: 20240901 | PIC: tu.dang; schedule: 0h00 daily; model type: table
+    description: `last 30 days | PIC: tu.dang; schedule: 0h00 daily; model type: table
     Source:
         ${source.silver}.monitoring_prd_collector_user_stats_*`,
     columns: {
@@ -12,7 +12,7 @@ config {
         screen: "Nullable | The screen on which the event occurred. This provides additional context on the user interface interaction",
         source: "Nullable | The source of the event, indicating how the item was created",
             },
-/*tags: ['2h00'],*/
+tags: ['2h00'],
     bigquery: {
         partitionBy: "date(created_time)",
         clusterBy: ["event", "customer_id"]
@@ -30,15 +30,16 @@ mg_id,
 --         JSON_EXTRACT_SCALAR(extra_props, '$.user_metadata.LOCATION') AS province_code,
         JSON_EXTRACT_SCALAR(extra_props, '$.metadata.screen') AS screen,
         JSON_EXTRACT_SCALAR(extra_props, '$.metadata.source') AS source,
---         JSON_EXTRACT_SCALAR(extra_props, '$.metadata.content') AS search_content,
+        JSON_EXTRACT_SCALAR(extra_props, '$.metadata.block_code') AS block_code,
 --         JSON_EXTRACT_SCALAR(extra_props, '$.metadata.status') AS search_status,
 --         JSON_EXTRACT_SCALAR(extra_props, '$.metadata.sku') AS sku_code,
 --         JSON_EXTRACT_SCALAR(extra_props, '$.ua_metadata.CLIENT') AS client,
         JSON_EXTRACT_SCALAR(extra_props, '$.ua_metadata.PLATFORM') AS platform,
         JSON_EXTRACT_SCALAR(extra_props, '$.client_user_time') AS client_user_time
     FROM
-    `silver_buymed_vn.monitoring_prd_collector_user_stats_*`
-  WHERE
+    `${source.silver}.monitoring_prd_collector_user_stats_*`
+  WHERE 
+--   created_date >= date_sub( created_date, interval 30 day) 
     _TABLE_SUFFIX BETWEEN '20240901'
     AND FORMAT_DATE('%Y%m%d', CURRENT_DATE())
 --     AND event IN ( "SEARCH")
@@ -51,6 +52,7 @@ SELECT mg_id,
     DATE(created_time, "Asia/Ho_Chi_Minh") AS created_date,
     screen,
     source,
+    block_code,
     client_user_time,
     platform,
     LEAD(event) over (partition by customer_id order by created_time) next_act_1,
@@ -59,4 +61,4 @@ SELECT mg_id,
     LEAD(event,4) over (partition by customer_id order by created_time) next_act_4
 FROM
     stg
-where customer_id >0
+where customer_id >0 and date(created_time)>= date(date_sub( created_time, interval 30 day) )
