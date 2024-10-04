@@ -23,17 +23,17 @@ config {
         supplier_code_original	: "NonNull |",
         order_status: "Nullable | Null means unknown",
         supplier_class: `Nullable | COALESCE(  supplier_class from the seller_code field first, the supplier_class from the sku field's seller_code - by join dim_sku and use sku.seller_code to join dim supplier, the order_item seller_class field ) as supplier_class `,
-        created_dt: "NonNull | Timezone in +7",
+        created_time: "NonNull | Timezone in +7",
         demand_quantity: "NonNull |",
         returned_quantity : "Nullable | The item quantity was returned by the customer. However, there are some orders that still have returns, but the system marked them as canceled, making it difficult to calculate revenue",
-        outbound_dt: "Nullable | The datetime that item has been delivered out of warehouse ",
-        confirmation_dt: "Nullable | confirmation datetime, timezone in +7",
+        outbound_time: "Nullable | The datetime that item has been delivered out of warehouse ",
+        confirmation_time: "Nullable | confirmation datetime, timezone in +7",
         outbound_quantity: "Nullable | the quantity of products have be shipped from warehouse",
         price: "Nullable"
     },
     tags: ('0h00'),
     bigquery: {
-        partitionBy: "DATE(created_dt)"
+        partitionBy: "DATE(created_time)"
     }
 }
 
@@ -298,10 +298,10 @@ mkp_o AS (
             ds4.supplier_class,
             oi.seller_class
         ) as supplier_class,
-        ${utils.ToTimezone(`o.created_time`)} as created_dt,
-        ${utils.ToTimezone(`o.outbound_date`)} as outbound_dt,
-        ${utils.ToTimezone(`o.confirmation_date`)} as confirmation_dt,
-        ${utils.ToTimezone(`o.delivered_time`)} as delivered_dt,
+        ${utils.ToTimezone(`o.created_time`)} as created_time,
+        ${utils.ToTimezone(`o.outbound_date`)} as outbound_time,
+        ${utils.ToTimezone(`o.confirmation_date`)} as confirmation_time,
+        ${utils.ToTimezone(`o.delivered_time`)} as delivered_time,
 
         IF( oi.charge_campaign_fee_value <0, 0 , oi.charge_campaign_fee_value) charge_campaign_fee_value ,
         IF( oi.charge_combo_fee_value <0, 0 , oi.charge_combo_fee_value) charge_combo_fee_value ,
@@ -388,8 +388,8 @@ SELECT
   ois.sale_order_code,
   ois.order_status,
   ois.commercial_type,
-  ois.created_dt,
-  ois.confirmation_dt,
+  ois.created_time,
+  ois.confirmation_time,
   ois.sku_code_original,
   ois.sku_code,
   ois.supplier_class, -- For filter test
