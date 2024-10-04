@@ -1,7 +1,7 @@
 config {
     type:"operations",
     description: "PIC:MinhLuu",
-    tags: ['2h00'],
+    tags: ['6h00'],
     dependencies: ["fact_voucher_sku"]
 }
 

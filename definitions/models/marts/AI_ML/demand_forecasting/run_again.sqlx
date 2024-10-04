@@ -1,7 +1,7 @@
 config {
     type:"operations",
     description: "PIC:MinhLuu",
-    tags: ['2h00']
+    tags: ['6h00']
 }
 
 IF( (SELECT IF(max(date)="2024-10-02",1,0) FROM ${ref(`agg_gmv_by_price_sku_fc_code`)}) =0 )
