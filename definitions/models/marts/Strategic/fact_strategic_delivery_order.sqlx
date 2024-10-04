@@ -66,9 +66,9 @@ SELECT
     o.order_id,
     o.sale_order_code,
     do.delivery_order_code,
-    ${utils.ToTimezone(`do.created_time`)} as qc_done_dt,
-    ${utils.ToTimezone(`o.confirmation_date`)} as confirmation_dt,
-    ${utils.ToTimezone(`o.created_time`)} as created_dt
+    ${utils.ToTimezone(`do.created_time`)} as qc_done_time,
+    ${utils.ToTimezone(`o.confirmation_date`)} as confirmation_time,
+    ${utils.ToTimezone(`o.created_time`)} as created_time
 FROM  o 
 LEFT JOIN ${source.platinum}.warehouse_prd_core_delivery_order do ON o.sale_order_code = do.sale_order_code
 WHERE ${utils.ToTimezone(`o.created_time`)} >= "2023-01-01"
