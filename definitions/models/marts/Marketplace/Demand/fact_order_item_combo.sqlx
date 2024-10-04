@@ -41,6 +41,7 @@ cte_order_item as (
         , DATETIME(oi.cart_item_created_time, "Asia/Ho_Chi_Minh") AS incart_at
         , event_source
         , event_screen
+        , JSON_VALUE(extra_props, '$.block_code') AS block_code
     FROM ${source.platinum}.marketplace_prd_order_v2_order_item as oi
     where
         created_date >= (select DATE(start_date) from cte_date)
@@ -99,6 +100,7 @@ select
   , TO_JSON_STRING(JSON_QUERY(bom, '$.tags')) AS sub_tag_code
   , event_source
   , event_screen
+  , block_code
 from cte_order_item as oi
 , unnest( json_query_array(oi.extra_props, "$.sub_items") ) as bom
 ), 
@@ -152,6 +154,7 @@ select
   , sub_tag_code
   , event_source
   , event_screen
+  , block_code
 from cte_combo_item
 ),
 
@@ -203,6 +206,7 @@ cte_normal_item as (
     , tag_code AS sub_tag_code
     , event_source
     , event_screen
+    , block_code
   from cte_order_item as oi
   where
     oi.mg_id not in ( select mg_id from cte_combo_item_pricing )
