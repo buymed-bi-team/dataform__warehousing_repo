@@ -10,6 +10,20 @@ config {
             ${source.platinum}.warehouse_prd_picking_pick_ticket
         `,
     tags: ["FFM_CUTOFF", "custom_1h_past5"],
+    columns: {
+        ticket_id           : "The pick_ticket_id of SO",
+        ready_for_pick_time : "The time when pick ticket ready",
+        pack_done_time      : "The time when package was pack done",
+        dow_ready_for_pick  : "Day of Week of ready for pick time",
+        start_time          : "The active start hour of cuf-off route",
+        cut_off_time        : "The cut-off hour of cut-off route",
+        end_time            : "The active end hour of cut-off route",
+        route_name          : "The cut-off route name",
+        list_day_of_week    : "The list day of week of cut-off route",
+        flag                : "Check if the cut-off route is suitable with SO ",
+        is_same_day         : "Check if end active & cut-off hour are same day",
+        cut_off_ts          : "The date and time of cut-off route"
+    }
 }
 
 WITH
@@ -34,7 +48,6 @@ WITH
             , REGEXP_REPLACE(TO_JSON_STRING(JSON_QUERY(r, '$.day_of_week')), r'\[|\]|\"', "") AS list_day_of_week
         FROM ${source.platinum}.warehouse_prd_picking_pick_ticket
             , UNNEST(JSON_QUERY_ARRAY(extra_props, '$.route_details')) AS r
-        -- WHERE end_time IS NOT NULL
     ),
 
     cut_off_route AS (
@@ -44,7 +57,6 @@ WITH
                 EXTRACT(HOUR FROM ready_for_pick_time) + EXTRACT(MINUTE FROM ready_for_pick_time) / 60 + EXTRACT(SECOND FROM ready_for_pick_time) / 3600
                     BETWEEN start_time AND end_time
                 AND STRPOS(list_day_of_week, dow_ready_for_pick) > 0 
-                -- AND end_time < cut_off_time
                 , TRUE
                 , FALSE
               ) AS flag

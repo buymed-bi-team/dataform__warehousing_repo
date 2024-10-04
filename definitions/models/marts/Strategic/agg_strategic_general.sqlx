@@ -184,7 +184,7 @@ SELECT
 FROM ${ref(`fact_strategic_sale_order_item_single`)} fs 
 LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = fs.order_id 
 LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON fs.order_id = dosr.order_id 
-LEFT JOIN ${ref(`dim_calendar`)} dc ON date(fs.created_dt) = dc.date
+LEFT JOIN ${ref(`dim_calendar`)} dc ON date(fs.created_time) = dc.date
 WHERE  doc.order_channel NOT IN ("TENDER","CONSIGNMENT-RECOGNITION")
 AND doc.order_channel is not null
 AND fs.supplier_class not like "TECH"
@@ -209,7 +209,7 @@ SELECT
 FROM ${ref(`fact_strategic_sale_order_item_single`)} fs 
 LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = fs.order_id 
 LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON fs.order_id = dosr.order_id 
-LEFT JOIN ${ref(`dim_calendar`)} dc ON date(fs.confirmation_dt) = dc.date
+LEFT JOIN ${ref(`dim_calendar`)} dc ON date(fs.confirmation_time) = dc.date
 WHERE  doc.order_channel LIKE "TENDER"
 AND fs.order_status not like "WAIT_TO_CONFIRM"
 AND fs.supplier_class not like "TECH"
@@ -245,7 +245,7 @@ LEFT JOIN ois ON do.order_id = ois.order_id
 LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = do.order_id 
 LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON do.order_id = dosr.order_id 
 LEFT JOIN ${ref(`dim_order_status`)} dos ON dos.order_id = do.order_id
-LEFT JOIN ${ref(`dim_calendar`)} dc ON date(do.created_dt) = dc.date
+LEFT JOIN ${ref(`dim_calendar`)} dc ON date(do.created_time) = dc.date
 WHERE  doc.order_channel NOT IN ("TENDER","CONSIGNMENT-RECOGNITION")
 AND doc.order_channel is not null
 AND ois.supplier_class not like "TECH"
@@ -273,7 +273,7 @@ LEFT JOIN ois ON do.order_id = ois.order_id
 LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = do.order_id 
 LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON do.order_id = dosr.order_id 
 LEFT JOIN ${ref(`dim_order_status`)} dos ON dos.order_id = do.order_id
-LEFT JOIN ${ref(`dim_calendar`)} dc ON date(do.confirmation_dt) = dc.date
+LEFT JOIN ${ref(`dim_calendar`)} dc ON date(do.confirmation_time) = dc.date
 WHERE  doc.order_channel LIKE "TENDER"
 AND dos.crm_status not like "WAIT_TO_CONFIRM"
 AND ois.supplier_class not like "TECH"

@@ -1,8 +1,8 @@
 config {
     type: "table",
-    description: "PIC: huong.dang, schedule 0:00am daily",
+    description: "PIC: huong.dang, schedule 6:00am daily",
     schema: "gold_ml",
-    tags: ["0h00"]
+    tags: ["6h00"]
 }
 
 
