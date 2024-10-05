@@ -13,10 +13,10 @@ IF( (
     ) =0 )
   THEN 
     
-    Create table dataform_assertions.Huong_dim_voucher_product AS ( select * FROM ${ref(`dim_voucher_product`)});
-    Create table dataform_assertions.Huong_dim_voucher AS ( select * FROM ${ref(`dim_voucher`)});
+    Create OR REPLACE table dataform_assertions.Huong_dim_voucher_product AS ( select * FROM ${ref(`dim_voucher_product`)});
+    Create OR REPLACE table dataform_assertions.Huong_dim_voucher AS ( select * FROM ${ref(`dim_voucher`)});
     
-    CREATE TABLE gold_buymed_vn2.agg_gmv_by_price_sku_fc_code AS (
+    CREATE OR REPLACE TABLE gold_buymed_vn2.agg_gmv_by_price_sku_fc_code AS (
         WITH DATA AS(
             SELECT
             b.product_id,
