@@ -12,7 +12,6 @@ config {
     tags: ["som_cutoff"]
 }
 
-
 SELECT 
     *, 
     DATE(created_time) created_date,
