@@ -164,9 +164,9 @@ SELECT
   a.invoice_amount,
   a.return_amount,
   (coalesce(a.invoice_amount ,0) - coalesce(a.return_amount,0) ) as actual_received_amount,
-  cast(a.shiping_district_code as int64) as shipping_district_code,
-  cast(a.shipping_ward_code as int64) as shipping_ward_code,
-  cast(a.shipping_province_code as int64) as shipping_province_code,
+  safe_cast(a.shiping_district_code as int64) as shipping_district_code,
+  safe_cast(a.shipping_ward_code as int64) as shipping_ward_code,
+  safe_cast(a.shipping_province_code as int64) as shipping_province_code,
   a.fc_code,
   a.has_deal,
   case when a.payment_method in ('MOMO', 'QR_CODE', 'PAYMENT_METHOD_BANK', 'MASTERCARD', 'PAYMENT_METHOD_CREDIT', 'ATM_BANK_ACCOUNT', 'PAYMENT_METHOD_BANK_1', 'VISA', 'ZALOPAY') then 'BANK'
