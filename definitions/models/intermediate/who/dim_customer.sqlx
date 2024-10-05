@@ -95,11 +95,20 @@ WITH
           ARRAY_AGG(customer_district_code order by created_time desc)[0] AS customer_district_code,
           SUM(price) AS ordered_amount,
           SUM(1) AS no_orders,
-          MAX(IF(status = 'COMPLETED', TIMESTAMP_ADD(created_time, INTERVAL 7 HOUR), NULL)) AS last_purchase
+          MAX(TIMESTAMP_ADD(created_time, INTERVAL 7 HOUR)) AS last_purchase
       FROM ${source.platinum}.marketplace_prd_order_v2_order
       WHERE status <> 'CANCEL'
       GROUP BY 1
   ),
+
+  customer_channel AS (
+      SELECT
+        customer_id
+        , STRING_AGG(DISTINCT channel, ",") AS list_channel
+      FROM ${ref('fact_order')}
+      GROUP BY 1
+  ),
+
     customer_event AS(
       SELECT
           a.phone AS registrant_phone,
@@ -178,8 +187,10 @@ SELECT
     customer.account_id,
     JSON_VALUE(customer.extra_props, "$.create_account_pic") AS create_account_pic,
     JSON_VALUE(customer.extra_props, "$.first_order_pic") AS first_order_pic,
-    LEFT(JSON_VALUE(customer.extra_props, "$.date_of_birth"), LENGTH(JSON_VALUE(customer.extra_props, "$.date_of_birth")) - 10)  AS date_of_birth,
-    DATE_DIFF(CURRENT_DATE(), PARSE_DATE('%Y-%m-%d', LEFT(JSON_VALUE(customer.extra_props, "$.date_of_birth"), LENGTH(JSON_VALUE(customer.extra_props, "$.date_of_birth")) - 10)), YEAR) AS age,
+    -- LEFT(JSON_VALUE(customer.extra_props, "$.date_of_birth"), LENGTH(JSON_VALUE(customer.extra_props, "$.date_of_birth")) - 10)  AS date_of_birth,
+    DATE(TIMESTAMP_ADD(TIMESTAMP(JSON_VALUE(customer.extra_props, '$.date_of_birth')), INTERVAL 7 HOUR))  AS date_of_birth,
+    -- DATE_DIFF(CURRENT_DATE(), PARSE_DATE('%Y-%m-%d', LEFT(JSON_VALUE(customer.extra_props, "$.date_of_birth"), LENGTH(JSON_VALUE(customer.extra_props, "$.date_of_birth")) - 10)), YEAR) AS age,
+    DATE_DIFF(CURRENT_DATE("+7"), DATE(TIMESTAMP_ADD(TIMESTAMP(JSON_VALUE(customer.extra_props, '$.date_of_birth')), INTERVAL 7 HOUR)), YEAR) AS age,
     customer.legal_representative,
     customer.company_name,
     customer.point AS loyalty_point,
@@ -255,11 +266,20 @@ SELECT
         ELSE 'MARKETPLACE' -- Một số order trong dim_order bị xếp loại vào Marketplace trong khi vốn tên có là FC-CIRCA
     END AS customer_report_category,
 
+    CASE
+        WHEN STRPOS(list_channel, "TENDER") > 0 THEN "TENDER"
+        WHEN STRPOS(list_channel, "DISTRIBUTION") > 0  THEN "DISTRIBUTION"
+        WHEN STRPOS(list_channel, "CONSIGNMENT") > 0 THEN "CONSIGNMENT"
+        WHEN STRPOS(list_channel, "CIRCA") > 0 THEN "CIRCA"
+        WHEN STRPOS(list_channel, "MARKETPLACE") > 0 THEN "MARKETPLACE"
+    END AS customer_channel,
+
     customer_order.ordered_amount,
     customer_order.no_orders,
     customer_order.last_purchase
 FROM ${source.platinum}.marketplace_prd_customer_customer customer
 LEFT JOIN customer_order ON customer.customer_id = customer_order.customer_id
+LEFT JOIN customer_channel ON customer.customer_id = customer_channel.customer_id
 LEFT JOIN ${source.platinum}.core_prd_account_account AS b ON customer.account_id = b.account_id
 LEFT JOIN stg_customer_note AS note ON note.customer_code = customer.code 
 LEFT JOIN stg_province AS p ON p.province_code = customer.province_code

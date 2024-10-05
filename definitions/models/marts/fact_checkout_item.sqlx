@@ -52,6 +52,7 @@ SELECT  oi.order_id
      , oi.event_screen
      , oi.province_code
      , oi.sku_key_sales_region_code
+     , oi.block_code
      , o.platform
      , o.status as order_status
      , sum(fm.final_price_after_rebate* fm.outbound_quantity ) as purchase_amount,

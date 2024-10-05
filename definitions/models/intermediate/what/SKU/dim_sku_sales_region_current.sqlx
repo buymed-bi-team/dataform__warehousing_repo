@@ -162,6 +162,14 @@ SELECT
     isd.origin_initial_stock AS initial_stock_default_quantity,
     SAFE_CAST(JSON_VALUE(isd.extra_props, '$.leadtime') AS INT64) AS sku_leadtime,
     SAFE_CAST(JSON_VALUE(isd.extra_props, '$.stock_day') AS INT64) AS sku_stock_day,
+    CASE 
+        WHEN SAFE_CAST(JSON_VALUE(isd.extra_props, '$.leadtime') AS INT64) = fv_vendor_fc.commitment_leadtime THEN NULL
+        ELSE 
+        CASE 
+            WHEN SAFE_CAST(JSON_VALUE(isd.extra_props, '$.stock_day') AS INT64) - SAFE_CAST(JSON_VALUE(isd.extra_props, '$.leadtime') AS INT64) < 0 OR SAFE_CAST(JSON_VALUE(isd.extra_props, '$.stock_day') AS INT64) IS NULL THEN NULL
+            ELSE SAFE_CAST(JSON_VALUE(isd.extra_props, '$.stock_day') AS INT64) - SAFE_CAST(JSON_VALUE(isd.extra_props, '$.leadtime') AS INT64) + fv_vendor_fc.commitment_leadtime
+        END
+    END AS fv_vendor_stock_days,
     s.vat,
     JSON_VALUE(s.status_data, '$.next_status') as next_status,
     JSON_VALUE(s.status_data, '$.min_quantity_auto_limit') as min_qty_auto_limit,

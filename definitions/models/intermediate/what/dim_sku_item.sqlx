@@ -173,8 +173,8 @@ cte_sku_fc_agg AS (
     c.length,
     c.width,
     d.avg_demand_l15d,
-    COALESCE(e.vendor_code, a.supplier_code) as fv_vendor_code,
-    IF (e.vendor_code IS NULL, "NON-TRADING", "TRADING") as trading_type,
+    COALESCE(i.fv_code, a.supplier_code) as fv_vendor_code,
+    IF (i.fv_code IS NULL, "NON-TRADING", "TRADING") as trading_type,
     SAFE_CAST(f.pic_purchase_id AS INT64) as pic_purchase_id,
     f.pic_purchase_name,
     COALESCE(SAFE_CAST(i.cic_account_id AS INT64), f.pic_category_id) as pic_category_id,
@@ -185,7 +185,7 @@ cte_sku_fc_agg AS (
         WHEN g.seller_class = "INTERNAL" THEN g.purchase_price
       END, 999) AS inventory_price,
     h.location_codes,
-    i.sku_stock_day as fv_vendor_stock_days,
+    i.fv_vendor_stock_days,
     i.sku_leadtime as fv_vendor_leadtime
   FROM cte_sku_item a
   LEFT JOIN ${ref("dim_stock_classification")} b
@@ -194,8 +194,8 @@ cte_sku_fc_agg AS (
   ON a.product_id = c.product_id AND a.fc_code = c.fc_code
   LEFT JOIN ${ref("agg_avg_demand_sku_item_l15d")} d
   ON a.sku_code = d.sku_code AND a.fc_code = d.fc_code
-  LEFT JOIN ${ref("dim_sku_item_fv_vendor")} e
-  ON a.sku_code = e.sku_code AND a.fc_code = e.fc_code
+  -- LEFT JOIN ${ref("dim_sku_item_fv_vendor")} e
+  -- ON a.sku_code = e.sku_code AND a.fc_code = e.fc_code
   LEFT JOIN ${ref("dim_sku_item_person_in_charge")} f
   ON a.sku_code = f.sku_code AND a.fc_code = f.fc_code
   LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_sku g

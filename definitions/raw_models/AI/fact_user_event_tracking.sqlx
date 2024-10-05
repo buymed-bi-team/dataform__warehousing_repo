@@ -40,10 +40,11 @@ WITH stg AS (
         -- JSON_EXTRACT_SCALAR(extra_props, '$.metadata.host') AS host,
         JSON_EXTRACT_SCALAR(extra_props, '$.client_user_time') AS client_user_time
     FROM
-    `${source.silver}.monitoring_prd_collector_user_stats_*`
+    `${source.platinum}.monitoring_prd_collector_user_stats`
   WHERE
-    _TABLE_SUFFIX BETWEEN '20240701'
-    AND FORMAT_DATE('%Y%m%d', CURRENT_DATE())        
+    -- _TABLE_SUFFIX BETWEEN '20240701'
+    -- AND FORMAT_DATE('%Y%m%d', CURRENT_DATE())        
+    created_date >= "2024-07-01"
     AND event IN ( "ADD_TO_CART","SKU_DETAIL_VIEW","SKU_IMPRESSION","REMOVE_FROM_CART") 
     )
 SELECT
@@ -54,7 +55,13 @@ SELECT
     province_code,
     screen,
     SOURCE,
-    block_code,
+    case
+        when LENGTH(block_code) - LENGTH(REGEXP_REPLACE(block_code, r'_', '')) > 1 and LEFT(block_code, 12) like "product-list"
+            then REGEXP_REPLACE(block_code, r'^([^_]+)_[^_]+_(.*)', r'\1_\2') 
+        when screen like "home" and LEFT(block_code, 12) like "product-list" then null
+        when screen like "product-list" and LEFT(block_code, 4) like "home" then null
+        when block_code = "" then null
+        else block_code end as block_code,
     platform,
     -- host,
     seller_id,

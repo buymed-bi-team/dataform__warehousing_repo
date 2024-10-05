@@ -59,7 +59,7 @@ union_all_parts as (
 		b.item_code,
 		b.status as status_t0,
 		b.status as status_t1,
-		timestamp_add(b.created_time, interval 7 hour) as t0,
+		b.created_time as t0,
 		timestamp_add(cast(current_timestamp as timestamp), interval 7 hour) as t1
 	from cte_min as a
 	left join cte_ds as b on a.min_id = b.id

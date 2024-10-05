@@ -2,7 +2,7 @@ config {
     type: "table",
     description: 
         `
-        Bin is one of our main package and delivery method;
+        BIN Dimension - BIN is one of our main package and delivery method;
         PIC: nguyen.tran; 
         Type: Table;
         Schedule Refresh: hourly;
