@@ -91,6 +91,7 @@ WITH
 
   fact_order AS(
     SELECT
+      TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at,
       DATETIME(a.created_time, 'Asia/Ho_Chi_Minh') AS created_at,
       DATETIME(a.last_updated_time, 'Asia/Ho_Chi_Minh') AS last_updated_time,
       DATETIME(a.confirmation_date,'Asia/Ho_Chi_Minh' ) AS confirmed_time,

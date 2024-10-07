@@ -43,6 +43,7 @@ WITH sku_special_case AS (
 )
 
 SELECT
+    TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at,
     ${utils.ToTimezone('sku_main.created_time')} as sku_created_at,
     ${utils.ToTimezone('sku_main.last_updated_time')} as sku_last_updated_at,
     sku_main.created_date AS sku_created_date,
