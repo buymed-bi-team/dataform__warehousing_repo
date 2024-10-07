@@ -149,7 +149,7 @@ js {
 
 
 SELECT
-
+    customer.mg_id, 
     ${utils.ToTimezone('customer.created_time')} AS user_created_at,
     ${utils.ToTimezone('customer.last_updated_time')} AS user_last_updated_at,
     ${utils.ToTimezone('customer.confirmed_time')} AS user_activated_at,
