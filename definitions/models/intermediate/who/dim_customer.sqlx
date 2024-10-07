@@ -107,6 +107,7 @@ WITH
         customer_id
         , STRING_AGG(DISTINCT channel, ",") AS list_channel
       FROM ${ref('fact_order')}
+      WHERE order_status <> 'CANCEL'
       GROUP BY 1
   ),
 
