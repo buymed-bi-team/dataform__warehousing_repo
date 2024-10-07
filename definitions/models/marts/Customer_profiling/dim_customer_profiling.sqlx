@@ -1,7 +1,7 @@
 config {
     type: "table",
     description: "PIC: Huong.Dang",
-    tags: ["6HOUR"],
+    tags: ["custom_1h_past5"],
     columns: {
         new_customer: "Những khách hàng có đơn hàng đầu tiên tại thuocsi trong tháng đó, stt đơn <> CANCEL. Vd: Khách hàng A có đơn hàng đầu tiên tại thuocsi vào tháng 5/2024, có stt đơn=COMPLETED, thì khách đó sẽ là New_Customer trong tháng 5/2024",
         repeat_customer: "Những khách hàng có đơn hàng 2 tháng liên tiếp tại sàn thuocsi, loại trừ những đơn hàng CANCEL. Vd: Khách hàng A có đơn hàng trong 4 / 2024 và tháng 5 / 2024,thì type của khách hàng A trong tháng 5 / 2024 sẽ là Repeat Customer",
