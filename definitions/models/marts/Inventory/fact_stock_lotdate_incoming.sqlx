@@ -44,9 +44,10 @@ SELECT
     , b.lot
     , b.expired_date
     , b.done_quantity
-    , JSON_VALUE(b1.location) as location
+    , COALESCE(d.parent_location_code, JSON_VALUE(b1.location)) as location
     , CAST(JSON_VALUE(b1.quantity) as INT64) as location_done_quantity
 FROM dedup_put_ticket_item b
 , UNNEST(JSON_QUERY_ARRAY(b.location_details)) as b1
 LEFT JOIN dedup_put_ticket a on b.ticket_id = a.ticket_id
 LEFT JOIN ${ref("dim_sku")} c on b.sku_code = c.sku_code
+LEFT JOIN ${ref("dim_fc_location")} d on b.fc_code = d.fc_code and JSON_VALUE(b1.location) = d.location_code
