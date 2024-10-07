@@ -137,7 +137,7 @@ WITH
         where
             (a.sku_code = c.sku_code and c.sales_region_code= "00")
             or (a.sku_code = c.sku_code and a.sales_region_code = c.sales_region_code )
-            or (a.sku_code = c.sku_code and c.sales_region_code is null )
+            -- or (a.sku_code = c.sku_code and c.sales_region_code is null )
     )
 
 -- step 5: Join data result in step 3 in 4. Then, dedup sku in a sales region.

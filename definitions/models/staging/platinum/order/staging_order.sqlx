@@ -1,0 +1,44 @@
+config {
+    type: "operations",
+    tags: ["3h00"]
+}
+
+DELETE ${source.platinum}.marketplace_prd_order_v2_order 
+WHERE created_date = CURRENT_DATE()
+AND created_time >= TIMESTAMP(CURRENT_DATE() - INTERVAL 7 HOUR);
+
+INSERT INTO ${source.platinum}.marketplace_prd_order_v2_order 
+(
+    SELECT *, DATE(created_time) created_date
+    FROM ${source.silver}.marketplace_prd_order_v2_order
+    WHERE ingest_time >= TIMESTAMP(CURRENT_DATE() - INTERVAL 7 HOUR)
+    AND created_time >= TIMESTAMP(CURRENT_DATE() - INTERVAL 7 HOUR)
+    QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'
+    WINDOW _window AS (
+        PARTITION BY mg_id
+        ORDER BY synced_at DESC,
+        IF(action = 'd', 3, IF(action = 'u', 2, 1)) DESC,
+        last_updated_time DESC
+    )
+);
+
+
+DELETE ${source.platinum}.marketplace_prd_order_v2_order_item
+WHERE created_date = CURRENT_DATE()
+AND created_time >= TIMESTAMP(CURRENT_DATE() - INTERVAL 7 HOUR);
+
+INSERT INTO ${source.platinum}.marketplace_prd_order_v2_order_item 
+(
+    SELECT *, DATE(created_time) created_date
+    FROM ${source.silver}.marketplace_prd_order_v2_order_item
+    WHERE ingest_time >= TIMESTAMP(CURRENT_DATE() - INTERVAL 7 HOUR)
+    AND created_time >= TIMESTAMP(CURRENT_DATE() - INTERVAL 7 HOUR)
+    QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'
+    WINDOW _window AS (
+        PARTITION BY mg_id
+        ORDER BY synced_at DESC,
+        IF(action = 'd', 3, IF(action = 'u', 2, 1)) DESC,
+        last_updated_time DESC
+    )
+)
+

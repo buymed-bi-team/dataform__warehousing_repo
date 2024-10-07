@@ -177,7 +177,7 @@ WITH
       CASE
         WHEN a.source = 'brand-portal' AND JSON_VALUE(a.extra_props, "$.brand_code") IN ('Q8HDUVQX', '2E84FW961P', 'PG961P') THEN 'TENDER'
         WHEN TO_JSON_STRING(JSON_VALUE_ARRAY(a.extra_props, '$.customer_tags')) LIKE '%TENDER%' THEN 'TENDER'
-        WHEN a.source IN ('brand-portal', 'clinic-portal')  THEN 'DISTRIBUTION'
+        WHEN a.source IN ('brand-portal', 'clinic-portal') OR customer_id IN (360299, 360439) THEN 'DISTRIBUTION'
         WHEN a.source = 'internal-portal' THEN 'CONSIGNMENT'
         WHEN TO_JSON_STRING(JSON_VALUE_ARRAY(a.extra_props, '$.customer_tags')) LIKE '%"CIRCA"%' THEN 'CIRCA'
         ELSE 'MARKETPLACE'

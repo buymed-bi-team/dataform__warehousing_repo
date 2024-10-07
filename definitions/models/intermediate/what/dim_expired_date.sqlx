@@ -46,15 +46,17 @@ WITH main AS (
                 END
             
             -- Handle 24-character dates (datetime format with full timestamp)
-            WHEN LENGTH(expired_date) = 24 AND
-                SAFE_CAST(SUBSTR(expired_date, 6, 2) AS INT64) BETWEEN 1 AND 12 AND
-                SAFE_CAST(SUBSTR(expired_date, 3, 2) AS INT64) BETWEEN 1 AND 31 THEN
-                CASE 
-                    WHEN SAFE_CAST(SUBSTR(expired_date, 6, 2) AS INT64) <= 12 THEN
-                        SAFE.PARSE_DATE('%Y-%m-%d', CONCAT(SUBSTR(expired_date, 21, 4), '-', SUBSTR(expired_date, 6, 2), '-', SUBSTR(expired_date, 3, 2)))
-                    ELSE 
-                        SAFE.PARSE_DATE('%Y-%m-%d', CONCAT(SUBSTR(expired_date, 21, 4), '-', SUBSTR(expired_date, 3, 2), '-', SUBSTR(expired_date, 6, 2)))
-                END
+            WHEN LENGTH(expired_date) = 24
+                -- AND
+                -- SAFE_CAST(SUBSTR(expired_date, 6, 2) AS INT64) BETWEEN 1 AND 12 AND
+                -- SAFE_CAST(SUBSTR(expired_date, 3, 2) AS INT64) BETWEEN 1 AND 31 THEN
+                -- CASE 
+                --     WHEN SAFE_CAST(SUBSTR(expired_date, 6, 2) AS INT64) <= 12 THEN
+                --         SAFE.PARSE_DATE('%Y-%m-%d', CONCAT(SUBSTR(expired_date, 21, 4), '-', SUBSTR(expired_date, 6, 2), '-', SUBSTR(expired_date, 3, 2)))
+                --     ELSE 
+                --         SAFE.PARSE_DATE('%Y-%m-%d', CONCAT(SUBSTR(expired_date, 21, 4), '-', SUBSTR(expired_date, 3, 2), '-', SUBSTR(expired_date, 6, 2)))
+                -- END
+                THEN SAFE.PARSE_DATE('%Y-%m-%d', CONCAT(SUBSTR(expired_date, 1, 10)))
             ELSE
                 NULL
         END AS formatted_expdate
@@ -74,7 +76,8 @@ SELECT
         WHEN DATE_DIFF(formatted_expdate, CURRENT_DATE(), DAY) <= 90 AND DATE_DIFF(formatted_expdate, CURRENT_DATE(), DAY) > 30 THEN '1-3 MONTHS'
         WHEN DATE_DIFF(formatted_expdate, CURRENT_DATE(), DAY) <= 30 AND DATE_DIFF(formatted_expdate, CURRENT_DATE(), DAY) >= 0 THEN 'LESS THAN 1 MONTH'
         WHEN DATE_DIFF(formatted_expdate, CURRENT_DATE(), DAY) < 0 THEN 'EXPIRED'
-    ELSE 'N/A' 
-    END AS expiration_status
+    ELSE 'N/A'
+    END AS expiration_status,
+    DATE_DIFF(formatted_expdate, CURRENT_DATE(), DAY) AS days_until_expired
 FROM main
 
