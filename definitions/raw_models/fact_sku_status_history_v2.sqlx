@@ -1,6 +1,6 @@
 config {
     type: "table",
-    tags: ["sku_history_change"],
+    tags: ["adhoc-office"],
     description: "SKU status history by hours ( 1 day ) || PIC: tu.dang, anh.letam;  model_type: table; schedule: hourly",
     name: "fact_sku_status_day_by_hour_v2",
     dependencies: ["staging_sku_status_history"],
@@ -179,7 +179,7 @@ fill_backwwark_value AS (SELECT
     , c.end_at_custom
     ,c.end_at
 from fill_backwwark_value c
-left join gold_buymed_vn.adhoc_pm_master_sku s on c.sku = s.sku_code and c.sales_region_code_bf = s.sales_region_code),
+left join ${ref("adhoc_pm_master_sku")} s on c.sku = s.sku_code and c.sales_region_code_bf = s.sales_region_code),
 --where c.date_time > CURRENT_DATETIME("+7") - INTERVAL 1 day),
 
 -- step 3: listing toàn bộ những con sku không được ghi nhân có sự thay đổi status in L90D và join với historical
@@ -201,7 +201,7 @@ sku_remaining as (select
         , CURRENT_DATETIME("+7") as end_at_custom
         , CURRENT_DATETIME("+7") as end_at
       -- , DATEtime(current_date() - INTERVAL 3 MONTH)
-  from gold_buymed_vn.adhoc_pm_master_sku ms
+  from ${ref("adhoc_pm_master_sku")} ms
 left join sku_list sl on ms.sku_code = sl.sku and ms.sales_region_code = sl.sales_region_code
 where sl.sub_sku_sales_region_code is null and ms.sku_system_active = true )
 
@@ -267,7 +267,7 @@ from in_historical c)
         sr.product_id, sr.sales_region_code,
         safe_cast (count(distinct sr.seller_code) as string) as no_seller,
         string_agg( sr.seller_code,", ") as list_seller_in_product
-    from gold_buymed_vn.adhoc_pm_master_sku as sr
+    from ${ref("adhoc_pm_master_sku")} as sr
     where sr.sku_system_active = true and sku_system_status is not null
     group by all
 )
