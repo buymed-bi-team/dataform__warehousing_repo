@@ -15,6 +15,7 @@ WITH agg_stock_in AS (
         location,
         COALESCE(l.lot, "N/A") as lot,
         COALESCE(expiration_status, "N/A") as expiration_status,
+        e.days_until_expired,
         COALESCE(STRING(e.formatted_expdate), "N/A") as expired_date,
         SUM(location_done_quantity) as incoming_qty,
         STRING_AGG(i.po_code, ', ') AS po_codes
@@ -31,6 +32,7 @@ agg_stock_out AS (
         location,
         COALESCE(l.lot, "N/A") as lot,
         COALESCE(expiration_status, "N/A") as expiration_status,
+        e.days_until_expired,
         COALESCE(STRING(e.formatted_expdate), "N/A") as expired_date,
         SUM(location_done_quantity) as outgoing_qty,
         STRING_AGG(o.so_code, ', ') AS so_codes
@@ -47,6 +49,7 @@ agg_stock_in_out AS (
         COALESCE(i.location, o.location) AS location,
         COALESCE(i.lot, o.lot) AS lot,
         COALESCE(i.expiration_status, o.expiration_status) AS expiration_status,
+        COALESCE(i.days_until_expired, o.days_until_expired) AS days_until_expired,
         COALESCE(i.expired_date, o.expired_date) AS expired_date,
         i.incoming_qty,
         o.outgoing_qty,
@@ -65,6 +68,8 @@ agg_stock_in_out AS (
 
 SELECT
     b.*,
-    s.sku_fc_key from agg_stock_in_out b
+    s.sku_fc_key,
+    DATETIME(CURRENT_TIMESTAMP(), 'Asia/Ho_Chi_Minh') AS recorded_time
+from agg_stock_in_out b
 left join ${ref("dim_sku_item")} s
 on b.sku_code = s.sku_code and b.fc_code = s.fc_code
