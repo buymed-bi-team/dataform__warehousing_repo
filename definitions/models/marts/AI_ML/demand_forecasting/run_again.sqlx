@@ -11,7 +11,7 @@ IF( (SELECT IF(max(date)="2024-10-02",1,0) FROM ${ref(`agg_gmv_by_price_sku_fc_c
     Create OR REPLACE table dataform_assertions.Huong_fact_order AS (SELECT * FROM ${ref(`fact_order`)} WHERE created_at > "2024-09-01");
     CREATE OR REPLACE table dataform_assertions.Huong_dim_calendar AS (SELECT * FROM ${ref(`dim_calendar`)}); 
     -- For dim_calendar check the day of today
-    CREATE table dataform_assertions.Huong_fact_order_item AS (SELECT * FROM ${ref(`fact_order_item`)} WHERE created_at > "2024-09-01");
+    CREATE OR REPLACE table dataform_assertions.Huong_fact_order_item AS (SELECT * FROM ${ref(`fact_order_item`)} WHERE created_at > "2024-09-01");
 
     CREATE OR REPLACE TABLE gold_buymed_vn2.agg_gmv_by_price_sku_fc_code AS (
         WITH
