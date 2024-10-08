@@ -297,3 +297,4 @@ SELECT
 FROM fact_order_v2 AS a 
   LEFT JOIN  OrderCustomerType AS b 
     ON a.month_id = b.month_id
+QUALIFY ROW_NUMBER() OVER(PARTITION BY order_id) = 1
