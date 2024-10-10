@@ -239,7 +239,8 @@ SELECT
 	, f.cut_off_ts AS fulfill_cut_off_time
 	, f.route_name AS fulfill_route_name
 	, f.fulfill_status_cut_off
-	, f.actual_route
+	, f.actual_delivery_route_name
+	, f.actual_delivery_route_ts
 	, f.delay_hours
 	-- , IF(
     --     ot.carrier_picked_at IS NOT NULL

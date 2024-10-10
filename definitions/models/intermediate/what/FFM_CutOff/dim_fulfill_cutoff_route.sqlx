@@ -85,7 +85,8 @@ WITH
                     , SECOND
                 ) / 3600
               ) AS flag
-            , PARSE_TIMESTAMP("%Y-%m-%d %H:%M", CONCAT(DATE(carrier_picked_time), " ", FLOOR(cut_off_hour), ":", FLOOR((cut_off_hour - FLOOR(cut_off_hour)) * 60))) AS actual_route
+            , PARSE_TIMESTAMP("%Y-%m-%d %H:%M", CONCAT(DATE(carrier_picked_time), " ", FLOOR(cut_off_hour), ":", FLOOR((cut_off_hour - FLOOR(cut_off_hour)) * 60))) AS actual_delivery_route_ts
+            , route_name AS actual_delivery_route_name
         FROM route AS a
         QUALIFY ROW_NUMBER() over (PARTITION BY ticket_id ORDER BY flag ) = 1
     ),
@@ -113,14 +114,15 @@ WITH
                   )
                 , IF(cut_off_ts < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR), "LATE", NULL)
               ) AS fulfill_status_cut_off
-            , b.actual_route
         FROM cut_off_time AS a
-            LEFT JOIN actual_route AS b USING(ticket_id)
     )
 
 SELECT
-    *
+    a.*
     , TIMESTAMP_DIFF(carrier_picked_time, cut_off_ts, MINUTE ) / 60 AS delay_hours
-FROM cut_off_status
+    , b.actual_delivery_route_name
+    , b.actual_delivery_route_ts
+FROM cut_off_status AS a
+    LEFT JOIN actual_route AS b ON a.ticket_id = b.ticket_id AND a.fulfill_status_cut_off = "LATE"
 -- WHERE ticket_id = 13290198
 
