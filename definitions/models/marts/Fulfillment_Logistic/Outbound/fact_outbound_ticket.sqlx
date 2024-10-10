@@ -238,15 +238,19 @@ SELECT
     ) AS delivery_status_cut_off
 	, f.cut_off_ts AS fulfill_cut_off_time
 	, f.route_name AS fulfill_route_name
-	, IF(
-        ot.carrier_picked_at IS NOT NULL
-	    , IF(
-                ot.carrier_picked_at <= TIMESTAMP_ADD(TIMESTAMP_ADD(f.cut_off_ts, INTERVAL 3 HOUR), INTERVAL 30 MINUTE )
-	            , "ON_TIME"
-	            , "LATE"
-	      )
-        , IF(f.cut_off_ts < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR), "LATE", NULL) 
-    ) AS fulfill_status_cut_off
+	, f.fulfill_status_cut_off
+	, f.actual_delivery_route_name
+	, f.actual_delivery_route_ts
+	, f.delay_hours
+	-- , IF(
+    --     ot.carrier_picked_at IS NOT NULL
+	--     , IF(
+    --             ot.carrier_picked_at <= TIMESTAMP_ADD(TIMESTAMP_ADD(f.cut_off_ts, INTERVAL 3 HOUR), INTERVAL 30 MINUTE )
+	--             , "ON_TIME"
+	--             , "LATE"
+	--       )
+    --     , IF(f.cut_off_ts < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR), "LATE", NULL) 
+    -- ) AS fulfill_status_cut_off
 FROM outbound_ticket AS ot
 	LEFT JOIN ${ref('dim_outbound_cutoff_route')} AS o ON ot.ticket_id = o.ticket_id
 	LEFT JOIN ${ref('dim_delivery_cutoff_route')} AS d ON ot.ticket_id = d.ticket_id
