@@ -1,0 +1,153 @@
+config {
+    type: "incremental",
+    name: "innovation_prd_chatbot_cs_autoreply_action",
+    schema: "buymed_product_recommendation",
+    assertions: {
+        uniqueKey: 'mg_id',
+        nonNull: ["updated_date"]
+    },
+    bigquery: {
+        partitionBy: "updated_date"
+    },
+    tags: ["custom_2h_past5"]
+}
+
+pre_operations {
+  ${
+    when(incremental(),
+      `
+      DECLARE min_updated_date DATE;
+      DECLARE max_updated_date DATE;
+      DECLARE check_deleted_action INT64;
+      DECLARE min_updated_date_deleted DATE;
+      DECLARE max_updated_date_deleted DATE; 
+      -- Setting the min_updated_date
+
+
+      CREATE OR REPLACE TEMP TABLE range_updated_time_table AS (
+       SELECT MIN(DATE(DATETIME(updated_time,'Asia/Ho_Chi_Minh'))) AS min_updated_date,
+        MAX(DATE(DATETIME(updated_time,'Asia/Ho_Chi_Minh'))) AS max_updated_date
+        FROM ${source.silver}.innovation_prd_chatbot_cs_autoreply_action 
+        WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) AND action != "d"
+      );
+
+      CREATE OR REPLACE TEMP TABLE get_deleted_record AS (
+          SELECT mg_id 
+          FROM ${source.silver}.innovation_prd_chatbot_cs_autoreply_action 
+          WHERE  ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) and 
+          updated_time IS NULL
+        );
+
+     SET min_updated_date = (SELECT min_updated_date FROM range_updated_time_table);
+      -- Assign the maximum created date
+     SET max_updated_date = (SELECT max_updated_date FROM range_updated_time_table);
+
+     --SET check_deleted_action = (SELECT check FROM check_deleted_action);
+      `,
+      ``
+    )
+  }
+}
+
+SELECT
+    mg_id
+    , answer 
+    , status
+    , validator
+    , updated_time
+    , total_sec
+    , ai_action
+    , usage
+    , dynamic_step
+    , conversation_id
+    , customer_message_id
+    , customer_id
+    , full_question_context
+    , question_history_context
+    , TO_JSON_STRING(pre_process_answer)  pre_process_answer
+    , topic_id
+    , tag
+    , synced_at
+    , extra_props
+    , CASE 
+            WHEN updated_time IS NOT NULL THEN DATE(DATETIME(updated_time,'Asia/Ho_Chi_Minh'))
+            ELSE "2099-01-01"
+        END AS updated_date
+FROM ${source.silver}.innovation_prd_chatbot_cs_autoreply_action o 
+ ${
+    when(incremental(), 
+      `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) 
+      QUALIFY ROW_NUMBER() OVER (_window) = 1`,
+      `QUALIFY ROW_NUMBER() OVER (_window) = 1
+       AND FIRST_VALUE(action) OVER (_window) <> 'd'`
+    )
+  }
+WINDOW
+  _window AS (
+  PARTITION BY
+    mg_id
+  ORDER BY
+    synced_at DESC,
+  IF
+    (action='d',3,
+    IF
+      (action='u',2,1)) DESC)
+
+post_operations {
+  ${
+    when(incremental(),
+      `
+      -- Variable declarations and assignments at the start of the block
+      
+
+      IF min_updated_date IS NOT NULL AND max_updated_date IS NOT NULL THEN
+
+        -- Delete rows using the temporary table
+        DELETE FROM ${self()}
+        WHERE updated_date BETWEEN min_updated_date AND max_updated_date
+          AND (key) IN (
+            SELECT (key)
+            FROM ${self()}
+            WHERE updated_date BETWEEN min_updated_date AND max_updated_date
+            QUALIFY ROW_NUMBER() OVER (_window) > 1
+            WINDOW _window AS (
+              PARTITION BY mg_id
+              ORDER BY synced_at DESC,
+              IF(action = 'd', 3, IF(action = 'u', 2, 1)) DESC
+            )
+          );
+
+      END IF;
+
+      IF EXISTS(select * from get_deleted_record limit 1) THEN
+
+      
+        
+        CREATE OR REPLACE TEMP TABLE get_range_deleted AS (
+          SELECT 
+            MIN(updated_date) AS min_updated_date_deleted, 
+            MAX(updated_date) AS max_updated_date_deleted 
+          FROM ${self()} 
+          WHERE mg_id IN (SELECT mg_id FROM get_deleted_record) 
+            AND updated_date != "2099-01-01" 
+        );
+
+        SET min_updated_date_deleted = (SELECT min_updated_date_deleted FROM get_range_deleted);
+        SET max_updated_date_deleted = (SELECT max_updated_date_deleted FROM get_range_deleted);
+        IF min_updated_date_deleted is not null and max_updated_date_deleted is not null THEN
+          DELETE FROM ${self()} 
+          WHERE updated_date BETWEEN min_updated_date_deleted AND max_updated_date_deleted 
+            AND mg_id IN (SELECT mg_id FROM get_deleted_record);
+        END IF;
+        DELETE FROM ${self()} 
+        WHERE updated_date = "2099-01-01"  and action = "d";
+        
+      END IF;
+
+      `,
+      ``
+    )
+  }
+}
+
+
