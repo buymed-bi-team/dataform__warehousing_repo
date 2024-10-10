@@ -1,0 +1,53 @@
+config {
+    type: 'table',
+    name: "agg_online_customer_by_date",
+    schema: "buymed_product_recommendation",
+    description: `date_start: 2024-06-01 | PIC: tu.dang; schedule: 0h00 daily; model type: table
+    Source:
+        ${source.platinum}.monitoring_prd_realtime_user_customer_event
+        ${source.platinum}.integration_prd_chat_conversation`,
+    columns: {
+        customer_id: "NonNull | The unique identifier for the customer",
+            },
+    tags: ['2h00']
+}
+
+
+
+
+WITH DateSeries AS 
+(
+  SELECT *
+  FROM UNNEST(GENERATE_DATE_ARRAY(DATE(DATE_TRUNC(current_date(), MONTH) - INTERVAL 12 MONTH), DATE(current_date()))) AS date
+)
+, online_cus as 
+(select
+    created_date,
+    customer_id,
+    1 as is_online
+from ${source.platinum}.monitoring_prd_realtime_user_customer_event oi
+where DATE(created_time, "Asia/Ho_Chi_Minh")>= "2024-06-01"
+qualify ROW_NUMBER() over (partition by created_date,customer_id)= 1
+)
+, chat_cus as 
+(
+    select 
+        created_date,
+        customer_id,
+        1 as is_chat
+    from ${source.platinum}.integration_prd_chat_conversation
+    where DATE(created_time, "Asia/Ho_Chi_Minh")>= "2024-06-01"
+    qualify ROW_NUMBER() over (partition by created_date,customer_id)= 1
+)
+SELECT 
+    COALESCE(ds.date, oi.created_date, ue.created_date) AS date,
+    COALESCE(oi.customer_id, ue.customer_id) AS customer_id,
+    
+  COALESCE(oi.is_online, 0) AS is_online,
+  COALESCE(ue.is_chat, 0) AS is_chat
+
+FROM DateSeries ds
+FULL OUTER JOIN online_cus oi ON ds.date = oi.created_date
+FULL OUTER JOIN chat_cus ue ON ds.date = ue.created_date AND oi.customer_id = ue.customer_id
+WHERE COALESCE(oi.customer_id, ue.customer_id) IS NOT NULL 
+-- ORDER BY date, customer_id
