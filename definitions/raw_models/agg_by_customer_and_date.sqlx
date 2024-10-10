@@ -84,7 +84,10 @@ SELECT
 FROM DateSeries ds
 FULL OUTER JOIN order_item oi ON ds.date = oi.created_date
 FULL OUTER JOIN user_event ue ON ds.date = ue.created_date AND oi.customer_id = ue.customer_id
-LEFT JOIN online_cus oc ON ds.date = oc.created_date AND COALESCE(oi.customer_id, ue.customer_id) = oc.customer_id
-LEFT JOIN chat_cus cc ON ds.date = cc.created_date AND COALESCE(oi.customer_id, ue.customer_id, oc.customer_id) = cc.customer_id
-WHERE COALESCE(oi.customer_id, ue.customer_id, oc.customer_id, cc.customer_id) IS NOT NULL
+FULL OUTER JOIN online_cus oc ON COALESCE(oi.created_date, ue.created_date) = oc.created_date 
+                               AND COALESCE(oi.customer_id, ue.customer_id) = oc.customer_id
+FULL OUTER JOIN chat_cus cc ON COALESCE(oi.created_date, ue.created_date, oc.created_date) = cc.created_date 
+                             AND COALESCE(oi.customer_id, ue.customer_id, oc.customer_id) = cc.customer_id
+WHERE COALESCE(oi.created_date, ue.created_date, oc.created_date, cc.created_date) IS NOT NULL
+  AND COALESCE(oi.customer_id, ue.customer_id, oc.customer_id, cc.customer_id) IS NOT NULL
 -- ORDER BY date, customer_id
