@@ -1,7 +1,7 @@
 -- currently don't use
 config {
     type: "table",
-    tags: ["adhoc-office"],
+   // tags: ["adhoc-office"],
     description: "SKU status history by hours ( 1 day ) || PIC: Minh.luu;  model_type: table; schedule: hourly",
     name: "fact_sku_status_day_by_hour",
     columns: {

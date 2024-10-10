@@ -46,6 +46,25 @@ group by all)
     event = "ADD_TO_CART"
     group by 1, 2
 )
+, online_cus as 
+(select
+    created_date,
+    customer_id,
+    1 as is_online
+from ${source.platinum}.monitoring_prd_realtime_user_customer_event oi
+where DATE(created_time, "Asia/Ho_Chi_Minh")>= "2024-06-01"
+qualify ROW_NUMBER() over (partition by created_date,customer_id)= 1
+)
+, chat_cus as 
+(
+    select 
+        created_date,
+        customer_id,
+        1 as is_chat
+    from ${source.platinum}.integration_prd_chat_conversation
+    where DATE(created_time, "Asia/Ho_Chi_Minh")>= "2024-06-01"
+    qualify ROW_NUMBER() over (partition by created_date,customer_id)= 1
+)
 SELECT 
     COALESCE(ds.date, oi.created_date, ue.created_date) AS date,
     COALESCE(oi.customer_id, ue.customer_id) AS customer_id,
@@ -58,10 +77,17 @@ SELECT
     oi.order_amount,
     
     -- Metrics from user_event
-    ue.no_add_cart
+    ue.no_add_cart,
+  COALESCE(oc.is_online, 0) AS is_online,
+  COALESCE(cc.is_chat, 0) AS is_chat
 
 FROM DateSeries ds
 FULL OUTER JOIN order_item oi ON ds.date = oi.created_date
 FULL OUTER JOIN user_event ue ON ds.date = ue.created_date AND oi.customer_id = ue.customer_id
-WHERE COALESCE(oi.customer_id, ue.customer_id) IS NOT NULL
-ORDER BY date, customer_id
+FULL OUTER JOIN online_cus oc ON COALESCE(oi.created_date, ue.created_date) = oc.created_date 
+                               AND COALESCE(oi.customer_id, ue.customer_id) = oc.customer_id
+FULL OUTER JOIN chat_cus cc ON COALESCE(oi.created_date, ue.created_date, oc.created_date) = cc.created_date 
+                             AND COALESCE(oi.customer_id, ue.customer_id, oc.customer_id) = cc.customer_id
+WHERE COALESCE(oi.created_date, ue.created_date, oc.created_date, cc.created_date) IS NOT NULL
+  AND COALESCE(oi.customer_id, ue.customer_id, oc.customer_id, cc.customer_id) IS NOT NULL
+-- ORDER BY date, customer_id
