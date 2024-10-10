@@ -46,7 +46,7 @@ WITH
             , SAFE_CAST( JSON_VALUE(r, '$.to_time') AS INT64 ) / 3600 AS end_hour
             , JSON_VALUE(r, '$.route_name') AS route_name
             , REGEXP_REPLACE(TO_JSON_STRING(JSON_QUERY(r, '$.day_of_week')), r'\[|\]|\"', "") AS list_day_of_week
-            , TIMESTAMP_ADD(TIMESTAMP_SECONDS(SAFE_CAST(ts.picked_time AS INT64)), INTERVAL 7 HOUR) AS carrier_picked_time
+            , TIMESTAMP_ADD(TIMESTAMP_SECONDS(NULLIF(SAFE_CAST(ts.picked_time AS INT64), 0)), INTERVAL 7 HOUR) AS carrier_picked_time
         FROM ${source.platinum}.warehouse_prd_picking_pick_ticket AS p
             , UNNEST(JSON_QUERY_ARRAY(extra_props, '$.route_details')) AS r
             LEFT JOIN (
@@ -107,7 +107,7 @@ WITH
             , IF(
                 carrier_picked_time IS NOT NULL
                 , IF(
-                        carrier_picked_time <= TIMESTAMP_ADD(cut_off_ts, INTERVAL 90 MINUTE)
+                        carrier_picked_time <= TIMESTAMP_ADD(cut_off_ts, INTERVAL 210 MINUTE)
                         , "ON_TIME"
                         , "LATE"
                   )
@@ -120,7 +120,7 @@ WITH
 
 SELECT
     *
-    , TIMESTAMP_DIFF(carrier_picked_time, cut_off_ts, MINUTE ) / 60 AS delayed_duration
+    , TIMESTAMP_DIFF(carrier_picked_time, cut_off_ts, MINUTE ) / 60 AS delay_hours
 FROM cut_off_status
 -- WHERE ticket_id = 13290198
 

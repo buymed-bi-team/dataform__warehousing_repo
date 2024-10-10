@@ -240,7 +240,7 @@ SELECT
 	, f.route_name AS fulfill_route_name
 	, f.fulfill_status_cut_off
 	, f.actual_route
-	, f.delayed_duration
+	, f.delay_hours
 	-- , IF(
     --     ot.carrier_picked_at IS NOT NULL
 	--     , IF(
