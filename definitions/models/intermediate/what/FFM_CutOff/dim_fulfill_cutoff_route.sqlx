@@ -41,13 +41,23 @@ WITH
                 WHEN 6 THEN "Friday"
                 WHEN 7 THEN "Saturday"
               END AS dow_ready_for_pick
-            , SAFE_CAST( JSON_VALUE(r, '$.from_time') AS INT64 ) / 3600 AS start_time
-            , SAFE_CAST( JSON_VALUE(r, '$.cut_off_time') AS INT64 ) / 3600 AS cut_off_time
-            , SAFE_CAST( JSON_VALUE(r, '$.to_time') AS INT64 ) / 3600 AS end_time
+            , SAFE_CAST( JSON_VALUE(r, '$.from_time') AS INT64 ) / 3600 AS start_hour
+            , SAFE_CAST( JSON_VALUE(r, '$.cut_off_time') AS INT64 ) / 3600 AS cut_off_hour
+            , SAFE_CAST( JSON_VALUE(r, '$.to_time') AS INT64 ) / 3600 AS end_hour
             , JSON_VALUE(r, '$.route_name') AS route_name
             , REGEXP_REPLACE(TO_JSON_STRING(JSON_QUERY(r, '$.day_of_week')), r'\[|\]|\"', "") AS list_day_of_week
-        FROM ${source.platinum}.warehouse_prd_picking_pick_ticket
+            , TIMESTAMP_ADD(TIMESTAMP_SECONDS(NULLIF(SAFE_CAST(ts.picked_time AS INT64), 0)), INTERVAL 7 HOUR) AS carrier_picked_time
+        FROM ${source.platinum}.warehouse_prd_picking_pick_ticket AS p
             , UNNEST(JSON_QUERY_ARRAY(extra_props, '$.route_details')) AS r
+            LEFT JOIN (
+                SELECT DISTINCT
+                    reference_id
+                    , delivery_order_code
+                    , status
+                FROM ${source.platinum}.warehouse_prd_core_delivery_order
+            ) AS do ON do.reference_id = p.ticket_id AND do.status <> 'MERGED'
+            LEFT JOIN ${source.platinum}.delivery_prd_transporting_shipping_order AS ts
+                ON ts.reference_code = do.delivery_order_code
     ),
 
     cut_off_route AS (
@@ -55,21 +65,64 @@ WITH
             *
             , IF(
                 EXTRACT(HOUR FROM ready_for_pick_time) + EXTRACT(MINUTE FROM ready_for_pick_time) / 60 + EXTRACT(SECOND FROM ready_for_pick_time) / 3600
-                    BETWEEN start_time AND end_time
+                    BETWEEN start_hour AND end_hour
                 AND STRPOS(list_day_of_week, dow_ready_for_pick) > 0 
                 , TRUE
                 , FALSE
               ) AS flag
-            , IF(end_time < cut_off_time, TRUE, FALSE) AS is_same_day
+            , IF(end_hour < cut_off_hour, TRUE, FALSE) AS is_same_day
         FROM route
-        QUALIFY ROW_NUMBER() over (PARTITION BY ticket_id ORDER BY flag DESC, end_time) = 1
+        QUALIFY ROW_NUMBER() over (PARTITION BY ticket_id ORDER BY flag DESC, end_hour) = 1
+    ),
+
+    actual_route AS (
+        SELECT
+            ticket_id
+            , ABS(
+                TIMESTAMP_DIFF(
+                    TIMESTAMP_SUB(carrier_picked_time, INTERVAL 210 MINUTE )
+                    , PARSE_TIMESTAMP("%Y-%m-%d %H:%M", CONCAT(DATE(carrier_picked_time), " ", FLOOR(cut_off_hour), ":", FLOOR((cut_off_hour - FLOOR(cut_off_hour)) * 60)))
+                    , SECOND
+                ) / 3600
+              ) AS flag
+            , PARSE_TIMESTAMP("%Y-%m-%d %H:%M", CONCAT(DATE(carrier_picked_time), " ", FLOOR(cut_off_hour), ":", FLOOR((cut_off_hour - FLOOR(cut_off_hour)) * 60))) AS actual_delivery_route_ts
+            , route_name AS actual_delivery_route_name
+        FROM route AS a
+        QUALIFY ROW_NUMBER() over (PARTITION BY ticket_id ORDER BY flag ) = 1
+    ),
+
+    cut_off_time AS (
+        SELECT
+            *
+            , IF(
+                flag AND is_same_day
+                , PARSE_TIMESTAMP("%Y-%m-%d %H:%M", CONCAT(DATE(ready_for_pick_time), " ", FLOOR(cut_off_hour), ":", FLOOR((cut_off_hour - FLOOR(cut_off_hour)) * 60)))
+                , PARSE_TIMESTAMP("%Y-%m-%d %H:%M", CONCAT(DATE_ADD(DATE(ready_for_pick_time), INTERVAL 1 DAY), " ", FLOOR(cut_off_hour), ":", FLOOR((cut_off_hour - FLOOR(cut_off_hour)) * 60)))
+              ) AS cut_off_ts
+        FROM cut_off_route
+    ),
+
+    cut_off_status AS (
+        SELECT
+            a.*
+            , IF(
+                carrier_picked_time IS NOT NULL
+                , IF(
+                        carrier_picked_time <= TIMESTAMP_ADD(cut_off_ts, INTERVAL 210 MINUTE)
+                        , "ON_TIME"
+                        , "LATE"
+                  )
+                , IF(cut_off_ts < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR), "LATE", NULL)
+              ) AS fulfill_status_cut_off
+        FROM cut_off_time AS a
     )
 
 SELECT
-    *
-    , IF(
-        flag AND is_same_day
-        , PARSE_TIMESTAMP("%Y-%m-%d %H:%M", CONCAT(DATE(ready_for_pick_time), " ", FLOOR(cut_off_time), ":", FLOOR((cut_off_time - FLOOR(cut_off_time)) * 60)))
-        , PARSE_TIMESTAMP("%Y-%m-%d %H:%M", CONCAT(DATE_ADD(DATE(ready_for_pick_time), INTERVAL 1 DAY), " ", FLOOR(cut_off_time), ":", FLOOR((cut_off_time - FLOOR(cut_off_time)) * 60)))
-      ) AS cut_off_ts
-FROM cut_off_route
+    a.*
+    , TIMESTAMP_DIFF(carrier_picked_time, cut_off_ts, MINUTE ) / 60 AS delay_hours
+    , b.actual_delivery_route_name
+    , b.actual_delivery_route_ts
+FROM cut_off_status AS a
+    LEFT JOIN actual_route AS b ON a.ticket_id = b.ticket_id AND a.fulfill_status_cut_off = "LATE"
+-- WHERE ticket_id = 13290198
+
