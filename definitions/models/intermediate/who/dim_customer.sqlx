@@ -107,6 +107,7 @@ WITH
         customer_id
         , STRING_AGG(DISTINCT channel, ",") AS list_channel
       FROM ${ref('fact_order')}
+      WHERE order_status <> 'CANCEL'
       GROUP BY 1
   ),
 
@@ -258,7 +259,7 @@ SELECT
     END AS customer_address,
     CASE
         WHEN REGEXP_CONTAINS( UPPER(name), r'TECH SELLER|TEST|TECH-QC|TS-TECH|\[TECH\]|\(TECH\)|DEMO|QC|TECH MONITOR|TECH 2') THEN "TECH"
-        WHEN REGEXP_CONTAINS( customer.email, "@buymed|@thuocsi") THEN "EMPLOYEE"
+        WHEN TO_JSON_STRING( customer.tags ) LIKE '%\"NHANVIEN\"%' OR REGEXP_CONTAINS( customer.email, "@buymed|@thuocsi") THEN "EMPLOYEE"
         WHEN customer.customer_id = 241098 THEN "CONSIGNMENT"
         WHEN customer.customer_id = 360299 THEN "OPV"
         WHEN TO_JSON_STRING( customer.tags ) LIKE '%TENDER%' THEN 'TENDER'
@@ -268,6 +269,7 @@ SELECT
     END AS customer_report_category,
 
     CASE
+        WHEN TO_JSON_STRING( customer.tags ) LIKE '%\"NHANVIEN\"%' OR REGEXP_CONTAINS( customer.email, "@buymed|@thuocsi") THEN "EMPLOYEE"
         WHEN STRPOS(list_channel, "TENDER") > 0 THEN "TENDER"
         WHEN STRPOS(list_channel, "DISTRIBUTION") > 0  THEN "DISTRIBUTION"
         WHEN STRPOS(list_channel, "CONSIGNMENT") > 0 THEN "CONSIGNMENT"

@@ -60,6 +60,7 @@ select
     cast(json_value(a_l,"$.num_package") as int64) as num_packages,
     cast(json_value(a_l,"$.scanned_quantity") as int64) as scanned_packages,
     json_value(a_l,"$.so") as so_code,
+    SAFE_CAST(json_value(a_l,"$.weight") AS FLOAT64) as weight,
     json_value(a_l, "$.status") as original_status,
     array_length(json_extract_array(a_l,"$.baskets")) as num_bin,
 from ${source.platinum}.delivery_prd_transporting_handover_ticket AS a

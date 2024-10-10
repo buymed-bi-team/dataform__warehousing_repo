@@ -44,7 +44,8 @@ config {
 
 
 SELECT 
-    s.code AS supplier_code          -- primary key, 
+    TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
+    , s.code AS supplier_code          -- primary key, 
     , s.seller_id AS supplier_id
     , CASE
         WHEN s.seller_class in ("INTERNAL", "PURCHASER") THEN s.code
