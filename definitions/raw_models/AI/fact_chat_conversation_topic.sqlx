@@ -32,7 +32,8 @@ select
     ct.status,
     customer_support_id,
     conversation_type,
-    mg_id
+    mg_id,
+    seller_id
     -- count(distinct ct.customer_id),
     -- count(distinct ct.customer_id_in_mkp_system)
 from ${source.platinum}.integration_prd_chat_conversation_topic ct
