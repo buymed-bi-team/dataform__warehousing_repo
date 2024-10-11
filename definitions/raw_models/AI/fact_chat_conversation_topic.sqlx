@@ -11,13 +11,8 @@ WITH multi_session as
     select SAFE_CAST(JSON_EXTRACT_SCALAR(extra_props,'$.conversation_id') AS INT) conversation_id,
        SAFE_CAST( JSON_EXTRACT_SCALAR(extra_props,'$.topic_id')AS INT) topic_id,
        JSON_EXTRACT_SCALAR(extra_props,'$.status') status,
-    from ${source.silver}.integration_prd_chat_send_msg_to_multi_customer_session_detail
-    QUALIFY ROW_NUMBER() OVER(_window) = 1 AND FIRST_VALUE(action) OVER(_window) <> 'd'
-WINDOW
-    _window AS (
-        PARTITION BY mg_id
-        ORDER BY synced_at DESC, IF(action = 'd', 3, IF(action = 'u', 2, 1)) DESC, last_updated_time DESC
-    )
+    from ${source.platinum}.integration_prd_chat_send_msg_to_multi_customer_session_detail
+    
 )
 
 select

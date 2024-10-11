@@ -35,8 +35,8 @@ qualify ROW_NUMBER() over (partition by created_date,customer_id)= 1
         created_date,
         customer_id,
         1 as is_chat
-    from ${source.platinum}.integration_prd_chat_conversation_topic
-    where DATE(created_time, "Asia/Ho_Chi_Minh")>= "2024-06-01" and conversation_type in ("CUSTOMER_WITH_CS")
+    from ${source.ref}.fact_chat_conversation_topic
+    where created_date >= "2024-06-01" and conversation_type in ("CUSTOMER_WITH_CS")
     qualify ROW_NUMBER() over (partition by created_date,customer_id)= 1
 )
 SELECT 
