@@ -119,10 +119,17 @@ WITH
 
 SELECT
     a.*
-    , TIMESTAMP_DIFF(carrier_picked_time, cut_off_ts, MINUTE ) / 60 AS delay_hours
+    , IF(
+        a.fulfill_status_cut_off = 'LATE'
+        , TIMESTAMP_DIFF(carrier_picked_time, cut_off_ts, MINUTE ) / 60 
+        , NULL
+      ) AS delay_hours
     , b.actual_delivery_route_name
     , b.actual_delivery_route_ts
 FROM cut_off_status AS a
-    LEFT JOIN actual_route AS b ON a.ticket_id = b.ticket_id AND a.fulfill_status_cut_off = "LATE"
+    LEFT JOIN actual_route AS b 
+        ON a.ticket_id = b.ticket_id 
+        AND a.fulfill_status_cut_off = "LATE"
+        AND a.carrier_picked_time IS NOT NULL
 -- WHERE ticket_id = 13290198
 

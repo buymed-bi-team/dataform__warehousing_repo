@@ -4,7 +4,12 @@ config {
   name: "fact_inventory_sys_requiring",
   tags: ["8h30"],
   columns: {
-    
+    sku_fc_key: "concatentation of product_id, seller_code, and warehouse_code",
+    sku_code: "sku identifier",
+    warehouse_code: "fc code",
+    type: "type of the purchasing quotation export, either be NORMAL or HEDGING",
+    sys_required_quantity: "quantity_expect of the purchasing quotation export",
+    confirmation_date: "confirmed date from purchasing admin pushing group",
   },
   bigquery: {
     partitionBy: "confirmation_date",

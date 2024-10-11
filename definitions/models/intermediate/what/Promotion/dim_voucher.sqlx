@@ -10,7 +10,10 @@ config {
             ${source.platinum}.marketplace_prd_promotion_voucher,
             ${source.ref}.dim_promotion
         `,
-    tags: ["custom_1h_past5","PROMOTION_MKP"]
+    tags: ["custom_1h_past5","PROMOTION_MKP"],
+    bigquery: {
+        clusterBy: ["voucher_code","voucher_id"]
+    }
 }
 
 SELECT
@@ -54,6 +57,7 @@ SELECT
     , p.campaign_brand
     , JSON_VALUE(extra_props, '$.seller_codes.0') AS seller_code
     , JSON_VALUE(extra_props, '$.seller_name') AS seller_name
+    , REGEXP_REPLACE(JSON_VALUE(v.extra_props, '$.condition_description'), r'\\n|\\|<[^>]*>|&nbsp;', '') AS condition_description
 FROM ${source.platinum}.marketplace_prd_promotion_voucher AS v
     LEFT JOIN UNNEST(JSON_QUERY_ARRAY(rewards)) AS r
     LEFT JOIN ${ref('dim_promotion')} AS p ON v.promotion_id = p.promotion_id
