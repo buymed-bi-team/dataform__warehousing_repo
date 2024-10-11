@@ -39,4 +39,6 @@ LEFT JOIN ${source.platinum}.warehouse_prd_picking_pick_ticket as a on b.ticket_
 LEFT JOIN ${ref("dim_sku")} c on b.sku = c.sku_code
 LEFT JOIN ${ref("dim_sku_item_pricing")} d on CONCAT(c.sku_key, "_", a.warehouse_code) = d.sku_fc_key
 WHERE
-    a.status IN ("ONHOLD", "PICKING", "WAIT_CS", "WAIT_TO_ADD", "WAIT_TO_PICK")
+    a.created_date >= DATE_SUB(current_date, INTERVAL 1 MONTH)
+    AND b.created_date >= DATE_SUB(current_date, INTERVAL 1 MONTH)
+    AND a.status IN ("ONHOLD", "PICKING", "WAIT_CS", "WAIT_TO_ADD", "WAIT_TO_PICK")
