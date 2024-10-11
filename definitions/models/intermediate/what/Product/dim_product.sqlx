@@ -210,7 +210,7 @@ SELECT
     ) THEN 'TECH'
     WHEN seller.code LIKE 'MARKETING' then 'MARKETING'
     WHEN seller.code LIKE 'DENX' then 'DENX'
-    WHEN UPPER( COALESCE( product.unit, product.volumes ) ) = 'COMBO' then 'COMBO'
+    WHEN UPPER( COALESCE( product.unit, product.volumes ) ) = 'COMBO' OR product.is_combo = true then 'COMBO'
     WHEN REGEXP_CONTAINS(
           LOWER(product.name ),
           r'combo|quà|tặng|khuyến mãi|khuyến mại|hóa đơn|bảo hiểm|thẻ cào|mua|gift 1|gift 2|tờ rơi|áo blouse|poster|ưu đãi|trưng bày'
@@ -227,7 +227,9 @@ SELECT
         'Normal Product'
     ) AS product_classification,
 
-    tb4.name as main_category_name 
+    tb4.name as main_category_name,
+
+    product.is_combo
 
 FROM ${source.platinum}.marketplace_prd_product_v2_product AS product
 LEFT JOIN  ${source.platinum}.seller_prd_core_seller AS seller on product.owner = seller.code
@@ -248,6 +250,7 @@ WHERE
     AND LOWER(product.name) NOT LIKE '%[tech%'
     AND LOWER(product.name) NOT LIKE '%[oanh%'
     AND LOWER(product.name) NOT LIKE '%sp test%'
+QUALIFY ROW_NUMBER() OVER(PARTITION BY product_id) = 1
 
 post_operations {                
   ALTER TABLE ${self()} ADD PRIMARY KEY (product_id) NOT ENFORCED;
