@@ -1,0 +1,20 @@
+config {
+    type: "table",
+    name: "delivery_prd_transporting_delivery_truck",
+    schema: "platinum_buymed_vn",
+    assertions: {
+        uniqueKey: 'mg_id',
+        nonNull: ["created_date"]
+    },
+    tags: ["0h00"]
+}
+SELECT 
+    *,
+    DATE(DATETIME(created_time) + interval 7 day) created_date
+FROM silver_buymed_vn.delivery_prd_transporting_delivery_truck
+QUALIFY ROW_NUMBER() OVER (_window) > 1
+WINDOW _window AS (
+    PARTITION BY mg_id
+    ORDER BY synced_at DESC,
+    IF(action = 'd', 3, IF(action = 'u', 2, 1))
+)
