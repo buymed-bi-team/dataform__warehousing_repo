@@ -1,0 +1,37 @@
+config {
+    type: "table",
+    description: " Customer Conversation Chat Excluded Message to Multi-customer; PIC: tu.dang; model_type: table; schedule: 12h00;",
+    tags: ["12h00"],
+    columns: {
+
+    }
+}
+WITH multi_session as
+(
+    select SAFE_CAST(JSON_EXTRACT_SCALAR(extra_props,'$.conversation_id') AS INT) conversation_id,
+       SAFE_CAST( JSON_EXTRACT_SCALAR(extra_props,'$.topic_id')AS INT) topic_id,
+       JSON_EXTRACT_SCALAR(extra_props,'$.status') status,
+    from ${source.platinum}.integration_prd_chat_send_msg_to_multi_customer_session_detail
+    
+)
+
+select
+    created_date,
+    datetime(created_time, "Asia/Ho_Chi_Minh") as created_time,
+    customer_id,
+    fully_processed_by_ai,
+    contain_cs_message,
+    contain_ai_message,
+    ct.topic_code,
+    ct.topic_id,
+    ct.conversation_id,
+    ct.status,
+    customer_support_id,
+    conversation_type,
+    mg_id,
+    seller_id
+    -- count(distinct ct.customer_id),
+    -- count(distinct ct.customer_id_in_mkp_system)
+from ${source.platinum}.integration_prd_chat_conversation_topic ct
+left join multi_session ms on ct.conversation_id =ms.conversation_id and ct.topic_id = ms.topic_id
+where ms.status IS NULL

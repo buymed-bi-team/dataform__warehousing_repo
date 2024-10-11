@@ -4,8 +4,8 @@ config {
     schema: "buymed_product_recommendation",
     description: `date_start: 2024-06-01 | PIC: tu.dang; schedule: 0h00 daily; model type: table
     Source:
-        ${source.platinum}.monitoring_prd_realtime_user_customer_event
-        ${source.platinum}.integration_prd_chat_conversation`,
+        ${source.platinum}.monitoring_prd_realtime_user_customer_session_v3
+        ${source.platinum}.integration_prd_chat_conversation_topic`,
     columns: {
         customer_id: "NonNull | The unique identifier for the customer",
             },
@@ -25,7 +25,7 @@ WITH DateSeries AS
     created_date,
     customer_id,
     1 as is_online
-from ${source.platinum}.monitoring_prd_realtime_user_customer_event oi
+from ${source.platinum}.monitoring_prd_realtime_user_customer_session_v3 oi
 where DATE(created_time, "Asia/Ho_Chi_Minh")>= "2024-06-01"
 qualify ROW_NUMBER() over (partition by created_date,customer_id)= 1
 )
@@ -35,8 +35,8 @@ qualify ROW_NUMBER() over (partition by created_date,customer_id)= 1
         created_date,
         customer_id,
         1 as is_chat
-    from ${source.platinum}.integration_prd_chat_conversation
-    where DATE(created_time, "Asia/Ho_Chi_Minh")>= "2024-06-01"
+    from ${source.ref}.fact_chat_conversation_topic
+    where created_date >= "2024-06-01" and conversation_type in ("CUSTOMER_WITH_CS")
     qualify ROW_NUMBER() over (partition by created_date,customer_id)= 1
 )
 SELECT 
