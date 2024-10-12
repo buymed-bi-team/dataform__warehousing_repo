@@ -125,7 +125,7 @@ WITH product_retail_unit AS (
       WHERE 
         object = 'Product'
         AND type = 'CIC'
-        AND submit_id >= 5044
+        AND submit_id >= 5046
       QUALIFY ROW_NUMBER() OVER(PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
   )
 
