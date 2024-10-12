@@ -117,6 +117,18 @@ WITH product_retail_unit AS (
   GROUP BY product_id
 )
 
+  , product_cic AS (
+      SELECT
+        SAFE_CAST(code AS INT64) AS product_id
+        , LOWER(IF(value <> "NAN", value, NULL)) AS cic_name
+      FROM collector.data_prd
+      WHERE 
+        object = 'Product'
+        AND type = 'CIC'
+        AND submit_id >= 5044
+      QUALIFY ROW_NUMBER() OVER(PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
+  )
+
 SELECT
   ${utils.ToTimezone('current_timestamp()')} as transformed_at,
   ${utils.ToTimezone('product.created_time')} as product_created_at,
@@ -227,9 +239,11 @@ SELECT
         'Normal Product'
     ) AS product_classification,
 
-    tb4.name as main_category_name,
+  tb4.name as main_category_name,
 
-    product.is_combo
+  product.is_combo,
+
+  cic.cic_name
 
 FROM ${source.platinum}.marketplace_prd_product_v2_product AS product
 LEFT JOIN  ${source.platinum}.seller_prd_core_seller AS seller on product.owner = seller.code
@@ -242,6 +256,7 @@ LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_product AS tb1 ON tb1.co
 LEFT JOIN product_retail_unit AS tb2 ON tb2.product_id = product.product_id
 LEFT JOIN ${source.platinum}.core_prd_master_data_country AS tb3 ON tb3.code = product.origin
 LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_main_category AS tb4 ON tb4.code = product.main_category_code
+LEFT JOIN product_cic AS cic ON cic.product_id = product.product_id
 
 WHERE
     LOWER(product.name) NOT LIKE '%(bỏ)%'
