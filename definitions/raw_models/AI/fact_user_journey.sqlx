@@ -61,4 +61,4 @@ SELECT mg_id,
     LEAD(event,4) over (partition by customer_id order by created_time) next_act_4
 FROM
     stg
-where customer_id >0 and date(created_time)>= date(date_sub( created_time, interval 30 day) )
+where customer_id >0 and date(created_time)>= date_add( CURRENT_DATE(), interval -30 day) 
