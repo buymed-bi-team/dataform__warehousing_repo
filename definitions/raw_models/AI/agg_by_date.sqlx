@@ -25,7 +25,8 @@ WITH DateSeries AS
             else 0
             end) as amt_longtail_rcm,
             sum(outbound_amount) as amt_outbound_rcm,
-            sum(purchase_amount) as amt_purchase_rcm
+            sum(purchase_amount) as amt_purchase_rcm,
+            count(oi.product_id) as no_order_item_rcm
 
      from ${ref('fact_checkout_item')}  oi
     left join ${ref('dim_order_status')}  do on oi.order_id = do.order_id
@@ -54,7 +55,8 @@ WITH DateSeries AS
             else 0
             end) as amt_longtail,
             sum(outbound_amount) as amt_outbound,
-            sum(purchase_amount) as amt_purchase
+            sum(purchase_amount) as amt_purchase,
+            count(oi.product_id) as no_order_item
 
      from ${ref('fact_checkout_item')}  oi
     left join ${ref('dim_order_status')}  do on oi.order_id = do.order_id
@@ -102,6 +104,7 @@ SELECT
     oir.amt_longtail_rcm,
     amt_outbound_rcm,
     amt_purchase_rcm,
+    no_order_item_rcm,
 
     -- Metrics from order_item
     oi.amt_checkout,
@@ -112,6 +115,7 @@ SELECT
     oi.amt_longtail,
     amt_purchase,
     amt_outbound,
+    no_order_item,
 
     -- Metrics from user_event
     ue.count_add_cart_rcm,
