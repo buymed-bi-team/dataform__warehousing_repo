@@ -1,0 +1,100 @@
+config {
+    // Do bên Tín yêu cầu gấp, nên tìm hiểu để đâu
+    type: "view",
+    name: "fact_inventory_control_outgoing",
+    description: "PIC v2: Minhluu"
+}
+
+WITH cte_date as (
+	SELECT date_sub(date_trunc(date_sub( current_timestamp() , interval 60 day), day), interval 7 hour)  as start_date
+	-- select date_sub( timestamp( date_trunc( date_sub( current_date('+7'), interval 1 month) , month ) ) , interval 7 hour ) as start_date
+-- 		, current_timestamp
+), fact_pick_ticket as (
+    SELECT
+        p.mg_id
+        , p.ticket_id
+        , p.admin_id as order_id
+        , timestamp_add( p.synced_at, interval 7 hour ) as last_updated_at
+        , timestamp_add( p.activation_time, interval 7 hour ) as activated_at
+        , timestamp_add( p.ready_for_pick_time, interval 7 hour ) as ready_for_pick_at
+        , timestamp_add( p.start_time, interval 7 hour ) as start_to_pick_at
+        , p.warehouse_code as fc_code
+        , p.tags
+        , p.status as ticket_status
+        , p.point as priority_point
+        , p.sort as sort_point
+    FROM ${source.platinum}.warehouse_prd_picking_pick_ticket as p
+    WHERE
+        p.created_time >= (select start_date from cte_date)
+), fact_pick_ticket_item as (
+    SELECT 
+        a.mg_id
+        , a.ticket_id
+        , timestamp_add( a.created_time, interval 7 hour ) as confirmed_at
+        , timestamp_add( a.synced_at , interval 7 hour ) as last_updated_at
+        , timestamp_add( a.finish_full_reserving_time , interval 7 hour ) as reserve_full_at
+        -- , timestamp_add(coalesce(a.finish_full_reserving_time, b.activation_time, b.ready_for_pick_time, current_timestamp), interval 7 hour) as reserve_done_at
+        -- , b.warehouse_code || '_' || a.erp_product_id || '_' || sku.seller_code as code_bi_sku
+        , a.sku as sku_code
+        , a.erp_product_id as product_id
+        , a.order_quantity as demand_quantity
+        , a.quantity as reserved_quantity
+        , a.unit_price as price_unit
+        , a.is_combo
+        , a.is_red_tag as must_have_item
+    FROM ${source.platinum}.warehouse_prd_picking_pick_ticket_item as a
+    WHERE
+        a.created_time >= (select start_date from cte_date)
+), fact_outbound_order as (
+    select
+        so.mg_id 
+        , timestamp_add(so.created_time, interval 7 hour) as confirmed_at
+        , timestamp_add(so.synced_at, interval 7 hour) as last_updated_at
+        , so.warehouse_code as fc_code
+        , so.admin_id as order_id
+        , so.sale_order_code as outbound_code  
+        , so.status as outbound_status
+        , so.warehouse_codes as fc_tags
+        , case 
+            when so.type = 'RETURN' then 'RO' 
+            when so.type = 'TRANSFER' then 'TO'
+            when so.type = "CONSIGNMENT" then "CO"
+            else 'SO' 
+        end as order_type
+        , coalesce(o.ward_code, o.district_code) as ward_code
+        , so.total_amount as demand_amount
+        , o.customer_id
+    from ${source.platinum}.warehouse_prd_core_sale_order as so
+    left join ${source.platinum}.marketplace_prd_order_v2_order as o on so.admin_id = o.order_id
+    where
+        so.created_time >= (select start_date from cte_date)
+)
+
+SELECT
+  pi.mg_id
+  , pi.sku_code
+  , pi.product_id
+  , pi.confirmed_at
+  , pi.last_updated_at
+  , pi.demand_quantity
+  , pi.reserved_quantity
+  , pi.price_unit
+  , pi.is_combo
+  , coalesce(pi.reserve_full_at, p.activated_at, p.ready_for_pick_at, p.start_to_pick_at,  timestamp_add(current_timestamp, interval 7 hour) ) as reserve_done_at
+  , p.ticket_id
+  , p.order_id
+  -- , p.activated_at
+  -- , p.ready_for_pick_at
+  , p.fc_code
+  , p.tags
+  , p.ticket_status
+  , p.priority_point
+  , oo.outbound_code
+  , oo.fc_tags
+  , oo.order_type
+  , oo.ward_code
+  , oo.outbound_status
+FROM fact_pick_ticket_item AS pi
+inner join fact_pick_ticket as p on pi.ticket_id = p.ticket_id
+inner join fact_outbound_order as oo on p.order_id = oo.order_id
+-- order by confirmed_at desc
