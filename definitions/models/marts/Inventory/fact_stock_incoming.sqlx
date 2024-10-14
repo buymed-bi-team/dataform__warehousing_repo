@@ -20,17 +20,26 @@ config {
   }
 }
 
-WITH dedup_inbound_ticket AS ${dedup.dedup(
-  source.silver + `.warehouse_prd_inbound_inbound_ticket`,
-  "ticket_id, po_code, status, created_time",
-  "timestamp(date_sub(current_date(),interval 1 month))"
-)},
+WITH dedup_inbound_ticket AS (
+  SELECT 
+    ticket_id,
+    po_code,
+    status,
+    created_time
+  FROM ${source.platinum}.warehouse_prd_inbound_inbound_ticket
+  WHERE created_date >= DATE_SUB(current_date, INTERVAL 1 MONTH)
+),
 
-dedup_inbound_ticket_item AS ${dedup.dedup(
-  source.silver + `.warehouse_prd_inbound_inbound_ticket_item`,
-  "ticket_id, sku as sku_code, warehouse_code as fc_code, demand_quantity, inbound_quantity",
-  "timestamp(date_sub(current_date(),interval 1 month))"
-)}
+dedup_inbound_ticket_item AS (
+  SELECT
+    ticket_id,
+    sku AS sku_code,
+    warehouse_code AS fc_code,
+    demand_quantity,
+    inbound_quantity
+  FROM ${source.platinum}.warehouse_prd_inbound_inbound_ticket_item
+  WHERE created_date >= DATE_SUB(current_date, INTERVAL 1 MONTH)
+)
 
 SELECT
     a.po_code

@@ -23,6 +23,7 @@ select
     contain_cs_message,
     contain_ai_message,
     ct.topic_code,
+    ct.topic_id,
     ct.conversation_id,
     ct.status,
     customer_support_id,
