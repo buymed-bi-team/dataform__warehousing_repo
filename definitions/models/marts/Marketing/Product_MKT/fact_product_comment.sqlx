@@ -5,7 +5,7 @@ config {
         Type: Table; 
         Refresh Schedule: 0h30 daily;
         Source: 
-            ${source.silver}.marketplace_prd_ticket_comment
+            ${source.platinum}.marketplace_prd_ticket_comment
         `,
         
     tags: ["0h30"]
@@ -15,7 +15,7 @@ with customer as (
   select
     customer_id,
     config_fc as sale_region
-  from gold_buymed_vn.dim_customer
+  from ${ref('dim_customer')}
 ),
 
 reply as (
@@ -35,7 +35,7 @@ SELECT
     ELSE "Refused"
   END AS reply_approve_status
 FROM
-  ${source.silver}.marketplace_prd_ticket_comment AS cm
+  ${source.platinum}.marketplace_prd_ticket_comment AS cm
 WHERE
   type = "REPLY"
 QUALIFY
@@ -59,12 +59,12 @@ select
   r.reply_date,
   r.reply_content
 
-from ${source.silver}.marketplace_prd_ticket_comment as cm
+from ${source.platinum}.marketplace_prd_ticket_comment as cm
 left join customer as c
   on CAST(JSON_VALUE(cm.commenter, "$.customer_id") as INT64) = c.customer_id
 left join reply as r
   on cm.comment_id = r.comment_id
-left join gold_buymed_vn2.dim_sku as s
+left join ${ref('dim_sku')} as s
   on cm.target_code = s.sku_code
 where cm.type = "COMMENT"
 and cm.target_type = "SKU"
