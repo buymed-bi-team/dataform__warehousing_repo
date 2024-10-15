@@ -18,55 +18,22 @@ config {
     tags: ("0h00")
 }
 
--- js {
---     const source_list = [
---         'agg_strategic_gmv-before-cancel',
---         'agg_strategic_gmv-after-cancel_cancel',
---         'agg_strategic_gmv-fulfilled',
---         'agg_strategic_gmv-unff',
---         'agg_strategic_gmv-return',
---         'agg_strategic_gmv-backlog',
---         'agg_strategic_so',
---         'agg_strategic_do',
---         'agg_strategic_item-sold',
---         // 'agg_strategic_cancel-so', //hide
---         'agg_strategic_cancel-before-ffm',
---         'agg_strategic_cancel-after-ffm',
---         'agg_strategic_gmv_with_listed_price'
---     ]
--- }
-
--- ${
---     source_list.map((source,i) =>`
--- SELECT
---     "${source}" as source,
---     CURRENT_DATETIME("+7") AS refresh_time,
---     date,
---     location,
---     channel,
---     measure,
---     value
--- FROM
---     ${ref(source)}
--- WHERE date > "2023-01-01"
--- ${i < source_list.length - 1 ? 'UNION ALL':''}
--- `
---     ).join('')
--- }
-
 js {
-    measure_lst = [
+    // Measure List for aggregate formula
+    sale_order_measure_list = [
         {
             name: "GMV-BEFORE-CANCEL",
             logic: `SUM( fs.sales_price * fs.demand_quantity )`
         },
-        {
-            name: "GMV-AFTER-CANCEL",
-            logic: `SUM( 
-            ( fs.sales_price * demand_quantity )  
-            - IF( fs.order_status like "CANCEL" AND fs.sale_order_code is null, ( fs.sales_price * demand_quantity ),0 )
-            )`
-        },
+        // A special case, we need to divide the Marketplace into Seller Center and MEDX for GMV after cancellations only.
+        // {
+        //     name: "GMV-AFTER-CANCEL",
+        //     logic: `
+        //     SUM( 
+        //     ( fs.sales_price * demand_quantity )  
+        //     - IF( fs.order_status like "CANCEL" AND fs.sale_order_code is null, ( fs.sales_price * demand_quantity ),0 )
+        //     )`
+        // },
         {
             name: "CANCEL",
             logic: `SUM(IF( fs.order_status like "CANCEL", ( fs.sales_price * demand_quantity ), 0))`
@@ -137,18 +104,27 @@ js {
             SUM( 
             ( fs.sales_price * demand_quantity )  
             - IF( fs.order_status like "CANCEL" AND fs.sale_order_code is null, ( fs.sales_price * demand_quantity ),0 )
-            ) -- GMV AFTER CANCELLATION
+            ) -- GMV-AFTER-CANCEL
             
             - SUM(IF( fs.order_status not like "CANCEL" AND fs.order_status in ("DELIVERING","DELIVERED","COMPLETED"),(fs.demand_quantity - fs.outbound_quantity ) ,0 ) * fs.sales_price)
+                -- GMV-UNFF
             )
             /
 
             SUM( 
             ( fs.sales_price * demand_quantity )  
             - IF( fs.order_status like "CANCEL" AND fs.sale_order_code is null, ( fs.sales_price * demand_quantity ),0 )
-            ) -- GMV AFTER CANCELLATION
+            ) -- GMV-AFTER-CANCEL
             * 100
             `
+        },
+
+    ]
+
+    delivery_order_measure_list = [
+        {
+            name: "DO",
+            logic: `COUNT(DISTINCT do.delivery_order_code)`
         }
     ]
 }
@@ -161,10 +137,71 @@ WITH ois AS ( -- FOR DO
         STRING_AGG(DISTINCT supplier_class) supplier_class
     FROM ${ref(`fact_strategic_sale_order_item_single`)} ois 
     GROUP BY 1
+), GMV_AFTER_CANCEL_case AS (
+    SELECT 
+        CURRENT_DATETIME("+7") AS refresh_time,
+        dc.eom as date,
+        CASE
+            WHEN dosr.sales_region_code LIKE "MIENNAM" THEN "SOUTHERN"
+            WHEN dosr.sales_region_code LIKE "MIENTRUNG" THEN "CENTRAL"
+            WHEN dosr.sales_region_code LIKE "MIENBAC" THEN "NORTHERN"
+            ELSE "GMV-VN-REGION-UNKNOWN" 
+        END AS location,
+        CASE
+            WHEN doc.order_channel IN ("MARKETPLACE","CONSIGNMENT" ) THEN
+                IF( REGEXP_CONTAINS(fs.supplier_code,"MEDX") ,
+                    "MEDX",
+                    "SC"
+                )
+            ELSE doc.order_channel
+        END AS channel,
+        "GMV-AFTER-CANCEL" AS measure,
+        SUM( 
+            ( fs.sales_price * demand_quantity )  
+            - IF( fs.order_status like "CANCEL" AND fs.sale_order_code is null, ( fs.sales_price * demand_quantity ),0 ) 
+        ) value
+
+    FROM ${ref(`fact_strategic_sale_order_item_single`)} fs 
+    LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = fs.order_id 
+    LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON fs.order_id = dosr.order_id 
+    LEFT JOIN ${ref(`dim_calendar`)} dc ON date(fs.created_time) = dc.date
+    WHERE  doc.order_channel NOT IN ("TENDER","CONSIGNMENT-RECOGNITION")
+    AND doc.order_channel is not null
+    AND fs.supplier_class not like "TECH"
+    AND date > "2023-01-01"
+    GROUP BY 1,2,3,4,5
+
+    UNION ALL 
+
+    SELECT 
+        CURRENT_DATETIME("+7") AS refresh_time,
+        dc.eom as date,
+        CASE
+            WHEN dosr.sales_region_code LIKE "MIENNAM" THEN "SOUTHERN"
+            WHEN dosr.sales_region_code LIKE "MIENTRUNG" THEN "CENTRAL"
+            WHEN dosr.sales_region_code LIKE "MIENBAC" THEN "NORTHERN"
+            ELSE "GMV-VN-REGION-UNKNOWN" 
+        END AS location,
+        order_channel  as channel,
+        "GMV-AFTER-CANCEL" AS measure,
+        SUM( 
+            ( fs.sales_price * demand_quantity )  
+            - IF( fs.order_status like "CANCEL" AND fs.sale_order_code is null, ( fs.sales_price * demand_quantity ),0 ) 
+        ) value
+
+    FROM ${ref(`fact_strategic_sale_order_item_single`)} fs 
+    LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = fs.order_id 
+    LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON fs.order_id = dosr.order_id 
+    LEFT JOIN ${ref(`dim_calendar`)} dc ON date(fs.confirmation_time) = dc.date
+    WHERE  doc.order_channel LIKE "TENDER"
+    AND fs.order_status not like "WAIT_TO_CONFIRM"
+    AND fs.supplier_class not like "TECH"
+    AND date > "2023-01-01"
+    GROUP BY 1,2,3,4,5
 )
 
 ${
-    measure_lst.map((measure,i)=> `
+    sale_order_measure_list.map((measure,i)=> `
 SELECT 
     CURRENT_DATETIME("+7") AS refresh_time,
     dc.eom as date,
@@ -216,14 +253,15 @@ AND fs.supplier_class not like "TECH"
 AND date > "2023-01-01"
 GROUP BY 1,2,3,4,5
 
-${i < measure_lst.length - 1 ? 'UNION ALL':''}
+${i < sale_order_measure_list.length - 1 ? 'UNION ALL':''}
     `).join('')
 }
 
 UNION ALL 
 
--- DO
 
+${
+    delivery_order_measure_list.map((measure,i)=> `
 SELECT 
 CURRENT_DATETIME("+7") AS refresh_time,
     dc.eom as date,
@@ -280,8 +318,15 @@ AND ois.supplier_class not like "TECH"
 AND date > "2023-01-01"
 GROUP BY 1,2,3,4,5
 
+${i < delivery_order_measure_list.length - 1 ? 'UNION ALL':''}
+    `).join('')
+}
 
 UNION ALL 
+-- For Special Case
+SELECT * FROM GMV_AFTER_CANCEL_case
 
+UNION ALL 
+-- For Special Case
 SELECT * FROM ${ref(`agg_strategic_customer`)}
 WHERE date >= "2023-01-01"

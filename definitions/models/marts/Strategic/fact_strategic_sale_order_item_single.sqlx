@@ -322,61 +322,29 @@ mkp_o AS (
     
 )
 , fact_strategic_2 AS (
-SELECT 
-    * EXCEPT( returned_quantity, note ) ,
-    fs.sales_price + fs.charge_campaign_fee_value + fs.charge_deal_fee_value + fs.charge_combo_fee_value AS listed_price,
+    SELECT 
+        * EXCEPT( returned_quantity, note ) ,
+        fs.sales_price + fs.charge_campaign_fee_value + fs.charge_deal_fee_value + fs.charge_combo_fee_value AS listed_price,
 
-    IF( fs.order_status like "CANCEL" AND fs.sale_order_code is null, demand_quantity, 0) as cancel_before_ffm_quantity,
-    IF( fs.order_status like "CANCEL" AND fs.sale_order_code is not null, demand_quantity, 0) as cancel_after_ffm_quantity,
+        IF( fs.order_status like "CANCEL" AND fs.sale_order_code is null, demand_quantity, 0) as cancel_before_ffm_quantity,
+        IF( fs.order_status like "CANCEL" AND fs.sale_order_code is not null, demand_quantity, 0) as cancel_after_ffm_quantity,
 
-    IF( fs.order_status not like "CANCEL" ,(fs.outbound_quantity - fs.returned_quantity),0) as fulfilled_quantity,
-    IF( fs.order_status not like "CANCEL" AND fs.order_status in ("DELIVERING","DELIVERED","COMPLETED"),(fs.demand_quantity - fs.outbound_quantity ) ,0 ) as unfulfill_quantity,
-    IF( fs.order_status not like "CANCEL" AND fs.order_status not in ("DELIVERING","DELIVERED","COMPLETED"),  (fs.demand_quantity - fs.outbound_quantity ) ,0 ) as backlog_quantity,
-    IF( fs.order_status not like "CANCEL" , fs.returned_quantity, 0) AS returned_quantity,
+        IF( fs.order_status not like "CANCEL" ,(fs.outbound_quantity - fs.returned_quantity),0) as fulfilled_quantity,
+        IF( fs.order_status not like "CANCEL" AND fs.order_status in ("DELIVERING","DELIVERED","COMPLETED"),(fs.demand_quantity - fs.outbound_quantity ) ,0 ) as unfulfill_quantity,
+        IF( fs.order_status not like "CANCEL" AND fs.order_status not in ("DELIVERING","DELIVERED","COMPLETED"),  (fs.demand_quantity - fs.outbound_quantity ) ,0 ) as backlog_quantity,
+        IF( fs.order_status not like "CANCEL" , fs.returned_quantity, 0) AS returned_quantity,
 
-    note 
-    || CASE 
-        WHEN IF(fs.order_status not like "CANCEL" ,(fs.outbound_quantity - fs.returned_quantity),0) = demand_quantity THEN "\nOrder_Item_Note: Fully Fulfilled"
-        WHEN IF(fs.order_status not like "CANCEL" , fs.returned_quantity, 0) = demand_quantity THEN "\nOrder_Item_Note: Fully Returned"
-        WHEN fs.order_status like "CANCEL" AND fs.sale_order_code is null THEN "\nOrder_Item_Note: Cancel before FFM"
-        WHEN fs.order_status like "CANCEL" AND fs.sale_order_code is not null THEN "\nOrder_Item_Note: Cancel after FFM"
-        WHEN IF(fs.order_status not like "CANCEL" AND fs.order_status not in ("DELIVERING","DELIVERED","COMPLETED"),  (fs.demand_quantity - fs.outbound_quantity ) ,0 ) = demand_quantity THEN "\nOrder_Item_Note: Backlog"
-        ELSE "\nOrder_Item_Note: Partial Fulfilled"
-    END 
-    AS note
-FROM fact_strategic_1 as fs 
-    
-), fact_strategic_3 AS (
-    SELECT *
-    -- ( fs.sales_price * demand_quantity ) AS gmv_before_cancellation,
-    -- ( fs.sales_price * demand_quantity )  
-    -- - IF( fs.order_status like "CANCEL" AND fs.sale_order_code is null, ( fs.sales_price * demand_quantity ),0 ) -- cancellation_before_ffm
-    -- AS gmv_after_cancellation,
-    -- IF( fs.order_status like "CANCEL", ( fs.sales_price * demand_quantity ), 0) AS cancel,
-
-    -- IF( fs.order_status like "CANCEL" AND fs.sale_order_code is null, ( fs.sales_price * demand_quantity ),0 ) AS cancellation_before_ffm,
-    -- IF( fs.order_status like "CANCEL" AND fs.sale_order_code is not null, ( fs.sales_price * demand_quantity ),0 ) AS cancellation_after_ffm,
-
-    -- IF( fs.order_status not like "CANCEL" ,(fs.outbound_quantity - fs.returned_quantity),0) * fs.sales_price AS fulfilled_amount,
-    -- IF( fs.order_status not like "CANCEL" AND fs.order_status in ("DELIVERING","DELIVERED","COMPLETED"),(fs.demand_quantity - fs.outbound_quantity ) ,0 ) * fs.sales_price AS unfulfilled_amount,
-    -- IF( fs.order_status not like "CANCEL" AND fs.order_status not in ("DELIVERING","DELIVERED","COMPLETED"),  (fs.demand_quantity - fs.outbound_quantity ) ,0 ) * fs.sales_price AS backlog_amount,
-    -- IF( fs.order_status not like "CANCEL" , fs.returned_quantity, 0) * fs.sales_price AS returned_amount,
-
-    -- IF( fs.order_status like "CANCEL" AND fs.sale_order_code is not null, ( fs.sales_price * fs.demand_quantity ),0 ) -- AS cancel_after_ffm
-    -- + IF( fs.order_status not like "CANCEL" ,(fs.outbound_quantity - fs.returned_quantity),0) * fs.sales_price -- AS fulfilled_amount
-    -- + IF( fs.order_status not like "CANCEL" AND fs.order_status not in ("DELIVERING","DELIVERED","COMPLETED"),  (fs.demand_quantity - fs.outbound_quantity ) ,0 ) * fs.sales_price -- AS backlog_amount,
-    -- + IF( fs.order_status not like "CANCEL" , fs.returned_quantity, 0) * fs.sales_price  -- AS returned_amount,
-    -- AS nmv,
-
-    -- (fs.sales_price + fs.charge_campaign_fee_value + fs.charge_deal_fee_value + fs.charge_combo_fee_value) * fs.demand_quantity AS gmv_with_listed_price,
-    -- ((fs.listed_price - fs.sales_price) * fs.demand_quantity) AS commercial_amount,
-
-    -- IF( commercial_type = "DEAL", (fs.listed_price - fs.sales_price) * demand_quantity, 0) AS deal_amount,
-    -- IF( commercial_type = "CAMPAIGN", (fs.listed_price - fs.sales_price) * demand_quantity, 0) AS campaign_amount,
-    -- IF( commercial_type = "COMBO",(fs.listed_price - fs.sales_price) * demand_quantity, 0) AS combo_amount
-
-
-    FROM fact_strategic_2 as fs 
+        note 
+        || CASE 
+            WHEN IF(fs.order_status not like "CANCEL" ,(fs.outbound_quantity - fs.returned_quantity),0) = demand_quantity THEN "\nOrder_Item_Note: Fully Fulfilled"
+            WHEN IF(fs.order_status not like "CANCEL" , fs.returned_quantity, 0) = demand_quantity THEN "\nOrder_Item_Note: Fully Returned"
+            WHEN fs.order_status like "CANCEL" AND fs.sale_order_code is null THEN "\nOrder_Item_Note: Cancel before FFM"
+            WHEN fs.order_status like "CANCEL" AND fs.sale_order_code is not null THEN "\nOrder_Item_Note: Cancel after FFM"
+            WHEN IF(fs.order_status not like "CANCEL" AND fs.order_status not in ("DELIVERING","DELIVERED","COMPLETED"),  (fs.demand_quantity - fs.outbound_quantity ) ,0 ) = demand_quantity THEN "\nOrder_Item_Note: Backlog"
+            ELSE "\nOrder_Item_Note: Partial Fulfilled"
+        END 
+        AS note
+    FROM fact_strategic_1 as fs 
 )
 
 
@@ -397,6 +365,7 @@ SELECT
   ois.more_note,
   ois.listed_price,
   ois.sales_price,
+  ois.supplier_code,
   
   ois.demand_quantity,
   ois.backlog_quantity, 
@@ -406,26 +375,9 @@ SELECT
   ois.cancel_before_ffm_quantity, 
   ois.cancel_after_ffm_quantity, 
 
---   ois.gmv_with_listed_price,
---   ois.commercial_amount,
---   ois.deal_amount, 
---   ois.campaign_amount,
---   ois.combo_amount,
---   -- ois.gift_amount,
-
---   ois.gmv_before_cancellation,
---   ois.cancellation_before_ffm,
---   ois.gmv_after_cancellation,
---   ois.unfulfilled_amount,
---   ois.nmv, 
-  
---   ois.fulfilled_amount,
---   ois.backlog_amount,
---   ois.returned_amount,
---   ois.cancellation_after_ffm
 
 
-FROM fact_strategic_3 ois
+FROM fact_strategic_2 ois
 
 -- -- post_operations {
 -- --     ALTER TABLE ${self()} 
