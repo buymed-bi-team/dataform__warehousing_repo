@@ -1,0 +1,40 @@
+config {
+    type: "view",
+    name: "fact_po_checkin",
+    description: "PICv1: Trung.tran PICv2:MinhLuu"
+}
+
+WITH cte_date AS (
+	SELECT date_sub(date_trunc(date_sub( current_timestamp() , interval 3 day), day), interval 7 hour)  as start_date
+)
+
+, cte_checkin AS (
+SELECT 
+	a.po_code
+	, min(a.received_time) as first_checkin_ts
+FROM ${source.platinum}.warehouse_prd_inbound_receipt_session as a
+-- FROM `gold_buymed_vn.dedup_warehouse_prd_inbound_receipt_session` as a
+WHERE
+	a.created_time >= (select start_date from cte_date)
+	and a.po_code is not null
+GROUP BY 1
+)
+
+SELECT
+	ch.po_code
+	-- , po.po_code
+	, timestamp_add(ib.created_time, interval 7 hour) as po_confirmed_ts
+	, timestamp_add(ch.first_checkin_ts, interval 7 hour) as first_checkin_ts
+	, ib.warehouse_code as fc_code
+	, COALESCE(po.status, ib.status) as po_status
+	, ib.status as inbound_status
+	, COALESCE(po.vendor_code, ib.seller_code) || '_' || ib.warehouse_code as bi_vendor_code
+	, po.payment_term
+	, source_document
+	, po.total_without_vat_price as total_amount_before_vat
+	, po.total_price as total_amount_after_vat
+	, po.original_pos
+	, po.type
+FROM cte_checkin as ch
+LEFT JOIN ${source.platinum}.seller_prd_purchasing_purchase_order as po on ch.po_code = po.po_code
+LEFT JOIN ${source.platinum}.warehouse_prd_inbound_inbound_ticket as ib on ch.po_code = ib.po_code
