@@ -45,19 +45,17 @@ with cte_date as (
         from (
             select *
             from ${source.platinum}.warehouse_prd_inbound_put_ticket 
-            where ingest_time >= (select TIMESTAMP(start_date) from cte_date)
-                and (created_time >= (select TIMESTAMP(start_date) from cte_date) or created_time is null )
+            where created_date >= (select DATE(start_date) from cte_date)
         ) a
         -- left join buymed_vn.wh_put_ticket_item_prd as b on a.ticket_id = b.ticket_id
         left join (
             select *
             from ${source.platinum}.warehouse_prd_inbound_put_ticket_item
-            where ingest_time >= (select TIMESTAMP(start_date) from cte_date)
-                and (created_time >= (select TIMESTAMP(start_date) from cte_date) or created_time is null )
+            where created_date >= (select DATE(start_date) from cte_date)
         ) as b on a.ticket_id = b.ticket_id
         where a.status = "COMPLETED"
             and a.warehouse_code in ("BD", "HN",'DN')
-            and JSON_EXTRACT_SCALAR(a.extra_props, '$.inbound_code') is not null
+            and COALESCE(JSON_EXTRACT_SCALAR(a.extra_props, '$.inbound_code'), JSON_VALUE(a.extra_props, '$.suggest_reference_codes.0')) is not null
             and b.done_quantity > 0
             and length(b.expired_date) = 10
             and b.expired_date is not null
