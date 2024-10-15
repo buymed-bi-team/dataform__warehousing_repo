@@ -50,6 +50,7 @@ select
   cm.comment_id,
   JSON_VALUE(cm.commenter, "$.customer_id") as customer_id,
   cm.target_code as sku_code,
+  s.sku_key,
   concat(s.sku_key, "_", c.sale_region) as sku_fc_code,
   cm.content as comment,
   cm.status as comment_status,
