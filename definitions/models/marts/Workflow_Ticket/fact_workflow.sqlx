@@ -16,6 +16,7 @@ WITH
     cte_main AS (
         SELECT 
             a.task_instance_code
+            , a.name AS step_name
             , a.workflow_instance_code
             , a.request_code
             , b.name as request_name
