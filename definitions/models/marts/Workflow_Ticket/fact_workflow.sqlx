@@ -44,7 +44,7 @@ WITH
             a.*
             , JSON_EXTRACT_SCALAR(a.metadata, "$.assignee_email") AS agent_email
             , IFNULL( SAFE_CAST(JSON_EXTRACT_SCALAR(a.input_data, "$.customerID") AS INT64), -1) AS customer_id
-            , JSON_EXTRACT_SCALAR(a.input_data, "$.customer_phone") lead_phone
+            , LPAD(JSON_EXTRACT_SCALAR(a.input_data, "$.customer_phone"), 10, '0') AS lead_phone
             , COALESCE(
                 JSON_EXTRACT_SCALAR(a.input_data, "$.reason1")
                 , JSON_EXTRACT_SCALAR(a.input_data, "$.reason2") 
@@ -60,8 +60,10 @@ WITH
 
 SELECT 
     a.*
+    , cus.customer_id
     , cus.customer_phone
     , cus.customer_name
     , cus.first_order_at
+    , cus.last_order_at
 FROM cte_parsed AS a
-LEFT JOIN ${ref('dim_customer')} AS cus ON a.customer_id = cus.customer_id
+LEFT JOIN ${ref('dim_customer')} AS cus ON a.lead_phone = cus.customer_phone
