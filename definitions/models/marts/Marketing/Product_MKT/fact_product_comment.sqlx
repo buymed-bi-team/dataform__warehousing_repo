@@ -52,9 +52,10 @@ select
   cm.content as comment,
   cm.status as comment_status,
   case
-    when cm.is_approved = true then "Approved"
-    else "Refused"
+    when cm.is_approved = true then "APPROVED"
+    else "REFUSED"
   end as approve_status,
+  JSON_VALUE(cm.extra_props, '$.reject_reason') AS reject_reason,
   r.reply_time,
   r.reply_date,
   r.reply_content
