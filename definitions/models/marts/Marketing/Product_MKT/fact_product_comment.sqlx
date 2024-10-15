@@ -31,15 +31,15 @@ SELECT
   ) AS reply_content,
   status as reply_status,
   CASE
-    WHEN is_approved = true THEN "Approved"
-    ELSE "Refused"
+    WHEN is_approved = true then "APPROVED"
+    else "REFUSED"
   END AS reply_approve_status
 FROM
   ${source.platinum}.marketplace_prd_ticket_comment AS cm
 WHERE
   type = "REPLY"
 QUALIFY
-  ROW_NUMBER() OVER (PARTITION BY comment_id ORDER BY ingest_time DESC) = 1
+  ROW_NUMBER() OVER (PARTITION BY comment_id ORDER BY synced_at DESC) = 1
 )
 
 select
