@@ -1,0 +1,26 @@
+config {
+    type: "view",
+    name: "fact_bidding_historical_session",
+    description: "PICv1: trung.tran, PICv2: MinhLuu"
+}
+
+WITH cte_date AS (
+	-- SELECT date_sub( timestamp( date_trunc( date_sub( current_date('+7'), interval 6 month) , month ) ) , interval 7 hour ) as start_date
+	SELECT date_sub(date_trunc(date_sub( current_timestamp() , interval 15 day), day), interval 7 hour)  as start_date
+)
+
+SELECT 
+	a.mg_id
+	, timestamp_add(a.created_time, interval 7 hour) as created_ts
+	, a.warehouse_code as fc_code
+	, a.product_id
+	, a.unit_price
+	, a.unit_price_after_vat
+	, a.vat
+	, a.quantity_expect
+	, a.quantity_bidding
+	, a.vendor_code || '_' || a.warehouse_code as bi_vendor_code
+FROM ${source.silver}.seller_prd_purchasing_bidding_history as a
+WHERE
+	a.created_time >= (select start_date from cte_date)
+  	and a.product_id is not null

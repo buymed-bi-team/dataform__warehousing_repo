@@ -1,0 +1,59 @@
+config {
+    // Request by Tin Nguyen
+    type: "view",
+    name: "fact_inventory_inbound",
+    description: "PICv1: trung.tran, PICv2: minh.luu data current date"
+}
+
+WITH cte_hours AS (
+  SELECT hour
+  FROM UNNEST(GENERATE_ARRAY(0, 23)) AS hour
+)
+
+, cte_main AS (
+SELECT
+  c.Date as date_key
+  -- DATETIME(c.Date, TIME(h.hour, 0, 0)) AS datetime_field,
+  , CAST(FORMAT_DATETIME('%Y%m%d%H', DATETIME(c.Date, TIME(h.hour, 0, 0))) AS INT64) AS datetime_key
+FROM
+  ${ref("dim_calendar")} as c, cte_hours as h
+)
+, dim_datetime AS (
+    SELECT 
+    a.datetime_key
+    , CAST(
+        FORMAT_TIMESTAMP('%Y%m%d',
+            TIMESTAMP_ADD(
+            PARSE_TIMESTAMP('%Y%m%d%H', CAST(a.datetime_key AS STRING)),
+            INTERVAL 7 HOUR
+            )
+        ) AS INT64
+        ) AS tz_plus_7_date_key
+    FROM cte_main as a
+    ORDER BY 1 DESC, 2 DESC
+)
+
+SELECT 
+    CONCAT(b.mg_id, " | ", a.mg_id) as mg_id
+    , b.ticket_id
+    , timestamp_add(b.estimated_delivery_time, interval 7 hour) as ts_expected_delivery
+    , b.po_code as code_order
+    , b.type as type_order
+    , b.external_type as type_order_2
+    , b.status as status_order
+    , b.seller_code as code_seller
+    , b.vendor_code as code_vendor
+    , b.tags
+    , a.warehouse_code as fc_code
+    , ca.Date as ts_created
+    , a.last_updated_time as ts_last_updated
+    , a.sku as code_sku
+    , a.demand_quantity as qty_ordered
+    , a.inbound_quantity as qty_inbound
+FROM ${source.platinum}.warehouse_prd_inbound_inbound_ticket_item as a
+LEFT JOIN ${source.platinum}.warehouse_prd_inbound_inbound_ticket as b on a.ticket_id = b.ticket_id
+LEFT JOIN dim_datetime as dt on CAST(FORMAT_TIMESTAMP("%Y%m%d%H", b.created_time) AS INT64) = dt.datetime_key
+LEFT JOIN ${ref("dim_calendar")} as ca on dt.tz_plus_7_date_key = ca.date_key
+WHERE
+    ca.aging_day <= 15
+
