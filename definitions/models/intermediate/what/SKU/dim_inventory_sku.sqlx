@@ -35,7 +35,7 @@ WITH
         WHERE 
             ti.warehouse_code in ('BD', 'HN','DN')
             AND t.status NOT IN ('DONE', 'WAIT_TO_PICK', 'WAIT_TO_PACK', 'PICKING',
-                    'WAIT_QC_CONFIRM', 'WAIT_TO_DELIVERY', 'QC_PROCESSING', 'PACKING')
+                    'WAIT_QC_CONFIRM', 'WAIT_TO_DELIVERY', 'QC_PROCESSING', 'PACKING', 'CANCEL')
             AND ti.created_date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 1 MONTH)
             AND t.created_date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 1 MONTH)
         GROUP BY ALL
