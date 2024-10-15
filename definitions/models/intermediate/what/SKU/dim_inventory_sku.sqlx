@@ -24,6 +24,23 @@ WITH
         GROUP BY sku, fc_code
     ),
 
+    unavailable AS (
+        SELECT
+            sku
+            , ti.warehouse_code AS fc_code
+            , SUM(order_quantity - quantity) AS unavailable_quantity
+        FROM ${source.platinum}.warehouse_prd_picking_pick_ticket_item AS ti
+            LEFT JOIN ${source.platinum}.warehouse_prd_picking_pick_ticket AS t 
+                ON ti.ticket_id = t.ticket_id
+        WHERE 
+            ti.warehouse_code in ('BD', 'HN','DN')
+            AND t.status NOT IN ('DONE', 'WAIT_TO_PICK', 'WAIT_TO_PACK', 'PICKING',
+                    'WAIT_QC_CONFIRM', 'WAIT_TO_DELIVERY', 'QC_PROCESSING', 'PACKING')
+            AND ti.created_date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 1 MONTH)
+            AND t.created_date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 1 MONTH)
+        GROUP BY ALL
+    ),
+
     inventory AS (
         SELECT
             a.sku_code AS sku
@@ -64,6 +81,8 @@ WITH
 SELECT
     a.*
     , b.incoming_quantity
+    , u.unavailable_quantity
 FROM inventory AS a
     LEFT JOIN incoming AS b ON a.sku = b.sku AND a.fc_code = b.fc_code
+    LEFT JOIN unavailable AS u ON u.sku = a.sku AND u.fc_code = a.fc_code
 QUALIFY ROW_NUMBER() OVER(PARTITION BY sku_key_sales_region) = 1
