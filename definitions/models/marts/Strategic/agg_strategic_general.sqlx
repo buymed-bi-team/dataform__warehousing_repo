@@ -151,7 +151,7 @@ WITH ois AS ( -- FOR DO
             WHEN doc.order_channel IN ("MARKETPLACE","CONSIGNMENT" ) THEN
                 IF( REGEXP_CONTAINS(fs.supplier_code,"MEDX") ,
                     "MEDX",
-                    "SC"
+                    "Seller_Center"
                 )
             ELSE doc.order_channel
         END AS channel,
