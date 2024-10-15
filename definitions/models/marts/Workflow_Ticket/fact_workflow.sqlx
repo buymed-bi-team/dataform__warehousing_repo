@@ -60,7 +60,7 @@ WITH
 
 SELECT 
     a.*
-    , cus.customer_id
+    , cus.customer_id AS customer_id_mapping
     , cus.customer_phone
     , cus.customer_name
     , cus.first_order_at
