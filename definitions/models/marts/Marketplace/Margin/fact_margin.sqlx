@@ -19,12 +19,8 @@ config {
     bigquery: {
         partitionBy: "DATE(created_at)",
         clusterBy: ["sku_code", "product_id"]
-
-    },
-    assertions: {
-        nonNull: ["created_at", "product_id", "sku_code"]
-  
     }
+
 }
 
 WITH
