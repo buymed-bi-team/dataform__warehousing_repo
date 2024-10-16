@@ -1,0 +1,20 @@
+config {
+    type:"table",
+    description: `PIC: Huong.Dang; Schedule: 0h00 daily
+    Source;
+        ${source.ref}.agg_strategic_gmv-before-cancel
+        ${source.ref}.agg_strategic_gmv-after-cancel_cancel
+        ${source.ref}.agg_strategic_gmv-fulfilled
+        ${source.ref}.agg_strategic_gmv-unff
+        ${source.ref}.agg_strategic_gmv-return
+        ${source.ref}.agg_strategic_gmv-backlog`,
+    columns: {
+        date: "NonNull |",
+        location: "Nullable |",
+        channel: "Nullable |",
+        measure: "NonNull |",
+        value: "Nullable |"
+    },
+    tags: ("0h00")
+}
+
