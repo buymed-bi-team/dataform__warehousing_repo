@@ -137,7 +137,8 @@ WITH ois AS ( -- FOR DO
         STRING_AGG(DISTINCT supplier_class) supplier_class
     FROM ${ref(`fact_strategic_sale_order_item_single`)} ois 
     GROUP BY 1
-), GMV_AFTER_CANCEL_case AS (
+), 
+GMV_AFTER_CANCEL_case AS (
     SELECT 
         CURRENT_DATETIME("+7") AS refresh_time,
         dc.eom as date,
