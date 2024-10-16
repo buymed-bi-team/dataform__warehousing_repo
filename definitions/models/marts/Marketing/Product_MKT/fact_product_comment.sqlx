@@ -25,7 +25,7 @@ SELECT
   comment_id AS reply_id,
   CAST(JSON_VALUE(extra_props, "$.parent_comment_id") AS INT64) AS comment_id,
   CAST(JSON_VALUE(extra_props, "$.employee_id") AS INT64) AS employee_id,
-  CAST(JSON_VALUE(extra_props, "$.fullname") AS INT64) AS employee_name,
+  JSON_VALUE(extra_props, "$.fullname") AS employee_name,
   REGEXP_REPLACE(
     content,
     r'<[^>]*>',
