@@ -24,8 +24,8 @@ SELECT
   DATE(TIMESTAMP_ADD(created_time, INTERVAL 7 HOUR)) AS reply_date,
   comment_id AS reply_id,
   CAST(JSON_VALUE(extra_props, "$.parent_comment_id") AS INT64) AS comment_id,
-  CAST(JSON_VALUE(commenter, "$.employee_id") AS INT64) AS employee_id,
-  JSON_VALUE(commenter, "$.fullname") AS employee_name,
+  -- CAST(JSON_VALUE(commenter, "$.employee_id") AS INT64) AS employee_id,
+  JSON_VALUE(commenter, "$.fullname") AS commenter_name,
   REGEXP_REPLACE(
     content,
     r'<[^>]*>',
@@ -59,8 +59,8 @@ select
     else "REFUSED"
   end as approve_status,
   JSON_VALUE(cm.extra_props, '$.reject_reason') AS reject_reason,
-  r.employee_id,
-  r.employee_name,
+  SAFE_CAST(JSON_VALUE(cm.extra_props, '$.rejected_by') AS INT64) AS rejected_by_id,
+  r.commenter_name,
   r.reply_time,
   r.reply_date,
   r.reply_content
