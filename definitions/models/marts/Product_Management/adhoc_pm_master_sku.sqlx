@@ -100,6 +100,7 @@ from ${ref('dim_sku_sales_region_current')} AS sku
         on sku.sku_sales_region_code = uns.sku_sales_region_code
     left join it_list AS it
         on sku.sku_sales_region_code = it.sku_sales_region_code
+QUALIFY ROW_NUMBER() OVER(PARTITION BY sku_key_sales_region_code) = 1
 
 
 
