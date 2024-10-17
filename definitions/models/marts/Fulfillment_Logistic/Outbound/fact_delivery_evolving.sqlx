@@ -17,6 +17,11 @@ config {
         delivery_status: 'Trạng thái của một mã vận đơn',
         status_name: 'Tên trạng thái của một mã vận đơn',
         delivery_ts: 'Thời gian ghi nhận trạng thái'
+    }, 
+
+    bigquery: {
+        partitionBy: "DATE(delivery_ts)",
+        clusterBy: ["so_code"]
     }
 }
 

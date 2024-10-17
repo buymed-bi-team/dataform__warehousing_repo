@@ -75,6 +75,7 @@ WITH calendar AS (
     DATE_DIFF(CURRENT_DATE("+7"), Date, DAY) AS aging_day,
     DATE_DIFF(CURRENT_DATE("+7"), Date, Month) AS aging_month,
     DATE_DIFF(CURRENT_DATE("+7"), Date, YEAR) AS aging_year,
+    DATE_DIFF(CURRENT_DATE("+7"), Date, QUARTER) AS aging_quarter,
     Concat(
       EXTRACT(YEAR FROM Date),"_W", 
       IF(

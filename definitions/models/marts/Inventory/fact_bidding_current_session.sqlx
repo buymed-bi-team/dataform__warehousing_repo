@@ -1,0 +1,29 @@
+config {
+    type: "view",
+    name: "fact_bidding_current_session",
+    description: "PICv1: trung.tran, PICv2: MinhLuu"
+}
+
+WITH cte_date AS (
+	SELECT date_sub( timestamp( date_trunc( date_sub( current_date('+7'), interval 6 month) , month ) ) , interval 7 hour ) as start_date
+)
+
+SELECT 
+	bid.mg_id
+	, timestamp_add(bid.created_time, interval 7 hour)  as created_ts
+	, bid.product_id
+	-- , bid.selected_bys ->> 0 as seller_code
+	, bid.selected_bys as seller_code
+	-- , json_value_array(bid.selected_bys)[offset(array_length(json_value_array( bid.selected_bys )))] as seller_code
+	-- json_value_array(bid.selected_bys) as seller_code
+	, bid.vendor_code
+	, bid.vendor_priority
+	, bid.warehouse_code as fc_code
+	, bid.unit_price
+	, bid.vat
+	, bid.unit_price_after_vat
+	, bid.quantity_bidding
+	, bid.warehouse_code || '_' || bid.vendor_code as bi_vendor_code
+FROM ${source.platinum}.seller_prd_purchasing_bidding as bid
+WHERE
+  bid.product_id is not null

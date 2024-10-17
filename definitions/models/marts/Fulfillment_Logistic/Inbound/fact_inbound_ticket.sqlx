@@ -124,7 +124,8 @@ select
 				, "URGENT_AT_CHECK-IN"
 				, "URGENT_AFTER_INBOUND"
 			) 
-	END AS po_urgent
+	END AS po_urgent,
+	p.type AS po_type
 
 from (
     select *
@@ -139,4 +140,3 @@ from (
     LEFT JOIN check_it_popgh AS c ON c.po_code = i.po_code
 	LEFT JOIN first_checkin_destination_fc AS f ON f.po_code = i.po_code
 	LEFT JOIN first_location AS l ON l.po_code = i.po_code
--- LEFT JOIN lakehouse-prod-394907.gold_buymed_vn.agg_po_so AS ps ON ps.po_code = i.po_code

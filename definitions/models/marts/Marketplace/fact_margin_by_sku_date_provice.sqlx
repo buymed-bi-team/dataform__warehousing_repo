@@ -37,23 +37,13 @@ SELECT
     , a.total_price
     , a.total_purchasing_value
     , a.total_quantity
-    , b.region_code AS sales_region_code
-FROM (
-    SELECT *
-    FROM ${source.silver}.monitoring_prd_realtime_supply_margin_sku
-    WHERE
-        ingest_time >= TIMESTAMP_SUB('2024-06-01', INTERVAL 7 HOUR)
-        AND (created_time >= TIMESTAMP_SUB('2024-06-01', INTERVAL 7 HOUR) OR created_time IS NULL)
-    QUALIFY ROW_NUMBER() over (_window) = 1 AND FIRST_VALUE(action) over (_window) <> 'd'
-    WINDOW _window AS (PARTITION BY mg_id ORDER BY synced_at DESC, last_updated_time DESC)
-) AS a
-    LEFT JOIN ${source.gold}.dim_sales_region_service_area AS b ON b.service_area_code = a.location_code
-    LEFT JOIN ${source.gold}.dim_sku AS s ON s.sku_code = a.sku
+    , b.sales_region_code
+FROM ${source.platinum}.monitoring_prd_realtime_supply_margin_sku AS a
+    LEFT JOIN ${ref('dim_fc_service_area')} AS b ON b.service_area_code = a.location_code
+    LEFT JOIN ${ref('dim_sku')} AS s ON s.sku_code = a.sku
 WHERE
     a.span = 'DAY'
     AND location_code <> '00'
     AND location_code IS NOT NULL
     AND s.sku_code IS NOT NULL
-
-
-
+    AND a.created_date >= '2024-01-01'

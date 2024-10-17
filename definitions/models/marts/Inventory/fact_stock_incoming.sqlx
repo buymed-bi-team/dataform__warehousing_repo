@@ -1,6 +1,6 @@
 config {
   type: "table",
-  description: "Source: warehouse_prd_inbound_inbound_ticket, warehouse_prd_inbound_inbound_ticket_item, only select tickets with status not in (CANCEL, COMPLETED) | Schedule: every 30 mins from 9am-6pm | PIC: dong.le",
+  description: "Source: warehouse_prd_inbound_inbound_ticket, warehouse_prd_inbound_inbound_ticket_item, only select tickets with status not in (CANCEL, DRAFT) | Schedule: every 30 mins from 9am-6pm | PIC: dong.le",
   name: "fact_stock_incoming",
   tags: ["custom_1h_past5"],
   columns: {
@@ -61,4 +61,4 @@ SELECT
 FROM dedup_inbound_ticket_item b
 LEFT JOIN dedup_inbound_ticket a on b.ticket_id = a.ticket_id
 LEFT JOIN ${ref("dim_sku")} c on b.sku_code = c.sku_code
-WHERE a.status NOT IN ("CANCEL", "COMPLETED")
+WHERE a.status NOT IN ("DRAFT", "CANCEL")

@@ -1,0 +1,54 @@
+config {
+    // mongodb: 'VN_monitoring.monitoring_prd_realtime-user.user_failed_login_v6'
+    type: "table",
+    name: "monitoring_prd_realtime_user_failed_login_v6",
+    schema: "platinum_buymed_vn",
+    description: `PIC: MinhLuu, Internal: https://internal.thuocsi.vn/crm/customer/realtime?status=FAILED
+    To be like on the Tnternal page:
+        SELECT 
+            m.customer_id,
+            m.customer_name, 
+            m.phone,
+            m.address,
+            m.created_time,
+            m.result_error,
+            m.ua_metadata
+            -- Except note content, I has not find which way to map
+        FROM ${source.platinum}.monitoring_prd_realtime_user_failed_login_v6 m
+    
+    `,
+    assertions: {
+        uniqueKey: 'mg_id'
+    },
+    bigquery: {
+        partitionBy: "created_date"
+    },
+    tags:["platinum_custom_2h_past5"]
+}
+
+SELECT
+ * ,
+ TO_JSON_STRING(JSON_EXTRACT(user_metadata, "$.ADDRESS")) AS user_metadata_address,  
+ TO_JSON_STRING(JSON_EXTRACT(user_metadata, "$.PHONE")) AS user_metadata_phone,  
+ TO_JSON_STRING(JSON_EXTRACT(user_metadata, "$.NAME")) AS user_metadata_name,  
+--  TIMESTAMP(JSON_EXTRACT(user_metadata, "$.ACTIVATED_DATE")) AS user_metadata_activated_date,  
+ TO_JSON_STRING(JSON_EXTRACT(user_metadata, "$.LEVEL")) AS user_metadata_level,  
+--  TO_JSON_STRING(JSON_EXTRACT(user_metadata, "$.LOCATION")) AS LOCATION,  
+ CASE 
+    WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
+    ELSE "2099-01-01"
+  END AS created_date
+FROM lakehouse-prod-394907.silver_buymed_vn.monitoring_prd_realtime_user_failed_login_v6 o 
+ QUALIFY ROW_NUMBER() OVER (_window) = 1
+       AND FIRST_VALUE(action) OVER (_window) <> 'd'
+WINDOW
+  _window AS (
+  PARTITION BY
+    mg_id
+  ORDER BY
+    synced_at DESC,
+  IF
+    (action='d',3,
+    IF
+      (action='u',2,1)) DESC,
+    last_updated_time DESC)

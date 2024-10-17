@@ -3,19 +3,19 @@ config {
     description: 
         `PIC: huyen.nguyenthu; 
         Type: Table; 
-        Refresh Schedule: 0h30 daily;
+        Refresh Schedule: hourly;
         Source: 
-            ${source.silver}.marketplace_prd_ticket_comment
+            ${source.platinum}.marketplace_prd_ticket_comment
         `,
         
-    tags: ["0h30"]
+    tags: ["custom_1h_past5"]
 }
 
 with customer as (
   select
     customer_id,
     config_fc as sale_region
-  from gold_buymed_vn.dim_customer
+  from ${ref('dim_customer')}
 ),
 
 reply as (
@@ -24,6 +24,8 @@ SELECT
   DATE(TIMESTAMP_ADD(created_time, INTERVAL 7 HOUR)) AS reply_date,
   comment_id AS reply_id,
   CAST(JSON_VALUE(extra_props, "$.parent_comment_id") AS INT64) AS comment_id,
+  -- CAST(JSON_VALUE(commenter, "$.employee_id") AS INT64) AS employee_id,
+  JSON_VALUE(commenter, "$.fullname") AS commenter_name,
   REGEXP_REPLACE(
     content,
     r'<[^>]*>',
@@ -31,15 +33,15 @@ SELECT
   ) AS reply_content,
   status as reply_status,
   CASE
-    WHEN is_approved = true THEN "Approved"
-    ELSE "Refused"
+    WHEN is_approved = true then "APPROVED"
+    else "REFUSED"
   END AS reply_approve_status
 FROM
-  ${source.silver}.marketplace_prd_ticket_comment AS cm
+  ${source.platinum}.marketplace_prd_ticket_comment AS cm
 WHERE
   type = "REPLY"
 QUALIFY
-  ROW_NUMBER() OVER (PARTITION BY comment_id ORDER BY ingest_time DESC) = 1
+  ROW_NUMBER() OVER (PARTITION BY comment_id ORDER BY synced_at DESC) = 1
 )
 
 select
@@ -48,23 +50,27 @@ select
   cm.comment_id,
   JSON_VALUE(cm.commenter, "$.customer_id") as customer_id,
   cm.target_code as sku_code,
+  s.sku_key,
   concat(s.sku_key, "_", c.sale_region) as sku_fc_code,
   cm.content as comment,
   cm.status as comment_status,
   case
-    when cm.is_approved = true then "Approved"
-    else "Refused"
+    when cm.is_approved = true then "APPROVED"
+    else "REFUSED"
   end as approve_status,
+  JSON_VALUE(cm.extra_props, '$.reject_reason') AS reject_reason,
+  SAFE_CAST(JSON_VALUE(cm.extra_props, '$.rejected_by') AS INT64) AS rejected_by_id,
+  r.commenter_name,
   r.reply_time,
   r.reply_date,
   r.reply_content
 
-from ${source.silver}.marketplace_prd_ticket_comment as cm
+from ${source.platinum}.marketplace_prd_ticket_comment as cm
 left join customer as c
   on CAST(JSON_VALUE(cm.commenter, "$.customer_id") as INT64) = c.customer_id
 left join reply as r
   on cm.comment_id = r.comment_id
-left join gold_buymed_vn2.dim_sku as s
+left join ${ref('dim_sku')} as s
   on cm.target_code = s.sku_code
 where cm.type = "COMMENT"
 and cm.target_type = "SKU"

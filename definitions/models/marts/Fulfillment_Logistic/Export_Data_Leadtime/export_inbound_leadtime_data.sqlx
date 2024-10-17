@@ -29,6 +29,8 @@ WITH cte_date AS (
 
 select a.po_confirmed_ts, 
   a.po_code,
+  a.partner_code,
+  s.supplier_name AS partner_name,
   a.inbound_code,
   a.fc_code,
   a.inbound_status,
@@ -38,4 +40,5 @@ select a.po_confirmed_ts,
   b.* except(inbound_code)
 from ${ref(`fact_inbound_ticket`)} a
 left join parse_table b on a.po_code = b.inbound_code
+left join ${ref('dim_supplier')} AS s ON s.supplier_code = a.partner_code
 where a.po_confirmed_ts >= (select start_date from cte_date)
