@@ -38,6 +38,7 @@ SELECT
     , a.total_purchasing_value
     , a.total_quantity
     , b.sales_region_code
+    , b.fc_code
 FROM ${source.platinum}.monitoring_prd_realtime_supply_margin_sku AS a
     LEFT JOIN ${ref('dim_fc_service_area')} AS b ON b.service_area_code = a.location_code
     LEFT JOIN ${ref('dim_sku')} AS s ON s.sku_code = a.sku
@@ -47,3 +48,4 @@ WHERE
     AND location_code IS NOT NULL
     AND s.sku_code IS NOT NULL
     AND a.created_date >= '2024-01-01'
+    AND SPLIT(a.sku, '.')[SAFE_OFFSET(0)] = 'MEDX'

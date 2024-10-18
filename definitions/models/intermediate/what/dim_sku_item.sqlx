@@ -9,7 +9,7 @@ config {
       ${source.ref}.fact_stock_sku_item
       ${source.ref}.dim_stock_classification
       ${source.ref}.dim_product_fc_catm
-      ${source.ref}.agg_avg_demand_sku_item_l15d
+      ${source.ref}.agg_avg_demand_sku_item_l30d
       ${source.ref}.dim_sku_item_fv_vendor
       ${source.ref}.dim_sku_item_person_in_charge
       ${source.ref}.dim_sku_sales_region_current`,
@@ -42,6 +42,7 @@ config {
        type_stock_aging: "type_stock_aging for dim_stock_classification",
        catm_group: "category management group for product_fc",
        avg_demand_l15d: "average daily order quantity for SKU in the last 15 days",
+       avg_demand_l30d: "average daily order quantity for SKU in the last 30 days",
        fv_vendor_code: "vendor_code with seller_prd_purchasing_sku_config.vendor.priority = 0",
        trading_type: "IF fv_vendor_code IS NULL, 'NON-TRADING', else 'TRADING'",
        pic_purchase_id: "pic_purchase_id from dim_sku_item_person_in_charge",
@@ -172,6 +173,7 @@ cte_sku_fc_agg AS (
     c.height,
     c.length,
     c.width,
+    d.avg_demand_l30d,
     d.avg_demand_l15d,
     COALESCE(i.fv_code, a.supplier_code) as fv_vendor_code,
     IF (i.fv_code IS NULL, "NON-TRADING", "TRADING") as trading_type,
@@ -192,7 +194,7 @@ cte_sku_fc_agg AS (
   ON a.sku_code = b.sku_code AND a.fc_code = b.fc_code
   LEFT JOIN ${ref("dim_product_fc_catm")} c
   ON a.product_id = c.product_id AND a.fc_code = c.fc_code
-  LEFT JOIN ${ref("agg_avg_demand_sku_item_l15d")} d
+  LEFT JOIN ${ref("agg_avg_demand_sku_item_l30d")} d
   ON a.sku_code = d.sku_code AND a.fc_code = d.fc_code
   -- LEFT JOIN ${ref("dim_sku_item_fv_vendor")} e
   -- ON a.sku_code = e.sku_code AND a.fc_code = e.fc_code
