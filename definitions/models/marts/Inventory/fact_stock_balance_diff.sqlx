@@ -48,3 +48,4 @@ difference AS (
     AND s.fc_code = si.fc_code)
 
 SELECT * FROM difference
+WHERE sku_fc_key IS NOT NULL
