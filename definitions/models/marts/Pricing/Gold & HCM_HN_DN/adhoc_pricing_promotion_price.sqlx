@@ -80,7 +80,10 @@ WITH
                 when string(area_code) like "%00%" then "00"
             -- else string(area_code)
                 else sr.sales_region_code
-            end as sales_region_code
+            end as sales_region_code,
+
+            JSON_VALUE(a.extra_props, '$.reason') AS deal_reason,
+            SAFE_CAST(JSON_VALUE(a.extra_props, '$.vendor_promo_info.price') AS INT64) AS cost_price_of_deal
         from (
             SELECT *
             FROM ${source.platinum}.marketplace_prd_product_v2_deal 
@@ -130,7 +133,10 @@ WITH
                 when upper(c.promotion_type) = 'ABSOLUTE' then c.absolute_price
                 when upper(c.promotion_type) = 'PRICE' then c.campaign_price
                 else c.percentage_discount
-            end as deal_value
+            end as deal_value,
+
+            deal_reason,
+            cost_price_of_deal
 
         from ${ref('dim_sku_sales_region_current')} a
             cross join get_deal_products c
@@ -157,6 +163,8 @@ WITH
             c.deal_value,
             c.charge_deal_fee,
             c.max_discount_value,
+            c.deal_reason,
+            c.cost_price_of_deal
         from ${ref('dim_sku_sales_region_current')} a
             left join sku_campaign_table b on a.sku_code = b.sku_code and a.sales_region_code = b.sales_region_code
             left join sku_deal_table c on a.sku_code = c.sku_code and a.sales_region_code = c.sales_region_code
