@@ -4,7 +4,8 @@ config {
   name: "agg_avg_demand_sku_item_l30d",
   columns: {
     sku_fc_key: "concatenation of sku key and warehouse code",
-    avg_demand_l15d: "average daily order_quantity for each sku_fc_key"
+    avg_demand_l15d: "average daily order_quantity for each sku_fc_key in the last 15 days",
+    avg_demand_l30d: "average daily order_quantity for each sku_fc_key in the last 30 days"
   }
 }
 
@@ -37,7 +38,11 @@ filtered_data AS (
 SELECT
     sku_code,
     fc_code,
-    SUM(outgoing_quantity)/30 AS avg_demand_l30d
+    SUM(outgoing_quantity)/30 AS avg_demand_l30d,
+    SUM(CASE 
+        WHEN created_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 15 DAY) THEN outgoing_quantity
+        ELSE 0
+      END) / 15 AS avg_demand_l15d
 FROM filtered_data
 GROUP BY sku_code, fc_code
 
