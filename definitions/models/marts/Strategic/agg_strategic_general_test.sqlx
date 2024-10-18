@@ -18,3 +18,93 @@ config {
     tags: ("0h00")
 }
 
+-- Create a temporary table for date calculations
+WITH date_ranges AS (
+  SELECT DISTINCT 
+    eom,
+    date 
+  FROM ${ref(`dim_calendar`)}
+  WHERE date >= "2023-01-01"
+),
+
+-- Precompute common case statements for location and channel
+base_data AS (
+  SELECT
+    fs.*,
+    dc.eom,
+    CASE
+      WHEN dosr.sales_region_code LIKE "MIENNAM" THEN "SOUTHERN"
+      WHEN dosr.sales_region_code LIKE "MIENTRUNG" THEN "CENTRAL"
+      WHEN dosr.sales_region_code LIKE "MIENBAC" THEN "NORTHERN"
+      ELSE "GMV-VN-REGION-UNKNOWN" 
+    END AS location,
+    CASE
+      WHEN doc.order_channel IN ("MARKETPLACE", "CONSIGNMENT") THEN
+        CASE 
+          WHEN REGEXP_CONTAINS(fs.supplier_code, "MEDX") THEN "MEDX"
+          ELSE "SELLER_CENTER"
+        END
+      ELSE doc.order_channel
+    END AS channel,
+    IF(fs.order_status LIKE "CANCEL" AND fs.sale_order_code IS NULL, 
+       fs.sales_price * fs.demand_quantity, 0) as cancel_before_ffm_amount,
+    fs.sales_price * fs.demand_quantity as total_sales_amount
+  FROM ${ref(`fact_strategic_sale_order_item_single`)} fs 
+  LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = fs.order_id 
+  LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON fs.order_id = dosr.order_id 
+  LEFT JOIN ${ref(`dim_calendar`)} dc ON DATE(fs.created_time) = dc.date
+  WHERE doc.order_channel NOT IN ("TENDER", "CONSIGNMENT-RECOGNITION")
+    AND doc.order_channel IS NOT NULL
+    AND fs.supplier_class NOT LIKE "TECH"
+    AND dc.date > "2023-01-01"
+),
+
+-- Calculate all measures in a single pass
+aggregated_measures AS (
+  SELECT
+    CURRENT_DATETIME("+7") AS refresh_time,
+    eom as date,
+    location,
+    channel,
+    -- GMV measures
+    SUM(total_sales_amount) as gmv_before_cancel,
+    SUM(total_sales_amount - cancel_before_ffm_amount) as gmv_after_cancel,
+    SUM(IF(order_status LIKE "CANCEL", total_sales_amount, 0)) as cancel_amount,
+    SUM(listed_price * demand_quantity) as gmv_with_listed_price,
+    -- Cancellation measures
+    SUM(cancel_before_ffm_amount) as cancel_before_ffm,
+    SUM(IF(order_status LIKE "CANCEL" AND sale_order_code IS NOT NULL, 
+           total_sales_amount, 0)) as cancel_after_ffm,
+    -- Fulfillment measures
+    SUM(IF(order_status NOT LIKE "CANCEL",
+           (outbound_quantity - returned_quantity) * sales_price, 0)) as gmv_fulfilled,
+    -- Count measures
+    COUNT(DISTINCT order_id) as so_count,
+    SUM(demand_quantity) as items_sold
+  FROM base_data
+  GROUP BY 1, 2, 3, 4
+)
+
+-- Final SELECT combining all measures
+SELECT 
+  refresh_time,
+  date,
+  location,
+  channel,
+  'GMV-BEFORE-CANCEL' as measure,
+  gmv_before_cancel as value
+FROM aggregated_measures
+
+UNION ALL
+SELECT 
+  refresh_time,
+  date,
+  location,
+  channel,
+  'GMV-AFTER-CANCEL' as measure,
+  gmv_after_cancel as value
+FROM aggregated_measures
+
+-- Add similar UNION ALL statements for other measures...
+
+-- Delivery Orders can be handled similarly with a separate CTE
