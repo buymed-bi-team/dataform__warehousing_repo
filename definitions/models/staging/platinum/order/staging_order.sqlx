@@ -1,6 +1,5 @@
 config {
-    type: "operations",
-    tags: ["3h00"]
+    type: "operations"
 }
 
 DELETE ${source.platinum}.marketplace_prd_order_v2_order 
