@@ -1,0 +1,32 @@
+config {
+    type: "table",
+    name: "marketplace_prd_order_v2_reconciliation",
+    schema: "platinum_buymed_vn",
+    assertions: {
+        uniqueKey: 'mg_id'
+    },
+    bigquery: {
+        partitionBy: "created_date"
+    },
+    tags: ["platinum_custom_2h_past5"]
+}
+SELECT *, 
+  CASE 
+    WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
+    ELSE "2099-01-01"
+  END AS created_date,
+  
+FROM (
+  SELECT *,
+ 
+  FROM lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_reconciliation
+
+QUALIFY ROW_NUMBER() OVER (_window) = 1
+WINDOW _window AS (
+    PARTITION BY mg_id
+    ORDER BY synced_at DESC,
+      IF(action = 'd', 3, IF(action = 'u', 2, 1)) DESC,
+      last_updated_time DESC
+  )
+) 
+WHERE created_time is not null and last_updated_time is not null -- all record deleted include action "d"
