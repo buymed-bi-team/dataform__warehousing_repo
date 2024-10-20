@@ -8,7 +8,9 @@ config {
     bigquery: {
         partitionBy: "created_date"
     },
-    tags: ["platinum_custom_2h_past5"]
+    //tags: ["platinum_custom_2h_past5"]
+    tags: ["custom_1h_past7"]
+
 }
 SELECT *, 
   CASE 
