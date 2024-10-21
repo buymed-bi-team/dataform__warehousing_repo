@@ -18,20 +18,73 @@ config {
     tags: ("0h00")
 }
 
--- Create a temporary table for date calculations
-WITH date_ranges AS (
-  SELECT DISTINCT 
+-- Optimized base calendar with date filtering
+WITH base_calendar AS (
+  SELECT 
     eom,
-    date 
+    date
   FROM ${ref(`dim_calendar`)}
-  WHERE date >= "2023-01-01"
+  WHERE date >= "2023-01-01"),
+
+ois AS ( -- FOR DO
+    -- actually, it just exclude 36 order, so if you query raw, don't need this, the error is very small, but in agg_general, dataform take all fact_strategic, so I will include it
+    -- I just exclude the orders that is contains all test item
+    SELECT 
+        order_id,
+        STRING_AGG(DISTINCT supplier_class) supplier_class
+    FROM ${ref(`fact_strategic_sale_order_item_single`)} ois 
+    GROUP BY 1
+), 
+
+-- Pre-filter and pre-aggregate order items with partition pruning
+filtered_orders AS (
+  SELECT 
+    fs.order_id,
+    fs.created_time,
+    fs.sales_price,
+    fs.demand_quantity,
+    fs.order_status,
+    fs.sale_order_code,
+    fs.outbound_quantity,
+    fs.returned_quantity,
+    fs.supplier_code,
+    doc.order_channel,
+    CASE
+      WHEN dosr.sales_region_code LIKE "MIENNAM" THEN "SOUTHERN"
+      WHEN dosr.sales_region_code LIKE "MIENTRUNG" THEN "CENTRAL"
+      WHEN dosr.sales_region_code LIKE "MIENBAC" THEN "NORTHERN"
+      ELSE "GMV-VN-REGION-UNKNOWN" 
+    END AS location
+  FROM ${ref(`fact_strategic_sale_order_item_single`)} fs 
+  INNER JOIN base_calendar bc ON DATE(fs.created_time) = bc.date
+  LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = fs.order_id 
+  LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON fs.order_id = dosr.order_id
+  WHERE fs.supplier_class NOT LIKE "TECH"
+    AND doc.order_channel IS NOT NULL
+    AND doc.order_channel NOT IN ("TENDER", "CONSIGNMENT-RECOGNITION")
 ),
 
--- Precompute common case statements for location and channel
-base_data AS (
+-- Order metrics
+order_metrics AS (
   SELECT
-    fs.*,
-    dc.eom,
+    DATE(created_time) as order_date,
+    location,
+    CASE
+      WHEN order_channel IN ("MARKETPLACE","CONSIGNMENT") THEN "MARKETPLACE"
+      ELSE order_channel
+    END AS channel,
+    SUM(sales_price * demand_quantity) as total_sales,
+    SUM(IF(order_status LIKE "CANCEL" AND sale_order_code IS NULL, sales_price * demand_quantity, 0)) as cancel_before_ffm,
+    SUM(IF(order_status NOT LIKE "CANCEL",(outbound_quantity - returned_quantity) * sales_price, 0)) as fulfilled_amount,
+    COUNT(DISTINCT order_id) as so_count
+  FROM filtered_orders
+  GROUP BY 1, 2, 3
+),
+
+-- Delivery metrics
+delivery_metrics AS (
+  SELECT 
+    DATE(do.created_time) as delivery_date,
     CASE
       WHEN dosr.sales_region_code LIKE "MIENNAM" THEN "SOUTHERN"
       WHEN dosr.sales_region_code LIKE "MIENTRUNG" THEN "CENTRAL"
@@ -39,72 +92,76 @@ base_data AS (
       ELSE "GMV-VN-REGION-UNKNOWN" 
     END AS location,
     CASE
-      WHEN doc.order_channel IN ("MARKETPLACE", "CONSIGNMENT") THEN
-        CASE 
-          WHEN REGEXP_CONTAINS(fs.supplier_code, "MEDX") THEN "MEDX"
-          ELSE "SELLER_CENTER"
-        END
+      WHEN doc.order_channel IN ("MARKETPLACE","CONSIGNMENT") THEN "MARKETPLACE"
       ELSE doc.order_channel
     END AS channel,
-    IF(fs.order_status LIKE "CANCEL" AND fs.sale_order_code IS NULL, 
-       fs.sales_price * fs.demand_quantity, 0) as cancel_before_ffm_amount,
-    fs.sales_price * fs.demand_quantity as total_sales_amount
-  FROM ${ref(`fact_strategic_sale_order_item_single`)} fs 
-  LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = fs.order_id 
-  LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON fs.order_id = dosr.order_id 
-  LEFT JOIN ${ref(`dim_calendar`)} dc ON DATE(fs.created_time) = dc.date
-  WHERE doc.order_channel NOT IN ("TENDER", "CONSIGNMENT-RECOGNITION")
+    COUNT(DISTINCT do.delivery_order_code) as do_count
+  FROM ${ref(`fact_strategic_delivery_order`)} do 
+  INNER JOIN base_calendar bc ON DATE(do.created_time) = bc.date
+  INNER JOIN ois ON do.order_id = ois.order_id
+  LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = do.order_id 
+  LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON do.order_id = dosr.order_id 
+  WHERE ois.supplier_class NOT LIKE "TECH"
     AND doc.order_channel IS NOT NULL
-    AND fs.supplier_class NOT LIKE "TECH"
-    AND dc.date > "2023-01-01"
+    AND doc.order_channel NOT IN ("TENDER", "CONSIGNMENT-RECOGNITION")
+  GROUP BY 1, 2, 3
 ),
 
--- Calculate all measures in a single pass
-aggregated_measures AS (
-  SELECT
+-- GMV after cancel case
+gmv_after_cancel_seller AS (
+  SELECT 
     CURRENT_DATETIME("+7") AS refresh_time,
-    eom as date,
+    bc.eom as date,
     location,
-    channel,
-    -- GMV measures
-    SUM(total_sales_amount) as gmv_before_cancel,
-    SUM(total_sales_amount - cancel_before_ffm_amount) as gmv_after_cancel,
-    SUM(IF(order_status LIKE "CANCEL", total_sales_amount, 0)) as cancel_amount,
-    SUM(listed_price * demand_quantity) as gmv_with_listed_price,
-    -- Cancellation measures
-    SUM(cancel_before_ffm_amount) as cancel_before_ffm,
-    SUM(IF(order_status LIKE "CANCEL" AND sale_order_code IS NOT NULL, 
-           total_sales_amount, 0)) as cancel_after_ffm,
-    -- Fulfillment measures
-    SUM(IF(order_status NOT LIKE "CANCEL",
-           (outbound_quantity - returned_quantity) * sales_price, 0)) as gmv_fulfilled,
-    -- Count measures
-    COUNT(DISTINCT order_id) as so_count,
-    SUM(demand_quantity) as items_sold
-  FROM base_data
-  GROUP BY 1, 2, 3, 4
+    IF(REGEXP_CONTAINS(supplier_code, "MEDX"), "MEDX", "SELLER_CENTER") AS channel,
+    "GMV-AFTER-CANCEL-SELLER" AS measure,
+    SUM(sales_price * demand_quantity - 
+        IF(order_status LIKE "CANCEL" AND sale_order_code IS NULL,
+           sales_price * demand_quantity, 0)) as value
+  FROM filtered_orders fo
+  INNER JOIN base_calendar bc
+    ON DATE(fo.created_time) = bc.date
+  GROUP BY 1, 2, 3, 4, 5
 )
 
--- Final SELECT combining all measures
+-- Final combined results using UNION ALL
 SELECT 
-  refresh_time,
-  date,
-  location,
-  channel,
-  'GMV-BEFORE-CANCEL' as measure,
-  gmv_before_cancel as value
-FROM aggregated_measures
+  CURRENT_DATETIME("+7") AS refresh_time,
+  c.eom as date,
+  m.location,
+  m.channel,
+  measure,
+  value
+FROM order_metrics m
+CROSS JOIN UNNEST([
+  STRUCT("GMV-BEFORE-CANCEL" as measure, total_sales as value),
+  STRUCT("GMV-AFTER-CANCEL" as measure, (total_sales - cancel_before_ffm) as value),
+  STRUCT("GMV-FULFILLED" as measure, fulfilled_amount as value),
+  STRUCT("SO" as measure, so_count as value)
+]) metrics
+JOIN base_calendar c 
+  ON DATE(m.order_date) = c.date
 
 UNION ALL
+
 SELECT 
-  refresh_time,
-  date,
-  location,
-  channel,
-  'GMV-AFTER-CANCEL' as measure,
-  gmv_after_cancel as value
-FROM aggregated_measures
+  CURRENT_DATETIME("+7") AS refresh_time,
+  c.eom as date,
+  d.location,
+  d.channel,
+  'DO' as measure,
+  d.do_count as value
+FROM delivery_metrics d
+JOIN base_calendar c 
+  ON DATE(d.delivery_date) = c.date
 
--- Add similar UNION ALL statements for other measures...
+UNION ALL 
 
--- Delivery Orders can be handled similarly with a separate CTE
+SELECT * 
+FROM ${ref(`agg_strategic_customer`)}
+WHERE date >= "2023-01-01"
+
+UNION ALL
+
+SELECT * 
+FROM gmv_after_cancel_seller
