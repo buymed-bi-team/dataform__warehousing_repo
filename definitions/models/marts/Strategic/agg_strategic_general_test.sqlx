@@ -87,6 +87,7 @@ order_metrics AS (
     SUM(IF(commercial_type = "CAMPAIGN", (listed_price - sales_price) * demand_quantity, 0)) as commercial_campaign_amount,
     SUM(IF(commercial_type = "COMBO",(listed_price - sales_price) * demand_quantity, 0)) as commercial_combo_amount,
     SUM(IF(order_status not like "CANCEL" AND order_status in ("DELIVERING","DELIVERED","COMPLETED"),(demand_quantity - outbound_quantity ) ,0 ) * sales_price) as gmv_unff,
+    SUM(IF(order_status not like "CANCEL" AND order_status not in ("DELIVERING","DELIVERED","COMPLETED"),  (demand_quantity - outbound_quantity ) ,0 ) * sales_price) as gmv_backlog,
     SUM(listed_price * demand_quantity) as gmv_with_listed_price,
     COUNT(DISTINCT order_id) as so_count,
     SUM(demand_quantity) as item_sold
@@ -162,7 +163,8 @@ CROSS JOIN UNNEST([
   STRUCT("GMV-UNFF" as measure, gmv_unff as value),
   STRUCT("FFM_RATE" as measure, total_sales - (total_sales - cancel_before_ffm)  - gmv_unff as value),
   STRUCT("GMV-WITH-LISTED-PRICE" as measure, gmv_with_listed_price as value),
-  STRUCT("ITEM-SOLD" as measure, item_sold as value)
+  STRUCT("ITEM-SOLD" as measure, item_sold as value),
+  STRUCT("GMV-BACKLOG" as measure, gmv_backlog as value)
 ]) metrics
 JOIN base_calendar c 
   ON DATE(m.order_date) = c.date
