@@ -61,7 +61,7 @@ select
     end as approve_status,
     JSON_VALUE(cm.extra_props, '$.reject_reason') AS reject_reason,
     SAFE_CAST(JSON_VALUE(cm.extra_props, '$.rejected_by') AS INT64) AS rejected_by_id,
-    --   r.employee_name,
+    r.employee_id,
     r.reply_time,
     r.reply_date,
     r.reply_content
