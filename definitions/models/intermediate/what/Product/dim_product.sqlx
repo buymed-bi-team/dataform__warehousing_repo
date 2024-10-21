@@ -232,14 +232,14 @@ SELECT
         then 'PROMOTION'
     ELSE 'NORMAL'
   END product_report_category,
-  IF(
-        REGEXP_CONTAINS(
-            LOWER(product.name),
-            r'combo|quà|tặng|khuyến mãi|khuyến mại|hóa đơn|bảo hiểm|thẻ cào|mua|gift 1|gift 2|tờ rơi|áo blouse|poster|ưu đãi|trưng bày'
-        ) OR product.owner = 'MARKETING' OR product.owner = '%[Tech]%' OR LOWER(product.name) LIKE '% circa %' OR LOWER(product.name) LIKE '% thuocsi %',
-        'Promotion Product',
-        'Normal Product'
-    ) AS product_classification,
+  -- IF(
+  --       REGEXP_CONTAINS(
+  --           LOWER(product.name),
+  --           r'combo|quà|tặng|khuyến mãi|khuyến mại|hóa đơn|bảo hiểm|thẻ cào|mua|gift 1|gift 2|tờ rơi|áo blouse|poster|ưu đãi|trưng bày'
+  --       ) OR product.owner = 'MARKETING' OR product.owner = '%[Tech]%' OR LOWER(product.name) LIKE '% circa %' OR LOWER(product.name) LIKE '% thuocsi %',
+  --       'Promotion Product',
+  --       'Normal Product'
+  --   ) AS product_classification,
 
   tb4.name as main_category_name,
 
