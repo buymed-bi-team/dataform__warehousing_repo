@@ -1,0 +1,51 @@
+config {
+    type: "assertion",
+    description: `PIC: MinhLuu, Check Dedup order`,
+    tags: ["LiterallyCheck"]
+}
+
+
+SELECT 
+    "marketplace_prd_order_v2_order",
+    order_id,
+    count(distinct mg_id) as Duplicate_count,
+    ARRAY_AGG(last_updated_time)[1] last_updated_time,
+    STRING_AGG(
+        DISTINCT
+        mg_id || " | " || CAST(created_time AS STRING) || " | " ||action ,
+        ",\n"
+    ) action_history,
+
+FROM (
+    SELECT mg_id, order_id, action, last_updated_time, created_time, synced_at, ingest_time
+    FROM ${ref(`marketplace_prd_order_v2_order`)}
+    WHERE created_date > CURRENT_DATE() - INTERVAL 1 MONTH
+    WINDOW w AS (order by synced_at desc) 
+    -- Use window to order sort row
+    -- Because String_agg doesn't support get distinct and order at same time
+)
+GROUP BY 1,2
+HAVING count(distinct mg_id) > 1
+
+/*
+    -- Bellow is SQL to Manual check data in the silver, remember to replace:
+        * <order_id>
+
+    SELECT 
+        order_id, 
+        ARRAY_LENGTH(ARRAY_AGG(DISTINCT mg_id)) mg_id_cnt,
+        STRING_AGG(action order by synced_at desc) action
+
+    FROM silver_buymed_vn.marketplace_prd_order_v2_order o
+    WHERE ingest_time > TIMESTAMP(CURRENT_DATETIME() - INTERVAL 1 MONTH - interval 7 hour)
+    AND created_time > TIMESTAMP(CURRENT_DATETIME() - INTERVAL 1 MONTH - interval 7 hour)
+    and created_time is not null
+
+    AND order_id = <order_id>
+    GROUP BY 1
+    HAVING mg_id_cnt > 1
+
+    -- Checking mg_id 
+*/
+
+
