@@ -33,10 +33,10 @@ reply as (
             ''
         ) AS reply_content,
         status as reply_status,
-        CASE
-            WHEN is_approved = true then "APPROVED"
-            else "REFUSED"
-        END AS reply_approve_status
+        -- CASE
+        --     WHEN is_approved = true then "APPROVED"
+        --     else "REFUSED"
+        -- END AS reply_approve_status
     FROM
         ${source.platinum}.marketplace_prd_ticket_comment AS cm
     WHERE
@@ -60,7 +60,8 @@ select
     cm.status as comment_status,
     case
         when cm.is_approved = true then "APPROVED"
-        else "REFUSED"
+        when JSON_VALUE(cm.extra_props, '$.rejected_by') IS NULL then "WAIT_FOR_APPROVAL"
+        else "REJECTED"
     end as approve_status,
     JSON_VALUE(cm.extra_props, '$.reject_reason') AS reject_reason,
     SAFE_CAST(JSON_VALUE(cm.extra_props, '$.rejected_by') AS INT64) AS rejected_by_id,
