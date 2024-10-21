@@ -33,7 +33,7 @@ SELECT
 FROM ${ref(`fact_strategic_sale_order_item_single`)} ois 
 LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = ois.order_id 
 LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON ois.order_id = dosr.order_id 
-LEFT JOIN ${ref(`dim_calendar`)} dc ON date(ois.created_dt) = dc.date
+LEFT JOIN ${ref(`dim_calendar`)} dc ON date(ois.created_time) = dc.date
 WHERE  doc.order_channel NOT IN ("TENDER","CONSIGNMENT-RECOGNITION")
 AND doc.order_channel is not null
 AND ois.supplier_class not like "TECH"
@@ -57,7 +57,7 @@ SELECT
 FROM ${ref(`fact_strategic_sale_order_item_single`)} ois 
 LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = ois.order_id 
 LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON ois.order_id = dosr.order_id 
-LEFT JOIN ${ref(`dim_calendar`)} dc ON date(ois.confirmation_dt) = dc.date
+LEFT JOIN ${ref(`dim_calendar`)} dc ON date(ois.confirmation_time) = dc.date
 WHERE  doc.order_channel LIKE "TENDER"
 AND ois.order_status not like "WAIT_TO_CONFIRM"
 AND ois.supplier_class not like "TECH"
