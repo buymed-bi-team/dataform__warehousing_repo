@@ -41,6 +41,7 @@ reply as (
         ${source.platinum}.marketplace_prd_ticket_comment AS cm
     WHERE
         type = "REPLY"
+        AND JSON_VALUE(commenter, "$.employee_id") IS NOT NULL
     -- QUALIFY
     --   ROW_NUMBER() OVER (PARTITION BY comment_id ORDER BY synced_at DESC) = 1
 )
@@ -49,7 +50,9 @@ select
     timestamp_add(cm.created_time, interval 7 hour) as comment_time,
     date(timestamp_add(cm.created_time, interval 7 hour)) as comment_date,
     cm.comment_id,
-    JSON_VALUE(cm.commenter, "$.customer_id") as customer_id,
+    CAST(JSON_VALUE(cm.extra_props, "$.parent_comment_id") AS INT64) AS parent_comment_id,
+    SAFE_CAST(JSON_VALUE(cm.commenter, "$.customer_id") AS INT64) as customer_id,
+    cm.type,
     cm.target_code as sku_code,
     s.sku_key,
     concat(s.sku_key, "_", c.sale_region) as sku_fc_code,
@@ -61,6 +64,7 @@ select
     end as approve_status,
     JSON_VALUE(cm.extra_props, '$.reject_reason') AS reject_reason,
     SAFE_CAST(JSON_VALUE(cm.extra_props, '$.rejected_by') AS INT64) AS rejected_by_id,
+    r.reply_id,
     r.employee_id,
     r.reply_time,
     r.reply_date,
@@ -73,7 +77,9 @@ from ${source.platinum}.marketplace_prd_ticket_comment as cm
         on cm.comment_id = r.comment_id
     left join ${ref('dim_sku')} as s
         on cm.target_code = s.sku_code
-where cm.type = "COMMENT"
-and cm.target_type = "SKU"
+where 
+    JSON_VALUE(cm.commenter, "$.customer_id") IS NOT NULL
+    -- cm.type = "COMMENT"
+    -- and cm.target_type = "SKU"
 -- QUALIFY
 --   ROW_NUMBER() OVER (PARTITION BY cm.comment_id ORDER BY cm.ingest_time DESC) = 1
