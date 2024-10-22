@@ -82,19 +82,19 @@ js {
                 + IF( fs.order_status not like "CANCEL" , fs.returned_quantity, 0) * fs.sales_price)  -- AS returned_amount,`
         },
         {
-            name: "COMMERICAL-AMOUNT",
+            name: "COMMERCIAL-AMOUNT",
             logic: `SUM((fs.listed_price - fs.sales_price) * fs.demand_quantity)`
         },
         {
-            name: "COMMERICAL-DEAL-AMOUNT",
+            name: "COMMERCIAL-DEAL-AMOUNT",
             logic: `SUM(IF( commercial_type = "DEAL", (fs.listed_price - fs.sales_price) * demand_quantity, 0))`
         },
         {
-            name: "COMMERICAL-CAMPAIGN-AMOUNT",
+            name: "COMMERCIAL-CAMPAIGN-AMOUNT",
             logic: `SUM(IF( commercial_type = "CAMPAIGN", (fs.listed_price - fs.sales_price) * demand_quantity, 0))`
         },
         {
-            name: "COMMERICAL-COMBO-AMOUNT",
+            name: "COMMERCIAL-COMBO-AMOUNT",
             logic: `SUM(IF( commercial_type = "COMBO",(fs.listed_price - fs.sales_price) * demand_quantity, 0))`
         },
         {
