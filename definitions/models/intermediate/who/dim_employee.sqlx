@@ -34,18 +34,21 @@ WITH dedup_human_resource AS ${dedup.dedup(
 )}
 
 SELECT 
-    employee_id,
+    a.employee_id,
     CAST(json_value(branch.branch_account_id) AS INTEGER) AS branch_account_id,
-    email,
-    user_name,
-    fullname,
-    department,
-    job_title,
-    employee_status
-FROM dedup_human_resource,
+    a.email,
+    a.user_name,
+    a.fullname,
+    a.department,
+    a.job_title,
+    a.employee_status,
+    c.phone_number
+FROM dedup_human_resource AS a,
     UNNEST(JSON_EXTRACT_ARRAY(user_branch_infos)) as branch
+    LEFT JOIN ${source.platinum}.core_prd_account_account AS c 
+        ON c.account_id = CAST(json_value(branch.branch_account_id) AS INTEGER)
 WHERE JSON_VALUE(branch,'$.branch') LIKE "VN"
-AND NOT REGEXP_CONTAINS(UPPER(fullname),"TEST|DEMO|/[TECH/]|AP CHECKL")
+AND NOT REGEXP_CONTAINS(UPPER(a.fullname),"TEST|DEMO|/[TECH/]|AP CHECKL")
 
 post_operations {
     ALTER TABLE ${self()} ADD PRIMARY KEY (employee_id) NOT ENFORCED;

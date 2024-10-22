@@ -41,6 +41,8 @@ filtered_orders AS (
   SELECT 
     fs.order_id,
     fs.created_time,
+    fs.listed_price,
+    fs.commercial_type,
     fs.sales_price,
     fs.demand_quantity,
     fs.order_status,
@@ -73,10 +75,23 @@ order_metrics AS (
       WHEN order_channel IN ("MARKETPLACE","CONSIGNMENT") THEN "MARKETPLACE"
       ELSE order_channel
     END AS channel,
-    SUM(sales_price * demand_quantity) as total_sales,
-    SUM(IF(order_status LIKE "CANCEL" AND sale_order_code IS NULL, sales_price * demand_quantity, 0)) as cancel_before_ffm,
+    SUM(sales_price * demand_quantity) as gmv_before_cancel,
+    SUM(IF(order_status LIKE "CANCEL" AND sale_order_code is null, (sales_price * demand_quantity ),0 )) as cancel_before_ffm,
+    SUM(IF(order_status LIKE "CANCEL", (sales_price * demand_quantity ), 0)) as cancel,
+    SUM(IF(order_status LIKE "CANCEL" AND sale_order_code is not null, (sales_price * demand_quantity ),0 )) as cancel_after_ffm,
     SUM(IF(order_status NOT LIKE "CANCEL",(outbound_quantity - returned_quantity) * sales_price, 0)) as fulfilled_amount,
-    COUNT(DISTINCT order_id) as so_count
+    SUM(IF(order_status NOT LIKE "CANCEL" , returned_quantity, 0) * sales_price) as returned_amount,
+    SUM(IF(order_status NOT LIKE "CANCEL" AND order_status not in ("DELIVERING","DELIVERED","COMPLETED"),  (demand_quantity - outbound_quantity ) ,0 ) * sales_price) as backlog_amount,
+    SUM((listed_price - sales_price) * demand_quantity) as commercial_amount,
+    SUM(IF(commercial_type = "DEAL", (listed_price - sales_price) * demand_quantity, 0)) as commercial_deal_amount,
+    SUM(IF(commercial_type = "CAMPAIGN", (listed_price - sales_price) * demand_quantity, 0)) as commercial_campaign_amount,
+    SUM(IF(commercial_type = "COMBO",(listed_price - sales_price) * demand_quantity, 0)) as commercial_combo_amount,
+    SUM(IF(order_status NOT LIKE "CANCEL" AND order_status in ("DELIVERING","DELIVERED","COMPLETED"),(demand_quantity - outbound_quantity ) ,0 ) * sales_price) as gmv_unff,
+    SUM(IF(order_status NOT LIKE "CANCEL" AND order_status not in ("DELIVERING","DELIVERED","COMPLETED"),  (demand_quantity - outbound_quantity ) ,0 ) * sales_price) as gmv_backlog,
+    SUM(listed_price * demand_quantity) as gmv_with_listed_price,
+    SUM(IF(order_status NOT LIKE "CANCEL" , returned_quantity, 0) * sales_price) as gmv_return,
+    COUNT(DISTINCT order_id) as so_count,
+    SUM(demand_quantity) as item_sold
   FROM filtered_orders
   GROUP BY 1, 2, 3
 ),
@@ -134,10 +149,24 @@ SELECT
   value
 FROM order_metrics m
 CROSS JOIN UNNEST([
-  STRUCT("GMV-BEFORE-CANCEL" as measure, total_sales as value),
-  STRUCT("GMV-AFTER-CANCEL" as measure, (total_sales - cancel_before_ffm) as value),
+  STRUCT("GMV-BEFORE-CANCEL" as measure, gmv_before_cancel as value),
+  STRUCT("GMV-AFTER-CANCEL" as measure, (gmv_before_cancel - cancel_before_ffm) as value),
+  STRUCT("CANCEL" as measure, cancel as value ),
+  STRUCT("CANCEL-AFTER-FFM" as measure, cancel_after_ffm as value),
+  STRUCT("CANCEL-BEFORE-FFM" as measure, cancel_before_ffm as value),
   STRUCT("GMV-FULFILLED" as measure, fulfilled_amount as value),
-  STRUCT("SO" as measure, so_count as value)
+  STRUCT("SO" as measure, so_count as value),
+  STRUCT("NMV" as measure, (cancel_after_ffm + fulfilled_amount +  backlog_amount + returned_amount) as value),
+  STRUCT("COMMERCIAL-AMOUNT" as measure, commercial_amount as value),
+  STRUCT("COMMERCIAL-DEAL-AMOUNT" as measure, commercial_deal_amount as value),
+  STRUCT("COMMERCIAL-CAMPAIGN-AMOUNT" as measure, commercial_campaign_amount as value),
+  STRUCT("COMMERCIAL-COMBO-AMOUNT" as measure, commercial_combo_amount as value),
+  STRUCT("GMV-UNFF" as measure, gmv_unff as value),
+  -- STRUCT("FFM_RATE" as measure, ((gmv_before_cancel  - cancel_before_ffm)  - gmv_unff) / total_sales * 100 as value ),
+  STRUCT("GMV-WITH-LISTED-PRICE" as measure, gmv_with_listed_price as value),
+  STRUCT("ITEM-SOLD" as measure, item_sold as value),
+  STRUCT("GMV-BACKLOG" as measure, gmv_backlog as value),
+  STRUCT("GMV-RETURN" as measure, gmv_return as value)
 ]) metrics
 JOIN base_calendar c 
   ON DATE(m.order_date) = c.date

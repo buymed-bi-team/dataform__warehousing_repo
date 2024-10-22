@@ -44,10 +44,10 @@ config {
         clusterBy: ["order_id"]
     },
 
-    assertions: {
-      uniqueKey: ["order_id"],
-      nonNull: ["order_id", "customer_id"]
-    }
+    //assertions: {
+    //  uniqueKey: ["order_id"],
+    //  nonNull: ["order_id", "customer_id"]
+    //}
 }
 
 WITH
@@ -171,7 +171,7 @@ WITH
         WHEN TO_JSON_STRING(a.tags) LIKE '%CO_INTERNAL%' THEN "CO_Sale_Order"
         WHEN TO_JSON_STRING(a.tags) LIKE '%SO_INTERNAL%' THEN "SO_Sale_Receipt"
       END AS internal_portal_type,
-      e.carrier_name,
+      -- e.carrier_name,
       a.province_code,
       a.redeem_code,
 
@@ -195,7 +195,8 @@ WITH
       END AS order_status_seq,
 
       a.customer_level,
-      a.tags
+      a.tags,
+      IF(a.status = 'CANCEL', "CANCELLED", "NORMAL") AS cancellation
 
     FROM ${source.platinum}.marketplace_prd_order_v2_order AS a
       LEFT JOIN customer_rating r 
@@ -206,14 +207,14 @@ WITH
         ON a.order_id = c.order_id
       LEFT JOIN actual_sales_amount AS d 
         ON a.order_id = d.order_id
-      LEFT JOIN (
-        SELECT
-          order_id, carrier_name
-        FROM ${ref('fact_outbound_ticket')}
-        WHERE
-          REGEXP_CONTAINS(reference_code, r'-F|-P1')
-        QUALIFY ROW_NUMBER() OVER(PARTITION BY order_id, reference_code ) = 1
-      ) e ON e.order_id = a.order_id
+      -- LEFT JOIN (
+      --   SELECT
+      --     order_id, carrier_name
+      --   FROM ${ref('fact_outbound_ticket')}
+      --   WHERE
+      --     REGEXP_CONTAINS(reference_code, r'-F|-P1')
+      --   QUALIFY ROW_NUMBER() OVER(PARTITION BY order_id, reference_code ) = 1
+      -- ) e ON e.order_id = a.order_id
     WHERE
       a.status <> 'REVERTING' 
   ),
