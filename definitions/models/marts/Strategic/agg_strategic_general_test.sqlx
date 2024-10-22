@@ -75,7 +75,7 @@ order_metrics AS (
       WHEN order_channel IN ("MARKETPLACE","CONSIGNMENT") THEN "MARKETPLACE"
       ELSE order_channel
     END AS channel,
-    SUM(sales_price * demand_quantity) as total_sales,
+    SUM(sales_price * demand_quantity) as gmv_before_cancel,
     SUM(IF(order_status LIKE "CANCEL" AND sale_order_code IS NULL, sales_price * demand_quantity, 0)) as cancel_before_ffm,
     SUM(IF(order_status LIKE "CANCEL", ( sales_price * demand_quantity ), 0)) as cancel,
     SUM(IF(order_status LIKE "CANCEL" AND sale_order_code is not null, ( sales_price * demand_quantity ),0 )) as cancel_after_ffm,
@@ -149,8 +149,8 @@ SELECT
   value
 FROM order_metrics m
 CROSS JOIN UNNEST([
-  STRUCT("GMV-BEFORE-CANCEL" as measure, total_sales as value),
-  STRUCT("GMV-AFTER-CANCEL" as measure, (total_sales - cancel_before_ffm) as value),
+  STRUCT("GMV-BEFORE-CANCEL" as measure, gmv_before_cancel as value),
+  STRUCT("GMV-AFTER-CANCEL" as measure, (gmv_before_cancel - cancel_before_ffm) as value),
   STRUCT("CANCEL" as measure, cancel as value ),
   STRUCT("CANCEL-AFTER-FFM" as measure, cancel_after_ffm as value),
   STRUCT("CANCEL-BEFORE-FFM" as measure, cancel_before_ffm as value),
