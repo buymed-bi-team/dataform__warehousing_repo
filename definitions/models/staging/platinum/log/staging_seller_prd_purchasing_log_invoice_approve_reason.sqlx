@@ -1,29 +1,31 @@
--- config {
---     type:"table",
---     schema:"platinum_buymed_vn",
---     name: "seller_prd_purchasing_log_invoice_approve_reason",
---     description: `PIC: minhluu, model_type: table, Internal: internal.thuocsi.vn/config/service-admin/app/config`,
---     assertions:{
---         uniqueKey: "mg_id"
---     }
--- }
--- SELECT
---  * EXCEPT( timestamp_i ),
---  CASE 
---     WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
---     ELSE "2099-01-01"
---   END AS created_date
--- FROM lakehouse-prod-394907.silver_buymed_vn.seller_prd_purchasing_log_invoice_approve_reason o 
---  QUALIFY ROW_NUMBER() OVER (_window) = 1
---        AND FIRST_VALUE(action) OVER (_window) <> 'd'
--- WINDOW
---   _window AS (
---   PARTITION BY
---     mg_id
---   ORDER BY
---     synced_at DESC,
---   IF
---     (action='d',3,
---     IF
---       (action='u',2,1)) DESC,
---     last_updated_time DESC)
+config {
+    type:"table",
+    schema:"platinum_buymed_vn",
+    name: "seller_prd_purchasing_log_invoice_approve_reason",
+    description: `PIC: minhluu, model_type: table, Internal: internal.thuocsi.vn/config/service-admin/app/config`,
+    assertions:{
+        uniqueKey: "mg_id"
+    },
+    tags: ["platinum_custom_2h_past5"]
+}
+SELECT
+ * ,
+ CASE 
+    WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
+    ELSE "2099-01-01"
+  END AS created_date
+FROM lakehouse-prod-394907.silver_buymed_vn.seller_prd_purchasing_log_invoice_approve_reason o 
+ QUALIFY ROW_NUMBER() OVER (_window) = 1
+       AND FIRST_VALUE(action) OVER (_window) <> 'd'
+WINDOW
+  _window AS (
+  PARTITION BY
+    mg_id
+  ORDER BY
+    synced_at DESC,
+  IF
+    (action='d',3,
+    IF
+      (action='u',2,1)) DESC,
+    last_updated_time DESC)
+
