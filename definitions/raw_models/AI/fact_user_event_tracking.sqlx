@@ -35,6 +35,8 @@ WITH stg AS (
         JSON_EXTRACT_SCALAR(extra_props, '$.metadata.product_id') AS product_id,
         JSON_EXTRACT_SCALAR(extra_props, '$.metadata.seller_id') AS seller_id,
         JSON_EXTRACT_SCALAR(extra_props, '$.metadata.sku') AS sku_code,
+        JSON_EXTRACT_SCALAR(extra_props, '$.metadata.content') AS search_content,
+        JSON_EXTRACT_SCALAR(extra_props, '$.metadata.status') AS search_status,
         -- JSON_EXTRACT_SCALAR(extra_props, '$.metadata.seller_code') AS seller_code,    
         JSON_EXTRACT_SCALAR(extra_props, '$.ua_metadata.PLATFORM') AS platform,
         -- JSON_EXTRACT_SCALAR(extra_props, '$.metadata.host') AS host,
@@ -54,6 +56,8 @@ SELECT
     created_date,
     province_code,
     screen,
+    search_content,
+    search_status,
     SOURCE,
     case
         when LENGTH(block_code) - LENGTH(REGEXP_REPLACE(block_code, r'_', '')) > 1 and LEFT(block_code, 12) like "product-list"
