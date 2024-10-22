@@ -42,7 +42,9 @@ SELECT
     price_after_rebate,
     price_after_rebate_with_adhoc_promotion,
     price_contract,
-    TIMESTAMP_ADD(start_time, INTERVAL 7 HOUR) AS start_time
+    TIMESTAMP_ADD(start_time, INTERVAL 7 HOUR) AS start_time,
+    SAFE_CAST(JSON_VALUE(a.extra_props, "$.price_expected") AS INT64) AS price_expected_on_bill,
+    rebate
 FROM ${ref('seller_prd_promotion_log_price_after_rebate')} AS a
     LEFT JOIN contract_price AS b ON a.contract_price_code = b.contract_price_code
 WHERE
