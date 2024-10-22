@@ -5,7 +5,7 @@ config {
     Source:
         ${source.silver}.monitoring_prd_collector_user_stats_*`,
     columns: { 
-        event: `NonNull | Event IN ( "ADD_TO_CART","SKU_DETAIL_VIEW","SKU_IMPRESSION","REMOVE_FROM_CART")`,
+        event: `NonNull | Event IN ( "ADD_TO_CART","SKU_DETAIL_VIEW","SKU_IMPRESSION","REMOVE_FROM_CART","SEARCH")`,
         customer_id: "NonNull | The unique identifier for the customer",
         created_time: "NonNull | The datetime when the event was created, adjusted to the 'Asia/Ho_Chi_Minh' timezone",
         product_id: "NonNull | Unique identifier for each product",
@@ -45,7 +45,7 @@ WITH stg AS (
     -- _TABLE_SUFFIX BETWEEN '20240701'
     -- AND FORMAT_DATE('%Y%m%d', CURRENT_DATE())        
     created_date >= date( date_trunc( date_sub( current_date('+7'), interval 3 month) , month ) )
-    AND event IN ( "ADD_TO_CART","SKU_DETAIL_VIEW","SKU_IMPRESSION","REMOVE_FROM_CART") 
+    AND event IN ( "ADD_TO_CART","SKU_DETAIL_VIEW","SKU_IMPRESSION","REMOVE_FROM_CART","SEARCH") 
     )
 SELECT
     event,
