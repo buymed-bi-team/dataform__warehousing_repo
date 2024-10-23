@@ -1,7 +1,11 @@
+
+
+
 config {
     type: "incremental",
-    name: "marketplace_prd_order_v2_reconciliation_item",
+    name: "marketplace_prd_product_v2_product_high_profit_result",
     schema: "platinum_buymed_vn",
+    description: "Internal: https://internal.buymed.vn/cms/high-profit-product",
     assertions: {
         uniqueKey: 'mg_id',
         nonNull: ["created_date"]
@@ -9,7 +13,7 @@ config {
     bigquery: {
         partitionBy: "created_date"
     },
-    tags: ["custom_1h_past7"]
+    tags:["platinum_custom_2h_past5"]
 }
 
 pre_operations {
@@ -27,13 +31,13 @@ pre_operations {
       CREATE OR REPLACE TEMP TABLE range_created_time_table AS (
        SELECT MIN(DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))) AS min_created_date,
         MAX(DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))) AS max_created_date
-        FROM ${source.silver}.marketplace_prd_order_v2_reconciliation_item 
+        FROM ${source.silver}.marketplace_prd_product_v2_product_high_profit_result 
         WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) AND action != "d"
       );
 
       CREATE OR REPLACE TEMP TABLE get_deleted_record AS (
           SELECT mg_id 
-          FROM ${source.silver}.marketplace_prd_order_v2_reconciliation_item 
+          FROM ${source.silver}.marketplace_prd_product_v2_product_high_profit_result 
           WHERE  ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) and 
           created_time IS NULL AND last_updated_time IS NULL
         );
@@ -55,7 +59,7 @@ SELECT
     WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
     ELSE "2099-01-01"
   END AS created_date
-FROM ${source.silver}.marketplace_prd_order_v2_reconciliation_item o 
+FROM ${source.silver}.marketplace_prd_product_v2_product_high_profit_result o 
  ${
     when(incremental(), 
       `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) 
@@ -109,8 +113,8 @@ post_operations {
         
         CREATE OR REPLACE TEMP TABLE get_range_deleted AS (
           SELECT 
-            MIN(created_date) AS min_created_date_deleted, 
-            MAX(created_date) AS max_created_date_deleted 
+            MAX(created_date) AS min_created_date_deleted, 
+            MIN(created_date) AS max_created_date_deleted 
           FROM ${self()} 
           WHERE mg_id IN (SELECT mg_id FROM get_deleted_record) 
             AND created_date != "2099-01-01" 
@@ -133,3 +137,5 @@ post_operations {
     )
   }
 }
+
+

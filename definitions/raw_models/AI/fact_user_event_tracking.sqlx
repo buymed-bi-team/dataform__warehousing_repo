@@ -5,7 +5,7 @@ config {
     Source:
         ${source.silver}.monitoring_prd_collector_user_stats_*`,
     columns: { 
-        event: `NonNull | Event IN ( "ADD_TO_CART","SKU_DETAIL_VIEW","SKU_IMPRESSION","REMOVE_FROM_CART")`,
+        event: `NonNull | Event IN ( "ADD_TO_CART","SKU_DETAIL_VIEW","SKU_IMPRESSION","REMOVE_FROM_CART","SEARCH")`,
         customer_id: "NonNull | The unique identifier for the customer",
         created_time: "NonNull | The datetime when the event was created, adjusted to the 'Asia/Ho_Chi_Minh' timezone",
         product_id: "NonNull | Unique identifier for each product",
@@ -35,6 +35,8 @@ WITH stg AS (
         JSON_EXTRACT_SCALAR(extra_props, '$.metadata.product_id') AS product_id,
         JSON_EXTRACT_SCALAR(extra_props, '$.metadata.seller_id') AS seller_id,
         JSON_EXTRACT_SCALAR(extra_props, '$.metadata.sku') AS sku_code,
+        JSON_EXTRACT_SCALAR(extra_props, '$.metadata.content') AS search_content,
+        JSON_EXTRACT_SCALAR(extra_props, '$.metadata.status') AS search_status,
         -- JSON_EXTRACT_SCALAR(extra_props, '$.metadata.seller_code') AS seller_code,    
         JSON_EXTRACT_SCALAR(extra_props, '$.ua_metadata.PLATFORM') AS platform,
         -- JSON_EXTRACT_SCALAR(extra_props, '$.metadata.host') AS host,
@@ -45,7 +47,7 @@ WITH stg AS (
     -- _TABLE_SUFFIX BETWEEN '20240701'
     -- AND FORMAT_DATE('%Y%m%d', CURRENT_DATE())        
     created_date >= date( date_trunc( date_sub( current_date('+7'), interval 3 month) , month ) )
-    AND event IN ( "ADD_TO_CART","SKU_DETAIL_VIEW","SKU_IMPRESSION","REMOVE_FROM_CART") 
+    AND event IN ( "ADD_TO_CART","SKU_DETAIL_VIEW","SKU_IMPRESSION","REMOVE_FROM_CART","SEARCH") 
     )
 SELECT
     event,
@@ -54,6 +56,8 @@ SELECT
     created_date,
     province_code,
     screen,
+    search_content,
+    search_status,
     SOURCE,
     case
         when LENGTH(block_code) - LENGTH(REGEXP_REPLACE(block_code, r'_', '')) > 1 and LEFT(block_code, 12) like "product-list"

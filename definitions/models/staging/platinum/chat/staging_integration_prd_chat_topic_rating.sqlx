@@ -1,6 +1,6 @@
 config {
     type: "incremental",
-    name: "marketplace_prd_order_v2_reconciliation_item",
+    name: "integration_prd_chat_topic_rating",
     schema: "platinum_buymed_vn",
     assertions: {
         uniqueKey: 'mg_id',
@@ -9,7 +9,7 @@ config {
     bigquery: {
         partitionBy: "created_date"
     },
-    tags: ["custom_1h_past7"]
+    tags: ["custom_2h_past5"]
 }
 
 pre_operations {
@@ -25,15 +25,24 @@ pre_operations {
 
 
       CREATE OR REPLACE TEMP TABLE range_created_time_table AS (
-       SELECT MIN(DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))) AS min_created_date,
-        MAX(DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))) AS max_created_date
-        FROM ${source.silver}.marketplace_prd_order_v2_reconciliation_item 
-        WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) AND action != "d"
+        SELECT 
+          MIN(created_date) AS min_created_date, 
+          MAX(created_date) AS max_created_date 
+        FROM (
+          SELECT  
+            CASE 
+              WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh')) 
+              ELSE DATE("2099-01-01") 
+            END AS created_date
+          FROM ${source.silver}.integration_prd_chat_topic_rating 
+          WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) 
+           AND action != "d"    
+        )
       );
 
       CREATE OR REPLACE TEMP TABLE get_deleted_record AS (
           SELECT mg_id 
-          FROM ${source.silver}.marketplace_prd_order_v2_reconciliation_item 
+          FROM ${source.silver}.integration_prd_chat_topic_rating 
           WHERE  ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) and 
           created_time IS NULL AND last_updated_time IS NULL
         );
@@ -50,12 +59,12 @@ pre_operations {
 }
 
 SELECT
- *,
+ * ,
  CASE 
     WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
     ELSE "2099-01-01"
   END AS created_date
-FROM ${source.silver}.marketplace_prd_order_v2_reconciliation_item o 
+FROM ${source.silver}.integration_prd_chat_topic_rating o 
  ${
     when(incremental(), 
       `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) 
@@ -133,3 +142,5 @@ post_operations {
     )
   }
 }
+
+
