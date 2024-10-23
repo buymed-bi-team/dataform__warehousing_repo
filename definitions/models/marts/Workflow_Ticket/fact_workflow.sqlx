@@ -13,6 +13,8 @@ config {
     tags: ["custom_1h_past5"]
 }
 
+
+
 WITH 
     cte_main AS (
         SELECT 
@@ -23,7 +25,8 @@ WITH
             , b.name as request_name
             , a.workflow_code
             , b.workflow_name
-            , a.created_date
+            , b.created_date
+            , DATE(TIMESTAMP_ADD(b.completed_time, INTERVAL 7 HOUR)) AS completed_date
             , a.status as task_status
             , b.status as request_status
             , a.step_no
@@ -74,5 +77,5 @@ FROM cte_parsed AS a
     LEFT JOIN ${ref('dim_customer')} AS cus ON a.phone = cus.customer_phone
     LEFT JOIN ${ref('fact_order')} AS o
         ON o.customer_id = cus.customer_id
-            AND o.created_at >= a.created_date
+            AND o.created_at >= DATE_SUB(a.created_date, INTERVAL 7 DAY)
 GROUP BY ALL
