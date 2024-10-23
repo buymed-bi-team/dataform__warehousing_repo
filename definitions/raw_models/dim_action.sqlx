@@ -8,8 +8,8 @@ config {
         action_type:"",
         action:"",
         action_key: "Nullable | IN ('INITIAL_UPDATE_PRODUCT','INITIAL_LISTING_PRODUCT','CONFIRM_UPDATE_PRODUCT','CONFIRM_LISTING_PRODUCT','SUGGESTION_SELLING_PAGE_VIEW','SUGGESTION_SELLING_SEARCH_PRODUCT')"
-    },
-    tags:['0h00']
+    }
+    /*tags:['0h00']*/
 }
 --- dim_action: temp
 with action_key as
