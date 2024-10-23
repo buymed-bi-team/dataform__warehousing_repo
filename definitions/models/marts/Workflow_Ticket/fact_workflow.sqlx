@@ -22,6 +22,7 @@ WITH
             , a.request_code
             , b.name as request_name
             , a.workflow_code
+            , b.workflow_name
             , a.created_date
             , a.status as task_status
             , b.status as request_status
