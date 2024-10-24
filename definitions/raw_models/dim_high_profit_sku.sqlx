@@ -23,3 +23,4 @@ select
     profit_level
 
 from ${source.platinum}.marketplace_prd_product_v2_product_high_profit_result a
+qualify ROW_NUMBER() over (partition by  a.product_id ||"_"||a.seller_code ||"_"|| a.province_code ||"_"|| a.level_code order by created_time desc ) =1
