@@ -18,6 +18,8 @@ select
     a.product_id ||"_"||a.seller_code ||"_"|| a.region_code as sku_key,
     a.product_id ||"_"||a.seller_code ||"_"|| a.province_code ||"_"|| a.level_code as high_profit_key,
     a.level_code,
-    SAFE_DIVIDE(profit_margin,100) as profit_margin
+    SAFE_DIVIDE(profit_margin,100) as profit_margin,
+    a.province_code,
+    profit_level
 
 from ${source.platinum}.marketplace_prd_product_v2_product_high_profit_result a
