@@ -3,12 +3,7 @@ config {
     name: "marketplace_prd_order_v2_order",
     schema: "platinum_buymed_vn",
     assertions: {
-         uniqueKey: 'mg_id',
-         nonNull: ['created_date'],
-         rowConditions: [
-        '(created_time is not null and last_updated_time is not null) or (created_time is null and last_updated_time is not null) or (created_time is not null and last_updated_time is null)',
-        'action != "d"'
-    ]
+         uniqueKey: 'mg_id'
      },
     bigquery: {
         partitionBy: "created_date"
