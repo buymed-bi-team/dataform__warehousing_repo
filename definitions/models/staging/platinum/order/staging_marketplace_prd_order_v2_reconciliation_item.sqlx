@@ -9,7 +9,7 @@ config {
     bigquery: {
         partitionBy: "created_date"
     },
-    tags: ["custom_1h_past7"]
+  //   tags: ["custom_1h_past7"]
 }
 
 pre_operations {
@@ -81,7 +81,7 @@ post_operations {
     when(incremental(),
       `
       -- Variable declarations and assignments at the start of the block
-      
+                                                                                    
 
       IF min_created_date IS NOT NULL AND max_created_date IS NOT NULL THEN
 

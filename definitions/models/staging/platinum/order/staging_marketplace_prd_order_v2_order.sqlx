@@ -13,7 +13,7 @@ config {
     bigquery: {
         partitionBy: "created_date"
     },
-    tags: ["custom_1h_past7"]
+  //   tags: ["custom_1h_past7"]
 }
 
 pre_operations {
@@ -98,6 +98,7 @@ FROM (
       last_updated_time DESC
   )
 ) 
+
 ${
     when(incremental(), 
       `WHERE created_time is null and last_updated_time is null -- all record deleted include action "d"
