@@ -1,0 +1,21 @@
+config {
+    type: "view",
+    description: `PIC: tu.dang;
+    Source: 
+        ${source.ref}.fact_order_item`
+}
+
+select
+oi.created_at,
+date(oi.created_at) as created_date,
+sku_key_sales_region_code,
+product_id ||"_"|| seller_code ||"_"||oi.province_code ||"_"|| dc.customer_level as high_profit_key,
+sum(sales_price * demand_quantity) ordered_amt,
+sum(demand_quantity) as ordered_qty,
+count(distinct oi.order_id) no_ord
+from  ${ref('fact_order_item')} oi
+left join  ${ref('dim_customer')} dc on oi.customer_id = dc.customer_id
+left join  ${ref('dim_order_status')} os on oi.order_id = os.order_id
+where CRM_status not in ("CANCEL","RETURNED") 
+-- and date(created_at) >= "2024-01-01"
+group by all
