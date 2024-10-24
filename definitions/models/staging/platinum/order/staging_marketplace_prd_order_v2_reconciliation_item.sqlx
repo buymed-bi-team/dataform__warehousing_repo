@@ -81,7 +81,7 @@ post_operations {
     when(incremental(),
       `
       -- Variable declarations and assignments at the start of the block
-      
+                                                                                    
 
       IF min_created_date IS NOT NULL AND max_created_date IS NOT NULL THEN
 

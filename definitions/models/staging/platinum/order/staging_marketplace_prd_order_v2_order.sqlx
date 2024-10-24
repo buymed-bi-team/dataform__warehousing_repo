@@ -98,6 +98,7 @@ FROM (
       last_updated_time DESC
   )
 ) 
+
 ${
     when(incremental(), 
       `WHERE created_time is null and last_updated_time is null -- all record deleted include action "d"
