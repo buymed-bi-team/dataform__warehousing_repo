@@ -61,7 +61,11 @@ WITH
       SELECT
         ticket_id
         , content 
-        , SPLIT(UPPER(content), '-')[SAFE_OFFSET(0)] AS feedback_type
+        , IF(
+            REGEXP_CONTAINS(SPLIT(UPPER(content), '-')[SAFE_OFFSET(0)], r'UNAVAI|AVAI|HIGH|HUNT|SUBST|LISTING'),
+            SPLIT(UPPER(content), '-')[SAFE_OFFSET(0)],
+            NULL
+          ) AS feedback_type
       FROM ${source.platinum}.marketplace_prd_ticket_ticket_feedback
       WHERE 
         created_date >= (SELECT DATE(start_date) FROM cte_date)
