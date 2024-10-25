@@ -31,7 +31,19 @@ WITH dedup_human_resource AS ${dedup.dedup(
     employee_position as job_title,
     user_branch_infos
     `
-)}
+)},
+
+    employee_phone_number AS (
+        SELECT
+            code AS phone_number
+            , LOWER(value) as email
+        FROM ${source.collector}.data_prd
+        WHERE
+            object = 'Phone_PIC'
+            AND type = 'EMPLOYEE_MAIL'
+            AND submit_id >= 5066
+        QUALIFY ROW_NUMBER() over (PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
+    )
 
 SELECT 
     a.employee_id,
@@ -45,8 +57,8 @@ SELECT
     c.phone_number
 FROM dedup_human_resource AS a,
     UNNEST(JSON_EXTRACT_ARRAY(user_branch_infos)) as branch
-    LEFT JOIN ${source.platinum}.core_prd_account_account AS c 
-        ON c.account_id = CAST(json_value(branch.branch_account_id) AS INTEGER)
+    LEFT JOIN employee_phone_number AS c 
+        ON c.email = a.email
 WHERE JSON_VALUE(branch,'$.branch') LIKE "VN"
 AND NOT REGEXP_CONTAINS(UPPER(a.fullname),"TEST|DEMO|/[TECH/]|AP CHECKL")
 
