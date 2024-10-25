@@ -55,7 +55,11 @@ with cte_date as (
         ) as b on a.ticket_id = b.ticket_id
         where a.status = "COMPLETED"
             and a.warehouse_code in ("BD", "HN",'DN')
-            and COALESCE(JSON_EXTRACT_SCALAR(a.extra_props, '$.inbound_code'), JSON_VALUE(a.extra_props, '$.suggest_reference_codes.0')) is not null
+            and 
+                REGEXP_CONTAINS(
+                    COALESCE(JSON_EXTRACT_SCALAR(a.extra_props, '$.inbound_code'), JSON_VALUE(a.extra_props, '$.suggest_reference_codes.0')) 
+                    , r'PO|PGH'
+                )
             and b.done_quantity > 0
             and length(b.expired_date) = 10
             and b.expired_date is not null
