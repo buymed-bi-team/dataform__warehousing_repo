@@ -1,7 +1,7 @@
 config {
     type: 'table',
     name: "fact_user_event_tracking",
-    description: `Last 3 month | PIC: tu.dang; schedule: 0h00 daily; model type: table
+    description: `Last 2 month | PIC: tu.dang; schedule: 0h00 daily; model type: table
     Source:
         ${source.silver}.monitoring_prd_collector_user_stats_*`,
     columns: { 
@@ -48,7 +48,7 @@ WITH stg AS (
   WHERE
     -- _TABLE_SUFFIX BETWEEN '20240701'
     -- AND FORMAT_DATE('%Y%m%d', CURRENT_DATE())        
-    created_date >= date( date_trunc( date_sub( current_date('+7'), interval 3 month) , month ) )
+    created_date >= date( date_trunc( date_sub( current_date('+7'), interval 2 month) , month ) )
 --     AND event IN ( "ADD_TO_CART","SKU_DETAIL_VIEW","SKU_IMPRESSION","REMOVE_FROM_CART","SEARCH")
     ),
     region AS (
@@ -109,7 +109,7 @@ where customer_id >0)
              key,
              created_date
         FROM `${source.platinum}.monitoring_prd_realtime_user_customer_session_v3`
-        WHERE created_date >= date( date_trunc( date_sub( current_date('+7'), interval 3 month) , month ) ) and customer_id> 0
+        WHERE created_date >= date( date_trunc( date_sub( current_date('+7'), interval 2 month) , month ) ) and customer_id> 0
     )
 select cte_all.* except (area),
        CONCAT(product_id, "_", seller_code, "_", area) as sku_fc_code,
