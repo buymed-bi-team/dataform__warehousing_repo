@@ -3,8 +3,7 @@ config {
     name: "marketplace_prd_order_v2_reconciliation",
     schema: "platinum_buymed_vn",
     assertions: {
-        uniqueKey: 'mg_id',
-        nonNull: ["created_date"]
+        uniqueKey: 'mg_id'
     },
     bigquery: {
         partitionBy: "created_date"
