@@ -16,6 +16,7 @@ config {
 
 js {
   incremental_time = `DATE_TRUNC(CURRENT_DATETIME() - INTERVAL 4 HOUR, DAY)`
+  incremental_ts = `TIMESTAMP(${incremental_time})`
 }
 
 
@@ -32,7 +33,7 @@ pre_operations {
               ELSE "2099-01-01"
             END AS created_date
         FROM ${source.silver}.marketplace_prd_promotion_gamification_result
-        WHERE ingest_time >= ${incremental_time}
+        WHERE ingest_time >= ${incremental_ts}
         QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'
         WINDOW _window AS ( 
             PARTITION BY mg_id
