@@ -17,30 +17,32 @@ with
 
 -- step 1: get put ticket data
    , merge_sku_to_put_ticket as (
-        select b.sku                                                as sku_code
+        select 
+            b.sku                                                as sku_code
         -- , b.product_id
         -- , b.seller_code
 
-        , b.product_id || "_" || b.seller_code                    sku_key
-        , CASE
-            when a.warehouse_code = "HN" then "MIENBAC"
-            when a.warehouse_code = "BD" then "MIENNAM"
-            when a.warehouse_code = "DN" then "MIENTRUNG"
-          END
-            as sales_region_code
-        , a.warehouse_code                                     as fc_code
-        , b.ticket_id                                          as ticket_id
-        , a.code                                               as put_code
-        , JSON_EXTRACT_SCALAR(a.extra_props, '$.inbound_code') as inbound_code
-        , b.lot                                                as lot
-        , b.expired_date
-        , CASE
-            WHEN REGEXP_CONTAINS(b.expired_date,  r'^(0[1-9]|[12][0-9]|3[01])-(0[1-9]|1[0-2])-\d{4}$')
-                THEN PARSE_DATE('%d-%m-%Y', b.expired_date)
-            WHEN REGEXP_CONTAINS(b.expired_date, r'^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$')
-                THEN PARSE_DATE('%Y-%m-%d', b.expired_date)
-            END  as expired_date_convert
-        , TIMESTAMP_ADD(a.last_updated_time, interval 7 hour)  as put_done_at
+            , b.product_id || "_" || b.seller_code               AS sku_key
+            , CASE
+                when a.warehouse_code = "HN" then "MIENBAC"
+                when a.warehouse_code = "BD" then "MIENNAM"
+                when a.warehouse_code = "DN" then "MIENTRUNG"
+            END
+                as sales_region_code
+            , a.warehouse_code                                     as fc_code
+            , b.ticket_id                                          as ticket_id
+            , a.code                                               as put_code
+            , JSON_EXTRACT_SCALAR(a.extra_props, '$.inbound_code') as inbound_code
+            , b.lot                                                as lot
+            , b.expired_date
+            , CASE
+                WHEN REGEXP_CONTAINS(b.expired_date,  r'^(0[1-9]|[12][0-9]|3[01])-(0[1-9]|1[0-2])-\d{4}$')
+                    THEN PARSE_DATE('%d-%m-%Y', b.expired_date)
+                WHEN REGEXP_CONTAINS(b.expired_date, r'^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$')
+                    THEN PARSE_DATE('%Y-%m-%d', b.expired_date)
+                END  as expired_date_convert
+            , TIMESTAMP_ADD(a.last_updated_time, interval 7 hour)  as put_done_at
+            , b.done_quantity
         from (
             select *
             from ${source.platinum}.warehouse_prd_inbound_put_ticket
@@ -53,8 +55,12 @@ with
             ) as b on a.ticket_id = b.ticket_id
         where
             a.status = "COMPLETED"
-            and a.warehouse_code in ("BD", "HN", "DN")
-            and JSON_EXTRACT_SCALAR(a.extra_props, '$.inbound_code') is not null
+            and a.warehouse_code in ("BD", "HN",'DN')
+            and 
+                REGEXP_CONTAINS(
+                    COALESCE(JSON_EXTRACT_SCALAR(a.extra_props, '$.inbound_code'), JSON_VALUE(a.extra_props, '$.suggest_reference_codes.0')) 
+                    , r'PO|PGH'
+                )
             and b.done_quantity > 0
             and length(b.expired_date) = 10
             and b.expired_date is not null
