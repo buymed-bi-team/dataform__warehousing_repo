@@ -1,0 +1,82 @@
+-- config {
+--     type: "incremental",
+--     name: "marketplace_prd_order_v2_order_item",
+--     schema: "platinum_buymed_vn",
+--     assertions: {
+--          uniqueKey: 'mg_id'
+--      },
+--     bigquery: {
+--         partitionBy: "created_date"
+--     },
+--     tags: ["custom_1h_past7"]
+-- }
+
+-- js {
+--   incremental_time = `DATE_TRUNC(CURRENT_DATETIME() - INTERVAL 4 HOUR, DAY)`
+-- }
+
+
+-- pre_operations {
+--   ${
+--     when(incremental(),
+--       `--Incremental--
+--       DECLARE checkpoint_date ARRAY<date>;
+
+--       CREATE TEMP TABLE tmp1 AS (
+--         SELECT * , 
+--           CASE 
+--               WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
+--               ELSE "2099-01-01"
+--             END AS created_date
+--         FROM silver_buymed_vn.marketplace_prd_order_v2_order_item
+--         WHERE ingest_time >= ${incremental_time}
+--         QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'
+--         WINDOW _window AS ( 
+--             PARTITION BY mg_id
+--             ORDER BY synced_at DESC,
+--             IF (action = 'd', 3, IF (action = 'u', 2, 1)) DESC,
+--             last_updated_time DESC
+--         )
+--       );
+--       --
+
+--       SET checkpoint_date = ARRAY( 
+--         SELECT DATE( COALESCE(silver_new.created_time, platinum.created_time) ,'+7')
+--         FROM tmp1 silver_new
+--         LEFT JOIN ${self()} platinum ON platinum.mg_id = silver_new.mg_id
+--         GROUP BY 1
+--       );
+
+--       DELETE FROM platinum_buymed_vn.marketplace_prd_order_v2_order_item
+--       where created_date in UNNEST(checkpoint_date)
+--       and mg_id in ( 
+--         SELECT DISTINCT mg_id 
+--         FROM tmp1
+--         );
+
+--       `,
+--       `--FullRefresh--
+--       CREATE TEMP TABLE tmp1 AS (
+
+--           SELECT * , 
+--             CASE 
+--                 WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
+--                 ELSE "2099-01-01"
+--               END AS created_date
+--           FROM silver_buymed_vn.marketplace_prd_order_v2_order_item
+--           QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'
+--           WINDOW _window AS ( 
+--               PARTITION BY mg_id
+--               ORDER BY synced_at DESC,
+--               IF (action = 'd', 3, IF (action = 'u', 2, 1)) DESC,
+--               last_updated_time DESC
+--         )
+--         -- all record deleted include action "d"
+--         -- Special case for order -- PIC: AnhLe
+--       )`
+--     )
+--   }
+-- }
+-- -- 
+-- SELECT * FROM tmp1
+-- WHERE created_time is not null and last_updated_time is not null
