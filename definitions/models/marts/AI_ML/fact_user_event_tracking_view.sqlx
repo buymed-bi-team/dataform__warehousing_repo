@@ -6,7 +6,7 @@ config {
     name: "fact_user_event_tracking_view",
     schema: "buymed_product_recommendation",
     columns: {
-        event: `NonNull | IN ("ADD_TO_CART", "SKU_DETAIL_VIEW") `,
+        event: `NonNull | All Event `,
         customer_id: " NonNull | The unique identifier for the customer",
         created_time: "NonNull | The datetime when the event was created, adjusted to the 'Asia/Ho_Chi_Minh' timezone",
         product_id: "Nullable |",
