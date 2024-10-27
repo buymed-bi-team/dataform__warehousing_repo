@@ -16,7 +16,8 @@ config {
         delivery_status: "Nullable | "
     },
     assertions: {
-        uniqueKey: "order_id",
+        // uniqueKey: "order_id",
+        // Order_id can be primary key for sale order but not delivery_order
         nonNull: ("order_id")
     }
 }
