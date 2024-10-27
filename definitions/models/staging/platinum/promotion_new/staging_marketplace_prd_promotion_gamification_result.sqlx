@@ -1,5 +1,3 @@
-
-
 config {
     type: "incremental",
     name: "marketplace_prd_promotion_gamification_result",
@@ -44,8 +42,11 @@ pre_operations {
       );
       --
 
-      SET checkpoint_date = ARRAY( 
-        SELECT DATE( COALESCE(silver_new.created_time, platinum.created_time) ,'+7')
+      SET checkpoint_date = ( 
+        SELECT ARRAY_AGG(
+            DATE( COALESCE(silver_new.created_time, platinum.created_time) ,'+7')
+            IGNORE NULLS
+            )
         FROM tmp1 silver_new
         LEFT JOIN ${self()} platinum ON platinum.mg_id = silver_new.mg_id
         GROUP BY 1
