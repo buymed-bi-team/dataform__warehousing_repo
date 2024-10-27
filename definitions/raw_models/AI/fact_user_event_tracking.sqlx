@@ -114,7 +114,7 @@ where customer_id >0)
 --     )
 select cte_all.* except (area),
        CONCAT(product_id, "_", seller_code, "_", area) as sku_fc_code,
-       session,
+    --    session,
        product_id ||"_"||seller_code ||"_"|| province_code ||"_"|| customer_level as high_profit_key
 from cte_all
 -- left join session on cte_all.customer_id= session.customer_id and cte_all.created_time between session.start_time and end_time
