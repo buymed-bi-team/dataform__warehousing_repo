@@ -208,8 +208,9 @@ SELECT
   m.location,
   m.channel,
   measure,
-  value,
-  supplier_class
+  supplier_class,
+  value
+  
 FROM order_metrics m
 CROSS JOIN UNNEST([
   STRUCT("GMV-BEFORE-CANCEL" as measure, gmv_before_cancel as value),
@@ -242,8 +243,8 @@ SELECT
   d.location,
   d.channel,
   'DO' as measure,
-  d.do_count as value,
-  d.supplier_class
+  d.supplier_class,
+  d.do_count as value
 FROM delivery_metrics d
 JOIN base_calendar c 
   ON DATE(d.delivery_date) = c.date
