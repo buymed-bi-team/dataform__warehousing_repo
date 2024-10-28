@@ -33,7 +33,7 @@ SELECT DISTINCT
     TIMESTAMP_DIFF(CURRENT_TIMESTAMP(), l.latest_put_time, DAY) AS aging_put_days,
     b.code AS latest_put_code,
     COALESCE(json_value(b.extra_props, "$.inbound_code")
-    , JSON_VALUE(b.extra_props, '$.suggest_reference_codes')) AS latest_inbound_code
+    , JSON_VALUE(b.extra_props, '$.suggest_reference_codes.0')) AS latest_inbound_code
 FROM LatestPut l
 JOIN ${source.platinum}.warehouse_prd_inbound_put_ticket_item a
     ON l.sku = a.sku
