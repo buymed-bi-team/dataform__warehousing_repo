@@ -25,7 +25,7 @@ WITH DateSeries AS
     count(distinct sku_code ) as no_skus,
     count(distinct product_id ) as no_products,
     sum (demand_quantity) as  order_qty,
-    count(distinct oi.order_id) as no_orders,
+    count(distinct oi.order_id) as no_orders,count(oi.product_id) as no_order_item,
     -- sum(sales_price* demand_quantity)/count(distinct oi.order_id) as average_order_value,
     sum(sales_price* demand_quantity) as order_amount
 from ${ref('fact_order_item')} oi
@@ -39,11 +39,22 @@ group by all)
     select 
         created_date,
         customer_id,
-        count(customer_id) as no_add_cart
-    from ${ref('fact_user_event_tracking')}
+        sum(
+            case
+                when event = "ADD_TO_CART" then 1 else 0 end
+            ) as count_add_cart,
+            sum(
+            case
+                when event = "SKU_IMPRESSION" then 1 else 0 end
+            ) as count_sku_impression,
+            sum(
+            case
+                when event = "SKU_DETAIL_VIEW"  then 1 else 0 end
+            ) as count_sku_detail_view
+        from ${ref('fact_user_event_tracking')}
     where 
-    date (date_trunc( date_sub( current_date('+7'), interval 3 month) , month ))<= created_date and 
-    event = "ADD_TO_CART"
+    date (date_trunc( date_sub( current_date('+7'), interval 3 month) , month ))<= created_date 
+    -- and event = "ADD_TO_CART"
     group by 1, 2
 )
 , online_cus as 
@@ -75,9 +86,11 @@ SELECT
     oi.order_qty,
     oi.no_orders,
     oi.order_amount,
-    
+    no_order_item,
     -- Metrics from user_event
-    ue.no_add_cart,
+    ue.count_add_cart,
+    ue.count_sku_impression,
+    ue.count_sku_detail_view,
   COALESCE(oc.is_online, 0) AS is_online,
   COALESCE(cc.is_chat, 0) AS is_chat
 
