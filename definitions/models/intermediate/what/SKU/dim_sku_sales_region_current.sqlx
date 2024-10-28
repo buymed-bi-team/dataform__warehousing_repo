@@ -82,10 +82,10 @@ with
             LEFT JOIN UNNEST(JSON_EXTRACT_ARRAY(e.category_in_charge_data)) as f
             LEFT JOIN ${ref('dim_employee')} acc3
                 ON acc3.branch_account_id = SAFE_CAST(JSON_EXTRACT_SCALAR(f, '$.category_in_charge') as INT64)
-            LEFT JOIN ${ref('dim_product')} AS p 
-                ON e.product_id = p.product_id
+            -- LEFT JOIN ${ref('dim_product')} AS p 
+            --     ON e.product_id = p.product_id
         WHERE acc3.employee_status  = 'ACTIVE'
-            AND p.cic_name IS NULL
+            -- AND p.cic_name IS NULL
         QUALIFY ROW_NUMBER() OVER(PARTITION BY product_id, fc_code) = 1
     ),
 
@@ -153,7 +153,7 @@ SELECT
     pic.pic_purchase_name AS pic_name,
     -- cic.cic_account_id,
     pro.cic_account_id,
-    COALESCE(pro.cic_name, cic.cic_name) AS cic_name,
+    pro.cic_name AS cic_name,
     -- cic.cic_name,
     cic.brand_type,
     CASE
