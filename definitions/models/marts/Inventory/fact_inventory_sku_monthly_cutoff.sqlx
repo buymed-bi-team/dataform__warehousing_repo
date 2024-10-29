@@ -24,7 +24,8 @@ FROM (
     FORMAT_TIMESTAMP('%Y-%m', snapshot_date) as year_month,
     snapshot_date,
     stock_quantity,
-    no_skus
+    no_skus,
+    ROW_NUMBER() OVER (PARTITION BY fc_code, seller_class, FORMAT_TIMESTAMP('%Y-%m', snapshot_date) ORDER BY snapshot_date DESC) as rn
   FROM ${ref("fact_inventory_sku_historical")}
 )
-WHERE ROW_NUMBER() OVER (PARTITION BY fc_code, seller_class, FORMAT_TIMESTAMP('%Y-%m', snapshot_date) ORDER BY snapshot_date DESC) = 1
+WHERE rn = 1
