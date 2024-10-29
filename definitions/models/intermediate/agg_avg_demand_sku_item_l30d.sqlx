@@ -15,14 +15,15 @@ WITH filtered_data AS (
         a.order_quantity AS outgoing_quantity,
         a.created_date AS created_date
   FROM ${ref("fact_potential_sort")} a
-  WHERE a.created_date >= date_sub(current_date(),interval 30 day)
+  WHERE a.created_date >= date_sub(current_date('+7'),interval 30 day)
+  and a.created_date < CURRENT_DATE('+7')
   )
 
 SELECT
     sku_fc_key,
     SUM(outgoing_quantity)/30 AS avg_demand_l30d,
     SUM(CASE 
-        WHEN created_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 15 DAY) THEN outgoing_quantity
+        WHEN created_date >= DATE_SUB(CURRENT_DATE('+7'), INTERVAL 15 DAY) THEN outgoing_quantity
         ELSE 0
       END) / 15 AS avg_demand_l15d
 FROM filtered_data
