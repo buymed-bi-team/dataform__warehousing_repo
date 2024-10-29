@@ -1,6 +1,6 @@
 config {
   type: "view",
-  description: "Source: warehouse_prd_picking_pick_ticket, warehouse_prd_picking_pick_ticket_item, where so LIKE '%SO%' and created_time is in the last 30 days | PIC: dong.le",
+  description: "Source: fact_potential_sort, created_time in the last 30 days | PIC: dong.le",
   name: "agg_avg_demand_sku_item_l30d",
   columns: {
     sku_fc_key: "concatenation of sku key and warehouse code",
@@ -9,42 +9,24 @@ config {
   }
 }
 
-WITH dedup_pick_ticket AS (
-  SELECT
-    ticket_id, so, warehouse_code as fc_code, status, created_time
-  FROM ${source.platinum}.warehouse_prd_picking_pick_ticket
-  WHERE created_date >= date_sub(current_date(),interval 30 day)
-),
-
-dedup_pick_ticket_item AS (
-  SELECT
-    ticket_id, sku as sku_code, order_quantity
-  FROM ${source.platinum}.warehouse_prd_picking_pick_ticket_item
-  WHERE created_date >= date_sub(current_date(),interval 30 day)
-),
-
-filtered_data AS (
+WITH filtered_data AS (
     SELECT 
-        b.sku_code,
-        a.fc_code,
-        b.order_quantity AS outgoing_quantity,
-        DATE(a.created_time) AS created_date
-    FROM dedup_pick_ticket_item AS b
-    LEFT JOIN dedup_pick_ticket AS a ON b.ticket_id = a.ticket_id
-    LEFT JOIN ${ref("dim_sku")} AS c ON b.sku_code = c.sku_code
-    WHERE a.so LIKE "%SO%"
-)
+        a.sku_fc_key,
+        a.order_quantity AS outgoing_quantity,
+        a.created_date AS created_date
+  FROM ${ref("fact_potential_sort")} a
+  WHERE a.created_date >= date_sub(current_date(),interval 30 day)
+  )
 
 SELECT
-    sku_code,
-    fc_code,
+    sku_fc_key,
     SUM(outgoing_quantity)/30 AS avg_demand_l30d,
     SUM(CASE 
         WHEN created_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 15 DAY) THEN outgoing_quantity
         ELSE 0
       END) / 15 AS avg_demand_l15d
 FROM filtered_data
-GROUP BY sku_code, fc_code
+GROUP BY 1
 
 
   

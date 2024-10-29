@@ -27,7 +27,8 @@ WITH cte_date AS (
   )
 )
 
-select a.po_confirmed_ts, 
+select 
+  a.po_confirmed_ts, 
   a.po_code,
   a.partner_code,
   s.supplier_name AS partner_name,
@@ -37,6 +38,7 @@ select a.po_confirmed_ts,
   a.po_status,
   a.inbound_type,
   a.order_type,
+  a.first_checkin_destination_fc,
   b.* except(inbound_code)
 from ${ref(`fact_inbound_ticket`)} a
 left join parse_table b on a.po_code = b.inbound_code

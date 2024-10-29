@@ -7,9 +7,7 @@ config {
         Type: Table; 
         Refresh Schedule: hourly;
         Source: 
-            ${source.platinum}.warehouse_prd_inbound_put_ticket,
-            ${source.platinum}.warehouse_prd_inbound_receipt,
-            ${source.ref}.export_inbound_leadtime_data,
+            ${source.ref}.fact_put_ticket_detail
         `,
     tags: ["INBOUND", "custom_1h_past5"]
 }
@@ -27,4 +25,5 @@ SELECT
     , DATETIME_DIFF(done_at_conveyor_checking, started_at_conveyor_checking, SECOND ) / 3600 AS conveyor_checking_Hrs
     , DATETIME_DIFF(ts_start, ts_created, SECOND ) / 3600 AS put_awating_Hrs
     , DATETIME_DIFF(ts_done, ts_start, SECOND ) / 3600 AS put_Hrs
+    , DATETIME_DIFF(ts_done, first_checkin_destination_fc, SECOND ) / 3600 AS leadtime_put_v2
 FROM ${ref('fact_put_ticket_detail')}

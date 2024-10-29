@@ -50,6 +50,7 @@ filtered_orders AS (
     fs.sale_order_code,
     fs.outbound_quantity,
     fs.returned_quantity,
+    fs.supplier_class,
     fs.supplier_code,
     doc.order_channel,
     CASE
@@ -77,6 +78,7 @@ order_metrics AS (
       WHEN order_channel IN ("MARKETPLACE","CONSIGNMENT") THEN "MARKETPLACE"
       ELSE order_channel
     END AS channel,
+    supplier_class,
     SUM(sales_price * demand_quantity) as gmv_before_cancel,
     SUM(IF(order_status LIKE "CANCEL" AND sale_order_code is null, (sales_price * demand_quantity ),0 )) as cancel_before_ffm,
     SUM(IF(order_status LIKE "CANCEL", (sales_price * demand_quantity), 0)) as cancel,
@@ -96,7 +98,7 @@ order_metrics AS (
     SUM(demand_quantity) as item_sold
   FROM filtered_orders
   WHERE order_channel NOT LIKE "TENDER"
-  GROUP BY 1, 2, 3
+  GROUP BY 1, 2, 3, 4
 
   UNION ALL 
 
@@ -104,6 +106,7 @@ order_metrics AS (
     DATE(confirmation_time) as order_date,
     location,
     "TENDER" AS channel,
+    supplier_class,
     SUM(sales_price * demand_quantity) as gmv_before_cancel,
     SUM(IF(order_status LIKE "CANCEL" AND sale_order_code is null, (sales_price * demand_quantity ),0 )) as cancel_before_ffm,
     SUM(IF(order_status LIKE "CANCEL", (sales_price * demand_quantity), 0)) as cancel,
@@ -124,7 +127,7 @@ order_metrics AS (
   FROM filtered_orders
   WHERE order_channel LIKE "TENDER"
   AND order_status NOT LIKE "WAIT_TO_CONFIRM"
-  GROUP BY 1, 2, 3
+  GROUP BY 1, 2, 3, 4
 
 ),
 
@@ -142,6 +145,7 @@ delivery_metrics AS (
       WHEN doc.order_channel IN ("MARKETPLACE","CONSIGNMENT") THEN "MARKETPLACE"
       ELSE doc.order_channel
     END AS channel,
+    supplier_class,
     COUNT(DISTINCT do.delivery_order_code) as do_count
   FROM ${ref(`fact_strategic_delivery_order`)} do 
   INNER JOIN base_calendar bc ON DATE(do.created_time) = bc.date
@@ -151,7 +155,7 @@ delivery_metrics AS (
   WHERE ois.supplier_class NOT LIKE "TECH"
     AND doc.order_channel IS NOT NULL
     AND doc.order_channel NOT IN ("TENDER", "CONSIGNMENT-RECOGNITION")
-  GROUP BY 1, 2, 3
+  GROUP BY 1, 2, 3, 4
 
   UNION ALL 
 
@@ -167,6 +171,7 @@ delivery_metrics AS (
       WHEN doc.order_channel IN ("MARKETPLACE","CONSIGNMENT") THEN "MARKETPLACE"
       ELSE doc.order_channel
     END AS channel,
+    supplier_class,
     COUNT(DISTINCT do.delivery_order_code) as do_count
   FROM ${ref(`fact_strategic_delivery_order`)} do 
   INNER JOIN base_calendar bc ON DATE(do.created_time) = bc.date
@@ -176,25 +181,25 @@ delivery_metrics AS (
   WHERE ois.supplier_class NOT LIKE "TECH"
     AND doc.order_channel IS NOT NULL
     AND doc.order_channel LIKE "TENDER"
-  GROUP BY 1, 2, 3
-),
-
--- GMV after cancel case
-gmv_after_cancel_seller AS (
-  SELECT 
-    CURRENT_DATETIME("+7") AS refresh_time,
-    bc.eom as date,
-    location,
-    IF(REGEXP_CONTAINS(supplier_code, "MEDX"), "MEDX", "SELLER_CENTER") AS channel,
-    "GMV-AFTER-CANCEL-SELLER" AS measure,
-    SUM(sales_price * demand_quantity - 
-        IF(order_status LIKE "CANCEL" AND sale_order_code IS NULL,
-           sales_price * demand_quantity, 0)) as value
-  FROM filtered_orders fo
-  INNER JOIN base_calendar bc
-    ON DATE(fo.created_time) = bc.date
-  GROUP BY 1, 2, 3, 4, 5
+  GROUP BY 1, 2, 3, 4
 )
+
+-- -- GMV after cancel case
+-- gmv_after_cancel_seller AS (
+--   SELECT 
+--     CURRENT_DATETIME("+7") AS refresh_time,
+--     bc.eom as date,
+--     location,
+--     IF(REGEXP_CONTAINS(supplier_code, "MEDX"), "MEDX", "SELLER_CENTER") AS channel,
+--     "GMV-AFTER-CANCEL-SELLER" AS measure,
+--     SUM(sales_price * demand_quantity - 
+--         IF(order_status LIKE "CANCEL" AND sale_order_code IS NULL,
+--            sales_price * demand_quantity, 0)) as value
+--   FROM filtered_orders fo
+--   INNER JOIN base_calendar bc
+--     ON DATE(fo.created_time) = bc.date
+--   GROUP BY 1, 2, 3, 4, 5
+-- )
 
 -- Final combined results using UNION ALL
 SELECT 
@@ -203,7 +208,9 @@ SELECT
   m.location,
   m.channel,
   measure,
+  supplier_class,
   value
+  
 FROM order_metrics m
 CROSS JOIN UNNEST([
   STRUCT("GMV-BEFORE-CANCEL" as measure, gmv_before_cancel as value),
@@ -236,6 +243,7 @@ SELECT
   d.location,
   d.channel,
   'DO' as measure,
+  d.supplier_class,
   d.do_count as value
 FROM delivery_metrics d
 JOIN base_calendar c 
@@ -247,7 +255,7 @@ SELECT *
 FROM ${ref(`agg_strategic_customer`)}
 WHERE date >= "2023-01-01"
 
-UNION ALL
+-- UNION ALL
 
-SELECT * 
-FROM gmv_after_cancel_seller
+-- SELECT * 
+-- FROM gmv_after_cancel_seller
