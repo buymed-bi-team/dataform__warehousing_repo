@@ -1,0 +1,28 @@
+config {
+    type: "incremental",
+    description: `
+        PIC: dong.le;
+        Type: Incremental; 
+        Refresh Schedule: daily;
+        Source: 
+            ${source.platinum}.warehouse_prd_inventory_inventory_historical`,
+    tags: ["6h00"],
+    bigquery: {
+        partitionBy: "snapshot_date"
+    }
+}
+
+SELECT
+    i.warehouse_code as fc_code,
+    s.seller_class,
+    date(timestamp_add(i.day, interval 7 hour)) as snapshot_date,
+    sum(cast(json_value(l.stock_quantity) as int64)) as stock_quantity,
+    count(distinct s.sku_code) as no_skus
+FROM platinum_buymed_vn.warehouse_prd_inventory_inventory_historical i,
+UNNEST(json_query_array(i.stock_locations)) l
+LEFT JOIN gold_buymed_vn2.dim_sku s
+ON i.sku = s.sku_code
+WHERE json_value(l.location) = "WH-MAIN"
+AND CAST(json_value(l.stock_quantity) as int64) > 0
+${when(incremental(), `AND i.created_date = CURRENT_DATE('+7')`) }
+GROUP BY ALL

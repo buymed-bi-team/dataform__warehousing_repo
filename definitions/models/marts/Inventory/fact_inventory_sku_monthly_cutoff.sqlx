@@ -1,0 +1,30 @@
+config {
+    type: "table",
+    description: `
+        PIC: dong.le;
+        Type: Table; 
+        Refresh Schedule: daily;
+        Source: fact_inventory_stock_historical`,
+    tags: ["monthly"],
+    bigquery: {
+        partitionBy: "snapshot_date"
+    }
+}
+
+SELECT
+  fc_code,
+  seller_class,
+  snapshot_date,
+  stock_quantity,
+  no_skus
+FROM (
+  SELECT
+    fc_code,
+    seller_class,
+    snapshot_date,
+    stock_quantity,
+    no_skus,
+    ROW_NUMBER() OVER (PARTITION BY fc_code, seller_class, FORMAT_TIMESTAMP('%Y-%m', snapshot_date) ORDER BY snapshot_date DESC) AS row_num
+  FROM ${ref("fact_inventory_sku_historical")}
+)
+WHERE row_num = 1

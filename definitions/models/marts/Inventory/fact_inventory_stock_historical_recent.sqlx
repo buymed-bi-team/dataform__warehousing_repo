@@ -1,0 +1,21 @@
+config {
+    type: "table",
+    description: `
+        PIC: dong.le;
+        Type: Table; 
+        Refresh Schedule: daily;
+        Source: fact_inventory_stock_historical`,
+    tags: ["6h00"],
+    bigquery: {
+        partitionBy: "snapshot_date"
+    }
+}
+
+SELECT
+  fc_code,
+  seller_class,
+  snapshot_date,
+  stock_quantity,
+  no_skus
+FROM ${ref("fact_inventory_sku_historical")}
+WHERE snapshot_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
