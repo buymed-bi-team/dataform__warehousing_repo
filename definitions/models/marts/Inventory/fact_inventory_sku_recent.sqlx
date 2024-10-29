@@ -4,7 +4,7 @@ config {
         PIC: dong.le;
         Type: Table; 
         Refresh Schedule: daily;
-        Source: fact_inventory_stock_historical`,
+        Source: fact_inventory_sku_historical`,
     tags: ["6h00"],
     bigquery: {
         partitionBy: "snapshot_date"
