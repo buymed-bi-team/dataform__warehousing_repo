@@ -3,7 +3,7 @@ config {
     name: "fact_user_event_tracking",
     description: `Last 2 month | PIC: tu.dang; schedule: 0h00 daily; model type: table
     Source:
-        ${source.silver}.monitoring_prd_collector_user_stats_*`,
+        ${source.platinum}.monitoring_prd_collector_user_stats`,
     columns: { 
         event: `NonNull | All Customer Events Action `,
         customer_id: "NonNull | The unique identifier for the customer",
@@ -12,9 +12,8 @@ config {
         province_code: "Nullable | " + docs.province_code,
         screen: "Nullable | The screen on which the event occurred. This provides additional context on the user interface interaction",
         source: "Nullable | The source of the event, indicating how the item was created",
-        sku_code: "NonNull" | docs.sku,
-        is_sku_customer_first_interaction_in_30_days: "NonNull | A boolean indicating whether this is the customer's first interaction with the SKU in the past 30 days. It's determined by checking if there are any previous interactions with the same customer_id, sku_code, and event within 30 days before the current created_time.",
-    },
+        sku_code: "NonNull" | docs.sku
+        },
     tags: ['0h00'],
     bigquery: {
         partitionBy: "date(created_time)",
@@ -43,8 +42,8 @@ WITH stg AS (
         JSON_EXTRACT_SCALAR(a.extra_props, '$.user_metadata.LOCATION') AS location,
         JSON_EXTRACT_SCALAR(a.extra_props, '$.client_user_time') AS client_user_time, b.key as session
     FROM
-    `lakehouse-prod-394907.platinum_buymed_vn.monitoring_prd_collector_user_stats` a
-    left join `lakehouse-prod-394907.platinum_buymed_vn.monitoring_prd_realtime_user_customer_session_v3`b on a.customer_id= b.customer_id 
+    `${source.platinum}.monitoring_prd_collector_user_stats` a
+    left join `${source.platinum}.monitoring_prd_realtime_user_customer_session_v3`b on a.customer_id= b.customer_id 
     and a.created_time between b.start_time and end_time and b.created_date >= date( date_trunc( date_sub( current_date('+7'), interval 2 month) , month ) )
     where
     -- _TABLE_SUFFIX BETWEEN '20240701'
