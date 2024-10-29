@@ -14,6 +14,7 @@ config {
 SELECT
   fc_code,
   seller_class,
+  year_month,
   snapshot_date,
   stock_quantity,
   no_skus
