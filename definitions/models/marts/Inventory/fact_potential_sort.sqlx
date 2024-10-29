@@ -81,6 +81,7 @@ agg_sale_order_item AS (
     a.unit_price,
     a.order_quantity,
     a.reserved_quantity,
+    (a.order_quantity - a.reserved_quantity) AS unfulfilled_quantity,
     LEAST(a.first_reserved_quantity, a.order_quantity) AS first_reserved_quantity, -- Force frq to be <= oq
     IF(a.reserved_quantity > 0, 1, 0) AS no_reserved_skus,
     IF(a.first_reserved_quantity > 0, 1, 0) AS no_first_reserved_skus,
@@ -113,13 +114,15 @@ agg_sale_order_item_sort AS (
       + COALESCE(25 * no_reserved_skus / NULLIF(total_sku, 0), 0) AS actual_sort,
       COALESCE(50 * first_reserved_quantity / NULLIF(total_qty, 0), 0) 
       + COALESCE(25 * first_reserved_amount / NULLIF(total_amt, 0), 0) 
-      + COALESCE(25 * no_first_reserved_skus / NULLIF(total_sku, 0), 0) AS actual_sort_first_reserved,      
+      + COALESCE(25 * no_first_reserved_skus / NULLIF(total_sku, 0), 0) AS actual_sort_first_reserved
   FROM agg_sale_order_item
 )
 
 SELECT
   *,
+  (0.5 * SUM(reserved_quantity) OVER (PARTITION BY sale_order_code) / total_qty)
+  + (0.25 * SUM(reserved_amount) OVER (PARTITION BY sale_order_code) / total_amt) 
+  + (0.25 * LEAST(SUM(no_reserved_skus) OVER (PARTITION BY sale_order_code) / total_sku, 1)) AS actual_sort_percentage_full_order,
   IF(status IN ("CHECKING", "DRAFT", "WAIT_TO_PICK", "RESERVING", "WAIT_TO_CHECK", "CONFIRM", "PICKING"), expected_sort - actual_sort, 0) AS potential_sort,
   IF(status NOT IN ("CHECKING", "DRAFT", "WAIT_TO_PICK", "RESERVING", "WAIT_TO_CHECK", "CONFIRM", "PICKING"), expected_sort - actual_sort, 0) AS unFF_sort
 FROM agg_sale_order_item_sort
-

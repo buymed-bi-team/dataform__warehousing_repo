@@ -115,7 +115,7 @@ js {
         //     ) -- GMV-AFTER-CANCEL
         //     
         //     - SUM(IF( fs.order_status not like "CANCEL" AND fs.order_status in ("DELIVERING","DELIVERED","COMPLETED"),(fs.demand_quantity - fs.outbound_quantity ) ,0 ) * fs.sales_price)
-        //         -- GMV-UNFF
+        //         -- GMV-BACKLOG
         //     )
         //     /
         // 
