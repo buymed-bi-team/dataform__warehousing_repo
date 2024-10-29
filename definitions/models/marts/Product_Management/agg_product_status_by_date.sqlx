@@ -1,0 +1,59 @@
+config {
+    type: "table", 
+    description: 
+        ` 
+        Summary table for the status of products by sales region and date;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.ref}.dim_sku_sales_region_current,
+            ${source.ref}.fact_sku_status_day_by_date
+        `,
+    tags: ["custom_1h_past5"]
+}
+
+WITH
+    status AS (
+        SELECT
+            sku_code
+            , item_code
+            , sales_region_code
+            , status
+            , date
+        FROM ${ref('fact_sku_status_day_by_date')}
+        QUALIFY ROW_NUMBER() over (PARTITION BY item_code, sales_region_code, date ORDER BY start_at DESC ) = 1
+    )
+
+SELECT
+    c.product_id
+    , c.sales_region_code
+    , a.date
+    , CONCAT(c.product_id, '_', c.sales_region_code) AS product_sales_region_code
+--     , IF(
+--         COUNTIF(COALESCE(a.status, c.sku_system_status) IN ('NORMAL','LIMIT')) > 0
+--         , "AVAILABLE"
+--         , "UNAVAILABLE"
+--       ) AS available_oos
+    , CASE
+        WHEN COUNTIF(COALESCE(a.status, c.sku_system_status) = 'NORMAL') > 0 THEN "NORMAL"
+        WHEN COUNTIF(COALESCE(a.status, c.sku_system_status) = 'LIMIT') > 0 THEN "LIMIT"
+        WHEN COUNTIF(COALESCE(a.status, c.sku_system_status) = 'SUSPENDED') = COUNT(COALESCE(a.sku_code, c.sku_code)) THEN "SUSPENDED"
+        WHEN COUNTIF(COALESCE(a.status, c.sku_system_status) = 'OUT_OF_STOCK') = COUNT(COALESCE(a.sku_code, c.sku_code)) THEN "OUT_OF_STOCK"
+        ELSE "OUT_OF_STOCK"
+      END AS status
+FROM ${ref('dim_sku_sales_region_current')} AS c
+    LEFT JOIN status AS a
+        ON c.sub_sku_code = a.item_code
+            AND c.sales_region_code = a.sales_region_code
+            AND DATE(c.sku_approved_at) <= a.date
+            AND a.date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), WEEK(MONDAY)), INTERVAL 3 WEEK )
+--             AND a.date = CURRENT_DATE("+7")
+WHERE
+    a.date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), WEEK(MONDAY)), INTERVAL 3 WEEK )
+--     a.date = CURRENT_DATE("+7")
+    AND c.seller_code NOT IN ('MEDX_E', 'MEDC', 'MED_NT', 'TENDER', 'MEDX-HN', 'DENX', 'MARKETING', '9SUUUUUUUU', 'QMQEM8DN9F')
+    AND REGEXP_CONTAINS(c.product_name, r'\[|\]') = FALSE
+    AND c.sku_system_status <> 'GIFT'
+    AND c.seller_class IS NOT NULL
+GROUP BY ALL
