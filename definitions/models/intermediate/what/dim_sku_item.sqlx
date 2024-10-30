@@ -195,7 +195,7 @@ cte_sku_fc_agg AS (
   LEFT JOIN ${ref("dim_product_fc_catm")} c
   ON a.product_id = c.product_id AND a.fc_code = c.fc_code
   LEFT JOIN ${ref("agg_avg_demand_sku_item_l30d")} d
-  ON a.sku_code = d.sku_code AND a.fc_code = d.fc_code
+  ON a.sku_fc_key = d.sku_fc_key
   -- LEFT JOIN ${ref("dim_sku_item_fv_vendor")} e
   -- ON a.sku_code = e.sku_code AND a.fc_code = e.fc_code
   LEFT JOIN ${ref("dim_sku_item_person_in_charge")} f
@@ -210,6 +210,7 @@ cte_sku_fc_agg AS (
 
 SELECT *
 FROM cte_sku_fc_agg
+WHERE product_id NOT IN (127470, 219446, 245422, 127138)
 qualify row_number() over (partition by sku_fc_key) = 1
 
 post_operations {

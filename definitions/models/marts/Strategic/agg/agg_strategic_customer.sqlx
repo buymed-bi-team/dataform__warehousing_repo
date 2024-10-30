@@ -10,11 +10,12 @@ SELECT
     CAST(NULL AS STRING) AS location,
     CAST(NULL AS STRING) AS channel,
     'CUSTOMER-ACTIVE' AS measure,
+    CAST(NULL AS STRING) AS supplier_class,
     COUNT(distinct IF(active_customer <> 0, customer_id,NULL)) value
 
 FROM ${ref(`dim_customer_profiling`)} dcp 
 LEFT JOIN ${ref(`dim_calendar`)} dc ON dcp.som = dc.som 
-GROUP BY 1,2,3,4,5
+GROUP BY 1,2,3,4,5,6
 
 UNION ALL 
 
@@ -24,11 +25,12 @@ CURRENT_DATETIME("+7") AS refresh_time,
     CAST(NULL AS STRING) AS location,
     CAST(NULL AS STRING) AS channel,
     'CUSTOMER-NEW' AS measure,
+    CAST(NULL AS STRING) AS supplier_class,
     COUNT(distinct IF(new_customer <> 0, customer_id,NULL)) value
 
 FROM ${ref(`dim_customer_profiling`)} dcp 
 LEFT JOIN ${ref(`dim_calendar`)} dc ON dcp.som = dc.som 
-GROUP BY 1,2,3,4,5
+GROUP BY 1,2,3,4,5,6
 
 UNION ALL 
 
@@ -38,11 +40,12 @@ CURRENT_DATETIME("+7") AS refresh_time,
     CAST(NULL AS STRING) AS location,
     CAST(NULL AS STRING) AS channel,
     'CUSTOMER-REACQUIRED' AS measure,
+    CAST(NULL AS STRING) AS supplier_class,
     COUNT(distinct IF(reacquire_customer <> 0, customer_id,NULL)) value
 
 FROM ${ref(`dim_customer_profiling`)} dcp 
 LEFT JOIN ${ref(`dim_calendar`)} dc ON dcp.som = dc.som 
-GROUP BY 1,2,3,4,5
+GROUP BY 1,2,3,4,5,6
 
 UNION ALL 
 
@@ -52,8 +55,9 @@ CURRENT_DATETIME("+7") AS refresh_time,
     CAST(NULL AS STRING) AS location,
     CAST(NULL AS STRING) AS channel,
     'CUSTOMER-REPEAT' AS measure,
+    CAST(NULL AS STRING) AS supplier_class,
     COUNT(distinct IF(repeat_customer <> 0, customer_id,NULL)) value
 
 FROM ${ref(`dim_customer_profiling`)} dcp 
 LEFT JOIN ${ref(`dim_calendar`)} dc ON dcp.som = dc.som 
-GROUP BY 1,2,3,4,5
+GROUP BY 1,2,3,4,5,6

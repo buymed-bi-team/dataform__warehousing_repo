@@ -83,7 +83,7 @@ WITH
             end as sales_region_code,
 
             JSON_VALUE(a.extra_props, '$.reason') AS deal_reason,
-            SAFE_CAST(JSON_VALUE(a.extra_props, '$.vendor_promo_info.price') AS INT64) AS cost_price_of_deal
+            SAFE_CAST(JSON_VALUE(a.extra_props, '$.vendor_promo_info.price') AS FLOAT64) AS cost_price_of_deal
         from (
             SELECT *
             FROM ${source.platinum}.marketplace_prd_product_v2_deal 

@@ -25,68 +25,76 @@ config {
     tags: ["0h30"]
 }
 
-with customer as (
-  select
-    customer_id,
-    config_fc as sale_region
-  from ${ref('dim_customer')}
-),
+with 
+    customer as (
+        select
+            customer_id,
+            config_fc as sale_region
+        from ${ref('dim_customer')}
+    ),
 
 reply as (
-SELECT
-  TIMESTAMP_ADD(created_time, INTERVAL 7 HOUR) AS reply_time,
-  DATE(TIMESTAMP_ADD(created_time, INTERVAL 7 HOUR)) AS reply_date,
-  comment_id AS reply_id,
-  CAST(JSON_VALUE(extra_props, "$.parent_comment_id") AS INT64) AS comment_id,
-  -- CAST(JSON_VALUE(commenter, "$.employee_id") AS INT64) AS employee_id,
-  JSON_VALUE(commenter, "$.fullname") AS commenter_name,
-  REGEXP_REPLACE(
-    content,
-    r'<[^>]*>',
-    ''
-  ) AS reply_content,
-  status as reply_status,
-  CASE
-    WHEN is_approved = true then "APPROVED"
-    else "REFUSED"
-  END AS reply_approve_status
-FROM
-  ${source.platinum}.marketplace_prd_ticket_comment AS cm
-WHERE
-  type = "REPLY"
-QUALIFY
-  ROW_NUMBER() OVER (PARTITION BY comment_id ORDER BY synced_at DESC) = 1
+    SELECT
+        TIMESTAMP_ADD(created_time, INTERVAL 7 HOUR) AS reply_time,
+        DATE(TIMESTAMP_ADD(created_time, INTERVAL 7 HOUR)) AS reply_date,
+        comment_id AS reply_id,
+        CAST(JSON_VALUE(extra_props, "$.parent_comment_id") AS INT64) AS comment_id,
+        CAST(JSON_VALUE(commenter, "$.employee_id") AS INT64) AS employee_id,
+        --   JSON_VALUE(commenter, "$.fullname") AS employee_name,
+        REGEXP_REPLACE(
+            content,
+            r'<[^>]*>',
+            ''
+        ) AS reply_content,
+        status as reply_status,
+        -- CASE
+        --     WHEN is_approved = true then "APPROVED"
+        --     else "REFUSED"
+        -- END AS reply_approve_status
+    FROM
+        ${source.platinum}.marketplace_prd_ticket_comment AS cm
+    WHERE
+        type = "REPLY"
+        AND JSON_VALUE(commenter, "$.employee_id") IS NOT NULL
+    -- QUALIFY
+    --   ROW_NUMBER() OVER (PARTITION BY comment_id ORDER BY synced_at DESC) = 1
 )
 
 select
-  timestamp_add(cm.created_time, interval 7 hour) as comment_time,
-  date(timestamp_add(cm.created_time, interval 7 hour)) as comment_date,
-  cm.comment_id,
-  JSON_VALUE(cm.commenter, "$.customer_id") as customer_id,
-  cm.target_code as sku_code,
-  s.sku_key,
-  concat(s.sku_key, "_", c.sale_region) as sku_fc_code,
-  cm.content as comment,
-  cm.status as comment_status,
-  case
-    when cm.is_approved = true then "APPROVED"
-    else "REFUSED"
-  end as approve_status,
-  JSON_VALUE(cm.extra_props, '$.reject_reason') AS reject_reason,
-  SAFE_CAST(JSON_VALUE(cm.extra_props, '$.rejected_by') AS INT64) AS rejected_by_id,
-  r.commenter_name,
-  r.reply_time,
-  r.reply_date,
-  r.reply_content
+    timestamp_add(cm.created_time, interval 7 hour) as comment_time,
+    date(timestamp_add(cm.created_time, interval 7 hour)) as comment_date,
+    cm.comment_id,
+    CAST(JSON_VALUE(cm.extra_props, "$.parent_comment_id") AS INT64) AS parent_comment_id,
+    SAFE_CAST(JSON_VALUE(cm.commenter, "$.customer_id") AS INT64) as customer_id,
+    cm.type,
+    cm.target_code as sku_code,
+    s.sku_key,
+    concat(s.sku_key, "_", c.sale_region) as sku_fc_code,
+    cm.content as comment,
+    cm.status as comment_status,
+    case
+        when cm.is_approved = true then "APPROVED"
+        when JSON_VALUE(cm.extra_props, '$.rejected_by') IS NULL then "WAIT_FOR_APPROVAL"
+        else "REJECTED"
+    end as approve_status,
+    JSON_VALUE(cm.extra_props, '$.reject_reason') AS reject_reason,
+    SAFE_CAST(JSON_VALUE(cm.extra_props, '$.rejected_by') AS INT64) AS rejected_by_id,
+    r.reply_id,
+    r.employee_id,
+    r.reply_time,
+    r.reply_date,
+    r.reply_content
 
 from ${source.platinum}.marketplace_prd_ticket_comment as cm
-left join customer as c
-  on CAST(JSON_VALUE(cm.commenter, "$.customer_id") as INT64) = c.customer_id
-left join reply as r
-  on cm.comment_id = r.comment_id
-left join ${ref('dim_sku')} as s
-  on cm.target_code = s.sku_code
-where cm.type = "COMMENT"
-and cm.target_type = "SKU"
-QUALIFY
-  ROW_NUMBER() OVER (PARTITION BY cm.comment_id ORDER BY cm.ingest_time DESC) = 1
+    left join customer as c
+        on CAST(JSON_VALUE(cm.commenter, "$.customer_id") as INT64) = c.customer_id
+    left join reply as r
+        on cm.comment_id = r.comment_id
+    left join ${ref('dim_sku')} as s
+        on cm.target_code = s.sku_code
+where 
+    JSON_VALUE(cm.commenter, "$.customer_id") IS NOT NULL
+    -- cm.type = "COMMENT"
+    -- and cm.target_type = "SKU"
+-- QUALIFY
+--   ROW_NUMBER() OVER (PARTITION BY cm.comment_id ORDER BY cm.ingest_time DESC) = 1

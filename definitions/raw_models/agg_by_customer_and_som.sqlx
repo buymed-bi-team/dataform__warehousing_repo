@@ -10,6 +10,71 @@ config {
 
     }
 }
+
+WITH cus_ord_rcm AS (
+    SELECT
+        customer_id,
+        MIN(DATE(created_at)) AS first_order_rcm,
+        MAX(DATE(created_at)) AS last_order_rcm
+    FROM${ref('fact_order_item')} oi
+left join ${ref('dim_order_status')} o 
+        ON oi.order_id = o.order_id
+    WHERE DATE(created_at) >= "2024-01-01"
+        AND CRM_status NOT IN ("CANCEL", "RETURNED") 
+        AND event_source LIKE "recommen%"
+    GROUP BY customer_id
+),
+cus_ord AS (
+    SELECT
+        customer_id,
+        MIN(DATE(created_at)) AS first_order,
+        MAX(DATE(created_at)) AS last_order
+    FROM ${ref('fact_order_item')} oi
+left join ${ref('dim_order_status')} o 
+        ON oi.order_id = o.order_id
+    WHERE DATE(created_at) >= "2024-01-01"
+        AND CRM_status NOT IN ("CANCEL", "RETURNED")
+    GROUP BY customer_id
+)
+SELECT
+    CAST(FORMAT_DATE('%Y-%m-01', oi.created_at) AS DATE) AS start_of_month,
+    oi.customer_id,
+    COUNT(DISTINCT product_id) AS no_products,
+    COUNT(DISTINCT CASE WHEN event_source LIKE "recommen%" THEN product_id END) AS no_product_rcm,
+    COUNT(DISTINCT oi.order_id) AS no_orders,
+    COUNT(DISTINCT CASE WHEN event_source LIKE "recommen%" THEN oi.order_id END) AS no_orders_rcm,
+    SUM(sales_price * demand_quantity) / NULLIF(COUNT(DISTINCT oi.order_id), 0) AS average_order_value,
+    SUM(CASE WHEN event_source LIKE "recommen%" 
+        THEN sales_price * demand_quantity END) / 
+        NULLIF(COUNT(DISTINCT CASE WHEN event_source LIKE "recommen%" THEN oi.order_id END), 0) AS aov_rcm,
+    SUM(sales_price * demand_quantity) AS order_amount,
+    SUM(CASE WHEN event_source LIKE "recommen%" THEN sales_price * demand_quantity END) AS order_amount_rcm,
+    COUNT(DISTINCT DATE(oi.created_at)) AS no_days_with_ord,
+    COUNT(DISTINCT CASE WHEN event_source LIKE "recommen%" THEN DATE(oi.created_at) END) AS no_days_with_ord_rcm,
+    clo.first_order_rcm,
+    clo.last_order_rcm,
+    co.first_order,
+    co.last_order
+FROM ${ref('fact_order_item')} oi
+left join ${ref('dim_order_status')} o 
+    ON oi.order_id = o.order_id
+LEFT JOIN cus_ord_rcm clo 
+    ON oi.customer_id = clo.customer_id
+LEFT JOIN cus_ord co 
+    ON oi.customer_id = co.customer_id
+WHERE DATE(created_at) >= "2024-01-01"
+    AND CRM_status NOT IN ("CANCEL", "RETURNED")
+GROUP BY 
+    start_of_month,
+    oi.customer_id,
+    clo.first_order_rcm,
+    clo.last_order_rcm,
+    co.first_order,
+    co.last_order
+
+/*
+
+
 select
     cast(cast(FORMAT_DATE('%Y-%m', oi.created_at)as string)||"-01" as date ) as start_of_month,
     customer_id,
@@ -23,4 +88,4 @@ left join ${ref('dim_order_status')} o on oi.order_id = o.order_id
 where 
 -- date (created_at)>= "2024-01-01" and 
 CRM_status not in  ("CANCEL","RETURNED")
-group by all
+group by all*/

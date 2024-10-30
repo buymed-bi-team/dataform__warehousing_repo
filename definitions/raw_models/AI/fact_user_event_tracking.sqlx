@@ -1,11 +1,11 @@
 config {
     type: 'table',
     name: "fact_user_event_tracking",
-    description: `Last 3 month | PIC: tu.dang; schedule: 0h00 daily; model type: table
+    description: `Last 2 month | PIC: tu.dang; schedule: 0h00 daily; model type: table
     Source:
         ${source.silver}.monitoring_prd_collector_user_stats_*`,
     columns: { 
-        event: `NonNull | Event IN ( "ADD_TO_CART","SKU_DETAIL_VIEW","SKU_IMPRESSION","REMOVE_FROM_CART")`,
+        event: `NonNull | All Customer Events Action `,
         customer_id: "NonNull | The unique identifier for the customer",
         created_time: "NonNull | The datetime when the event was created, adjusted to the 'Asia/Ho_Chi_Minh' timezone",
         product_id: "NonNull | Unique identifier for each product",
@@ -25,39 +25,58 @@ config {
 WITH stg AS (
     SELECT
         event,
-        customer_id,
-        DATETIME(created_time, "Asia/Ho_Chi_Minh") AS created_time,
-        DATE(created_time, "Asia/Ho_Chi_Minh") AS created_date,
-        JSON_EXTRACT_SCALAR(extra_props, '$.user_metadata.LOCATION') AS province_code,
-        JSON_EXTRACT_SCALAR(extra_props, '$.metadata.screen') AS screen,
-        JSON_EXTRACT_SCALAR(extra_props, '$.metadata.block_code') AS block_code,
-        JSON_EXTRACT_SCALAR(extra_props, '$.metadata.source') AS SOURCE,
-        JSON_EXTRACT_SCALAR(extra_props, '$.metadata.product_id') AS product_id,
-        JSON_EXTRACT_SCALAR(extra_props, '$.metadata.seller_id') AS seller_id,
-        JSON_EXTRACT_SCALAR(extra_props, '$.metadata.sku') AS sku_code,
-        -- JSON_EXTRACT_SCALAR(extra_props, '$.metadata.seller_code') AS seller_code,    
-        JSON_EXTRACT_SCALAR(extra_props, '$.ua_metadata.PLATFORM') AS platform,
-        -- JSON_EXTRACT_SCALAR(extra_props, '$.metadata.host') AS host,
-        JSON_EXTRACT_SCALAR(extra_props, '$.client_user_time') AS client_user_time
+        a.customer_id,
+        DATETIME(a.created_time, "Asia/Ho_Chi_Minh") AS created_time,
+        DATE(a.created_time, "Asia/Ho_Chi_Minh") AS created_date,
+        JSON_EXTRACT_SCALAR(a.extra_props, '$.user_metadata.LOCATION') AS province_code,
+        JSON_EXTRACT_SCALAR(a.extra_props, '$.user_metadata.LEVEL') AS customer_level,
+        JSON_EXTRACT_SCALAR(a.extra_props, '$.metadata.screen') AS screen,
+        JSON_EXTRACT_SCALAR(a.extra_props, '$.metadata.block_code') AS block_code,
+        JSON_EXTRACT_SCALAR(a.extra_props, '$.metadata.source') AS SOURCE,
+        JSON_EXTRACT_SCALAR(a.extra_props, '$.metadata.product_id') AS product_id,
+        JSON_EXTRACT_SCALAR(a.extra_props, '$.metadata.seller_id') AS seller_id,
+        JSON_EXTRACT_SCALAR(a.extra_props, '$.metadata.sku') AS sku_code,
+        JSON_EXTRACT_SCALAR(a.extra_props, '$.metadata.content') AS search_content,
+        JSON_EXTRACT_SCALAR(a.extra_props, '$.metadata.status') AS search_status,
+        JSON_EXTRACT_SCALAR(a.extra_props, '$.ua_metadata.OS') AS device_os,
+        JSON_EXTRACT_SCALAR(a.extra_props, '$.ua_metadata.PLATFORM') AS platform,
+        JSON_EXTRACT_SCALAR(a.extra_props, '$.user_metadata.LOCATION') AS location,
+        JSON_EXTRACT_SCALAR(a.extra_props, '$.client_user_time') AS client_user_time, b.key as session
     FROM
-    `${source.platinum}.monitoring_prd_collector_user_stats`
-  WHERE
+    `lakehouse-prod-394907.platinum_buymed_vn.monitoring_prd_collector_user_stats` a
+    left join `lakehouse-prod-394907.platinum_buymed_vn.monitoring_prd_realtime_user_customer_session_v3`b on a.customer_id= b.customer_id 
+    and a.created_time between b.start_time and end_time and b.created_date >= date( date_trunc( date_sub( current_date('+7'), interval 2 month) , month ) )
+    where
     -- _TABLE_SUFFIX BETWEEN '20240701'
     -- AND FORMAT_DATE('%Y%m%d', CURRENT_DATE())        
-    created_date >= date( date_trunc( date_sub( current_date('+7'), interval 3 month) , month ) )
-    AND event IN ( "ADD_TO_CART","SKU_DETAIL_VIEW","SKU_IMPRESSION","REMOVE_FROM_CART") 
-    )
-SELECT
+    a.created_date >= date( date_trunc( date_sub( current_date('+7'), interval 2 month) , month ) )
+--     AND event IN ( "ADD_TO_CART","SKU_DETAIL_VIEW","SKU_IMPRESSION","REMOVE_FROM_CART","SEARCH")
+    ),
+    region AS (
+    select
+        sa.sales_region_code as area,
+        gl.province_code
+    from ${ref('dim_geo_location')}  as gl
+    left join ${ref('dim_fc_service_area')} as sa
+    on gl.province_code = sa.service_area_code
+    where gl.location_class = 'PROVINCE'
+),
+    cte_all as
+(SELECT
     event,
-    customer_id,
+    customer_id,customer_level,device_os,
     created_time,
+    EXTRACT(HOUR FROM created_time) AS created_hour,
     created_date,
-    province_code,
+    stg.province_code,
     screen,
+    search_content,
+    search_status,session,
     SOURCE,
+--     CONCAT(sku_key, "_", r.area) AS sku_fc_code,
     case
         when LENGTH(block_code) - LENGTH(REGEXP_REPLACE(block_code, r'_', '')) > 1 and LEFT(block_code, 12) like "product-list"
-            then REGEXP_REPLACE(block_code, r'^([^_]+)_[^_]+_(.*)', r'\1_\2') 
+            then REGEXP_REPLACE(block_code, r'^([^_]+)_[^_]+_(.*)', r'\1_\2')
         when screen like "home" and LEFT(block_code, 12) like "product-list" then null
         when screen like "product-list" and LEFT(block_code, 4) like "home" then null
         when block_code = "" then null
@@ -68,30 +87,34 @@ SELECT
     product_id,
     sku_code,
     -- seller_code,
-    CASE 
-        WHEN STRPOS(sku_code, ".") > 0 
+    CASE
+        WHEN STRPOS(sku_code, ".") > 0
         THEN LEFT(sku_code, STRPOS(sku_code, ".") - 1)
-        ELSE sku_code 
+        ELSE sku_code
     END AS seller_code,
-    client_user_time
-    -- LEAD(event) over (partition by customer_id,created_date  order by created_time) next_act_1,
-    -- LEAD(event,2) over (partition by customer_id,created_date order by created_time) next_act_2,
-    -- LEAD(event,3) over (partition by customer_id,created_date order by created_time) next_act_3,
-    -- LEAD(event,4) over (partition by customer_id,created_date order by created_time) next_act_4
-    -- CASE
-    --     WHEN EXISTS (
-    --         SELECT 1
-    --         FROM stg AS sub
-    --         WHERE sub.customer_id = stg.customer_id
-    --           AND sub.sku_code = stg.sku_code
-    --           AND sub.event = stg.event
-    --           AND sub.created_time BETWEEN
-    --             DATETIME_SUB(stg.created_time, INTERVAL 30 DAY)
-    --             AND stg.created_time
-    --           AND sub.created_time != stg.created_time
-    --     ) THEN FALSE
-    --     ELSE TRUE
-    -- END AS is_sku_customer_first_interaction_in_30_days
+    client_user_time,
+    area
 FROM
     stg
-where customer_id >0
+LEFT JOIN region AS r
+  ON stg.province_code = r.province_code
+where customer_id >0)
+-- ,session as
+--     (
+--         SELECT
+--             customer_id,
+-- --             CAST(FORMAT_DATETIME('%Y%m%d%H%m%s', DATETIME(start_time)) AS string) datetime_key,
+--              DATETIME(created_time, "Asia/Ho_Chi_Minh") created_time,
+--              DATETIME(end_time, "Asia/Ho_Chi_Minh") end_time,
+--              DATETIME(start_time, "Asia/Ho_Chi_Minh")start_time ,
+--              key,
+--              created_date
+--         FROM `${source.platinum}.monitoring_prd_realtime_user_customer_session_v3`
+--         WHERE created_date >= date( date_trunc( date_sub( current_date('+7'), interval 2 month) , month ) ) and customer_id> 0
+--     )
+select cte_all.* except (area),
+       CONCAT(product_id, "_", seller_code, "_", area) as sku_fc_code,
+    --    session,
+       product_id ||"_"||seller_code ||"_"|| province_code ||"_"|| customer_level as high_profit_key
+from cte_all
+-- left join session on cte_all.customer_id= session.customer_id and cte_all.created_time between session.start_time and end_time

@@ -32,6 +32,8 @@ with
             g.price_after_rebate,
             g.price_after_rebate_with_adhoc_promotion,
             g.price_contract,
+            g.price_expected_on_bill,
+            g.rebate,
             CONCAT(a.product_id, "_", a.sales_region_code) AS product_sales_region_code,
             a.sku_key_sales_region_code
         from ${ref('dim_sku_sales_region_full')} a
@@ -57,6 +59,8 @@ with
             g.price_after_rebate,
             g.price_after_rebate_with_adhoc_promotion,
             g.price_contract,
+            g.price_expected_on_bill,
+            g.rebate,
             CONCAT(a.product_id, "_", a.sales_region_code) AS product_sales_region_code,
             a.sku_key_sales_region_code
         from ${ref('dim_sku_sales_region_full')} a

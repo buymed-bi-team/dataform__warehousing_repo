@@ -7,10 +7,13 @@ config {
         Type: Table; 
         Refresh Schedule: hourly;
         Source: 
-            ${source.platinum}.marketplace_prd_product_v2_product_market_price
+            ${source.platinum}.platform_organization_prd_workflow_task_instance,
+            ${source.platinum}.platform_organization_prd_workflow_request_manager
         `,
     tags: ["custom_1h_past5"]
 }
+
+
 
 WITH 
     cte_main AS (
@@ -21,7 +24,9 @@ WITH
             , a.request_code
             , b.name as request_name
             , a.workflow_code
-            , a.created_date
+            , b.workflow_name
+            , b.created_date
+            , DATE(TIMESTAMP_ADD(b.completed_time, INTERVAL 7 HOUR)) AS completed_date
             , a.status as task_status
             , b.status as request_status
             , a.step_no
@@ -42,20 +47,21 @@ WITH
 
     , cte_parsed AS (
         SELECT
-            a.*
+            a.*  EXCEPT (input_data, metadata)
             , JSON_EXTRACT_SCALAR(a.metadata, "$.assignee_email") AS agent_email
             , IFNULL( SAFE_CAST(JSON_EXTRACT_SCALAR(a.input_data, "$.customerID") AS INT64), -1) AS customer_id
-            , LPAD(JSON_EXTRACT_SCALAR(a.input_data, "$.customer_phone"), 10, '0') AS lead_phone
+            , LPAD(JSON_EXTRACT_SCALAR(a.input_data, "$.customer_phone"), 10, '0') AS phone
             , COALESCE(
                 JSON_EXTRACT_SCALAR(a.input_data, "$.reason1")
                 , JSON_EXTRACT_SCALAR(a.input_data, "$.reason2") 
                 , JSON_EXTRACT_SCALAR(a.input_data, "$.reason3") 
                 , JSON_EXTRACT_SCALAR(a.input_data, "$.reason4") 
                 , JSON_EXTRACT_SCALAR(a.input_data, "$.reason5") 
+                , JSON_EXTRACT_SCALAR(a.input_data, "$.result") 
                 , "..."
               ) AS reason_key
-            , JSON_EXTRACT_SCALAR(a.input_data, "$.customer_address") as lead_address
-            , JSON_EXTRACT_SCALAR(a.input_data, "$.area") as lead_region
+            , JSON_EXTRACT_SCALAR(a.input_data, "$.customer_address") as address
+            , JSON_EXTRACT_SCALAR(a.input_data, "$.area") as region
         FROM cte_main AS a
     )
 
@@ -64,7 +70,12 @@ SELECT
     , cus.customer_id AS customer_id_mapping
     , cus.customer_phone
     , cus.customer_name
-    , cus.first_order_at
-    , cus.last_order_at
+    , cus.first_purchase AS first_order_at
+    , cus.last_purchase AS last_order_at
+    , MIN(IF(o.order_status <> 'CANCEL', o.created_at, NULL)) AS first_order_aft_care
 FROM cte_parsed AS a
-LEFT JOIN ${ref('dim_customer')} AS cus ON a.lead_phone = cus.customer_phone
+    LEFT JOIN ${ref('dim_customer')} AS cus ON a.phone = cus.customer_phone
+    LEFT JOIN ${ref('fact_order')} AS o
+        ON o.customer_id = cus.customer_id
+            AND o.created_at >= DATE_SUB(a.created_date, INTERVAL 7 DAY)
+GROUP BY ALL

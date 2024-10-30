@@ -65,6 +65,7 @@ WITH cte_date AS (
 
 select
     a.*
+    , b.first_checkin_destination_fc
     , b.started_at_app_check_awaiting
     , b.done_at_app_check_awaiting
     , b.started_at_app_checking

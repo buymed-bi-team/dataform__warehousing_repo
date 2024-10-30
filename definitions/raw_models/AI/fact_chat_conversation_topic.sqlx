@@ -1,7 +1,7 @@
 config {
     type: "table",
     description: " Customer Conversation Chat Excluded Message to Multi-customer; PIC: tu.dang; model_type: table; schedule: 12h00;",
-    tags: ["12h00"],
+    /*tags: ["12h00"],*/
     columns: {
 
     }

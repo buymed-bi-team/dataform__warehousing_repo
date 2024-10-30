@@ -1,0 +1,26 @@
+config {
+    type: "table",
+    tags: ["0h00"],
+    name: "dim_high_profit_sku",
+    description: "SKU high profit by province, customer level. PIC: Tu.Dang",
+    columns: {
+        //event: `NonNull | IN ("SUGGESTION_SELLING_UPDATE_PRODUCT", "SUGGESTION_SELLING_CREATE_PRODUCT", "SUGGESTION_SELLING_CTA_CLICK","SUGGESTION_SELLING_PAGE_VIEW","SUGGESTION_SELLING_SEARCH_PRODUCT") `,
+        sku_key:"",
+        high_profit_key:"NonNull | Concatnation of product_id, seller_code, province_code, and customer_level",
+        profit_margin: "NonNull | Expected profit with estimated retail price  "
+    }
+}
+
+
+
+
+select
+    a.product_id ||"_"||a.seller_code ||"_"|| a.region_code as sku_key,
+    a.product_id ||"_"||a.seller_code ||"_"|| a.province_code ||"_"|| a.level_code as high_profit_key,
+    a.level_code,
+    SAFE_DIVIDE(profit_margin,100) as profit_margin,
+    a.province_code,
+    profit_level
+
+from ${source.platinum}.marketplace_prd_product_v2_product_high_profit_result a
+qualify ROW_NUMBER() over (partition by  a.product_id ||"_"||a.seller_code ||"_"|| a.province_code ||"_"|| a.level_code order by created_time desc ) =1
