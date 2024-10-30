@@ -1,22 +1,31 @@
 config {
     type: "table", 
     description: 
-        `PIC: huyen.nguyenthu; 
-        Type: Table; 
-        Refresh Schedule: hourly;
+        `PIC: huyen.nguyenthu; | Type: Table; | Refresh Schedule: 0:30 daily;
         Source: 
             ${source.platinum}.marketplace_prd_cart_cart,
-            ${source.platinum}.marketplace_prd_cart_cart_item
-        `,
-    tags: ["custom_1h_past5"]
+            ${source.platinum}.marketplace_prd_cart_cart_item`,
+    columns: { 
+        created_time: `NonNull | The datetime when customer add item to cart, adjusted to the 'Asia/Ho_Chi_Minh' timezone `,
+        created_date: "NonNull | The date when when customer add item to cart",
+        created_hour: "NonNull | The specify hour when when customer add item to cart",
+        customer_id: "NonNull | Unique identifier for each customer",
+        cart_id: "NonNull | Unique identifier for each cart",
+        current_price: "NonNull | Price of item in cart",
+        added_quantity: "Nullable| Quantity was added to cart",
+        added_page: "Nullable | The page user added item to cart",
+        sku: "NonNull | seller_code + product_code" ,
+        sku_fc_code: "NonNull | product_id + seller_code + sale_region"
+    },
+    tags: ["0h30"]
 }
 
 with region as (
     select
         sa.sales_region_code as area,
         gl.province_code
-    from gold_buymed_vn2.dim_geo_location as gl
-    left join gold_buymed_vn2.dim_fc_service_area as sa
+    from ${ref('dim_geo_location')} as gl
+    left join ${ref('dim_fc_service_area')} as sa
     on gl.province_code = sa.service_area_code
     where gl.location_class = 'PROVINCE'
 ),
@@ -51,7 +60,7 @@ from platinum_buymed_vn.marketplace_prd_cart_cart_item as ct
 left join cart as c
   on ct.ref_cart = c.ref_cart_item
   and ct.cart_id = c.cart_id
-LEFT JOIN gold_buymed_vn2.dim_sku as s
+LEFT JOIN ${ref('dim_sku')} as s
   ON ct.sku = s.sku_code
 where Date(timestamp_add(ct.created_time, interval 7 hour)) >= DATE_SUB(CURRENT_DATE(), INTERVAL 3 MONTH)
 QUALIFY
