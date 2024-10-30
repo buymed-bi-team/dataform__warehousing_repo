@@ -85,7 +85,7 @@ order_metrics AS (
     SUM(IF(order_status LIKE "CANCEL" AND sale_order_code is not null, (sales_price * demand_quantity ),0 )) as cancel_after_ffm,
     SUM(IF(order_status NOT LIKE "CANCEL",(outbound_quantity - returned_quantity) * sales_price, 0)) as fulfilled_amount,
     SUM(IF(order_status NOT LIKE "CANCEL" , returned_quantity, 0) * sales_price) as returned_amount,
-        SUM(IF(order_status NOT LIKE "CANCEL" AND order_status not in ("DELIVERING","DELIVERED","COMPLETED"),  (demand_quantity - outbound_quantity ) ,0 ) * sales_price) as gmv_backlog,
+    SUM(IF(order_status NOT LIKE "CANCEL" AND order_status not in ("DELIVERING","DELIVERED","COMPLETED"),  (demand_quantity - outbound_quantity ) ,0 ) * sales_price) as gmv_backlog,
     SUM((listed_price - sales_price) * demand_quantity) as commercial_amount,
     SUM(IF(commercial_type = "DEAL", (listed_price - sales_price) * demand_quantity, 0)) as commercial_deal_amount,
     SUM(IF(commercial_type = "CAMPAIGN", (listed_price - sales_price) * demand_quantity, 0)) as commercial_campaign_amount,
