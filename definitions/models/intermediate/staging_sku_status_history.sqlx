@@ -1,6 +1,5 @@
 config {
     type: "incremental",
-    tags: ["adhoc-office"],
     description: "SKU status change history || PIC: anh.letam;  model_type: table; schedule: hourly",
     name: "staging_sku_status_history",
     bigquery: {
