@@ -40,7 +40,7 @@ WITH stg AS (
         JSON_EXTRACT_SCALAR(a.extra_props, '$.ua_metadata.OS') AS device_os,
         JSON_EXTRACT_SCALAR(a.extra_props, '$.ua_metadata.PLATFORM') AS platform,
         JSON_EXTRACT_SCALAR(a.extra_props, '$.user_metadata.LOCATION') AS location,
-        JSON_EXTRACT_SCALAR(a.extra_props, '$.client_user_time') AS client_user_time, b.key as session
+        JSON_EXTRACT_SCALAR(a.extra_props, '$.client_user_time') AS client_user_time, b.key as session,a.extra_props
     FROM
     `${source.platinum}.monitoring_prd_collector_user_stats` a
     left join `${source.platinum}.monitoring_prd_realtime_user_customer_session_v3`b on a.customer_id= b.customer_id 
@@ -81,7 +81,7 @@ WITH stg AS (
         when block_code = "" then null
         else block_code end as block_code,
     platform,
-    -- host,
+    extra_props,
     seller_id,
     product_id,
     sku_code,
