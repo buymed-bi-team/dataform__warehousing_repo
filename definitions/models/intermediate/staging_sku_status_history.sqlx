@@ -6,7 +6,9 @@ config {
     bigquery: {
         partitionBy: "DATE(created_time)",
         clusterBy: ["item_code"]
-    }
+    },
+
+    tags: ["custom_1h_past5"]
     
 }
 

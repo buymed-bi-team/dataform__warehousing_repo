@@ -24,6 +24,21 @@ WITH
         GROUP BY sku, fc_code
     ),
 
+    po_draft AS (
+        SELECT
+            sku
+            , b.warehouse_code AS fc_code
+            , SUM(expect_quantity) AS po_draft_quantity
+        FROM platinum_buymed_vn.seller_prd_purchasing_purchase_order_item AS a
+            LEFT JOIN  platinum_buymed_vn.seller_prd_purchasing_purchase_order AS b
+                ON a.po_code = b.po_code
+        WHERE
+            DATE( DATE_TRUNC(b.created_time, DAY)) >= DATE_SUB(CURRENT_DATE, interval 1 month)
+            AND b.warehouse_code in ('BD', 'HN','DN')
+            AND b.status = 'DRAFT'
+        GROUP BY 1, 2
+    ),
+
     unavailable AS (
         SELECT
             sku
@@ -82,7 +97,9 @@ SELECT
     a.*
     , b.incoming_quantity
     , u.unavailable_quantity
+    , p.po_draft_quantity
 FROM inventory AS a
     LEFT JOIN incoming AS b ON a.sku = b.sku AND a.fc_code = b.fc_code
     LEFT JOIN unavailable AS u ON u.sku = a.sku AND u.fc_code = a.fc_code
+    LEFT JOIN po_draft AS p ON p.sku = a.sku AND p.fc_code = a.fc_code
 QUALIFY ROW_NUMBER() OVER(PARTITION BY sku_key_sales_region) = 1

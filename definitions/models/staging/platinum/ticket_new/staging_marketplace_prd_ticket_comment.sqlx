@@ -1,5 +1,3 @@
-
-
 config {
     type: "incremental",
     name: "marketplace_prd_ticket_comment",
@@ -11,8 +9,7 @@ config {
     bigquery: {
         partitionBy: "created_date"
     },
-
-    tags: ["custom_1h_past7"]
+    tags: ["custom_1h_past7","marketplace_prd_ticket"]
 }
 
 pre_operations {
