@@ -53,6 +53,7 @@ filtered_orders AS (
     fs.supplier_class,
     fs.supplier_code,
     doc.order_channel,
+    
     CASE
       WHEN dosr.sales_region_code LIKE "MIENNAM" THEN "SOUTHERN"
       WHEN dosr.sales_region_code LIKE "MIENTRUNG" THEN "CENTRAL"
@@ -85,7 +86,7 @@ order_metrics AS (
     SUM(IF(order_status LIKE "CANCEL" AND sale_order_code is not null, (sales_price * demand_quantity ),0 )) as cancel_after_ffm,
     SUM(IF(order_status NOT LIKE "CANCEL",(outbound_quantity - returned_quantity) * sales_price, 0)) as fulfilled_amount,
     SUM(IF(order_status NOT LIKE "CANCEL" , returned_quantity, 0) * sales_price) as returned_amount,
-        SUM(IF(order_status NOT LIKE "CANCEL" AND order_status not in ("DELIVERING","DELIVERED","COMPLETED"),  (demand_quantity - outbound_quantity ) ,0 ) * sales_price) as gmv_backlog,
+    SUM(IF(order_status NOT LIKE "CANCEL" AND order_status not in ("DELIVERING","DELIVERED","COMPLETED"),  (demand_quantity - outbound_quantity ) ,0 ) * sales_price) as gmv_backlog,
     SUM((listed_price - sales_price) * demand_quantity) as commercial_amount,
     SUM(IF(commercial_type = "DEAL", (listed_price - sales_price) * demand_quantity, 0)) as commercial_deal_amount,
     SUM(IF(commercial_type = "CAMPAIGN", (listed_price - sales_price) * demand_quantity, 0)) as commercial_campaign_amount,
@@ -182,24 +183,7 @@ delivery_metrics AS (
   GROUP BY 1, 2, 3, 4
 )
 
--- -- GMV after cancel case
--- gmv_after_cancel_seller AS (
---   SELECT 
---     CURRENT_DATETIME("+7") AS refresh_time,
---     bc.eom as date,
---     location,
---     IF(REGEXP_CONTAINS(supplier_code, "MEDX"), "MEDX", "SELLER_CENTER") AS channel,
---     "GMV-AFTER-CANCEL-SELLER" AS measure,
---     SUM(sales_price * demand_quantity - 
---         IF(order_status LIKE "CANCEL" AND sale_order_code IS NULL,
---            sales_price * demand_quantity, 0)) as value
---   FROM filtered_orders fo
---   INNER JOIN base_calendar bc
---     ON DATE(fo.created_time) = bc.date
---   GROUP BY 1, 2, 3, 4, 5
--- )
 
--- Final combined results using UNION ALL
 SELECT 
   CURRENT_DATETIME("+7") AS refresh_time,
   c.eom as date,
@@ -252,7 +236,3 @@ SELECT *
 FROM ${ref(`agg_strategic_customer`)}
 WHERE date >= "2023-01-01"
 
--- UNION ALL
-
--- SELECT * 
--- FROM gmv_after_cancel_seller

@@ -47,6 +47,7 @@ WITH
 mkp_o AS ( 
     SELECT 
         o.order_id,
+        o.warehouse_code as fc_code,
         o.sale_order_code,
         o.customer_id, 
         o.status,
@@ -87,17 +88,19 @@ mkp_o AS (
 , tender_o AS (
     SELECT 
         o.order_id,
+        w.warehouse_code as fc_code,
         o.sale_order_code, 
         o.receiver_id * (10000) AS customer_id,
         o.status,
-        outbound_date,
-        created_time,
-        confirmation_date,
-        delivered_time,
+        o.outbound_date,
+        o.created_time,
+        o.confirmation_date,
+        o.delivered_time,
         "TENDER" AS system
-        
     FROM
         ${source.platinum}.tender_prd_core_tender_orders o
+    LEFT JOIN ${source.platinum}.warehouse_prd_core_sale_order w
+        ON o.sale_order_code = w.sale_order_code
     WHERE o.created_date BETWEEN ${start_date} AND ${end_date}
     AND o.created_time is not null
 )
@@ -275,6 +278,7 @@ mkp_o AS (
         oi.order_id,
         o.sale_order_code,
         o.customer_id,
+        o.fc_code,
         oi.product_id_original,
         oi.sku_code_original,
         oi.seller_code_original as supplier_code_original,
@@ -350,7 +354,7 @@ mkp_o AS (
 
 
 SELECT 
-    ois.oiid,
+  ois.oiid,
   ois.order_id,
   ois.customer_id,
   ois.sale_order_code,

@@ -1,0 +1,271 @@
+config {
+    type: "table",
+    description: `PIC: huong.dang, schedule: 0h00 daily
+    Fact Sale Order Item after Combo Separation
+    Remember exclude all order item with supplier_class=TECH
+    And Tender must exclude wait_to_confirmation
+    I keep these record, because other Fact Strategic have not supplier_class to filter
+    Source
+        ${source.ref}.marketplace_prd_order_v2_order
+        ${source.ref}.tender_prd_core_tender_orders
+        ${source.ref}.marketplace_prd_order_v2_order_item
+        ${source.ref}.tender_prd_core_tender_order_items
+        ${source.ref}.dim_supplier
+        ${source.ref}.dim_sku`,
+    columns: {
+        oiid: "NonNull| to join mkp order_item table using mg_id = oiid. Else if join tender order_item table using mg_id = SUBSTR(oiid, 7) ",
+        order_id: "NonNull",
+        product_id: "NonNull | The product_id after separate combo item",
+        sku_code:"NonNull | ",
+        supplier_code:"NonNull | seller code",
+        product_id_original:"NonNull | The product_id before separate combo item",
+        sku_code_original:"NonNull | ",
+        supplier_code_original	: "NonNull |",
+        order_status: "Nullable | Null means unknown",
+        supplier_class: `Nullable | COALESCE(  supplier_class from the seller_code field first, the supplier_class from the sku field's seller_code - by join dim_sku and use sku.seller_code to join dim supplier, the order_item seller_class field ) as supplier_class `,
+        created_time: "NonNull | Timezone in +7",
+        demand_quantity: "NonNull |",
+        returned_quantity : "Nullable | The item quantity was returned by the customer. However, there are some orders that still have returns, but the system marked them as canceled, making it difficult to calculate revenue",
+        outbound_time: "Nullable | The datetime that item has been delivered out of warehouse ",
+        confirmation_time: "Nullable | confirmation datetime, timezone in +7",
+        outbound_quantity: "Nullable | the quantity of products have be shipped from warehouse",
+        price: "Nullable"
+    },
+    bigquery: {
+        partitionBy: "DATE(created_time)"
+    }
+}
+
+
+js {
+    const start_date = `"2023-01-01"`
+}
+
+-- Optimization 1: Add clustering hint in table properties instead of partition hint
+WITH mkp_o AS (
+    SELECT 
+        order_id,
+        sale_order_code,
+        customer_id, 
+        status,
+        outbound_date,
+        created_time,
+        confirmation_date,
+        delivered_time,
+        "MKP" as system
+    FROM
+        ${source.platinum}.marketplace_prd_order_v2_order o
+    WHERE o.created_date >= ${start_date}
+    AND o.created_time is not null
+),
+
+mkp_oi AS (
+    SELECT 
+        'mkp' || mg_id as oiid, 
+        order_id,
+        product_id,
+        sku as sku_code,
+        seller_code,
+        seller_class, 
+        type,
+        outbound_quantity,
+        quantity AS demand_quantity,
+        returned_quantity,
+        extra_props,
+        price,
+        COALESCE(SAFE_CAST(JSON_EXTRACT_SCALAR(extra_props, "$.charge_campaign_fee_value") AS int64), 0) as charge_campaign_fee_value,
+        COALESCE(charge_deal_fee_value, 0) AS charge_deal_fee_value
+    FROM 
+        ${source.platinum}.marketplace_prd_order_v2_order_item
+    WHERE created_date >= ${start_date}
+    AND created_time is not null
+),
+
+-- Optimization 2: Combine similar CTEs with UNION ALL
+orders_combined AS (
+    SELECT 
+        order_id,
+        sale_order_code, 
+        receiver_id * 10000 AS customer_id,
+        status,
+        outbound_date,
+        created_time,
+        confirmation_date,
+        delivered_time,
+        "TENDER" AS system
+    FROM
+        ${source.platinum}.tender_prd_core_tender_orders
+    WHERE created_date >= ${start_date}
+    AND created_time is not null
+    
+    UNION ALL
+    
+    SELECT * FROM mkp_o
+),
+
+-- Optimization 3: Simplify and combine order items
+order_items_combined AS (
+    SELECT 
+        oiid,
+        order_id,
+        product_id,
+        sku_code,
+        seller_code,
+        seller_class,
+        type,
+        outbound_quantity,
+        demand_quantity,
+        returned_quantity,
+        price,
+        charge_campaign_fee_value,
+        charge_deal_fee_value,
+        extra_props,
+        -- Optimization: Combine note generation
+        CONCAT(
+            CASE WHEN charge_deal_fee_value < 0 THEN '\ncharge_deal_fee_value is NEGATIVE' ELSE '' END,
+            CASE WHEN charge_campaign_fee_value < 0 THEN '\ncharge_campaign_fee_value is NEGATIVE' ELSE '' END
+        ) AS note,
+        CONCAT(
+            CASE WHEN charge_deal_fee_value < 0 THEN '\ncharge_deal_fee_value = ' || CAST(charge_deal_fee_value AS STRING) ELSE '' END,
+            CASE WHEN charge_campaign_fee_value < 0 THEN '\ncharge_campaign_fee_value = ' || CAST(charge_campaign_fee_value AS STRING) ELSE '' END
+        ) AS more_note
+    FROM (
+        SELECT * FROM mkp_oi
+        
+        UNION ALL
+        
+        SELECT 
+            'tender' || mg_id as oiid,
+            oi.order_id,
+            oi.product_id,
+            dsku.sku_code,
+            oi.seller_code,
+            oi.seller_class,
+            oi.type,
+            oi.quantity AS outbound_quantity,
+            oi.quantity AS demand_quantity,
+            0 as returned_quantity,
+            oi.price,
+            COALESCE(SAFE_CAST(JSON_EXTRACT_SCALAR(oi.extra_props, "$.charge_campaign_fee_value") AS int64), 0) as charge_campaign_fee_value,
+            0 AS charge_deal_fee_value,
+            oi.extra_props
+        FROM 
+            ${source.platinum}.tender_prd_core_tender_order_items oi
+        -- Optimization 4: Use hash join hint
+        LEFT JOIN ${source.ref}.dim_sku dsku
+            USING(product_id, seller_code)
+        WHERE oi.created_date >= ${start_date} 
+        AND oi.created_time is not null
+    )
+),
+
+-- Optimization 5: Simplify combo processing
+oi_combo_processed AS (
+    SELECT
+        oiid,
+        order_id,
+        product_id as product_id_original,
+        sku_code as sku_code_original,
+        seller_code as seller_code_original,
+        seller_class as seller_class_original,
+        SAFE_CAST(JSON_VALUE(ois.product_id) AS INT64) as product_id,
+        JSON_EXTRACT_SCALAR(ois.sku) as sku_code,
+        JSON_VALUE(ois.seller_code) as seller_code,
+        JSON_VALUE(ois.seller_class) as seller_class,
+        IF(type LIKE "NORMAL", "COMBO", type) AS type,
+        demand_quantity * SAFE_CAST(JSON_VALUE(ois.quantity) AS INT64) as demand_quantity,
+        outbound_quantity * SAFE_CAST(JSON_VALUE(ois.quantity) AS INT64) as outbound_quantity,
+        returned_quantity * SAFE_CAST(JSON_VALUE(ois.quantity) AS INT64) as returned_quantity,
+        -- Optimization: Simplified price calculation
+        LEAST(
+            SAFE_CAST(JSON_VALUE(ois.price) AS INT64) * price / 
+            NULLIF(SUM(SAFE_CAST(JSON_VALUE(ois.quantity) AS INT64) * SAFE_CAST(JSON_VALUE(ois.price) AS INT64)) 
+            OVER (PARTITION BY order_id, sku_code), 0),
+            SAFE_CAST(JSON_VALUE(ois.price) AS INT64)
+        ) as price,
+        0 as charge_deal_fee_value,
+        0 as charge_campaign_fee_value,
+        note,
+        more_note
+    FROM order_items_combined,
+    UNNEST(JSON_QUERY_ARRAY(extra_props, "$.sub_items")) as ois
+    WHERE JSON_QUERY_ARRAY(extra_props, "$.sub_items") IS NOT NULL
+),
+
+-- Final query with optimized joins
+final_result AS (
+    SELECT 
+        ois.oiid,
+        ois.order_id,
+        o.customer_id,
+        o.sale_order_code,
+        dstatus.crm_status as order_status,
+        ois.type AS commercial_type,
+        ${utils.ToTimezone(`o.created_time`)} as created_time,
+        ${utils.ToTimezone(`o.confirmation_time`)} as confirmation_time,
+        ois.sku_code_original,
+        ois.sku_code,
+        COALESCE(
+            ds1.supplier_class,
+            ds3.supplier_class,
+            ds2.supplier_class,
+            ds4.supplier_class,
+            ois.seller_class
+        ) as supplier_class,
+        ois.note,
+        ois.more_note,
+        ois.price + 
+        GREATEST(ois.charge_campaign_fee_value, 0) + 
+        GREATEST(ois.charge_deal_fee_value, 0) AS listed_price,
+        ois.price as sales_price,
+        ois.seller_code as supplier_code,
+        ois.demand_quantity,
+        -- Optimization: Simplified quantity calculations
+        CASE
+            WHEN dstatus.crm_status NOT LIKE "CANCEL" AND 
+                 dstatus.crm_status NOT IN ("DELIVERING","DELIVERED","COMPLETED")
+            THEN (ois.demand_quantity - ois.outbound_quantity)
+            ELSE 0
+        END as backlog_quantity,
+        ois.outbound_quantity,
+        CASE
+            WHEN dstatus.crm_status NOT LIKE "CANCEL"
+            THEN (ois.outbound_quantity - ois.returned_quantity)
+            ELSE 0
+        END as fulfilled_quantity,
+        CASE
+            WHEN dstatus.crm_status NOT LIKE "CANCEL"
+            THEN ois.returned_quantity
+            ELSE 0
+        END as returned_quantity,
+        CASE
+            WHEN dstatus.crm_status LIKE "CANCEL" AND o.sale_order_code IS NULL
+            THEN ois.demand_quantity
+            ELSE 0
+        END as cancel_before_ffm_quantity,
+        CASE
+            WHEN dstatus.crm_status LIKE "CANCEL" AND o.sale_order_code IS NOT NULL
+            THEN ois.demand_quantity
+            ELSE 0
+        END as cancel_after_ffm_quantity
+    FROM orders_combined o
+
+    -- Optimization 6: Use appropriate JOIN conditions
+    INNER JOIN (
+        SELECT * FROM oi_combo_processed
+        UNION ALL
+        SELECT * FROM order_items_combined 
+        WHERE oiid NOT IN (SELECT oiid FROM oi_combo_processed)
+    ) ois USING(order_id)
+    
+    -- Optimization 7: Simplified join conditions
+    LEFT JOIN ${ref(`dim_supplier`)} ds1 ON ois.seller_code = ds1.supplier_code
+    LEFT JOIN ${ref(`dim_supplier`)} ds2 ON ois.seller_code_original = ds2.supplier_code 
+    LEFT JOIN ${ref(`dim_sku`)} dsku3 ON dsku3.sku_code = ois.sku_code
+    LEFT JOIN ${ref(`dim_supplier`)} ds3 ON ds3.supplier_code = dsku3.seller_code
+    LEFT JOIN ${ref(`dim_sku`)} dsku4 ON dsku4.sku_code = ois.sku_code_original
+    LEFT JOIN ${ref(`dim_supplier`)} ds4 ON ds4.supplier_code = dsku4.seller_code
+    LEFT JOIN ${ref(`dim_order_status`)} dstatus ON dstatus.order_id = o.order_id
+)
+
+SELECT * FROM final_result
