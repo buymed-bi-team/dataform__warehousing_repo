@@ -70,34 +70,34 @@ config {
 }
 
 with
-    dedup_cic as (
-        SELECT
-            e.product_id
-            , JSON_EXTRACT_SCALAR(f, '$.warehouse_code') as fc_code
-            , JSON_EXTRACT_SCALAR(f, '$.category_in_charge') as cic_account_id
-            -- , acc3.fullname as cic_name
-            , acc3.user_name as cic_name
-            , REGEXP_REPLACE(UPPER(JSON_EXTRACT_SCALAR(f, '$.category_management')), r'\_', '') as brand_type
-        FROM ${source.platinum}.marketplace_prd_product_v2_product_category_in_charge as e
-            LEFT JOIN UNNEST(JSON_EXTRACT_ARRAY(e.category_in_charge_data)) as f
-            LEFT JOIN ${ref('dim_employee')} acc3
-                ON acc3.branch_account_id = SAFE_CAST(JSON_EXTRACT_SCALAR(f, '$.category_in_charge') as INT64)
-            -- LEFT JOIN ${ref('dim_product')} AS p 
-            --     ON e.product_id = p.product_id
-        WHERE acc3.employee_status  = 'ACTIVE'
-            -- AND p.cic_name IS NULL
-        QUALIFY ROW_NUMBER() OVER(PARTITION BY product_id, fc_code) = 1
-    ),
+    -- dedup_cic as (
+    --     SELECT
+    --         e.product_id
+    --         , JSON_EXTRACT_SCALAR(f, '$.warehouse_code') as fc_code
+    --         , JSON_EXTRACT_SCALAR(f, '$.category_in_charge') as cic_account_id
+    --         -- , acc3.fullname as cic_name
+    --         , acc3.user_name as cic_name
+    --         , REGEXP_REPLACE(UPPER(JSON_EXTRACT_SCALAR(f, '$.category_management')), r'\_', '') as brand_type
+    --     FROM ${source.platinum}.marketplace_prd_product_v2_product_category_in_charge as e
+    --         LEFT JOIN UNNEST(JSON_EXTRACT_ARRAY(e.category_in_charge_data)) as f
+    --         LEFT JOIN ${ref('dim_employee')} acc3
+    --             ON acc3.branch_account_id = SAFE_CAST(JSON_EXTRACT_SCALAR(f, '$.category_in_charge') as INT64)
+    --         -- LEFT JOIN ${ref('dim_product')} AS p 
+    --         --     ON e.product_id = p.product_id
+    --     WHERE acc3.employee_status  = 'ACTIVE'
+    --         -- AND p.cic_name IS NULL
+    --     QUALIFY ROW_NUMBER() OVER(PARTITION BY product_id, fc_code) = 1
+    -- ),
 
-    dedup_catm as (
-        SELECT
-            product_id
-            , JSON_EXTRACT_SCALAR(catm, '$.warehouse_code') as fc_code
-            , JSON_EXTRACT_SCALAR(catm, '$.category_management') as catm_group
-        FROM ${source.platinum}.marketplace_prd_product_v2_product_category_management pc
-        LEFT JOIN UNNEST(JSON_EXTRACT_ARRAY(pc.category_management_data)) catm
-        QUALIFY ROW_NUMBER() OVER(PARTITION BY product_id, fc_code) = 1
-    ),
+    -- dedup_catm as (
+    --     SELECT
+    --         product_id
+    --         , JSON_EXTRACT_SCALAR(catm, '$.warehouse_code') as fc_code
+    --         , JSON_EXTRACT_SCALAR(catm, '$.category_management') as catm_group
+    --     FROM ${source.platinum}.marketplace_prd_product_v2_product_category_management pc
+    --     LEFT JOIN UNNEST(JSON_EXTRACT_ARRAY(pc.category_management_data)) catm
+    --     QUALIFY ROW_NUMBER() OVER(PARTITION BY product_id, fc_code) = 1
+    -- ),
 
     cte_full as (
       select
@@ -152,16 +152,21 @@ SELECT
     pic.pic_purchase_id AS pic_account_id,
     pic.pic_purchase_name AS pic_name,
     -- cic.cic_account_id,
-    pro.cic_account_id,
-    pro.cic_name AS cic_name,
+    -- pro.cic_account_id,
+    psr.cic_account_id,
+    -- pro.cic_name AS cic_name,
+    psr.cic_name AS cic_name,
     -- cic.cic_name,
-    cic.brand_type,
-    CASE
-        WHEN cic.brand_type IS NULL OR cic.brand_type IN ("#N/A", "") THEN NULL
-        WHEN cic.brand_type = 'BRANDNAME' THEN 'BRANDNAME'
-        ELSE "GENERIC"
-    END AS brand_type_group,
-    catm.catm_group,
+    -- cic.brand_type,
+    psr.brand_type,
+    -- CASE
+    --     WHEN cic.brand_type IS NULL OR cic.brand_type IN ("#N/A", "") THEN NULL
+    --     WHEN cic.brand_type = 'BRANDNAME' THEN 'BRANDNAME'
+    --     ELSE "GENERIC"
+    -- END AS brand_type_group,
+    psr.brand_type_group,
+    -- catm.catm_group,
+    psr.catm_group,
     isd.initial_stock,
     isd.origin_initial_stock AS initial_stock_default_quantity,
     SAFE_CAST(JSON_VALUE(isd.extra_props, '$.leadtime') AS INT64) AS sku_leadtime,
@@ -225,10 +230,10 @@ FROM cte_full AS cte
         ON ins.sku = cte.sku_code AND ins.fc_code = cte.fc_code
     LEFT JOIN ${ref('dim_sku_item_vendors')} AS sv
         ON sv.sku_code = cte.sku_code AND sv.fc_code = cte.fc_code AND sv.vendor_priority = 0
-    LEFT JOIN dedup_cic AS cic
-        ON cic.product_id = s.product_id AND cic.fc_code = cte.fc_code
-    LEFT JOIN dedup_catm AS catm
-        ON catm.product_id = s.product_id AND catm.fc_code = cte.fc_code
+    -- LEFT JOIN dedup_cic AS cic
+    --     ON cic.product_id = s.product_id AND cic.fc_code = cte.fc_code
+    -- LEFT JOIN dedup_catm AS catm
+    --     ON catm.product_id = s.product_id AND catm.fc_code = cte.fc_code
     LEFT JOIN (
         SELECT * 
         FROM ${source.platinum}.marketplace_prd_product_v2_sku_limit
@@ -243,7 +248,9 @@ FROM cte_full AS cte
         ON sup.supplier_code = s.seller_code
     LEFT JOIN ${ref('dim_supplier_fc')} AS fv_vendor_fc
         ON CONCAT(sv.vendor_code, "_", cte.fc_code) = fv_vendor_fc.supplier_fc_code
-    LEFT JOIN ${ref('dim_product')} AS pro ON pro.product_id = s.product_id
+    -- LEFT JOIN ${ref('dim_product')} AS pro ON pro.product_id = s.product_id
+    LEFT JOIN ${ref('dim_product_sales_region')} AS psr 
+        ON psr.product_id = s.product_id AND psr.fc_code = cte.fc_code
 WHERE 
     cte.sales_region_code IS NOT NULL
 QUALIFY ROW_NUMBER() OVER(PARTITION BY sku_key_sales_region_code) = 1
