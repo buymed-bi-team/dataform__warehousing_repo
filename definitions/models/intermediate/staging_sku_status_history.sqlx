@@ -1,12 +1,13 @@
 config {
     type: "incremental",
-    tags: ["adhoc-office"],
     description: "SKU status change history || PIC: anh.letam;  model_type: table; schedule: hourly",
     name: "staging_sku_status_history",
     bigquery: {
         partitionBy: "DATE(created_time)",
         clusterBy: ["item_code"]
-    }
+    },
+
+    tags: ["custom_1h_past5"]
     
 }
 
