@@ -1,7 +1,7 @@
 config {
     type: "table",
     name: "fact_product_comment",
-    description: `PIC: huyen.nguyenthu; | Refresh Schedule: 0:30 daily; | Type: Table
+    description: `PIC: huyen.nguyenthu; | Refresh Schedule: hourly; | Type: Table
     Source: 
         ${source.platinum}.marketplace_prd_ticket_comment`,
         columns: { 
@@ -22,17 +22,17 @@ config {
         sku_key: "NonNull | product_id + seller_code",
         sku_fc_code: "NonNull | product_id + seller_code + sale_region"
     },
-    tags: ["0h30"]
+    tags: ["custom_1h_past5"]
 }
 
-with 
+with
     customer as (
         select
             customer_id,
             config_fc as sale_region
         from ${ref('dim_customer')}
     ),
-
+ 
 reply as (
     SELECT
         TIMESTAMP_ADD(created_time, INTERVAL 7 HOUR) AS reply_time,
@@ -59,7 +59,7 @@ reply as (
     -- QUALIFY
     --   ROW_NUMBER() OVER (PARTITION BY comment_id ORDER BY synced_at DESC) = 1
 )
-
+ 
 select
     timestamp_add(cm.created_time, interval 7 hour) as comment_time,
     date(timestamp_add(cm.created_time, interval 7 hour)) as comment_date,
@@ -84,7 +84,7 @@ select
     r.reply_time,
     r.reply_date,
     r.reply_content
-
+ 
 from ${source.platinum}.marketplace_prd_ticket_comment as cm
     left join customer as c
         on CAST(JSON_VALUE(cm.commenter, "$.customer_id") as INT64) = c.customer_id
@@ -92,7 +92,7 @@ from ${source.platinum}.marketplace_prd_ticket_comment as cm
         on cm.comment_id = r.comment_id
     left join ${ref('dim_sku')} as s
         on cm.target_code = s.sku_code
-where 
+where
     JSON_VALUE(cm.commenter, "$.customer_id") IS NOT NULL
     -- cm.type = "COMMENT"
     -- and cm.target_type = "SKU"
