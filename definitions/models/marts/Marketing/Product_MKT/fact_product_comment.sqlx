@@ -1,14 +1,28 @@
 config {
-    type: "table", 
-    description: 
-        `PIC: huyen.nguyenthu; 
-        Type: Table; 
-        Refresh Schedule: hourly;
-        Source: 
-            ${source.platinum}.marketplace_prd_ticket_comment
-        `,
-        
-    tags: ["custom_1h_past5"]
+    type: "table",
+    name: "fact_product_comment",
+    description: `PIC: huyen.nguyenthu; | Refresh Schedule: 0:30 daily; | Type: Table
+    Source: 
+        ${source.platinum}.marketplace_prd_ticket_comment`,
+        columns: { 
+        comment_time: `NonNull | The datetime when comment was created, adjusted to the 'Asia/Ho_Chi_Minh' timezone `,
+        comment_date: "NonNull | The date when comment was created",
+        comment_id: "NonNull | Unique identifier for each comment",
+        customer_id: "NonNull | Unique identifier for each customer",
+        comment: "NonNull | Comment of customer",
+        comment_status: "NonNull | Status of comment when create new comment or reply other comment",
+        approve_status: "NonNull | The source of the event, indicating how the item was created",
+        reject_reason: "Nullable| The reason why this comment was rejected",
+        rejected_by_id: "Nullable | The comment was rejected by CS team",
+        commenter_name: "NonNull | Name of customer who commented",
+        reply_time: "NonNull | The datetime this comment was created (type = reply)",
+        reply_date: "NonNull | The date this comment was created (type = reply)",
+        reply_content: "NonNull | The content of this reply",
+        sku_code: "NonNull | seller_code + product_code" ,
+        sku_key: "NonNull | product_id + seller_code",
+        sku_fc_code: "NonNull | product_id + seller_code + sale_region"
+    },
+    tags: ["0h30"]
 }
 
 with 
