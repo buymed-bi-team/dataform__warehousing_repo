@@ -5,7 +5,7 @@ config {
     assertions: {
         uniqueKey: 'mg_id'
     },
-    tags:["platinum_custom_2h_past5"]
+    tags:["platinum_custom_2h_past5","seller_prd_core"]
 }
 
 SELECT *
