@@ -1,0 +1,71 @@
+config {
+    type: "table", 
+    description: 
+        ` 
+        Products according to sales region dim table;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.ref}.dim_product,
+            ${source.ref}.dim_fc_service_area,
+            ${source.platinum}.marketplace_prd_product_v2_product_category_in_charge,
+            ${source.platinum}.marketplace_prd_product_v2_product_category_management
+
+        `,
+    tags: ["custom_1h_past5"]
+}
+
+with
+    dedup_cic as (
+        SELECT
+            e.product_id
+            , JSON_EXTRACT_SCALAR(f, '$.warehouse_code') as fc_code
+            , SAFE_CAST(JSON_EXTRACT_SCALAR(f, '$.category_in_charge') as INT64) as cic_account_id
+            , acc3.user_name as cic_name
+            , REGEXP_REPLACE(UPPER(JSON_EXTRACT_SCALAR(f, '$.category_management')), r'\_', '') as brand_type
+        FROM ${source.platinum}.marketplace_prd_product_v2_product_category_in_charge as e
+            LEFT JOIN UNNEST(JSON_EXTRACT_ARRAY(e.category_in_charge_data)) as f
+            LEFT JOIN ${ref('dim_employee')} acc3
+                ON acc3.branch_account_id = SAFE_CAST(JSON_EXTRACT_SCALAR(f, '$.category_in_charge') as INT64)
+        WHERE acc3.employee_status  = 'ACTIVE'
+        QUALIFY ROW_NUMBER() OVER(PARTITION BY product_id, fc_code) = 1
+    ),
+
+    dedup_catm as (
+        SELECT
+            product_id
+            , JSON_EXTRACT_SCALAR(catm, '$.warehouse_code') as fc_code
+            , JSON_EXTRACT_SCALAR(catm, '$.category_management') as catm_group
+        FROM ${source.platinum}.marketplace_prd_product_v2_product_category_management pc
+        LEFT JOIN UNNEST(JSON_EXTRACT_ARRAY(pc.category_management_data)) catm
+        QUALIFY ROW_NUMBER() OVER(PARTITION BY product_id, fc_code) = 1
+    )
+
+SELECT
+    p.product_id
+    , p.product_name
+    , sa.fc_code
+    , sa.sales_region_code
+    , CONCAT( p.product_id, '_', sa.fc_code ) AS product_fc_code
+    , CONCAT( p.product_id, '_', sa.sales_region_code ) AS product_sales_region_code
+    , COALESCE( p.cic_account_id, cic.cic_account_id ) AS cic_account_id
+    , COALESCE( p.cic_name, cic.cic_name ) AS cic_name
+    , cic.brand_type
+    , CASE
+        WHEN cic.brand_type IS NULL OR cic.brand_type IN ("#N/A", "") THEN NULL
+        WHEN cic.brand_type = 'BRANDNAME' THEN 'BRANDNAME'
+        ELSE "GENERIC"
+      END AS brand_type_group
+    , cat.catm_group
+FROM ${ref('dim_product')} AS p
+    CROSS JOIN (
+        SELECT DISTINCT
+            sales_region_code
+            , fc_code
+        FROM ${ref('dim_fc_service_area')}
+    ) AS sa
+    LEFT JOIN dedup_cic AS cic
+        ON cic.product_id = p.product_id AND cic.fc_code = sa.fc_code
+    LEFT JOIN dedup_catm AS cat
+        ON cat.product_id = p.product_id AND cat.fc_code = sa.fc_code

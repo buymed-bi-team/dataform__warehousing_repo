@@ -63,5 +63,5 @@ left join stg_order o on oi.order_id = o.order_id
 left join ${ref('fact_margin')} fm on oi.mg_id = fm.mg_id and oi.sku_code= fm.sku_code
 left join  ${ref('dim_customer')} dc on oi.customer_id = dc.customer_id
 left join  ${ref('dim_order_status')} os on oi.order_id = os.order_id
-where date(oi.created_at) >= "2024-06-01"
+where date(oi.created_at) >= "2024-06-01" and os.CRM_status not in ("RETURNED", "CANCEL")
 group by all
