@@ -39,15 +39,15 @@ config {
 
 js {
     // const start_date = `"2023-12-31"`
-    const start_date = `"2022-12-31"`
-    const end_date = `"2030-09-25"`
+    const start_date = `"2023-01-01"`
+    // const end_date = `"2030-09-25"`
 }
 
 WITH 
 mkp_o AS ( 
     SELECT 
         o.order_id,
-        o.warehouse_code as fc_code,
+        -- o.warehouse_code as fc_code,
         o.sale_order_code,
         o.customer_id, 
         o.status,
@@ -58,7 +58,7 @@ mkp_o AS (
         "MKP" as system
     FROM
         ${source.platinum}.marketplace_prd_order_v2_order o
-    WHERE o.created_date BETWEEN ${start_date} AND ${end_date}
+    WHERE o.created_date >= ${start_date}
     AND o.created_time is not null
 
 )
@@ -82,13 +82,13 @@ mkp_o AS (
         COALESCE(charge_deal_fee_value,0) AS charge_deal_fee_value
     FROM 
         ${source.platinum}.marketplace_prd_order_v2_order_item oi
-    WHERE created_date BETWEEN ${start_date} AND ${end_date}
+    WHERE created_date >= ${start_date}
     AND created_time is not null
 )
 , tender_o AS (
     SELECT 
         o.order_id,
-        w.warehouse_code as fc_code,
+        -- w.warehouse_code as fc_code,
         o.sale_order_code, 
         o.receiver_id * (10000) AS customer_id,
         o.status,
@@ -99,9 +99,9 @@ mkp_o AS (
         "TENDER" AS system
     FROM
         ${source.platinum}.tender_prd_core_tender_orders o
-    LEFT JOIN ${source.platinum}.warehouse_prd_core_sale_order w
-        ON o.sale_order_code = w.sale_order_code
-    WHERE o.created_date BETWEEN ${start_date} AND ${end_date}
+    -- LEFT JOIN ${source.platinum}.warehouse_prd_core_sale_order w
+        -- ON o.sale_order_code = w.sale_order_code
+    WHERE o.created_date >= ${start_date} 
     AND o.created_time is not null
 )
 , tender_oi AS (
@@ -126,7 +126,7 @@ mkp_o AS (
         ${source.platinum}.tender_prd_core_tender_order_items oi
     LEFT JOIN ${source.ref}.dim_sku dsku
         ON oi.product_id = dsku.product_id AND oi.seller_code = dsku.seller_code
-    WHERE oi.created_date BETWEEN ${start_date} AND ${end_date}
+    WHERE oi.created_date >= ${start_date} 
     AND oi.created_time is not null
 
 )
@@ -278,7 +278,7 @@ mkp_o AS (
         oi.order_id,
         o.sale_order_code,
         o.customer_id,
-        o.fc_code,
+        -- o.fc_code,
         oi.product_id_original,
         oi.sku_code_original,
         oi.seller_code_original as supplier_code_original,
