@@ -1,0 +1,62 @@
+config {
+    name: "agg_inventory_cutoff",
+    type: "view",
+    description: `PIC: huong.dang; Schedule: 0h00 daily
+    Source;
+        ${source.ref}.fact_inventory_sku_monthly_cutoff
+        ${source.ref}.fact_inventory_sku_recent`
+}
+
+--- 1. CUTOFF STOCK QUANTITY MONTHLY
+SELECT 
+    CURRENT_DATETIME("+7") AS refresh_time,
+    snapshot_date as date,
+    fc_code AS location,
+    CAST(NULL AS STRING) AS channel,
+    'Stock_Quantity_Cutofff_Monthly' AS measure,
+    seller_class AS supplier_class,
+    stock_quantity value
+
+FROM ${ref(`fact_inventory_sku_monthly_cutoff`)}
+
+UNION ALL
+
+--- 2. CUTOFF STOCK NO.SKUS MONTHLY
+SELECT 
+    CURRENT_DATETIME("+7") AS refresh_time,
+    snapshot_date as date,
+    fc_code AS location,
+    CAST(NULL AS STRING) AS channel,
+    'No_Skus_Cutofff_Monthly' AS measure,
+    seller_class AS supplier_class,
+    no_skus as value
+
+FROM ${ref(`fact_inventory_sku_monthly_cutoff`)}
+
+UNION ALL
+
+--- 3. CUTOFF STOCK QUANTITY 30 NEAREST DAYS
+SELECT 
+    CURRENT_DATETIME("+7") AS refresh_time,
+    snapshot_date as date,
+    fc_code AS location,
+    CAST(NULL AS STRING) AS channel,
+    'Stock_Quantity_Cutofff_30D' AS measure,
+    seller_class AS supplier_class,
+    stock_quantity value
+
+FROM ${ref(`fact_inventory_sku_recent`)}
+
+UNION ALL
+
+--- 4. CUTOFF STOCK NO.SKUS 30 NEAREST DAYS
+SELECT 
+    CURRENT_DATETIME("+7") AS refresh_time,
+    snapshot_date as date,
+    fc_code AS location,
+    CAST(NULL AS STRING) AS channel,
+    'No_Skus_Cutofff_30D' AS measure,
+    seller_class AS supplier_class,
+    no_skus as value
+
+FROM ${ref(`fact_inventory_sku_recent`)}

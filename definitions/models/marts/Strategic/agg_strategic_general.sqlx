@@ -236,3 +236,11 @@ SELECT *
 FROM ${ref(`agg_strategic_customer`)}
 WHERE date >= "2023-01-01"
 
+
+UNION ALL
+
+ -- Inventory cut off by last day of month
+
+SELECT *
+FROM ${ref(`agg_inventory_cutoff`)}
+
