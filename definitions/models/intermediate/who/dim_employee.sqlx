@@ -42,6 +42,7 @@ WITH dedup_human_resource AS ${dedup.dedup(
             object = 'Phone_PIC'
             AND type = 'EMPLOYEE_MAIL'
             AND submit_id >= 5066
+            AND submit_id <> 5079
         QUALIFY ROW_NUMBER() over (PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
     )
 
