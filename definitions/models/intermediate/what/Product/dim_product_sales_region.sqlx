@@ -13,7 +13,7 @@ config {
             ${source.platinum}.marketplace_prd_product_v2_product_category_management
 
         `,
-    tags: ["custom_1h_past5"]
+    tags: ["custom_1h_past5", "PRODUCT_SKU_SR"]
 }
 
 with
@@ -58,6 +58,13 @@ SELECT
         ELSE "GENERIC"
       END AS brand_type_group
     , cat.catm_group
+    , CASE
+        WHEN COUNTIF(sl.status = 'NORMAL') > 0 THEN "NORMAL"
+        WHEN COUNTIF(sl.status = 'LIMIT') > 0 THEN "LIMIT"
+        WHEN COUNTIF(sl.status = 'SUSPENDED') = COUNT(sl.sku_code) THEN "SUSPENDED"
+        WHEN COUNTIF(sl.status = 'OUT_OF_STOCK') = COUNT(sl.sku_code) THEN "OUT_OF_STOCK"
+        ELSE "OUT_OF_STOCK"
+      END AS status
 FROM ${ref('dim_product')} AS p
     CROSS JOIN (
         SELECT DISTINCT
@@ -69,3 +76,6 @@ FROM ${ref('dim_product')} AS p
         ON cic.product_id = p.product_id AND cic.fc_code = sa.fc_code
     LEFT JOIN dedup_catm AS cat
         ON cat.product_id = p.product_id AND cat.fc_code = sa.fc_code
+    LEFT JOIN ${ref('dim_sku_location')} AS sl
+        ON sl.product_id = p.product_id AND sl.fc_code = sa.fc_code
+GROUP BY ALL
