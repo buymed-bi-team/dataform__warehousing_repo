@@ -13,7 +13,7 @@ SELECT
     snapshot_date as date,
     fc_code AS location,
     CAST(NULL AS STRING) AS channel,
-    'Stock_Quantity_Cutofff_Monthly' AS measure,
+    'STOCK_QUANTITY_CUTOFF_MONTHLY' AS measure,
     seller_class AS supplier_class,
     stock_quantity value
 
@@ -27,7 +27,7 @@ SELECT
     snapshot_date as date,
     fc_code AS location,
     CAST(NULL AS STRING) AS channel,
-    'No_Skus_Cutofff_Monthly' AS measure,
+    'NO_SKUS_CUTOFF_MONTHLY' AS measure,
     seller_class AS supplier_class,
     no_skus as value
 
@@ -41,7 +41,7 @@ SELECT
     snapshot_date as date,
     fc_code AS location,
     CAST(NULL AS STRING) AS channel,
-    'Stock_Quantity_Cutofff_30D' AS measure,
+    'STOCK_QUANTITY_CUTOFF_30D' AS measure,
     seller_class AS supplier_class,
     stock_quantity value
 
@@ -55,7 +55,7 @@ SELECT
     snapshot_date as date,
     fc_code AS location,
     CAST(NULL AS STRING) AS channel,
-    'No_Skus_Cutofff_30D' AS measure,
+    'NO_SKUS_CUTOFF_30D' AS measure,
     seller_class AS supplier_class,
     no_skus as value
 

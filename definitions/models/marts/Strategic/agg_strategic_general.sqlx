@@ -58,7 +58,7 @@ filtered_orders AS (
       WHEN dosr.sales_region_code LIKE "MIENNAM" THEN "SOUTHERN"
       WHEN dosr.sales_region_code LIKE "MIENTRUNG" THEN "CENTRAL"
       WHEN dosr.sales_region_code LIKE "MIENBAC" THEN "NORTHERN"
-      ELSE "GMV-VN-REGION-UNKNOWN" 
+      ELSE "GMV_VN_REGION_UNKNOWN" 
     END AS location
   FROM ${ref(`fact_strategic_sale_order_item_single`)} fs 
   INNER JOIN base_calendar bc ON DATE(fs.created_time) = bc.date
@@ -138,7 +138,7 @@ delivery_metrics AS (
       WHEN dosr.sales_region_code LIKE "MIENNAM" THEN "SOUTHERN"
       WHEN dosr.sales_region_code LIKE "MIENTRUNG" THEN "CENTRAL"
       WHEN dosr.sales_region_code LIKE "MIENBAC" THEN "NORTHERN"
-      ELSE "GMV-VN-REGION-UNKNOWN" 
+      ELSE "GMV_VN_REGION_UNKNOWN" 
     END AS location,
     CASE
       WHEN doc.order_channel IN ("MARKETPLACE","CONSIGNMENT") THEN "MARKETPLACE"
@@ -164,7 +164,7 @@ delivery_metrics AS (
       WHEN dosr.sales_region_code LIKE "MIENNAM" THEN "SOUTHERN"
       WHEN dosr.sales_region_code LIKE "MIENTRUNG" THEN "CENTRAL"
       WHEN dosr.sales_region_code LIKE "MIENBAC" THEN "NORTHERN"
-      ELSE "GMV-VN-REGION-UNKNOWN" 
+      ELSE "GMV_VN_REGION_UNKNOWN" 
     END AS location,
     CASE
       WHEN doc.order_channel IN ("MARKETPLACE","CONSIGNMENT") THEN "MARKETPLACE"
@@ -195,23 +195,23 @@ SELECT
   
 FROM order_metrics m
 CROSS JOIN UNNEST([
-  STRUCT("GMV-BEFORE-CANCEL" as measure, gmv_before_cancel as value),
-  STRUCT("GMV-AFTER-CANCEL" as measure, (gmv_before_cancel - cancel_before_ffm) as value),
+  STRUCT("GMV_BEFORE_CANCEL" as measure, gmv_before_cancel as value),
+  STRUCT("GMV_AFTER_CANCEL" as measure, (gmv_before_cancel - cancel_before_ffm) as value),
   STRUCT("CANCEL" as measure, cancel as value ),
-  STRUCT("CANCEL-AFTER-FFM" as measure, cancel_after_ffm as value),
-  STRUCT("CANCEL-BEFORE-FFM" as measure, cancel_before_ffm as value),
-  STRUCT("GMV-FULFILLED" as measure, fulfilled_amount as value),
+  STRUCT("CANCEL_AFTER_FFM" as measure, cancel_after_ffm as value),
+  STRUCT("CANCEL_BEFORE_FFM" as measure, cancel_before_ffm as value),
+  STRUCT("GMV_FULFILLED" as measure, fulfilled_amount as value),
   STRUCT("SO" as measure, so_count as value),
   STRUCT("NMV" as measure, (cancel_after_ffm + fulfilled_amount +  gmv_backlog + returned_amount) as value),
-  STRUCT("COMMERCIAL-AMOUNT" as measure, commercial_amount as value),
-  STRUCT("COMMERCIAL-DEAL-AMOUNT" as measure, commercial_deal_amount as value),
-  STRUCT("COMMERCIAL-CAMPAIGN-AMOUNT" as measure, commercial_campaign_amount as value),
-  STRUCT("COMMERCIAL-COMBO-AMOUNT" as measure, commercial_combo_amount as value),
-  STRUCT("GMV-UNFF" as measure, gmv_unff as value),
-  STRUCT("GMV-WITH-LISTED-PRICE" as measure, gmv_with_listed_price as value),
-  STRUCT("ITEM-SOLD" as measure, item_sold as value),
-  STRUCT("GMV-BACKLOG" as measure, gmv_backlog as value),
-  STRUCT("GMV-RETURN" as measure, gmv_return as value)
+  STRUCT("COMMERCIAL_AMOUNT" as measure, commercial_amount as value),
+  STRUCT("COMMERCIAL_DEAL_AMOUNT" as measure, commercial_deal_amount as value),
+  STRUCT("COMMERCIAL_CAMPAIGN_AMOUNT" as measure, commercial_campaign_amount as value),
+  STRUCT("COMMERCIAL_COMBO_AMOUNT" as measure, commercial_combo_amount as value),
+  STRUCT("GMV_UNFF" as measure, gmv_unff as value),
+  STRUCT("GMV_WITH_LISTED_PRICE" as measure, gmv_with_listed_price as value),
+  STRUCT("ITEM_SOLD" as measure, item_sold as value),
+  STRUCT("GMV_BACKLOG" as measure, gmv_backlog as value),
+  STRUCT("GMV_RETURN" as measure, gmv_return as value)
 ]) metrics
 JOIN base_calendar c 
   ON DATE(m.order_date) = c.date

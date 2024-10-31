@@ -9,7 +9,7 @@ SELECT
     dc.eom as date,
     CAST(NULL AS STRING) AS location,
     CAST(NULL AS STRING) AS channel,
-    'CUSTOMER-ACTIVE' AS measure,
+    'CUSTOMER_ACTIVE' AS measure,
     CAST(NULL AS STRING) AS supplier_class,
     COUNT(distinct IF(active_customer <> 0, customer_id,NULL)) value
 
@@ -24,7 +24,7 @@ CURRENT_DATETIME("+7") AS refresh_time,
     dc.eom as date,
     CAST(NULL AS STRING) AS location,
     CAST(NULL AS STRING) AS channel,
-    'CUSTOMER-NEW' AS measure,
+    'CUSTOMER_NEW' AS measure,
     CAST(NULL AS STRING) AS supplier_class,
     COUNT(distinct IF(new_customer <> 0, customer_id,NULL)) value
 
@@ -39,7 +39,7 @@ CURRENT_DATETIME("+7") AS refresh_time,
     dc.eom as date,
     CAST(NULL AS STRING) AS location,
     CAST(NULL AS STRING) AS channel,
-    'CUSTOMER-REACQUIRED' AS measure,
+    'CUSTOMER_REACQUIRED' AS measure,
     CAST(NULL AS STRING) AS supplier_class,
     COUNT(distinct IF(reacquire_customer <> 0, customer_id,NULL)) value
 
@@ -54,7 +54,7 @@ CURRENT_DATETIME("+7") AS refresh_time,
     dc.eom as date,
     CAST(NULL AS STRING) AS location,
     CAST(NULL AS STRING) AS channel,
-    'CUSTOMER-REPEAT' AS measure,
+    'CUSTOMER_REPEAT' AS measure,
     CAST(NULL AS STRING) AS supplier_class,
     COUNT(distinct IF(repeat_customer <> 0, customer_id,NULL)) value
 
