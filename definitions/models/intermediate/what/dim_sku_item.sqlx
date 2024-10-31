@@ -159,14 +159,14 @@ cte_sku_fc_location AS (
   FROM ${ref("fact_stock_sku_item")}
   GROUP BY sku_fc_key
 ),
-
+-------nguyen.tran added----------
 sku_note AS (
   SELECT
       JSON_VALUE(keys, '$.0') AS item_code
       , JSON_VALUE(keys, '$.1') AS sku_code
       , content
   FROM ${source.platinum}.core_prd_note_note
-  WHERE created_by = 1
+  WHERE created_by_name = 'SYSTEM'
   QUALIFY ROW_NUMBER() over (PARTITION BY TO_JSON_STRING(keys) ORDER BY created_time DESC) = 1
 ),
 
