@@ -13,7 +13,7 @@ config {
 }
 
 js {
-  incremental_time = `TIMESTAMP(DATE_TRUNC(CURRENT_DATETIME() - INTERVAL 1 MONTH, DAY))`
+  incremental_time = `TIMESTAMP(DATE_TRUNC(CURRENT_DATETIME() - INTERVAL 4 HOUR, DAY))`
 }
 
 
