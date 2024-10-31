@@ -173,7 +173,7 @@ delivery_metrics AS (
     supplier_class,
     COUNT(DISTINCT do.delivery_order_code) as do_count
   FROM ${ref(`fact_strategic_delivery_order`)} do 
-  INNER JOIN base_calendar bc ON DATE(do.created_time) = bc.date
+  INNER JOIN base_calendar bc ON DATE(do.confirmation_time) = bc.date
   INNER JOIN ois ON do.order_id = ois.order_id
   LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = do.order_id 
   LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON do.order_id = dosr.order_id 
