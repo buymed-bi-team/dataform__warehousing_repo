@@ -130,7 +130,13 @@ with cte_date as (
 
 			json_value(p.customer,"$.delivery_mode") as delivery_mode,
 			case 
-				when so.type is null then 'SO'
+				when so.type is null then 
+					case
+						when so.sale_order_code LIKE 'SO%' THEN "SO"
+						when so.sale_order_code LIKE 'TO%' THEN "TO"
+						when so.sale_order_code LIKE 'RO%' THEN "RO"
+						when so.sale_order_code LIKE 'CO%' THEN "CO"
+					end
 				when so.type = 'NORMAL' then 'SO'
 				when so.type = 'TRANSFER' then 'TO'
 				when so.type = 'CONSIGNMENT' then 'CO'
