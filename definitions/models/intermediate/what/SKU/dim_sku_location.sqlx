@@ -1,5 +1,5 @@
 config {
-    type: "view", 
+    type: "table", 
     description: 
         `
         SKU Location Dimension;
@@ -8,14 +8,17 @@ config {
         Source: 
             ${source.platinum}.marketplace_prd_product_v2_sku,
             ${source.ref}.dim_fc_service_area
-        `
+        `,
+    tags: ["custom_1h_past5", "PRODUCT_SKU_SR"]
 }
 
 SELECT
     current_timestamp() AS transformed_at
     , s.mg_id
+    , s.product_id
     , s.sku AS sku_code
     , s.item_code AS sub_sku_code
+    , s.status
     , a AS service_area_code
     , b.sales_region_code
     , b.fc_code
