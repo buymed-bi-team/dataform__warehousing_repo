@@ -14,7 +14,7 @@ SELECT
     fc_code AS location,
     CAST(NULL AS STRING) AS channel,
     'STOCK_QUANTITY_CUTOFF_MONTHLY' AS measure,
-    seller_class AS supplier_class,
+    -- seller_class AS supplier_class,
     stock_quantity value
 
 FROM ${ref(`fact_inventory_sku_monthly_cutoff`)}
@@ -28,7 +28,7 @@ SELECT
     fc_code AS location,
     CAST(NULL AS STRING) AS channel,
     'NO_SKUS_CUTOFF_MONTHLY' AS measure,
-    seller_class AS supplier_class,
+    -- seller_class AS supplier_class,
     no_skus as value
 
 FROM ${ref(`fact_inventory_sku_monthly_cutoff`)}
@@ -42,7 +42,7 @@ SELECT
     fc_code AS location,
     CAST(NULL AS STRING) AS channel,
     'STOCK_QUANTITY_CUTOFF_30D' AS measure,
-    seller_class AS supplier_class,
+    -- seller_class AS supplier_class,
     stock_quantity value
 
 FROM ${ref(`fact_inventory_sku_recent`)}
@@ -56,7 +56,7 @@ SELECT
     fc_code AS location,
     CAST(NULL AS STRING) AS channel,
     'NO_SKUS_CUTOFF_30D' AS measure,
-    seller_class AS supplier_class,
+    -- seller_class AS supplier_class,
     no_skus as value
 
 FROM ${ref(`fact_inventory_sku_recent`)}
