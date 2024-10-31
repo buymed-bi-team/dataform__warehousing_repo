@@ -12,7 +12,7 @@ config {
             ${source.ref}.dim_sku_sales_region_current,
             ${source.platinum}.seller_prd_core_seller
         `,
-    tags: ["custom_1h_past5"],
+    tags: ["custom_1h_past5", "PRODUCT_SKU_SR"],
 
     assertions: {
         uniqueKey: ["sku_sales_region_code","sku_key_sales_region_code"],
