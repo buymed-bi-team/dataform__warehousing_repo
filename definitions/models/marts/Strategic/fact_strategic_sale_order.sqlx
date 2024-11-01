@@ -25,7 +25,10 @@ mkp_o AS (
         o.order_code as sale_order_code,
         o.customer_id, 
         o.status,
-        doc.order_channel as channel,
+        CASE
+        WHEN order_channel IN ("MARKETPLACE","CONSIGNMENT") THEN "MARKETPLACE"
+        ELSE order_channel
+        END AS channel,
         b.eom,
         CAST(NULL AS STRING) AS supplier_class,
         CASE
