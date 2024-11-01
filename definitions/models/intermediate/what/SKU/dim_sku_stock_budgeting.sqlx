@@ -1,6 +1,6 @@
 config {
-    type: "incremental",
-    protected: true,
+    type: "table",
+    //protected: true,
     description: 
         `
         Quantity and valuation of surplus SKU from previous months - Used to calculate KPI at each Warehouse (FC)
@@ -13,79 +13,93 @@ config {
     tags: ["monthly"]
 }
 
-
-
-SELECT *
+SELECT
+    *
+    , '2024-10' AS year_month
+    
 FROM (
-    WITH
-        prev_month AS (
-            SELECT
-                sku_code
-                , fc_code
-                , amt_missing AS amt_missing1
-                , qty_missing AS qty_missing1
-            FROM gold_buymed_vn2.dim_sku_stock_budgeting
-            WHERE year_month_budget = FORMAT_DATE("%Y-%m", DATE_SUB(CURRENT_DATE("+7"), INTERVAL 2 MONTH))
-        ),
-
-        missing_out AS (
-            SELECT
-                sku_code
-                , fc_code
-                , SUM(done_quantity * price_unit) * -1 AS amt_missing1
-                , SUM(done_quantity) * -1 AS qty_missing1
-            FROM ${ref('fact_stock_moving_item')}
-            WHERE
-                moving_type = 'MISSING-OUT'
-                AND year_month_missing = FORMAT_DATE("%Y-%m", DATE_SUB(CURRENT_DATE("+7"), INTERVAL 2 MONTH))
-            GROUP BY ALL
-        ),
-
-        missing_in AS (
-            SELECT
-                sku_code
-                , fc_code
-                , SUM(done_quantity * price_unit)  AS amt_missing1
-                , SUM(done_quantity)  AS qty_missing1
-            FROM ${ref('fact_stock_moving_item')}
-            WHERE
-                moving_type = 'MISSING-IN'
-                AND year_month_missing = FORMAT_DATE("%Y-%m", DATE_SUB(CURRENT_DATE("+7"), INTERVAL 2 MONTH))
-            GROUP BY ALL
-        ),
-
-        missing_other AS (
-            SELECT
-                sku_code
-                , fc_code
-                , SUM(done_quantity * price_unit)  AS amt_missing1
-                , SUM(done_quantity)  AS qty_missing1
-            FROM ${ref('fact_stock_moving_item')}
-            WHERE
-                moving_type = 'MISSING-OTHER'
-                AND year_month_missing = FORMAT_DATE("%Y-%m", DATE_SUB(CURRENT_DATE("+7"), INTERVAL 2 MONTH))
-            GROUP BY ALL
-        ),
-
-        combine AS (
-            SELECT * FROM prev_month
-            UNION ALL
-            SELECT * FROM missing_out
-            UNION ALL
-            SELECT * FROM missing_in
-            UNION ALL
-            SELECT * FROM missing_other
-        )
-
     SELECT
-        sku_code
-        , fc_code
-        , SUM(amt_missing1) AS amt_missing
-        , SUM(qty_missing1) AS qty_missing
-        , FORMAT_DATE("%Y-%m", DATE_SUB(CURRENT_DATE("+7"), INTERVAL 1 MONTH)) AS year_month_budget
-    FROM combine
-    GROUP BY ALL
-    HAVING qty_missing < 0
+        code AS sku_key_fc
+        , LOWER(type) AS type
+        , SAFE_CAST(value AS FLOAT64) * -1 AS value
+    FROM collector.data_prd
+    WHERE object = 'SKU'
+        AND type IN ('AMT_MISSING', 'QTY_MISSING')
+        AND submit_id = 5084
 )
+PIVOT ( MAX(value) FOR type IN ('amt_missing', 'qty_missing') )
 
-${when(incremental(), `WHERE FORMAT_DATE("%Y-%m", DATE_SUB(CURRENT_DATE("+7"), INTERVAL 1 MONTH)) NOT IN (SELECT year_month_budget FROM ${self()})`) }
+-- SELECT *
+-- FROM (
+--     WITH
+--         prev_month AS (
+--             SELECT
+--                 sku_code
+--                 , fc_code
+--                 , amt_missing AS amt_missing1
+--                 , qty_missing AS qty_missing1
+--             FROM gold_buymed_vn2.dim_sku_stock_budgeting
+--             WHERE year_month_budget = FORMAT_DATE("%Y-%m", DATE_SUB(CURRENT_DATE("+7"), INTERVAL 2 MONTH))
+--         ),
+
+--         missing_out AS (
+--             SELECT
+--                 sku_code
+--                 , fc_code
+--                 , SUM(done_quantity * price_unit) * -1 AS amt_missing1
+--                 , SUM(done_quantity) * -1 AS qty_missing1
+--             FROM ${ref('fact_stock_moving_item')}
+--             WHERE
+--                 moving_type = 'MISSING-OUT'
+--                 AND year_month_missing = FORMAT_DATE("%Y-%m", DATE_SUB(CURRENT_DATE("+7"), INTERVAL 2 MONTH))
+--             GROUP BY ALL
+--         ),
+
+--         missing_in AS (
+--             SELECT
+--                 sku_code
+--                 , fc_code
+--                 , SUM(done_quantity * price_unit)  AS amt_missing1
+--                 , SUM(done_quantity)  AS qty_missing1
+--             FROM ${ref('fact_stock_moving_item')}
+--             WHERE
+--                 moving_type = 'MISSING-IN'
+--                 AND year_month_missing = FORMAT_DATE("%Y-%m", DATE_SUB(CURRENT_DATE("+7"), INTERVAL 2 MONTH))
+--             GROUP BY ALL
+--         ),
+
+--         missing_other AS (
+--             SELECT
+--                 sku_code
+--                 , fc_code
+--                 , SUM(done_quantity * price_unit)  AS amt_missing1
+--                 , SUM(done_quantity)  AS qty_missing1
+--             FROM ${ref('fact_stock_moving_item')}
+--             WHERE
+--                 moving_type = 'MISSING-OTHER'
+--                 AND year_month_missing = FORMAT_DATE("%Y-%m", DATE_SUB(CURRENT_DATE("+7"), INTERVAL 2 MONTH))
+--             GROUP BY ALL
+--         ),
+
+--         combine AS (
+--             SELECT * FROM prev_month
+--             UNION ALL
+--             SELECT * FROM missing_out
+--             UNION ALL
+--             SELECT * FROM missing_in
+--             UNION ALL
+--             SELECT * FROM missing_other
+--         )
+
+--     SELECT
+--         sku_code
+--         , fc_code
+--         , SUM(amt_missing1) AS amt_missing
+--         , SUM(qty_missing1) AS qty_missing
+--         , FORMAT_DATE("%Y-%m", DATE_SUB(CURRENT_DATE("+7"), INTERVAL 1 MONTH)) AS year_month_budget
+--     FROM combine
+--     GROUP BY ALL
+--     HAVING qty_missing < 0
+-- )
+
+-- ${when(incremental(), `WHERE FORMAT_DATE("%Y-%m", DATE_SUB(CURRENT_DATE("+7"), INTERVAL 1 MONTH)) NOT IN (SELECT year_month_budget FROM ${self()})`) }

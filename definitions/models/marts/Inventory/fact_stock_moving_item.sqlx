@@ -36,6 +36,7 @@ WITH
             , iti.demand_quantity
             , iti.done_quantity
             , iti.location_details
+            , iti.product_id
         FROM ${source.platinum}.warehouse_prd_inventory_transfer_sku AS iti
         WHERE
             iti.created_date >= (select DATE(start_date) from cte_date)
@@ -54,6 +55,7 @@ WITH
             , a.location_to
             , a.demand_quantity
             , COALESCE(a.done_quantity, SAFE_CAST(json_value(item.done_quantity) AS INT64)) as done_quantity
+            , product_id
         FROM 
             cte_origin AS a,
             UNNEST(json_query_array(location_details)) as item
@@ -159,6 +161,7 @@ SELECT
                   )
               END
       END AS year_month_missing
+    , CONCAT(s.sku_key, "_", a.fc_code) AS sku_key_fc
 FROM (
     SELECT
         sm.*
@@ -176,3 +179,4 @@ FROM (
             USING(fc_code, sku_code)
 ) AS a
     LEFT JOIN alt_price AS b USING(sku_code)
+    LEFT JOIN ${ref('dim_sku')} AS s ON a.sku_code = s.sku_code
