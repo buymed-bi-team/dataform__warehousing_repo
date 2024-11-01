@@ -32,7 +32,7 @@ SELECT
         a.warehouse_code,
         b.code,
         b.status,
-        b.end_put_time AS latest_put_time
+        b.end_put_time AS latest_time
     FROM ${source.platinum}.warehouse_prd_inbound_put_ticket_item a
     JOIN ${source.platinum}.warehouse_prd_inbound_put_ticket b
         ON a.put_code = b.code
@@ -45,12 +45,11 @@ SELECT
 SELECT DISTINCT
     l.sku,
     l.warehouse_code,
-    l.latest_put_time,
     TIMESTAMP_ADD(l.latest_put_time, interval 7 hour) AS latest_put_time,
     TIMESTAMP_DIFF(CURRENT_TIMESTAMP(), TIMESTAMP_ADD(l.latest_put_time, interval 7 hour), DAY) AS aging_put_days,
     b.code AS latest_put_code,
     f.code AS final_put_code,
-    TIMESTAMP_DIFF(CURRENT_TIMESTAMP(), TIMESTAMP_ADD(l.latest_put_time, interval 7 hour), DAY) AS aging_final_days,
+    TIMESTAMP_DIFF(CURRENT_TIMESTAMP(), TIMESTAMP_ADD(f.latest_time, interval 7 hour), DAY) AS aging_final_days,
     COALESCE(json_value(b.extra_props, "$.inbound_code")
     , JSON_VALUE(b.extra_props, '$.suggest_reference_codes.0')) AS latest_inbound_code
 FROM LatestPut l
