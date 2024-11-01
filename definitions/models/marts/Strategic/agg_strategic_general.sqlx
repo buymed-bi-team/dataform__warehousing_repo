@@ -140,7 +140,7 @@ delivery_metrics AS (
       WHEN doc.order_channel IN ("MARKETPLACE","CONSIGNMENT") THEN "MARKETPLACE"
       ELSE doc.order_channel
     END AS channel,
-    supplier_class,
+    CAST(NULL AS STRING) AS supplier_class,
     COUNT(DISTINCT do.delivery_order_code) as do_count
   FROM ${ref(`fact_strategic_delivery_order`)} do 
   INNER JOIN base_calendar bc ON DATE(do.created_time) = bc.date
@@ -166,7 +166,7 @@ delivery_metrics AS (
       WHEN doc.order_channel IN ("MARKETPLACE","CONSIGNMENT") THEN "MARKETPLACE"
       ELSE doc.order_channel
     END AS channel,
-    supplier_class,
+    CAST(NULL AS STRING) AS supplier_class,
     COUNT(DISTINCT do.delivery_order_code) as do_count
   FROM ${ref(`fact_strategic_delivery_order`)} do 
   INNER JOIN base_calendar bc ON DATE(do.confirmation_time) = bc.date
