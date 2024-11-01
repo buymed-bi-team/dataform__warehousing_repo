@@ -22,11 +22,10 @@ mkp_o AS (
     SELECT 
         o.order_id,
         COUNT(DISTINCT o.order_id) as SO_count,
-        o.fc_code,
-        o.so_code as sale_order_code,
+        o.order_code as sale_order_code,
         o.customer_id, 
-        o.order_status as status,
-        o.channel,
+        o.status,
+        doc.order_channel as channel,
         b.eom,
         CAST(NULL AS STRING) AS supplier_class,
         CASE
@@ -35,14 +34,14 @@ mkp_o AS (
         WHEN dosr.sales_region_code LIKE "MIENBAC" THEN "NORTHERN"
         ELSE "GMV_VN_REGION_UNKNOWN" 
         END AS location,
-    FROM ${source.ref}.fact_order o
-    LEFT JOIN ${source.ref}.dim_calendar as b on b.date = date(o.created_at)
+    FROM  ${source.platinum}.marketplace_prd_order_v2_order o
+    LEFT JOIN ${source.ref}.dim_calendar as b on b.date = date(o.created_time)
+    LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = o.order_id 
     LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON o.order_id = dosr.order_id
-    WHERE DATE(o.created_at) >= ${start_date}
-    AND o.order_status <> "CANCEL"
-    AND o.so_code is not null
-    AND channel NOT IN ("TENDER","CONSIGNMENT-RECOGNITION")
-    AND channel is not null
+    WHERE DATE(o.created_time) >= ${start_date}
+    AND o.order_code is not null
+    AND order_channel NOT IN ("TENDER","CONSIGNMENT-RECOGNITION")
+    AND order_channel is not null
     GROUP BY ALL
 
 )
@@ -51,7 +50,6 @@ mkp_o AS (
     SELECT 
         o.order_id,
         COUNT(DISTINCT o.order_id) as SO_count,
-        w.warehouse_code as fc_code,
         o.sale_order_code, 
         o.receiver_id * (10000) AS customer_id,
         o.status,
@@ -65,12 +63,10 @@ mkp_o AS (
         ELSE "GMV_VN_REGION_UNKNOWN" 
         END AS location,
     FROM ${source.platinum}.tender_prd_core_tender_orders o
-    LEFT JOIN ${source.platinum}.warehouse_prd_core_sale_order w ON o.sale_order_code = w.sale_order_code
     LEFT JOIN ${source.ref}.dim_calendar as a on a.date = date(o.confirmation_date)
     LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON o.order_id = dosr.order_id
     WHERE o.created_date >= ${start_date} 
     AND o.created_time is not null
-    AND o.status <> "CANCEL"
     GROUP BY ALL
 )
 
