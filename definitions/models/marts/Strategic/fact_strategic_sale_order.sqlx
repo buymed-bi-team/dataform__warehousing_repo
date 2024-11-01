@@ -7,9 +7,7 @@ config {
     columns: {
         order_id: "NonNull",
         order_status: "Nullable | Null means unknown",
-        created_time: "NonNull | Timezone in +7",
-        outbound_time: "Nullable | The datetime that item has been delivered out of warehouse ",
-        confirmation_time: "Nullable | confirmation datetime, timezone in +7"
+        created_time: "NonNull | Timezone in +7"
     }
 }
 
@@ -18,7 +16,7 @@ js {
 }
 
 WITH 
-mkp_o AS ( 
+mkp_o1 AS ( 
     SELECT 
         o.order_id,
         COUNT(DISTINCT o.order_id) as SO_count,
@@ -47,7 +45,40 @@ mkp_o AS (
     AND order_channel is not null
     GROUP BY ALL
 
+),
+
+tender_o1 AS(
+    SELECT 
+        o.order_id,
+        COUNT(DISTINCT o.order_id) as SO_count,
+        o.order_code as sale_order_code,
+        o.customer_id, 
+        o.status,
+        CASE
+        WHEN order_channel IN ("MARKETPLACE","CONSIGNMENT") THEN "MARKETPLACE"
+        ELSE order_channel
+        END AS channel,
+        b.eom,
+        CAST(NULL AS STRING) AS supplier_class,
+        CASE
+        WHEN dosr.sales_region_code LIKE "MIENNAM" THEN "SOUTHERN"
+        WHEN dosr.sales_region_code LIKE "MIENTRUNG" THEN "CENTRAL"
+        WHEN dosr.sales_region_code LIKE "MIENBAC" THEN "NORTHERN"
+        ELSE "GMV_VN_REGION_UNKNOWN" 
+        END AS location,
+    FROM  ${source.platinum}.marketplace_prd_order_v2_order o
+    LEFT JOIN ${source.ref}.dim_calendar as b on b.date = date(o.confirmation_date) --confirmation_date
+    LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = o.order_id 
+    LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON o.order_id = dosr.order_id
+    WHERE DATE(o.confirmation_date) >= ${start_date} --confirmation_date
+    AND o.order_code is not null
+    AND order_channel IN ("TENDER")
+    AND status NOT LIKE "WAIT_TO_CONFIRM"
+    AND o.confirmation_date is not null
+    GROUP BY ALL
 )
+
+
 
 , tender_o AS (
     SELECT 
@@ -69,12 +100,14 @@ mkp_o AS (
     LEFT JOIN ${source.ref}.dim_calendar as a on a.date = date(o.confirmation_date)
     LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON o.order_id = dosr.order_id
     WHERE o.created_date >= ${start_date} 
-    AND o.created_time is not null
+    AND o.confirmation_date is not null
     GROUP BY ALL
 )
 
-    SELECT * FROM mkp_o 
+    SELECT * FROM mkp_o1 
     UNION ALL 
+    SELECT * FROM tender_o1
+    UNION ALL
     SELECT * FROM tender_o 
 
 
