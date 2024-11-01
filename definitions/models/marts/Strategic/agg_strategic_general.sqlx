@@ -63,8 +63,7 @@ filtered_orders AS (
   INNER JOIN base_calendar bc ON DATE(fs.created_time) = bc.date
   LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = fs.order_id 
   LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON fs.order_id = dosr.order_id
-  WHERE doc.order_channel NOT LIKE "CONSIGNMENT-RECOGNITION"
-    AND fs.supplier_class NOT LIKE "TECH"
+  WHERE fs.supplier_class NOT LIKE "TECH"
     AND doc.order_channel IS NOT NULL
 
 ),
@@ -96,7 +95,9 @@ order_metrics AS (
     COUNT(DISTINCT order_id) as so_count,
     SUM(demand_quantity) as item_sold
   FROM filtered_orders
-  WHERE order_channel NOT LIKE "TENDER"
+  WHERE  order_channel NOT IN ("TENDER","CONSIGNMENT-RECOGNITION")
+  AND order_channel is not null
+  -- AND supplier_class not like "TECH"
   GROUP BY 1, 2, 3, 4
 
   UNION ALL
