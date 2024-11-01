@@ -40,6 +40,9 @@ mkp_o AS (
     LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON o.order_id = dosr.order_id
     WHERE DATE(o.created_at) >= ${start_date}
     AND o.order_status <> "CANCEL"
+    AND o.so_code is not null
+    AND channel NOT IN ("TENDER","CONSIGNMENT-RECOGNITION")
+    AND channel is not null
     GROUP BY ALL
 
 )
