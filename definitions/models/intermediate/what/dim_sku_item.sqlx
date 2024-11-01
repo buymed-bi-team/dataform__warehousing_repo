@@ -178,6 +178,7 @@ cte_sku_fc_agg AS (
     b.latest_pick_time,
     b.aging_pick_days,
     b.note,
+    b.lastest_put_is_inbound,
     b.type_stock_aging,
     c.catm as catm_group,
     c.height,
