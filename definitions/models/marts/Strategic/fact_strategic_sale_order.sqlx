@@ -1,10 +1,6 @@
 config {
-    type: "table",
+    type: "view",
     description: `PIC: huong.dang, schedule: 0h00 daily
-    Fact Sale Order Item after Combo Separation
-    Remember exclude all order item with supplier_class=TECH
-    And Tender must exclude wait_to_confirmation
-    I keep these record, because other Fact Strategic have not supplier_class to filter
     Source
         ${source.ref}.marketplace_prd_order_v2_order
         ${source.ref}.tender_prd_core_tender_orders`,
@@ -14,10 +10,6 @@ config {
         created_time: "NonNull | Timezone in +7",
         outbound_time: "Nullable | The datetime that item has been delivered out of warehouse ",
         confirmation_time: "Nullable | confirmation datetime, timezone in +7"
-    },
-    tags: ('0h00'),
-    bigquery: {
-        partitionBy: "DATE(created_time)"
     }
 }
 
@@ -29,7 +21,7 @@ WITH
 mkp_o AS ( 
     SELECT 
         o.order_id,
-        COUNT(DISTINCT o.order_id) as SO_count
+        COUNT(DISTINCT o.order_id) as SO_count,
         o.fc_code,
         o.so_code as sale_order_code,
         o.customer_id, 
@@ -48,18 +40,18 @@ mkp_o AS (
     LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON o.order_id = dosr.order_id
     WHERE DATE(o.created_at) >= ${start_date}
     AND o.order_status <> "CANCEL"
+    GROUP BY ALL
 
 )
 
 , tender_o AS (
     SELECT 
         o.order_id,
-        COUNT(DISTINCT o.order_id) as SO_count
+        COUNT(DISTINCT o.order_id) as SO_count,
         w.warehouse_code as fc_code,
         o.sale_order_code, 
         o.receiver_id * (10000) AS customer_id,
         o.status,
-        -- o.confirmation_date,
         "TENDER" AS channel,
         a.eom,
         CAST(NULL AS STRING) AS supplier_class,
@@ -76,6 +68,7 @@ mkp_o AS (
     WHERE o.created_date >= ${start_date} 
     AND o.created_time is not null
     AND o.status <> "CANCEL"
+    GROUP BY ALL
 )
 
     SELECT * FROM mkp_o 
