@@ -47,6 +47,10 @@ WITH RankedData AS (
             ), ",$", ""),
             '}'
         ) AS note,
+        CASE
+            WHEN b.final_put_code <> b.latest_put_code THEN "False"
+            ELSE "True"
+        END AS lastest_put_is_inbound,
         ROW_NUMBER() OVER (PARTITION BY a.sku, a.warehouse_code ORDER BY GREATEST(b.latest_put_time, c.latest_pick_time) DESC) AS rn
     FROM ${source.platinum}.warehouse_prd_inventory_sku a
     LEFT JOIN ${ref("agg_latest_put_by_sku_fc")} b
