@@ -12,7 +12,9 @@ WITH
     Date(MIN(a.created_at)) as first_date_order
   FROM
     ${ref('fact_order')} AS a
+  ----- nguyen.tran added-----------
   WHERE order_status <> "CANCEL"
+    AND channel = 'MARKETPLACE'
   GROUP BY 1)
 
 SELECT

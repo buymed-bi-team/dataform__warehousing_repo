@@ -73,7 +73,7 @@ WITH cte_date AS (
 	first_location AS (
 		SELECT
 			po_code
-			, MIN_BY(hub_code, created_ts) AS first_received_location
+			, MIN_BY(hub_code, received_ts) AS first_received_location
 		FROM ${ref('fact_inbound_receipts')}
 		-- WHERE receipt_fc_code = destination_location
 		GROUP BY 1
@@ -108,13 +108,10 @@ select
 	p.source_document,
 	p.status as po_status,
 	p.bill_status as po_bill_status,
---     ps.total_so AS total_so_reference,
--- 	IF(ps.total_so >= 10, "Priority PO", "Normal PO") AS po_priority,
 	c.received_ts AS first_received_check_in,
 	l.first_received_location,
 	c.receipt_fc_code,
 	f.first_checkin_destination_fc,
-	-- c.destination_location AS destination_fc_code,
 	c.is_it_po_pgh,
     TIMESTAMP_ADD(TIMESTAMP(JSON_VALUE(i.extra_props, '$.add_urgent_tag_time')), INTERVAL 7 HOUR) AS add_urgent_tag_time,
 	CASE
