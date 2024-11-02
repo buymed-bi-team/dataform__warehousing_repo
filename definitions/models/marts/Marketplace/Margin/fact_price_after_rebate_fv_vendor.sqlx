@@ -67,7 +67,13 @@ with
             left join ${ref('dim_vendor')} vend on a.fv_code = vend.supplier_code
             left join ${ref('fact_price_after_rebate')} g on a.sales_region_code = g.sales_region_code and a.product_id = g.product_id
         where (vend.line_manager_combine <> g.vendor_code OR vend.line_manager_combine IS NULL)
-            AND CONCAT(a.product_id, "_", a.sales_region_code) NOT IN (SELECT product_sales_region_code FROM fv_vendor)
+            -- AND CONCAT(a.product_id, "_", a.sales_region_code) NOT IN (SELECT product_sales_region_code FROM fv_vendor)
+            AND NOT EXISTS (SELECT 1
+                            FROM fv_vendor AS fv 
+                            WHERE
+                                fv.product_sales_region_code = a.product_sales_region_code
+                                AND fv.rebate_date = g.rebate_date
+                            )
             AND a.seller_code = 'MEDX'
         qualify ROW_NUMBER() over (partition by a.product_id, a.sales_region_code, g.rebate_date order by g.price_after_rebate_with_adhoc_promotion DESC) = 1
     )
