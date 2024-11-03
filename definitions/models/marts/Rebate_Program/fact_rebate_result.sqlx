@@ -1,0 +1,35 @@
+config {
+    type: "table",
+    description: 
+        `
+        Result of Rebate Program;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.platinum}.seller_prd_promotion_rebate_result
+        `,
+    tags: ["custom_1h_past5", "REBATE"]
+}
+
+SELECT
+    rebate_code
+    , result_id
+    , rebate_name
+    , recieved_status AS received_status
+    , rebate_claim_method
+    , ARRAY_LENGTH(JSON_VALUE_ARRAY(vendor_bill_codes)) AS related_vendor_bills
+    , total_target_amount AS total_target
+    , total_progress_estimate AS ontrack_target
+    , total_accumulate_from_target AS total_purchased_value_by_target
+    , total_sum_division_from_bill AS total_purchased_value_from_bill
+    , total_rebate_sum_value
+    , total_rebate_received_amount AS total_rebate_received
+    , total_rebate_unreceived_amount AS total_rebate_unreceived
+    , IF(
+        total_accumulate_from_target > 0 AND total_target_amount = 0
+        , 1
+        , IFNULL(SAFE_DIVIDE(total_accumulate_from_target, total_target_amount), 0) 
+      ) AS percentage
+FROM ${source.platinum}.seller_prd_promotion_rebate_result
+QUALIFY ROW_NUMBER() OVER(PARTITION BY rebate_code ORDER BY synced_at DESC, last_updated_time DESC)= 1

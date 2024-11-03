@@ -1,0 +1,43 @@
+config {
+    type: "table",
+    description: 
+        `
+        Details of Target and Rebate Division in each Rebate Program;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.platinum}.seller_prd_promotion_rebate_item,
+            ${source.platinum}.seller_prd_promotion_division
+        `,
+    tags: ["custom_1h_past5", "REBATE"]
+}
+
+WITH
+    cte AS (
+        SELECT
+            a.mg_id
+            , rebate_code
+            , rebate_item_id
+            , scope
+            , a.division_code AS target_division_code
+            , b.division_name AS target_division
+            , ROW_NUMBER() over (PARTITION BY a.mg_id) AS level
+            , JSON_VALUE(r.rebate_calculation_method) AS  rebate_calculation_method
+            , SAFE_CAST(JSON_VALUE(r.from) AS FLOAT64) AS buy_from
+            , SAFE_CAST(JSON_VALUE(r.to) AS FLOAT64) AS buy_to
+            , IFNULL(SAFE_CAST(JSON_VALUE(r.is_target) AS BOOLEAN), FALSE) AS is_target
+            , a.reward_division_code AS rebate_division_code
+            , c.division_name AS rebate_division
+            , JSON_VALUE(r.rebate_calcualation_type) AS rebate_calcualation_type
+            , SAFE_CAST(JSON_VALUE(r.rebate) AS FLOAT64) AS rebate
+        FROM ${source.platinum}.seller_prd_promotion_rebate_item AS a
+            LEFT JOIN ${source.platinum}.seller_prd_promotion_division AS b ON a.division_code = b.division_code
+            LEFT JOIN ${source.platinum}.seller_prd_promotion_division AS c ON a.reward_division_code = c.division_code
+            LEFT JOIN UNNEST(JSON_QUERY_ARRAY(rebate_ranges)) AS r
+    )
+
+SELECT
+    a.* EXCEPT (mg_id)
+    , LEAD(buy_from) over (PARTITION BY mg_id ORDER BY level ) AS next_target
+FROM cte AS a

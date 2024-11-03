@@ -1,0 +1,46 @@
+config {
+    type: "table",
+    description: 
+        `
+        Master data of Rebate Programs;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.platinum}.seller_prd_promotion_rebate,
+            ${source.ref}.dim_vendor
+        `,
+    tags: ["custom_1h_past5", "REBATE"]
+}
+
+SELECT
+    rebate_code
+    , rebate_id
+    , name AS rebate_name
+    , DATE(TIMESTAMP_ADD(start_time, INTERVAL 7 HOUR)) as start_time
+    , DATE(TIMESTAMP_ADD(end_time, INTERVAL 7 HOUR)) as end_time
+    , status AS confirming_status
+    , CASE
+        WHEN CURRENT_TIMESTAMP() BETWEEN TIMESTAMP_ADD(start_time, INTERVAL 7 HOUR) AND TIMESTAMP_ADD(end_time, INTERVAL 7 HOUR)
+            THEN "OCCURING"
+        WHEN CURRENT_TIMESTAMP() < TIMESTAMP_ADD(start_time, INTERVAL 7 HOUR)
+            THEN "UP-COMING"
+        WHEN CURRENT_TIMESTAMP() > TIMESTAMP_ADD(end_time, INTERVAL 7 HOUR)
+            THEN "EXPIRED"
+      END AS program_status
+    , condition_include_type
+    , rebate_claim_method
+    , condition_unit
+    , rebate_effect
+    , CASE
+        WHEN CONTAINS_SUBSTR(TO_JSON_STRING(warehouse_codes), "00") THEN "HN, DN, BD"
+        ELSE REGEXP_REPLACE(TO_JSON_STRING(warehouse_codes), r'\[|\"|\]', "")
+      END AS warehouse_code
+    , ARRAY_TO_STRING(ARRAY_AGG(DISTINCT CONCAT(b.supplier_id, ' - ', b.supplier_name)),  '\n') as vendors
+    , ARRAY_TO_STRING(ARRAY_AGG(DISTINCT bill),  ', ') as bill_status
+    , note
+FROM ${source.platinum}.seller_prd_promotion_rebate AS a
+    LEFT JOIN UNNEST(JSON_VALUE_ARRAY(vendor_codes)) v
+    LEFT JOIN ${ref('dim_vendor')} AS b ON b.supplier_code = v
+    LEFT JOIN UNNEST(JSON_VALUE_ARRAY(bill_statuses)) as bill
+GROUP BY ALL

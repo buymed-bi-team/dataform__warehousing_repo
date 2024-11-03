@@ -1,0 +1,35 @@
+config {
+    type: "table",
+    description: 
+        `
+        Total Purchase Value, Total Rebate Value by Target Division for each Rebate Program;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.platinum}.seller_prd_promotion_rebate_result_item,
+            ${source.platinum}.seller_prd_promotion_division
+        `,
+    tags: ["custom_1h_past5", "REBATE"]
+}
+
+SELECT
+    rebate_code
+    , rebate_item_id
+    , scope
+    , a.division_code as target_division_code
+    , b.division_name as target_division
+    , target_amount AS target
+    , sum_division_amount_current AS purchased_value_by_target
+    , reward_division_code AS rebate_division_code
+    , c.division_name AS rebate_division
+    , sum_calculation_division_amount AS purchased_value_by_rebate_division
+    , rebate_sum_value
+    , IF(
+        sum_division_amount_current > 0 AND target_amount = 0,
+        1,
+        IFNULL( SAFE_DIVIDE(sum_division_amount_current, target_amount), 0)
+      ) AS percentage
+FROM ${source.platinum}.seller_prd_promotion_rebate_result_item AS a
+    LEFT JOIN ${source.platinum}.seller_prd_promotion_division AS b ON a.division_code = b.division_code
+    LEFT JOIN ${source.platinum}.seller_prd_promotion_division AS c ON a.reward_division_code = c.division_code

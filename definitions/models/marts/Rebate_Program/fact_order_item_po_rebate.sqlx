@@ -1,0 +1,81 @@
+config {
+    type: "table",
+    description: 
+        `
+        The items ordered have been picked from the Purchase Order associated with the Rebate Programs;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Source: 
+            ${source.ref}.fact_order_item,
+            ${source.ref}.fact_order,
+            ${source.ref}.dim_fc_service_area,
+            ${source.platinum}.warehouse_prd_core_sale_order_item
+        `,
+    //tags: ["custom_1h_past5", "REBATE"]
+}
+
+WITH
+    order_item AS (
+        SELECT
+            DATE(oi.created_at) AS order_date
+            , oi.order_id
+            , o.so_code
+            , oi.sku_orignal_code
+            , oi.sku_code
+            , oi.product_id
+            , oi.item_type
+            , oi.demand_quantity
+            , oi.sales_price
+            , IF(oi.vat_code <= 0 , 0, vat_code) AS vat
+            , s.fc_code AS fc_code
+        FROM ${ref('fact_order_item')} AS oi
+            LEFT JOIN ${ref('fact_order')} AS o ON oi.order_id = o.order_id
+            LEFT JOIN ${ref('dim_fc_service_area')} AS s ON o.shipping_province_code = s.service_area_code
+        WHERE
+            item_type <> 'GIFT'
+            AND oi.created_at >= '2024-01-01'
+            AND o.order_status <> 'CANCEL'
+            AND oi.seller_code = 'MEDX'
+            AND o.so_code IS NOT NULL
+            AND o.channel IN  ('MARKETPLACE', 'CIRCA')
+    ),
+
+    pick_ticket_item AS (
+        SELECT
+            sale_order_code
+            , sku AS sku_original_code
+            , COALESCE(JSON_VALUE(sub, '$.sku') , sku) AS sku_code
+            , JSON_VALUE(scan, '$.pocode') AS po_code
+            , IF(sub_items IS NULL, marketplace_item_type, "IN_COMBO") AS item_type
+        FROM (
+            SELECT
+                *
+            FROM ${source.platinum}.warehouse_prd_core_sale_order_item
+            WHERE
+                created_date >= '2024-01-01'
+        ) AS a
+            LEFT JOIN UNNEST(JSON_QUERY_ARRAY(sub_items)) AS sub
+            LEFT JOIN UNNEST(JSON_QUERY_ARRAY(pick_items)) AS pi
+                ON COALESCE(SAFE_CAST(JSON_VALUE(sub, '$.admin_product_id') AS INT64 ), a.admin_product_id) = SAFE_CAST(JSON_VALUE(pi, '$.admin_product_id') AS INT64)
+            LEFT JOIN UNNEST(JSON_QUERY_ARRAY(pi, '$.scanned_details')) AS scan
+    )
+
+SELECT
+    oi.order_date
+    , oi.order_id
+    , oi.so_code
+    , oi.sku_orignal_code AS sku_original_code
+    , oi.sku_code
+    , oi.product_id
+    , pi.po_code
+    , oi.demand_quantity AS qty_ordered
+    , oi.sales_price AS unit_price
+    , oi.vat
+    , oi.fc_code
+FROM order_item AS oi
+    LEFT JOIN pick_ticket_item AS pi
+        ON pi.sale_order_code = oi.so_code
+            AND pi.sku_original_code = oi.sku_orignal_code
+            AND pi.sku_code = oi.sku_code
+            AND pi.item_type = oi.item_type
+-- GROUP BY ALL
