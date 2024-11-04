@@ -16,7 +16,7 @@ WITH RankedData AS (
         a.warehouse_code AS fc_code,
         b.aging_put_days,
         c.aging_pick_days,
-        b.latest_put_time AS latest_put_time,
+        DATETIME(b.latest_put_time, 'Asia/Ho_Chi_Minh') AS latest_put_time,
         DATETIME(c.latest_pick_time, 'Asia/Ho_Chi_Minh') AS latest_pick_time,
         CASE
             -- NORMAL cases
