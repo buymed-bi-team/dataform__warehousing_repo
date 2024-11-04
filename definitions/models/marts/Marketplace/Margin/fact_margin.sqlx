@@ -153,6 +153,7 @@ SELECT
       ) AS final_price_after_rebate
     , oi.item_type
     , oi.sku_key_sales_region_code
+    , p.line_manager_combine
 FROM outbound_item AS ob
     LEFT JOIN order_item AS oi 
         ON ob.mg_id = oi.mg_id AND ob.sku_code = oi.sku_code
