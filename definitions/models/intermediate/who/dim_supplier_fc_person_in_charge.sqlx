@@ -1,7 +1,7 @@
 config {
-    type: "view",
+    type: "table",
     name: "dim_supplier_fc_person_in_charge",
-    description: "PIC: minh,luu; model_type: view",
+    description: "PIC: minh,luu; model_type: table",
     columns: {
         supplier_code   : docs.supplier_code,
         fc_code         : docs.fc_code,
@@ -9,7 +9,8 @@ config {
         cic_category_id : docs.cic_category_id,
         pic_purchase_name: "Name of the employee who is related to pic",
         cic_category_name: "Name of the employee who is related to cic",
-    }
+    },
+    tags: ["custom_1h_past5"]
 }
 WITH core_pic AS ${dedup.dedup(
     `${source.silver}.seller_prd_core_pic`,
