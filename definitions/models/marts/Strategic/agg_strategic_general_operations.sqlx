@@ -8,7 +8,7 @@ config {
 js {
     function current_date() {
         var d = new Date();
-        var strDate = d.getFullYear().toString() + ("0" + (d.getMonth() + 1)).slice(-2) +  d.getDate().toString();
+        var strDate = d.getFullYear().toString() + ("0" + (d.getMonth() + 1)).slice(-2) + ("0" + (d.getDate())).slice(-2);
         return strDate
     }
     const today = current_date()
