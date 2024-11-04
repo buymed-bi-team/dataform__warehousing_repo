@@ -2,10 +2,9 @@ config {
     type: "incremental",
     name: "accounting_prd_core_bill_historical_cut_off",
     schema: "platinum_buymed_vn",
-    assertions: {
-        uniqueKey: 'mg_id || date_index',
-        nonNull: ["created_date"]
-    },
+    // assertions: {
+    //     uniqueKey: 'mg_id || date_index'
+    // },
     bigquery: {
         partitionBy: "created_date"
     },
@@ -15,10 +14,11 @@ config {
 SELECT 
     *, 
     DATE(created_time) created_date,
-    CAST(FORMAT_TIMESTAMP('%y%m%d', CURRENT_TIMESTAMP()) as INT64) as date_index 
+    FORMAT_TIMESTAMP('%y%m%d', CURRENT_TIMESTAMP())  as date_index 
     -- the date_index alway is the end of month, because we run in 0h15m the som in UTC +7, but timestamp return UTC timezone meaning 0h15m -7 Hour so finaly it return last day in our timezone perspective
 FROM ${source.silver}.accounting_prd_core_bill 
-WHERE last_updated_time < TIMESTAMP("2024-10-01" - INTERVAL 7 HOUR)
+-- WHERE last_updated_time < TIMESTAMP("2024-11-01" - INTERVAL 7 HOUR)
+WHERE last_updated_time < TIMESTAMP(CURRENT_DATETIME() - INTERVAL 7 HOUR)
 QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'
 WINDOW _window AS ( 
     PARTITION BY   mg_id 
@@ -27,5 +27,4 @@ WINDOW _window AS (
         IF (action='d',3,IF (action='u',2,1)) DESC,
         last_updated_time DESC
     )
-
 
