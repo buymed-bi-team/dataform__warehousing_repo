@@ -1,0 +1,73 @@
+DECLARE dataset_names ARRAY<STRING>; 
+DECLARE table_name STRING; 
+
+DECLARE table_id STRING; 
+DECLARE query STRING; 
+DECLARE query_insert STRING; 
+DECLARE schema_table STRING; 
+DECLARE dataset_name STRING; 
+SET table_name = 'accounting_prd_core_bill'; 
+SET dataset_names = [
+    'lakehouse-prod-394907.platinum_buymed_vn.', 
+    'lakehouse-prod-394907.platinum_buymed_cam.', 
+    'lakehouse-prod-394907.platinum_buymed_th.'
+];
+FOR loop_variable_name IN ( SELECT * FROM UNNEST(dataset_names)) DO 
+    SET dataset_name = CAST(loop_variable_name[0] AS STRING); 
+    SET table_id = CONCAT(dataset_name, table_name); 
+    SET schema_table = "(key STRING NOT NULL,"
+        || "mg_id STRING NOT NULL,"
+        || "order_id INT64,"
+        || "status STRING,"
+        || "bill_code STRING,"
+        || "bill_id INT64,"
+        || "created_by INT64,"
+        || "created_by_source STRING,"
+        || "created_time TIMESTAMP,"
+        || "customer_id INT64,"
+        || "is_auto_create BOOL,"
+        || "is_split_delivery_order BOOL,"
+        || "credit_note_ids JSON,"
+        || "last_updated_time TIMESTAMP,"
+        || "order_amount INT64,"
+        || "remain_amount INT64,"
+        || "sale_order_code STRING,"
+        || "total_order_amount INT64,"
+        || "unique_key STRING,"
+        || "vat INT64,"
+        || "actual_amount INT64,"
+        || "auto_complete_fail STRING,"
+        || "do_code STRING,"
+        || "lost_amount INT64,"
+        || "received_amount INT64,"
+        || "return_amount INT64,"
+        || "spent_amount INT64,"
+        || "completed_debt_time TIMESTAMP,"
+        || "completed_debt_time_info JSON,"
+        || "fee_and_discount_by_do JSON,"
+        || "completed_time TIMESTAMP,"
+        || "is_auto_complete BOOL,"
+        || "payment_ids JSON,"
+        || "synced_at TIMESTAMP,"
+        || "extra_props JSON,"
+        || "action STRING NOT NULL,"
+        || "ingest_time TIMESTAMP NOT NULL, date_index INT64, created_date DATE)"; 
+    SET query = CONCAT(
+        "CREATE TABLE IF NOT EXISTS ", 
+        table_id, "_historical_cut_off", " ", 
+        schema_table, " PARTITION BY created_date CLUSTER BY date_index"); 
+    EXECUTE IMMEDIATE query; 
+    SET query_insert = CONCAT(
+        "INSERT INTO ", table_id, "_historical_cut_off", " ", 
+        "SELECT key, mg_id, order_id, status, bill_code, bill_id, created_by, created_by_source, ",
+        "created_time, customer_id, is_auto_create, is_split_delivery_order, credit_note_ids, ",
+        "last_updated_time, order_amount, remain_amount, sale_order_code, total_order_amount, ", 
+        "unique_key, vat, actual_amount, auto_complete_fail, do_code, lost_amount, received_amount, ",
+        "return_amount, spent_amount, completed_debt_time, completed_debt_time_info, ",
+        "fee_and_discount_by_do, completed_time, is_auto_complete, payment_ids, ",
+        "synced_at, extra_props, action, ingest_time,", 
+        "CAST(FORMAT_TIMESTAMP('%y%m%d', TIMESTAMP(current_timestamp())) as INT64) as date_index, DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh')) FROM ", 
+        table_id
+    ); 
+    EXECUTE IMMEDIATE query_insert; 
+    END FOR;
