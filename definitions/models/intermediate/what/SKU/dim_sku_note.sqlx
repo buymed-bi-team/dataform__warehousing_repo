@@ -1,0 +1,37 @@
+config {
+    type: "table", 
+    description: 
+        `
+        The last note by System, PIC, CIC of SKU ;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.platinum}.core_prd_note_note,
+            ${source.ref}.dim_supplier_fc_person_in_charge
+        `,
+    tags: ["custom_1h_past5"]
+}
+
+SELECT
+    JSON_VALUE(keys, '$.0') AS item_code
+    , JSON_VALUE(keys, '$.1') AS sku_code
+    , TIMESTAMP_ADD(n.created_time, INTERVAL 7 HOUR) AS note_created_time
+    , CASE
+        WHEN pic.pic_purchase_id IS NULL AND cic.cic_category_id IS NULL THEN "SYSTEM"
+        WHEN pic.pic_purchase_id IS NOT NULL THEN "PIC"
+        WHEN cic.cic_category_id IS NOT NULL THEN "CIC"
+        END AS note_type
+    , content
+FROM ${source.platinum}.core_prd_note_note AS n
+    LEFT JOIN (
+        SELECT DISTINCT
+            pic_purchase_id
+        FROM ${ref('dim_supplier_fc_person_in_charge')}
+    ) AS pic ON pic.pic_purchase_id = n.created_by
+    LEFT JOIN (
+        SELECT DISTINCT
+            cic_category_id
+        FROM ${ref('dim_supplier_fc_person_in_charge')}
+    ) AS cic ON cic.cic_category_id = n.created_by
+QUALIFY ROW_NUMBER() over (PARTITION BY item_code, note_type ORDER BY created_time DESC) = 1

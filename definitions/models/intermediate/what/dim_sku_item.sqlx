@@ -159,16 +159,6 @@ cte_sku_fc_location AS (
   FROM ${ref("fact_stock_sku_item")}
   GROUP BY sku_fc_key
 ),
--------nguyen.tran added----------
-sku_note AS (
-  SELECT
-      JSON_VALUE(keys, '$.0') AS item_code
-      , JSON_VALUE(keys, '$.1') AS sku_code
-      , content
-  FROM ${source.platinum}.core_prd_note_note
-  WHERE created_by_name = 'SYSTEM'
-  QUALIFY ROW_NUMBER() over (PARTITION BY TO_JSON_STRING(keys) ORDER BY created_time DESC) = 1
-),
 
 cte_sku_fc_agg AS (
   SELECT
@@ -178,6 +168,7 @@ cte_sku_fc_agg AS (
     b.latest_pick_time,
     b.aging_pick_days,
     b.note,
+    b.lastest_put_is_inbound,
     b.type_stock_aging,
     c.catm as catm_group,
     c.height,
@@ -200,8 +191,6 @@ cte_sku_fc_agg AS (
     i.fv_vendor_stock_days,
     i.sku_leadtime as fv_vendor_leadtime,
     
-    -------nguyen.tran added----------
-    sn.content AS last_system_note
 
   FROM cte_sku_item a
   LEFT JOIN ${ref("dim_stock_classification")} b
@@ -220,9 +209,6 @@ cte_sku_fc_agg AS (
   ON a.sku_fc_key = h.sku_fc_key
   LEFT JOIN ${ref("dim_sku_sales_region_current")} i 
   ON a.sku_code = i.sku_code AND a.fc_code = i.fc_code
-  -------nguyen.tran added----------
-  LEFT JOIN sku_note AS sn
-    ON sn.item_code = a.item_code
 
 )
 

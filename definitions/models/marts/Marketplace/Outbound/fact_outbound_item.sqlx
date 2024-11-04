@@ -5,7 +5,7 @@ config {
         Information about lot, expired date and purchase order of each SKU in the order - The combo has been split into normal product;
         PIC: nguyen.tran; 
         Type: Table; 
-        Refresh Schedule: daily at 8h30, 10h30, 12h30, 15h30, 18h00;
+        Refresh Schedule: daily at 8h30, 10h30, 12h30, 15h30, 17h30;
         Source: 
             ${source.platinum}.marketplace_prd_order_v2_order_item
         `,
@@ -17,7 +17,7 @@ config {
 }
 
 with cte_date as (
-	select timestamp( date_trunc( date_sub( current_date('+7'), interval 4 month) , month ) )  as start_date
+	select timestamp( date_trunc( date_sub( current_date('+7'), interval 12 month) , month ) )  as start_date
     -- select date_sub( timestamp( date_trunc( current_date('+7'), month ) ) , interval 7 hour ) as start_date
 ),
 

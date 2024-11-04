@@ -52,13 +52,12 @@ filtered_orders AS (
     fs.returned_quantity,
     fs.supplier_class,
     doc.order_channel,
-    
     CASE
-      WHEN dosr.sales_region_code LIKE "MIENNAM" THEN "SOUTHERN"
-      WHEN dosr.sales_region_code LIKE "MIENTRUNG" THEN "CENTRAL"
-      WHEN dosr.sales_region_code LIKE "MIENBAC" THEN "NORTHERN"
-      ELSE "GMV_VN_REGION_UNKNOWN" 
-    END AS location
+        WHEN dosr.sales_region_code LIKE "MIENNAM" THEN "SOUTHERN"
+        WHEN dosr.sales_region_code LIKE "MIENTRUNG" THEN "CENTRAL"
+        WHEN dosr.sales_region_code LIKE "MIENBAC" THEN "NORTHERN"
+        ELSE "GMV_VN_REGION_UNKNOWN" 
+        END AS location,
   FROM ${ref(`fact_strategic_sale_order_item_single`)} fs 
   INNER JOIN base_calendar bc ON DATE(fs.created_time) = bc.date
   LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = fs.order_id 
@@ -68,7 +67,7 @@ filtered_orders AS (
 
 ),
 
--- Order metrics
+-- Order_item metrics
 order_metrics AS (
   SELECT
     DATE(created_time) as order_date,
@@ -92,12 +91,10 @@ order_metrics AS (
     SUM(IF(order_status NOT LIKE "CANCEL" AND order_status in ("DELIVERING","DELIVERED","COMPLETED"),(demand_quantity - outbound_quantity ) ,0 ) * sales_price) as gmv_unff,
     SUM(listed_price * demand_quantity) as gmv_with_listed_price,
     SUM(IF(order_status NOT LIKE "CANCEL" , returned_quantity, 0) * sales_price) as gmv_return,
-    COUNT(DISTINCT order_id) as so_count,
     SUM(demand_quantity) as item_sold
   FROM filtered_orders
   WHERE  order_channel NOT IN ("TENDER","CONSIGNMENT-RECOGNITION")
   AND order_channel is not null
-  -- AND supplier_class not like "TECH"
   GROUP BY 1, 2, 3, 4
 
   UNION ALL
@@ -121,7 +118,6 @@ order_metrics AS (
     SUM(IF(order_status NOT LIKE "CANCEL" AND order_status in ("DELIVERING","DELIVERED","COMPLETED"),(demand_quantity - outbound_quantity ) ,0 ) * sales_price) as gmv_unff, 
     SUM(listed_price * demand_quantity) as gmv_with_listed_price,
     SUM(IF(order_status NOT LIKE "CANCEL" , returned_quantity, 0) * sales_price) as gmv_return,
-    COUNT(DISTINCT order_id) as so_count,
     SUM(demand_quantity) as item_sold
   FROM filtered_orders
   WHERE order_channel LIKE "TENDER"
@@ -144,7 +140,7 @@ delivery_metrics AS (
       WHEN doc.order_channel IN ("MARKETPLACE","CONSIGNMENT") THEN "MARKETPLACE"
       ELSE doc.order_channel
     END AS channel,
-    supplier_class,
+    CAST(NULL AS STRING) AS supplier_class,
     COUNT(DISTINCT do.delivery_order_code) as do_count
   FROM ${ref(`fact_strategic_delivery_order`)} do 
   INNER JOIN base_calendar bc ON DATE(do.created_time) = bc.date
@@ -170,7 +166,7 @@ delivery_metrics AS (
       WHEN doc.order_channel IN ("MARKETPLACE","CONSIGNMENT") THEN "MARKETPLACE"
       ELSE doc.order_channel
     END AS channel,
-    supplier_class,
+    CAST(NULL AS STRING) AS supplier_class,
     COUNT(DISTINCT do.delivery_order_code) as do_count
   FROM ${ref(`fact_strategic_delivery_order`)} do 
   INNER JOIN base_calendar bc ON DATE(do.confirmation_time) = bc.date
@@ -201,7 +197,6 @@ CROSS JOIN UNNEST([
   STRUCT("CANCEL_AFTER_FFM" as measure, cancel_after_ffm as value),
   STRUCT("CANCEL_BEFORE_FFM" as measure, cancel_before_ffm as value),
   STRUCT("GMV_FULFILLED" as measure, fulfilled_amount as value),
-  STRUCT("SO" as measure, so_count as value),
   STRUCT("NMV" as measure, (cancel_after_ffm + fulfilled_amount +  gmv_backlog + returned_amount) as value),
   STRUCT("COMMERCIAL_AMOUNT" as measure, commercial_amount as value),
   STRUCT("COMMERCIAL_DEAL_AMOUNT" as measure, commercial_deal_amount as value),
@@ -237,10 +232,18 @@ FROM ${ref(`agg_strategic_customer`)}
 WHERE date >= "2023-01-01"
 
 
-UNION ALL
-
- -- Inventory cut off by last day of month
+UNION ALL -- Inventory cut off by last day of month
 
 SELECT *
 FROM ${ref(`agg_inventory_cutoff`)}
 
+UNION ALL 
+SELECT
+CURRENT_DATETIME("+7") AS refresh_time,
+eom as date,
+location,
+channel,
+'SO' as measure,
+supplier_class,
+SO_count as value
+FROM ${ref(`fact_strategic_sale_order`)}

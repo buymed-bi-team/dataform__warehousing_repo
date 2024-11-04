@@ -2,10 +2,10 @@ config {
     type: "table", 
     description: 
         `
-        Sales Price, Purchase Price, Price after rebate of MEDX's Products in each Order (serving the purpose of calculating margin)
+        Sales Price, Purchase Price, Price after rebate of MEDX's Products in each Order (for calculating margin)
         PIC: nguyen.tran; 
         Type: Table; 
-        Refresh Schedule: hourly;
+        Refresh Schedule: daily at 8h30, 10h30, 12h30, 15h30, 17h30;
         Source: 
             ${source.ref}.fact_outbound_item,
             ${source.ref}.fact_order_item,
@@ -15,7 +15,7 @@ config {
         `,
     columns: {
     },
-    tags: ["custom_1h_past5"],
+    tags: ["8h30", "10h30", "12h30", "15h30" ,"17h30"],
     bigquery: {
         partitionBy: "DATE(created_at)",
         clusterBy: ["sku_code", "product_id"]
@@ -29,9 +29,10 @@ WITH
             a.mg_id
             , a.order_id
             , a.created_at
-            , a.sku_code AS sku_code_original
+            , a.customer_id
+            -- , a.sku_code AS sku_code_original
             , a.sku_bom_code AS sku_code
-            , a.product_id AS product_id_original
+            -- , a.product_id AS product_id_original
             , a.product_bom_id AS product_id
             , a.seller_code
             , a.outbound_quantity
@@ -41,31 +42,33 @@ WITH
             LEFT JOIN (
                 SELECT *
                 FROM ${ref('warehouse_prd_core_delivery_order')}
-                WHERE created_date >= '2024-06-01'
+                WHERE created_date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 12 MONTH)
             ) AS b 
                 ON a.do_code = b.delivery_order_code
         WHERE
-            created_at >= '2024-06-01'
-            AND outbound_time >= TIMESTAMP_SUB('2024-06-01', INTERVAL 7 HOUR)
-            AND a.seller_code = 'MEDX'
+            -- created_at >= '2024-06-01'
+            -- AND outbound_time >= TIMESTAMP_SUB('2024-06-01', INTERVAL 7 HOUR)
+            -- AND 
+            a.seller_code = 'MEDX'
     )
 
     , order_item AS (
         SELECT
             mg_id
             , order_id
-            , sku_orignal_code AS sku_code_original
+            -- , sku_orignal_code AS sku_code_original
             , sku_code
             , product_id
             , sales_price AS unit_price
-            , sales_price_original AS unit_price_original
+            -- , sales_price_original AS unit_price_original
             , item_type
             , seller_price
             , sku_key_sales_region_code
         FROM ${ref('fact_order_item')}
         WHERE
-            created_at >= '2024-06-01'
-            AND seller_code = 'MEDX'
+            -- created_at >= '2024-06-01'
+            -- AND 
+            seller_code = 'MEDX'
     )
 
     , po_price AS (
@@ -120,9 +123,10 @@ SELECT
     , ob.created_at
     , ob.outbound_date
     , ob.order_id
-    , ob.sku_code_original
+    , ob.customer_id
+    -- , ob.sku_code_original
     , ob.sku_code
-    , ob.product_id_original
+    -- , ob.product_id_original
     , ob.product_id
     , ob.seller_code
     , oi.unit_price
@@ -136,7 +140,6 @@ SELECT
         , vpm.avg_vb_price
         , oi.seller_price
       ) AS purchase_price
-    -- , p.fc_code AS po_fc_code
     , r.price_after_rebate
     , r.price_after_rebate_with_adhoc_promotion
     , COALESCE(
@@ -161,7 +164,7 @@ FROM outbound_item AS ob
         ON p.po_code = ob.po_code AND p.sku_code = ob.sku_code
     LEFT JOIN vb_prev_month AS vpm 
         ON vpm.product_id = ob.product_id 
-        AND FORMAT_DATE("%Y-%m", ob.outbound_date) = vpm.ym_issued
+        AND FORMAT_DATE("%Y-%m", DATE_SUB(ob.outbound_date, INTERVAL 1 MONTH)) = vpm.ym_issued
         -- AND ob.seller_code = 'MEDX'
     LEFT JOIN price_after_rebate AS r
         ON r.product_id = ob.product_id

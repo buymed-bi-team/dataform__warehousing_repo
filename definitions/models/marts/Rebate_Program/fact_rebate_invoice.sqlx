@@ -1,0 +1,33 @@
+config {
+    type: "table",
+    description: 
+        `
+        Related Vendor Bills of Rebate Programs;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.platinum}.seller_prd_promotion_rebate_result,
+            ${source.ref}.fact_vendor_bill,
+            ${source.ref}.dim_vendor,
+        `,
+    tags: ["custom_1h_past5", "REBATE"]
+}
+
+SELECT
+    rebate_code
+    , b AS vendor_bill_code
+    , vb.vendor_bill_id
+    , v.supplier_id AS vendor_id
+    , v.supplier_name AS vendor_name
+    , issued_date
+    , po_code
+    , created_by_system
+    , vb.total_price_without_vat
+    , vb.total_vat_price
+    , vb.total_price
+    , status
+FROM ${source.platinum}.seller_prd_promotion_rebate_result,
+    UNNEST(JSON_VALUE_ARRAY(vendor_bill_codes)) as b
+    LEFT JOIN ${ref('fact_vendor_bill')} AS vb ON b = vb.vendor_bill_code
+    LEFT JOIN ${ref('dim_vendor')} AS v ON v.supplier_code = vb.vendor_code

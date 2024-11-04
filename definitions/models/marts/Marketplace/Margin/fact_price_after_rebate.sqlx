@@ -7,8 +7,8 @@ config {
         Type: Table; 
         Refresh Schedule: hourly;
         Source: 
-            ${source.platinum}.seller_prd_purchasing_purchase_order,
-            ${source.platinum}.seller_prd_purchasing_purchase_order_item
+            ${source.platinum}.seller_prd_purchasing_contract_price,
+            ${source.platinum}.seller_prd_promotion_log_price_after_rebate
         `,
   bigquery: {
     partitionBy: "rebate_date",

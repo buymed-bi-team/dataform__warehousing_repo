@@ -16,7 +16,7 @@ WITH RankedData AS (
         a.warehouse_code AS fc_code,
         b.aging_put_days,
         c.aging_pick_days,
-        DATETIME(b.latest_put_time, 'Asia/Ho_Chi_Minh') AS latest_put_time,
+        b.latest_put_time AS latest_put_time,
         DATETIME(c.latest_pick_time, 'Asia/Ho_Chi_Minh') AS latest_pick_time,
         CASE
             -- NORMAL cases
@@ -35,14 +35,22 @@ WITH RankedData AS (
         END AS type_stock_aging,
         CONCAT(
             '{',
-            IF(b.aging_put_days IS NOT NULL, CONCAT('"aging_put_days":', b.aging_put_days, ','), ''),
-            IF(c.aging_pick_days IS NOT NULL, CONCAT('"aging_pick_days":', c.aging_pick_days, ','), ''),
-            IF(b.latest_put_code IS NOT NULL, CONCAT('"latest_put_code":"', b.latest_put_code, '",'), ''),
-            IF(b.latest_inbound_code IS NOT NULL, CONCAT('"latest_inbound_code":"', b.latest_inbound_code, '",'), ''),
-            IF(c.latest_pick_ticket_id IS NOT NULL, CONCAT('"latest_pick_ticket_id":"', c.latest_pick_ticket_id, '",'), ''),
-            IF(c.latest_so IS NOT NULL, CONCAT('"latest_so":"', c.latest_so, '"'), ''),
+            REGEXP_REPLACE(CONCAT(
+                IF(b.aging_put_days IS NOT NULL, CONCAT('"aging_put_days":', b.aging_put_days, ','), ''),
+                IF(c.aging_pick_days IS NOT NULL, CONCAT('"aging_pick_days":', c.aging_pick_days, ','), ''),
+                IF(b.latest_put_code IS NOT NULL, CONCAT('"latest_put_code":"', b.latest_put_code, '",'), ''),
+                IF(b.latest_inbound_code IS NOT NULL, CONCAT('"latest_inbound_code":"', b.latest_inbound_code, '",'), ''),
+                IF(c.latest_pick_ticket_id IS NOT NULL, CONCAT('"latest_pick_ticket_id":"', c.latest_pick_ticket_id, '",'), ''),
+                IF(c.latest_so IS NOT NULL, CONCAT('"latest_so":"', c.latest_so, '",'), ''),
+                IF(b.final_put_code <> b.latest_put_code, CONCAT('"final_put_code":"', b.final_put_code, '",'), ''),
+                IF(b.final_put_code <> b.latest_put_code, CONCAT('"aging_final_days":', b.aging_final_days, ','), '')
+            ), ",$", ""),
             '}'
         ) AS note,
+        CASE
+            WHEN b.final_put_code <> b.latest_put_code THEN "False"
+            ELSE "True"
+        END AS lastest_put_is_inbound,
         ROW_NUMBER() OVER (PARTITION BY a.sku, a.warehouse_code ORDER BY GREATEST(b.latest_put_time, c.latest_pick_time) DESC) AS rn
     FROM ${source.platinum}.warehouse_prd_inventory_sku a
     LEFT JOIN ${ref("agg_latest_put_by_sku_fc")} b

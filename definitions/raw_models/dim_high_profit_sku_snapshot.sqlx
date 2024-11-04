@@ -8,14 +8,14 @@ config {
 js {
     function current_date() {
         var d = new Date();
-        var strDate = d.getFullYear().toString() + ("0" + (d.getMonth() + 1)).slice(-2) + ("0" + (d.getDate())).slice(-2);
+        var strDate = d.getFullYear().toString() + ("0" + (d.getMonth() + 1)).slice(-2) +  ("0" + (d.getDate())).slice(-2);
         return strDate
     }
     const today = current_date()
 }
 
-CREATE SNAPSHOT TABLE ${source.ref}.agg_strategic_general_${today}
-CLONE ${ref(`agg_strategic_general`)}
+CREATE SNAPSHOT TABLE ${source.ref}.dim_high_profit_sku_${today}
+CLONE ${ref(`dim_high_profit_sku`)}
 -- FOR SYSTEM_TIME AS OF
 --   TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR)
-OPTIONS (expiration_timestamp = TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 30 DAY));
+;

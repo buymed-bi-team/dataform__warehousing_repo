@@ -1,0 +1,125 @@
+config {
+    type: "table",
+    description: 
+        `
+        Aggregate the purchased and sales values by product for the target division, categorized by each rebate program;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: daily at 8h30;
+        Source: 
+            ${source.platinum}.seller_prd_promotion_rebate_result,
+            ${source.ref}.fact_vendor_bill,
+            ${source.ref}.dim_vendor,
+        `,
+    tags: ["8h30", "REBATE"]
+}
+
+WITH
+-------- STEP 1: Retrieve the purchased value by product (amount or quantity) from the vendor bill by each rebate program and corresponding division -----------
+
+    purchase AS (
+        SELECT
+            vbi.created_time
+            , vbi.vendor_bill_id
+            , vbi.po_code
+            , vbi.product_id
+            , vbi.sku_code
+            , vbi.price
+            , vbi.price_after_discount
+            , vbi.quantity
+            , vbi.vat
+            , pd.division_name
+            , pd.division_code
+            , rri.rebate_code
+            , r.condition_unit
+            , r.condition_include_type
+            , vbi.fc_code
+            , rri.rebate_item_id
+        FROM ${ref('fact_vendor_bill_item')} AS vbi
+            LEFT JOIN ${ref('fact_rebate_invoice')} AS ri ON ri.vendor_bill_id = vbi.vendor_bill_id
+            LEFT JOIN ${ref('dim_product_division')} AS pd ON pd.product_id = vbi.product_id
+            LEFT JOIN ${ref('fact_rebate_result_item')} AS rri ON rri.target_division_code = pd.division_code AND rri.rebate_code = ri.rebate_code
+            LEFT JOIN ${ref('dim_rebate')} AS r ON r.rebate_code = rri.rebate_code
+        WHERE
+            rri.rebate_code IS NOT NULL
+            AND vbi.seller_code = 'MEDX'
+            AND rri.target_division_code IS NOT NULL
+    ),
+
+-------- STEP 2: Retrieve product demand by each division (only include seller MEDX, channels Thuocsi & Circa, excluding CANCELED orders) --------
+
+    sale AS (
+        SELECT
+            DATE(oi.created_at) AS order_date
+            , oi.order_id
+            , oi.product_id
+            , oi.sales_price AS unit_price
+            , oi.demand_quantity AS qty_ordered
+            , p.division_code
+            , p.division_name
+            , fc.fc_code
+        FROM ${ref('fact_order_item')} AS oi
+            LEFT JOIN ${ref('fact_order')} AS o ON oi.order_id = o.order_id
+            LEFT JOIN ${ref('dim_product_division')} AS p ON p.product_id = oi.product_id
+            LEFT JOIN ${ref('dim_fc_service_area')} AS fc ON fc.service_area_code = o.shipping_province_code
+        WHERE
+            o.order_status <> 'CANCEL'
+            AND oi.seller_code = 'MEDX'
+            AND o.channel IN ('MARKETPLACE', 'CIRCA')
+    ),
+
+-------- STEP 3: Aggregate the total purchased value according to condition_unit & condition_include_type for each rebate program and corresponding division---------
+
+    agg_purchase AS (
+        SELECT
+            rebate_code
+            , division_code
+            , division_name
+            , rebate_item_id
+            , product_id
+            , condition_unit
+            , CASE
+                WHEN condition_unit = 'AMOUNT' THEN
+                 CASE
+                    WHEN condition_include_type = 'NONE' THEN SUM( price * quantity )
+                    WHEN condition_include_type = 'UNIT_AFTER_VAT' THEN SUM( price * quantity * (1 + vat / 100))
+                    WHEN condition_include_type = 'AFTER_DISCOUNT' THEN SUM( price_after_discount * quantity )
+                    WHEN condition_include_type = 'AFTER_VAT' THEN SUM( price_after_discount * quantity * (1 + vat / 100))
+                  END
+                ELSE SUM(quantity)
+              END AS total_purchased_value
+        FROM purchase
+        GROUP BY rebate_code, division_code, division_name, product_id, condition_unit, condition_include_type, rebate_item_id
+    )
+
+-------- Final Step: Join the tables together to get the total purchased value & product demand for each rebate program & division ------------
+
+SELECT
+    a.rebate_code
+    , a.target_division_code AS division_code
+    , a.target_division AS division_name
+    , b.product_id
+    , pro.product_name
+    , a.rebate_item_id
+    , ap.total_purchased_value
+    , CASE
+        WHEN r.condition_unit = "QUANTITY" THEN SUM(sale.qty_ordered)
+        ELSE SUM(sale.unit_price * sale.qty_ordered)
+      END AS sale_value
+
+FROM ${ref('fact_rebate_result_item')} AS a
+    LEFT JOIN ${ref('dim_rebate')} AS r ON a.rebate_code = r.rebate_code
+    LEFT JOIN ${ref('dim_product_division')} AS b ON a.target_division_code = b.division_code
+    LEFT JOIN agg_purchase AS ap
+        ON ap.rebate_code = a.rebate_code
+            AND ap.division_code = a.target_division_code
+            AND ap.product_id = b.product_id
+    LEFT JOIN sale
+        ON sale.division_code = a.target_division_code
+            AND sale.product_id = b.product_id
+            AND sale.order_date BETWEEN r.start_time AND r.end_time
+            AND STRPOS(r.warehouse_code, sale.fc_code) > 0 /* only include orders with fc_code that are in applicable area of the rebate program */
+    LEFT JOIN ${ref('dim_product')} AS pro ON pro.product_id = b.product_id
+WHERE a.target_division_code IS NOT NULL
+GROUP BY a.rebate_code, a.target_division_code, a.target_division, b.product_id, pro.product_name,
+         a.rebate_item_id, ap.total_purchased_value, r.condition_unit, r.warehouse_code
