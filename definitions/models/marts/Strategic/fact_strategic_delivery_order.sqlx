@@ -28,8 +28,7 @@ config {
     
 */
 js {
-    const start_date = `"2022-12-31"`
-    const end_date = `"2030-08-01"`
+    const start_date = `"2023-01-01"`
 }
 
 
@@ -41,7 +40,7 @@ WITH mkp_o AS (
         confirmation_date
     FROM 
         ${source.platinum}.marketplace_prd_order_v2_order
-    WHERE created_date BETWEEN ${start_date} AND ${end_date}
+    WHERE created_date >= ${start_date}
     AND created_time is not null
 )
 , tender_o AS (
@@ -52,7 +51,7 @@ WITH mkp_o AS (
         confirmation_date
     FROM
         ${source.platinum}.tender_prd_core_tender_orders
-    WHERE created_date BETWEEN ${start_date} AND ${end_date}
+    WHERE created_date >= ${start_date}
     AND created_time is not null
 )
 , o AS (

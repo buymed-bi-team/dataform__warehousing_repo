@@ -56,12 +56,11 @@ mkp_o AS (
         confirmation_date,
         delivered_time,
         "MKP" as system
-    FROM
-        ${source.platinum}.marketplace_prd_order_v2_order o
+    FROM ${source.platinum}.marketplace_prd_order_v2_order o
     WHERE o.created_date >= ${start_date}
     AND o.created_time is not null
-
 )
+
 , mkp_oi AS (
     SELECT 
         'mkp' || mg_id as oiid, 
