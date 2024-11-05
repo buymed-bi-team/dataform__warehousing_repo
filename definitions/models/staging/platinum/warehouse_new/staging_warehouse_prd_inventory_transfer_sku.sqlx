@@ -22,7 +22,7 @@ pre_operations {
       SET checkpoint_date = ARRAY( 
         SELECT DISTINCT date(created_time,'+7')
         FROM silver_buymed_vn.marketplace_prd_order_v2_order_item 
-        WHERE ingest_time >= TIMESTAMP_TRUNC((CURRENT_TIMESTAMP() - interval 3 DAY), HOUR)
+        WHERE ingest_time >= TIMESTAMP_TRUNC((CURRENT_TIMESTAMP() - interval 6 HOUR), HOUR)
         AND created_time IS NOT NULL
       );
 
@@ -31,7 +31,7 @@ pre_operations {
       and mg_id in ( 
         SELECT DISTINCT mg_id 
         FROM silver_buymed_vn.marketplace_prd_order_v2_order_item 
-        WHERE ingest_time >= TIMESTAMP_TRUNC((CURRENT_TIMESTAMP() - interval 3 DAY), HOUR)
+        WHERE ingest_time >= TIMESTAMP_TRUNC((CURRENT_TIMESTAMP() - interval 6 HOUR), HOUR)
         );
 
       `,
@@ -58,7 +58,7 @@ FROM (
 
   FROM
     ${source.silver}.marketplace_prd_order_v2_order_item o 
-    ${ when(incremental(),  `WHERE ingest_time > TIMESTAMP_TRUNC((CURRENT_TIMESTAMP() - interval 3 DAY), HOUR)`  )}
+    ${ when(incremental(),  `WHERE ingest_time > TIMESTAMP_TRUNC((CURRENT_TIMESTAMP() - interval 6 HOUR), HOUR)`  )}
   QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'
   WINDOW _window AS ( 
     PARTITION BY mg_id
