@@ -236,9 +236,9 @@ SELECT
     -- customer.phone,
     customer.business_type,
     CASE
-        WHEN SAFE_CAST(customer.ward_code AS integer) > 0 THEN customer.ward_code
-        WHEN SAFE_CAST(customer.district_code AS integer) > 0 THEN customer.district_code
-        WHEN SAFE_CAST(customer.province_code AS integer) > 0 THEN customer.province_code
+        WHEN SAFE_CAST(customer.ward_code AS integer) > 0 THEN LPAD(customer.ward_code, 5, '0')
+        WHEN SAFE_CAST(customer.district_code AS integer) > 0 THEN LPAD(customer.district_code, 3, '0')
+        WHEN SAFE_CAST(customer.province_code AS integer) > 0 THEN LPAD(customer.province_code, 2, '0')
         ELSE NULL
     END AS location_code,
     p.sales_region_code AS config_fc,
