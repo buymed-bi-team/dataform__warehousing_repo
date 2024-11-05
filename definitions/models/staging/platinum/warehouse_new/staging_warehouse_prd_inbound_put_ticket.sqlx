@@ -79,4 +79,4 @@ pre_operations {
 }
 -- 
 SELECT * FROM tmp1
-WHERE created_time is not null and last_updated_time is not null
+WHERE created_time is not null
