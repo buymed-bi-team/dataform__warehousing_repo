@@ -1,10 +1,10 @@
 config {
     type: "table",
-    description: `Started time: 20240801| PIC: tu.dang; model_type: incremetal ;schedule: 12h00
+    description: `Started time: 20240601| PIC: tu.dang; model_type: incremetal ;schedule: 12h00
     Source:
-      ${source.silver}.marketplace_prd_order_v2_order_item
-      ${source.silver}.marketplace_prd_order_v2_order`,
-    tags: ["0h00"],
+      ${source.platinum}.marketplace_prd_order_v2_order_item
+      ${source.platinum}.marketplace_prd_order_v2_order`,
+    tags: ["6h30"],
     name: "fact_checkout_item",
     columns: {
         order_id: "NonNull |" + docs.order_id,
