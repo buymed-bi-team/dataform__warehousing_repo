@@ -228,9 +228,9 @@ SELECT
 
     pos.code AS circa_pos_code,
 
-    customer.province_code,
-    customer.district_code,
-    customer.ward_code,
+    LPAD(customer.province_code, 2, '0') AS province_code,
+    LPAD(customer.district_code, 3, '0') AS district_code,
+    LPAD(customer.ward_code, 5, '0') AS ward_code,
     customer.address,
     -- customer.email,
     -- customer.phone,
