@@ -15,16 +15,21 @@ WITH
     AND CURRENT_DATE()),
 
   min_odder_date AS (
-  SELECT
-    a.customer_id,
-    DATE(MIN(a.created_at)) AS first_date_order,
-    DATE_TRUNC(DATE(MIN(a.created_at)), MONTH) AS som_first_date_order
-  FROM
-    ${ref('fact_order')} AS a
-  WHERE
-    order_status <> "CANCEL"
-  GROUP BY
-    1),
+    SELECT
+      a.customer_id,
+      DATE(MIN(a.created_at)) AS first_date_order,
+      DATE_TRUNC(DATE(MIN(a.created_at)), MONTH) AS som_first_date_order
+    FROM
+      ${ref('fact_order')} AS a
+    WHERE
+      order_status <> "CANCEL"
+
+  --------- nguyen.tran added -----------
+      AND channel = 'MARKETPLACE'
+  -----------------------------------------
+    
+    GROUP BY 1
+  ),
 
   customer_calendar AS(
   SELECT
@@ -58,6 +63,7 @@ WITH
     channel = 'MARKETPLACE'
   GROUP BY
     ALL),
+
   calendar_order AS(
   SELECT
     a.*,
@@ -73,6 +79,7 @@ WITH
   ON
     a.customer_id = b.customer_id
     AND a.year_month = b.year_month )
+    
 SELECT
   customer_id,
   som,
