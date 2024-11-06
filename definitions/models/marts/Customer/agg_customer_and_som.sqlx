@@ -11,7 +11,11 @@ config {
             ${source.ref}.dim_customer,
             ${source.ref}.dim_calendar
         `,
-    tags: ["custom_1h_past5"]
+    tags: ["custom_1h_past5"],
+    bigquery: {
+        partitionBy: "som",
+        clusterBy: ["customer_id"]
+    }
 }
 
 WITH
