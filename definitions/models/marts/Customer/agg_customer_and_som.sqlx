@@ -83,13 +83,16 @@ WITH
             , b.last_order_time_without_cancel_before_current_month
             , b.first_order_time_without_cancel_in_current_month
             , DATE_DIFF(b.first_order_time_without_cancel_in_current_month, b.last_order_time_without_cancel_before_current_month, DAY) AS days_return_active
-            , IF(b.first_order_time_without_cancel_in_current_month IS NULL, "CHURN", "ACTIVE") AS customer_business_status
+            , CASE
+                WHEN c.first_order_time_without_cancel_ever IS NULL THEN "USER_ONLY"
+                WHEN b.first_order_time_without_cancel_in_current_month IS NULL THEN "CHURN"
+                ELSE "ACTIVE"
+              END AS customer_business_status
         FROM cte_main AS a
             LEFT JOIN cte_agg_customer_and_som AS b ON a.customer_id = b.customer_id AND a.som = b.som
             LEFT JOIN cte_agg_customer AS c ON a.customer_id = c.customer_id
-        WHERE
-            c.first_order_time_without_cancel_ever IS NOT NULL
---             AND a.customer_id = 3452
+        -- WHERE
+        --     c.first_order_time_without_cancel_ever IS NOT NULL
     )
 
 SELECT
