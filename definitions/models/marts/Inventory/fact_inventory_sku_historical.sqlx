@@ -6,7 +6,7 @@ config {
         Refresh Schedule: daily;
         Source: 
             ${source.platinum}.warehouse_prd_inventory_inventory_historical`,
-    tags: ["8h00"],
+    tags: ["23h00"],
     bigquery: {
         partitionBy: "snapshot_date"
     }
