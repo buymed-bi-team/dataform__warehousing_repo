@@ -73,17 +73,38 @@ WITH
             ca.som >= DATETIME_TRUNC(cu.user_activated_at, MONTH)
     )
 
+    , classify AS (
+        SELECT
+            a.*
+        --     , d.region_name
+        --     , d.province_name
+            , c.first_order_time_without_cancel_ever
+            , c.last_order_time_without_cancel_ever
+            , b.last_order_time_without_cancel_before_current_month
+            , b.first_order_time_without_cancel_in_current_month
+            , DATE_DIFF(b.first_order_time_without_cancel_in_current_month, b.last_order_time_without_cancel_before_current_month, DAY) AS days_return_active
+            , IF(b.first_order_time_without_cancel_in_current_month IS NULL, "CHURN", "ACTIVE") AS customer_business_status
+        FROM cte_main AS a
+            LEFT JOIN cte_agg_customer_and_som AS b ON a.customer_id = b.customer_id AND a.som = b.som
+            LEFT JOIN cte_agg_customer AS c ON a.customer_id = c.customer_id
+        WHERE
+            c.first_order_time_without_cancel_ever IS NOT NULL
+--             AND a.customer_id = 3452
+    )
+
 SELECT
-    a.*
---     , d.region_name
---     , d.province_name
-    , c.first_order_time_without_cancel_ever
-    , c.last_order_time_without_cancel_ever
-    , b.last_order_time_without_cancel_before_current_month
-    , b.first_order_time_without_cancel_in_current_month
-FROM cte_main AS a
-    LEFT JOIN cte_agg_customer_and_som AS b ON a.customer_id = b.customer_id AND a.som = b.som
-    LEFT JOIN cte_agg_customer AS c ON a.customer_id = c.customer_id
---     LEFT JOIN gold_buymed_vn2.dim_geo_location AS d ON a.location_code = d.location_code
-WHERE
-    c.first_order_time_without_cancel_ever IS NOT NULL
+    *
+    , IF(
+        customer_business_status = "ACTIVE"
+        , CASE
+            WHEN DATE_TRUNC(first_order_time_without_cancel_ever, MONTH) = som THEN "NEW_CUSTOMER"
+            WHEN days_return_active < 30 THEN "REPEAT_CUSTOMER"
+            WHEN days_return_active >= 30 THEN "REACQUIRED_CUSTOMER"
+          END
+        , NULL
+      ) AS customer_active_type
+    , CASE
+        WHEN days_return_active BETWEEN 30 AND 59 THEN "REACQUIRED_AFTER_CHURN_30D"
+        WHEN days_return_active >= 60 THEN "REACQUIRED_AFTER_CHURN_60D"
+      END AS customer_reacquired_type
+FROM classify
