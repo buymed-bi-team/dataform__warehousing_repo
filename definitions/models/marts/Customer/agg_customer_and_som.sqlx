@@ -1,0 +1,89 @@
+config {
+    type: "table",
+    description: 
+        `
+        Aggregation by Customer & SOM;
+        PIC: nguyen.tran; 
+        Type: Table; 
+		Refresh Schedule: hourly;
+        Source: 
+            ${source.ref}.fact_order,
+            ${source.ref}.dim_customer,
+            ${source.ref}.dim_calendar
+        `,
+    tags: ["custom_1h_past5"]
+}
+
+WITH
+    cte_transaction AS (
+        SELECT
+            c.order_id
+            , c.customer_id
+            , DATE_TRUNC(DATE(created_at), MONTH) AS som
+            , created_at AS created_time
+        FROM
+            ${ref('fact_order')} AS C
+        WHERE
+            order_status <> "CANCEL"
+            AND channel = "MARKETPLACE"
+    )
+
+    , cte_transaction_with_previous_order_time AS (
+        SELECT
+          *
+          , LAG(created_time) OVER (PARTITION BY customer_id ORDER BY created_time) AS previous_order_time
+        FROM cte_transaction
+    )
+
+    , cte_agg_customer_and_som AS (
+        SELECT
+            customer_id
+            , som
+            , MAX(
+                IF(previous_order_time < som, previous_order_time, NULL)
+              ) AS last_order_time_without_cancel_before_current_month
+            , MIN(
+                IF( DATE_TRUNC(created_time, MONTH) = som, created_time, NULL)
+              ) AS first_order_time_without_cancel_in_current_month
+        FROM cte_transaction_with_previous_order_time
+        GROUP BY ALL
+    )
+
+    , cte_agg_customer AS (
+        SELECT
+            customer_id
+            , MAX(created_time) AS last_order_time_without_cancel_ever
+            , MIN(created_time) AS first_order_time_without_cancel_ever
+        FROM cte_transaction
+        GROUP BY ALL
+    )
+
+    , cte_main AS (
+        SELECT
+            cu.customer_id
+--             , cu.location_code
+            , ca.som
+        FROM ${ref('dim_customer')} AS cu
+            , (
+                SELECT DISTINCT year_month, som
+                FROM ${ref('dim_calendar')}
+                WHERE date <= CURRENT_DATE("+7")
+            ) AS ca
+        WHERE
+            ca.som >= DATETIME_TRUNC(cu.user_activated_at, MONTH)
+    )
+
+SELECT
+    a.*
+--     , d.region_name
+--     , d.province_name
+    , c.first_order_time_without_cancel_ever
+    , c.last_order_time_without_cancel_ever
+    , b.last_order_time_without_cancel_before_current_month
+    , b.first_order_time_without_cancel_in_current_month
+FROM cte_main AS a
+    LEFT JOIN cte_agg_customer_and_som AS b ON a.customer_id = b.customer_id AND a.som = b.som
+    LEFT JOIN cte_agg_customer AS c ON a.customer_id = c.customer_id
+--     LEFT JOIN gold_buymed_vn2.dim_geo_location AS d ON a.location_code = d.location_code
+WHERE
+    c.first_order_time_without_cancel_ever IS NOT NULL
