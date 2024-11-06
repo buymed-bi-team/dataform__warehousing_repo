@@ -74,7 +74,7 @@ WITH
                 WHERE date <= CURRENT_DATE("+7")
             ) AS ca
         WHERE
-            ca.som >= DATETIME_TRUNC(cu.user_activated_at, MONTH)
+            ca.som >= DATETIME_TRUNC(cu.user_created_at, MONTH)
     )
 
     , classify AS (
