@@ -65,7 +65,7 @@ WITH
             , ca.som
         FROM ${ref('dim_customer')} AS cu
             , (
-                SELECT DISTINCT year_month, som
+                SELECT DISTINCT som
                 FROM ${ref('dim_calendar')}
                 WHERE date <= CURRENT_DATE("+7")
             ) AS ca
