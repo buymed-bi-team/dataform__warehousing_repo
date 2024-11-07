@@ -42,10 +42,10 @@ IF( (SELECT COUNT(*) FROM tmp1 ) > 10 )
     FROM lakehouse-prod-394907.dataform_assertions.__TABLES__ 
     WHERE table_id like "marketplace_prd_order_v2_reconciliation" 
     ) THEN 
-        INSERT INTO dataform_assertions.marketplace_prd_order_v2_reconciliation
+        INSERT INTO dataform_assertions.marketplace_prd_order_v2_reconciliation_customer
         SELECT * FROM tmp1;
     ELSE
-        CREATE TABLE dataform_assertions.marketplace_prd_order_v2_reconciliation AS (
+        CREATE TABLE dataform_assertions.marketplace_prd_order_v2_reconciliation_customer AS (
         SELECT * FROM tmp1
         );
     END IF;
