@@ -25,6 +25,7 @@ select requester_code,
        status as ticket_status,
        JSON_EXTRACT_SCALAR(JSON_EXTRACT(decision_selecteds,'$[0]'),'$.name') as first_decision_name,
        JSON_EXTRACT_SCALAR(JSON_EXTRACT(decision_selecteds,'$[1]'),'$.name') as senconde_decision_name,
+       json_extract_scalar(input_data, '$.orderID') as order_id,
        created_date,
        case when requester_type is null then  JSON_EXTRACT_SCALAR(input_data,'$.REQUESTER_TYPE') 
        else requester_type
