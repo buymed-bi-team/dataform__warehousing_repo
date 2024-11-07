@@ -24,7 +24,7 @@ CREATE TEMP TABLE silver AS (
 );
 CREATE TEMP TABLE platinum AS (
     SELECT mg_id
-    FROM ${source.platinum}.marketplace_prd_customer_p
+    FROM ${source.platinum}.marketplace_prd_customer_pic
     WHERE created_time >= "2024-10-20"
     AND created_date >= "2024-10-20"
 );
@@ -40,17 +40,17 @@ IF( (SELECT COUNT(*) FROM tmp1 ) > 10 )
     IF ( 
     SELECT COUNT(*) >0
     FROM lakehouse-prod-394907.dataform_assertions.__TABLES__ 
-    WHERE table_id like "marketplace_prd_customer_p" 
+    WHERE table_id like "marketplace_prd_customer_pic" 
     ) THEN 
-        INSERT INTO dataform_assertions.marketplace_prd_customer_pi
+        INSERT INTO dataform_assertions.marketplace_prd_customer_pic
         SELECT * FROM tmp1;
     ELSE
-        CREATE TABLE dataform_assertions.marketplace_prd_customer_pi AS (
+        CREATE TABLE dataform_assertions.marketplace_prd_customer_pic AS (
         SELECT * FROM tmp1
         );
     END IF;
 
-    CREATE OR REPLACE TABLE ${source.platinum}.marketplace_prd_customer_p 
+    CREATE OR REPLACE TABLE ${source.platinum}.marketplace_prd_customer_pic 
     PARTITION BY created_date
     AS
     (
