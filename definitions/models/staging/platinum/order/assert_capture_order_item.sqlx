@@ -40,7 +40,7 @@ IF( (SELECT COUNT(*) FROM tmp1 ) > 10 )
     IF ( 
     SELECT COUNT(*) >0
     FROM lakehouse-prod-394907.dataform_assertions.__TABLES__ 
-    WHERE table_id like "marketplace_prd_order_v2_order_item" 
+    WHERE table_id like "marketplace_prd_order_v2_order_item_customer" 
     ) THEN 
         INSERT INTO dataform_assertions.marketplace_prd_order_v2_order_item_customer
         SELECT * FROM tmp1;
