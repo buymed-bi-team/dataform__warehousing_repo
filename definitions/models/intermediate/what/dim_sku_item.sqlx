@@ -170,8 +170,8 @@ cte_sku_fc_location AS (
         LEFT JOIN ${ref('fact_order')} AS o USING(order_id)
       WHERE
         o.order_status <> 'CANCEL'
-        AND DATE(oi.created_at) >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 30 DAY)
-        AND DATE(o.created_at) >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 30 DAY)
+        AND DATE(oi.created_at) >= DATE_SUB(CURRENT_DATE("+7"), INTERVAL 30 DAY)
+        AND DATE(o.created_at) >= DATE_SUB(CURRENT_DATE("+7"), INTERVAL 30 DAY)
       GROUP BY ALL
   ),
 -----------------------------------------------------
