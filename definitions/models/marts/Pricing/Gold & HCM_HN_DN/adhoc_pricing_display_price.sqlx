@@ -14,7 +14,7 @@ config {
         `,
     tags: ["custom_1h_past5", "PRICING"],
     columns: {
-      customer_level_fee_value: "Fee value corresponding to PLATINUM level",
+      customer_level_fee_value: "Fee value corresponding to PLATINUM/GOLD level",
       dynamic_pricing_level_fee_value: "Fee value corresponding to dynamic pricing level", 
       pricing_price_level_fee_value: "Fee value corresponding to price range", 
       delivery_region_fee_value: "Fee value corresponding to delivery region",
