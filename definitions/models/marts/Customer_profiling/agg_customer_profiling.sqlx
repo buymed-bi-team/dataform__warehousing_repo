@@ -53,8 +53,6 @@ WITH
   SELECT
     customer_id,
     CAST(FORMAT_DATE('%Y-%m', created_at) AS STRING) AS year_month,
-    -- EXTRACT(YEAR FROM created_at) AS purchase_year,
-    -- EXTRACT(MONTH FROM created_at) AS purchase_month,
     COUNTIF(order_status <> 'CANCEL') > 0 AS has_purchase
   FROM
     ${ref('fact_order')}
