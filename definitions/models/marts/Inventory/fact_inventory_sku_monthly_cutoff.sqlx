@@ -5,7 +5,7 @@ config {
         Type: Table; 
         Refresh Schedule: daily;
         Source: fact_inventory_sku_historical`,
-    tags: ["monthly"],
+    tags: ["8h00"],
     bigquery: {
         partitionBy: "snapshot_date"
     }
