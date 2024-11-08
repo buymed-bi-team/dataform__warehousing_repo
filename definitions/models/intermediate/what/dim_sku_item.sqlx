@@ -160,6 +160,22 @@ cte_sku_fc_location AS (
   GROUP BY sku_fc_key
 ),
 
+----------------nguyen.tran added---------------
+  gmv_l30d AS (
+      SELECT
+        sku_code
+        , sales_region_code
+        , SUM(demand_quantity * sales_price) AS gmv_l30d
+      FROM ${ref('fact_order_item')} AS oi
+        LEFT JOIN ${ref('fact_order')} AS o USING(order_id)
+      WHERE
+        o.order_status <> 'CANCEL'
+        AND DATE(oi.created_at) >= DATE_SUB(CURRENT_DATE("+7"), INTERVAL 30 DAY)
+        AND DATE(o.created_at) >= DATE_SUB(CURRENT_DATE("+7"), INTERVAL 30 DAY)
+      GROUP BY ALL
+  ),
+-----------------------------------------------------
+
 cte_sku_fc_agg AS (
   SELECT
     a.*,
@@ -190,7 +206,10 @@ cte_sku_fc_agg AS (
     h.location_codes,
     i.fv_vendor_stock_days,
     i.sku_leadtime as fv_vendor_leadtime,
-    
+
+----------------nguyen.tran added---------------
+    gl.gmv_l30d
+-------------------------------------------------
 
   FROM cte_sku_item a
   LEFT JOIN ${ref("dim_stock_classification")} b
@@ -209,7 +228,10 @@ cte_sku_fc_agg AS (
   ON a.sku_fc_key = h.sku_fc_key
   LEFT JOIN ${ref("dim_sku_sales_region_current")} i 
   ON a.sku_code = i.sku_code AND a.fc_code = i.fc_code
-
+----------------nguyen.tran added---------------
+  LEFT JOIN gmv_l30d AS gl 
+    ON gl.sku_code = a.sku_code AND gl.sales_region_code = a.sales_region_code
+-------------------------------------------------
 )
 
 SELECT *

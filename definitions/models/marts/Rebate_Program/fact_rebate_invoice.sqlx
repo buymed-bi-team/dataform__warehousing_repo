@@ -22,6 +22,7 @@ SELECT
     , v.supplier_name AS vendor_name
     , issued_date
     , po_code
+    , po_created_time AS po_created_date
     , created_by_system
     , vb.total_price_without_vat
     , vb.total_vat_price

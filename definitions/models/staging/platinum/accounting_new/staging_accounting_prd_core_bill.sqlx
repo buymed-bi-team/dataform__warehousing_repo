@@ -1,6 +1,3 @@
-
-
-
 config {
     type: "incremental",
     name: "accounting_prd_core_bill",
