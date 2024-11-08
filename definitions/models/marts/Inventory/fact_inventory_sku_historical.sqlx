@@ -6,7 +6,7 @@ config {
         Refresh Schedule: daily;
         Source: 
             ${source.platinum}.warehouse_prd_inventory_inventory_historical`,
-    tags: ["6h00"],
+    tags: ["8h00"],
     bigquery: {
         partitionBy: "snapshot_date"
     }
@@ -27,3 +27,16 @@ AND CAST(json_value(l.stock_quantity) as int64) > 0
 ${when(incremental(), `AND i.created_date = CURRENT_DATE('+7')`) }
 GROUP BY ALL
 QUALIFY ROW_NUMBER() OVER (PARTITION BY fc_code, seller_class, snapshot_date) = 1
+
+-- post_operations {
+--   ${
+--     when(incremental(),
+--       `      
+--         -- Delete rows using the temporary table
+--         DELETE FROM ${self()}
+--         HAVING ROW_NUMBER() OVER (PARTITION BY fc_code, seller_class, snapshot_date) > 1
+--       `,
+--       ``
+--     )
+--   }
+-- }

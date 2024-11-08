@@ -74,6 +74,7 @@ WITH cte_date AS (
 		SELECT
 			po_code
 			, MIN_BY(hub_code, received_ts) AS first_received_location
+            , MIN(received_ts) AS first_received_time_at_hub
 		FROM ${ref('fact_inbound_receipts')}
 		-- WHERE receipt_fc_code = destination_location
 		GROUP BY 1
@@ -110,6 +111,7 @@ select
 	p.bill_status as po_bill_status,
 	c.received_ts AS first_received_check_in,
 	l.first_received_location,
+	l.first_received_time_at_hub,
 	c.receipt_fc_code,
 	f.first_checkin_destination_fc,
 	c.is_it_po_pgh,

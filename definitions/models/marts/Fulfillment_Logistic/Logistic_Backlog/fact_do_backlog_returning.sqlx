@@ -1,0 +1,76 @@
+config {
+    type: "table",
+    description: 
+        `
+        Fact DO Backlog Returning;
+        PIC: nguyen.tran; 
+        Type: Table;
+        Schedule Refresh: hourly
+        `,
+    tags:["LOGISTIC_BACKLOG", "custom_1h_past5"],
+    columns: {
+
+    }
+}
+
+with cte_date as (
+  SELECT
+		date_sub(timestamp(date_trunc(date_sub( current_date('+7'), interval 3 month), month)) , interval 7 hour) as start_date,
+)
+
+select 
+	-- coalesce(o.order_code, pre.order_code) as order_code,
+	o.order_code,
+	o.reference_code,
+	o.tracking_code,
+	o.order_created_at,
+	o.pack_done_at,
+	o.carrier_picked_at,
+	-- coalesce(o.fc_code, pre.warehouse_code) as fc_code,
+	o.fc_code,
+	case
+		when o.reference_code like 'SO%' then 'SO'
+		when o.reference_code like 'TO%' then 'TO'
+		when o.reference_code like 'RONS%' then 'RONS'
+		when o.reference_code like 'RO%' then 'RO'
+    when o.reference_code like 'CO%' then 'CO'
+	else 'OTHER' end type_order,
+	o.carrier_code,
+	o.carrier_name,
+	o.do_status as logistic_status,
+	o.order_status,
+	o.do_created_at,
+	o.reason ,
+	o.current_hub,
+	o.total_packages, 
+	o.customer_code, 
+	o.shipping_ward_code,
+	o.shipping_district_code,
+	o.shipping_province_code,
+	json_value(json_extract_array(o.driver_activities)[0],"$.driver_id") as driver_id,
+	json_value(json_extract_array(o.driver_activities)[0],"$.driver_name") as driver_name, 
+	o.customer_name,
+	o.customer_phone,
+	o.customer_email,
+	o.tags,
+	cast(json_value(o.extra_props,"$.need_verify_receiver") as bool) as need_verify_receiver,
+	o.create_source,
+  	coalesce(pre.shipping_method,pre_sel.delivery_method) as return_shipping_method
+	-- string(null) as return_shipping_method
+from (
+    select * 
+    from ${ref('fact_outbound_ticket')}
+    where order_created_at > (select start_date from cte_date)
+) o
+left join (
+  select *
+  from ${source.platinum}.warehouse_prd_inbound_pre_inbound_return_order
+  where created_date >= (select DATE(start_date) from cte_date) 
+) as pre on pre.shipping_order_code = o.reference_code
+left join (
+	select *
+	from ${source.platinum}.seller_prd_wis_withdraw_ticket
+	where
+		created_date >= (select DATE(start_date) from cte_date)
+) as pre_sel on pre_sel.return_order_code = o.parent_reference_code
+where o.do_status IN ('RETURN', 'RETURNING')

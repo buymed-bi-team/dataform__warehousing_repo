@@ -1,6 +1,3 @@
-
-
-
 config {
     type: "incremental",
     name: "warehouse_prd_inventory_transfer_sku",
@@ -14,127 +11,53 @@ config {
     },
     tags: ["custom_2h_past5"]
 }
+js {
+  incremental_time = `TIMESTAMP(DATE_TRUNC(CURRENT_DATETIME() - INTERVAL 1 MONTH, HOUR))`
+}
 
 pre_operations {
   ${
     when(incremental(),
       `
-      DECLARE min_created_date DATE;
-      DECLARE max_created_date DATE;
-      DECLARE check_deleted_action INT64;
-      DECLARE min_created_date_deleted DATE;
-      DECLARE max_created_date_deleted DATE; 
-      -- Setting the min_created_date
+      --
+      DECLARE checkpoint_date ARRAY<date>;
 
-
-      CREATE OR REPLACE TEMP TABLE range_created_time_table AS (
-       SELECT MIN(DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))) AS min_created_date, 
-       MAX(DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))) AS max_created_date
-        FROM ${source.silver}.warehouse_prd_inventory_transfer_sku 
-        WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) AND action != "d"
+      SET checkpoint_date = ARRAY( 
+        SELECT DISTINCT date(created_time,'+7')
+        FROM silver_buymed_vn.warehouse_prd_inventory_transfer_sku 
+        WHERE ingest_time >= ${incremental_time}
+        AND created_time IS NOT NULL
       );
 
-      CREATE OR REPLACE TEMP TABLE get_deleted_record AS (
-          SELECT mg_id 
-          FROM ${source.silver}.warehouse_prd_inventory_transfer_sku 
-          WHERE  ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) and 
-          created_time IS NULL AND last_updated_time IS NULL
+      DELETE FROM platinum_buymed_vn.warehouse_prd_inventory_transfer_sku
+      where created_date in UNNEST(checkpoint_date)
+      and mg_id in ( 
+        SELECT DISTINCT mg_id 
+        FROM silver_buymed_vn.warehouse_prd_inventory_transfer_sku 
+        WHERE ingest_time >= ${incremental_time}
         );
 
-     SET min_created_date = (SELECT min_created_date FROM range_created_time_table);
-      -- Assign the maximum created date
-     SET max_created_date = (SELECT max_created_date FROM range_created_time_table);
-
-     --SET check_deleted_action = (SELECT check FROM check_deleted_action);
       `,
       ``
     )
   }
 }
+--
 
 SELECT
- *,
- CASE 
+  *,
+  CASE 
     WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
     ELSE "2099-01-01"
   END AS created_date
-FROM ${source.silver}.warehouse_prd_inventory_transfer_sku o 
- ${
-    when(incremental(), 
-      `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) 
-      QUALIFY ROW_NUMBER() OVER (_window) = 1`,
-      `QUALIFY ROW_NUMBER() OVER (_window) = 1
-       AND FIRST_VALUE(action) OVER (_window) <> 'd'`
-    )
-  }
-WINDOW
-  _window AS (
-  PARTITION BY
-    mg_id
-  ORDER BY
+
+FROM
+  ${source.silver}.warehouse_prd_inventory_transfer_sku o 
+  ${ when(incremental(),  `WHERE ingest_time > ${incremental_time}`  )}
+QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'
+WINDOW _window AS ( 
+  PARTITION BY mg_id
+  ORDER BY 
     synced_at DESC,
-  IF
-    (action='d',3,
-    IF
-      (action='u',2,1)) DESC,
+    IF (action='d',3, IF (action='u',2,1)) DESC,
     last_updated_time DESC)
-
-post_operations {
-  ${
-    when(incremental(),
-      `
-      -- Variable declarations and assignments at the start of the block
-      
-
-      IF min_created_date IS NOT NULL AND max_created_date IS NOT NULL THEN
-
-        -- Delete rows using the temporary table
-        DELETE FROM ${self()}
-        WHERE created_date BETWEEN min_created_date AND max_created_date
-          AND (key) IN (
-            SELECT (key)
-            FROM ${self()}
-            WHERE created_date BETWEEN min_created_date AND max_created_date
-            QUALIFY ROW_NUMBER() OVER (_window) > 1
-            WINDOW _window AS (
-              PARTITION BY mg_id
-              ORDER BY synced_at DESC,
-              IF(action = 'd', 3, IF(action = 'u', 2, 1)) DESC,
-              last_updated_time DESC
-            )
-          );
-
-      END IF;
-
-      IF EXISTS(select * from get_deleted_record limit 1) THEN
-
-      
-        
-        CREATE OR REPLACE TEMP TABLE get_range_deleted AS (
-          SELECT 
-            MIN(created_date) AS min_created_date_deleted, 
-            MAX(created_date) AS max_created_date_deleted 
-          FROM ${self()} 
-          WHERE mg_id IN (SELECT mg_id FROM get_deleted_record) 
-            AND created_date != "2099-01-01" 
-        );
-
-        SET min_created_date_deleted = (SELECT min_created_date_deleted FROM get_range_deleted);
-        SET max_created_date_deleted = (SELECT max_created_date_deleted FROM get_range_deleted);
-        IF min_created_date_deleted is not null and max_created_date_deleted is not null THEN
-          DELETE FROM ${self()} 
-          WHERE created_date BETWEEN min_created_date_deleted AND max_created_date_deleted 
-            AND mg_id IN (SELECT mg_id FROM get_deleted_record);
-        END IF;
-        DELETE FROM ${self()} 
-        WHERE created_date = "2099-01-01"  and action = "d";
-        
-      END IF;
-
-      `,
-      ``
-    )
-  }
-}
-
-

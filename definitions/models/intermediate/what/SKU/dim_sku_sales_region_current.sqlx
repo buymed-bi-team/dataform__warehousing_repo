@@ -215,7 +215,9 @@ SELECT
         ELSE COALESCE(NULLIF(s.retail_price_value, 0), 1000)
     END AS inventory_price,
     JSON_VALUE(s.extra_props, '$.demand_classification_code') as sku_demand_class,
-    fv_vendor_fc.commitment_leadtime as fv_vendor_leadtime
+    fv_vendor_fc.commitment_leadtime as fv_vendor_leadtime,
+
+    s.use_skus_price
 
 FROM cte_full AS cte
     LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_sku AS s

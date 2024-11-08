@@ -1,0 +1,94 @@
+config {
+    type:"operations",
+    description: "PIC:MinhLuu",
+    tags: ['assert_capture_for_customer']
+}
+
+CREATE TEMP TABLE silver AS (
+    SELECT *
+        FROM (
+            SELECT mg_id, created_time, last_updated_time, synced_at, ingest_time, action
+
+            FROM lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_reconciliation o 
+            WHERE ingest_time > "2024-10-20"
+            QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'
+            WINDOW _window AS ( 
+                PARTITION BY mg_id
+                ORDER BY synced_at DESC,
+                IF (action = 'd', 3, IF (action = 'u', 2, 1)) DESC,
+                last_updated_time DESC
+            )
+        )
+        WHERE created_time is not null and last_updated_time is not null
+        AND created_time >= "2024-10-20"
+);
+CREATE TEMP TABLE platinum AS (
+    SELECT mg_id
+    FROM ${source.platinum}.marketplace_prd_order_v2_reconciliation
+    WHERE created_time >= "2024-10-20"
+    AND created_date >= "2024-10-20"
+);
+CREATE TEMP TABLE tmp1 AS (
+    SELECT s.*, TIMESTAMP_TRUNC(current_timestamp(), HOUR) AS refresh_time, current_timestamp() as assertion_time
+    FROM silver s left join platinum p using(mg_id)
+    WHERE p.mg_id is null
+    AND ingest_time < TIMESTAMP_TRUNC(current_timestamp(), HOUR)
+);
+
+IF( (SELECT COUNT(*) FROM tmp1 ) > 10 )
+  THEN 
+    IF ( 
+    SELECT COUNT(*) >0
+    FROM lakehouse-prod-394907.dataform_assertions.__TABLES__ 
+    WHERE table_id like "marketplace_prd_order_v2_reconciliation_customer" 
+    ) THEN 
+        INSERT INTO dataform_assertions.marketplace_prd_order_v2_reconciliation_customer
+        SELECT * FROM tmp1;
+    ELSE
+        CREATE TABLE dataform_assertions.marketplace_prd_order_v2_reconciliation_customer AS (
+        SELECT * FROM tmp1
+        );
+    END IF;
+
+    CREATE OR REPLACE TABLE ${source.platinum}.marketplace_prd_order_v2_reconciliation 
+    PARTITION BY created_date
+    AS
+    (
+                --
+        SELECT 
+        *,
+        DATE_TRUNC(
+            CASE 
+            WHEN created_time IS NULL THEN DATETIME("2099-01-01T00:00:00")
+            WHEN MOD(EXTRACT(HOUR FROM created_time), 2) = 1 THEN DATETIME(created_time - interval 1 hour)
+            ELSE DATETIME(created_time)
+        END, HOUR) AS partition_time -- Use for partition each two hour, only apply for table that have high frequency update
+        FROM (
+        SELECT
+            *,
+            CASE 
+            WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
+            ELSE "2099-01-01"
+            END AS created_date
+
+        FROM
+            lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_order_v2_reconciliation o 
+            
+        QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'
+        WINDOW _window AS ( 
+            PARTITION BY mg_id
+            ORDER BY 
+            synced_at DESC,
+            IF (action='d',3, IF (action='u',2,1)) DESC,
+            last_updated_time DESC)
+        )
+        WHERE created_time is not null and last_updated_time is not null 
+        -- all record deleted include action "d"
+        -- Special case for order -- PIC: AnhLe
+ 
+    );
+    
+
+    ASSERT (SELECT FALSE) AS "Order missing data";
+
+  END IF;

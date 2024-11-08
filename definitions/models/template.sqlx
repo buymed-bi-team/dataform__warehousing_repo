@@ -1,19 +1,19 @@
 config {
     type: "incremental",
-    name: "marketplace_prd_product_v2_history_update_price",
-    description: "PIC:minhluu, schedule every 2h",
-    schema: "platinum_buymed_vn",
+    // name: "${table_name}",
+    schema: `platinum_buymed_vn`,
     assertions: {
-        uniqueKey: 'mg_id'
-    },
+         uniqueKey: 'mg_id'
+     },
     bigquery: {
         partitionBy: "created_date"
     },
-    tags:["platinum_custom_2h_past5"]
+    // tags: ["custom_2h_past7"]
 }
 
 js {
-  incremental_time = `TIMESTAMP(DATE_TRUNC(CURRENT_DATETIME() - INTERVAL 6 HOUR, DAY))`
+  incremental_time = `TIMESTAMP(DATE_TRUNC(CURRENT_DATETIME() - INTERVAL 4 HOUR, DAY))`
+  table_name = ``
 }
 
 
@@ -29,13 +29,14 @@ pre_operations {
               WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
               ELSE "2099-01-01"
             END AS created_date
-        FROM silver_buymed_vn.marketplace_prd_product_v2_history_update_price
+        FROM ${source.silver}.${table_name}
         WHERE ingest_time >= ${incremental_time}
         QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'
         WINDOW _window AS ( 
             PARTITION BY mg_id
             ORDER BY synced_at DESC,
-            IF (action = 'd', 3, IF (action = 'u', 2, 1)) DESC
+            IF (action = 'd', 3, IF (action = 'u', 2, 1)) DESC,
+            last_updated_time DESC
         )
       );
       --
@@ -47,7 +48,7 @@ pre_operations {
         GROUP BY 1
       );
 
-      DELETE FROM platinum_buymed_vn.marketplace_prd_product_v2_history_update_price
+      DELETE FROM ${source.platinum}.${table_name}
       where created_date in UNNEST(checkpoint_date)
       and mg_id in ( 
         SELECT DISTINCT mg_id 
@@ -63,17 +64,20 @@ pre_operations {
                 WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
                 ELSE "2099-01-01"
               END AS created_date
-          FROM silver_buymed_vn.marketplace_prd_product_v2_history_update_price
+          FROM ${source.silver}.${table_name}
           QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'
           WINDOW _window AS ( 
               PARTITION BY mg_id
               ORDER BY synced_at DESC,
-              IF (action = 'd', 3, IF (action = 'u', 2, 1)) DESC
+              IF (action = 'd', 3, IF (action = 'u', 2, 1)) DESC,
+              last_updated_time DESC
         )
-
+        -- all record deleted include action "d"
+        -- Special case for order -- PIC: AnhLe
       )`
     )
   }
 }
 -- 
 SELECT * FROM tmp1
+WHERE created_time is not null and last_updated_time is not null
