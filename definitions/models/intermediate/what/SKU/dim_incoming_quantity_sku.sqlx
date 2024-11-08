@@ -23,7 +23,8 @@ WITH
             po_code,
             ticket_id,
             sku AS sku_code,
-            IF(inbound_quantity > 0, inbound_quantity, demand_quantity) AS quantity
+            -- IF(inbound_quantity > 0, inbound_quantity, demand_quantity) AS quantity
+            demand_quantity - inbound_quantity AS quantity
         FROM ${source.platinum}.warehouse_prd_inbound_inbound_ticket_item
         WHERE
             SPLIT(sku, ".")[SAFE_OFFSET(0)] IN ('MEDX', 'MEDX_E')
