@@ -270,12 +270,12 @@ SELECT
     END AS customer_report_category,
 
     CASE
-        WHEN TO_JSON_STRING( customer.tags ) LIKE '%\"NHANVIEN\"%' OR REGEXP_CONTAINS( customer.email, "@buymed|@thuocsi") THEN "EMPLOYEE"
-        WHEN STRPOS(list_channel, "CIRCA") > 0 THEN "CIRCA"
-        WHEN STRPOS(list_channel, "TENDER") > 0 THEN "TENDER"
-        WHEN STRPOS(list_channel, "DISTRIBUTION") > 0  THEN "DISTRIBUTION"
-        WHEN STRPOS(list_channel, "CONSIGNMENT") > 0 THEN "CONSIGNMENT"
         WHEN STRPOS(list_channel, "MARKETPLACE") > 0 THEN "MARKETPLACE"
+        WHEN STRPOS(list_channel, "CIRCA") > 0 THEN "CIRCA"
+        WHEN STRPOS(list_channel, "DISTRIBUTION") > 0  THEN "DISTRIBUTION"
+        WHEN TO_JSON_STRING( customer.tags ) LIKE '%\"NHANVIEN\"%' OR REGEXP_CONTAINS( customer.email, "@buymed|@thuocsi") THEN "EMPLOYEE"
+        WHEN STRPOS(list_channel, "TENDER") > 0 THEN "TENDER"
+        WHEN STRPOS(list_channel, "CONSIGNMENT") > 0 THEN "CONSIGNMENT"
     END AS customer_channel,
 
     customer_order.ordered_amount,

@@ -119,6 +119,7 @@ WITH
             LEFT JOIN cte_agg_customer AS c ON a.customer_id = c.customer_id
         WHERE
             c.first_order_time_without_cancel_ever IS NULL 
+            AND a.customer_channel IS NULL
     )
 
 SELECT
