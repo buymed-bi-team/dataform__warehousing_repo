@@ -28,10 +28,10 @@ CREATE TEMP TABLE platinum AS (
     AND created_date >= "2024-10-20"
 );
 CREATE TEMP TABLE tmp1 AS (
-    SELECT s.*, TIMESTAMP_TRUNC(current_timestamp(), HOUR) AS refresh_time, current_timestamp() as assertion_time
+    SELECT s.*, TIMESTAMP_TRUNC(current_timestamp() - INTERVAL 2 HOUR, HOUR) AS refresh_time, current_timestamp() as assertion_time
     FROM silver s left join platinum p using(mg_id)
     WHERE p.mg_id is null
-    AND ingest_time < TIMESTAMP_TRUNC(current_timestamp(), HOUR)
+    AND ingest_time < TIMESTAMP_TRUNC(current_timestamp() - INTERVAL 2 HOUR, HOUR)
 );
 
 IF( (SELECT COUNT(*) FROM tmp1 ) > 10 )
