@@ -51,6 +51,7 @@ with
             pi.total_price,
             pi.seller_code,
             pi.price_after_discount,
+            pi.contract_price_code,
             case when pi.vat > 0 then 'Trading'
                 else 'Non-Trading'
                 end as sku_trading_po
