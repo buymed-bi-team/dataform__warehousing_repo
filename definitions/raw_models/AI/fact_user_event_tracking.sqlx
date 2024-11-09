@@ -14,7 +14,7 @@ config {
         source: "Nullable | The source of the event, indicating how the item was created",
         sku_code: "NonNull" | docs.sku
         },
-    tags: ['6h30'],
+    tags: ['0h30'],
     bigquery: {
         partitionBy: "date(created_time)",
         clusterBy: ["event", "customer_id"]
