@@ -64,7 +64,7 @@ SELECT
         WHEN COUNTIF(sl.status = 'LIMIT') > 0 THEN "LIMIT"
         WHEN COUNTIF(sl.status = 'SUSPENDED') = COUNT(sl.sku_code) THEN "SUSPENDED"
         WHEN COUNTIF(sl.status = 'OUT_OF_STOCK') = COUNT(sl.sku_code) THEN "OUT_OF_STOCK"
-        ELSE "OUT_OF_STOCK"
+        ELSE "SUSPENDED"
       END AS status
 FROM ${ref('dim_product')} AS p
     CROSS JOIN (
