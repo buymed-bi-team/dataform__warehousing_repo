@@ -37,12 +37,12 @@ WITH core_pic AS ${dedup.dedup(
         SELECT * except(object_type) FROM purchasing_pic
         WHERE 
             object_type = "VENDOR" 
-        QUALIFY ROW_NUMBER() OVER(PARTITION BY supplier_code, fc_code) = 1
+        QUALIFY ROW_NUMBER() OVER(PARTITION BY supplier_code, fc_code ORDER BY synced_at DESC, last_updated_time DESC) = 1
         UNION ALL 
         SELECT * except(object_type) FROM core_pic
         WHERE 
             object_type = "SELLER"
-        QUALIFY ROW_NUMBER() OVER(PARTITION BY supplier_code, fc_code) = 1
+        QUALIFY ROW_NUMBER() OVER(PARTITION BY supplier_code, fc_code ORDER BY synced_at DESC, last_updated_time DESC) = 1
 )
 , dedup_pic AS ${dedup.dedup(
     `cte_main`,
