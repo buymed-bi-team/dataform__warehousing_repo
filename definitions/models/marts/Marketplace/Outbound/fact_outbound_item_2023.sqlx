@@ -64,7 +64,10 @@ select
   , json_extract_scalar( ob.lot ) as lot
   , json_extract_scalar( ob.do_code ) as do_code
   , json_extract_scalar( ob.po_code ) as po_code
-  , a.vat
+  , coalesce(
+    safe_cast( json_extract_scalar( item.vat ) as INT64 )
+    , a.vat
+  ) as vat
   -- , json_extract_scalar( ob.vat ) as vat
 from cte_order_item as a
 , unnest( json_query_array(a.extra_props, "$.sub_items") ) as item
