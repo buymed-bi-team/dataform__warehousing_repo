@@ -150,6 +150,7 @@ select
   , extra_props
   , incart_at
   , sub_tag_code
+  , vat
 from cte_combo_item
 ),
 
@@ -199,6 +200,7 @@ cte_normal_item as (
     , extra_props
     , incart_at
     , tag_code AS sub_tag_code
+    , vat
   from cte_order_item as oi
   where
     oi.mg_id not in ( select mg_id from cte_combo_item_pricing )
