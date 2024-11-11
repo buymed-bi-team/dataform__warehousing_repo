@@ -107,6 +107,8 @@ final AS (
 SELECT
   f.*
   , oi.sales_price AS unit_price
+  , oi.fc_code
+  , oi.sales_region_code
 FROM final AS f
   LEFT JOIN ${ref('fact_order_item_2023')} AS oi 
     ON f.mg_id = oi.mg_id
