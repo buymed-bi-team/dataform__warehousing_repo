@@ -66,7 +66,7 @@ WITH
             , oi.seller_revenue
             , oi.sku_key_sales_region_code
             , oi.fc_code
-            , COALESCE(NULLIF(seller_revenue, 0), seller_price - promotion_amount) * seller_fee_tax AS seller_received_amount
+            , COALESCE(NULLIF(seller_revenue, 0), seller_price - promotion_amount) * ( 1- seller_fee_tax / 100 ) AS seller_received_amount
         FROM ${ref('fact_order_item')} AS oi
             LEFT JOIN ${ref('adhoc_pricing_seller_price')} AS s
                 ON oi.sku_key_sales_region_code = s.sku_key_sales_region_code
