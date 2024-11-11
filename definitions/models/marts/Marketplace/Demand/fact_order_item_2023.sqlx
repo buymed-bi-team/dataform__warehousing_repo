@@ -46,6 +46,7 @@ cte_order_item as (
     FROM ${source.platinum}.marketplace_prd_order_v2_order_item as oi
     where
         created_date BETWEEN '2023-01-01' AND '2023-12-31'
+        AND (seller_code = "MEDX" OR seller_class = "EXTERNAL")
 ),
 
 cte_combo_item as (
@@ -226,4 +227,4 @@ SELECT
 FROM final AS oi 
     LEFT JOIN ${ref('fact_order')} AS o ON oi.order_id = o.order_id
     LEFT JOIN ${ref('dim_fc_service_area')} AS fc ON fc.service_area_code = o.shipping_province_code
-WHERE seller_code = 'MEDX'
+-- WHERE seller_code = 'MEDX'
