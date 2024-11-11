@@ -42,6 +42,7 @@ cte_order_item as (
         , event_source
         , event_screen
         , JSON_VALUE(extra_props, '$.block_code') AS block_code
+        , seller_revenue
     FROM ${source.platinum}.marketplace_prd_order_v2_order_item as oi
     where
         created_date >= (select DATE(start_date) from cte_date)
@@ -101,6 +102,7 @@ select
   , event_source
   , event_screen
   , block_code
+  , seller_revenue
 from cte_order_item as oi
 , unnest( json_query_array(oi.extra_props, "$.sub_items") ) as bom
 ), 
@@ -156,6 +158,7 @@ select
   , event_screen
   , block_code
   , vat
+  , seller_revenue
 from cte_combo_item
 ),
 
@@ -209,6 +212,7 @@ cte_normal_item as (
     , event_screen
     , block_code
     , vat
+    , seller_revenue
   from cte_order_item as oi
   where
     oi.mg_id not in ( select mg_id from cte_combo_item_pricing )
