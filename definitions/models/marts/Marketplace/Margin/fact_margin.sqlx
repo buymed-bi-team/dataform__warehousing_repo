@@ -83,6 +83,7 @@ WITH
             , vendor_code
             , line_manager_combine
             , contract_price_code
+            , unit_price
         FROM ${ref('fact_po_item')}
         GROUP BY ALL
     )
@@ -116,6 +117,7 @@ WITH
             , price_after_rebate
             , price_after_rebate_with_adhoc_promotion
             , contract_price_code
+            , price_contract
             , MAX(COALESCE(price_after_rebate_with_adhoc_promotion, price_after_rebate)) OVER
                 (PARTITION BY fc_code, vendor_code, product_id, FORMAT_DATE("%Y-%m", rebate_date)) AS highest_price_of_month
         FROM ${ref('fact_price_after_rebate')} AS a
@@ -176,7 +178,7 @@ FROM outbound_item AS ob
         AND r.vendor_code = p.line_manager_combine
         AND r.fc_code = p.fc_code
         AND r.rebate_date = p.po_created_date
-        AND r.contract_price_code = p.contract_price_code
+        AND /*(r.contract_price_code = p.contract_price_code OR*/ FLOOR(r.price_contract) = FLOOR(p.unit_price)
         -- AND ob.seller_code = "MEDX"
 WHERE 
     o.order_status <> 'CANCEL'
