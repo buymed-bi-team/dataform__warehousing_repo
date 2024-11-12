@@ -34,7 +34,7 @@ FROM ${source.platinum}.marketplace_prd_promotion_gamification AS a
         ON a.gamification_code = b.gamification_code
     LEFT JOIN (
         SELECT
-            code AS gamification_code
+            TRIM(code) AS gamification_code
             , value as gamification_brand
         FROM ${source.collector}.data_prd
         WHERE
