@@ -52,6 +52,7 @@ WITH cte_date AS (
 				end as flag_check
 				from ${ref('fact_inbound_receipts')}
 				where received_packages > 0
+					AND status <> "CANCEL"
 			)
 
 		select *, -- except (flag_check),
