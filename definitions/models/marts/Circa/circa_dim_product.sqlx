@@ -3,7 +3,7 @@ config {
     description: 
         `PIC: tu.dang; 
         Type: Table; 
-        Refresh Schedule: At minute 5 past hour 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22 and 23;
+        Refresh Schedule: At minute 10 past hour 7, 10, 13, 16 and 19;
         Source: 
             ${source.gold}.dim_sku_tag,
             buymed_circa.order_purchase_order_item,
@@ -15,7 +15,7 @@ config {
             buymed_circa.product_efficacy,
             buymed_circa.product_manufacturer
         `,
-    tags: ["custom_1h_past5"],
+    tags: ["adhoc-office"],
     columns: {
 
     }
