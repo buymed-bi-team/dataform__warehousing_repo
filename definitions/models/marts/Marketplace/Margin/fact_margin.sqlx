@@ -38,6 +38,7 @@ WITH
             , a.outbound_quantity
             , a.po_code
             , DATE(TIMESTAMP_ADD(b.outbound_time, INTERVAL 7 HOUR)) AS outbound_date
+            , seller_class
         FROM ${ref('fact_outbound_item')} AS a
             LEFT JOIN (
                 SELECT *
@@ -45,30 +46,35 @@ WITH
                 WHERE created_date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 12 MONTH)
             ) AS b 
                 ON a.do_code = b.delivery_order_code
-        WHERE
+        -- WHERE
             -- created_at >= '2024-06-01'
             -- AND outbound_time >= TIMESTAMP_SUB('2024-06-01', INTERVAL 7 HOUR)
             -- AND 
-            a.seller_code = 'MEDX'
+            -- a.seller_code = 'MEDX'
     )
 
     , order_item AS (
         SELECT
-            mg_id
-            , order_id
+            oi.mg_id
+            , oi.order_id
             -- , sku_orignal_code AS sku_code_original
-            , sku_code
-            , product_id
-            , sales_price AS unit_price
+            , oi.sku_code
+            , oi.product_id
+            , oi.sales_price AS unit_price
             -- , sales_price_original AS unit_price_original
-            , item_type
-            , seller_price
-            , sku_key_sales_region_code
-        FROM ${ref('fact_order_item')}
-        WHERE
+            , oi.item_type
+            , oi.seller_price
+            , oi.seller_revenue
+            , oi.sku_key_sales_region_code
+            , oi.fc_code
+            , COALESCE(NULLIF(seller_revenue, 0), seller_price - promotion_amount) * ( 1- seller_fee_tax / 100 ) AS seller_received_amount
+        FROM ${ref('fact_order_item')} AS oi
+            LEFT JOIN ${ref('adhoc_pricing_seller_price')} AS s
+                ON oi.sku_key_sales_region_code = s.sku_key_sales_region_code
+        -- WHERE
             -- created_at >= '2024-06-01'
             -- AND 
-            seller_code = 'MEDX'
+            -- seller_code = 'MEDX'
     )
 
     , po_price AS (
@@ -81,6 +87,8 @@ WITH
             , avg_unit_price AS po_purchase_price
             , vendor_code
             , line_manager_combine
+            , contract_price_code
+            , unit_price
         FROM ${ref('fact_po_item')}
         GROUP BY ALL
     )
@@ -113,6 +121,8 @@ WITH
             , vendor_code
             , price_after_rebate
             , price_after_rebate_with_adhoc_promotion
+            , contract_price_code
+            , price_contract
             , MAX(COALESCE(price_after_rebate_with_adhoc_promotion, price_after_rebate)) OVER
                 (PARTITION BY fc_code, vendor_code, product_id, FORMAT_DATE("%Y-%m", rebate_date)) AS highest_price_of_month
         FROM ${ref('fact_price_after_rebate')} AS a
@@ -149,11 +159,14 @@ SELECT
         , v.vb_purchase_price
         , p.po_purchase_price
         , vpm.avg_vb_price
-        , oi.seller_price
+        , oi.seller_received_amount
+        , oi.seller_revenue
       ) AS final_price_after_rebate
     , oi.item_type
     , oi.sku_key_sales_region_code
     , p.line_manager_combine
+    , oi.fc_code
+    , ob.seller_class
 FROM outbound_item AS ob
     LEFT JOIN order_item AS oi 
         ON ob.mg_id = oi.mg_id AND ob.sku_code = oi.sku_code
@@ -172,6 +185,7 @@ FROM outbound_item AS ob
         AND r.vendor_code = p.line_manager_combine
         AND r.fc_code = p.fc_code
         AND r.rebate_date = p.po_created_date
+        AND /*(r.contract_price_code = p.contract_price_code OR*/ FLOOR(r.price_contract) = FLOOR(p.unit_price)
         -- AND ob.seller_code = "MEDX"
 WHERE 
     o.order_status <> 'CANCEL'

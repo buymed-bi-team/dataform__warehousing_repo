@@ -40,7 +40,7 @@ SELECT
         WHEN COUNTIF(COALESCE(a.status, c.sku_system_status) = 'LIMIT') > 0 THEN "LIMIT"
         WHEN COUNTIF(COALESCE(a.status, c.sku_system_status) = 'SUSPENDED') = COUNT(COALESCE(a.sku_code, c.sku_code)) THEN "SUSPENDED"
         WHEN COUNTIF(COALESCE(a.status, c.sku_system_status) = 'OUT_OF_STOCK') = COUNT(COALESCE(a.sku_code, c.sku_code)) THEN "OUT_OF_STOCK"
-        ELSE "OUT_OF_STOCK"
+        ELSE "SUSPENDED"
       END AS status
 FROM ${ref('dim_sku_sales_region_current')} AS c
     LEFT JOIN status AS a
@@ -52,7 +52,7 @@ FROM ${ref('dim_sku_sales_region_current')} AS c
 WHERE
     a.date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), WEEK(MONDAY)), INTERVAL 3 WEEK )
 --     a.date = CURRENT_DATE("+7")
-    AND c.seller_code NOT IN ('MEDX_E', 'MEDC', 'MED_NT', 'TENDER', 'MEDX-HN', 'DENX', 'MARKETING', '9SUUUUUUUU', 'QMQEM8DN9F')
+    AND c.seller_code NOT IN ('MEDX_E', 'MEDC', 'MED_NT', 'TENDER', 'MEDX-HN', 'DENX', 'MARKETING', '9SUUUUUUUU', 'QMQEM8DN9F', 'UQRRRRRRRR')
     AND REGEXP_CONTAINS(c.product_name, r'\[|\]') = FALSE
     AND c.sku_system_status <> 'GIFT'
     AND c.seller_class IS NOT NULL

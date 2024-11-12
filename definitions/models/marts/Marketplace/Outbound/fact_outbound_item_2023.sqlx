@@ -2,10 +2,9 @@ config {
   type: "table",
   description: 
         `
-        Information about lot, expired date and purchase order of each SKU in the order - The combo has been split into normal product;
+        Information about lot, expired date and purchase order of each SKU in the order that placed in 2023 - The combo has been split into normal product;
         PIC: nguyen.tran; 
         Type: Table; 
-        Refresh Schedule: daily at 8h30, 10h30, 12h30, 15h30, 17h30;
         Source: 
             ${source.platinum}.marketplace_prd_order_v2_order_item
         `,
@@ -13,13 +12,14 @@ config {
     partitionBy: "date(created_at)",
     clusterBy: ["order_id", "sku_bom_code"]
   },
-  tags: ["8h30", "10h30", "12h30", "15h30" ,"17h30"]
+  //tags: ["8h30", "10h30", "12h30", "15h30" ,"17h30"]
 }
 
-with cte_date as (
-	select timestamp( date_trunc( date_sub( current_date('+7'), interval 12 month) , month ) )  as start_date
-    -- select date_sub( timestamp( date_trunc( current_date('+7'), month ) ) , interval 7 hour ) as start_date
-),
+with 
+-- cte_date as (
+-- 	select timestamp( date_trunc( date_sub( current_date('+7'), interval 12 month) , month ) )  as start_date
+--     -- select date_sub( timestamp( date_trunc( current_date('+7'), month ) ) , interval 7 hour ) as start_date
+-- ),
 
 cte_order_item as (
     select 
@@ -33,13 +33,13 @@ cte_order_item as (
         , oi.extra_props
         , oi.sku as sku_code
         , oi.product_id
-        , oi.price
+        -- , oi.price
         , oi.seller_code
         , oi.vat
-        , seller_class
     FROM ${source.platinum}.marketplace_prd_order_v2_order_item as oi
     where
-        oi.created_date >= (select DATE(start_date) from cte_date)
+        oi.created_date BETWEEN '2023-01-01' AND '2023-12-31'
+        AND (seller_code = 'MEDX' OR seller_class = 'EXTERNAL')
 ),
 
 cte_combo_transaction as (
@@ -52,10 +52,10 @@ select
   , safe_cast( json_extract_scalar( item.customer_id ) as INT64 ) as customer_id
 --   , a.outbound_infos
   , JSON_QUERY(item, '$.outbound_infos') AS outbound_infos
-  , a.extra_props
+  -- , a.extra_props
   , a.sku_code
   , a.product_id
-  , a.price
+  -- , a.price
   , a.seller_code
   , json_extract_scalar( item.sku ) as sku_bom_code
   , SAFE_CAST(json_extract_scalar( item.product_id ) AS INT64) as product_bom_id
@@ -68,7 +68,6 @@ select
     safe_cast( json_extract_scalar( item.vat ) as INT64 )
     , a.vat
   ) as vat
-  , seller_class
   -- , json_extract_scalar( ob.vat ) as vat
 from cte_order_item as a
 , unnest( json_query_array(a.extra_props, "$.sub_items") ) as item
@@ -84,10 +83,10 @@ cte_normal_transaction as (
   , a.order_id
   , a.customer_id
   , a.outbound_infos
-  , a.extra_props
+  -- , a.extra_props
   , a.sku_code
   , a.product_id
-  , a.price
+  -- , a.price
   , a.seller_code
   , a.sku_code as sku_bom_code
   , a.product_id as product_bom_id
@@ -97,12 +96,24 @@ cte_normal_transaction as (
   , json_extract_scalar( ob.do_code ) as do_code
   , json_extract_scalar( ob.po_code ) as po_code
   , a.vat
-  , seller_class
   -- , json_extract_scalar( ob.vat ) as vat
 from cte_order_item as a
 , unnest( json_query_array(a.outbound_infos) ) as ob
+),
+
+final AS (
+  select * from cte_combo_transaction
+  union all
+  select * from cte_normal_transaction
 )
 
-select * from cte_combo_transaction
-union all
-select * from cte_normal_transaction
+SELECT
+  f.*
+  , oi.sales_price AS unit_price
+  , oi.fc_code
+  , oi.sales_region_code
+FROM final AS f
+  LEFT JOIN ${ref('fact_order_item_2023')} AS oi 
+    ON f.mg_id = oi.mg_id
+      AND f.sku_bom_code = oi.sku_code
+

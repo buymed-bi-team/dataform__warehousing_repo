@@ -47,6 +47,7 @@ cte_order_item as (
     FROM ${source.platinum}.marketplace_prd_order_v2_order_item as oi
     where
         created_date BETWEEN '2022-01-01' AND '2022-12-31'
+        AND (seller_code IN ("MEDX", "MEDX-HN") OR seller_class = "EXTERNAL")
 ),
 
 cte_combo_item as (
@@ -153,6 +154,7 @@ select
 --   , incart_at
 --   , sub_tag_code
     , seller_class
+    , vat
 from cte_combo_item
 ),
 
@@ -202,7 +204,8 @@ cte_normal_item as (
     -- , extra_props
     -- , incart_at
     -- , tag_code AS sub_tag_code
-        , seller_class
+    , seller_class
+    , vat
   from cte_order_item as oi
   where
     oi.mg_id not in ( select mg_id from cte_combo_item_pricing )
@@ -229,5 +232,5 @@ FROM final AS oi
     LEFT JOIN ${ref('fact_order')} AS o ON oi.order_id = o.order_id
     LEFT JOIN ${ref('dim_fc_service_area')} AS fc ON fc.service_area_code = o.shipping_province_code
     
-WHERE seller_code IN ('MEDX', 'MEDX-HN')
+-- WHERE seller_code IN ('MEDX', 'MEDX-HN')
   -- AND vat_code > 0

@@ -29,7 +29,7 @@ status_history_location AS (
     a.key
   FROM
     ${ref("staging_sku_status_history")} a
-  left join lakehouse-prod-394907.gold_buymed_vn.dim_sku_sales_region_current b on a.item_code = b.sub_sku_code  
+  left join ${ref('dim_sku_sales_region_current')} b on a.item_code = b.sub_sku_code  
 ),
 
 -- join with dim_sales_region_service_area to map location_code with sales_region_code
@@ -53,17 +53,17 @@ sku_status AS (
       ss.sku,
       ss.item_code,
       created_time AS start_at,
-      LEAD(created_time) OVER (PARTITION BY ss.sku, item_code, b.region_code ORDER BY created_time ASC) AS end_at,
+      LEAD(created_time) OVER (PARTITION BY ss.sku, item_code, b.sales_region_code ORDER BY created_time ASC) AS end_at,
       status
-      , b.region_code AS sales_region_code,
+      , b.sales_region_code,
       a.seller_class
       -- ,
       -- CASE WHEN status = "OUT_OF_STOCK" THEN "OFF"
       -- ELSE "ON"
       -- END AS active
     FROM status_history_location ss
-    LEFT JOIN gold_buymed_vn.dim_sales_region_service_area AS b ON b.service_area_code = ss.location_code
-    LEFT JOIN gold_buymed_vn.adhoc_pm_master_sku a on ss.item_code = a.sub_sku_code
+    LEFT JOIN ${ref('dim_fc_service_area')} AS b ON b.service_area_code = ss.location_code
+    LEFT JOIN ${ref('adhoc_pm_master_sku')} a on ss.item_code = a.sub_sku_code
   ) a
 ),
 
@@ -108,17 +108,17 @@ item_external AS (
  
 final_sku_status as (
   select * from sku_status
-  UNION ALL
-  select
-   sku,
-    item_code,
-    start_at,
-    end_at_custom,
-    end_at,
-    status,
-    sales_region_code,
-    seller_class
-  from item_external
+  -- UNION ALL
+  -- select
+  --  sku,
+  --   item_code,
+  --   start_at,
+  --   end_at_custom,
+  --   end_at,
+  --   status,
+  --   sales_region_code,
+  --   seller_class
+  -- from item_external
 ),
 sku_date AS (
   SELECT *
@@ -199,7 +199,7 @@ select
     , c.end_at_custom
     ,c.end_at
 from fill_backwwark_value c
-left join gold_buymed_vn.adhoc_pm_master_sku s on c.sku = s.sku_code and c.sales_region_code_bf = s.sales_region_code
+left join ${ref('adhoc_pm_master_sku')} s on c.sku = s.sku_code and c.sales_region_code_bf = s.sales_region_code
 where c.date > DATE(DATE_TRUNC(current_date(), MONTH) - INTERVAL 3 MONTH)
 )
 -- step 3: listing toàn bộ những con sku không được ghi nhân có sự thay đổi status in L90D và join với historical
@@ -224,7 +224,7 @@ where c.date > DATE(DATE_TRUNC(current_date(), MONTH) - INTERVAL 3 MONTH)
       , DATETIME(TIMESTAMP(CURRENT_DATETIME()) ,'Asia/Ho_Chi_Minh') as end_at_custom
       , DATETIME(TIMESTAMP(CURRENT_DATETIME()) ,'Asia/Ho_Chi_Minh') as end_at
       -- , DATEtime(current_date() - INTERVAL 3 MONTH)
-  from gold_buymed_vn.adhoc_pm_master_sku ms
+  from ${ref('adhoc_pm_master_sku')} ms
 left join sku_list sl on ms.sku_code = sl.sku and ms.sales_region_code = sl.sales_region_code
 where sl.sub_sku_sales_region_code is null 
 -- qualify row_number() over(order by 1,2,3,4,5,6) = 1
@@ -301,7 +301,7 @@ from in_historical c)
         sr.product_id, sr.sales_region_code,
         safe_cast (count(distinct sr.seller_code) as string) as no_seller,
         string_agg( sr.seller_code,", ") as list_seller_in_product
-    from gold_buymed_vn.adhoc_pm_master_sku as sr
+    from ${ref('adhoc_pm_master_sku')} as sr
     where sku_system_status is not null
     group by all
 )

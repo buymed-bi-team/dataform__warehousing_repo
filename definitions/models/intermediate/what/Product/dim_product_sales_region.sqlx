@@ -64,7 +64,7 @@ SELECT
         WHEN COUNTIF(sl.status = 'LIMIT') > 0 THEN "LIMIT"
         WHEN COUNTIF(sl.status = 'SUSPENDED') = COUNT(sl.sku_code) THEN "SUSPENDED"
         WHEN COUNTIF(sl.status = 'OUT_OF_STOCK') = COUNT(sl.sku_code) THEN "OUT_OF_STOCK"
-        ELSE "OUT_OF_STOCK"
+        ELSE "SUSPENDED"
       END AS status
 FROM ${ref('dim_product')} AS p
     CROSS JOIN (
@@ -78,5 +78,8 @@ FROM ${ref('dim_product')} AS p
     LEFT JOIN dedup_catm AS cat
         ON cat.product_id = p.product_id AND cat.fc_code = sa.fc_code
     LEFT JOIN ${ref('dim_sku_location')} AS sl
-        ON sl.product_id = p.product_id AND sl.fc_code = sa.fc_code
+        ON sl.product_id = p.product_id 
+            AND sl.fc_code = sa.fc_code
+            AND sl.seller_code NOT IN ('MEDX_E', 'MEDC', 'MED_NT', 'TENDER', 'MEDX-HN', 'DENX', 'MARKETING', '9SUUUUUUUU', 'QMQEM8DN9F', 'UQRRRRRRRR')
+            AND sl.status <> 'GIFT'
 GROUP BY ALL

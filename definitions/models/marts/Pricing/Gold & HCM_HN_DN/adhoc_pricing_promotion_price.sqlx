@@ -37,7 +37,8 @@ WITH
             b.absolute_discount as absolute_price,
             b.campaign_price,
             b.percentage_discount,
-            JSON_VALUE(a.regions, '$.0') as regions
+            JSON_VALUE(a.regions, '$.0') as regions,
+            charge_fee
         from ${source.platinum}.marketplace_prd_promotion_campaign a
             left join ${source.platinum}.marketplace_prd_promotion_campaign_product b
                 ON a.campaign_id = b.campaign_id
@@ -111,7 +112,8 @@ WITH
                 when upper(b.promotion_type) = 'ABSOLUTE' then b.absolute_price
                 when upper(b.promotion_type) = 'PRICE' then b.campaign_price
                 else b.percentage_discount
-            end as campaign_value
+            end as campaign_value,
+            charge_fee
         from  ${ref('dim_sku_sales_region_current')} a
             cross join get_campaign_products b
         where
@@ -158,6 +160,7 @@ WITH
             b.campaign_code,
             b.campaign_type,
             b.campaign_value,
+            b.charge_fee,
             c.deal_code,
             c.deal_type,
             c.deal_value,
