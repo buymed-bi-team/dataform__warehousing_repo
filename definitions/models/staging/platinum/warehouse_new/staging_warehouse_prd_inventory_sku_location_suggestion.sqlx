@@ -6,8 +6,9 @@ config {
         uniqueKey: 'mg_id'
     },
     bigquery: {
-        partitionBy: "created_date"
+        partitionBy: "ingest_date"
     },
+    description: "",
     tags: ["custom_1h_past5","warehouse_prd_inventory"]
 }
 
@@ -27,9 +28,9 @@ pre_operations {
       CREATE TEMP TABLE tmp1 AS (
         SELECT * , 
           CASE 
-              WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
+              WHEN ingest_time IS NOT NULL THEN DATE(DATETIME(ingest_time,'Asia/Ho_Chi_Minh'))
               ELSE "2099-01-01"
-            END AS created_date
+            END AS ingest_date
         FROM ${source.silver}.${table_name}
         WHERE ingest_time >= ${incremental_time}
         QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'
@@ -43,14 +44,14 @@ pre_operations {
       --
 
       SET checkpoint_date = ARRAY( 
-        SELECT DATE( COALESCE(silver_new.created_time, platinum.created_time) ,'+7')
+        SELECT DATE( COALESCE(silver_new.ingest_time, platinum.ingest_time) ,'+7')
         FROM tmp1 silver_new
         LEFT JOIN ${self()} platinum ON platinum.mg_id = silver_new.mg_id
         GROUP BY 1
       );
 
       DELETE FROM ${source.platinum}.${table_name}
-      where created_date in UNNEST(checkpoint_date)
+      where ingest_date in UNNEST(checkpoint_date)
       and mg_id in ( 
         SELECT DISTINCT mg_id 
         FROM tmp1
@@ -62,9 +63,9 @@ pre_operations {
 
           SELECT * , 
             CASE 
-                WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
+                WHEN ingest_time IS NOT NULL THEN DATE(DATETIME(ingest_time,'Asia/Ho_Chi_Minh'))
                 ELSE "2099-01-01"
-              END AS created_date
+              END AS ingest_date
           FROM ${source.silver}.${table_name}
           QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'
           WINDOW _window AS ( 
