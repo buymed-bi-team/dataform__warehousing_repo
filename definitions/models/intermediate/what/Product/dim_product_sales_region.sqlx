@@ -43,7 +43,8 @@ with
     )
 
 SELECT
-    p.product_id
+    CURRENT_DATETIME("+7") AS last_refreshed_at
+    , p.product_id
     , p.product_name
     , sa.fc_code
     , sa.sales_region_code
