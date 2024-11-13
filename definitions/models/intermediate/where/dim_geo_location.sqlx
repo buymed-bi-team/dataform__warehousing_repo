@@ -62,84 +62,90 @@ WITH
         code,
         name as region_name
         `
-    )}
+    )}, tbl AS (
+        SELECT
+            dedup_ward.code AS location_code,
+            dedup_ward.ward_name AS location_name,
+            'WARD' AS location_class,
+            dedup_ward.code as ward_code,
+            dedup_ward.ward_name,
+            dedup_district.code as district_code,
+            dedup_district.district_name,
+            dedup_province.code as province_code,
+            dedup_province.province_name,
+            dedup_region.code as region_code,
+            dedup_region.region_name
+        FROM dedup_district 
+        LEFT JOIN dedup_ward
+            ON dedup_district.code = dedup_ward.district_code
+        LEFT JOIN dedup_province
+            ON dedup_province.code = dedup_district.province_code
+        LEFT JOIN dedup_region
+            ON dedup_region.code = dedup_province.region_code
+        WHERE dedup_ward.code is not null
 
+        UNION ALL
 
-SELECT
-    dedup_ward.code AS location_code,
-    dedup_ward.ward_name AS location_name,
-    'WARD' AS location_class,
-    dedup_ward.code as ward_code,
-    dedup_ward.ward_name,
-    dedup_district.code as district_code,
-    dedup_district.district_name,
-    dedup_province.code as province_code,
-    dedup_province.province_name,
-    dedup_region.code as region_code,
-    dedup_region.region_name
-FROM dedup_district 
-LEFT JOIN dedup_ward
-    ON dedup_district.code = dedup_ward.district_code
-LEFT JOIN dedup_province
-    ON dedup_province.code = dedup_district.province_code
-LEFT JOIN dedup_region
-    ON dedup_region.code = dedup_province.region_code
-WHERE dedup_ward.code is not null
+        SELECT
+            dedup_district.code AS location_code,
+            dedup_district.district_name AS location_name,
+            'DISTRICT' AS location_class,
+            NULL AS ward_code,
+            NULL AS ward_name,
+            dedup_district.code as district_code,
+            dedup_district.district_name,
+            dedup_province.code as province_code,
+            dedup_province.province_name,
+            dedup_region.code as region_code,
+            dedup_region.region_name
+        FROM dedup_district 
+        LEFT JOIN dedup_province
+            ON dedup_province.code = dedup_district.province_code
+        LEFT JOIN dedup_region
+            ON dedup_region.code = dedup_province.region_code
 
-UNION ALL
+        UNION ALL
 
-SELECT
-    dedup_district.code AS location_code,
-    dedup_district.district_name AS location_name,
-    'DISTRICT' AS location_class,
-    NULL AS ward_code,
-    NULL AS ward_name,
-    dedup_district.code as district_code,
-    dedup_district.district_name,
-    dedup_province.code as province_code,
-    dedup_province.province_name,
-    dedup_region.code as region_code,
-    dedup_region.region_name
-FROM dedup_district 
-LEFT JOIN dedup_province
-    ON dedup_province.code = dedup_district.province_code
-LEFT JOIN dedup_region
-    ON dedup_region.code = dedup_province.region_code
+        SELECT
+            dedup_province.code AS location_code,
+            dedup_province.province_name AS location_name,
+            'PROVINCE' AS location_class,
+            NULL AS ward_code,
+            NULL AS ward_name,
+            NULL AS district_code,
+            NULL AS district_name,
+            dedup_province.code as province_code,
+            dedup_province.province_name,
+            dedup_region.code as region_code,
+            dedup_region.region_name
+        FROM dedup_province
+        LEFT JOIN dedup_region
+            ON dedup_region.code = dedup_province.region_code
 
-UNION ALL
+        UNION ALL
 
-SELECT
-    dedup_province.code AS location_code,
-    dedup_province.province_name AS location_name,
-    'PROVINCE' AS location_class,
-    NULL AS ward_code,
-    NULL AS ward_name,
-    NULL AS district_code,
-    NULL AS district_name,
-    dedup_province.code as province_code,
-    dedup_province.province_name,
-    dedup_region.code as region_code,
-    dedup_region.region_name
-FROM dedup_province
-LEFT JOIN dedup_region
-    ON dedup_region.code = dedup_province.region_code
+        SELECT
+            dedup_region.code AS location_code,
+            dedup_region.region_name AS location_name,
+            'REGION' AS location_class,
+            NULL AS ward_code,
+            NULL AS ward_name,
+            NULL AS district_code,
+            NULL AS district_name,
+            NULL AS province_code,
+            NULL AS province_name,
+            dedup_region.code as region_code,
+            dedup_region.region_name
+        FROM dedup_region
+    )
 
-UNION ALL
-
-SELECT
-    dedup_region.code AS location_code,
-    dedup_region.region_name AS location_name,
-    'REGION' AS location_class,
-    NULL AS ward_code,
-    NULL AS ward_name,
-    NULL AS district_code,
-    NULL AS district_name,
-    NULL AS province_code,
-    NULL AS province_name,
-    dedup_region.code as region_code,
-    dedup_region.region_name
-FROM dedup_region
-
+SELECT *,
+    case
+        when lower(district_name) = 'quận 12' or lower(district_name) = 'quận 9' then 'Rural'
+        when lower(district_name) LIKE 'quận%' or lower(district_name) LIKE 'thành phố%' then 'Urban'
+        else 'Rural'
+    end urban_rural
+FROM tbl
 
 post_operations {
     ALTER TABLE ${self()} ADD PRIMARY KEY (location_code) NOT ENFORCED;
