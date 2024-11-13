@@ -24,7 +24,7 @@ config {
         partitionBy: "created_date"
     },
     tags:["depracated"]
-    -- tags:["platinum_custom_2h_past5"]
+    // tags:["platinum_custom_2h_past5"]
 }
 
 SELECT
