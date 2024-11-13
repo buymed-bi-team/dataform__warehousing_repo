@@ -23,7 +23,8 @@ config {
     bigquery: {
         partitionBy: "created_date"
     },
-    tags:["platinum_custom_2h_past5"]
+    tags:["depracated"]
+    -- tags:["platinum_custom_2h_past5"]
 }
 
 SELECT
