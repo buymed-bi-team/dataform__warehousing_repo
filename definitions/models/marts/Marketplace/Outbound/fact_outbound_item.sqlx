@@ -36,7 +36,7 @@ cte_order_item as (
         , oi.price
         , oi.seller_code
         , oi.vat
-        , seller_class
+        -- , seller_class
     FROM ${source.platinum}.marketplace_prd_order_v2_order_item as oi
     where
         oi.created_date >= (select DATE(start_date) from cte_date)
@@ -68,7 +68,7 @@ select
     safe_cast( json_extract_scalar( item.vat ) as INT64 )
     , a.vat
   ) as vat
-  , seller_class
+  -- , seller_class
   -- , json_extract_scalar( ob.vat ) as vat
 from cte_order_item as a
 , unnest( json_query_array(a.extra_props, "$.sub_items") ) as item
@@ -97,12 +97,21 @@ cte_normal_transaction as (
   , json_extract_scalar( ob.do_code ) as do_code
   , json_extract_scalar( ob.po_code ) as po_code
   , a.vat
-  , seller_class
+  -- , seller_class
   -- , json_extract_scalar( ob.vat ) as vat
 from cte_order_item as a
 , unnest( json_query_array(a.outbound_infos) ) as ob
+),
+
+final AS (
+  select * from cte_combo_transaction
+  union all
+  select * from cte_normal_transaction
 )
 
-select * from cte_combo_transaction
-union all
-select * from cte_normal_transaction
+SELECT
+  a.*
+  , s.supplier_class AS seller_class
+FROM final AS a
+  LEFT JOIN ${ref('dim_supplier')} AS s ON a.seller_code = s.supplier_code
+
