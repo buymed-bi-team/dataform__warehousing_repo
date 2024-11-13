@@ -27,7 +27,11 @@ FROM ${source.platinum}.core_prd_note_note AS n
     LEFT JOIN (
         SELECT DISTINCT
             pic_purchase_id
-        FROM ${ref('dim_supplier_fc_person_in_charge')}
+        FROM ${ref('dim_supplier_fc_person_in_charge')} AS a
+        WHERE NOT EXISTS (SELECT 1
+                          FROM ${ref('dim_supplier_fc_person_in_charge')} AS b
+                          WHERE b.cic_category_id = a.pic_purchase_id
+                          )
     ) AS pic ON pic.pic_purchase_id = n.created_by
     LEFT JOIN (
         SELECT DISTINCT
