@@ -34,4 +34,10 @@ FROM ${source.platinum}.core_prd_note_note AS n
             cic_category_id
         FROM ${ref('dim_supplier_fc_person_in_charge')}
     ) AS cic ON cic.cic_category_id = n.created_by
+    LEFT JOIN  (
+        SELECT DISTINCT
+            account_id
+        FROM ${source.platinum}.core_prd_account_account
+        WHERE type = 'EMPLOYEE'
+    ) AS e ON n.created_by = e.account_id
 QUALIFY ROW_NUMBER() over (PARTITION BY item_code, note_type ORDER BY created_time DESC) = 1
