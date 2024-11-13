@@ -13,20 +13,34 @@ WITH
     SELECT 
       sku, warehouse_code, location_code, stock_quantity
     FROM ${source.platinum}.warehouse_prd_inventory_sku_location
-  )
+  ),
 
+inventory_location as (
+    SELECT
+        CONCAT(code, "_", warehouse_code) AS location_fc_code
+        , CASE
+            WHEN COUNTIF(JSON_EXTRACT_SCALAR(tags) = "NEAR_EXPIRED") > 0 then True
+          ELSE False
+        END AS is_near_expired
+    FROM platinum_buymed_vn.warehouse_prd_inventory_location
+        , unnest(json_extract_array(tags)) AS tags
+    WHERE warehouse_code IN ('BD', 'HN', 'DN')
+    GROUP BY ALL)
 
 SELECT
   CONCAT(b.sku_key, "_", a.warehouse_code) as sku_fc_key,
   a.sku as sku_code,
   CONCAT(a.location_code, "_", a.warehouse_code) as location_fc_code,
+  l.is_near_expired,
   a.warehouse_code as fc_code,
   a.location_code,
   a.stock_quantity,
   datetime(current_timestamp(), "Asia/Ho_Chi_Minh") as last_updated_time
 FROM dedup_inventory_sku_location a
 LEFT JOIN ${ref("dim_sku")} b
-ON a.sku = b.sku_code
+  ON a.sku = b.sku_code
+LEFT JOIN inventory_location l
+  ON CONCAT(a.location_code, "_", a.warehouse_code) = l.location_fc_code
 WHERE stock_quantity > 0 AND a.warehouse_code IN (
   SELECT fc_code FROM ${ref("dim_fc")}
 )
