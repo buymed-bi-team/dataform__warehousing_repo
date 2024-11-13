@@ -22,6 +22,7 @@ SELECT
     , a AS service_area_code
     , b.sales_region_code
     , b.fc_code
+    , s.seller_code
 FROM ${source.platinum}.marketplace_prd_product_v2_sku AS s
     , UNNEST(JSON_VALUE_ARRAY(s.location_codes)) AS a
     LEFT JOIN ${ref('dim_fc_service_area')} AS b ON b.service_area_code = a

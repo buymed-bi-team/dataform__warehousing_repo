@@ -52,6 +52,7 @@ WITH cte_date AS (
 				end as flag_check
 				from ${ref('fact_inbound_receipts')}
 				where received_packages > 0
+					AND status <> "CANCEL"
 			)
 
 		select *, -- except (flag_check),
@@ -74,7 +75,7 @@ WITH cte_date AS (
 		SELECT
 			po_code
 			, MIN_BY(hub_code, received_ts) AS first_received_location
-            , MIN(received_ts) AS first_received_time_at_hub
+            , MIN(IF(hub_code NOT IN ('HN','BD','DN'), received_ts, NULL)) AS first_received_time_at_hub
 		FROM ${ref('fact_inbound_receipts')}
 		-- WHERE receipt_fc_code = destination_location
 		GROUP BY 1

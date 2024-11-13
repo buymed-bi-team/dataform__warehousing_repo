@@ -39,7 +39,7 @@ cte_order_item as (
     FROM ${source.platinum}.marketplace_prd_order_v2_order_item as oi
     where
         oi.created_date BETWEEN '2023-01-01' AND '2023-12-31'
-        AND seller_code = 'MEDX'
+        AND (seller_code = 'MEDX' OR seller_class = 'EXTERNAL')
 ),
 
 cte_combo_transaction as (
