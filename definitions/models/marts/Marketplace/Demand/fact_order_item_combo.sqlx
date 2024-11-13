@@ -104,7 +104,7 @@ select
   , event_source
   , event_screen
   , block_code
-  , COALESCE(NULLIF(seller_revenue,0), seller_price - promotion_amount) AS combo_seller_revenue
+  , seller_price - promotion_amount AS combo_seller_revenue
   , SAFE_CAST( JSON_VALUE( bom.seller_revenue ) AS INT64 ) AS bom_seller_revenue
   , sku_level AS combo_sku_level
   , JSON_VALUE( bom.sku_level ) AS bom_sku_level
@@ -220,8 +220,8 @@ cte_normal_item as (
     , event_screen
     , block_code
     , vat
-    , COALESCE(NULLIF(seller_revenue,0), seller_price - promotion_amount) AS combo_seller_revenue
-    , COALESCE(NULLIF(seller_revenue,0), seller_price - promotion_amount) AS seller_revenue
+    , seller_price - promotion_amount AS combo_seller_revenue
+    , seller_price - promotion_amount AS seller_revenue
     , sku_level AS combo_sku_level
     , sku_level
   from cte_order_item as oi
