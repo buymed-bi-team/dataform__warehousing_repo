@@ -8,6 +8,19 @@ config {
     bigquery: {
         partitionBy: "created_date"
     },
+    description: `PIC: MinhLuu, Internal: https://internal.thuocsi.vn/crm/customer/realtime?status=FAILED
+    To be like on the Tnternal page:
+        SELECT 
+            m.customer_id,
+            m.customer_name, 
+            m.phone,
+            m.address,
+            m.created_time,
+            m.result_error,
+            m.ua_metadata
+            -- Except note content, I has not find which way to map
+        FROM ${source.platinum}.monitoring_prd_realtime_user_failed_login_v8 m
+    `,
     tags: ["custom_2h_past5"]
 }
 
