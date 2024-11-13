@@ -43,6 +43,11 @@ cte_order_item as (
         , event_screen
         , JSON_VALUE(extra_props, '$.block_code') AS block_code
         , seller_revenue
+        , sku_level
+        , coalesce(
+          safe_cast( json_extract_scalar( oi.extra_props, "$.charge_campaign_fee_value" ) as INT64 )
+          , oi.charge_deal_fee_value
+        ) as promotion_amount
     FROM ${source.platinum}.marketplace_prd_order_v2_order_item as oi
     where
         created_date >= (select DATE(start_date) from cte_date)
@@ -64,10 +69,7 @@ select
     json_extract_scalar( oi.extra_props, "$.campaign_code" )
     , oi.deal_code
   ) as promotion_code
-  , coalesce(
-    safe_cast( json_extract_scalar( oi.extra_props, "$.charge_campaign_fee_value" ) as INT64 )
-    , oi.charge_deal_fee_value
-  ) as promotion_amount
+  , oi.promotion_amount
   , oi.seller_code
   , oi.product_id
   , safe_cast( json_extract_scalar( bom.product_id ) as INT64 ) as product_bom_id
@@ -76,7 +78,7 @@ select
   , oi.item_code
   , oi.sales_price as combo_price
   , oi.price_after_discount
-  -- , oi.seller_price
+  , oi.seller_price
   , SAFE_CAST( JSON_VALUE( bom.seller_price ) AS INT64 ) AS bom_seller_price
   , oi.demand_quantity AS  combo_quantity
   , json_extract_scalar( bom.sku ) as sku_bom_code
@@ -102,7 +104,10 @@ select
   , event_source
   , event_screen
   , block_code
-  , seller_revenue
+  , COALESCE(NULLIF(seller_revenue,0), seller_price - promotion_amount) AS combo_seller_revenue
+  , SAFE_CAST( JSON_VALUE( bom.seller_revenue ) AS INT64 ) AS bom_seller_revenue
+  , sku_level AS combo_sku_level
+  , JSON_VALUE( bom.sku_level ) AS bom_sku_level
 from cte_order_item as oi
 , unnest( json_query_array(oi.extra_props, "$.sub_items") ) as bom
 ), 
@@ -158,7 +163,13 @@ select
   , event_screen
   , block_code
   , vat
-  , seller_revenue
+  , combo_seller_revenue
+  , bom_seller_revenue * LEAST(
+    (combo_seller_revenue / sum(bom_quantity * bom_seller_revenue) over (partition by order_id, sku_code))
+    , 1
+   ) as seller_revenue
+  , combo_sku_level
+  , bom_sku_level AS sku_level
 from cte_combo_item
 ),
 
@@ -176,10 +187,7 @@ cte_normal_item as (
       json_extract_scalar( oi.extra_props, "$.campaign_code" )
       , oi.deal_code
     ) as promotion_code
-    , coalesce(
-        safe_cast( json_extract_scalar( oi.extra_props, "$.charge_campaign_fee_value" ) as INT64 )
-        , oi.charge_deal_fee_value
-    ) as promotion_amount
+    , oi.promotion_amount
     , oi.seller_code
     , oi.product_id AS product_original_id
     , oi.sku_code as sku_orignal_code
@@ -212,7 +220,10 @@ cte_normal_item as (
     , event_screen
     , block_code
     , vat
-    , seller_revenue
+    , COALESCE(NULLIF(seller_revenue,0), seller_price - promotion_amount) AS combo_seller_revenue
+    , COALESCE(NULLIF(seller_revenue,0), seller_price - promotion_amount) AS seller_revenue
+    , sku_level AS combo_sku_level
+    , sku_level
   from cte_order_item as oi
   where
     oi.mg_id not in ( select mg_id from cte_combo_item_pricing )

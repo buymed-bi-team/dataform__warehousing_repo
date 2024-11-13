@@ -30,9 +30,7 @@ WITH
             , a.order_id
             , a.created_at
             , a.customer_id
-            -- , a.sku_code AS sku_code_original
             , a.sku_bom_code AS sku_code
-            -- , a.product_id AS product_id_original
             , a.product_bom_id AS product_id
             , a.seller_code
             , a.outbound_quantity
@@ -46,35 +44,31 @@ WITH
                 WHERE created_date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 12 MONTH)
             ) AS b 
                 ON a.do_code = b.delivery_order_code
-        WHERE
-            -- created_at >= '2024-06-01'
-            -- AND outbound_time >= TIMESTAMP_SUB('2024-06-01', INTERVAL 7 HOUR)
-            -- AND 
-            a.seller_code = 'MEDX'
     )
 
     , order_item AS (
         SELECT
             oi.mg_id
             , oi.order_id
-            -- , sku_orignal_code AS sku_code_original
             , oi.sku_code
             , oi.product_id
             , oi.sales_price AS unit_price
-            -- , sales_price_original AS unit_price_original
             , oi.item_type
             , oi.seller_price
             , oi.seller_revenue
             , oi.sku_key_sales_region_code
             , oi.fc_code
-            -- , COALESCE(NULLIF(seller_revenue, 0), seller_price - promotion_amount) * ( 1- seller_fee_tax / 100 ) AS seller_received_amount
+            , seller_revenue * (1 - ( c.fulfillment_fee_percent + c.sale_fee_percent 
+                + IF(s.supplier_type IN ("MARKET", "BIZ_HOUSEHOLD"), 1.5, 0) ) / 100
+              ) AS seller_received_amount
         FROM ${ref('fact_order_item')} AS oi
-            -- LEFT JOIN ${ref('adhoc_pricing_seller_price')} AS s
-            --     ON oi.sku_key_sales_region_code = s.sku_key_sales_region_code
-        WHERE
-            -- created_at >= '2024-06-01'
-            -- AND 
-            seller_code = 'MEDX'
+            LEFT JOIN ${ref('dim_product')} AS p 
+                ON oi.product_id = p.product_id
+            LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_seller_category_level AS c
+                ON oi.sku_level = c.level 
+                AND p.product_category_code = JSON_VALUE(c.extra_props, '$.category_code')
+            LEFT JOIN ${ref('dim_supplier')} AS s
+                ON s.supplier_code = oi.seller_code
     )
 
     , po_price AS (
@@ -88,8 +82,6 @@ WITH
             , vendor_code
             , line_manager_combine
             , ARRAY_AGG(DISTINCT FLOOR(unit_price)) AS list_unit_price
-            -- , contract_price_code
-            -- , unit_price
         FROM ${ref('fact_po_item')}
         GROUP BY ALL
     )
@@ -130,16 +122,14 @@ WITH
         FROM ${ref('fact_price_after_rebate')} AS a
     )
 
-    , medx_margin AS (
+    , margin AS (
         SELECT
             ob.mg_id
             , ob.created_at
             , ob.outbound_date
             , ob.order_id
             , ob.customer_id
-            -- , ob.sku_code_original
             , ob.sku_code
-            -- , ob.product_id_original
             , ob.product_id
             , ob.seller_code
             , oi.unit_price
@@ -162,6 +152,7 @@ WITH
                 , v.vb_purchase_price
                 , p.po_purchase_price
                 , vpm.avg_vb_price
+                , oi.seller_received_amount
                 , oi.seller_revenue
             ) AS final_price_after_rebate
             , oi.item_type
@@ -181,17 +172,14 @@ WITH
             LEFT JOIN vb_prev_month AS vpm 
                 ON vpm.sku_code = ob.sku_code
                 AND FORMAT_DATE("%Y-%m", DATE_SUB(ob.outbound_date, INTERVAL 1 MONTH)) = vpm.ym_issued
-                -- AND ob.seller_code = 'MEDX'
             LEFT JOIN price_after_rebate AS r
                 ON r.product_id = ob.product_id
                 AND r.vendor_code = p.line_manager_combine
                 AND r.fc_code = p.fc_code
                 AND r.rebate_date = p.po_created_date
                 AND FLOOR(r.price_contract) IN UNNEST(p.list_unit_price)
-                -- AND ob.seller_code = "MEDX"
         WHERE 
             o.order_status <> 'CANCEL'
-        -- ob.seller_code = 'MEDX'
     )
 
     -- , seller_margin AS (
@@ -207,16 +195,16 @@ WITH
     --         , unit_price
     --         , outbound_quantity
     --         , po_code
-    --     FROM ${source.platinum}.marketplace_prd_order_v2_order_item AS oi
+    --     FROM ${ref('fact_order_item')} AS oi
     --         LEFT JOIN ${ref('fact_order')} AS o USING(order_id)
+    --         LEFT JOIN ${ref('dim_supplier')} AS sup ON sup.supplier_code = oi.seller_code
     --     WHERE 
-    --         created_date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE(+7), MONTH), INTERVAL 12 MONTH)
-    --         AND seller_class = "EXTERNAL"
-    --         AND order_status <> 'CANCEL'
+    --         sup.supplier_class = "EXTERNAL"
+    --         AND o.order_status <> 'CANCEL'
     --         AND DATE(o.created_at) >= DATE_SUB(DATE_TRUNC(CURRENT_DATE(+7), MONTH), INTERVAL 12 MONTH)
     -- )
 
 SELECT
     *
-FROM medx_margin
+FROM margin
 
