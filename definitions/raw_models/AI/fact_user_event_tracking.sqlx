@@ -30,7 +30,8 @@ WITH stg AS (
         JSON_EXTRACT_SCALAR(a.extra_props, '$.user_metadata.LOCATION') AS province_code,
         JSON_EXTRACT_SCALAR(a.extra_props, '$.user_metadata.LEVEL') AS customer_level,
         JSON_EXTRACT_SCALAR(a.extra_props, '$.metadata.screen') AS screen,
-        JSON_EXTRACT_SCALAR(a.extra_props, '$.metadata.block_code') AS block_code,
+        JSON_EXTRACT_SCALAR(a.extra_props, '$.metadata.block_code') AS block_code_v1,
+        JSON_EXTRACT_SCALAR(a.extra_props, '$.metadata.blockCode') AS blockCode,
         JSON_EXTRACT_SCALAR(a.extra_props, '$.metadata.source') AS SOURCE,
         JSON_EXTRACT_SCALAR(a.extra_props, '$.metadata.product_id') AS product_id,
         JSON_EXTRACT_SCALAR(a.extra_props, '$.metadata.seller_id') AS seller_id,
@@ -60,6 +61,7 @@ WITH stg AS (
     on gl.province_code = sa.service_area_code
     where gl.location_class = 'PROVINCE'
 ),
+
     cte_all as
 (SELECT
     event,
@@ -67,10 +69,11 @@ WITH stg AS (
     created_time,
     EXTRACT(HOUR FROM created_time) AS created_hour,
     created_date,
-    stg.province_code,
+    a.province_code,
     screen,
     search_content,
-    search_status,session,
+    search_status,
+    session,
     SOURCE,
 --     CONCAT(sku_key, "_", r.area) AS sku_fc_code,
     case
@@ -93,24 +96,14 @@ WITH stg AS (
     END AS seller_code,
     client_user_time,
     area
+from (
+select *,
+COALESCE(block_code_v1,blockCode) as block_code 
 FROM
-    stg
+    stg) a
 LEFT JOIN region AS r
-  ON stg.province_code = r.province_code
+  ON a.province_code = r.province_code
 where customer_id >0)
--- ,session as
---     (
---         SELECT
---             customer_id,
--- --             CAST(FORMAT_DATETIME('%Y%m%d%H%m%s', DATETIME(start_time)) AS string) datetime_key,
---              DATETIME(created_time, "Asia/Ho_Chi_Minh") created_time,
---              DATETIME(end_time, "Asia/Ho_Chi_Minh") end_time,
---              DATETIME(start_time, "Asia/Ho_Chi_Minh")start_time ,
---              key,
---              created_date
---         FROM `${source.platinum}.monitoring_prd_realtime_user_customer_session_v3`
---         WHERE created_date >= date( date_trunc( date_sub( current_date('+7'), interval 2 month) , month ) ) and customer_id> 0
---     )
 select cte_all.* except (area),
        CONCAT(product_id, "_", seller_code, "_", area) as sku_fc_code,
     --    session,
