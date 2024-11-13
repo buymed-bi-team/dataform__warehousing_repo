@@ -18,7 +18,7 @@ SELECT
     , JSON_VALUE(keys, '$.1') AS sku_code
     , TIMESTAMP_ADD(n.created_time, INTERVAL 7 HOUR) AS note_created_time
     , CASE
-        WHEN pic.pic_purchase_id IS NULL AND cic.cic_category_id IS NULL THEN "SYSTEM"
+        WHEN pic.pic_purchase_id IS NULL AND cic.cic_category_id IS NULL AND e.account_id IS NULL THEN "SYSTEM"
         WHEN pic.pic_purchase_id IS NOT NULL THEN "PIC"
         WHEN cic.cic_category_id IS NOT NULL THEN "CIC"
         END AS note_type
