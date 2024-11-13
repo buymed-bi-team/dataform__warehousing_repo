@@ -32,7 +32,8 @@ WITH stg AS (
         JSON_EXTRACT_SCALAR(a.extra_props, '$.metadata.screen') AS screen,
         JSON_EXTRACT_SCALAR(a.extra_props, '$.metadata.block_code') AS block_code_v1,
         JSON_EXTRACT_SCALAR(a.extra_props, '$.metadata.blockCode') AS blockCode,
-        JSON_EXTRACT_SCALAR(a.extra_props, '$.metadata.source') AS SOURCE,
+        JSON_EXTRACT_SCALAR(a.extra_props, '$.metadata.source') AS SOURCE_v1,
+        JSON_EXTRACT_SCALAR(a.extra_props, '$.metadata.eventSource') AS eventSOURCE,
         JSON_EXTRACT_SCALAR(a.extra_props, '$.metadata.product_id') AS product_id,
         JSON_EXTRACT_SCALAR(a.extra_props, '$.metadata.seller_id') AS seller_id,
         JSON_EXTRACT_SCALAR(a.extra_props, '$.metadata.sku') AS sku_code,
@@ -98,7 +99,9 @@ WITH stg AS (
     area
 from (
 select *,
-COALESCE(block_code_v1,blockCode) as block_code 
+COALESCE(block_code_v1,blockCode) as block_code,
+COALESCE(SOURCE_v1,eventSOURCE) as SOURCE 
+
 FROM
     stg) a
 LEFT JOIN region AS r
