@@ -80,7 +80,8 @@ with
     )
 
 select
-    sku.*
+    CURRENT_DATETIME("+7") AS last_refreshed_at
+    , sku.*
     , vcpic.commitment_leadtime
     , uns.value as unstable
     , it.type as internal_transfer
