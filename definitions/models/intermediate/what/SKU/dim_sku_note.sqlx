@@ -44,5 +44,5 @@ FROM ${source.platinum}.core_prd_note_note AS n
         FROM ${source.platinum}.core_prd_account_account
         WHERE type = 'EMPLOYEE'
     ) AS e ON n.created_by = e.account_id
-WHERE REGEXP_CONTAINS(TO_JSON_STRING(types), r'"UPDATE/retail_price_value"|"UPDATE/dynamic_pricing_level"') = FALSE
+WHERE REGEXP_CONTAINS(TO_JSON_STRING(types), r'"UPDATE/retail_price_value"|"UPDATE/dynamic_pricing_level"|"UPDATE/retail_price_type"|"UPDATE/max_quantity_per_order"') = FALSE
 QUALIFY ROW_NUMBER() over (PARTITION BY item_code, note_type ORDER BY created_time DESC) = 1
