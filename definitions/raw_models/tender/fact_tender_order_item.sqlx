@@ -28,7 +28,7 @@ select
     oi.seller_code,
     oi.product_id,
     oi.total_amount,
---     o.receiver_name,
+    o.receiver_name,
     o.receiver_id,
     o.province_code,
     "INTERNAL-TENDER" as source_type
@@ -44,7 +44,7 @@ left join ${source.platinum}.tender_prd_core_tender_orders o on oi.order_id = o.
     oi.seller_code,
     oi.product_id,
     sum( oi.demand_quantity * sales_price) as total_amount ,
---     o.receiver_name,
+    o.receiver_name,
     oi.customer_id as receiver_id,
     gl.province_code,
     "INTERNAL-THUOCSI" as source_type
