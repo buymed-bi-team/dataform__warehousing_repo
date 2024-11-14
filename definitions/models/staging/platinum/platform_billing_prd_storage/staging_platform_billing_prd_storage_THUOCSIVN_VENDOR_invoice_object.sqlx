@@ -8,12 +8,12 @@ config {
     bigquery: {
         partitionBy: "created_date"
     },
-    tags: ["custom_1h_past5"]
+    // tags: ["custom_2h_past7"]
 }
 
 js {
   incremental_time = `TIMESTAMP(DATE_TRUNC(CURRENT_DATETIME() - INTERVAL 4 HOUR, DAY))`
-  table_name = ``
+  table_name = `platform_billing_prd_storage_THUOCSIVN_VENDOR_invoice_object`
 }
 
 
@@ -29,7 +29,7 @@ pre_operations {
               WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
               ELSE "2099-01-01"
             END AS created_date
-        FROM ${source.silver}.platform_billing_prd_storage_THUOCSIVN_VENDOR_invoice_object
+        FROM ${source.silver}.${table_name}
         WHERE ingest_time >= ${incremental_time}
         QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'
         WINDOW _window AS ( 
@@ -48,7 +48,7 @@ pre_operations {
         GROUP BY 1
       );
 
-      DELETE FROM ${source.platinum}.platform_billing_prd_storage_THUOCSIVN_VENDOR_invoice_object
+      DELETE FROM ${source.platinum}.${table_name}
       where created_date in UNNEST(checkpoint_date)
       and mg_id in ( 
         SELECT DISTINCT mg_id 
@@ -64,7 +64,7 @@ pre_operations {
                 WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
                 ELSE "2099-01-01"
               END AS created_date
-          FROM ${source.silver}.platform_billing_prd_storage_THUOCSIVN_VENDOR_invoice_object
+          FROM ${source.silver}.${table_name}
           QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'
           WINDOW _window AS ( 
               PARTITION BY mg_id
