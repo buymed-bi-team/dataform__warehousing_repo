@@ -19,7 +19,7 @@ WITH LatestPut AS (
         REGEXP_CONTAINS(
             COALESCE(JSON_EXTRACT_SCALAR(b.extra_props, '$.inbound_code')
             , JSON_VALUE(b.extra_props, '$.suggest_reference_codes.0'))
-            , r'PO|PGH'
+            , r'PO|PGH|TO'
         ) AND
         b.status <> "CANCEL"
     GROUP BY 1, 2
