@@ -43,8 +43,8 @@ SELECT
 
 
 SELECT DISTINCT
-    l.sku,
-    l.warehouse_code,
+    f.sku,
+    f.warehouse_code,
     l.latest_put_time,
     TIMESTAMP_DIFF(CURRENT_TIMESTAMP(), l.latest_put_time, DAY) AS aging_put_days,
     b.code AS latest_put_code,
@@ -59,6 +59,6 @@ JOIN ${source.platinum}.warehouse_prd_inbound_put_ticket_item a
 JOIN ${source.platinum}.warehouse_prd_inbound_put_ticket b
     ON a.put_code = b.code
     AND l.latest_put_time = b.end_put_time
-LEFT JOIN LatestFinalPut f
+RIGHT JOIN LatestFinalPut f
     ON l.sku = f.sku
     AND l.warehouse_code = f.warehouse_code
