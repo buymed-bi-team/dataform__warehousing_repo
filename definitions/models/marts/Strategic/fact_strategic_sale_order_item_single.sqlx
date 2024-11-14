@@ -38,16 +38,13 @@ config {
 }
 
 js {
-    // const start_date = `"2023-12-31"`
     const start_date = `"2023-01-01"`
-    // const end_date = `"2030-09-25"`
 }
 
 WITH 
 mkp_o AS ( 
     SELECT 
         o.order_id,
-        -- o.warehouse_code as fc_code,
         o.sale_order_code,
         o.customer_id, 
         o.status,
@@ -66,8 +63,6 @@ mkp_o AS (
         'mkp' || mg_id as oiid, 
         order_id,
         product_id,
-        -- item_code, -- currently, This is unnecessary
-        -- oi.type, -- currently, This is unnecessary
         sku as sku_code,
         seller_code,
         seller_class, 
@@ -87,7 +82,6 @@ mkp_o AS (
 , tender_o AS (
     SELECT 
         o.order_id,
-        -- w.warehouse_code as fc_code,
         o.sale_order_code, 
         o.receiver_id * (10000) AS customer_id,
         o.status,
@@ -98,8 +92,6 @@ mkp_o AS (
         "TENDER" AS system
     FROM
         ${source.platinum}.tender_prd_core_tender_orders o
-    -- LEFT JOIN ${source.platinum}.warehouse_prd_core_sale_order w
-        -- ON o.sale_order_code = w.sale_order_code
     WHERE o.created_date >= ${start_date} 
     AND o.created_time is not null
 )
@@ -108,8 +100,6 @@ mkp_o AS (
         'tender' || mg_id as oiid, 
         oi.order_id,
         oi.product_id,
-        -- oi.item_code,  -- currently, This is unnecessary
-        -- oi.type, -- currently, This is unnecessary
         dsku.sku_code,
         oi.seller_code,
         oi.seller_class, 
@@ -159,13 +149,9 @@ mkp_o AS (
         oi.order_id,
         oi.product_id,
         oi.sku_code,
-        -- oi.item_code,  -- currently, This is unnecessary
         oi.type, 
         JSON_EXTRACT_SCALAR( ois.sku ) as sku_single_code,
         SAFE_CAST( JSON_VALUE( ois.product_id ) as INT64 ) as product_single_id,
-        -- JSON_VALUE( ois.item_code) as item_single_code, -- currently, This is unnecessary
-        -- JSON_EXTRACT_SCALAR( ois.type ) as item_single_type,  -- currently, This is unnecessary
-
         JSON_VALUE(ois.seller_code) as product_single_seller_code,
         JSON_VALUE(ois.seller_class) as product_single_seller_class,
         SAFE_CAST( JSON_VALUE( ois.seller_price ) as INT64 ) as product_single_seller_price, 
@@ -251,8 +237,6 @@ mkp_o AS (
         seller_code,
         seller_class,
         type,
-        -- demand_quantity as demand_quantity_original,
-        -- price as price_original,
         demand_quantity,
         outbound_quantity,
         returned_quantity,
@@ -319,9 +303,6 @@ mkp_o AS (
     LEFT JOIN ${ref(`dim_sku`)} dsku4 ON dsku4.sku_code = oi.sku_code_original
     LEFT JOIN ${ref(`dim_supplier`)} ds4 ON ds4.supplier_code = dsku4.seller_code
     LEFT JOIN ${ref(`dim_order_status`)} dstatus ON dstatus.order_id = o.order_id
-
-    -- WHERE o.order_channel <> "CONSIGNMENT-RECOGNITION"
-    -- WHERE ${utils.ToTimezone(`o.created_time`)} >= "2023-01-01"
     
 )
 , fact_strategic_2 AS (
@@ -364,13 +345,12 @@ SELECT
   ois.sku_code_original,
   ois.sku_code,
   ois.product_id,
-  ois.supplier_class, -- For filter test
+  ois.supplier_class,
   ois.note,
   ois.more_note,
   ois.listed_price,
   ois.sales_price,
   ois.supplier_code,
-  
   ois.demand_quantity,
   ois.backlog_quantity, 
   ois.outbound_quantity,
@@ -378,10 +358,19 @@ SELECT
   ois.returned_quantity,
   ois.cancel_before_ffm_quantity, 
   ois.cancel_after_ffm_quantity, 
-
+  doc.order_channel,
+  CASE
+        WHEN dosr.sales_region_code LIKE "MIENNAM" THEN "SOUTHERN"
+        WHEN dosr.sales_region_code LIKE "MIENTRUNG" THEN "CENTRAL"
+        WHEN dosr.sales_region_code LIKE "MIENBAC" THEN "NORTHERN"
+        ELSE "GMV_VN_REGION_UNKNOWN" 
+        END AS location
 
 
 FROM fact_strategic_2 ois
+LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = ois.order_id 
+LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON ois.order_id = dosr.order_id
+WHERE ois.supplier_class NOT LIKE "TECH" AND doc.order_channel IS NOT NULL
 
 -- -- post_operations {
 -- --     ALTER TABLE ${self()} 
