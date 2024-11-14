@@ -52,6 +52,9 @@ mkp_o AS (
         created_time,
         confirmation_date,
         delivered_time,
+        CASE
+        WHEN SAFE_CAST(customer_ward_code AS integer) > 0 THEN customer_ward_code
+        ELSE customer_district_code END AS shipping_ward_code,
         "MKP" as system
     FROM ${source.platinum}.marketplace_prd_order_v2_order o
     WHERE o.created_date >= ${start_date}
@@ -89,6 +92,9 @@ mkp_o AS (
         o.created_time,
         o.confirmation_date,
         o.delivered_time,
+        CASE
+        WHEN SAFE_CAST(ward_code AS integer) > 0 THEN ward_code
+        ELSE district_code END AS shipping_ward_code,
         "TENDER" AS system
     FROM
         ${source.platinum}.tender_prd_core_tender_orders o
@@ -260,6 +266,7 @@ mkp_o AS (
         oi.oiid,
         oi.order_id,
         o.sale_order_code,
+        o.shipping_ward_code,
         o.customer_id,
         -- o.fc_code,
         oi.product_id_original,
@@ -338,6 +345,7 @@ SELECT
   ois.order_id,
   ois.customer_id,
   ois.sale_order_code,
+  ois.shipping_ward_code,
   ois.order_status,
   ois.commercial_type,
   ois.created_time,

@@ -67,10 +67,22 @@ SELECT
     do.delivery_order_code,
     ${utils.ToTimezone(`do.created_time`)} as qc_done_time,
     ${utils.ToTimezone(`o.confirmation_date`)} as confirmation_time,
-    ${utils.ToTimezone(`o.created_time`)} as created_time
+    ${utils.ToTimezone(`o.created_time`)} as created_time,
+    doc.order_channel,
+    CASE
+        WHEN dosr.sales_region_code LIKE "MIENNAM" THEN "SOUTHERN"
+        WHEN dosr.sales_region_code LIKE "MIENTRUNG" THEN "CENTRAL"
+        WHEN dosr.sales_region_code LIKE "MIENBAC" THEN "NORTHERN"
+        ELSE "GMV_VN_REGION_UNKNOWN" 
+        END AS location
+
 FROM  o 
 LEFT JOIN ${source.platinum}.warehouse_prd_core_delivery_order do ON o.sale_order_code = do.sale_order_code
-WHERE ${utils.ToTimezone(`o.created_time`)} >= "2023-01-01"
+LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = o.order_id 
+LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON o.order_id = dosr.order_id
+WHERE 
+(${utils.ToTimezone(`o.created_time`)} >= ${start_date} 
+AND doc.order_channel IS NOT NULL)
 -- WHERE do.mg_id not in (
 --     SELECT mg_id
 --     FROM ${source.platinum}.warehouse_prd_core_delivery_order AS sub

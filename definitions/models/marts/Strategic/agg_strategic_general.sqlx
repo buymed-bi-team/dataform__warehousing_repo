@@ -51,20 +51,9 @@ filtered_orders AS (
     fs.outbound_quantity,
     fs.returned_quantity,
     fs.supplier_class,
-    doc.order_channel,
-    CASE
-        WHEN dosr.sales_region_code LIKE "MIENNAM" THEN "SOUTHERN"
-        WHEN dosr.sales_region_code LIKE "MIENTRUNG" THEN "CENTRAL"
-        WHEN dosr.sales_region_code LIKE "MIENBAC" THEN "NORTHERN"
-        ELSE "GMV_VN_REGION_UNKNOWN" 
-        END AS location,
+    fs.order_channel,
+    fs.location,
   FROM ${ref(`fact_strategic_sale_order_item_single`)} fs 
-  INNER JOIN base_calendar bc ON DATE(fs.created_time) = bc.date
-  LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = fs.order_id 
-  LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON fs.order_id = dosr.order_id
-  WHERE fs.supplier_class NOT LIKE "TECH"
-    AND doc.order_channel IS NOT NULL
-
 ),
 
 -- Order_item metrics
@@ -130,12 +119,7 @@ order_metrics AS (
 delivery_metrics AS (
   SELECT 
     DATE(do.created_time) as delivery_date,
-    CASE
-      WHEN dosr.sales_region_code LIKE "MIENNAM" THEN "SOUTHERN"
-      WHEN dosr.sales_region_code LIKE "MIENTRUNG" THEN "CENTRAL"
-      WHEN dosr.sales_region_code LIKE "MIENBAC" THEN "NORTHERN"
-      ELSE "GMV_VN_REGION_UNKNOWN" 
-    END AS location,
+    do.location,
     CASE
       WHEN doc.order_channel IN ("MARKETPLACE","CONSIGNMENT") THEN "MARKETPLACE"
       ELSE doc.order_channel
@@ -146,9 +130,7 @@ delivery_metrics AS (
   INNER JOIN base_calendar bc ON DATE(do.created_time) = bc.date
   INNER JOIN ois ON do.order_id = ois.order_id
   LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = do.order_id 
-  LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON do.order_id = dosr.order_id 
   WHERE ois.supplier_class NOT LIKE "TECH"
-    AND doc.order_channel IS NOT NULL
     AND doc.order_channel NOT IN ("TENDER", "CONSIGNMENT-RECOGNITION")
   GROUP BY 1, 2, 3, 4
 
@@ -156,12 +138,7 @@ delivery_metrics AS (
 
   SELECT 
     DATE(do.confirmation_time) as delivery_date,
-    CASE
-      WHEN dosr.sales_region_code LIKE "MIENNAM" THEN "SOUTHERN"
-      WHEN dosr.sales_region_code LIKE "MIENTRUNG" THEN "CENTRAL"
-      WHEN dosr.sales_region_code LIKE "MIENBAC" THEN "NORTHERN"
-      ELSE "GMV_VN_REGION_UNKNOWN" 
-    END AS location,
+    do.location,
     CASE
       WHEN doc.order_channel IN ("MARKETPLACE","CONSIGNMENT") THEN "MARKETPLACE"
       ELSE doc.order_channel
@@ -171,10 +148,8 @@ delivery_metrics AS (
   FROM ${ref(`fact_strategic_delivery_order`)} do 
   INNER JOIN base_calendar bc ON DATE(do.confirmation_time) = bc.date
   INNER JOIN ois ON do.order_id = ois.order_id
-  LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = do.order_id 
-  LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON do.order_id = dosr.order_id 
+  LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = do.order_id
   WHERE ois.supplier_class NOT LIKE "TECH"
-    AND doc.order_channel IS NOT NULL
     AND doc.order_channel LIKE "TENDER"
   GROUP BY 1, 2, 3, 4
 )
