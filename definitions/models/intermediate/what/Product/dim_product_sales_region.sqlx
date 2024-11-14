@@ -23,6 +23,7 @@ with
             , JSON_EXTRACT_SCALAR(f, '$.warehouse_code') as fc_code
             , SAFE_CAST(JSON_EXTRACT_SCALAR(f, '$.category_in_charge') as INT64) as cic_account_id
             , acc3.user_name as cic_name
+            , acc3.fullname as cic_fullname
             , REGEXP_REPLACE(UPPER(JSON_EXTRACT_SCALAR(f, '$.category_management')), r'\_', '') as brand_type
         FROM ${source.platinum}.marketplace_prd_product_v2_product_category_in_charge as e
             LEFT JOIN UNNEST(JSON_EXTRACT_ARRAY(e.category_in_charge_data)) as f
@@ -53,7 +54,7 @@ SELECT
     , COALESCE( p.cic_account_id, cic.cic_account_id ) AS cic_account_id
     -- , COALESCE( p.cic_name, cic.cic_name ) AS cic_name
     , p.cic_name
-    , cic.cic_name AS cic_name_internal
+    , cic.cic_fullname AS cic_name_internal
     , cic.brand_type
     , CASE
         WHEN cic.brand_type IS NULL OR cic.brand_type IN ("#N/A", "") THEN NULL
