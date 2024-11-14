@@ -363,6 +363,7 @@ SELECT
   ois.confirmation_time,
   ois.sku_code_original,
   ois.sku_code,
+  ois.product_id,
   ois.supplier_class, -- For filter test
   ois.note,
   ois.more_note,
