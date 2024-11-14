@@ -53,6 +53,7 @@ SELECT
     , COALESCE( p.cic_account_id, cic.cic_account_id ) AS cic_account_id
     -- , COALESCE( p.cic_name, cic.cic_name ) AS cic_name
     , p.cic_name
+    , cic.cic_name AS cic_name_internal
     , cic.brand_type
     , CASE
         WHEN cic.brand_type IS NULL OR cic.brand_type IN ("#N/A", "") THEN NULL
