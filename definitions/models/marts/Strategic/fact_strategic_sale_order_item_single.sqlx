@@ -165,7 +165,6 @@ mkp_o AS (
         SAFE_CAST( JSON_VALUE( ois.price ) as INT64 ) as product_single_price,
         oi.seller_code,
         oi.seller_class,
-        
         oi.outbound_quantity,
         oi.demand_quantity,
         oi.returned_quantity,
@@ -268,7 +267,6 @@ mkp_o AS (
         o.sale_order_code,
         o.shipping_ward_code,
         o.customer_id,
-        -- o.fc_code,
         oi.product_id_original,
         oi.sku_code_original,
         oi.seller_code_original as supplier_code_original,
