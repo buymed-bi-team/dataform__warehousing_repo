@@ -27,11 +27,12 @@ select
     oi.quantity,
     oi.seller_code,
     oi.product_id,
-    oi.total_amount,
---     o.receiver_name,
+    oi.total_amount,lower(unit_name) as unit,
+    -- o.receiver_name,
     o.receiver_id,
     o.province_code,
-    "INTERNAL-TENDER" as source_type
+    "INTERNAL-TENDER" as source_type,
+    oi.product_id ||"_"|| lower(unit_name) as product_unit_key
 from ${source.platinum}.tender_prd_core_tender_order_items oi
 left join ${source.platinum}.tender_prd_core_tender_orders o on oi.order_id = o.order_id)
 , internal_thuocsi as (
@@ -44,14 +45,17 @@ left join ${source.platinum}.tender_prd_core_tender_orders o on oi.order_id = o.
     oi.seller_code,
     oi.product_id,
     sum( oi.demand_quantity * sales_price) as total_amount ,
---     o.receiver_name,
+    dp.unit,
+    -- o.receiver_name,
     oi.customer_id as receiver_id,
     gl.province_code,
-    "INTERNAL-THUOCSI" as source_type
+    "INTERNAL-THUOCSI" as source_type,
+oi.product_id ||"_"|| lower(unit)  as product_unit_key
     from ${source.gold}.fact_order_item oi
     left join ${source.ref}.dim_order o on oi.order_id = o.order_id
     left join ${source.ref}.dim_geo_location gl on o.location_code = gl.location_code
     left join ${source.gold}.dim_seller s on oi.seller_code = s.supplier_code
+    left join ${source.ref}.dim_product dp on oi.product_id = dp.product_id
     where
      o.order_channel like "%TENDER%"
     --  and

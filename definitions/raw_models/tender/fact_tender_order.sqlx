@@ -29,7 +29,7 @@ date(d.created_time )       as created_date,
 so_code                                                 as sale_order_code,
 -- delivered_time as delivered_time,
 f.province_code,
-customer_name,
+customer_name as receiver_name,
 "INTERNAL-THUOCSI"                                      as source
 from ${source.ref}.fact_order f
          left join ${source.ref}.dim_order d on f.order_id = d.order_id
