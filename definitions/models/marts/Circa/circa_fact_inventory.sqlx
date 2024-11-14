@@ -9,7 +9,7 @@ config {
             buymed_circa.inventory_location,
             buymed_circa.inventory_cost_price
         `,
-    tags: ["adhoc-office"],
+    //tags: ["adhoc-office"],
     columns: {
 
     }
