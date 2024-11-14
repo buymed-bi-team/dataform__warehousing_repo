@@ -1,0 +1,27 @@
+config {
+    type:"operations",
+    description: "PIC:MinhLuu",
+    tags: ['assert_capture_for_customer', "custom_1h_past5"]
+}
+
+IF( (SELECT count(*)
+    FROM ${ref(`dim_customer`)} ) < 100000 )
+  THEN 
+    IF ( 
+    SELECT COUNT(*) >0
+    FROM lakehouse-prod-394907.dataform_assertions.__TABLES__ 
+    WHERE table_id like "dim_customer_trigger_assertion" 
+    ) THEN 
+        INSERT INTO dataform_assertions.dim_customer_trigger_assertion
+        SELECT * , CURRENT_TIME() AS assertions_time
+        FROM ${ref(`dim_customer`)};
+    ELSE
+        CREATE TABLE dataform_assertions.dim_customer_trigger_assertion AS (
+        SELECT * , CURRENT_TIME() AS assertions_time
+        FROM ${ref(`dim_customer`)}
+        );
+    END IF;    
+
+    ASSERT (SELECT FALSE) AS "Order missing data";
+
+  END IF;
