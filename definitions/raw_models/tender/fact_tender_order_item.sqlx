@@ -27,12 +27,12 @@ select
     oi.quantity,
     oi.seller_code,
     oi.product_id,
-    oi.total_amount,unit_name as unit,
+    oi.total_amount,lower(unit_name) as unit,
     -- o.receiver_name,
     o.receiver_id,
     o.province_code,
     "INTERNAL-TENDER" as source_type,
-    oi.product_id ||"_"|| unit_name as product_unit_key
+    oi.product_id ||"_"|| lower(unit_name) as product_unit_key
 from ${source.platinum}.tender_prd_core_tender_order_items oi
 left join ${source.platinum}.tender_prd_core_tender_orders o on oi.order_id = o.order_id)
 , internal_thuocsi as (
@@ -50,7 +50,7 @@ left join ${source.platinum}.tender_prd_core_tender_orders o on oi.order_id = o.
     oi.customer_id as receiver_id,
     gl.province_code,
     "INTERNAL-THUOCSI" as source_type,
-oi.product_id ||"_"|| unit  as product_unit_key
+oi.product_id ||"_"|| lower(unit)  as product_unit_key
     from ${source.gold}.fact_order_item oi
     left join ${source.ref}.dim_order o on oi.order_id = o.order_id
     left join ${source.ref}.dim_geo_location gl on o.location_code = gl.location_code
