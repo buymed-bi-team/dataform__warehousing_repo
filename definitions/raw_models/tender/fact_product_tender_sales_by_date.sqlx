@@ -20,6 +20,8 @@ with internal_thuocsi as
 (select  --created_at,
         date(o.created_time) as created_date,
         td.product_id,
+        td.unit,
+        td.product_id ||"_"|| unit as product_unit_key,
         o.order_channel,
         sum(sales_price * demand_quantity) as ordered_amount,
         SUM(demand_quantity) as ordered_quantity
@@ -35,7 +37,7 @@ internal_tender as
 (
   select
   o.created_date,
-    oi.product_id,
+    oi.product_id,unit,product_id ||"_"|| unit as product_unit_key,
     "TENDER" as order_channel,
     sum(oi.total_amount) as ordered_amount,
     sum(oi.quantity) as ordered_quantity
