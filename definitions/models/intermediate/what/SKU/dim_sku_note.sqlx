@@ -21,12 +21,14 @@ SELECT
         WHEN pic.pic_purchase_id IS NULL AND cic.cic_category_id IS NULL AND e.account_id IS NULL THEN "SYSTEM"
         WHEN pic.pic_purchase_id IS NOT NULL THEN "PIC"
         WHEN cic.cic_category_id IS NOT NULL THEN "CIC"
-        END AS note_type
+        ELSE "OTHER"
+      END AS note_type
     , content
+    , created_by_name
 FROM ${source.platinum}.core_prd_note_note AS n
     LEFT JOIN (
         SELECT DISTINCT
-            pic_purchase_id
+            pic_purchase_id, pic_purchase_name, pic_purchase_username
         FROM ${ref('dim_supplier_fc_person_in_charge')} AS a
         WHERE NOT EXISTS (SELECT 1
                           FROM ${ref('dim_supplier_fc_person_in_charge')} AS b
@@ -35,14 +37,14 @@ FROM ${source.platinum}.core_prd_note_note AS n
     ) AS pic ON pic.pic_purchase_id = n.created_by
     LEFT JOIN (
         SELECT DISTINCT
-            cic_category_id
+            cic_category_id, cic_category_name, cic_category_username
         FROM ${ref('dim_supplier_fc_person_in_charge')}
     ) AS cic ON cic.cic_category_id = n.created_by
     LEFT JOIN  (
         SELECT DISTINCT
-            account_id
+            account_id, username, fullname
         FROM ${source.platinum}.core_prd_account_account
         WHERE type = 'EMPLOYEE'
     ) AS e ON n.created_by = e.account_id
 WHERE REGEXP_CONTAINS(TO_JSON_STRING(types), r'"UPDATE/retail_price_value"|"UPDATE/dynamic_pricing_level"|"UPDATE/retail_price_type"|"UPDATE/max_quantity_per_order"') = FALSE
-QUALIFY ROW_NUMBER() over (PARTITION BY item_code, note_type ORDER BY created_time DESC) = 1
+-- QUALIFY ROW_NUMBER() over (PARTITION BY item_code, note_type ORDER BY created_time DESC) = 1
