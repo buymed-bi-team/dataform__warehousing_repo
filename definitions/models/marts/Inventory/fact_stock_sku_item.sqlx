@@ -19,11 +19,11 @@ inventory_location as (
     SELECT
         CONCAT(code, "_", warehouse_code) AS location_fc_code
         , CASE
-            WHEN COUNTIF(JSON_EXTRACT_SCALAR(tags) = "NEAR_EXPIRED") > 0 then True
+            WHEN COUNTIF(JSON_VALUE(tags) = "NEAR_EXPIRED") > 0 then True
           ELSE False
         END AS is_near_expired
     FROM platinum_buymed_vn.warehouse_prd_inventory_location
-        , unnest(json_extract_array(tags)) AS tags
+        , unnest(JSON_QUERY_ARRAY(tags)) AS tags
     WHERE warehouse_code IN ('BD', 'HN', 'DN')
     GROUP BY ALL)
 
