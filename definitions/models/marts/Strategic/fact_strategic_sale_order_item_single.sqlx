@@ -363,7 +363,7 @@ SELECT
   ois.fulfilled_quantity, 
   ois.returned_quantity,
   ois.cancel_before_ffm_quantity, 
-  ois.cancel_after_ffm_quantity, 
+  ois.cancel_after_ffm_quantity,
   doc.order_channel,
   CASE
         WHEN dosr.sales_region_code LIKE "MIENNAM" THEN "SOUTHERN"
