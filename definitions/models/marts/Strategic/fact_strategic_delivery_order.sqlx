@@ -85,7 +85,8 @@ LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = o.order_id
 LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON o.order_id = dosr.order_id
 WHERE 
 (${utils.ToTimezone(`o.created_time`)} >= ${start_date} 
-AND doc.order_channel IS NOT NULL)
+AND doc.order_channel IS NOT NULL
+AND doc.order_channel <> "CONSIGNMENT-RECOGNITION")
 -- WHERE do.mg_id not in (
 --     SELECT mg_id
 --     FROM ${source.platinum}.warehouse_prd_core_delivery_order AS sub

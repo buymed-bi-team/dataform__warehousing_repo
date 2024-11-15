@@ -126,24 +126,24 @@ delivery_metrics AS (
   INNER JOIN base_calendar bc ON DATE(do.created_time) = bc.date
   INNER JOIN ois ON do.order_id = ois.order_id
   WHERE ois.supplier_class NOT LIKE "TECH"
-    AND do.channel NOT IN ("TENDER", "CONSIGNMENT-RECOGNITION")
-  GROUP BY 1, 2, 3, 4
+    -- AND do.channel NOT IN ("TENDER", "CONSIGNMENT-RECOGNITION")
+  GROUP BY 1, 2, 3, 4)
 
-  UNION ALL 
+--   UNION ALL 
 
-  SELECT 
-    DATE(do.confirmation_time) as delivery_date,
-    do.location,
-    do.channel,
-    CAST(NULL AS STRING) AS supplier_class,
-    COUNT(DISTINCT do.delivery_order_code) as do_count
-  FROM ${ref(`fact_strategic_delivery_order`)} do 
-  INNER JOIN base_calendar bc ON DATE(do.confirmation_time) = bc.date
-  INNER JOIN ois ON do.order_id = ois.order_id
-  WHERE ois.supplier_class NOT LIKE "TECH"
-    AND do.channel LIKE "TENDER"
-  GROUP BY 1, 2, 3, 4
-)
+--   SELECT 
+--     DATE(do.confirmation_time) as delivery_date,
+--     do.location,
+--     do.channel,
+--     CAST(NULL AS STRING) AS supplier_class,
+--     COUNT(DISTINCT do.delivery_order_code) as do_count
+--   FROM ${ref(`fact_strategic_delivery_order`)} do 
+--   INNER JOIN base_calendar bc ON DATE(do.confirmation_time) = bc.date
+--   INNER JOIN ois ON do.order_id = ois.order_id
+--   WHERE ois.supplier_class NOT LIKE "TECH"
+--     AND do.channel LIKE "TENDER"
+--   GROUP BY 1, 2, 3, 4
+-- )
 
 
 SELECT 
