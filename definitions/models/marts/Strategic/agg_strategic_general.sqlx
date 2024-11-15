@@ -41,7 +41,6 @@ filtered_orders AS (
   SELECT 
     fs.order_id,
     fs.created_time,
-    -- fs.confirmation_time, -- for tender
     fs.listed_price,
     fs.commercial_type,
     fs.sales_price,
@@ -53,6 +52,7 @@ filtered_orders AS (
     fs.supplier_class,
     fs.channel,
     fs.location,
+    fs.shipping_ward_code
   FROM ${ref(`fact_strategic_sale_order_item_single`)} fs 
 ),
 
@@ -63,6 +63,7 @@ order_metrics AS (
     location,
     channel,
     supplier_class,
+    -- shipping_ward_code,
     SUM(sales_price * demand_quantity) as gmv_before_cancel,
     SUM(IF(order_status LIKE "CANCEL" AND sale_order_code is null, (sales_price * demand_quantity ),0 )) as cancel_before_ffm,
     SUM(IF(order_status LIKE "CANCEL", (sales_price * demand_quantity), 0)) as cancel,
@@ -121,29 +122,30 @@ delivery_metrics AS (
     do.location,
     do.channel,
     CAST(NULL AS STRING) AS supplier_class,
+    -- shipping_ward_code,
     COUNT(DISTINCT do.delivery_order_code) as do_count
   FROM ${ref(`fact_strategic_delivery_order`)} do 
   INNER JOIN base_calendar bc ON DATE(do.created_time) = bc.date
   INNER JOIN ois ON do.order_id = ois.order_id
   WHERE ois.supplier_class NOT LIKE "TECH"
-    AND do.channel NOT IN ("TENDER", "CONSIGNMENT-RECOGNITION")
-  GROUP BY 1, 2, 3, 4
+    -- AND do.channel NOT IN ("TENDER", "CONSIGNMENT-RECOGNITION")
+  GROUP BY 1, 2, 3, 4)
 
-  UNION ALL 
+--   UNION ALL 
 
-  SELECT 
-    DATE(do.confirmation_time) as delivery_date,
-    do.location,
-    do.channel,
-    CAST(NULL AS STRING) AS supplier_class,
-    COUNT(DISTINCT do.delivery_order_code) as do_count
-  FROM ${ref(`fact_strategic_delivery_order`)} do 
-  INNER JOIN base_calendar bc ON DATE(do.confirmation_time) = bc.date
-  INNER JOIN ois ON do.order_id = ois.order_id
-  WHERE ois.supplier_class NOT LIKE "TECH"
-    AND do.channel LIKE "TENDER"
-  GROUP BY 1, 2, 3, 4
-)
+--   SELECT 
+--     DATE(do.confirmation_time) as delivery_date,
+--     do.location,
+--     do.channel,
+--     CAST(NULL AS STRING) AS supplier_class,
+--     COUNT(DISTINCT do.delivery_order_code) as do_count
+--   FROM ${ref(`fact_strategic_delivery_order`)} do 
+--   INNER JOIN base_calendar bc ON DATE(do.confirmation_time) = bc.date
+--   INNER JOIN ois ON do.order_id = ois.order_id
+--   WHERE ois.supplier_class NOT LIKE "TECH"
+--     AND do.channel LIKE "TENDER"
+--   GROUP BY 1, 2, 3, 4
+-- )
 
 
 SELECT 
@@ -153,6 +155,7 @@ SELECT
   m.channel,
   measure,
   supplier_class,
+--   shipping_ward_code,
   value
   
 FROM order_metrics m
@@ -186,6 +189,7 @@ SELECT
   d.channel,
   'DO' as measure,
   d.supplier_class,
+--   shipping_ward_code,
   d.do_count as value
 FROM delivery_metrics d
 JOIN base_calendar c 
