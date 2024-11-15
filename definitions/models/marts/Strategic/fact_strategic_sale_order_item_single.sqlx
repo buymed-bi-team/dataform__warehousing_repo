@@ -50,7 +50,7 @@ mkp_o AS (
         o.status,
         outbound_date,
         created_time,
-        confirmation_date,
+        -- confirmation_date,
         delivered_time,
         CASE
         WHEN SAFE_CAST(customer_ward_code AS integer) > 0 THEN customer_ward_code
@@ -89,8 +89,8 @@ mkp_o AS (
         o.receiver_id * (10000) AS customer_id,
         o.status,
         o.outbound_date,
-        o.created_time,
-        o.confirmation_date,
+        -- o.created_time,
+        o.confirmation_date as created_time,
         o.delivered_time,
         CASE
         WHEN SAFE_CAST(ward_code AS integer) > 0 THEN ward_code
@@ -292,7 +292,7 @@ mkp_o AS (
         ) as supplier_class,
         ${utils.ToTimezone(`o.created_time`)} as created_time,
         ${utils.ToTimezone(`o.outbound_date`)} as outbound_time,
-        ${utils.ToTimezone(`o.confirmation_date`)} as confirmation_time,
+        -- ${utils.ToTimezone(`o.confirmation_date`)} as confirmation_time,
         ${utils.ToTimezone(`o.delivered_time`)} as delivered_time,
 
         IF( oi.charge_campaign_fee_value <0, 0 , oi.charge_campaign_fee_value) charge_campaign_fee_value ,
@@ -347,7 +347,7 @@ SELECT
   ois.order_status,
   ois.commercial_type,
   ois.created_time,
-  ois.confirmation_time,
+--   ois.confirmation_time,
   ois.sku_code_original,
   ois.sku_code,
   ois.product_id,
