@@ -79,8 +79,10 @@ order_metrics AS (
     SUM(IF(order_status NOT LIKE "CANCEL" , returned_quantity, 0) * sales_price) as gmv_return,
     SUM(demand_quantity) as item_sold
   FROM filtered_orders
-  WHERE channel NOT IN ("TENDER","CONSIGNMENT-RECOGNITION")
-  AND channel is not null
+  -- WHERE 
+  -- channel NOT IN ("TENDER","CONSIGNMENT-RECOGNITION")
+  -- AND 
+  -- channel is not null
   GROUP BY 1, 2, 3, 4),
 
 --   UNION ALL
