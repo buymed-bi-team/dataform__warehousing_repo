@@ -380,7 +380,8 @@ SELECT
 FROM fact_strategic_2 ois
 LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = ois.order_id 
 LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON ois.order_id = dosr.order_id
-WHERE ois.supplier_class NOT LIKE "TECH" AND doc.order_channel IS NOT NULL
+WHERE (ois.supplier_class NOT LIKE "TECH" AND doc.order_channel IS NOT NULL
+and doc.order_channel <> "CONSIGNMENT-RECOGNITION")
 
 
 -- -- post_operations {
