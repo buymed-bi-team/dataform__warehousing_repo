@@ -35,14 +35,14 @@ WITH dedup_human_resource AS ${dedup.dedup(
 
     employee_phone_number AS (
         SELECT
-            code AS phone_number
+            LPAD(code, 10, "0") AS phone_number
             , LOWER(value) as email
         FROM ${source.collector}.data_prd
         WHERE
             object = 'Phone_PIC'
             AND type = 'EMPLOYEE_MAIL'
             AND submit_id >= 5066
-            AND submit_id <> 5079
+            -- AND submit_id <> 5079
         QUALIFY ROW_NUMBER() over (PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
     )
 
@@ -55,11 +55,13 @@ SELECT
     a.department,
     a.job_title,
     a.employee_status,
-    c.phone_number
+     COALESCE(c.phone_number, d.phone_number) AS phone_number
 FROM dedup_human_resource AS a,
     UNNEST(JSON_EXTRACT_ARRAY(user_branch_infos)) as branch
     LEFT JOIN employee_phone_number AS c 
         ON c.email = a.email
+    LEFT JOIN employee_phone_number AS d 
+        ON d.email = LOWER(a.fullname)
 WHERE JSON_VALUE(branch,'$.branch') LIKE "VN"
 AND NOT REGEXP_CONTAINS(UPPER(a.fullname),"TEST|DEMO|/[TECH/]|AP CHECKL")
 
