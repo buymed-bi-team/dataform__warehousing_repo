@@ -50,7 +50,6 @@ mkp_o AS (
         o.status,
         outbound_date,
         created_time,
-        -- confirmation_date,
         delivered_time,
         CASE
         WHEN SAFE_CAST(customer_ward_code AS integer) > 0 THEN customer_ward_code
@@ -89,8 +88,7 @@ mkp_o AS (
         o.receiver_id * (10000) AS customer_id,
         o.status,
         o.outbound_date,
-        -- o.created_time,
-        o.confirmation_date as created_time,
+        o.confirmation_date as created_time, -- Tender using confirmation_date as created time
         o.delivered_time,
         CASE
         WHEN SAFE_CAST(ward_code AS integer) > 0 THEN ward_code
