@@ -37,7 +37,7 @@ WITH mkp_o AS (
         order_id,
         sale_order_code,
         created_time ,
-        confirmation_date
+        -- confirmation_date
     FROM 
         ${source.platinum}.marketplace_prd_order_v2_order
     WHERE created_date >= ${start_date}
@@ -47,8 +47,8 @@ WITH mkp_o AS (
     SELECT 
         order_id,
         sale_order_code,
-        created_time ,
-        confirmation_date
+        -- created_time ,
+        confirmation_date as created_time -- IN TENDER, CONFIRMATION_DATE IS CONSIDERED SAME AS CREATED_DATE IN ORDER
     FROM
         ${source.platinum}.tender_prd_core_tender_orders
     WHERE created_date >= ${start_date}
@@ -66,7 +66,7 @@ SELECT
     o.sale_order_code,
     do.delivery_order_code,
     ${utils.ToTimezone(`do.created_time`)} as qc_done_time,
-    ${utils.ToTimezone(`o.confirmation_date`)} as confirmation_time,
+    -- ${utils.ToTimezone(`o.confirmation_date`)} as confirmation_time,
     ${utils.ToTimezone(`o.created_time`)} as created_time,
     CASE
       WHEN doc.order_channel IN ("MARKETPLACE","CONSIGNMENT") THEN "MARKETPLACE"
@@ -85,7 +85,8 @@ LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = o.order_id
 LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON o.order_id = dosr.order_id
 WHERE 
 (${utils.ToTimezone(`o.created_time`)} >= ${start_date} 
-AND doc.order_channel IS NOT NULL)
+AND doc.order_channel IS NOT NULL
+AND doc.order_channel <> "CONSIGNMENT-RECOGNITION")
 -- WHERE do.mg_id not in (
 --     SELECT mg_id
 --     FROM ${source.platinum}.warehouse_prd_core_delivery_order AS sub

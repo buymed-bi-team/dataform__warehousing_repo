@@ -98,8 +98,9 @@ mkp_o AS (
         "TENDER" AS system
     FROM
         ${source.platinum}.tender_prd_core_tender_orders o
-    WHERE o.created_date >= ${start_date} 
+    WHERE (o.created_date >= ${start_date} 
     AND o.created_time is not null
+    AND status NOT LIKE "WAIT_TO_CONFIRM")
 )
 , tender_oi AS (
     SELECT 
@@ -379,7 +380,9 @@ SELECT
 FROM fact_strategic_2 ois
 LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = ois.order_id 
 LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON ois.order_id = dosr.order_id
-WHERE ois.supplier_class NOT LIKE "TECH" AND doc.order_channel IS NOT NULL
+WHERE (ois.supplier_class NOT LIKE "TECH" AND doc.order_channel IS NOT NULL
+and doc.order_channel <> "CONSIGNMENT-RECOGNITION")
+
 
 -- -- post_operations {
 -- --     ALTER TABLE ${self()} 
