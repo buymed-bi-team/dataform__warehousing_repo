@@ -41,7 +41,7 @@ filtered_orders AS (
   SELECT 
     fs.order_id,
     fs.created_time,
-    fs.confirmation_time, -- for tender
+    -- fs.confirmation_time, -- for tender
     fs.listed_price,
     fs.commercial_type,
     fs.sales_price,
