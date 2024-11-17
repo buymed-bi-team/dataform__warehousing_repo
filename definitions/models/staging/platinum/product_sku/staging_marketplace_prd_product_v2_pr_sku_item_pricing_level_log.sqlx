@@ -1,5 +1,6 @@
 config {
     type: "table",
+    schema: "platinum_buymed_vn",
     name: "marketplace_prd_product_v2_pr_sku_item_pricing_level_log",
     assertions: {
         uniqueKey: 'mg_id',
