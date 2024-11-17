@@ -42,18 +42,20 @@ pre_operations {
       );
       --
 
-      SET checkpoint_date = ( 
-        SELECT ARRAY_AGG(
-            DATE( COALESCE(silver_new.created_time, platinum.created_time) ,'+7')
-            IGNORE NULLS
-            )
-        FROM tmp1 silver_new
-        LEFT JOIN ${self()} platinum ON platinum.mg_id = silver_new.mg_id
-      );
+    --   SET checkpoint_date = ( 
+    --     SELECT ARRAY_AGG(
+    --         DATE( COALESCE(silver_new.created_time, platinum.created_time) ,'+7')
+    --         IGNORE NULLS
+    --         )
+    --     FROM tmp1 silver_new
+    --     LEFT JOIN ${self()} platinum ON platinum.mg_id = silver_new.mg_id
+    --   );
 
       DELETE FROM ${self()}
-      where created_date in UNNEST(checkpoint_date)
-      and mg_id in ( 
+      where 
+    --   created_date in UNNEST(checkpoint_date)
+    --   and 
+      mg_id in ( 
         SELECT DISTINCT mg_id 
         FROM tmp1
         );
