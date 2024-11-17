@@ -148,7 +148,7 @@ SELECT
   seller.name as owner_name,
 
   manufacturer.code as manufacturer_code,
-  manufacturer.short_name as manufacturer_short_name,
+  COALESCE(NULLIF(manufacturer.short_name,''), manufacturer.name) as manufacturer_short_name,
 
   product.dosage_form,
   product.unit,

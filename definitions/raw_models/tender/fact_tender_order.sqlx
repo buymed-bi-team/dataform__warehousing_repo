@@ -34,6 +34,7 @@ customer_name as receiver_name,
 from ${source.ref}.fact_order f
          left join ${source.ref}.dim_order d on f.order_id = d.order_id
 where d.order_channel like "%TENDER%")
+
 , internal_tender as (
   select
 --     order_code,
@@ -41,7 +42,7 @@ order_id,
 status,
 -- receiver_id,
 -- total_amount,
-DATETIME(TIMESTAMP(created_time), 'Asia/Ho_Chi_Minh')   as created_time,
+DATETIME(TIMESTAMP(confirmation_date), 'Asia/Ho_Chi_Minh')   as created_time,
 created_date,
 sale_order_code,
 -- datetime(delivered_time) as delivered_time,

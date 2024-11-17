@@ -50,7 +50,6 @@ mkp_o AS (
         o.status,
         outbound_date,
         created_time,
-        confirmation_date,
         delivered_time,
         CASE
         WHEN SAFE_CAST(customer_ward_code AS integer) > 0 THEN customer_ward_code
@@ -89,8 +88,7 @@ mkp_o AS (
         o.receiver_id * (10000) AS customer_id,
         o.status,
         o.outbound_date,
-        o.created_time,
-        o.confirmation_date,
+        o.confirmation_date as created_time, -- Tender using confirmation_date as created time
         o.delivered_time,
         CASE
         WHEN SAFE_CAST(ward_code AS integer) > 0 THEN ward_code
@@ -98,8 +96,9 @@ mkp_o AS (
         "TENDER" AS system
     FROM
         ${source.platinum}.tender_prd_core_tender_orders o
-    WHERE o.created_date >= ${start_date} 
+    WHERE (o.created_date >= ${start_date} 
     AND o.created_time is not null
+    AND status NOT LIKE "WAIT_TO_CONFIRM")
 )
 , tender_oi AS (
     SELECT 
@@ -292,7 +291,7 @@ mkp_o AS (
         ) as supplier_class,
         ${utils.ToTimezone(`o.created_time`)} as created_time,
         ${utils.ToTimezone(`o.outbound_date`)} as outbound_time,
-        ${utils.ToTimezone(`o.confirmation_date`)} as confirmation_time,
+        -- ${utils.ToTimezone(`o.confirmation_date`)} as confirmation_time,
         ${utils.ToTimezone(`o.delivered_time`)} as delivered_time,
 
         IF( oi.charge_campaign_fee_value <0, 0 , oi.charge_campaign_fee_value) charge_campaign_fee_value ,
@@ -347,7 +346,7 @@ SELECT
   ois.order_status,
   ois.commercial_type,
   ois.created_time,
-  ois.confirmation_time,
+--   ois.confirmation_time,
   ois.sku_code_original,
   ois.sku_code,
   ois.product_id,
@@ -364,7 +363,10 @@ SELECT
   ois.returned_quantity,
   ois.cancel_before_ffm_quantity, 
   ois.cancel_after_ffm_quantity,
-  doc.order_channel,
+  CASE
+      WHEN doc.order_channel IN ("MARKETPLACE","CONSIGNMENT") THEN "MARKETPLACE"
+      ELSE doc.order_channel
+    END AS channel,
   CASE
         WHEN dosr.sales_region_code LIKE "MIENNAM" THEN "SOUTHERN"
         WHEN dosr.sales_region_code LIKE "MIENTRUNG" THEN "CENTRAL"
@@ -376,7 +378,9 @@ SELECT
 FROM fact_strategic_2 ois
 LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = ois.order_id 
 LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON ois.order_id = dosr.order_id
-WHERE ois.supplier_class NOT LIKE "TECH" AND doc.order_channel IS NOT NULL
+WHERE (ois.supplier_class NOT LIKE "TECH" AND doc.order_channel IS NOT NULL
+and doc.order_channel <> "CONSIGNMENT-RECOGNITION")
+
 
 -- -- post_operations {
 -- --     ALTER TABLE ${self()} 
