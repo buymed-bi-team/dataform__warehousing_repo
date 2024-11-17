@@ -4,7 +4,7 @@ config {
     name: "marketplace_prd_product_v2_pr_sku_item_pricing_level_log",
     assertions: {
         uniqueKey: 'mg_id',
-        nonNull: ["created_date"]
+        // nonNull: ["created_date"]
     },
     bigquery: {
         partitionBy: "created_date"
