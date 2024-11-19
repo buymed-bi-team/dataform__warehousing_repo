@@ -117,7 +117,7 @@ UNION ALL
 
 SELECT a.* 
 FROM ${ref(`agg_strategic_customer`)} as a
-INNER JOIN base_calendar c ON DATE(c.eom) = a.date
+INNER JOIN base_calendar c ON DATE(c.date) = a.date
 
 
 UNION ALL -- Inventory cut off by last day of month
