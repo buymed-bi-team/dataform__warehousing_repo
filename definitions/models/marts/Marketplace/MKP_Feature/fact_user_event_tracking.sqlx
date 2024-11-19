@@ -48,6 +48,8 @@ WITH stg AS (
         
 ------------ nguyen.tran added-----------------------------
         JSON_VALUE(a.extra_props, '$.metadata.name') AS store_name,
+        JSON_VALUE(a.extra_props, '$.metadata.storeType') AS store_type,
+        COALESCE(NULLIF(JSON_VALUE(a.extra_props, '$.metadata.storeCode'), ""), NULLIF(JSON_VALUE(a.extra_props, '$.metadata.sellerCode'), "")) AS store_code,
         SAFE_CAST(JSON_VALUE(a.extra_props, '$.metadata.timeCounter') AS INT64) AS time_counter,
 ----------------------------------------------------------------
     FROM
@@ -106,7 +108,9 @@ WITH stg AS (
             client_user_time,
             area,
             store_name,
-            time_counter
+            time_counter,
+            store_type,
+            store_code
         from (
             select *,
             COALESCE(block_code_v1,blockCode) as block_code,
