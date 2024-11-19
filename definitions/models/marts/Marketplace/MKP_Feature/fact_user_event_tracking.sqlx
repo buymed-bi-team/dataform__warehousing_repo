@@ -104,7 +104,9 @@ WITH stg AS (
                 ELSE sku_code
             END AS seller_code,
             client_user_time,
-            area
+            area,
+            store_name,
+            time_counter
         from (
             select *,
             COALESCE(block_code_v1,blockCode) as block_code,
