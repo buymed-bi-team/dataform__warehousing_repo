@@ -3,18 +3,20 @@ config {
     description: "PIC: huongdang"
 }
 
-main_customer as(
-    SELECT *
+With main_customer as(
+    SELECT 
+    dcp.*
+    ,CASE
+        WHEN cust.config_fc LIKE "MIENNAM" THEN "SOUTHERN"
+        WHEN cust.config_fc LIKE "MIENTRUNG" THEN "CENTRAL"
+        WHEN cust.config_fc LIKE "MIENBAC" THEN "NORTHERN"
+        ELSE "GMV_VN_REGION_UNKNOWN" 
+        END AS location
     FROM ${ref(`dim_customer_profiling`)} dcp
-    LEFT JOIN ${ref(`dim_customer`)} cust
-    LEFT JOIN ${ref(`dim_fc_service_area`)} area 
+    LEFT JOIN ${ref(`dim_customer`)} cust on dcp.customer_id = cust.customer_id
+    
     
 )
-
-
-
-
-
 
 
 SELECT 
