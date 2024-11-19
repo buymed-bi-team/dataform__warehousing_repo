@@ -64,6 +64,16 @@ WITH mkp_o AS (
     SELECT * FROM tender_o
 )
 
+,ois AS ( -- FOR DO
+    -- actually, it just exclude 36 order, so if you query raw, don't need this, the error is very small, but in agg_general, dataform take all fact_strategic, so I will include it
+    -- I just exclude the orders that is contains all test item
+    SELECT 
+        order_id,
+        STRING_AGG(DISTINCT supplier_class) supplier_class
+    FROM ${ref(`fact_strategic_sale_order_item_single`)} ois 
+    GROUP BY 1
+)
+
 SELECT 
     DISTINCT 
     o.order_id,
@@ -87,14 +97,9 @@ FROM  o
 LEFT JOIN ${source.platinum}.warehouse_prd_core_delivery_order do ON o.sale_order_code = do.sale_order_code
 LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = o.order_id 
 LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON o.order_id = dosr.order_id
+INNER JOIN ois ON o.order_id = ois.order_id
 WHERE 
 (${utils.ToTimezone(`o.created_time`)} >= ${start_date} 
 AND doc.order_channel IS NOT NULL
-AND doc.order_channel <> "CONSIGNMENT-RECOGNITION")
--- WHERE do.mg_id not in (
---     SELECT mg_id
---     FROM ${source.platinum}.warehouse_prd_core_delivery_order AS sub
---     WHERE sub.delivery_order_code IN ('SOHN33752896-F', 'SOHN33760323-F')
---     AND sub.action_time IS NULL
---     AND created_date = "2023-08-29"
--- )
+AND doc.order_channel <> "CONSIGNMENT-RECOGNITION"
+AND ois.supplier_class NOT LIKE "TECH")
