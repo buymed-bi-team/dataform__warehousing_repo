@@ -47,7 +47,7 @@ FROM ${ref('dim_sku_sales_region_current')} AS c
         ON c.sub_sku_code = a.item_code
             AND c.sales_region_code = a.sales_region_code
             AND DATE(c.sku_approved_at) <= a.date
-            AND a.date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), WEEK(MONDAY)), INTERVAL 3 WEEK )
+            AND a.date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), WEEK(MONDAY)), INTERVAL 5 WEEK )
 --             AND a.date = CURRENT_DATE("+7")
 WHERE
     a.date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), WEEK(MONDAY)), INTERVAL 5 WEEK )
