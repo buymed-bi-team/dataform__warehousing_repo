@@ -1,9 +1,22 @@
 config {
     type:"operations",
     description: "PIC:MinhLuu",
-    tags: ['6h00'],
+    // tags: ['6h00'],
+    tags: ["deprecated"],
     dependencies: ["fact_voucher_sku"]
 }
+
+/*
+    Verify data of fact_voucher_sku, ensuring data_type columns type is INT64
+    How this operations work:
+    - Step 1: After fact_voucher_sku run, recheck it
+    - Step 2: If data_type isn't then move to Step 3, if it is INT64 then stop
+    - Step 3: Create a backup table of that time, to re check
+    - Step 4: Create again agg_gmv_by_price_sku_fc_code, which related to fact_voucher_sku
+        but used to Visualize in PowerBI, but will regenerate from source of fact_voucher_sku
+    - Step 5: Assertion
+
+*/
 
 IF( (
         select if(data_type!="INT64",0,1)
