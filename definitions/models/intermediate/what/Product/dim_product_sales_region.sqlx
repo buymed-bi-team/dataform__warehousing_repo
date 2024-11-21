@@ -51,7 +51,8 @@ SELECT
     , sa.sales_region_code
     , CONCAT( p.product_id, '_', sa.fc_code ) AS product_fc_code
     , CONCAT( p.product_id, '_', sa.sales_region_code ) AS product_sales_region_code
-    , COALESCE( p.cic_account_id, cic.cic_account_id ) AS cic_account_id
+    -- , COALESCE( p.cic_account_id, cic.cic_account_id ) AS cic_account_id
+    , cic.cic_account_id
     -- , COALESCE( p.cic_name, cic.cic_name ) AS cic_name
     , p.cic_name AS cic_name_import
     , cic.cic_name AS cic_name_internal
