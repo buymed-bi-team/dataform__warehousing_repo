@@ -156,7 +156,7 @@ SELECT
     psr.cic_account_id,
     -- pro.cic_name AS cic_name,
     psr.cic_name_import,
-    psr.cic_name_internal AS cic_name,
+    psr.cic_name,
     psr.cic_full_name_internal,
     -- cic.cic_name,
     -- cic.brand_type,
