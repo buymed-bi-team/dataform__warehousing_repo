@@ -1,7 +1,7 @@
 config {
     type: 'table',
     name: "fact_user_event_tracking",
-    description: `Last 2 month | PIC: tu.dang; schedule: 0h00 daily; model type: table
+    description: `Last 2 month | PIC: tu.dang; schedule: 8h30 daily; model type: table
     Source:
         ${source.platinum}.monitoring_prd_collector_user_stats`,
     columns: { 
@@ -14,7 +14,7 @@ config {
         source: "Nullable | The source of the event, indicating how the item was created",
         sku_code: "NonNull" | docs.sku
         },
-    tags: ['0h30'],
+    tags: ['8h30'],
     bigquery: {
         partitionBy: "date(created_time)",
         clusterBy: ["event", "customer_id"]
