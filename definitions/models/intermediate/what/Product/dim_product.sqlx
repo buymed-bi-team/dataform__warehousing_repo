@@ -254,7 +254,9 @@ SELECT
   product.is_combo,
 
   cic.cic_name,
-  cic.cic_account_id
+  cic.cic_account_id,
+
+  hmp.high_margin
 
 FROM ${source.platinum}.marketplace_prd_product_v2_product AS product
 LEFT JOIN  ${source.platinum}.seller_prd_core_seller AS seller on product.owner = seller.code
