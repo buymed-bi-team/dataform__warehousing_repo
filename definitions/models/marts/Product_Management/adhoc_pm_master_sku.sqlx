@@ -80,29 +80,24 @@ with
     ),
 
 -- get sku market price tag, tu.dang
-sku_market_price_tag as 
-(
-    select sku, market_price_tag_code,
-region_code,
-CASE
-        WHEN STRPOS(sku, ".") > 0
-        THEN LEFT(sku , STRPOS(sku , ".") - 1)
-        ELSE sku 
-    END AS seller_code, 
-    product_id,
-    sku ||"_"||region_code as sku_sales_region_code
-from ${source.platinum}.marketplace_prd_product_v2_sku_tag sk
-LEFT JOIN UNNEST(JSON_VALUE_ARRAY(tags)) AS market_price_tag_code
-LEFT JOIN UNNEST(JSON_VALUE_ARRAY(region_codes)) AS region_code
-left join ${ref('dim_product')} p on  (CASE
-        WHEN STRPOS(sku, ".") > 0
-        THEN right(sku,length(sku) - length( left(sku , STRPOS(sku , "."))))
-        ELSE sku 
-    END ) = p.product_code
-    where market_price_tag_code like "RENHAT"
-order by 1
--- where deleted_at is null
-)
+    sku_market_price_tag as 
+    (
+        select 
+        -- sku,
+        market_price_tag_code,
+        region_code, 
+        product_id
+    from ${source.platinum}.marketplace_prd_product_v2_sku_tag sk
+    LEFT JOIN UNNEST(JSON_VALUE_ARRAY(tags)) AS market_price_tag_code
+    LEFT JOIN UNNEST(JSON_VALUE_ARRAY(region_codes)) AS region_code
+    left join ${ref('dim_product')} p on  (CASE
+            WHEN STRPOS(sku, ".") > 0
+            THEN right(sku,length(sku) - length( left(sku , STRPOS(sku , "."))))
+            ELSE sku 
+        END ) = p.product_code
+        where market_price_tag_code like "RENHAT"
+    -- where deleted_at is null
+    )
 
 
 select
@@ -129,7 +124,7 @@ from ${ref('dim_sku_sales_region_current')} AS sku
     left join it_list AS it
         on sku.sku_sales_region_code = it.sku_sales_region_code
     left join sku_market_price_tag mtc 
-        on sku.sku_code = mtc.sku and sku.sales_region_code = mtc.region_code
+        on sku.product_id = mtc.product_id and sku.sales_region_code = mtc.region_code
 QUALIFY ROW_NUMBER() OVER(PARTITION BY sku.sku_key_sales_region_code) = 1
 
 
