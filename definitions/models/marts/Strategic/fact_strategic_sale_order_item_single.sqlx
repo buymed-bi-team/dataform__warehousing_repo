@@ -50,7 +50,6 @@ mkp_o AS (
         o.status,
         outbound_date,
         created_time,
-        -- confirmation_date,
         delivered_time,
         CASE
         WHEN SAFE_CAST(customer_ward_code AS integer) > 0 THEN customer_ward_code
@@ -89,8 +88,7 @@ mkp_o AS (
         o.receiver_id * (10000) AS customer_id,
         o.status,
         o.outbound_date,
-        -- o.created_time,
-        o.confirmation_date as created_time,
+        o.confirmation_date as created_time, -- Tender using confirmation_date as created time
         o.delivered_time,
         CASE
         WHEN SAFE_CAST(ward_code AS integer) > 0 THEN ward_code
@@ -190,13 +188,6 @@ mkp_o AS (
         product_single_seller_code as seller_code,
         product_single_seller_class as seller_class,
         IF(type like "NORMAL", "COMBO", type) AS type ,
-    
-        -- demand_quantity as demand_quantity_original, -- tại sao số bị thay đổi so với quantity ở platinum
-        -- price as price_original, -- như dòng trên 
-        
-        -- product_single_seller_price as seller_price, -- currently, This is unnecessary
-        -- demand_quantity / COUNT(1) OVER(PARTITION BY order_id, sku_code) as combo_quantity, -- currently, This is unnecessary
-
         demand_quantity * product_single_demand_quantity as demand_quantity, 
         outbound_quantity * product_single_demand_quantity as outbound_quantity,
         returned_quantity * product_single_demand_quantity as returned_quantity,
@@ -204,16 +195,11 @@ mkp_o AS (
             (price / sum(product_single_demand_quantity * product_single_price) over (partition by order_id, sku_code))
             , 1
         ) as price,
-
         product_single_price - product_single_price  * LEAST(
              (price / sum(product_single_demand_quantity * product_single_price) over (partition by order_id, sku_code))
         ) as charge_combo_fee_value, 
-
         0 as charge_deal_fee_value,
         0 as charge_campaign_fee_value,
-        -- charge_campaign_fee_value * product_single_price / sum(product_single_demand_quantity * product_single_price) over (partition by order_id, sku_code) as charge_campaign_fee_value,
-        -- charge_deal_fee_value * product_single_price / sum(product_single_demand_quantity * product_single_price) over (partition by order_id, sku_code) as charge_deal_fee_value,
-        
         note 
         || IF(type like "NORMAL", "\nType: CRM <type> = <NORMAL> but Has nested combo item then <COMBO>", "")
         || IF(charge_deal_fee_value <> 0 , "\nCharge_fee: Item is <COMBO> still have <deal>, charge_deal_fee_value" , "")
@@ -293,7 +279,6 @@ mkp_o AS (
         ) as supplier_class,
         ${utils.ToTimezone(`o.created_time`)} as created_time,
         ${utils.ToTimezone(`o.outbound_date`)} as outbound_time,
-        -- ${utils.ToTimezone(`o.confirmation_date`)} as confirmation_time,
         ${utils.ToTimezone(`o.delivered_time`)} as delivered_time,
 
         IF( oi.charge_campaign_fee_value <0, 0 , oi.charge_campaign_fee_value) charge_campaign_fee_value ,
@@ -348,7 +333,6 @@ SELECT
   ois.order_status,
   ois.commercial_type,
   ois.created_time,
---   ois.confirmation_time,
   ois.sku_code_original,
   ois.sku_code,
   ois.product_id,

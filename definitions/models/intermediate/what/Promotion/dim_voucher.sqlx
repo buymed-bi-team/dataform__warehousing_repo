@@ -49,8 +49,8 @@ SELECT
         WHEN v.customer_apply_type is null THEN "Chưa xác định"
       END AS apply_type
     , CASE
-		WHEN usage_total IS NULL then "Chưa sử dụng"
-		ELSE "Đã sử dụng"
+		WHEN usage_total > 0 then "Đã sử dụng" 
+		ELSE "Chưa sử dụng"
 	  END AS used_status
     , JSON_VALUE(r.max_discount) AS max_discount
 	, JSON_VALUE(r.percentage_discount) AS percentage_discount

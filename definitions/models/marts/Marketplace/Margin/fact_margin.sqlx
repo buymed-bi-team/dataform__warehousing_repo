@@ -61,6 +61,7 @@ WITH
             , seller_revenue * (1 - ( c.fulfillment_fee_percent + c.sale_fee_percent 
                 + IF(s.supplier_type IN ("MARKET", "BIZ_HOUSEHOLD"), 1.5, 0) ) / 100
               ) AS seller_received_amount
+            , sku_orignal_key
         FROM ${ref('fact_order_item')} AS oi
             LEFT JOIN ${ref('dim_product')} AS p 
                 ON oi.product_id = p.product_id
@@ -160,6 +161,7 @@ WITH
             , p.line_manager_combine
             , oi.fc_code
             , ob.seller_class
+            , oi.sku_orignal_key AS sku_key_original
         FROM outbound_item AS ob
             LEFT JOIN order_item AS oi 
                 ON ob.mg_id = oi.mg_id AND ob.sku_code = oi.sku_code

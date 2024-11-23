@@ -70,7 +70,7 @@ WITH
       WHERE 
         created_date >= (SELECT DATE(start_date) FROM cte_date)
         AND type = 'COMMENT'
-        AND STRPOS(content, '-') > 0
+        -- AND STRPOS(content, '-') > 0
       QUALIFY ROW_NUMBER() OVER(PARTITION BY ticket_id ORDER BY created_time DESC) = 1
     )
   

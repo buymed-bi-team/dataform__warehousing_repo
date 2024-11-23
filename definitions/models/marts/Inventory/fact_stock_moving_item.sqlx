@@ -19,7 +19,7 @@ config {
 
 WITH 
     cte_date as (
-        select timestamp( date_trunc( date_sub( current_date('+7'), interval 3 month) , month ) ) as start_date
+        select timestamp( date_trunc( date_sub( current_date('+7'), interval 6 month) , month ) ) as start_date
     )
 
     , cte_origin AS (

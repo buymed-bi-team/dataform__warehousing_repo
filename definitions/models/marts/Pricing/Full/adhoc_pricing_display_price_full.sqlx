@@ -70,6 +70,7 @@ with
 -- Note: I use cross join because deserting apply fees to all sku.
     , get_columns as (
         select 
+            a.mg_id,
             a.product_id,
             a.sku_code,
             a.sales_region_code,
@@ -97,7 +98,9 @@ with
 
             a.fee_code,
             a.sku_key_sales_region_code,
-            a.sku_key
+            a.sku_key,
+            a.use_skus_price,
+            a.sub_sku_code
 
         from ${ref('dim_sku_sales_region_current')} AS a
             left join (
@@ -111,36 +114,71 @@ with
         where 
             (a.retail_price_value >= coalesce(c.from_price,0) and a.retail_price_value <= c.to_price)
             or ((a.retail_price_value is null or a.retail_price_value > 100000000) and c.flag = true)
+    ),
+
+    normal_product AS (
+        select
+            * EXCEPT(mg_id),
+
+            CASE
+                when retail_price_value is null or retail_price_value > 100000000 or dynamic_pricing_level_fee_value is null then 0
+                when retail_price_type = "FIXED_PRICE" and retail_price_value > 1 then 0
+                when retail_price_type = "CUSTOM_FEE" and retail_price_value > 1 then
+                    CASE
+                        WHEN fee_code = '1BRTE9AQ1PG' THEN platform_fee
+                        WHEN fee_code = '3WQD9UBW961' THEN logistic_fee
+                        ELSE platform_fee + logistic_fee
+                    END
+                when retail_price_value > 1 then platform_fee + logistic_fee
+            end as service_fee,
+
+            ROUND(
+                CASE
+                    when retail_price_value is null or retail_price_value > 100000000 or dynamic_pricing_level_fee_value is null then retail_price_value
+                    when retail_price_type = "FIXED_PRICE" and retail_price_value > 1 then retail_price_value
+                    when retail_price_type = "CUSTOM_FEE" and retail_price_value > 1 then
+                        CASE
+                            WHEN fee_code = '1BRTE9AQ1PG' THEN retail_price_value + platform_fee
+                            WHEN fee_code = '3WQD9UBW961' THEN retail_price_value + logistic_fee
+                            ELSE retail_price_value + platform_fee + logistic_fee
+                        END
+                    when retail_price_value > 1 then retail_price_value + platform_fee + logistic_fee
+                end,
+                -2
+            ) as display_price
+        from get_columns
+        WHERE
+            use_skus_price IS NULL
+            OR use_skus_price = FALSE
+    ),
+
+    combo_product AS (
+        SELECT
+            * EXCEPT (mg_id, sku_original_code, item_code, display_price, quantity)
+            , NULL AS service_fee
+            , SUM(display_price * quantity) AS display_price
+        FROM (
+            SELECT
+                a.*
+                , s.sku AS sku_original_code
+                , JSON_VALUE(ss, '$.item_code') AS item_code
+                , SAFE_CAST(JSON_VALUE(ss, '$.quantity') AS INT64) AS quantity
+                , n.display_price
+            FROM get_columns AS a
+                LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_sku AS s ON a.mg_id = s.mg_id
+                , UNNEST(JSON_QUERY_ARRAY(s.skus)) AS ss
+                LEFT JOIN normal_product AS n 
+                    ON JSON_VALUE(ss, '$.item_code') = n.sub_sku_code
+                    AND n.prices = a.prices
+            WHERE a.use_skus_price = true
+        )
+        GROUP BY ALL
     )
 
   -- calculate display price 
-select 
-    *,
 
-    CASE
-        when retail_price_value is null or retail_price_value > 100000000 or dynamic_pricing_level_fee_value is null then 0
-        when retail_price_type = "FIXED_PRICE" and retail_price_value > 1 then 0
-        when retail_price_type = "CUSTOM_FEE" and retail_price_value > 1 then
-            CASE
-                WHEN fee_code = '1BRTE9AQ1PG' THEN platform_fee
-                WHEN fee_code = '3WQD9UBW961' THEN logistic_fee
-                ELSE platform_fee + logistic_fee
-            END
-        when retail_price_value > 1 then platform_fee + logistic_fee
-    end as service_fee,
-    
-    ROUND( 
-        CASE
-            when retail_price_value is null or retail_price_value > 100000000 or dynamic_pricing_level_fee_value is null then retail_price_value
-            when retail_price_type = "FIXED_PRICE" and retail_price_value > 1 then retail_price_value
-            when retail_price_type = "CUSTOM_FEE" and retail_price_value > 1 then
-                CASE
-                    WHEN fee_code = '1BRTE9AQ1PG' THEN retail_price_value + platform_fee
-                    WHEN fee_code = '3WQD9UBW961' THEN retail_price_value + logistic_fee
-                    ELSE retail_price_value + platform_fee + logistic_fee
-                END
-            when retail_price_value > 1 then retail_price_value + platform_fee + logistic_fee
-        end, 
-        -2
-    ) as display_price
-from get_columns
+SELECT *
+FROM normal_product
+UNION ALL
+SELECT *
+FROM combo_product  

@@ -1,9 +1,18 @@
 config {
     type:"operations",
     description: "PIC:MinhLuu",
-    tags: ['6h00']
+    // tags: ['6h00']
+    tags: ["deprecated"]
 }
-
+/*
+    Verify data of fact_voucher_sku, ensuring new date data existance in agg_gmv_by_price_sku_fc_code
+    How this operations work:
+    - Step 1: After fact_voucher_sku run, recheck it
+    - Step 2: If data_type isn't then move to Step 3, if it is INT64 then stop
+    - Step 3: Create a backup table of that time, to re check
+    - Step 4: Create again agg_gmv_by_price_sku_fc_code again
+    - Step 5: Assertion
+*/
 IF( (SELECT IF(max(date)="2024-10-02",1,0) FROM ${ref(`agg_gmv_by_price_sku_fc_code`)}) =0 )
   THEN 
     Create OR REPLACE table dataform_assertions.Huong_dim_order_channel AS ( select * FROM ${ref(`dim_order_channel`)} WHERE created_time > "2024-09-01");

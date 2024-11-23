@@ -1,7 +1,7 @@
 config {
     type: 'table',
     name: "fact_user_event_tracking",
-    description: `Last 2 month | PIC: tu.dang; schedule: 0h00 daily; model type: table
+    description: `Last 2 month | PIC: tu.dang; schedule: 8h30 daily; model type: table
     Source:
         ${source.platinum}.monitoring_prd_collector_user_stats`,
     columns: { 
@@ -14,7 +14,7 @@ config {
         source: "Nullable | The source of the event, indicating how the item was created",
         sku_code: "NonNull" | docs.sku
         },
-    tags: ['0h30'],
+    tags: ['8h30'],
     bigquery: {
         partitionBy: "date(created_time)",
         clusterBy: ["event", "customer_id"]
@@ -42,71 +42,85 @@ WITH stg AS (
         JSON_EXTRACT_SCALAR(a.extra_props, '$.ua_metadata.OS') AS device_os,
         JSON_EXTRACT_SCALAR(a.extra_props, '$.ua_metadata.PLATFORM') AS platform,
         JSON_EXTRACT_SCALAR(a.extra_props, '$.user_metadata.LOCATION') AS location,
-        JSON_EXTRACT_SCALAR(a.extra_props, '$.client_user_time') AS client_user_time, b.key as session,a.extra_props
+        JSON_EXTRACT_SCALAR(a.extra_props, '$.client_user_time') AS client_user_time, 
+        b.key as session,
+        a.extra_props,
+        
+------------ nguyen.tran added-----------------------------
+        JSON_VALUE(a.extra_props, '$.metadata.name') AS store_name,
+        JSON_VALUE(a.extra_props, '$.metadata.storeType') AS store_type,
+        COALESCE(NULLIF(JSON_VALUE(a.extra_props, '$.metadata.storeCode'), ""), NULLIF(JSON_VALUE(a.extra_props, '$.metadata.sellerCode'), "")) AS store_code,
+        SAFE_CAST(JSON_VALUE(a.extra_props, '$.metadata.timeCounter') AS INT64) AS time_counter,
+----------------------------------------------------------------
     FROM
     `${source.platinum}.monitoring_prd_collector_user_stats` a
-    left join `${source.platinum}.monitoring_prd_realtime_user_customer_session_v3`b on a.customer_id= b.customer_id 
-    and a.created_time between b.start_time and end_time and b.created_date >= date( date_trunc( date_sub( current_date('+7'), interval 2 month) , month ) )
+    left join `${source.platinum}.monitoring_prd_realtime_user_customer_session_v3`b 
+        on a.customer_id= b.customer_id 
+        and a.created_time between b.start_time and end_time and b.created_date >= date( date_trunc( date_sub( current_date('+7'), interval 2 month) , month ) )
     where
     -- _TABLE_SUFFIX BETWEEN '20240701'
     -- AND FORMAT_DATE('%Y%m%d', CURRENT_DATE())        
-    a.created_date >= date( date_trunc( date_sub( current_date('+7'), interval 2 month) , month ) )
+        a.created_date >= date( date_trunc( date_sub( current_date('+7'), interval 2 month) , month ) )
 --     AND event IN ( "ADD_TO_CART","SKU_DETAIL_VIEW","SKU_IMPRESSION","REMOVE_FROM_CART","SEARCH")
-    ),
-    region AS (
-    select
-        sa.sales_region_code as area,
-        gl.province_code
-    from ${ref('dim_geo_location')}  as gl
-    left join ${ref('dim_fc_service_area')} as sa
-    on gl.province_code = sa.service_area_code
-    where gl.location_class = 'PROVINCE'
 ),
+    region AS (
+        select
+            sa.sales_region_code as area,
+            gl.province_code
+        from ${ref('dim_geo_location')}  as gl
+        left join ${ref('dim_fc_service_area')} as sa
+        on gl.province_code = sa.service_area_code
+        where gl.location_class = 'PROVINCE'
+    ),
 
-    cte_all as
-(SELECT
-    event,
-    customer_id,customer_level,device_os,
-    created_time,
-    EXTRACT(HOUR FROM created_time) AS created_hour,
-    created_date,
-    a.province_code,
-    screen,
-    search_content,
-    search_status,
-    session,
-    SOURCE,
---     CONCAT(sku_key, "_", r.area) AS sku_fc_code,
-    case
-        when LENGTH(block_code) - LENGTH(REGEXP_REPLACE(block_code, r'_', '')) > 1 and LEFT(block_code, 12) like "product-list"
-            then REGEXP_REPLACE(block_code, r'^([^_]+)_[^_]+_(.*)', r'\1_\2')
-        when screen like "home" and LEFT(block_code, 12) like "product-list" then null
-        when screen like "product-list" and LEFT(block_code, 4) like "home" then null
-        when block_code = "" then null
-        else block_code end as block_code,
-    platform,
-    extra_props,
-    seller_id,
-    product_id,
-    sku_code,
-    -- seller_code,
-    CASE
-        WHEN STRPOS(sku_code, ".") > 0
-        THEN LEFT(sku_code, STRPOS(sku_code, ".") - 1)
-        ELSE sku_code
-    END AS seller_code,
-    client_user_time,
-    area
-from (
-select *,
-COALESCE(block_code_v1,blockCode) as block_code,
-COALESCE(SOURCE_v1,eventSOURCE) as SOURCE 
-
-FROM
-    stg) a
-LEFT JOIN region AS r
-  ON a.province_code = r.province_code
-where customer_id >0)
+    cte_all as (
+        SELECT
+            event,
+            customer_id,customer_level,device_os,
+            created_time,
+            EXTRACT(HOUR FROM created_time) AS created_hour,
+            created_date,
+            a.province_code,
+            screen,
+            search_content,
+            search_status,
+            session,
+            SOURCE,
+        --     CONCAT(sku_key, "_", r.area) AS sku_fc_code,
+            case
+                when LENGTH(block_code) - LENGTH(REGEXP_REPLACE(block_code, r'_', '')) > 1 and LEFT(block_code, 12) like "product-list"
+                    then REGEXP_REPLACE(block_code, r'^([^_]+)_[^_]+_(.*)', r'\1_\2')
+                when screen like "home" and LEFT(block_code, 12) like "product-list" then null
+                when screen like "product-list" and LEFT(block_code, 4) like "home" then null
+                when block_code = "" then null
+                else block_code end as block_code,
+            platform,
+            extra_props,
+            seller_id,
+            product_id,
+            sku_code,
+            -- seller_code,
+            CASE
+                WHEN STRPOS(sku_code, ".") > 0
+                THEN LEFT(sku_code, STRPOS(sku_code, ".") - 1)
+                ELSE sku_code
+            END AS seller_code,
+            client_user_time,
+            area,
+            store_name,
+            time_counter,
+            store_type,
+            store_code
+        from (
+            select *,
+            COALESCE(block_code_v1,blockCode) as block_code,
+            COALESCE(SOURCE_v1,eventSOURCE) as SOURCE 
+            FROM stg
+        ) a
+        LEFT JOIN region AS r
+            ON a.province_code = r.province_code
+        where customer_id >0
+    )
 select cte_all.* except (area),
        CONCAT(product_id, "_", seller_code, "_", area) as sku_fc_code,
     --    session,

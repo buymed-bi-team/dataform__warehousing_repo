@@ -37,5 +37,9 @@ select
     , json_value(a.reference, "$.code") as pick_ticket_id
     , json_value(a.reference, "$.type") as type
     , json_value(a.extra_props, '$.rf_id') AS rf_id
+    , CASE
+        WHEN TO_JSON_STRING(tags) LIKE '%"COLD_BIN"%' THEN "COLD_BIN"
+        ELSE "NORMAL_BIN"
+      END AS bin_type
 from ${source.platinum}.warehouse_prd_inventory_location AS a
 where a.type = 'BIN'
