@@ -72,7 +72,12 @@ SELECT
         b.campaign_price,
         LEAST( COALESCE(b.deal_price, a.display_price), a.display_price),
         a.display_price
-    ) AS sku_display_price
+    ) AS sku_display_price,
+    CASE
+        WHEN b.campaign_price IS NOT NULL THEN "CAMPAIGN"
+        WHEN b.deal_price IS NOT NULL AND b.deal_price < a.display_price THEN "DEAL"
+        ELSE "DISPLAY"
+    END AS sku_display_price_type
 FROM ${ref('adhoc_pricing_display_price')} AS a
     LEFT JOIN ${ref('adhoc_pricing_promotion_price')} AS b 
         ON a.sku_code = b.sku_code AND a.sales_region_code = b.sales_region_code
