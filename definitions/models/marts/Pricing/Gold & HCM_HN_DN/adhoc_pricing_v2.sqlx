@@ -62,7 +62,12 @@ SELECT
     --     COALESCE( b.campaign_price, b.deal_price, a.display_price),
     --     COALESCE(c.display_price_seller_with_promo, c.display_price_seller_without_promo)
     -- ) AS sku_display_price
-    COALESCE( b.campaign_price, b.deal_price, a.display_price) AS sku_display_price
+    -- COALESCE( b.campaign_price, b.deal_price, a.display_price) AS sku_display_price
+    LEAST( 
+        IFNULL(b.campaign_price, a.display_price)
+        ,IFNULL(b.deal_price, a.display_price)
+        , a.display_price
+    ) AS sku_display_price
 FROM ${ref('adhoc_pricing_display_price')} AS a
     LEFT JOIN ${ref('adhoc_pricing_promotion_price')} AS b 
         ON a.sku_code = b.sku_code AND a.sales_region_code = b.sales_region_code
