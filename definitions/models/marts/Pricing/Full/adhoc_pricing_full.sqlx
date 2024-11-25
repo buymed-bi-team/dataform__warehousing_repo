@@ -24,10 +24,10 @@ WITH
         --     COALESCE(c.display_price_seller_with_promo, c.display_price_seller_without_promo)
         -- ) as sku_display_price
         -- COALESCE(b.campaign_price, b.deal_price,  a.display_price) as sku_display_price,
-         LEAST( 
-            IFNULL(b.campaign_price, a.display_price)
-            ,IFNULL(b.deal_price, a.display_price)
-            , a.display_price
+        COALESCE(
+            b.campaign_price,
+            LEAST( COALESCE(b.deal_price, a.display_price), a.display_price),
+            a.display_price
         ) AS sku_display_price,
         a.sku_key_sales_region_code
     from ${ref('adhoc_pricing_display_price_full')} a
