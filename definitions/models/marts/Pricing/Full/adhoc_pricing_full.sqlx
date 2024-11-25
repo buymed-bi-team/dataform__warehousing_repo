@@ -28,7 +28,7 @@ WITH
             IFNULL(b.campaign_price, a.display_price)
             ,IFNULL(b.deal_price, a.display_price)
             , a.display_price
-        ) AS sku_display_price
+        ) AS sku_display_price,
         a.sku_key_sales_region_code
     from ${ref('adhoc_pricing_display_price_full')} a
     left join ${ref('adhoc_pricing_promotion_price_full')} b 
