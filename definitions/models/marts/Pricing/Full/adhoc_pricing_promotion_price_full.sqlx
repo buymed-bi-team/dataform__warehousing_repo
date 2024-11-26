@@ -38,7 +38,7 @@ WITH
                 ON a.campaign_id = b.campaign_id
         where
         -- condition to get active campaign
-            b.is_active = true and upper(b.status) = "NORMAL"
+            b.is_active = true and upper(b.status) = "NORMAL" and a.is_active
             and (select current_timestamp_ from cte_date) between TIMESTAMP_ADD(a.start_time,INTERVAL 7 HOUR) and TIMESTAMP_ADD(a.end_time,INTERVAL 7 HOUR)
     )
 -- step 2: Get skus in a deal that is active on website.

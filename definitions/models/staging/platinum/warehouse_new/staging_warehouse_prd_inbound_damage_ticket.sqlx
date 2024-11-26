@@ -10,7 +10,8 @@ config {
     },
     bigquery: {
         partitionBy: "created_date"
-    }
+    },
+    tags: ["warehouse_prd_inbound"]
 }
 
 pre_operations {
