@@ -12,7 +12,7 @@ config {
     bigquery: {
         partitionBy: "created_date"
     },
-    tags: ["custom_2h_past5"]
+    tags: ["custom_2h_past5","seller_prd_wis"]
 }
 
 pre_operations {
