@@ -4,7 +4,8 @@ config {
     schema: "platinum_buymed_vn",
     assertions: {
         uniqueKey: 'mg_id',
-    }
+    },
+    tags: ["delivery_prd_transporting"]
 }
 
 SELECT *

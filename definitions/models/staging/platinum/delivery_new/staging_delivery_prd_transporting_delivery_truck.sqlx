@@ -6,7 +6,7 @@ config {
         uniqueKey: 'mg_id',
         nonNull: ["created_date"]
     },
-    tags: ["0h00"]
+    tags: ["0h00","delivery_prd_transporting"]
 }
 SELECT 
     *,
