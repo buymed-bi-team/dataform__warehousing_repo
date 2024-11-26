@@ -126,6 +126,7 @@ SELECT *
 FROM ${ref(`agg_inventory_cutoff`)}
 
 UNION ALL 
+
 SELECT
 CURRENT_DATETIME("+7") AS refresh_time,
 eom as date,

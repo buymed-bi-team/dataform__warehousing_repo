@@ -14,6 +14,7 @@ With main_customer as(
         END AS location
     FROM ${ref(`dim_customer_profiling`)} dcp
     LEFT JOIN ${ref(`dim_customer`)} cust on dcp.customer_id = cust.customer_id
+    LEFT JOIN ${ref(`dim_geo_location`)} geo on cust.
     
     
 )
