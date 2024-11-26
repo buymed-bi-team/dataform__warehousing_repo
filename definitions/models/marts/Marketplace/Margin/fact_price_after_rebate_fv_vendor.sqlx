@@ -15,7 +15,7 @@ config {
     partitionBy: "rebate_date",
     clusterBy: ["sales_region_code", "product_id"]
   },
-  tags: ["custom_1h_past5"]
+  tags: ["custom_1h_past5", "PRICING"]
 }
 
 with
