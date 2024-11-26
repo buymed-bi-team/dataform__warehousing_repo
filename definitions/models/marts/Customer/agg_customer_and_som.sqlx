@@ -25,6 +25,7 @@ WITH
             , c.customer_id
             , DATE_TRUNC(DATE(created_at), MONTH) AS som
             , created_at AS created_time
+            , ordered_amount
         FROM
             ${ref('fact_order')} AS C
         WHERE
@@ -49,6 +50,7 @@ WITH
             , MIN(
                 IF( DATE_TRUNC(created_time, MONTH) = som, created_time, NULL)
               ) AS first_order_time_without_cancel_in_current_month
+            , SUM(ordered_amount) AS gmv
         FROM cte_transaction_with_previous_order_time
         GROUP BY ALL
     )
@@ -97,6 +99,7 @@ WITH
                     b.first_order_time_without_cancel_in_current_month IS NOT NULL THEN "ACTIVE"
                 -- ELSE "USER_ONLY"
               END AS customer_business_status
+            , b.gmv
         FROM cte_main AS a
             LEFT JOIN cte_agg_customer_and_som AS b ON a.customer_id = b.customer_id AND a.som = b.som
             LEFT JOIN cte_agg_customer AS c ON a.customer_id = c.customer_id
@@ -115,6 +118,7 @@ WITH
             , CAST(NULL AS DATETIME) AS first_order_time_without_cancel_in_current_month
             , NULL AS days_return_active
             , "USER_ONLY" AS customer_business_status
+            , NULL AS gmv
         FROM ${ref('dim_customer')} AS a
             LEFT JOIN cte_agg_customer AS c ON a.customer_id = c.customer_id
         WHERE
