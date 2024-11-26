@@ -9,7 +9,7 @@ config {
     bigquery: {
         partitionBy: "created_date"
     },
-    tags:["custom_2h_past5"]
+    tags:["custom_2h_past5","monitoring_prd_realtime-user"]
 }
 
 pre_operations {
