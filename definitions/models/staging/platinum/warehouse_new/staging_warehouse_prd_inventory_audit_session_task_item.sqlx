@@ -15,7 +15,7 @@ config {
     bigquery: {
         partitionBy: "created_date"
     },
-    tags: ["custom_1h_past5"]
+    tags: ["custom_1h_past5",'warehouse_prd_inventory']
 }
 
 pre_operations {
