@@ -9,7 +9,7 @@ config {
         Source: 
             ${source.platinum}.warehouse_prd_picking_pick_ticket
         `,
-    tags: ["FFM_CUTOFF", "custom_1h_past5"],
+    //tags: ["FFM_CUTOFF", "custom_1h_past5"],
 }
 
 WITH
