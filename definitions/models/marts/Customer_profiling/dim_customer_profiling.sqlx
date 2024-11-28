@@ -20,7 +20,9 @@ WITH
   SELECT
     customer_id,
     year_month,
-    som
+    som,
+    gmv,
+    no_order
   FROM
     ${ref('agg_customer_profiling')} AS a)
 
@@ -28,6 +30,8 @@ SELECT
   a.customer_id,
   a.year_month,
   a.som,
+  a.gmv,
+  a.no_order,
   COUNT (DISTINCT b.customer_id) AS new_customer,
   COUNT (DISTINCT c.customer_id) AS repeat_customer,
   COUNT (DISTINCT d.customer_id) AS reacquire_customer,

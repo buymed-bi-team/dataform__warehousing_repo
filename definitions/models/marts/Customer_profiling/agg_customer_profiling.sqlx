@@ -52,6 +52,8 @@ WITH
   orders_per_month AS (
   SELECT
     customer_id,
+    sum (gmv) as gmv,
+    count (order_id) as no_order,
     CAST(FORMAT_DATE('%Y-%m', created_at) AS STRING) AS year_month,
     COUNTIF(order_status <> 'CANCEL') > 0 AS has_purchase
   FROM
@@ -65,6 +67,8 @@ WITH
   calendar_order AS(
   SELECT
     a.*,
+    b.gmv,
+    b.no_order,
     CASE
       WHEN b.has_purchase IS NULL THEN FALSE
       ELSE b.has_purchase
@@ -85,6 +89,8 @@ SELECT
   purchase_year,
   purchase_month,
   has_purchase,
+  gmv,
+  no_order,
   LAG(has_purchase) OVER (PARTITION BY customer_id ORDER BY purchase_year, purchase_month) AS previous_month_purchase
 FROM
   calendar_order
