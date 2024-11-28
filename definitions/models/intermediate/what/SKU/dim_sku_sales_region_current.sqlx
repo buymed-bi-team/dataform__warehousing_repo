@@ -188,6 +188,7 @@ SELECT
     SAFE_CAST(JSON_VALUE(s.lot_dates, '$[0].is_near_expired') AS BOOLEAN) as is_near_expired,
     s.max_quantity_per_order,
     IF(ins.available_quantity < 0, 0, ins.available_quantity) AS available_qty,
+    IF(ins.stock_quantity < 0, 0, ins.stock_quantity) AS stock_qty,
     ins.min_quantity,
     ins.product_type,
     CASE
