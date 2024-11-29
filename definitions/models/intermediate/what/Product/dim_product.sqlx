@@ -123,7 +123,7 @@ WITH product_retail_unit AS (
           , LOWER(IF(value <> "NAN", value, NULL)) AS cic_name
           , b.branch_account_id AS cic_account_id
       FROM collector.data_prd AS a
-          LEFT JOIN gold_buymed_vn2.dim_employee AS b ON a.value = UPPER(b.user_name)
+          LEFT JOIN ${ref('dim_employee')} AS b ON a.value = UPPER(b.user_name)
       WHERE
           object = 'Product'
           AND type = 'CIC'
