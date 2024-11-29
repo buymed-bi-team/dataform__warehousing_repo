@@ -41,6 +41,15 @@ WITH
                 WHEN 6 THEN "Friday"
                 WHEN 7 THEN "Saturday"
               END AS dow_ready_for_pick
+            , CASE EXTRACT(DAYOFWEEK FROM TIMESTAMP_ADD(COALESCE(ready_for_pick_time, activation_time, start_time), INTERVAL 31 HOUR))
+                WHEN 1 THEN "Sunday"
+                WHEN 2 THEN "Monday"
+                WHEN 3 THEN "Tuesday"
+                WHEN 4 THEN "Wednesday"
+                WHEN 5 THEN "Thursday"
+                WHEN 6 THEN "Friday"
+                WHEN 7 THEN "Saturday"
+              END AS dow_next_day
             , SAFE_CAST( JSON_VALUE(r, '$.from_time') AS INT64 ) / 3600 AS start_hour
             , SAFE_CAST( JSON_VALUE(r, '$.cut_off_time') AS INT64 ) / 3600 AS cut_off_hour
             , SAFE_CAST( JSON_VALUE(r, '$.to_time') AS INT64 ) / 3600 AS end_hour
@@ -65,10 +74,10 @@ WITH
             *
             , IF(
                 EXTRACT(HOUR FROM ready_for_pick_time) + EXTRACT(MINUTE FROM ready_for_pick_time) / 60 + EXTRACT(SECOND FROM ready_for_pick_time) / 3600
-                    BETWEEN start_hour AND end_hour
-                AND STRPOS(list_day_of_week, dow_ready_for_pick) > 0 
-                , TRUE
-                , FALSE
+                    < end_hour
+                AND STRPOS(list_day_of_week, dow_ready_for_pick) > 0
+                , 1
+                , IF(STRPOS(list_day_of_week, dow_next_day) > 0, 0, -1)
               ) AS flag
             , IF(end_hour < cut_off_hour, TRUE, FALSE) AS is_same_day
         FROM route
@@ -95,7 +104,7 @@ WITH
         SELECT
             *
             , IF(
-                flag AND is_same_day
+                flag = 1 AND is_same_day
                 , PARSE_TIMESTAMP("%Y-%m-%d %H:%M", CONCAT(DATE(ready_for_pick_time), " ", FLOOR(cut_off_hour), ":", FLOOR((cut_off_hour - FLOOR(cut_off_hour)) * 60)))
                 , PARSE_TIMESTAMP("%Y-%m-%d %H:%M", CONCAT(DATE_ADD(DATE(ready_for_pick_time), INTERVAL 1 DAY), " ", FLOOR(cut_off_hour), ":", FLOOR((cut_off_hour - FLOOR(cut_off_hour)) * 60)))
               ) AS cut_off_ts
