@@ -5,60 +5,152 @@ config {
     Source:
         ${source.silver}.monitoring_prd_collector_user_stats_*`,
     columns: {
-        event: `NonNull | Customer Events IN ( "ADD_TO_CART","SKU_DETAIL_VIEW","SKU_IMPRESSION") `,
+        event: `NonNull | Customer Events `,
         customer_id: "NonNull | The unique identifier for the customer",
         created_time: "NonNull | The datetime when the event was created, adjusted to the 'Asia/Ho_Chi_Minh' timezone",
         province_code: "Nullable | " + docs.province_code,
         screen: "Nullable | The screen on which the event occurred. This provides additional context on the user interface interaction",
         source: "Nullable | The source of the event, indicating how the item was created",
             },
-/*tags: ['2h00'],*/
+tags: ['2h00'],
     bigquery: {
-        partitionBy: "date(created_time)",
-        clusterBy: ["event", "customer_id"]
+        partitionBy: "customer_id"
     },
 }
 
 
 
-WITH stg AS (
-    SELECT
-mg_id,
-        event,
-        customer_id,
-        created_time,
---         JSON_EXTRACT_SCALAR(extra_props, '$.user_metadata.LOCATION') AS province_code,
-        JSON_EXTRACT_SCALAR(extra_props, '$.metadata.screen') AS screen,
-        JSON_EXTRACT_SCALAR(extra_props, '$.metadata.source') AS source,
-        JSON_EXTRACT_SCALAR(extra_props, '$.metadata.block_code') AS block_code,
---         JSON_EXTRACT_SCALAR(extra_props, '$.metadata.status') AS search_status,
---         JSON_EXTRACT_SCALAR(extra_props, '$.metadata.sku') AS sku_code,
---         JSON_EXTRACT_SCALAR(extra_props, '$.ua_metadata.CLIENT') AS client,
-        JSON_EXTRACT_SCALAR(extra_props, '$.ua_metadata.PLATFORM') AS platform,
-        JSON_EXTRACT_SCALAR(extra_props, '$.client_user_time') AS client_user_time
-    FROM
-    `${source.silver}.monitoring_prd_collector_user_stats_*`
-  WHERE 
---   created_date >= date_sub( created_date, interval 30 day) 
-    _TABLE_SUFFIX BETWEEN '20240901'
-    AND FORMAT_DATE('%Y%m%d', CURRENT_DATE())
---     AND event IN ( "SEARCH")
-    )
-SELECT mg_id,
---      distinct event
-    event,
-    customer_id,
-    DATETIME(created_time, "Asia/Ho_Chi_Minh") AS created_time,
-    DATE(created_time, "Asia/Ho_Chi_Minh") AS created_date,
-    screen,
-    source,
-    block_code,
-    client_user_time,
+WITH numbered_events AS (
+  SELECT 
+    created_date,
+    created_time, 
+    event, 
+    customer_id, 
     platform,
-    LEAD(event) over (partition by customer_id order by created_time) next_act_1,
-    LEAD(event,2) over (partition by customer_id order by created_time) next_act_2,
-    LEAD(event,3) over (partition by customer_id order by created_time) next_act_3,
-    LEAD(event,4) over (partition by customer_id order by created_time) next_act_4
-FROM
-    stg
-where customer_id >0 and date(created_time)>= date_add( CURRENT_DATE(), interval -30 day) 
+    session,
+    ROW_NUMBER() OVER(PARTITION BY customer_id, session ORDER BY created_time) as event_sequence 
+  FROM ${ref(`fact_user_event_tracking`)}
+  WHERE 
+--   created_date = "2024-10-20" AND 
+  session IS NOT NULL AND event not IN ( 'CUSTOMER_OPEN_APP', 'LOGIN') and customer_id > 0
+),
+
+event_changes AS (
+  SELECT 
+    *,
+    LAG(event) OVER (
+      PARTITION BY session
+      ORDER BY event_sequence
+    ) as previous_event,
+    CASE 
+      WHEN event != LAG(event) OVER (
+        PARTITION BY session 
+        ORDER BY event_sequence
+      ) 
+      OR LAG(event) OVER (
+        PARTITION BY session
+        ORDER BY event_sequence
+      ) IS NULL 
+      THEN 1 
+      ELSE 0 
+    END as is_new_event
+  FROM numbered_events
+),
+
+event_groups AS (
+  SELECT 
+    *,
+    SUM(is_new_event) OVER (
+      PARTITION BY session
+      ORDER BY event_sequence
+    ) as event_group
+  FROM event_changes
+),
+
+deduplicated_flow AS (
+  SELECT 
+    customer_id,
+    session,
+    event,
+    MIN(created_time) as first_occurrence_time,
+    MAX(created_time) as last_occurrence_time,
+    COUNT(*) as occurrences_in_sequence,
+    MIN(event_sequence) as first_sequence_number,
+    event_group
+  FROM event_groups
+  GROUP BY 
+    customer_id,
+    session,
+    event,
+    event_group
+),
+
+-- Add row numbers to identify first actions per session
+numbered_flow AS (
+  SELECT 
+    *,
+    ROW_NUMBER() OVER (
+      PARTITION BY session 
+      ORDER BY first_sequence_number
+    ) as clean_step_number
+  FROM deduplicated_flow
+),
+
+-- Skip initial generic events
+cleaned_first_actions AS (
+  SELECT 
+    customer_id,
+    session,
+    event,
+    first_occurrence_time,
+    last_occurrence_time,
+    occurrences_in_sequence,
+    first_sequence_number,
+    event_group,
+    -- Adjust the step number to skip the initial generic events
+    CASE 
+      WHEN clean_step_number = 1 
+      AND event IN ('SKU_IMPRESSION', 'PAGE_VIEW')
+      THEN NULL  -- We'll filter these out
+      ELSE ROW_NUMBER() OVER(PARTITION BY customer_id, session ORDER BY clean_step_number) 
+    END as adjusted_step_number
+  FROM numbered_flow
+),
+
+-- Final clean paths
+final_paths AS (
+  SELECT 
+    customer_id,
+    session,
+    event,
+    first_occurrence_time,
+    last_occurrence_time,
+    occurrences_in_sequence as times_repeated,
+    -- Recalculate step numbers to be consecutive after removing initial events
+    ROW_NUMBER() OVER (
+      PARTITION BY session 
+      ORDER BY first_sequence_number
+    ) as clean_step_number
+  FROM cleaned_first_actions
+  WHERE adjusted_step_number IS NOT NULL  -- Remove the skipped initial events
+)
+
+-- Generate final output with clean paths
+SELECT 
+  customer_id,
+  session,
+  event,
+  first_occurrence_time,
+  last_occurrence_time,
+  times_repeated,
+  clean_step_number,
+  STRING_AGG(event, ' > ') OVER (
+    PARTITION BY session 
+    ORDER BY clean_step_number
+    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+  ) as clean_path_so_far,
+  lead(event) over(partition by session, customer_id order by clean_step_number) as following_by_event
+FROM final_paths
+ORDER BY 
+  session, 
+  clean_step_number
