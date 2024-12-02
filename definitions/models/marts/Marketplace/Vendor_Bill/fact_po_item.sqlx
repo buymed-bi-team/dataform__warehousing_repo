@@ -29,9 +29,9 @@ with
             po_code,
             TIMESTAMP_ADD(first_inbound_time, INTERVAL 7 hour) as received_time,
             DATE(TIMESTAMP_ADD(first_inbound_time, INTERVAL 7 hour)) as received_date,
-            original_po
+            -- original_po
         from ${source.platinum}.seller_prd_purchasing_purchase_order
-            LEFT JOIN UNNEST(JSON_VALUE_ARRAY(original_pos)) AS original_po
+            -- LEFT JOIN UNNEST(JSON_VALUE_ARRAY(original_pos)) AS original_po
         WHERE
           created_date >= (SELECT start_date FROM target_date) 
     ),
@@ -71,7 +71,7 @@ with
             po.created_time,
             po.received_time,
             po.received_date,
-            po.original_po
+            -- po.original_po
         from poi_dedup as pi
             left join po_dedup as po on po.po_code = pi.po_code
         where
