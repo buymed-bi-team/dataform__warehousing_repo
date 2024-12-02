@@ -14,8 +14,7 @@ config {
             },
 tags: ['2h00'],
     bigquery: {
-        partitionBy: "date(created_time)",
-        clusterBy: ["event", "customer_id"]
+        partitionBy: "customer_id"
     },
 }
 
