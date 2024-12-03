@@ -96,7 +96,7 @@ SELECT
         END AS location
 
 FROM  o 
-LEFT JOIN ${source.platinum}.warehouse_prd_core_delivery_order do ON o.sale_order_code = do.sale_order_code
+LEFT JOIN ${source.platinum}.warehouse_prd_core_delivery_order do ON o.sale_order_code = do.sale_order_code AND do.status <>"CANCEL"
 LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = o.order_id 
 LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON o.order_id = dosr.order_id
 INNER JOIN ois ON o.order_id = ois.order_id
@@ -105,4 +105,4 @@ WHERE
 AND doc.order_channel IS NOT NULL
 AND doc.order_channel <> "CONSIGNMENT-RECOGNITION"
 AND ois.supplier_class NOT LIKE "TECH")
-AND do.status <> "CANCEL"
+-- AND do.status <> "CANCEL"
