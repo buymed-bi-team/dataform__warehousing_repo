@@ -92,25 +92,25 @@ numbered_flow AS (
 ),
 
 -- Skip initial generic events
-cleaned_first_actions AS (
-  SELECT 
-    customer_id,
-    session,
-    event,
-    first_occurrence_time,
-    last_occurrence_time,
-    occurrences_in_sequence,
-    first_sequence_number,
-    event_group,
-    -- Adjust the step number to skip the initial generic events
-    CASE 
-      WHEN clean_step_number = 1 
-      AND event IN ('SKU_IMPRESSION', 'PAGE_VIEW')
-      THEN NULL  -- We'll filter these out
-      ELSE ROW_NUMBER() OVER(PARTITION BY customer_id, session ORDER BY clean_step_number) 
-    END as adjusted_step_number
-  FROM numbered_flow
-),
+-- cleaned_first_actions AS (
+--   SELECT 
+--     customer_id,
+--     session,
+--     event,
+--     first_occurrence_time,
+--     last_occurrence_time,
+--     occurrences_in_sequence,
+--     first_sequence_number,
+--     event_group,
+--     -- Adjust the step number to skip the initial generic events
+--     CASE 
+--       WHEN clean_step_number = 1 
+--       AND event IN ('SKU_IMPRESSION', 'PAGE_VIEW')
+--       THEN NULL  -- We'll filter these out
+--       ELSE ROW_NUMBER() OVER(PARTITION BY customer_id, session ORDER BY clean_step_number) 
+--     END as adjusted_step_number
+--   FROM numbered_flow
+-- ),
 
 -- Final clean paths
 final_paths AS (
@@ -122,12 +122,13 @@ final_paths AS (
     last_occurrence_time,
     occurrences_in_sequence as times_repeated,
     -- Recalculate step numbers to be consecutive after removing initial events
-    ROW_NUMBER() OVER (
-      PARTITION BY session 
-      ORDER BY first_sequence_number
-    ) as clean_step_number
-  FROM cleaned_first_actions
-  WHERE adjusted_step_number IS NOT NULL  -- Remove the skipped initial events
+    -- ROW_NUMBER() OVER (
+    --   PARTITION BY session 
+    --   ORDER BY first_sequence_number
+    -- ) as 
+    clean_step_number
+  FROM numbered_flow
+  -- WHERE adjusted_step_number IS NOT NULL  -- Remove the skipped initial events
 )
 
 -- Generate final output with clean paths
