@@ -28,7 +28,8 @@ WITH
     d.created_time,
     DATE(d.created_time ) AS created_date,
     so_code AS sale_order_code,
-    -- delivered_time as delivered_time,
+    delivered_time as delivered_time, -- Huong add
+    outbound_time, -- Huong add
     f.province_code,
     customer_name AS receiver_name,
     shipping_ward_code,
@@ -44,14 +45,14 @@ WITH
 
   internal_tender AS (
   SELECT
-    --     order_code,
     order_id,
     status,
     receiver_id,
     DATETIME(TIMESTAMP(confirmation_date), 'Asia/Ho_Chi_Minh') AS created_time, -- TENDER USESING CONFIRMATION_DATE
     created_date,
     sale_order_code,
-    -- datetime(delivered_time) as delivered_time,
+    datetime(delivered_time) as delivered_time, -- Huong add
+    datetime(outbound_date) as outbound_time, -- Huong add
     province_code,
     receiver_name,
     CASE
@@ -61,7 +62,7 @@ WITH
     SOURCE
   FROM ${source.platinum}.tender_prd_core_tender_orders 
   WHERE status NOT LIKE "WAIT_TO_CONFIRM")
-  
+
 SELECT
   *
 FROM

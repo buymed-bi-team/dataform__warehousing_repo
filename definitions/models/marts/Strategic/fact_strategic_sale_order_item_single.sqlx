@@ -48,13 +48,10 @@ mkp_o AS (
         o.so_code as sale_order_code,
         o.customer_id, 
         o.order_status as status,
-        -- outbound_time as outbound_date,
+        outbound_time,
         created_at as created_time,
-        -- delivered_time,
+        delivered_time,
         shipping_ward_code,
-        -- CASE
-        -- WHEN SAFE_CAST(customer_ward_code AS integer) > 0 THEN customer_ward_code
-        -- ELSE customer_district_code END AS shipping_ward_code,
         "MKP" as system
     FROM  ${ref(`fact_order`)} o
     WHERE date(o.created_at) >= ${start_date}
@@ -86,21 +83,17 @@ mkp_o AS (
     SELECT 
         o.order_id,
         o.sale_order_code, 
-        o.order_id * (10000) AS customer_id,
+        o.receiver_id AS customer_id,
         o.status,
         -- o.outbound_date,
-        o.created_time, -- Tender using confirmation_date as created time
+        o.created_time,
         -- o.delivered_time,
-        CASE
-        WHEN SAFE_CAST(ward_code AS integer) > 0 THEN ward_code
-        ELSE district_code END AS shipping_ward_code,
+        shipping_ward_code,
         "TENDER" AS system
     FROM
-        -- ${source.platinum}.tender_prd_core_tender_orders o
         ${ref('fact_tender_order')} as o
     WHERE (o.created_date >= ${start_date} 
-    AND o.created_time is not null
-    AND status NOT LIKE "WAIT_TO_CONFIRM")
+    AND o.created_time is not null)
 )
 , tender_oi AS (
     SELECT 
