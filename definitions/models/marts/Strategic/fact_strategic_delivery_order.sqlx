@@ -105,4 +105,4 @@ WHERE
 AND doc.order_channel IS NOT NULL
 AND doc.order_channel <> "CONSIGNMENT-RECOGNITION"
 AND ois.supplier_class NOT LIKE "TECH")
-AND DO.status <> "CANCEL"
+AND do.status <> "CANCEL"
