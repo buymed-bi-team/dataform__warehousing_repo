@@ -57,8 +57,8 @@ WITH mkp_o AS (
         ELSE district_code END AS shipping_ward_code
     FROM
         ${source.platinum}.tender_prd_core_tender_orders
-    WHERE created_date >= ${start_date}
-    AND created_time is not null
+    WHERE confirmation_date >= ${start_date}
+    AND confirmation_date is not null
 )
 , o AS (
     SELECT * FROM mkp_o 
