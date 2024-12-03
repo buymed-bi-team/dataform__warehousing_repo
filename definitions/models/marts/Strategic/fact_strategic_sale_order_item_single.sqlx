@@ -45,17 +45,19 @@ WITH
 mkp_o AS ( 
     SELECT 
         o.order_id,
-        o.so_code as sale_order_code,
+        o.sale_order_code,
         o.customer_id, 
-        o.order_status as status,
-        outbound_time,
-        created_at as created_time,
+        o.status,
+        outbound_date,
+        created_time,
         delivered_time,
-        shipping_ward_code,
+        CASE
+        WHEN SAFE_CAST(ward_code AS integer) > 0 THEN ward_code
+        ELSE district_code END AS shipping_ward_code,
         "MKP" as system
-    FROM  ${ref(`fact_order`)} o
-    WHERE date(o.created_at) >= ${start_date}
-    AND o.created_at is not null
+    FROM  ${source.platinum}.marketplace_prd_order_v2_order o
+    WHERE created_date >= ${start_date}
+    AND o.created_time is not null
 )
 
 , mkp_oi AS (
@@ -85,16 +87,20 @@ mkp_o AS (
         o.sale_order_code, 
         o.receiver_id AS customer_id,
         o.status,
-        -- o.outbound_date,
-        o.created_time,
-        -- o.delivered_time,
-        shipping_ward_code,
+        o.outbound_date,
+        o.created_time as created_time,
+        o.delivered_time as delivered_time,
+        CASE
+        WHEN SAFE_CAST(ward_code AS integer) > 0 THEN ward_code
+        ELSE district_code END AS shipping_ward_code,
         "TENDER" AS system
-    FROM
-        ${ref('fact_tender_order')} as o
+    FROM 
+        ${source.platinum}.tender_prd_core_tender_orders as o
     WHERE (o.created_date >= ${start_date} 
-    AND o.created_time is not null)
+    AND o.created_time is not null
+    AND status NOT LIKE "WAIT_TO_CONFIRM")
 )
+
 , tender_oi AS (
     SELECT 
         'tender' || mg_id as oiid, 
@@ -272,9 +278,9 @@ mkp_o AS (
             ds4.supplier_class,
             oi.seller_class
         ) as supplier_class,
-        ${utils.ToTimezone(`o.created_time`)} as created_time,
-        ${utils.ToTimezone(`o.outbound_date`)} as outbound_time,
-        ${utils.ToTimezone(`o.delivered_time`)} as delivered_time,
+        DATETIME(o.created_time, '+7') as created_time,
+        DATETIME(o.outbound_date, '+7') as outbound_time,
+        DATETIME(o.delivered_time, '+7') as delivered_time,
 
         IF( oi.charge_campaign_fee_value <0, 0 , oi.charge_campaign_fee_value) charge_campaign_fee_value ,
         IF( oi.charge_combo_fee_value <0, 0 , oi.charge_combo_fee_value) charge_combo_fee_value ,
