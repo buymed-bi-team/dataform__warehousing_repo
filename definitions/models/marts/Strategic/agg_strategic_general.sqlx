@@ -62,9 +62,15 @@ delivery_metrics AS (
     do.channel,
     CAST(NULL AS STRING) AS supplier_class,
     -- shipping_ward_code,
-    COUNT(DISTINCT do.delivery_order_code) as do_count
+    COUNT(DISTINCT 
+        CASE 
+            WHEN DATE(do.created_time) <= '2023-05-31' 
+            THEN sale_order_code
+            ELSE delivery_order_code 
+        END
+    ) as do_count
   FROM ${ref(`fact_strategic_delivery_order`)} do 
-  GROUP BY 1, 2, 3, 4)
+  GROUP BY ALL)
 
 
 SELECT 

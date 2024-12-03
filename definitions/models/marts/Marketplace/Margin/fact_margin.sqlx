@@ -180,6 +180,7 @@ WITH
                 AND r.fc_code = p.fc_code
                 AND r.rebate_date = p.po_created_date
                 AND FLOOR(r.price_contract) IN UNNEST(p.list_unit_price)
+                -- AND FLOOR(r.price_after_rebate_with_adhoc_promotion) <= FLOOR(COALESCE(v.vb_purchase_price, NULLIF(p.po_purchase_price, 0)))
         WHERE 
             o.order_status <> 'CANCEL'
     )

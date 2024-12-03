@@ -36,6 +36,7 @@ WITH RankedData AS (
         CONCAT(
             '{',
             REGEXP_REPLACE(CONCAT(
+                CONCAT('"product_name":', b.product_name, ','), '',
                 IF(b.aging_put_days IS NOT NULL, CONCAT('"aging_put_days":', b.aging_put_days, ','), ''),
                 IF(c.aging_pick_days IS NOT NULL, CONCAT('"aging_pick_days":', c.aging_pick_days, ','), ''),
                 IF(b.latest_put_code IS NOT NULL, CONCAT('"latest_put_code":"', b.latest_put_code, '",'), ''),

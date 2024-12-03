@@ -29,6 +29,7 @@ WITH LatestPut AS (
 LatestFinalPut AS (
 SELECT
         a.sku,
+        p.product_name,
         a.warehouse_code,
         b.code,
         b.status,
@@ -36,6 +37,8 @@ SELECT
     FROM ${source.platinum}.warehouse_prd_inbound_put_ticket_item a
     JOIN ${source.platinum}.warehouse_prd_inbound_put_ticket b
         ON a.put_code = b.code
+    LEFT JOIN gold_buymed_vn2.dim_product p
+        ON a.product_id = p.product_id
     WHERE
         b.status <> "CANCEL"
     QUALIFY
@@ -44,6 +47,7 @@ SELECT
 
 SELECT DISTINCT
     f.sku,
+    f.product_name,
     f.warehouse_code,
     l.latest_put_time,
     TIMESTAMP_DIFF(CURRENT_TIMESTAMP(), l.latest_put_time, DAY) AS aging_put_days,
