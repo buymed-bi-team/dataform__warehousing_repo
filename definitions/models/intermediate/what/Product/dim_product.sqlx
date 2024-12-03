@@ -157,6 +157,7 @@ SELECT
 
   manufacturer.code as manufacturer_code,
   COALESCE(NULLIF(manufacturer.short_name,''), manufacturer.name) as manufacturer_short_name,
+  manufacturer.name as commercial_manufacturer_name,
 
   product.dosage_form,
   product.unit,
