@@ -65,7 +65,7 @@ delivery_metrics AS (
     COUNT(DISTINCT 
         CASE 
             WHEN DATE(do.created_time) <= '2023-05-31' 
-            THEN CAST(order_id AS STRING) 
+            THEN sale_order_code
             ELSE delivery_order_code 
         END
     ) as do_count
