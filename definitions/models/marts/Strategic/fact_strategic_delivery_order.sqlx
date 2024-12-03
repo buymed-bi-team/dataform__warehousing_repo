@@ -35,6 +35,7 @@ js {
 WITH mkp_o AS (
     SELECT 
         order_id,
+        status,
         sale_order_code,
         created_time,
         CASE 
@@ -48,6 +49,7 @@ WITH mkp_o AS (
 , tender_o AS (
     SELECT 
         order_id,
+        status,
         sale_order_code,
         confirmation_date as created_time,-- IN TENDER, CONFIRMATION_DATE IS CONSIDERED SAME AS CREATED_DATE IN ORDER
         CASE
@@ -103,3 +105,4 @@ WHERE
 AND doc.order_channel IS NOT NULL
 AND doc.order_channel <> "CONSIGNMENT-RECOGNITION"
 AND ois.supplier_class NOT LIKE "TECH")
+AND DO.status <> "CANCEL"
