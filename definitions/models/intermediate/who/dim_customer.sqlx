@@ -111,7 +111,7 @@ WITH
         , SUM(1) AS no_orders
     FROM ${ref('fact_order')}
     WHERE order_status <> 'CANCEL'
-      AND channel <> "MARKETPLACE"
+      AND channel = "MARKETPLACE"
     GROUP BY ALL
   ),
 
