@@ -35,6 +35,7 @@ js {
 WITH mkp_o AS (
     SELECT 
         order_id,
+        status,
         sale_order_code,
         created_time,
         CASE 
@@ -44,10 +45,12 @@ WITH mkp_o AS (
         ${source.platinum}.marketplace_prd_order_v2_order
     WHERE created_date >= ${start_date}
     AND created_time is not null
+    AND status <>"CANCEL"
 )
 , tender_o AS (
     SELECT 
         order_id,
+        status,
         sale_order_code,
         confirmation_date as created_time,-- IN TENDER, CONFIRMATION_DATE IS CONSIDERED SAME AS CREATED_DATE IN ORDER
         CASE
@@ -55,8 +58,8 @@ WITH mkp_o AS (
         ELSE district_code END AS shipping_ward_code
     FROM
         ${source.platinum}.tender_prd_core_tender_orders
-    WHERE created_date >= ${start_date}
-    AND created_time is not null
+    WHERE confirmation_date >= ${start_date}
+    AND confirmation_date is not null
 )
 , o AS (
     SELECT * FROM mkp_o 
@@ -94,7 +97,7 @@ SELECT
         END AS location
 
 FROM  o 
-LEFT JOIN ${source.platinum}.warehouse_prd_core_delivery_order do ON o.sale_order_code = do.sale_order_code
+LEFT JOIN ${source.platinum}.warehouse_prd_core_delivery_order do ON o.sale_order_code = do.sale_order_code AND do.status <>"CANCEL"
 LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = o.order_id 
 LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON o.order_id = dosr.order_id
 INNER JOIN ois ON o.order_id = ois.order_id
