@@ -147,7 +147,8 @@ with cte_date as (
 			ho.cod_amount,
 			ho.reason,
 			d.status as do_status,
-			ho.status
+			ho.status,
+			d.note
 		from (
 			select * 
 			from ${source.platinum}.delivery_prd_transporting_hub_shipping_order
