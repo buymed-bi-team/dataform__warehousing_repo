@@ -17,7 +17,7 @@ WITH
         SELECT
             *,
             SUM(value_by_condition) OVER(
-                PARTITION BY customer_id
+                PARTITION BY customer_id, gamification_code
                 ORDER BY order_created_at
                 ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
             ) AS cummulative_value
