@@ -36,14 +36,14 @@ SELECT
 FROM cte_value AS a
 LEFT JOIN (
     SELECT
-        code AS gamification_code
+        TRIM(code) AS gamification_code
         , SAFE_CAST(value AS INT64) AS  level
     FROM ${source.collector}.data_prd
     WHERE
         object = 'Product'
         AND type = 'GAMIFICATION_LEVEL'
         AND submit_id >= 4721
-    QUALIFY RANK() over (PARTITION BY code, object, type ORDER BY submit_id DESC ) = 1
+    QUALIFY RANK() over (PARTITION BY gamification_code, object, type ORDER BY submit_id DESC ) = 1
 ) AS b ON a.gamification_code = b.gamification_code
 WHERE cummulative_value >= COALESCE(level, min_total_value)
 QUALIFY ROW_NUMBER() over (PARTITION BY customer_id, a.gamification_code, level ORDER BY cummulative_value) = 1
