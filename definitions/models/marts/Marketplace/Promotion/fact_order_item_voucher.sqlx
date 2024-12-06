@@ -17,8 +17,8 @@ config {
 SELECT
     oi.order_id
     , oi.product_original_id AS product_id
-    , COALESCE(oi.combo_quantity, oi.demand_quantity) AS qty_ordered
-    , oi.sales_price AS price_unit
+    , SUM(COALESCE(oi.combo_quantity, oi.demand_quantity)) AS qty_ordered
+    , SUM(oi.sales_price * oi.demand_quantity) /  SUM(COALESCE(oi.combo_quantity, oi.demand_quantity)) AS price_unit
     , ov.redeem_code AS voucher_code
     , CONCAT(oi.order_id, '_', ov.redeem_code) AS order_voucher_code
     , vp.campaign_brand
@@ -34,3 +34,4 @@ WHERE
     AND oi.created_at >= '2024-05-01'
     -- AND oi.item_type <> 'IN_COMBO'
     -- AND vp.campaign_brand IS NOT NULL
+GROUP BY ALL

@@ -40,7 +40,7 @@ FROM ${source.platinum}.marketplace_prd_promotion_gamification AS a
         WHERE
             object = 'Product'
             AND type = 'CAMPAIGN_BRAND'
-        QUALIFY ROW_NUMBER() over (PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
+        QUALIFY ROW_NUMBER() over (PARTITION BY gamification_code, object, type ORDER BY submit_id DESC) = 1
     ) AS c ON a.gamification_code = c.gamification_code
 WHERE 
     c.gamification_code IS NOT NULL
