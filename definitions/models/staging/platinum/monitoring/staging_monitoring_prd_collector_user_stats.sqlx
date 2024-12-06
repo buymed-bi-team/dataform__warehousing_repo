@@ -9,7 +9,8 @@ config {
         nonNull: ["created_date"]
     },
     bigquery: {
-        partitionBy: "created_date"
+        partitionBy: "created_date",
+        clusterBy: ["event, customer_id, created_time, mg_id"]
     },
     tags:["custom_2h_past5"]
 }
