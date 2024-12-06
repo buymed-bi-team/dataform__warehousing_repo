@@ -10,7 +10,7 @@ config {
     },
     bigquery: {
         partitionBy: "created_date",
-        clusterBy: ["event, customer_id, created_time, mg_id"]
+        clusterBy: ["event, customer_id, mg_id"]
     },
     tags:["custom_2h_past5"]
 }
