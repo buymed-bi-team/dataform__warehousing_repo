@@ -65,7 +65,7 @@ FROM dedup_human_resource AS a,
         ON d.email = LOWER(a.fullname)
 WHERE JSON_VALUE(branch,'$.branch') LIKE "VN"
 AND NOT REGEXP_CONTAINS(UPPER(a.fullname),"TEST|DEMO|/[TECH/]|AP CHECKL")
-
+QUALIFY ROW_NUMBER() OVER(PARTITION BY employee_id) = 1
 post_operations {
     ALTER TABLE ${self()} ADD PRIMARY KEY (employee_id) NOT ENFORCED;
 }
