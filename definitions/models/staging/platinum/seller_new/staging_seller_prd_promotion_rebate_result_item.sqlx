@@ -48,6 +48,23 @@ pre_operations {
     )
   }
 }
+WITH wrong_deleted_records_1 AS (
+  SELECT mg_id, last_updated_time, TIMESTAMP_TRUNC(synced_at, SECOND) synced_at, action, ROW_NUMBER() OVER(_window) r
+  FROM silver_buymed_vn.seller_prd_promotion_rebate_result_item
+  ${when(incremental(), `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) `, ``)}
+  WINDOW _window AS (PARTITION BY mg_id ORDER BY synced_at DESC, IF(action='d',3,IF(action='u',2,1)) DESC, last_updated_time desc)
+), wrong_deleted_records_2 AS (
+  SELECT tbl1.mg_id, tbl1.synced_at,tbl2.synced_at,  tbl1.action, tbl2.action, tbl1.r
+  FROM wrong_deleted_records_1 tbl1 
+  LEFT JOIN wrong_deleted_records_1 tbl2 
+    ON tbl1.mg_id = tbl2.mg_id 
+      AND tbl1.synced_at = tbl2.synced_at 
+      and tbl1.r  + 1  = tbl2.r
+  WHERE tbl1.action = 'd'
+  AND tbl2.action is not null
+  AND tbl2.action <> "d"
+  AND tbl1.r  = 1
+)
 
 SELECT
  *,
@@ -75,6 +92,20 @@ WINDOW
     IF
       (action='u',2,1)) DESC,
     last_updated_time DESC)
+
+UNION ALL
+SELECT 
+  *,
+  CASE 
+    WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
+    ELSE "2099-01-01"
+  END AS created_date
+FROM ${source.silver}.seller_prd_promotion_rebate_result_item
+WHERE mg_id IN ( SELECT mg_id FROM wrong_deleted_records_2)
+${when(incremental() , `AND ingest_time > (SELECT MAX(ingest_time) FROM ${self()})`,``)}
+QUALIFY ROW_NUMBER() OVER(_window) = 1
+WINDOW _window AS (PARTITION BY mg_id ORDER BY synced_at DESC, IF(action='d',3,2) ASC, last_updated_time desc)
+
 
 post_operations {
   ${
