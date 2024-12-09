@@ -4,7 +4,7 @@ config {
         `
         SKU Location Dimension;
         PIC: nguyen.tran; 
-        Type: View; 
+        Type: Table; 
         Source: 
             ${source.platinum}.marketplace_prd_product_v2_sku,
             ${source.ref}.dim_fc_service_area
@@ -23,6 +23,7 @@ SELECT
     , b.sales_region_code
     , b.fc_code
     , s.seller_code
+    , s.skus
 FROM ${source.platinum}.marketplace_prd_product_v2_sku AS s
     , UNNEST(JSON_VALUE_ARRAY(s.location_codes)) AS a
     LEFT JOIN ${ref('dim_fc_service_area')} AS b ON b.service_area_code = a
