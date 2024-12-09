@@ -133,6 +133,7 @@ select
   , item_bom_code as item_code
   , product_bom_id as product_id
   , combo_quantity / COUNT(1) OVER(PARTITION BY order_id, sku_code) as combo_quantity -- nguyen.tran
+  , outbound_quantity / COUNT(1) OVER(PARTITION BY order_id, sku_code) as combo_outbound_quantity -- nguyen.tran
   , combo_quantity * bom_quantity as demand_quantity
   , reserved_quantity * bom_quantity as reserved_quantity
   , outbound_quantity * bom_quantity as outbound_quantity
@@ -197,6 +198,7 @@ cte_normal_item as (
     , oi.item_code
     , oi.product_id
     , null as combo_quantity --nguyen.tran
+    , null as combo_outbound_quantity --nguyen.tran
     , oi.demand_quantity
     , oi.reserved_quantity
     , oi.outbound_quantity

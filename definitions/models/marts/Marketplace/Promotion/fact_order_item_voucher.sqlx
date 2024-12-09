@@ -18,6 +18,7 @@ SELECT
     oi.order_id
     , oi.product_original_id AS product_id
     , SUM(COALESCE(oi.combo_quantity, oi.demand_quantity)) AS qty_ordered
+    , SUM(COALESCE(oi.combo_outbound_quantity, oi.outbound_quantity)) AS qty_outbound
     , SUM(oi.sales_price * oi.demand_quantity) /  SUM(COALESCE(oi.combo_quantity, oi.demand_quantity)) AS price_unit
     , ov.redeem_code AS voucher_code
     , CONCAT(oi.order_id, '_', ov.redeem_code) AS order_voucher_code
