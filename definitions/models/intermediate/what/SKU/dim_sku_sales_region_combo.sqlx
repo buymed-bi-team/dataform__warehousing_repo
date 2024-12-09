@@ -1,0 +1,24 @@
+config {
+    type: "table", 
+    description: 
+        `
+        Normal Product in Combo;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Source: 
+            ${source.ref}.dim_sku_location
+        `,
+    tags: ["custom_1h_past5", "PRODUCT_SKU_SR"]
+}
+
+SELECT
+    sl.sku_code AS combo_sku_code
+    , sl.fc_code
+    , sl.sales_region_code
+    , sl.product_id AS combo_product_id
+    , sl.seller_code
+    , JSON_VALUE(s, '$.sku') AS sku_code
+    , JSON_VALUE(s, '$.quantity') AS quantity
+    , CONCAT(sl.product_id, "_", sl.seller_code, "_", sl.sales_region_code) AS sku_key_sales_region_code
+FROM ${ref('dim_sku_location')} AS sl
+    , UNNEST(JSON_QUERY_ARRAY(skus)) AS s
