@@ -139,7 +139,7 @@ WITH product_retail_unit AS (
       WHERE submit_id = (
         SELECT max(submit_id) as submit_id
       FROM collector.data_prd
-      WHERE type = 'HIGH_MARGIN'
+      WHERE object = 'Product' and type = 'HIGH_MARGIN'
 )
   )
 
