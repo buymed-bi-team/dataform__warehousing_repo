@@ -41,9 +41,9 @@ WITH
       AND a.prices = c.prices
 )
 
--- SELECT
---   *
--- FROM price_full
+SELECT
+  *
+FROM price_full
 -- PIVOT ( SUM(sku_display_price) FOR prices IN (
 --         "LEVEL_DIAMOND_&_Delivery_Fee_1", "LEVEL_DIAMOND_&_Delivery_Fee_2", "LEVEL_DIAMOND_&_Delivery_Fee_3","LEVEL_DIAMOND_&_Delivery_Fee_4", 
 --         "LEVEL_GOLD_&_Delivery_Fee_1", "LEVEL_GOLD_&_Delivery_Fee_2","LEVEL_GOLD_&_Delivery_Fee_3", "LEVEL_GOLD_&_Delivery_Fee_4", 
