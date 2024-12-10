@@ -1,0 +1,16 @@
+config {
+  type: "view",
+  description: ` Start Date: 01-07-2024| PIC: tu.dang
+    Source:
+      ${source.platinum}.monitoring_prd_collector_user_stats`,
+  name: "monitoring_prd_collector_CHATBOT",
+  columns: {
+
+  },
+  schema: "buymed_product_recommendation"
+}
+
+
+select *
+from ${source.platinum}.monitoring_prd_collector_user_stats
+where event like "CHATBOT_CS%" and created_date >="2024-07-01"
