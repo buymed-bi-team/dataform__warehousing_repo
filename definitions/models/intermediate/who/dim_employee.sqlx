@@ -55,8 +55,11 @@ SELECT
     a.department,
     a.job_title,
     a.employee_status,
-     COALESCE(c.phone_number, d.phone_number) AS phone_number,
-    IF(d.phone_number IS NOT NULL, "RIDER", "EMPLOYEE") AS employee_type
+    COALESCE(c.phone_number, d.phone_number) AS phone_number,
+    CASE 
+        WHEN c.phone_number IS NOT NULL THEN "EMPLOYEE"
+        WHEN d.phone_number IS NOT NULL THEN "RIDER"
+    END AS employee_type
 FROM dedup_human_resource AS a,
     UNNEST(JSON_EXTRACT_ARRAY(user_branch_infos)) as branch
     LEFT JOIN employee_phone_number AS c 
