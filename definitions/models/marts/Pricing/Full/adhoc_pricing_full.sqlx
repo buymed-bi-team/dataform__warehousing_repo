@@ -26,7 +26,7 @@ WITH
         -- COALESCE(b.campaign_price, b.deal_price,  a.display_price) as sku_display_price,
         COALESCE(
             b.campaign_price,
-            LEAST( COALESCE(b.deal_price, a.display_price), a.display_price),
+            LEAST( b.deal_price, a.display_price ),
             a.display_price
         ) AS sku_display_price,
         a.sku_key_sales_region_code
@@ -41,11 +41,12 @@ WITH
       AND a.prices = c.prices
 )
 
-SELECT
-  *
-FROM price_full
-PIVOT ( SUM(sku_display_price) FOR prices IN (
-        "LEVEL_DIAMOND_&_Delivery_Fee_1", "LEVEL_DIAMOND_&_Delivery_Fee_2", "LEVEL_DIAMOND_&_Delivery_Fee_3","LEVEL_DIAMOND_&_Delivery_Fee_4", 
-        "LEVEL_GOLD_&_Delivery_Fee_1", "LEVEL_GOLD_&_Delivery_Fee_2","LEVEL_GOLD_&_Delivery_Fee_3", "LEVEL_GOLD_&_Delivery_Fee_4", 
-        "LEVEL_SILVER_&_Delivery_Fee_1", "LEVEL_SILVER_&_Delivery_Fee_2", "LEVEL_SILVER_&_Delivery_Fee_3", "LEVEL_SILVER_&_Delivery_Fee_4"
-))
+-- SELECT
+--   *
+-- FROM price_full
+-- PIVOT ( SUM(sku_display_price) FOR prices IN (
+--         "LEVEL_DIAMOND_&_Delivery_Fee_1", "LEVEL_DIAMOND_&_Delivery_Fee_2", "LEVEL_DIAMOND_&_Delivery_Fee_3","LEVEL_DIAMOND_&_Delivery_Fee_4", 
+--         "LEVEL_GOLD_&_Delivery_Fee_1", "LEVEL_GOLD_&_Delivery_Fee_2","LEVEL_GOLD_&_Delivery_Fee_3", "LEVEL_GOLD_&_Delivery_Fee_4", 
+--         "LEVEL_SILVER_&_Delivery_Fee_1", "LEVEL_SILVER_&_Delivery_Fee_2", "LEVEL_SILVER_&_Delivery_Fee_3", "LEVEL_SILVER_&_Delivery_Fee_4",
+--         "LLEVEL_PLATINUM_&_Delivery_Fee_1", "LEVEL_PLATINUM_&_Delivery_Fee_2", "LEVEL_PLATINUM_&_Delivery_Fee_3", "LEVEL_PLATINUM_&_Delivery_Fee_4"
+-- ))
