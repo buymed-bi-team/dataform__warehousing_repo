@@ -196,7 +196,9 @@ WITH
 
       a.customer_level,
       a.tags,
-      IF(a.status = 'CANCEL', "CANCELLED", "NORMAL") AS cancellation
+      IF(a.status = 'CANCEL', "CANCELLED", "NORMAL") AS cancellation,
+
+      redeem_apply_result
 
     FROM ${source.platinum}.marketplace_prd_order_v2_order AS a
       LEFT JOIN customer_rating r 

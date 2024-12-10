@@ -132,11 +132,12 @@ WITH product_retail_unit AS (
   )
 
     , high_margin_product AS (
-        SELECT
-          CAST(code AS INT64) AS product_id
-          , value as high_margin
-        FROM collector.data_prd
-        WHERE submit_id = 5128
+      SELECT 
+          SAFE_CAST(code AS INT64) AS product_id
+          , NULLIF(value, "NAN") as high_margin
+      FROM collector.data_prd
+      WHERE object = 'Product' and type = 'HIGH_MARGIN'
+      QUALIFY ROW_NUMBER() OVER(PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
   )
 
 SELECT

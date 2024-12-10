@@ -16,13 +16,13 @@ WITH
     promotion_order as (
         SELECT
             a.order_id
-            , TIMESTAMP_ADD(a.created_time, INTERVAL 7 HOUR) AS created_at
-            , a.price AS gmv
+            , TIMESTAMP(a.created_at) AS created_at
+            , a.ordered_amount AS gmv
             , a.customer_id
             , JSON_VALUE(r, '$.code') AS redeem_code
             , SAFE_CAST(JSON_VALUE(r, '$.discount_value') AS FLOAT64) AS discount_value
             , CONCAT(a.order_id, "_", JSON_VALUE(r, '$.code')) AS order_voucher_code
-        FROM ${source.platinum}.marketplace_prd_order_v2_order AS a
+        FROM ${ref('fact_order')} AS a
             , UNNEST(JSON_QUERY_ARRAY(a.redeem_apply_result)) AS r
     )
 

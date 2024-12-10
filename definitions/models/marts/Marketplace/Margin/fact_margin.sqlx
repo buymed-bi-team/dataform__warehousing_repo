@@ -62,6 +62,7 @@ WITH
                 + IF(s.supplier_type IN ("MARKET", "BIZ_HOUSEHOLD"), 1.5, 0) ) / 100
               ) AS seller_received_amount
             , sku_orignal_key
+            , oi.sales_region_code
         FROM ${ref('fact_order_item')} AS oi
             LEFT JOIN ${ref('dim_product')} AS p 
                 ON oi.product_id = p.product_id
@@ -162,6 +163,7 @@ WITH
             , oi.fc_code
             , ob.seller_class
             , oi.sku_orignal_key AS sku_key_original
+            , oi.sales_region_code
         FROM outbound_item AS ob
             LEFT JOIN order_item AS oi 
                 ON ob.mg_id = oi.mg_id AND ob.sku_code = oi.sku_code
@@ -185,27 +187,6 @@ WITH
             o.order_status <> 'CANCEL'
     )
 
-    -- , seller_margin AS (
-    --     SELECT
-    --         mg_id
-    --         , created_at
-    --         , outbound_date
-    --         , order_id
-    --         , customer_id
-    --         , sku_code
-    --         , product_id
-    --         , seller_code
-    --         , unit_price
-    --         , outbound_quantity
-    --         , po_code
-    --     FROM ${ref('fact_order_item')} AS oi
-    --         LEFT JOIN ${ref('fact_order')} AS o USING(order_id)
-    --         LEFT JOIN ${ref('dim_supplier')} AS sup ON sup.supplier_code = oi.seller_code
-    --     WHERE 
-    --         sup.supplier_class = "EXTERNAL"
-    --         AND o.order_status <> 'CANCEL'
-    --         AND DATE(o.created_at) >= DATE_SUB(DATE_TRUNC(CURRENT_DATE(+7), MONTH), INTERVAL 12 MONTH)
-    -- )
 
 SELECT
     *

@@ -30,10 +30,15 @@ WITH wrong_deleted_records_1 AS (
   AND tbl1.r  = 1
 )
 
+-- SELECT * FROM wrong_deleted_records_2
+-- WHERE mg_id IN (
+
 SELECT 
     a.mg_id 
 FROM wrong_deleted_records_2 a
 LEFT JOIN  ${ref(`seller_prd_promotion_rebate_result_item`)} b 
   ON a.mg_id = b.mg_id 
 WHERE b.mg_id is null
+
+-- )
 
