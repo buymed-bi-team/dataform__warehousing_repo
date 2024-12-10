@@ -132,11 +132,15 @@ WITH product_retail_unit AS (
   )
 
     , high_margin_product AS (
-        SELECT
+      SELECT 
           CAST(code AS INT64) AS product_id
           , value as high_margin
-        FROM collector.data_prd
-        WHERE submit_id = 5193
+      FROM collector.data_prd
+      WHERE submit_id = (
+        SELECT max(submit_id) as submit_id
+      FROM collector.data_prd
+      WHERE type = 'HIGH_MARGIN'
+)
   )
 
 SELECT
