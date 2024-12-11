@@ -1,5 +1,5 @@
 config {
-  type: "view",
+  type: "table",
   description: ` Start Date: 01-07-2024| PIC: tu.dang
     Source:
       ${source.platinum}.monitoring_prd_collector_user_stats`,
