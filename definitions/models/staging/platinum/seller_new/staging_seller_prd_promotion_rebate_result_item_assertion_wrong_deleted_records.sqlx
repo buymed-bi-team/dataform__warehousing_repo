@@ -15,7 +15,7 @@ config {
 WITH wrong_deleted_records_1 AS (
   SELECT mg_id, last_updated_time, TIMESTAMP_TRUNC(synced_at, SECOND) synced_at, action, ROW_NUMBER() OVER(_window) r
   FROM silver_buymed_vn.seller_prd_promotion_rebate_result_item
---   ${when(incremental(), `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) `, ``)}
+
   WINDOW _window AS (PARTITION BY mg_id ORDER BY synced_at DESC, IF(action='d',3,IF(action='u',2,1)) DESC, last_updated_time desc)
 ), wrong_deleted_records_2 AS (
   SELECT tbl1.mg_id, tbl1.synced_at,tbl2.synced_at,  tbl1.action, tbl2.action, tbl1.r
@@ -41,4 +41,5 @@ LEFT JOIN  ${ref(`seller_prd_promotion_rebate_result_item`)} b
 WHERE b.mg_id is null
 
 -- )
+
 

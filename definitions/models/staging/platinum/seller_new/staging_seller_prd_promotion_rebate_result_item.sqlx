@@ -22,18 +22,20 @@ pre_operations {
       SET Ingest_checkpoint = (SELECT max(ingest_time) FROM ${self()});
 
       SET checkpoint_date = ARRAY( 
-        SELECT DISTINCT date(created_time,'+7')
+        SELECT DISTINCT IF(created_time is NULL, "2099-01-01" , DATE( DATETIME(created_time,'Asia/Ho_Chi_Minh') ) )
         FROM silver_buymed_vn.seller_prd_promotion_rebate_result_item 
         WHERE ingest_time > Ingest_checkpoint
       );
-
-      DELETE FROM ${self()}
-      where created_date in UNNEST(checkpoint_date)
-      and mg_id in ( 
-        SELECT DISTINCT mg_id 
-        FROM silver_buymed_vn.seller_prd_promotion_rebate_result_item 
-        WHERE ingest_time > Ingest_checkpoint
-        );
+      
+      IF ( SELECT ARRAY_LENGTH(checkpoint_date) = 0 ) THEN
+            DELETE FROM ${self()}
+            where created_date in UNNEST(checkpoint_date)
+            and mg_id in ( 
+              SELECT DISTINCT mg_id 
+              FROM silver_buymed_vn.seller_prd_promotion_rebate_result_item 
+              WHERE ingest_time > Ingest_checkpoint
+              );
+      END IF;
 
       `,
       ``
