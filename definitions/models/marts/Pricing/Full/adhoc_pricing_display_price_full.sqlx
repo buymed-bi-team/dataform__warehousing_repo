@@ -25,7 +25,7 @@ with
         from ${source.platinum}.marketplace_prd_pricing_v2_setting
         where
             type = 'CUSTOMER_LEVEL'
-            and upper(code) IN ('LEVEL_GOLD', 'LEVEL_SILVER', 'LEVEL_DIAMOND') 
+            and upper(code) IN ('LEVEL_GOLD', 'LEVEL_SILVER', 'LEVEL_PLATINUM','LEVEL_DIAMOND')
         QUALIFY ROW_NUMBER() OVER (PARTITION BY type, code ORDER BY ingest_time DESC) = 1
     )
 

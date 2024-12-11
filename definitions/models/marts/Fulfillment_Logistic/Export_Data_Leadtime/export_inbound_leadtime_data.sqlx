@@ -28,6 +28,7 @@ WITH cte_date AS (
 )
 
 select 
+  a.po_created_ts,
   a.po_confirmed_ts, 
   a.po_code,
   a.partner_code,

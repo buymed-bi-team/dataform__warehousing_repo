@@ -126,7 +126,8 @@ select
 				, "URGENT_AFTER_INBOUND"
 			) 
 	END AS po_urgent,
-	p.type AS po_type
+	p.type AS po_type,
+	COALESCE(TIMESTAMP_ADD(p.created_time, interval 7 hour), TIMESTAMP_ADD(ps.created_time, interval 7 hour)) AS po_created_ts
 
 from (
     select *
@@ -138,6 +139,11 @@ from (
         from ${source.platinum}.seller_prd_purchasing_purchase_order
         where created_date >= (select DATE(start_date) from cte_date)
     ) as p on i.po_code = p.po_code
+    left join (
+        select *
+        from ${source.platinum}.seller_prd_wis_inbound
+        where created_date >= (select DATE(start_date) from cte_date)
+    ) as ps on i.po_code = ps.inbound_code
     LEFT JOIN check_it_popgh AS c ON c.po_code = i.po_code
 	LEFT JOIN first_checkin_destination_fc AS f ON f.po_code = i.po_code
 	LEFT JOIN first_location AS l ON l.po_code = i.po_code

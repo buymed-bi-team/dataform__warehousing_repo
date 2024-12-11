@@ -19,17 +19,18 @@ WITH
         a.sku_code,
         a.sales_region_code,
         a.prices,
-        -- if(seller_class = 'INTERNAL',
-        --     COALESCE(b.campaign_price, b.deal_price,  a.display_price),
-        --     COALESCE(c.display_price_seller_with_promo, c.display_price_seller_without_promo)
-        -- ) as sku_display_price
-        -- COALESCE(b.campaign_price, b.deal_price,  a.display_price) as sku_display_price,
+        SPLIT(a.prices, '_&_')[OFFSET(0)] AS customer_level,
+        SPLIT(a.prices, '_&_')[OFFSET(1)] AS delivery_fee,
+        b.campaign_price,
+        b.deal_price,
+        a.display_price,
         COALESCE(
             b.campaign_price,
-            LEAST( COALESCE(b.deal_price, a.display_price), a.display_price),
+            LEAST( b.deal_price, a.display_price ),
             a.display_price
         ) AS sku_display_price,
         a.sku_key_sales_region_code
+
     from ${ref('adhoc_pricing_display_price_full')} a
     left join ${ref('adhoc_pricing_promotion_price_full')} b 
       on a.sku_code = b.sku_code 
@@ -44,8 +45,9 @@ WITH
 SELECT
   *
 FROM price_full
-PIVOT ( SUM(sku_display_price) FOR prices IN (
-        "LEVEL_DIAMOND_&_Delivery_Fee_1", "LEVEL_DIAMOND_&_Delivery_Fee_2", "LEVEL_DIAMOND_&_Delivery_Fee_3","LEVEL_DIAMOND_&_Delivery_Fee_4", 
-        "LEVEL_GOLD_&_Delivery_Fee_1", "LEVEL_GOLD_&_Delivery_Fee_2","LEVEL_GOLD_&_Delivery_Fee_3", "LEVEL_GOLD_&_Delivery_Fee_4", 
-        "LEVEL_SILVER_&_Delivery_Fee_1", "LEVEL_SILVER_&_Delivery_Fee_2", "LEVEL_SILVER_&_Delivery_Fee_3", "LEVEL_SILVER_&_Delivery_Fee_4"
-))
+-- PIVOT ( SUM(sku_display_price) FOR prices IN (
+--         "LEVEL_DIAMOND_&_Delivery_Fee_1", "LEVEL_DIAMOND_&_Delivery_Fee_2", "LEVEL_DIAMOND_&_Delivery_Fee_3","LEVEL_DIAMOND_&_Delivery_Fee_4", 
+--         "LEVEL_GOLD_&_Delivery_Fee_1", "LEVEL_GOLD_&_Delivery_Fee_2","LEVEL_GOLD_&_Delivery_Fee_3", "LEVEL_GOLD_&_Delivery_Fee_4", 
+--         "LEVEL_SILVER_&_Delivery_Fee_1", "LEVEL_SILVER_&_Delivery_Fee_2", "LEVEL_SILVER_&_Delivery_Fee_3", "LEVEL_SILVER_&_Delivery_Fee_4",
+--         "LLEVEL_PLATINUM_&_Delivery_Fee_1", "LEVEL_PLATINUM_&_Delivery_Fee_2", "LEVEL_PLATINUM_&_Delivery_Fee_3", "LEVEL_PLATINUM_&_Delivery_Fee_4"
+-- ))

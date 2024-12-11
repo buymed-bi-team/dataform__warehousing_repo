@@ -31,7 +31,7 @@ config {
         outbound_quantity: "Nullable | the quantity of products have be shipped from warehouse",
         price: "Nullable"
     },
-    tags: ('0h00'),
+    // tags: ('0h00'),
     bigquery: {
         partitionBy: "DATE(created_time)"
     }
