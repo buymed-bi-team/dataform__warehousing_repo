@@ -35,7 +35,6 @@ select
   a.total_item,
   a.total_sku,
   a.first_received_time_at_hub,
-  a.first_checkin_destination_fc,
   a.po_type,
   s.supplier_name AS partner_name,
   a.inbound_code,
