@@ -1,7 +1,7 @@
 config {
     type: "assertion",
     schema: "platinum_buymed_vn",
-    tags: ["custom_2h_past5","seller_prd_promotion"]
+    tags: ["platinum_custom_2h_past5","seller_prd_promotion"]
 }
 
 /*
