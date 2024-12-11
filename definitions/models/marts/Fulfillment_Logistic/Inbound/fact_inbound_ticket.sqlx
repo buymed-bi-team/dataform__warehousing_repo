@@ -143,7 +143,7 @@ from (
         select *
         from ${source.platinum}.seller_prd_wis_inbound
         where created_date >= (select DATE(start_date) from cte_date)
-    ) as ps on i.po_code = ps.po_code
+    ) as ps on i.po_code = ps.inbound_code
     LEFT JOIN check_it_popgh AS c ON c.po_code = i.po_code
 	LEFT JOIN first_checkin_destination_fc AS f ON f.po_code = i.po_code
 	LEFT JOIN first_location AS l ON l.po_code = i.po_code
