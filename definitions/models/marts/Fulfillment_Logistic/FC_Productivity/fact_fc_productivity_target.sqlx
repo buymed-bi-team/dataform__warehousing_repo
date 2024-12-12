@@ -1,0 +1,32 @@
+config {
+    type: "table",
+    name: "fact_fc_productivity_target",
+    tags: ['custom_1h_past5']
+}
+
+select 
+  code
+  , split(code, '_')[offset(1)] as fc_code
+  , type
+  , cast( value as integer ) as production_target
+  , submit_at 
+  ,  concat( 
+      current_year,
+      LPAD( current_month, 2, '0' ),
+      LPAD( split(code, '_')[offset(0)], 2, '0' )
+    ) as string_date_code
+from (
+  select 
+    code
+    , type
+    , value
+    , submit_at
+    , row_number() over (partition by code, type order by submit_at desc) as row_num
+    , extract( year from current_date('+7') ) as current_year
+    , cast( extract( month from current_date('+7') ) as string ) as current_month
+  from `collector.data_prd`
+  where
+    object = 'KPI_Operation'
+)
+where
+  row_num = 1

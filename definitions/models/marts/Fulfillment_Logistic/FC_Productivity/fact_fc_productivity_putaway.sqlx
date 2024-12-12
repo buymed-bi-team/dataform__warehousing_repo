@@ -1,0 +1,26 @@
+config {
+  type: "view",
+  name: "fact_fc_productivity_putaway",
+  tags: ["FC-PRODUCTIVITY"]
+}
+
+with cte_date as (
+	select date_sub(date_trunc(date_sub( current_timestamp() , interval 1 day), day), interval 7 hour)  as start_date
+)
+
+select
+    p.mg_id
+    , p.ticket_id
+    , p.code as ticket_code
+    , p.warehouse_code as fc_code
+    , timestamp_add( p.created_time, interval 7 hour ) as start_at
+    , timestamp_add( p.end_time, interval 7 hour ) as done_at
+    , p.employee_id
+    , p.total_sku
+    , p.total_item
+    , timestamp_add( current_timestamp, interval 7 hour ) as transformed_at
+    , 'PUT' as stage_code
+FROM ${source.platinum}.warehouse_prd_inbound_put_ticket as p
+where
+    p.created_date >= (select DATE(start_date) from cte_date) 
+    AND p.end_time >= (select start_date from cte_date)
