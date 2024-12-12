@@ -27,7 +27,7 @@ pre_operations {
         WHERE ingest_time > Ingest_checkpoint
       );
       
-      IF ( SELECT ARRAY_LENGTH(checkpoint_date) = 0 ) THEN
+      IF ( SELECT ARRAY_LENGTH(checkpoint_date) > 0 ) THEN
             DELETE FROM ${self()}
             where created_date in UNNEST(checkpoint_date)
             and mg_id in ( 
@@ -82,7 +82,8 @@ IF
     (action='d',3,
     IF
     (action='u',2,1)) DESC,
-    last_updated_time DESC)
+    last_updated_time DESC
+)
 
 UNION ALL
 SELECT 

@@ -1,0 +1,38 @@
+config {
+    type: "table",
+    name: "agg_fc_productivity_by_worker",
+    tags: ['custom_1h_past5']
+}
+
+with cte_agg as (
+    select
+        a.employee_id
+        , a.fc_code
+        , a.stage_code
+        , dh.fc_shift
+        , COUNT(DISTINCT IF(a.flag_rank_worker = 1, ticket_id, NULL)) AS count_tickets
+        , sum( a.total_sku ) as total_skus
+        , sum( a.total_item ) as total_items
+    from ${ref('fact_fc_productivity')} as a
+    left join ${ref('dim_hour')} as dh on a.done_hour = dh.hour_id
+    where
+        a.done_date = extract( date from timestamp_add( current_timestamp , interval 7 hour ))
+        and a.employee_id is not null
+    group by 1, 2, 3, 4  
+),
+
+cte_ranking as (
+    select 
+        *
+        , rank() over (partition by fc_code, stage_code, fc_shift order by total_skus desc) rank_by_sku
+        , rank() over (partition by fc_code, stage_code, fc_shift order by total_items desc) rank_by_item
+    from cte_agg 
+)
+
+select *
+    , case
+        when stage_code in ('PICK', 'PUT') then rank_by_sku
+        when stage_code in ('PACK', 'QC', 'INBOUND_QC') then rank_by_item
+    end productivity_rank
+    , timestamp_add( current_timestamp, interval 7 hour ) as transformed_at
+from cte_ranking

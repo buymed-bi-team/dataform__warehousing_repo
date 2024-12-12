@@ -1,0 +1,51 @@
+config {
+  type: "view",
+  name: "fact_fc_productivity_pick_zone",
+  tags: ["FC-PRODUCTIVITY"]
+}
+
+with cte_date as (
+	select date_sub(date_trunc(date_sub( current_timestamp() , interval 2 day), day), interval 7 hour)  as start_date_scan
+)
+
+select
+      st.mg_id
+      , st.pick_ticket_id as ticket_id
+      , st.sale_order_code as ticket_code
+      , st.warehouse_code as fc_code
+      , timestamp_add(TIMESTAMP_SECONDS(CAST(ts.start_time AS INT64)), interval 7 hour) as start_at
+      , timestamp_add(TIMESTAMP_SECONDS(CAST(ts.end_time AS INT64)), interval 7 hour) as done_at
+      , ts.handler_id as employee_id
+      , count(tsi.sku) as total_sku
+      , sum(tsi.processed_quantity) as total_item
+      , timestamp_add( current_timestamp, interval 7 hour ) as transformed_at
+      , 'PICK' as stage_code
+from (
+    SELECT *
+    FROM ${source.platinum}.warehouse_prd_picking_pick_ticket
+    WHERE 
+        created_date >= (SELECT date(start_date_scan) FROM cte_date)
+) t
+left join (
+    SELECT *
+    FROM ${source.platinum}.warehouse_prd_picking_sub_pick_ticket
+    WHERE 
+        created_date >= (SELECT date(start_date_scan) FROM cte_date)
+) AS st on t.ticket_id = st.pick_ticket_id
+LEFT JOIN (
+    SELECT *
+    FROM ${source.platinum}.warehouse_prd_picking_task
+    WHERE
+        created_date >= (SELECT date(start_date_scan) FROM cte_date)
+) ts ON st.ticket_id = ts.reference_id
+LEFT JOIN (
+    SELECT *
+    FROM ${source.platinum}.warehouse_prd_picking_task_item
+    WHERE
+        created_date >= (SELECT date(start_date_scan) FROM cte_date)
+) tsi ON tsi.task_id = ts.task_id
+WHERE t.status = 'DONE' and 
+    tsi.processed_quantity > 0
+group by 1,2,3,4,5,6,7,10,11
+-- group by 1,2,3,4,7,10,11
+order by st.pick_ticket_id

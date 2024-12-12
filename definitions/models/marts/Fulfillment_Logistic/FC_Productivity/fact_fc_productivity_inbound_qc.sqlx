@@ -1,0 +1,27 @@
+config {
+  type: "view",
+  name: "fact_fc_productivity_ib_qc",
+  tags: ['FC-PRODUCTIVITY']
+}
+
+with cte_date as (
+	select date_sub(date_trunc(date_sub( current_timestamp() , interval 1 day), day), interval 7 hour)  as start_date
+)
+
+SELECT 
+    p.mg_id
+    , p.ticket_id
+    , p.code as ticket_code
+    , p.warehouse_code as fc_code
+    , timestamp_add( p.start_time, interval 7 hour ) as start_at
+    , timestamp_add( p.end_time, interval 7 hour ) as done_at
+    , p.employee_id
+    , p.total_sku
+    , p.total_item
+    , timestamp_add( current_timestamp, interval 7 hour ) as transformed_at
+    , 'INBOUND_QC' as stage_code
+FROM ${source.platinum}.warehouse_prd_inbound_receipt AS p
+WHERE 
+    p.created_date >= (select DATE(start_date) from cte_date) and 
+    p.end_time >= (select start_date from cte_date)
+    and p.type = 'CONVEYOR_CHECKING'

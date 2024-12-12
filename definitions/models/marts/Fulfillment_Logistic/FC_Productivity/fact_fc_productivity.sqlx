@@ -1,0 +1,27 @@
+config {
+    type: "table",
+    name: "fact_fc_productivity",
+    tags: ['custom_1h_past5']
+}
+
+select
+    *
+    , extract( date from done_at ) as done_date
+    , extract( hour from done_at ) + 1 as done_hour 
+    , row_number() over (partition by ticket_id,employee_id,stage_code order by done_at asc) as flag_rank_worker
+    , row_number() over (partition by ticket_id,stage_code order by done_at asc) as flag_rank_overall 
+from (
+    select * from ${ref('fact_fc_productivity_putaway')}
+    union all
+    select * from ${ref('fact_fc_productivity_pick_zone')}
+    union all
+    select * from ${ref('fact_fc_productivity_qc')}
+    union all
+    select * from ${ref('fact_fc_productivity_pack')}
+    union all
+    select * from ${ref('fact_fc_productivity_ib_qc')}
+    union all
+    select * from ${ref('fact_fc_productivity_delivery')}
+    union all
+    select * from ${ref('fact_fc_productivity_cyclecount')}
+)

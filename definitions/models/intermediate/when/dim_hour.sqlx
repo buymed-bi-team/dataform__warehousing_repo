@@ -1,0 +1,30 @@
+config {
+  type: "table",
+  name: "dim_hour"
+}
+
+select
+  *
+  , concat( fc_shift_2 , '|' , hour_code ) as fc_shift_hour
+from (
+  select
+    hour as hour_id
+    , case
+      when hour < 10 then concat('0', hour)
+      else cast(hour as string)
+    end hour_code
+    , case 
+      when hour > 6 and hour <= 14 then 'SHIFT-1'
+      when hour > 14 and hour <= 22 then 'SHIFT-2'
+      else 'SHIFT-3'
+    end as fc_shift
+    , case 
+      when hour > 6 and hour <= 14 then 'SHIFT-1'
+      when hour > 14 and hour <= 22 then 'SHIFT-2'
+      when hour > 22 and hour <= 24 then 'SHIFT-3.1'
+      else 'SHIFT-3.2'
+    end as fc_shift_2
+  from
+    unnest(GENERATE_ARRAY(1, 24)) as hour
+)
+
