@@ -1,7 +1,7 @@
 config {
     type:"operations",
-    description: `PIC: tu.dang; Schedule: 0h00 daily`,
-    tags:['7h00']
+    description: `PIC: tu.dang; Schedule: 0h00 daily`/*,
+    tags:['7h00']*/
 }
 
 -- Create description for agg_strategic_general
