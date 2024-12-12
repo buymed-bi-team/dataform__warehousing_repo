@@ -1,0 +1,70 @@
+
+
+config {
+    type: "incremental",
+    name: "monitoring_prd_realtime_supply_pricing",
+    schema: "platinum_buymed_vn",
+    assertions: {
+        uniqueKey: 'mg_id',
+        nonNull: ["created_date"]
+    },
+    bigquery: {
+        partitionBy: "created_date",
+        clusterBy: ["item_code"]
+    },
+    tags:["platinum_custom_2h_past5","monitoring_prd_realtime-supply"]
+}
+pre_operations {
+  ${
+    when(incremental(),
+      `
+      DECLARE Ingest_checkpoint TIMESTAMP;
+      DECLARE checkpoint_date ARRAY<date>;
+
+      SET Ingest_checkpoint = (SELECT max(ingest_time) FROM ${self()});
+
+      SET checkpoint_date = ARRAY( 
+        SELECT DISTINCT IF(created_time is NULL, "2099-01-01" , DATE( DATETIME(created_time,'Asia/Ho_Chi_Minh') ) )
+        FROM silver_buymed_vn.monitoring_prd_realtime_supply_pricing 
+        WHERE ingest_time > Ingest_checkpoint
+      );
+      
+      IF ( SELECT ARRAY_LENGTH(checkpoint_date) = 0 ) THEN
+            DELETE FROM ${self()}
+            where created_date in UNNEST(checkpoint_date)
+            and mg_id in ( 
+              SELECT DISTINCT mg_id 
+              FROM silver_buymed_vn.monitoring_prd_realtime_supply_pricing
+              WHERE ingest_time > Ingest_checkpoint
+              );
+      END IF;
+
+      `,
+      ``
+    )
+  }
+}
+
+--
+
+SELECT
+*,
+CASE 
+    WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
+    ELSE "2099-01-01"
+END AS created_date
+FROM ${source.silver}.monitoring_prd_realtime_supply_pricing o 
+${ when(incremental(), `WHERE ingest_time > Ingest_checkpoint ` )}
+
+QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'
+WINDOW
+_window AS (
+PARTITION BY
+    mg_id
+ORDER BY
+    synced_at DESC,
+IF
+    (action='d',3,
+    IF
+    (action='u',2,1)) DESC,
+    last_updated_time DESC)
