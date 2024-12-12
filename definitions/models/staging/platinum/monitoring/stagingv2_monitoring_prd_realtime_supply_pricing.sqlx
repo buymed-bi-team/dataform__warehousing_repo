@@ -29,7 +29,7 @@ pre_operations {
         WHERE ingest_time > Ingest_checkpoint
       );
       
-      IF ( SELECT ARRAY_LENGTH(checkpoint_date) = 0 ) THEN
+      IF ( SELECT ARRAY_LENGTH(checkpoint_date) > 0 ) THEN
             DELETE FROM ${self()}
             where created_date in UNNEST(checkpoint_date)
             and mg_id in ( 

@@ -30,8 +30,8 @@ WITH wrong_deleted_records_1 AS (
   AND tbl1.r  = 1
 )
 
--- SELECT * FROM wrong_deleted_records_2
--- WHERE mg_id IN (
+-- -- SELECT * FROM wrong_deleted_records_2
+-- -- WHERE mg_id IN (
 
 SELECT 
     a.mg_id 
@@ -40,6 +40,39 @@ LEFT JOIN  ${ref(`seller_prd_promotion_rebate_result_item`)} b
   ON a.mg_id = b.mg_id 
 WHERE b.mg_id is null
 
+-- -- )
+
+-- DELETE FROM platinum_buymed_vn.seller_prd_promotion_rebate_result_item
+-- WHERE ingest_time >= "2024-12-11"
+
+-- WITH silver AS (
+-- SELECT
+--   mg_id, created_time, last_updated_time, synced_at, ingest_time, action
+
+-- FROM ${source.silver}.seller_prd_promotion_rebate_result_item o 
+-- QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'
+-- WINDOW
+-- _window AS (
+-- PARTITION BY
+--     mg_id
+-- ORDER BY
+--     synced_at DESC,
+-- IF
+--     (action='d',3,
+--     IF
+--     (action='u',2,1)) DESC,
+--     last_updated_time DESC
+-- ))
+-- , platinum AS (
+--   SELECT mg_id, created_time, last_updated_time, synced_at, ingest_time, action
+--   FROM ${source.platinum}.seller_prd_promotion_rebate_result_item
 -- )
+-- SELECT silver.*, platinum.*
+--   FROM silver 
+--   FULL JOIN platinum 
+--     ON silver.mg_id = platinum.mg_id 
+--   WHERE silver.mg_id <> platinum.mg_id 
+
+
 
 
