@@ -1,0 +1,31 @@
+config {
+  type: "view",
+  name: "fact_fc_productivity_delivery",
+  tags: ["FC-PRODUCTIVITY"]
+}
+
+WITH cte_date AS (
+	SELECT
+		date_sub(timestamp(date_sub( current_date('+7'), interval 1 day)) , interval 7 hour) as start_date
+)
+
+select
+  sh.mg_id
+  , cast(REGEXP_EXTRACT(sh.reference_code, r'(\d+)') as int64) as ticket_id -- this is order_id of reference_code
+  , sh.reference_code as ticket_code
+  , sh.from_customer_code as fc_code
+  , timestamp_add( sh.created_time, interval 7 hour ) as start_at
+  , timestamp_add( timestamp_seconds(cast(sh.picked_time as int64)), interval 7 hour ) as done_at
+  , null as employee_id
+  , array_length(json_extract_array(products)) as total_sku
+  , (SELECT SUM(cast(json_value(x,'$.quantity') as int64))
+      FROM UNNEST(json_extract_array(products)) AS x) AS total_item
+  , timestamp_add( current_timestamp, interval 7 hour ) as transformed_at
+  , 'DELIVERY' as stage_code
+from (
+  select *
+  from ${source.platinum}.delivery_prd_transporting_shipping_order
+  where created_date >= (select date(start_date) from cte_date) 
+) sh
+where from_customer_code in ('BD','DN','HN')
+  and coalesce(sh.picked_time,0) > 0
