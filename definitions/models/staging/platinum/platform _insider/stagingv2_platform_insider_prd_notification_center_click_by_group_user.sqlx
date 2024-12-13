@@ -8,7 +8,7 @@ config {
     bigquery: {
         partitionBy: "created_date"
     },
-    tags: ["custom_1h_past7","platform_insider_prd_notification-center"]
+    tags: ["platinum_custom_2h_past7","platform_insider_prd_notification-center"]
 }
 
 pre_operations {
