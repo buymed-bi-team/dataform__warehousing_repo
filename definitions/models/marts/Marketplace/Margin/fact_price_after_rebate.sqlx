@@ -21,6 +21,7 @@ WITH
     contract_price as (
         SELECT
             contract_price_code
+            , contract_price_id
             , start_time
             , end_time
         FROM ${source.platinum}.seller_prd_purchasing_contract_price
@@ -45,7 +46,8 @@ SELECT
     TIMESTAMP_ADD(start_time, INTERVAL 7 HOUR) AS start_time,
     SAFE_CAST(JSON_VALUE(a.extra_props, "$.price_expected") AS FLOAT64) AS price_expected_on_bill,
     rebate,
-    a.contract_price_code
+    a.contract_price_code,
+    b.contract_price_id
 FROM ${ref('seller_prd_promotion_log_price_after_rebate')} AS a
     LEFT JOIN contract_price AS b ON a.contract_price_code = b.contract_price_code
 WHERE

@@ -34,6 +34,7 @@ SELECT
     price_contract,
     price_expected_on_bill,
     rebate,
+    contract_price_id,
     product_sales_region_code,
     sku_key_sales_region_code
 FROM ${ref('fact_price_after_rebate_fv_vendor')}
