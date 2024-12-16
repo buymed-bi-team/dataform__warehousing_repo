@@ -64,7 +64,8 @@ dedup_dim_order AS (
   SELECT
     order_id,
     order_type,
-    order_channel
+    order_channel,
+    location_code
   FROM ${ref("dim_order")} 
   QUALIFY ROW_NUMBER() OVER (PARTITION BY order_id) = 1
 ),
@@ -90,7 +91,8 @@ agg_sale_order_item AS (
     a.unit_price * LEAST(a.first_reserved_quantity, a.order_quantity) AS first_reserved_amount, -- Adjust amount accordingly
     SUM(a.order_quantity) OVER (PARTITION BY a.sale_order_code) AS total_qty,
     SUM(a.order_quantity * a.unit_price) OVER (PARTITION BY a.sale_order_code) AS total_amt,
-    COUNT(DISTINCT a.sku_code) OVER (PARTITION BY a.sale_order_code) AS total_sku
+    COUNT(DISTINCT a.sku_code) OVER (PARTITION BY a.sale_order_code) AS total_sku,
+    d.location_code
   FROM dedup_sale_order_item a
   LEFT JOIN dedup_sale_order b
     ON a.sale_order_code = b.sale_order_code
