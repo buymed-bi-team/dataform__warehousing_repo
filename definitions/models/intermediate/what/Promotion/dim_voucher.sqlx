@@ -67,4 +67,4 @@ FROM ${source.platinum}.marketplace_prd_promotion_voucher AS v
 WHERE
     v.voucher_id NOT IN (6475,41228,43668, 286759)
     AND v.end_time >= TIMESTAMP_SUB('2023-01-01', INTERVAL 7 HOUR)
-QUALIFY ROW_NUMBER() OVER(PARTITION BY voucher_id) = 1
+QUALIFY ROW_NUMBER() OVER(PARTITION BY voucher_code) = 1
