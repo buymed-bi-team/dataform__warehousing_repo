@@ -93,7 +93,7 @@ WITH
 SELECT
     *
     , CASE
-        WHEN sku_display_price_type IN ("CAMPAIGN", "DEAL") THEN deal_cost
+        WHEN sku_display_price_type IN ("CAMPAIGN", "DEAL") THEN COALESCE(deal_cost, rebate_price_with_adhoc_promotion)
         ELSE rebate_price_with_adhoc_promotion
     END AS final_rebate
 FROM cte
