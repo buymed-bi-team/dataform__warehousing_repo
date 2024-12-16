@@ -29,7 +29,7 @@ IF
   SELECT mg_id, created_time, last_updated_time, synced_at, ingest_time, action
   FROM ${ref("seller_prd_promotion_rebate_result_item")}
 )
-SELECT silver.*, platinum.*
+SELECT silver.mg_id as silver_mg_id, platinum.mg_id as platinum_mg_id
   FROM silver 
   FULL JOIN platinum 
     ON silver.mg_id = platinum.mg_id 

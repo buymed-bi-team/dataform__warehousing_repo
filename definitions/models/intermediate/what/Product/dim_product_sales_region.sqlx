@@ -57,7 +57,7 @@ SELECT
     , p.cic_name AS cic_name_import
     , cic.cic_name AS cic_name
     , cic.cic_fullname AS cic_full_name_internal
-    , cic.brand_type
+    , NULLIF(cic.brand_type, '') AS brand_type
     , CASE
         WHEN cic.brand_type IS NULL OR cic.brand_type IN ("#N/A", "") THEN NULL
         WHEN cic.brand_type = 'BRANDNAME' THEN 'BRANDNAME'

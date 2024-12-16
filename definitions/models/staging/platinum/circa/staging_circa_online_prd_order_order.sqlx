@@ -9,7 +9,7 @@ config {
     bigquery: {
         partitionBy: "created_date"
     },
-    tags: ["custom_2h_past5"]
+    tags: ["platinum_custom_2h_past5"]
 }
 
 pre_operations {
@@ -59,7 +59,7 @@ pre_operations {
 }
 
 SELECT
- * EXCEPT(timestamp_i),
+ * ,
  CASE 
     WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
     ELSE "2099-01-01"
