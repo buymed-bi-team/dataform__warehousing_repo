@@ -1,6 +1,8 @@
 config {
   type: "assertion",
-  description: "Assure that total_amount between vendor_bill and vendor_bill item don't miss too much"
+  description: "Assure that total_amount between vendor_bill and vendor_bill item don't miss too much",
+  tags: ["platinum_daily_AM_9:00","seller_prd_purchasing"],
+  // dependencies: ["seller_prd_purchasing_vendor_bill"]
 }
 
 with cte_vendor_bill as (
@@ -8,7 +10,7 @@ with cte_vendor_bill as (
     vendor_bill_id
     ,sum(coalesce(total_price,0))              as total_amount
   from
-    ${ref(`seller_prd_purchasing_vendor_bill`)}
+    ${source.platinum}.seller_prd_purchasing_vendor_bill
   where
     date(date_add(issued_time,interval 7 hour)) between '2024-01-01' and '2024-12-31'
     -- vendor_bill_id = 767989
@@ -25,12 +27,12 @@ cte_vendor_bill_item as (
       vbi.vendor_bill_id
       ,coalesce(vbi.total_price,0)              as total_amount
     from
-      ${ref(`seller_prd_purchasing_vendor_bill_item`)} vbi
+      ${source.platinum}.seller_prd_purchasing_vendor_bill_item vbi
       inner join (
         select distinct
           vendor_bill_id
         from
-          ${ref(`seller_prd_purchasing_vendor_bill`)}
+          ${source.platinum}.seller_prd_purchasing_vendor_bill
         where
           date(date_add(issued_time,interval 7 hour)) between '2024-01-01' and '2024-12-31'
           -- vendor_bill_id = 767989
@@ -43,7 +45,7 @@ cte_vendor_bill_item as (
       vendor_bill_id
       ,coalesce(total_discount_after_vat*-1,0)      as total_amount
     from
-      ${ref(`seller_prd_purchasing_vendor_bill`)}
+      ${source.platinum}.seller_prd_purchasing_vendor_bill
     where
       date(date_add(issued_time,interval 7 hour))between '2024-01-01' and '2024-12-31'
       and total_discount_after_vat <> 0
@@ -65,7 +67,7 @@ from
   cte_vendor_bill cvb
   left join cte_vendor_bill_item cvbi
     on cvb.vendor_bill_id = cvbi.vendor_bill_id
-  left join ${ref(`seller_prd_purchasing_vendor_bill`)} vbm
+  left join ${source.platinum}.seller_prd_purchasing_vendor_bill vbm
     on cvb.vendor_bill_id = vbm.vendor_bill_id
 where
   ((cvb.total_amount - cvbi.total_amount >= 100) or  (cvb.total_amount - cvbi.total_amount <= -100))
