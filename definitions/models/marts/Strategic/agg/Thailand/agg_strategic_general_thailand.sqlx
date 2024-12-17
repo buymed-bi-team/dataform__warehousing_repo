@@ -10,7 +10,34 @@ WITH base_calendar AS (
     eom,
     date
   FROM ${ref(`dim_calendar`)}
-  WHERE date >= "2023-01-01")
+  WHERE date >= "2023-01-01"),
+
+order_metrics AS (
+  SELECT
+    DATE(created_at) as order_date,
+    CAST(NULL AS STRING) as location,
+    CAST(NULL AS STRING) as channel,
+    CAST(NULL AS STRING) as supplier_class,
+    SUM(gmv) as gmv_with_listed_price,
+  FROM lakehouse-prod-394907.gold_buymed_th.fact_order
+  GROUP BY 1, 2, 3, 4)
+
+SELECT 
+  CURRENT_DATETIME("+7") AS refresh_time,
+  c.eom as date,
+  location,
+  channel,
+  measure,
+  supplier_class,
+  value
+FROM order_metrics m
+CROSS JOIN UNNEST([
+  STRUCT("GMV_GENERAL" as measure, gmv_with_listed_price as value)
+]) metrics
+JOIN base_calendar c 
+  ON DATE(m.order_date) = c.date
+
+UNION ALL
 
 SELECT a.* 
 FROM ${ref(`agg_strategic_customer_thailand`)} as a
