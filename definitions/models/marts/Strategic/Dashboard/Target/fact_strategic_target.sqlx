@@ -1,0 +1,20 @@
+config {
+    type: "view",
+    tags: ["Stream", "STRATEGIC"]
+}
+
+select
+    *
+from (
+    -- select * from ${ref('fact_strategic_target_gmv_monthly')}
+    -- UNION ALL
+    select * from ${ref('fact_strategic_target_sales')}
+    UNION ALL
+    select * from ${ref('fact_strategic_target_active_customer')}
+    UNION ALL
+    select * from ${ref('fact_strategic_target_new_customer')}
+    UNION ALL
+    select * from ${ref('fact_strategic_target_alt')}
+    UNION ALL
+    select * from ${ref('fact_strategic_target_order')}
+)

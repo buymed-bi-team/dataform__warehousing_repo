@@ -1,0 +1,24 @@
+config {
+  type: "view",
+  tags: ["Stream", "STRATEGIC"]
+}
+
+WITH cte_agg as (
+SELECT 
+  c.year_month
+  , COUNTIF(gmv > 0) as target
+-- FROM `lakehouse-prod-394907.gold_buymed_vn.fact_order` as o
+FROM ${ref("fact_order")} AS o
+-- LEFT JOIN `lakehouse-prod-394907.gold_buymed_vn.dim_calendar` as c on DATE(o.created_at) = c.Date
+LEFT JOIN ${ref("dim_calendar")} AS c on DATE(o.created_at) = c.Date
+WHERE
+  -- TIMESTAMP_TRUNC(created_at, MONTH) = TIMESTAMP("2024-04-01") 
+  c.aging_month = 1
+GROUP BY 1
+)
+
+SELECT 
+    CAST(FORMAT_DATE('%Y-%m', current_timestamp) AS STRING) AS year_month
+    , "ORDER" AS metric
+    , a.target
+FROM cte_agg AS a

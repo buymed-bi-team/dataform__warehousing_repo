@@ -1,0 +1,19 @@
+config {
+  type: "view",
+  tags: ["Stream", "STRATEGIC"]
+}
+
+SELECT 
+  CAST(FORMAT_DATE('%Y-%m', current_timestamp) AS STRING) AS year_month
+  , "GMV-MONTHLY" as metric
+  , 600000000000 as target
+--   , SUM(SAFE_CAST(a.value as INT64)) as target
+-- FROM  ${source.collector}.data_prd AS a
+-- WHERE 
+--   a.submit_id = (
+--     SELECT max(submit_id)
+--     FROM ${source_collector.COLLECTOR}.data_prd as a
+--     WHERE
+--       a.object= 'KPI_Growth'
+--       AND type = "SALES_OTC"
+--   )

@@ -1,0 +1,27 @@
+config {
+  type: "view",
+  tags: ["Stream", "STRATEGIC"]
+}
+
+SELECT 
+  CAST(FORMAT_DATE('%Y-%m', current_timestamp) AS STRING) AS year_month
+  , metric_code
+  , target
+FROM
+  UNNEST([
+    -- STRUCT('AC' AS metric_code, 30000 AS target)
+    STRUCT('FFR' AS metric_code, 96 AS target)
+    , STRUCT('GMV-MONTHLY' AS metric_code, 600000000000 AS target)
+    , STRUCT('CANCEL' AS metric_code, 3 AS target)
+    , STRUCT('ONTIME' AS metric_code, 80 AS target)
+    , STRUCT('SELLER' AS metric_code, 500 AS target)
+    , STRUCT('PRODUCT' AS metric_code, 14000 AS target)
+    , STRUCT('ONTIME_CS' AS metric_code, 90 AS target)
+    , STRUCT('FR-SORT-TOTAL' AS metric_code, 96 AS target)
+    , STRUCT('CS_RATING' AS metric_code, 4.7 AS target)
+    , STRUCT('AOV' AS metric_code, 4000000 AS target)
+    , STRUCT('AOP-MONTHLY' AS metric_code, 17 AS target)
+    , STRUCT('ORDER_FREQ-MONTHLY' AS metric_code, 7 AS target)
+    , STRUCT('AOP_C-MONTHLY' AS metric_code, 30 AS target)
+    , STRUCT('CS_CHAT_RATING' AS metric_code, 4.7 AS target)
+  ]) AS record

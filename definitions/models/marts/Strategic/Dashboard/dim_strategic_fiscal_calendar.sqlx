@@ -1,0 +1,23 @@
+config {
+  type: "table",
+  dependencies: ["dim_calendar"],
+  tags: ["0h30"]
+}
+
+WITH cte_main AS (
+SELECT 
+  DISTINCT year_month, aging_month, aging_year
+FROM ${ref("dim_calendar")}
+WHERE 
+  aging_month <= 12
+  and aging_month >= 0
+)
+
+SELECT
+  year_month
+  , CONCAT(SUBSTRING(year_month, 3, 2), '-', SUBSTRING(year_month, 6, 2)) AS year_month2
+  , aging_month
+  , aging_year
+FROM cte_main
+
+
