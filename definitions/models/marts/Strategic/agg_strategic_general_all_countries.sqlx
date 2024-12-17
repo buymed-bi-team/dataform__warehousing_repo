@@ -9,14 +9,14 @@ SELECT *,
 "Vietnam" as Country
 FROM ${ref(`agg_strategic_general_vn`)}
 
-UNION ALL
+-- UNION ALL
 
-SELECT *, 
-"Thailand" as Country
-FROM ${ref(`agg_strategic_general_thailand`)}
+-- SELECT *, 
+-- "Thailand" as Country
+-- FROM ${ref(`agg_strategic_general_thailand`)}
 
-UNION ALL
+-- UNION ALL
 
-SELECT *, 
-"Cambodia" as Country
-FROM ${ref(`agg_strategic_general_cambodia`)}
+-- SELECT *, 
+-- "Cambodia" as Country
+-- FROM ${ref(`agg_strategic_general_cambodia`)}
