@@ -64,7 +64,7 @@ SELECT
         WHEN cic.brand_type = 'BRANDNAME' THEN 'BRANDNAME'
         ELSE "GENERIC"
       END AS brand_type_group
-    , cat.catm_group
+    , NULLIF(cat.catm_group, '') AS catm_group
     , CASE
         WHEN COUNTIF(sl.status = 'NORMAL') > 0 THEN "NORMAL"
         WHEN COUNTIF(sl.status = 'LIMIT') > 0 THEN "LIMIT"
