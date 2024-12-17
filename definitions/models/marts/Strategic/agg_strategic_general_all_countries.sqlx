@@ -11,12 +11,12 @@ FROM ${ref(`agg_strategic_general_vn`)}
 
 UNION ALL
 
-SELECT *
+SELECT *,
 "Thailand" as Country
 FROM ${ref(`agg_strategic_general_thailand`)}
 
 UNION ALL
 
-SELECT *
+SELECT *,
 "Cambodia" as Country
 FROM ${ref(`agg_strategic_general_cambodia`)}
