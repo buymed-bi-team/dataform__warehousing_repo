@@ -29,7 +29,7 @@ with
             LEFT JOIN UNNEST(JSON_EXTRACT_ARRAY(e.category_in_charge_data)) as f
             LEFT JOIN ${ref('dim_employee')} acc3
                 ON acc3.branch_account_id = SAFE_CAST(JSON_EXTRACT_SCALAR(f, '$.category_in_charge') as INT64)
-                    AND acc.employee_status = 'ACTIVE'
+                    AND acc3.employee_status = 'ACTIVE'
         -- WHERE acc3.employee_status  = 'ACTIVE'
         QUALIFY ROW_NUMBER() OVER(PARTITION BY product_id, fc_code) = 1
     ),
