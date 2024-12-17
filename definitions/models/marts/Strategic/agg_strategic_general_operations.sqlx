@@ -15,7 +15,7 @@ js {
 }
 
 CREATE SNAPSHOT TABLE ${source.ref}.agg_strategic_general_${today}
-CLONE ${ref(`agg_strategic_general`)}
+CLONE ${ref(`agg_strategic_general_vn`)}
 -- FOR SYSTEM_TIME AS OF
 --   TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR)
 OPTIONS (expiration_timestamp = TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 30 DAY));
