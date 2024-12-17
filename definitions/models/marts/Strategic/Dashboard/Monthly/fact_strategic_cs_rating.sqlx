@@ -1,0 +1,51 @@
+config {
+  type: "view",
+  dependencies: ["fact_cs_ticket", "dim_calendar"],
+  tags: ["Stream"]
+}
+
+WITH 
+    cte_agg as (
+        SELECT
+            c.year_month
+            , avg(a.evaluate_point) as cs_rating
+        FROM gold_buymed_vn2.fact_cs_ticket as a
+        LEFT JOIN ${ref("dim_calendar")} as c on DATE(a.completed_ts) = c.Date
+        WHERE 
+            c.aging_month <= 12 AND  
+            a.department_code in ("CUSTOMER_SERVICE", "CUSTOMER_SUPPORT", "CS", "CSP")
+        GROUP BY 1
+    ),
+
+    cs_chat AS (
+        SELECT
+            FORMAT_TIMESTAMP("%Y-%m", TIMESTAMP_ADD(created_time, INTERVAL 7 HOUR)) AS year_month
+            , AVG(rating) AS cs_chat_rating
+        FROM ${source.platinum}.integration_prd_chat_topic_rating
+        WHERE conversation_type = 'CUSTOMER_WITH_CS'
+          AND JSON_VALUE(extra_props, '$.is_customer_rating') = 'true'
+        GROUP BY 1
+    )
+
+
+SELECT
+  year_month,
+  metric,
+  performance
+FROM
+  cte_agg,
+  UNNEST([
+    STRUCT('CS_RATING' AS metric, cs_rating AS performance)
+  ]) AS record
+UNION ALL
+SELECT
+  year_month,
+  metric,
+  performance
+FROM
+  cs_chat,
+  UNNEST([
+    STRUCT('CS_CHAT_RATING' AS metric, cs_chat_rating AS performance)
+  ]) AS record
+
+

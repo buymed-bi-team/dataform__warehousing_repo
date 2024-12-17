@@ -1,0 +1,67 @@
+config {
+    type: "view",
+    description: "PIC nguyen.tran"
+}
+
+WITH
+    cte_agg AS (
+        SELECT
+            SUM(gmv) AS gmv
+            , COUNT(order_id) AS total_order
+            , AVG(gmv) AS aov
+            -- , AVG(ordered_line_items) AS aop
+        FROM ${ref('fact_order')}
+    ),
+
+    cte_aop AS (
+        SELECT
+            FORMAT_DATETIME("%Y-%m", created_at) AS year_month
+            , AVG(ordered_line_items) AS aop
+        FROM ${ref('fact_order')} AS a
+            LEFT JOIN ${ref('dim_calendar')} AS b ON DATE(a.created_at) = b.Date
+        WHERE 
+            aging_month <= 12
+        GROUP BY 1
+    ),
+    
+    cte_aoq AS (
+        SELECT
+            FORMAT_DATETIME("%Y-%m", created_at) AS year_month
+            , AVG(ordered_quantity) AS aop
+        FROM ${ref('fact_order')} AS a
+            LEFT JOIN ${ref('dim_calendar')} AS b ON DATE(a.created_at) = b.Date
+        WHERE 
+            aging_month <= 12
+        GROUP BY 1
+    )
+
+SELECT
+    "" AS year_month
+    , metric
+    , performance
+FROM cte_agg,
+     UNNEST([
+        STRUCT('GMV-TOTAL' AS metric, gmv AS performance)
+        , STRUCT('ORDER-TOTAL' AS metric, total_order AS performance)
+        , STRUCT('AOV-TOTAL' AS metric, aov AS performance)
+        -- , STRUCT('AOP-TOTAL' AS metric, aop AS performance)
+     ])
+UNION ALL
+SELECT 
+    year_month
+    , metric
+    , performance
+FROM cte_aop,
+    UNNEST([
+        STRUCT('AOP-MONTHLY' AS metric, aop AS performance)
+    ])
+UNION ALL
+SELECT 
+    year_month
+    , metric
+    , performance
+FROM cte_aoq,
+    UNNEST([
+        STRUCT('AOQ-MONTHLY' AS metric, aop AS performance)
+    ])
+

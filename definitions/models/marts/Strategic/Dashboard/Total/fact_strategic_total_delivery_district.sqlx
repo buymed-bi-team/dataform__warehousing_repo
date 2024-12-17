@@ -1,0 +1,27 @@
+config {
+  type: "view",
+  tags: ["Stream"]
+}
+
+WITH cte_agg as (
+SELECT
+  COUNT(DISTINCT(o.shiping_district_code)) AS district
+FROM ${ref('fact_order')} as o
+LEFT JOIN ${ref("dim_calendar")} as c on DATE(o.created_at) = c.Date
+WHERE 
+    confirmed_time IS NOT NULL
+    AND delivered_time IS NOT NULL
+    AND c.aging_day <= 30
+)
+
+SELECT
+  FORMAT_TIMESTAMP('%Y-%m', current_timestamp, "UTC+7") as year_month,
+  metric,
+  performance
+FROM
+  cte_agg,
+  UNNEST([
+    STRUCT('DISTRICT-L30D' AS metric, district AS performance)
+  ]) AS record
+
+

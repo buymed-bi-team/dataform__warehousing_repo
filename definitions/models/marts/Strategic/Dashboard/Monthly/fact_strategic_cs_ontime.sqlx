@@ -1,0 +1,32 @@
+config {
+  type: "view",
+  dependencies: ["fact_cs_ticket", "dim_calendar"],
+  tags: ["Stream"]
+}
+
+WITH cte_agg as (
+SELECT
+  c.year_month
+  , ROUND(
+      100 * COUNTIF(TIMESTAMP_DIFF(a.completed_ts, a.due_ts, SECOND) <= 0) / COUNT(1)
+    , 2
+  ) AS cs_ontime
+FROM gold_buymed_vn2.fact_cs_ticket as a
+LEFT JOIN ${ref("dim_calendar")} as c on DATE(a.completed_ts) = c.Date
+WHERE 
+  c.aging_month <= 12 AND  
+  a.department_code in ("CUSTOMER_SERVICE", "CUSTOMER_SUPPORT", "CS", "CSP")
+GROUP BY 1
+)
+
+SELECT
+  year_month,
+  metric,
+  performance
+FROM
+  cte_agg,
+  UNNEST([
+    STRUCT('ONTIME_CS' AS metric, cs_ontime AS performance)
+  ]) AS record
+
+

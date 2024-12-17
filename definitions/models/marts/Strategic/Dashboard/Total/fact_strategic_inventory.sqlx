@@ -1,0 +1,37 @@
+config {
+  type: "view",
+  tags: ["Stream"]
+}
+
+WITH cte_agg as (
+SELECT 
+    FORMAT_TIMESTAMP('%Y-%m', current_timestamp, "UTC+7") as year_month
+--   , se.supplier_class
+    , SUM(a.stock_quantity * d.display_price) AS total_inhand
+    , SUM(CASE WHEN se.supplier_class = "INTERNAL" THEN a.stock_quantity * d.display_price ELSE 0 END) AS medx_inhand
+    , SUM(CASE WHEN se.supplier_class = "EXTERNAL" THEN a.stock_quantity * d.display_price ELSE 0 END) AS seller_inhand
+FROM ${ref("fact_stock_sku_item")} as a
+LEFT JOIN ${ref("dim_fc_location")} AS b on a.location_fc_code = b.location_fc_code
+LEFT JOIN ${ref("dim_fc")} as c on a.fc_code = c.fc_code
+LEFT JOIN ${ref('adhoc_pricing_display_price')} as d on a.sku_code = d.sku_code and c.sales_region_code = d.sales_region_code
+LEFT JOIN ${ref("dim_sku")} as sku on a.sku_code = sku.sku_code
+LEFT JOIN ${ref("dim_supplier")} as se on sku.seller_code = se.supplier_code
+WHERE
+  b.parent_location_code in ("WH-MAIN", "WH-INBOUND")
+  and se.supplier_class is not null
+  -- a.fc_code = "BD"
+GROUP BY 1
+-- FROM ${ref("fact_order")} as o
+)
+
+SELECT
+  year_month,
+  metric,
+  performance
+FROM
+  cte_agg,
+  UNNEST([
+    STRUCT('INHAND_TOTAL' AS metric, total_inhand AS performance),
+    STRUCT('INHAND_MEDX' AS metric, medx_inhand AS performance),
+    STRUCT('INHAND_SELLER' AS metric, seller_inhand AS performance)
+  ]) AS record

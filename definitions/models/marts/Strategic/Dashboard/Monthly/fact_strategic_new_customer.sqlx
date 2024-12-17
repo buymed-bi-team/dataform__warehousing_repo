@@ -1,0 +1,27 @@
+config {
+  type: "view",
+  dependencies: ["dim_customer_profiling"],
+  tags: ["Stream"]
+}
+
+WITH cte_agg as (
+SELECT 
+  year_month
+  , SUM(new_customer) AS new_customer
+FROM `lakehouse-prod-394907.gold_buymed_vn2.dim_customer_profiling` 
+WHERE
+  som >= DATE_TRUNC(DATE_SUB(CURRENT_DATE(), INTERVAL 13 MONTH), MONTH)
+GROUP BY 1
+)
+
+SELECT
+  year_month,
+  metric,
+  performance
+FROM
+  cte_agg,
+  UNNEST([
+    STRUCT('NC' AS metric, new_customer AS performance)
+  ]) AS record
+
+

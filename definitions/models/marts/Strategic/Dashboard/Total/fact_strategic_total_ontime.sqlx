@@ -1,0 +1,28 @@
+config {
+  type: "view",
+  tags: ["Stream"]
+}
+
+WITH cte_agg as (
+SELECT
+  ROUND(
+      100 * COUNTIF(TIMESTAMP_DIFF(o.delivered_time, o.expected_delivery_time, SECOND) <= 0) / COUNT(1)
+    , 2
+  ) AS ontime_percentage
+FROM ${ref('fact_order')} as o
+WHERE 
+  o.delivered_time is not null
+  AND o.expected_delivery_time is not null
+)
+
+SELECT
+  "" as year_month,
+  metric,
+  performance
+FROM
+  cte_agg,
+  UNNEST([
+    STRUCT('ONTIME-TOTAL' AS metric, ontime_percentage AS performance)
+  ]) AS record
+
+

@@ -1,0 +1,26 @@
+config {
+  type: "view",
+  tags: ["Stream"]
+}
+
+WITH cte_agg as (
+SELECT  
+  FORMAT_TIMESTAMP('%Y-%m', created_time, "UTC+7") as year_month,
+  sum(sort) / count(1) AS fr
+-- FROM `lakehouse-prod-394907.silver_buymed_vn.warehouse_prd_core_sale_order` 
+FROM platinum_buymed_vn.warehouse_prd_core_sale_order
+WHERE 
+  type = "NORMAL"
+  AND status in ("WAIT_TO_DELIVERY", "PICKING", "CHECKING", "WAIT_TO_PACK", "COMPLETED", "WAIT_TO_CHECK", "PACKING", "DELIVERED", "WAIT_TO_PICK", "DELIVERING")
+GROUP BY 1
+)
+
+SELECT
+  year_month,
+  metric,
+  performance
+FROM
+  cte_agg,
+  UNNEST([
+    STRUCT('FR-SORT-TOTAL' AS metric, fr AS performance)
+  ]) AS record
