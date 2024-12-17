@@ -98,6 +98,7 @@ CROSS JOIN UNNEST([
   STRUCT("COMMERCIAL_COMBO_AMOUNT" as measure, commercial_combo_amount as value),
   STRUCT("GMV_UNFF" as measure, gmv_unff as value),
   STRUCT("GMV_WITH_LISTED_PRICE" as measure, gmv_with_listed_price as value),
+  STRUCT("GMV_GENERAL" as measure, gmv_with_listed_price as value), --Just duplicated GMV_WITH_LISTED_PRICE
   STRUCT("ITEM_SOLD" as measure, item_sold as value),
   STRUCT("GMV_BACKLOG" as measure, gmv_backlog as value),
   STRUCT("GMV_RETURN" as measure, gmv_return as value)
