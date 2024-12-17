@@ -6,17 +6,22 @@ config {
 
 
 SELECT *, 
+CASE 
+WHEN measure = 'GMV_WITH_LISTED_PRICE' THEN 'GMV_GENERAL'
+ELSE measure END AS GMV_GENERAL,
 "Vietnam" as Country
 FROM ${ref(`agg_strategic_general_vn`)}
 
 UNION ALL
 
 SELECT *, 
+NULL as GMV_GENERAL,
 "Thailand" as Country
 FROM ${ref(`agg_strategic_general_thailand`)}
 
 UNION ALL
 
-SELECT *, 
+SELECT *,
+NULL as GMV_GENERAL,
 "Cambodia" as Country
 FROM ${ref(`agg_strategic_general_cambodia`)}

@@ -1,5 +1,5 @@
 config {
-    type:"table",
+    type:"view",
     description: `PIC: Huong.Dang; Schedule: 0h00 daily
     Source;
         ${source.ref}.agg_strategic_gmv-before-cancel
