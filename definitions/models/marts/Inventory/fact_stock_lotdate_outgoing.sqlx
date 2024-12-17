@@ -44,6 +44,8 @@ SELECT
     , JSON_VALUE(b1.lot) as lot
     , JSON_VALUE(b1.exp_date) as expired_date
     , COALESCE(d.parent_location_code, JSON_VALUE(b2.location_code)) as location
+    , d.location_code
+    , d.location_fc_code
     , CAST(JSON_VALUE(b1.quantity) as int64) as location_done_quantity
     -- , CAST(JSON_VALUE(b2.done_quantity) as int64) as location_done_quantity
 FROM dedup_pick_ticket_item b
