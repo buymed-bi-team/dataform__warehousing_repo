@@ -1,0 +1,22 @@
+config {
+    type:"table",
+    description: `PIC: Huong.Dang; Schedule: 0h00 daily`,
+    tags: ('0h00')
+}
+
+
+SELECT *, 
+"Vietnam" as Country
+FROM ${ref(`agg_strategic_general_vn`)}
+
+UNION ALL
+
+SELECT *, 
+"Thailand" as Country
+FROM ${ref(`agg_strategic_general_thailand`)}
+
+UNION ALL
+
+SELECT *, 
+"Cambodia" as Country
+FROM ${ref(`agg_strategic_general_cambodia`)}
