@@ -4,6 +4,7 @@ config {
     type: "incremental",
     name: "monitoring_prd_realtime_supply_pricing",
     schema: "platinum_buymed_vn",
+    description: "Deprecated",
     assertions: {
         uniqueKey: 'mg_id',
         nonNull: ["created_date"]
@@ -12,7 +13,7 @@ config {
         partitionBy: "created_date",
         clusterBy: ["item_code"]
     },
-    tags:["platinum_custom_2h_past5","monitoring_prd_realtime-supply"]
+    //tags:["platinum_custom_2h_past5","monitoring_prd_realtime-supply"]
 }
 pre_operations {
   ${
