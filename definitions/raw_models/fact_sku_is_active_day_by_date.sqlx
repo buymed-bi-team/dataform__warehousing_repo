@@ -1,50 +1,49 @@
 config {
     type: "table",
-    tags: ["adhoc-office"],
-    dependencies: ["staging_sku_status_history"],
-    name: "fact_sku_status_day_by_date",
-    description: "SKU status history by date (3 months). PIC: Tu.Dang, Anh.LeTam",
+    tags: ["custom_1h_past5"],
+    dependencies: ["staging_sku_is_active_history"],
+    name: "fact_sku_is_active_day_by_date",
+    description: "SKU is_active history by date (3 months). PIC: Tu.Dang, Anh.LeTam",
     bigquery: {
     partitionBy: "date"
   }
 }
 
---generate datetime interval 3 month series, get current timestamp by Ho Chi Minh time and get date
--- use truncate for extract month will result in the first date of the month (for ex: 2024-04-01 but the result we want is 2024-04-20 if run in 2024-07-20)
+--generate datetime interval 3 month series
 WITH DateSeries AS (
   SELECT *
-  FROM UNNEST(GENERATE_DATE_ARRAY(DATE(DATETIME(CURRENT_TIMESTAMP(), 'Asia/Ho_Chi_Minh') - INTERVAL 3 MONTH), DATE(current_date()))) AS date
+  FROM UNNEST(GENERATE_DATE_ARRAY(DATE(DATE_TRUNC(current_date(), MONTH) - INTERVAL 3 MONTH), DATE(current_date()))) AS date
 ),
 -- step 1: lấy danh sách nhưng con item_code được ghi nhận có thay đổi status trong l90d
 
 -- -- get location_code from dim_sku_sales_region_current
-status_history_location AS (
+is_active_history_location AS (
   SELECT
     a.sku,
     a.item_code,
-    a.status,
+    a.is_active,
     a.created_time,
     b.sales_region_code as location_code,
     a.ingest_time,
     a.key
   FROM
-    ${ref("staging_sku_status_history")} a
-  left join ${ref('dim_sku_sales_region_current')} b on a.item_code = b.sub_sku_code  
+    ${ref("staging_sku_is_active_history")} a
+  left join lakehouse-prod-394907.gold_buymed_vn.dim_sku_sales_region_current b on a.item_code = b.sub_sku_code  
 ),
 
 -- join with dim_sales_region_service_area to map location_code with sales_region_code
 -- maybe no need to join dim_sales_region_service_area  because we already get location_code from dim_sku_sales_region_current
-sku_status AS (
+sku_is_active AS (
   SELECT
     sku,
     item_code,
     start_at,
     CASE
-      WHEN end_at IS NULL AND start_at IS NOT NULL AND status IS NOT NULL THEN TIMESTAMP(CURRENT_DATETIME())
+      WHEN end_at IS NULL AND start_at IS NOT NULL AND is_active IS NOT NULL THEN TIMESTAMP(CURRENT_DATETIME())
       ELSE end_at
     END AS end_at_custom,
     end_at,
-    status,
+    is_active,
     sales_region_code,
     seller_class
     -- , active
@@ -53,17 +52,17 @@ sku_status AS (
       ss.sku,
       ss.item_code,
       created_time AS start_at,
-      LEAD(created_time) OVER (PARTITION BY ss.sku, item_code, b.sales_region_code ORDER BY created_time ASC) AS end_at,
-      status
-      , b.sales_region_code,
+      LEAD(created_time) OVER (PARTITION BY ss.sku, item_code, b.region_code ORDER BY created_time ASC) AS end_at,
+      is_active
+      , b.region_code AS sales_region_code,
       a.seller_class
       -- ,
       -- CASE WHEN status = "OUT_OF_STOCK" THEN "OFF"
       -- ELSE "ON"
       -- END AS active
-    FROM status_history_location ss
-    LEFT JOIN ${ref('dim_fc_service_area')} AS b ON b.service_area_code = ss.location_code
-    LEFT JOIN ${ref('adhoc_pm_master_sku')} a on ss.item_code = a.sub_sku_code
+    FROM is_active_history_location ss
+    LEFT JOIN gold_buymed_vn.dim_sales_region_service_area AS b ON b.service_area_code = ss.location_code
+    LEFT JOIN gold_buymed_vn.adhoc_pm_master_sku a on ss.item_code = a.sub_sku_code
   ) a
 ),
 
@@ -74,18 +73,18 @@ sku_list AS (
     ss.item_code,
     ss.sales_region_code,
     CONCAT(ss.item_code, "_", ss.sales_region_code) AS sub_sku_sales_region_code
-  FROM sku_status ss
+  FROM sku_is_active ss
   WHERE ss.sales_region_code IS NOT NULL
   QUALIFY ROW_NUMBER() OVER (PARTITION BY ss.item_code, sales_region_code) = 1
 ),
 
-previous_item_status AS (
+previous_item_is_active AS (
   SELECT
     CONCAT(SPLIT(item_code, '.')[SAFE_ORDINAL(1)], '.', SPLIT(item_code, '.')[SAFE_ORDINAL(2)]) AS previous_item_code,
    
-    status as previous_external_status,
+    is_active as previous_external_is_active,
     *
-  FROM sku_status
+  FROM sku_is_active
   WHERE SPLIT(item_code, '.')[SAFE_ORDINAL(3)] = "1"  and seller_class = "EXTERNAL"
 ),
  
@@ -100,31 +99,33 @@ item_external AS (
       ELSE a.end_at
     END AS end_at_custom,
    a.end_at as end_at,
-   a.status as status,
+   a.is_active as is_active,
    b.sales_region_code as sales_region_code,
    a.seller_class as seller_class
-  FROM previous_item_status a right join sku_status b on CONCAT(SPLIT(b.item_code, '.')[SAFE_ORDINAL(1)], '.', SPLIT(b.item_code, '.')[SAFE_ORDINAL(2)]) = a.previous_item_code and SPLIT(b.item_code, '.')[SAFE_ORDINAL(3)] != "1"
+  FROM previous_item_is_active a right join sku_is_active b on CONCAT(SPLIT(b.item_code, '.')[SAFE_ORDINAL(1)], '.', SPLIT(b.item_code, '.')[SAFE_ORDINAL(2)]) = a.previous_item_code and SPLIT(b.item_code, '.')[SAFE_ORDINAL(3)] != "1"
 ),
  
-final_sku_status as (
-  select * from sku_status
-  -- UNION ALL
-  -- select
-  --  sku,
-  --   item_code,
-  --   start_at,
-  --   end_at_custom,
-  --   end_at,
-  --   status,
-  --   sales_region_code,
-  --   seller_class
-  -- from item_external
+final_sku_is_active as (
+  select * from sku_is_active
+  UNION ALL
+  select
+   sku,
+    item_code,
+    start_at,
+    end_at_custom,
+    end_at,
+    is_active,
+    sales_region_code,
+    seller_class
+  from item_external
 ),
+
+-- generate 3 months date for each item_code
 sku_date AS (
   SELECT *
   FROM sku_list, DateSeries
 ),
- 
+
 
 -- step 2: fill missing value
 -- start_at_v2 fill bằng current_datetime - 3 months
@@ -137,11 +138,10 @@ fill_backwwark_value AS (
     DATETIME(TIMESTAMP(CURRENT_DATETIME()), 'Asia/Ho_Chi_Minh') AS last_refreshed_at,
     sd.sku,
     sd.date,
-    FIRST_VALUE(ss.seller_class IGNORE NULLS) OVER (partition by sd.sub_sku_sales_region_code ORDER BY sd.date ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS seller_class,
     DATETIME(ss.start_at, 'Asia/Ho_Chi_Minh') AS start_at,
     DATETIME(ss.end_at, 'Asia/Ho_Chi_Minh') AS end_at,
     DATETIME(ss.end_at_custom, 'Asia/Ho_Chi_Minh') AS end_at_custom,
-    ss.status,
+    ss.is_active,
     ss.sales_region_code,
     sd.sub_sku_sales_region_code,
     LEFT(sd.item_code, INSTR(sd.item_code, '.', 1, 2) - 1) AS sku_code_bf,
@@ -161,12 +161,9 @@ fill_backwwark_value AS (
       ELSE DATETIME(ss.start_at, 'Asia/Ho_Chi_Minh')
     END AS start_at_v2,
     -- , s.sku_system_active
-    FIRST_VALUE(ss.status IGNORE NULLS) OVER (partition by sd.sub_sku_sales_region_code ORDER BY sd.date ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS contrast_first_status
+    FIRST_VALUE(ss.is_active IGNORE NULLS) OVER (partition by sd.sub_sku_sales_region_code ORDER BY sd.date ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS contrast_first_active
     from sku_date as sd 
-    left join final_sku_status as ss on sd.item_code = ss.item_code and sd.sales_region_code = ss.sales_region_code and sd.date between DATE(DATETIME(ss.start_at, 'Asia/Ho_Chi_Minh')) 
-    and DATETIME(ss.end_at_custom, 'Asia/Ho_Chi_Minh') 
-    -- first, carefully handle condition for join here, we need to convert all of the time column to one timezone 
-    -- second, we need to compate between date and date not date and datetime because for example date 2024-04-25 will not between 2024-04-25 07:00:00 
+    left join final_sku_is_active as ss on sd.item_code = ss.item_code and sd.sales_region_code = ss.sales_region_code and sd.date between date(ss.start_at) and date(ss.end_at_custom)
     
 )
 
@@ -175,31 +172,27 @@ fill_backwwark_value AS (
 (
 select 
     c.last_refreshed_at
-    , c.item_code,
-      s.product_id
+    , c.item_code
     , c.sku as sku_code
     , c.date
     , s.sku_system_active
     , c.sales_region_code_bf as sales_region_code
     , c.sub_sku_sales_region_code
     , c.start_at_v2
-    , c.start_at,
-      c.seller_class
+    , c.start_at
     , case 
-        when contrast_first_status = "OUT_OF_STOCK" and status is null and c.date >= date(s.sku_approved_at) then "NORMAL"
-        when contrast_first_status not in ("OUT_OF_STOCK") and status is null and c.date >= date(s.sku_approved_at) then "UNKNOWN"
-        when c.date < date(s.sku_approved_at) and status is null then null
-        --when s.seller_class = "EXTERNAL" and status is null 
-        else contrast_first_status
-      end as status,
-    s.sku_approved_at,
-    s.seller_code -- tu.dang
+        when contrast_first_active is true and is_active is null and c.date >= date(s.sku_approved_at) then false
+        when contrast_first_active is false and is_active is null and c.date >= date(s.sku_approved_at) then true
+        when c.date < date(s.sku_approved_at) and is_active is null then null
+        else contrast_first_active
+      end as is_active,
+    s.sku_approved_at
     , first_value(c.end_at_custom_v2 IGNORE NULLS) over(partition by sub_sku_sales_region_code ORDER BY c.date ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) as end_at_custom_v3
     , c.end_at_custom_v2
     , c.end_at_custom
     ,c.end_at
 from fill_backwwark_value c
-left join ${ref('adhoc_pm_master_sku')} s on c.sku = s.sku_code and c.sales_region_code_bf = s.sales_region_code
+left join gold_buymed_vn.adhoc_pm_master_sku s on c.sku = s.sku_code and c.sales_region_code_bf = s.sales_region_code
 where c.date > DATE(DATE_TRUNC(current_date(), MONTH) - INTERVAL 3 MONTH)
 )
 -- step 3: listing toàn bộ những con sku không được ghi nhân có sự thay đổi status in L90D và join với historical
@@ -212,19 +205,16 @@ where c.date > DATE(DATE_TRUNC(current_date(), MONTH) - INTERVAL 3 MONTH)
        ms.sub_sku_code as item_code
       , ms.sku_code
       , ms.sku_system_active
-      , ms.sales_region_code,
-        ms.seller_code -- tu.dang
-       , ms.product_id
+      , ms.sales_region_code
       , ms.sku_code || "_" || ms.sales_region_code as sku_sales_region_code
       , ms.sub_sku_code || "_" || ms.sales_region_code as sub_sku_sales_region_code
       , ms.sku_system_status as status,
-        ms.sku_approved_at,
-        ms.seller_class
+        ms.sku_approved_at
       , DATETIME(TIMESTAMP(CURRENT_DATETIME() - INTERVAL 3 MONTH),'Asia/Ho_Chi_Minh') as start_at
       , DATETIME(TIMESTAMP(CURRENT_DATETIME()) ,'Asia/Ho_Chi_Minh') as end_at_custom
       , DATETIME(TIMESTAMP(CURRENT_DATETIME()) ,'Asia/Ho_Chi_Minh') as end_at
       -- , DATEtime(current_date() - INTERVAL 3 MONTH)
-  from ${ref('adhoc_pm_master_sku')} ms
+  from gold_buymed_vn.adhoc_pm_master_sku ms
 left join sku_list sl on ms.sku_code = sl.sku and ms.sales_region_code = sl.sales_region_code
 where sl.sub_sku_sales_region_code is null 
 -- qualify row_number() over(order by 1,2,3,4,5,6) = 1
@@ -253,17 +243,13 @@ where sl.sub_sku_sales_region_code is null
 , union_all as 
 (select
     DATETIME(TIMESTAMP(CURRENT_DATETIME()), 'Asia/Ho_Chi_Minh') AS last_refreshed_at
-    , sr.item_code,
-      sr.product_id
+    , sr.item_code
     , md.sku_code
-    , sr.seller_code -- tu.dang
-    , sr.sku_system_active -- tu.dang
     , md.date
     , md.sales_region_code
     , sr.sub_sku_sales_region_code
-    , md.sku_sales_region_code,
-      sr.seller_class
-    , sr.status,
+    , md.sku_sales_region_code
+    , sr.sku_system_active as is_active,
       sr.sku_approved_at
     , sr.start_at
     , sr.end_at_custom
@@ -275,17 +261,13 @@ where md.date > DATE(DATE_TRUNC(current_date(), MONTH) - INTERVAL 3 MONTH)
 union all
 select 
       c.last_refreshed_at
-    , c.item_code,
-      c.product_id
-    , c.sku_code, 
-      c.seller_code -- tu.dang
-    , c.sku_system_active -- tu.dang
+    , c.item_code
+    , c.sku_code
     , c.date
     , c.sales_region_code
     , c.sub_sku_sales_region_code
-    , c.sku_code ||"_"|| c.sales_region_code as sku_sales_region_code,
-      c.seller_class
-    , c.status,
+    , c.sku_code ||"_"|| c.sales_region_code as sku_sales_region_code
+    , c.is_active,
       c.sku_approved_at
     , c.start_at_v2  as start_at
     , c.end_at_custom_v3 as end_at_custom
@@ -293,36 +275,29 @@ select
 from in_historical c)
 
 -- filter all days that not has status changeed
-/* pic: tu.dang */
--- check list product OOS real
-, product_seller as -- get all seller of product,condition: only sku active
-(
-    select
-        sr.product_id, sr.sales_region_code,
-        safe_cast (count(distinct sr.seller_code) as string) as no_seller,
-        string_agg( sr.seller_code,", ") as list_seller_in_product
-    from ${ref('adhoc_pm_master_sku')} as sr
-    where sku_system_status is not null
-    group by all
-)
-, product_seller_oos as -- get all seller of product, condition: only sku active and status sku = oos
-          (
-select
-    sr.product_id, sr.sales_region_code,date,
-    safe_cast (count(distinct sr.seller_code) as string) as no_seller_oos, string_agg( sr.seller_code, ", ") as list_seller_oos_in_product
-from union_all as sr
-where sr.status = "OUT_OF_STOCK" and status is not null
-group by all
-    )
+select * from union_all where is_active is not null
 
-select cf.*,
-case
-  when cf.sku_system_active = true then ps.no_seller -- pic:tu.dang
-  else '' end as no_seller,
-case 
-  when cf.sku_system_active = true then po.no_seller_oos -- pic:tu.dang
-  else '' end as no_seller_oos
-from union_all cf
-left join product_seller ps on cf.product_id= ps.product_id and cf.sales_region_code= ps.sales_region_code 
-left join product_seller_oos po on cf.product_id= po.product_id and cf.date= po.date and cf.sales_region_code= po.sales_region_code
---where cf.sku_system_active = true
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- where s.sku_active = true
