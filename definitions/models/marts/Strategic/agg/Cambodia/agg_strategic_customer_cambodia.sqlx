@@ -6,7 +6,7 @@ config {
 SELECT 
     CURRENT_DATETIME("+7") AS refresh_time,
     dc.eom as date,
-    CAST(NULL AS STRING) AS location,
+    "CAMBODIA" AS location,
     CAST(NULL AS STRING) AS channel,
     'CUSTOMER_ACTIVE_ENTERPRISE' AS measure,
     CAST(NULL AS STRING) AS supplier_class,
@@ -21,7 +21,7 @@ UNION ALL
 SELECT 
     CURRENT_DATETIME("+7") AS refresh_time,
     dc.eom as date,
-    CAST(NULL AS STRING) AS location,
+    "CAMBODIA" AS location,
     CAST(NULL AS STRING) AS channel,
     'CUSTOMER_NEW_ENTERPRISE' AS measure,
     CAST(NULL AS STRING) AS supplier_class,
@@ -36,7 +36,7 @@ UNION ALL
 SELECT 
     CURRENT_DATETIME("+7") AS refresh_time,
     dc.eom as date,
-    CAST(NULL AS STRING) AS location,
+    "CAMBODIA" AS location,
     CAST(NULL AS STRING) AS channel,
     'CUSTOMER_REACQUIRED_ENTERPRISE' AS measure,
     CAST(NULL AS STRING) AS supplier_class,
@@ -51,7 +51,7 @@ UNION ALL
 SELECT 
     CURRENT_DATETIME("+7") AS refresh_time,
     dc.eom as date,
-    CAST(NULL AS STRING) AS location,
+    "CAMBODIA" AS location,
     CAST(NULL AS STRING) AS channel,
     'CUSTOMER_REPEAT_ENTERPRISE' AS measure,
     CAST(NULL AS STRING) AS supplier_class,
