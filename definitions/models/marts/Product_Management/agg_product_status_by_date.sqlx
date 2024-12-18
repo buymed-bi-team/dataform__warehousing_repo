@@ -40,7 +40,7 @@ SELECT
         WHEN COUNTIF(COALESCE(a.status, c.sku_system_status) = 'LIMIT') > 0 THEN "LIMIT"
         WHEN COUNTIF(COALESCE(a.status, c.sku_system_status) = 'SUSPENDED') = COUNT(COALESCE(a.sku_code, c.sku_code)) THEN "SUSPENDED"
         WHEN COUNTIF(COALESCE(a.status, c.sku_system_status) = 'OUT_OF_STOCK') = COUNT(COALESCE(a.sku_code, c.sku_code)) THEN "OUT_OF_STOCK"
-        ELSE "SUSPENDED"
+        ELSE "OUT_OF_STOCK"
       END AS status
 FROM ${ref('dim_sku_sales_region_current')} AS c
     LEFT JOIN status AS a
