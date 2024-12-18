@@ -127,6 +127,20 @@ FROM ${ref(`agg_strategic_customer`)} as a
 INNER JOIN base_calendar c ON DATE(c.date) = a.date
 
 
+UNION ALL -- Duplicated customer count for Enterprise
+
+SELECT
+refresh_time,
+a.date,
+location,
+channel,
+CONCAT(measure,"_ENTERPRISE") as measure,
+supplier_class,
+value
+FROM ${ref(`agg_strategic_customer`)} as a
+INNER JOIN base_calendar c ON DATE(c.date) = a.date
+
+
 UNION ALL -- Inventory cut off by last day of month
 
 SELECT *
