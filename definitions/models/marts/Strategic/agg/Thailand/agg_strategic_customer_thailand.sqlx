@@ -6,9 +6,9 @@ config {
 SELECT 
     CURRENT_DATETIME("+7") AS refresh_time,
     dc.eom as date,
-    CAST(NULL AS STRING) AS location,
+    "THAILAND" AS location,
     CAST(NULL AS STRING) AS channel,
-    'CUSTOMER_ACTIVE' AS measure,
+    'CUSTOMER_ACTIVE_ENTERPRISE' AS measure,
     CAST(NULL AS STRING) AS supplier_class,
     COUNT(distinct IF(active_customer <> 0, customer_id,NULL)) value
 
@@ -21,9 +21,9 @@ UNION ALL
 SELECT 
     CURRENT_DATETIME("+7") AS refresh_time,
     dc.eom as date,
-    CAST(NULL AS STRING) AS location,
+    "THAILAND" AS location,
     CAST(NULL AS STRING) AS channel,
-    'CUSTOMER_NEW' AS measure,
+    'CUSTOMER_NEW_ENTERPRISE' AS measure,
     CAST(NULL AS STRING) AS supplier_class,
     COUNT(distinct IF(new_customer <> 0, customer_id,NULL)) value
 
@@ -36,9 +36,9 @@ UNION ALL
 SELECT 
     CURRENT_DATETIME("+7") AS refresh_time,
     dc.eom as date,
-    CAST(NULL AS STRING) AS location,
+    "THAILAND" AS location,
     CAST(NULL AS STRING) AS channel,
-    'CUSTOMER_REACQUIRED' AS measure,
+    'CUSTOMER_REACQUIRED_ENTERPRISE' AS measure,
     CAST(NULL AS STRING) AS supplier_class,
     COUNT(distinct IF(reacquire_customer <> 0, customer_id,NULL)) value
 
@@ -51,9 +51,9 @@ UNION ALL
 SELECT 
     CURRENT_DATETIME("+7") AS refresh_time,
     dc.eom as date,
-    CAST(NULL AS STRING) AS location,
+    "THAILAND" AS location,
     CAST(NULL AS STRING) AS channel,
-    'CUSTOMER_REPEAT' AS measure,
+    'CUSTOMER_REPEAT_ENTERPRISE' AS measure,
     CAST(NULL AS STRING) AS supplier_class,
     COUNT(distinct IF(repeat_customer <> 0, customer_id,NULL)) value
 
