@@ -15,7 +15,7 @@ WITH base_calendar AS (
 order_metrics AS (
   SELECT
     DATE(created_at) as order_date,
-    CAST(NULL AS STRING) as location,
+    "Cambodia" as location,
     CAST(NULL AS STRING) as channel,
     CAST(NULL AS STRING) as supplier_class,
     SUM(gmv) as gmv_with_listed_price,

@@ -5,18 +5,15 @@ config {
 }
 
 
-SELECT *,
-"Vietnam" as Country
+SELECT *
 FROM ${ref(`agg_strategic_general_vn`)}
 
 UNION ALL
 
-SELECT *,
-"Thailand" as Country
+SELECT *
 FROM ${ref(`agg_strategic_general_thailand`)}
 
 UNION ALL
 
-SELECT *,
-"Cambodia" as Country
+SELECT *
 FROM ${ref(`agg_strategic_general_cambodia`)}
