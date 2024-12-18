@@ -44,7 +44,8 @@ select
   a.inbound_type,
   a.order_type,
   a.first_checkin_destination_fc,
-  b.* except(inbound_code)
+  b.* except(inbound_code),
+  a.first_received_location
 from ${ref(`fact_inbound_ticket`)} a
 left join parse_table b on a.po_code = b.inbound_code
 left join ${ref('dim_supplier')} AS s ON s.supplier_code = a.partner_code
