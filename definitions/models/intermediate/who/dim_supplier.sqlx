@@ -65,6 +65,8 @@ SELECT
     , s.phone AS supplier_phone
     , p.province_name
     , p.province_code
+    , s.ward_code
+    , s.district_code
     , p.sales_region_code
     , s.contract_status
     , s.line_manager
