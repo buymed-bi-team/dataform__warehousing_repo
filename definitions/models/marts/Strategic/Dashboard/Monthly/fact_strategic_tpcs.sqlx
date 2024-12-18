@@ -1,0 +1,31 @@
+config {
+  type: "view",
+  dependencies: ["fact_cs_ticket", "dim_calendar"],
+  tags: ["Stream"]
+}
+
+WITH cte_agg as (
+SELECT 
+  c.year_month
+  , count(1) / count(distinct(pic_id)) as tpcs
+  , count(1) AS total_ticket
+FROM gold_buymed_vn2.fact_cs_ticket as a
+LEFT JOIN ${ref("dim_calendar")} as c on DATE(a.completed_ts) = c.Date
+WHERE
+  c.aging_month <= 12 AND  
+  a.department_code in ("CUSTOMER_SERVICE", "CUSTOMER_SUPPORT", "CS", "CSP")
+GROUP BY 1
+)
+
+SELECT
+  year_month,
+  metric,
+  performance
+FROM
+  cte_agg,
+  UNNEST([
+    STRUCT('TPCS' AS metric, tpcs AS performance)
+    , STRUCT('CS-TICKET' AS metric, total_ticket AS performance)
+  ]) AS record
+
+

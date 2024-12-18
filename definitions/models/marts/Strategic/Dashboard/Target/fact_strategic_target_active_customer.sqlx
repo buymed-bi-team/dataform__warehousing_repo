@@ -1,0 +1,19 @@
+config {
+  type: "view",
+  tags: ["Stream", "STRATEGIC"]
+}
+
+-- WITH cte_agg AS (
+-- SELECT
+--   SUM(active_customer) AS target
+-- FROM ${ref('dim_customer_profiling')}
+-- WHERE
+--     som = DATE_TRUNC(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH), MONTH)
+-- )
+
+SELECT 
+    CAST(FORMAT_DATE('%Y-%m', current_timestamp) AS STRING) AS year_month
+    , "AC" AS metric
+    , 32000 AS target
+    -- , a.target
+-- FROM cte_agg AS a

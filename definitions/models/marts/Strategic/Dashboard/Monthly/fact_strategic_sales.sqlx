@@ -1,0 +1,29 @@
+config {
+  type: "view",
+  dependencies: ["fact_order", "dim_calendar"],
+  tags: ["Stream"]
+}
+
+WITH cte_agg as (
+SELECT 
+  c.year_month
+  , sum(sales_amount) as sales
+FROM gold_buymed_vn2.fact_order as o
+LEFT JOIN ${ref("dim_calendar")} as c on DATE(o.created_at) = c.Date
+WHERE 
+  -- TIMESTAMP_TRUNC(created_at, MONTH) = TIMESTAMP("2024-04-01") 
+  c.aging_month <= 12
+GROUP BY 1
+)
+
+SELECT
+  year_month,
+  metric,
+  performance
+FROM
+  cte_agg,
+  UNNEST([
+    STRUCT('SALES' AS metric, sales AS performance)
+  ]) AS record
+
+

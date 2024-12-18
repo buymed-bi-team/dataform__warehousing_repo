@@ -1,0 +1,24 @@
+config {
+  type: "view",
+  tags: ["Stream"]
+}
+
+WITH cte_agg as (
+SELECT  
+  avg(evaluate_point) AS rating
+FROM ${ref('fact_cs_ticket')}
+WHERE 
+  department_code in ("CUSTOMER_SERVICE", "CUSTOMER_SUPPORT", "CS", "CSP")
+  AND evaluate_point is not null
+  and status in ("DONE")
+)
+
+SELECT
+  "" as year_month,
+  metric,
+  performance
+FROM
+  cte_agg,
+  UNNEST([
+    STRUCT('CS_RATING-TOTAL' AS metric, rating AS performance)
+  ]) AS record

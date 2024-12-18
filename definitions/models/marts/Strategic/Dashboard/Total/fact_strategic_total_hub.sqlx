@@ -1,0 +1,22 @@
+config {
+  type: "view",
+  tags: ["Stream"]
+}
+
+WITH cte_agg as (
+SELECT
+    COUNT(1) as hub
+FROM ${ref("dim_hub")} as o
+WHERE 
+    o.hub_system_active = true
+)
+
+SELECT
+  "" as year_month,
+  metric,
+  performance
+FROM
+  cte_agg,
+  UNNEST([
+    STRUCT('ACTIVE_HUB-TOTAL' AS metric, hub AS performance)
+  ]) AS record

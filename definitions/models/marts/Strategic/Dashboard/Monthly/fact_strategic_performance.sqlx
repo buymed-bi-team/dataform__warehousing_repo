@@ -1,0 +1,61 @@
+config {
+    type: "table",
+    dependencies: ['fact_strategic_gmv_monthly', 'fact_strategic_sales', 'fact_strategic_active_customer', 'fact_strategic_on_time', 'fact_strategic_cancellation', 'fact_strategic_aov', 'fact_strategic_marketplace', 'fact_strategic_inventory', "fact_strategic_new_customer", "fact_strategic_gmv_weekly", "fact_strategic_tpcs", "fact_strategic_cs_ontime"],
+    tags: ["Stream", "custom_1h_past5", "STRATEGIC"]
+}
+
+select
+    *
+    -- , FORMAT_TIMESTAMP('%Y-%m-%d %H-%M', current_timestamp(), "UTC+7") AS transformed_at
+    , DATETIME(current_timestamp(), "Asia/Ho_Chi_Minh" ) AS transformed_at
+from (
+    -- select FORMAT_TIMESTAMP('%Y-%m-%d %H-%M', current_timestamp(), "UTC+7") AS transformed_at
+    -- union
+    select * from ${ref('fact_strategic_gmv_monthly')}
+    union all
+    select * from ${ref('fact_strategic_gmv_weekly')}
+    union all
+    select * from ${ref('fact_strategic_sales')}
+    union all
+    select * from ${ref('fact_strategic_active_customer')}
+    union all
+    select * from ${ref('fact_strategic_new_customer')}
+    union all
+    select * from ${ref('fact_strategic_on_time')}
+    union all
+    select * from ${ref('fact_strategic_cancellation')}
+    union all
+    select * from ${ref('fact_strategic_order')}
+    union all
+    select * from ${ref('fact_strategic_aov')}
+    union all
+    select * from ${ref('fact_strategic_marketplace')}
+    union all
+    select * from ${ref('fact_strategic_inventory')}
+    union all
+    select * from ${ref('fact_strategic_tpcs')}
+    union all
+    select * from ${ref('fact_strategic_cs_ontime')}
+    union all
+    select * from ${ref('fact_strategic_cs_rating')}
+    union all
+    select * from ${ref('fact_strategic_total_growth')}
+    union all
+    select * from ${ref('fact_strategic_total_customer')}
+    union all
+    select * from ${ref('fact_strategic_total_marketplace')}
+    union all
+    select * from ${ref('fact_strategic_total_cs_ticket_rating')}
+    union all
+    select * from ${ref('fact_strategic_total_e2e')}
+    union all
+    select * from ${ref('fact_strategic_total_ontime')}
+    union all
+    select * from ${ref('fact_strategic_total_sl_fr')}
+    union all
+    select * from ${ref('fact_strategic_total_picker')}
+    union all
+    select * from ${ref('fact_strategic_total_hub')}
+    union all
+    select * from ${ref('fact_strategic_total_delivery_district')}
+)

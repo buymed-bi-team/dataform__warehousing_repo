@@ -1,0 +1,15 @@
+config {
+  type: "table",
+  dependencies: ["dim_calendar"],
+  tags: ["0h30"]
+}
+
+
+SELECT 
+  DISTINCT year_week
+FROM ${ref("dim_calendar")}
+WHERE 
+  aging_month <= 12
+  and aging_month >= 0
+
+

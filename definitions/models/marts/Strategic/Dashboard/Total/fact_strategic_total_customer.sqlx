@@ -1,0 +1,113 @@
+config {
+    type: "view",
+    description: "PIC nguyen.tran",
+    tags: ["Stream"]
+}
+
+WITH
+    cte_aop_c AS (
+        SELECT
+            year_month
+            , AVG(no_products) AS avg_products_per_customer
+        FROM (
+            SELECT
+                customer_id
+                , FORMAT_DATETIME('%Y-%m', created_at) AS year_month
+                , COUNT(DISTINCT product_id) as no_products
+            FROM ${ref('fact_order_item')}
+            GROUP BY ALL
+        )
+        GROUP BY ALL
+    ),
+
+    cte_freq AS (
+        SELECT
+            a.year_month
+            , AVG(SAFE_DIVIDE(duration, orders)) AS order_freq
+        FROM (
+            SELECT
+                customer_id
+                , year_month
+                , SUM(duration) AS duration
+            FROM (
+                SELECT
+                    customer_id
+                    , year_month
+                    , DATE_DIFF(created_at, LEAD(created_at) over (PARTITION BY customer_id, year_month ORDER BY created_at DESC ), DAY) AS duration
+                FROM ${ref('fact_order')} AS o
+                    LEFT JOIN ${ref('dim_calendar')} AS c ON DATE(o.created_at) = c.Date
+                WHERE aging_month <= 12
+                    AND order_status <> 'CANCEL'
+            )
+            GROUP BY ALL
+        ) AS a
+        LEFT JOIN (
+            SELECT
+                customer_id
+                , year_month
+                , COUNT(order_id) AS orders
+            FROM ${ref('fact_order')} AS o
+                LEFT JOIN ${ref('dim_calendar')} AS c ON DATE(o.created_at) = c.Date
+            WHERE aging_month <= 12
+                AND order_status <> 'CANCEL'
+            GROUP BY ALL
+        ) AS b ON a.customer_id = b.customer_id AND a.year_month = b.year_month
+        GROUP BY ALL
+    ),
+
+    cte_customer AS (
+        SELECT
+            COUNT(DISTINCT customer_id) AS total_customer
+        FROM ${ref('fact_order')}
+    ),
+
+    cte_clv AS (
+        SELECT
+            AVG(lifespan  * avg_value) AS clv 
+        FROM (
+            SELECT
+                customer_id
+                , GREATEST(DATETIME_DIFF(MAX(created_at), MIN(created_at), MONTH), 1) AS lifespan
+                , SUM(gmv) / COUNT(DISTINCT FORMAT_TIMESTAMP("%Y-%m", created_at)) AS avg_value
+            FROM ${ref('fact_order')} AS o
+                LEFT JOIN ${ref('dim_calendar')} AS c ON DATE(o.created_at) = c.Date
+            WHERE
+                channel = 'MARKETPLACE'
+        --         AND aging_month <= 12
+            GROUP BY ALL
+        )
+    )
+
+SELECT
+    "" AS year_month
+    , metric
+    , performance
+FROM 
+    --  cte_agg,
+    --  cte_freq,
+     cte_customer,
+     cte_clv,
+     UNNEST([
+        STRUCT('CUSTOMER-TOTAL' AS metric, total_customer AS performance)
+        -- , STRUCT('AOP_C-TOTAL' AS metric, avg_products_per_customer AS performance)
+        -- , STRUCT('ORDER_FREQ-L30D' AS metric, order_freq AS performance)
+        , STRUCT('CLV-TOTAL' AS metric, clv AS performance)
+     ])
+UNION ALL
+SELECT
+    year_month
+    , metric
+    , performance
+FROM cte_aop_c,
+    UNNEST([
+        STRUCT('AOP_C-MONTHLY' AS metric, avg_products_per_customer AS performance)
+     ])
+UNION ALL
+SELECT
+    year_month
+    , metric
+    , performance
+FROM cte_freq,
+    UNNEST([
+        STRUCT('ORDER_FREQ-MONTHLY' AS metric, order_freq AS performance)
+     ])

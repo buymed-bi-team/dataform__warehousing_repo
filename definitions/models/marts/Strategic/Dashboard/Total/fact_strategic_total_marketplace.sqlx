@@ -1,0 +1,57 @@
+config {
+    type: "view",
+    description: "PIC nguyen.tran",
+    tags: ["Stream"]
+}
+
+WITH
+    cte_agg AS (
+        SELECT
+            COUNT(DISTINCT product_id) AS total_product
+            , COUNT(DISTINCT seller_code) AS total_seller
+        FROM ${ref('fact_order_item')}
+    ),
+
+    cte_campaign AS (
+        SELECT
+            COUNT(DISTINCT campaign_code) AS total_campaign
+        FROM ${source.platinum}.marketplace_prd_promotion_campaign
+    ),
+
+    -- cte_connection AS (
+    --     SELECT
+    --         COUNT(1) AS visits_last_30d
+    --     FROM ${ref('fact_user_connection')}
+    -- ),
+
+    cte_vendor AS (
+        SELECT
+            COUNT(DISTINCT vendor_code) AS vendors
+        FROM ${ref('fact_vendor_bill')}
+        WHERE
+            po_created_time >= DATE_SUB(CURRENT_DATE("+7"),  INTERVAL 30 DAY)
+    ),
+
+    cte_manufacturer AS (
+        SELECT
+            COUNT(DISTINCT manufacturer_code) AS manu
+        FROM ${ref('dim_product')}
+    )
+
+SELECT
+    "" AS year_month
+    , metric
+    , performance
+FROM cte_agg,
+     cte_campaign,
+    --  cte_connection,
+     cte_vendor,
+     cte_manufacturer,
+     UNNEST([
+        STRUCT('PRODUCT-TOTAL' AS metric, total_product AS performance)
+        , STRUCT('SELLER-TOTAL' AS metric, total_seller AS performance)
+        , STRUCT('CAMPAIGN-TOTAL' AS metric, total_campaign AS performance)
+        -- , STRUCT('VISITS-L30D' AS metric, visits_last_30d AS performance)
+        , STRUCT('VENDORS-L30D' AS metric, vendors AS performance)
+        , STRUCT('MANU-TOTAL' AS metric, manu AS performance)
+     ])

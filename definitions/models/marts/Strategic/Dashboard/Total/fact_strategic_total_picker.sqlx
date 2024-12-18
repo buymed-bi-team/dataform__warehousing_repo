@@ -1,0 +1,24 @@
+config {
+  type: "view",
+  tags: ["Stream"]
+}
+
+WITH cte_agg as (
+SELECT  
+  COUNT(DISTINCT(a.handler_id)) AS picker
+-- FROM `lakehouse-prod-394907.silver_buymed_vn.warehouse_prd_core_sale_order` 
+FROM platinum_buymed_vn.warehouse_prd_picking_task as a
+LEFT JOIN ${ref("dim_calendar")} as c on DATE(DATETIME(a.created_time, "Asia/Ho_Chi_Minh")) = c.Date
+WHERE 
+  c.aging_day <= 30
+)
+
+SELECT
+  "" as year_month,
+  metric,
+  performance
+FROM
+  cte_agg,
+  UNNEST([
+    STRUCT('PICKER-L30D' AS metric, picker AS performance)
+  ]) AS record

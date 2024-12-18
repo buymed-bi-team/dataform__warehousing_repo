@@ -1,0 +1,60 @@
+config {
+  type: "view",
+  tags: ["STRATEGIC"]
+}
+
+SELECT
+  code
+  , metric
+  , type
+FROM
+  UNNEST([
+    STRUCT('DUMMY' AS code, 'DUMMY' AS metric, '' AS type, '' as description)
+    , STRUCT('SALES' AS code, 'SALES' AS metric, 'ADDITIVE' AS type, '' as description)
+    , STRUCT('GMV-MONTHLY' AS code, 'MONTHLY GMV' AS metric, 'ADDITIVE' AS type, '' as description)
+    , STRUCT('GMV-WEEKLY' AS code, 'WEEKLY GMV' AS metric, 'ADDITIVE' AS type, '' as description)
+    , STRUCT('E2E-30D' AS code, 'DELIVERY HOURS IN LAST 30 DAYS' AS metric, 'TOTAL' AS type, '' as description)
+    , STRUCT('AC' AS code, 'ACTIVE CUSTOMER' AS metric, 'COUNT' AS type, '' as description)
+    , STRUCT('NC' AS code, 'NEW CUSTOMER' AS metric, 'COUNT' AS type, '' as description)
+    , STRUCT('ONTIME' AS code, '% ON-TIME DELIVERY RATE' AS metric, 'RATE' AS type, '' as description)
+    , STRUCT('CANCEL' AS code, '% CANCELLATION RATE' AS metric, 'RATE' AS type, '' as description)
+    , STRUCT('ORDER' AS code, 'ORDER' AS metric, 'ADDITIVE' AS type, '' as description)
+    , STRUCT('AOV' AS code, 'AVERAGE ORDER VALUE' AS metric, 'AVERAGE' AS type, '' as description)
+    , STRUCT('FFR' AS code, '% FULFILLMENT RATE' AS metric, 'RATE' AS type, 'by delivered amount' as description)
+    , STRUCT('SELLER' AS code, 'ACTIVE SELLER' AS metric, 'COUNT' AS type, '' as description)
+    , STRUCT('PRODUCT' AS code, 'ACTIVE PRODUCT' AS metric, 'COUNT' AS type, '' as description)
+    , STRUCT('INHAND_SELLER' AS code, 'IN-HAND STOCK VALUE: SELLER' AS metric, 'ADDITIVE' AS type, '' as description)
+    , STRUCT('INHAND_MEDX' AS code, 'IN-HAND STOCK VALUE: MEDX' AS metric, 'ADDITIVE' AS type, '' as description)
+    , STRUCT('TPCS' AS code, 'AVERAGE TICKET per CS' AS metric, 'AVERAGE' AS type, '' as description)
+    , STRUCT('CS-TICKET' AS code, 'TOTAL CS TICKET' AS metric, 'ADDITIVE' AS type, '' as description)
+    , STRUCT('ONTIME_CS' AS code, '% ON-TIME CS-TICKET RATE' AS metric, 'RATE' AS type, '' as description)
+    , STRUCT('CS_RATING' AS code, 'CS TICKET RATING' AS metric, 'RATE' AS type, '' as description)
+    , STRUCT('CS_CHAT_RATING' AS code, 'CS CHAT RATING' AS metric, 'RATE' AS type, '' as description)
+    , STRUCT('INHAND-TOTAL' AS code, 'TOTAL IN-HAND STOCK' AS metric, 'ADDITIVE' AS type, '' as description)
+    , STRUCT('FR-SORT-TOTAL' AS code, '% FULFILLMENT SORT RATE' AS metric, 'RATE' AS type, 'by Sort point' as description)
+    , STRUCT('ONTIME-TOTAL' AS code, '% ON-TIME RATE' AS metric, 'RATE' AS type, 'ALL THE TIME' as description)
+    , STRUCT('CS_RATING-TOTAL' AS code, 'CS TICKET RATING' AS metric, 'RATE' AS type, 'ALL THE TIME' as description)
+
+    , STRUCT('GMV-TOTAL' AS code, 'TOTAL GMV' AS metric, 'ADDITIVE' AS type, '' as description)
+    , STRUCT('ORDER-TOTAL' AS code, 'TOTAL ORDER' AS metric, 'COUNT' AS type, '' as description)
+    , STRUCT('AOV-TOTAL' AS code, 'AVERAGE ORDER VALUE' AS metric, 'AVERAGE' AS type, '' as description)
+    , STRUCT('AOP-MONTHLY' AS code, 'AVERAGE ORDER PRODUCT' AS metric, 'AVERAGE' AS type, '' as description)
+    , STRUCT('AOQ-MONTHLY' AS code, 'AVERAGE ORDER QUANTITY' AS metric, 'AVERAGE' AS type, '' as description)
+
+    , STRUCT('CUSTOMER-TOTAL' AS code, 'TOTAL CUSTOMER' AS metric, 'COUNT' AS type, '' as description)
+    , STRUCT('AOP_C-MONTHLY' AS code, 'AVG PRODUCT PER CUSTOMER' AS metric, 'AVERAGE' AS type, '' as description)
+    , STRUCT('ORDER_FREQ-MONTHLY' AS code, 'RE-ORDER EVERY (Days)' AS metric, 'AVERAGE' AS type, '' as description)
+    , STRUCT('CLV-TOTAL' AS code, 'LIFETIME VALUE' AS metric, 'AVERAGE' AS type, '' as description)
+
+    , STRUCT('PRODUCT-TOTAL' AS code, 'TOTAL ACTIVE PRODUCT' AS metric, 'COUNT' AS type, '' as description)
+    , STRUCT('SELLER-TOTAL' AS code, 'TOTAL ACTIVE SELLER' AS metric, 'COUNT' AS type, '' as description)
+    , STRUCT('CAMPAIGN-TOTAL' AS code, 'TOTAL MARKETING CAMPAIGN' AS metric, 'COUNT' AS type, '' as description)
+    , STRUCT('VISITS-L30D' AS code, 'VISITS IN LAST 30 DAYS' AS metric, 'COUNT' AS type, '' as description)
+    , STRUCT('MANU-TOTAL' AS code, 'MANUFACTURER' AS metric, 'COUNT' AS type, '' as description)
+    , STRUCT('VENDORS-L30D' AS code, 'VENDORS IN LAST 30 DAYS' AS metric, 'COUNT' AS type, '' as description)
+
+    , STRUCT('PICKER-L30D' AS code, 'PICKER IN LAST 30 DAYS' AS metric, 'COUNT' AS type, '' as description)
+    , STRUCT('ACTIVE_HUB-TOTAL' AS code, 'TOTAL ACTIVE LOGISTICS HUB' AS metric, 'COUNT' AS type, '' as description)
+    , STRUCT('DISTRICT-L30D' AS code, 'DELIVERY DISTRICTS IN LAST 30 DAYS' AS metric, 'COUNT' AS type, '' as description)
+  ]) AS record
+
