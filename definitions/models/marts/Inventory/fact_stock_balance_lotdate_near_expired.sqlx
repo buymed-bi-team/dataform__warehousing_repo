@@ -127,6 +127,7 @@ SELECT
     , ne.lot
     , ne.expired_date
     , DATE_DIFF(ne.expired_date, CURRENT_DATE(), DAY) as days_remaining
+    , ne.volume
     , i.incoming_qty
     , o.outgoing_qty
     , SUM(ne.volume + i.incoming_qty - o.outgoing_qty) as balance_qty
