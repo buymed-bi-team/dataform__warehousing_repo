@@ -27,3 +27,4 @@ SELECT
 FROM ${source.platinum}.marketplace_prd_product_v2_sku AS s
     , UNNEST(JSON_VALUE_ARRAY(s.location_codes)) AS a
     LEFT JOIN ${ref('dim_fc_service_area')} AS b ON b.service_area_code = a
+WHERE TO_JSON_STRING(s.tags) NOT LIKE '%\"SKU_REMOVED\"%'
