@@ -6,6 +6,9 @@ config {
         uniqueKey: 'mg_id',
         nonNull: ["created_date"]
     },
+    columns: {
+      user_id: "Can join marketplace_prd_customer_customer on account_id"
+    },
     bigquery: {
         partitionBy: "created_date"
     },
