@@ -130,6 +130,7 @@ SELECT
     ne.sku_code
     , ne.location_code
     , ne.fc
+    , ne.sku_type
     , ne.lot
     , ne.expired_date
     , DATE_DIFF(ne.expired_date, CURRENT_DATE(), DAY) as days_remaining
