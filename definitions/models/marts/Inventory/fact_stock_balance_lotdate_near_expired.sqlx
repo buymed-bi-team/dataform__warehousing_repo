@@ -19,6 +19,7 @@ WITH agg_stock_incoming as (SELECT
         location_fc_code,
         COALESCE(l.lot, "N/A") as lot,
         STRING(e.formatted_expdate) as expired_date,
+        STRING_AGG(i.po_code, ', ') AS po_codes,
         SUM(location_done_quantity) AS incoming_qty
     FROM ${ref("fact_stock_lotdate_incoming")} AS i
     LEFT JOIN ${ref("dim_lot")} l ON i.lot = l.lot
@@ -37,6 +38,7 @@ WITH agg_stock_incoming as (SELECT
         location_fc_code,
         COALESCE(l.lot, "N/A") as lot,
         STRING(e.formatted_expdate) as expired_date,
+        STRING_AGG(i.po_code, ', ') AS po_codes,
         SUM(location_done_quantity) AS incoming_qty
     FROM ${ref("fact_stock_lotdate_incoming")} AS i
     LEFT JOIN ${ref("dim_lot")} l ON i.lot = l.lot
@@ -53,6 +55,7 @@ without_stock_incoming as (SELECT
         CONCAT(e.location_code, "_", e.fc) AS location_fc_code,
         COALESCE(e.lot, "N/A") as lot,
         STRING(e.expired_date) as expired_date,
+        CAST(NULL AS STRING) AS po_codes,
         0 AS incoming_qty
     FROM collector.inventory_sku_lotdate_near_expired e
     WHERE CONCAT(sku_code, CONCAT(location_code, "_", fc), lot, COALESCE(STRING(expired_date), "NA")) NOT IN (
@@ -72,6 +75,7 @@ agg_stock_outgoing as (SELECT
         location_fc_code,
         COALESCE(l.lot, "N/A") as lot,
         STRING(e.formatted_expdate) as expired_date,
+        STRING_AGG(i.so_code, ', ') AS so_codes,
         SUM(location_done_quantity) AS outgoing_qty
     FROM ${ref("fact_stock_lotdate_outgoing")} AS i
     LEFT JOIN ${ref("dim_lot")} l ON i.lot = l.lot
@@ -90,6 +94,7 @@ agg_stock_outgoing as (SELECT
         location_fc_code,
         COALESCE(l.lot, "N/A") as lot,
         STRING(e.formatted_expdate) as expired_date,
+        STRING_AGG(i.so_code, ', ') AS so_codes,
         SUM(location_done_quantity) AS outgoing_qty
     FROM ${ref("fact_stock_lotdate_outgoing")} AS i
     LEFT JOIN ${ref("dim_lot")} l ON i.lot = l.lot
@@ -106,7 +111,8 @@ without_stock_outgoing as (SELECT
         CONCAT(e.location_code, "_", e.fc) AS location_fc_code,
         COALESCE(e.lot, "N/A") as lot,
         STRING(e.expired_date) as expired_date,
-        0 AS incoming_qty
+        CAST(NULL AS STRING) AS so_codes,
+        0 AS outgoing_qty
     FROM collector.inventory_sku_lotdate_near_expired e
     WHERE CONCAT(sku_code, CONCAT(location_code, "_", fc), lot, COALESCE(STRING(expired_date), "NA")) NOT IN (
             SELECT CONCAT(sku_code, location_fc_code, lot, expired_date)
@@ -131,6 +137,7 @@ SELECT
     , i.incoming_qty
     , o.outgoing_qty
     , SUM(ne.volume + i.incoming_qty - o.outgoing_qty) as balance_qty
+    , DATETIME(CURRENT_TIMESTAMP(), 'Asia/Ho_Chi_Minh') AS recorded_time
 FROM collector.inventory_sku_lotdate_near_expired ne
 LEFT JOIN combined_stock_incoming i
     ON ne.sku_code = i.sku_code
