@@ -12,6 +12,7 @@ config {
         partitionBy: "created_date"
     },
     tags: ["delivery_prd_transporting", "platinum_custom_20m"]
+
 }
 
 pre_operations {
