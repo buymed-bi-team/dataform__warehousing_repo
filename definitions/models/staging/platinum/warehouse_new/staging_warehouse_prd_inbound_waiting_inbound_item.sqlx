@@ -10,7 +10,7 @@ config {
     bigquery: {
         partitionBy: "DATE(ingest_time)"
     },
-    tags:["custom_2h_past5","warehouse_prd_inbound"]
+    tags:["custom_1h_past7","warehouse_prd_inbound"]
 }
 
 

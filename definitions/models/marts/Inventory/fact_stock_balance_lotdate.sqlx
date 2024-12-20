@@ -1,0 +1,69 @@
+config {
+    type: "table",
+    description: "Fact stock balance lotdate for skus in near expired location | Schedule: hourly | PIC: huyen.nguyenthu",
+    name: "fact_stock_balance_lotdate",
+    tags: ["custom_1h_past5"],
+    columns: {
+        sku_code: "unique sku identifier",
+        fc: "warehouse code",
+        location_code: "near expired location",
+        lot: "unique identifier for a specific batch or group of items",
+        expired_date: "records the expiration date",
+        days_remaining: "number of days left until the expired_date",
+        balance_qty: "volume + incoming_qty - outgoing_qty"
+    }
+}
+
+WITH agg_stock_incoming as (SELECT
+        i.sku_code,
+        location_fc_code,
+        COALESCE(l.lot, "N/A") as lot,
+        STRING(e.formatted_expdate) as expired_date,
+        STRING_AGG(CONCAT(i.po_code, "_", i.created_time ), ', ') AS po_codes,
+        SUM(location_done_quantity) AS incoming_qty
+    FROM ${ref("fact_stock_lotdate_incoming")} AS i
+    LEFT JOIN ${ref("dim_lot")} l ON i.lot = l.lot
+    LEFT JOIN ${ref("dim_expired_date")} e ON i.expired_date = e.expired_date
+    WHERE CONCAT(i.sku_code, i.location_fc_code, COALESCE(l.lot, "N/A"), STRING(e.formatted_expdate)) IN (
+            SELECT CONCAT(sku_code, CONCAT(location_code, "_", fc), lot, STRING(expired_date))
+            FROM collector.inventory_sku_lotdate_near_expired)
+    GROUP BY ALL),
+
+
+agg_stock_outgoing as (SELECT
+        i.sku_code,
+        location_fc_code,
+        COALESCE(l.lot, "N/A") as lot,
+        STRING(e.formatted_expdate) as expired_date,
+        STRING_AGG(CONCAT(i.so_code, "_", i.created_time ), ', ') AS so_codes,
+        SUM(location_done_quantity) AS outgoing_qty
+    FROM ${ref("fact_stock_lotdate_outgoing")} AS i
+    LEFT JOIN ${ref("dim_lot")} l ON i.lot = l.lot
+    LEFT JOIN ${ref("dim_expired_date")} e ON i.expired_date = e.expired_date
+    WHERE CONCAT(i.sku_code, i.location_fc_code, COALESCE(l.lot, "N/A"), STRING(e.formatted_expdate)) IN (
+            SELECT CONCAT(sku_code, CONCAT(location_code, "_", fc), lot, STRING(expired_date))
+            FROM collector.inventory_sku_lotdate_near_expired)
+    GROUP BY ALL)
+
+SELECT
+    ne.sku_code
+    , ne.location_code
+    , ne.fc
+    , ne.lot
+    , i.po_codes
+    , o.so_codes
+    , i.incoming_qty
+    , o.outgoing_qty
+    , SUM(i.incoming_qty - o.outgoing_qty) as balance_qty
+FROM collector.inventory_sku_lotdate_near_expired ne
+LEFT JOIN agg_stock_incoming i
+    ON ne.sku_code = i.sku_code
+    AND CONCAT(ne.location_code, "_", fc) = i.location_fc_code
+    AND ne.lot = i.lot
+    AND STRING(ne.expired_date) = i.expired_date
+LEFT JOIN agg_stock_outgoing o
+    ON ne.sku_code = o.sku_code
+    AND CONCAT(ne.location_code, "_", fc) = o.location_fc_code
+    AND ne.lot = o.lot
+    AND STRING(ne.expired_date) = o.expired_date
+GROUP BY ALL
