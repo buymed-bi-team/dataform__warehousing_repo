@@ -9,7 +9,7 @@ config {
     bigquery: {
         partitionBy: "created_date"
     },
-    tags: ["custom_2h_past5",'warehouse_prd_inventory']
+    tags: ["custom_1h_past7",'warehouse_prd_inventory']
 }
 js {
   incremental_time = `TIMESTAMP(DATE_TRUNC(CURRENT_DATETIME() - INTERVAL 1 MONTH, HOUR))`
