@@ -18,7 +18,7 @@ order_metrics AS (
     "THAILAND" as location,
     CAST(NULL AS STRING) as channel,
     CAST(NULL AS STRING) as supplier_class,
-    SUM(gmv) as gmv_with_listed_price,
+    SUM(gmv) as gmv_after_cancel,
   FROM lakehouse-prod-394907.gold_buymed_th.fact_order
   GROUP BY 1, 2, 3, 4)
 
@@ -32,7 +32,7 @@ SELECT
   value
 FROM order_metrics m
 CROSS JOIN UNNEST([
-  STRUCT("GMV_GENERAL" as measure, gmv_with_listed_price as value)
+  STRUCT("GMV_GENERAL" as measure, gmv_after_cancel as value)
 ]) metrics
 JOIN base_calendar c 
   ON DATE(m.order_date) = c.date
