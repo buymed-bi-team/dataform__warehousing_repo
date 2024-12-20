@@ -28,13 +28,13 @@ pre_operations {
       CREATE OR REPLACE TEMP TABLE range_created_time_table AS (
        SELECT MIN(DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))) AS min_created_date, 
        MAX(DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))) AS max_created_date
-        FROM ${source.silver}.warehouse_prd_inventory_transfer 
+        FROM ${source.silver}.warehouse_prd_inventory_sku 
         WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) AND action != "d"
       );
 
       CREATE OR REPLACE TEMP TABLE get_deleted_record AS (
           SELECT mg_id 
-          FROM ${source.silver}.warehouse_prd_inventory_transfer 
+          FROM ${source.silver}.warehouse_prd_inventory_sku 
           WHERE  ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) and 
           created_time IS NULL AND last_updated_time IS NULL
         );
@@ -56,7 +56,7 @@ SELECT
     WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
     ELSE "2099-01-01"
   END AS created_date
-FROM ${source.silver}.warehouse_prd_inventory_transfer o 
+FROM ${source.silver}.warehouse_prd_inventory_sku o 
  ${
     when(incremental(), 
       `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) 
