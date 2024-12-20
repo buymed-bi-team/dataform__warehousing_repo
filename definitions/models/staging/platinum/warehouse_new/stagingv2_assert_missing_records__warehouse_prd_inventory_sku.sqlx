@@ -48,7 +48,7 @@ WITH platinum AS (
 
 
 SELECT 
-  silver.mg_id,silver.action, silver.synced_at, silver.ingest_time, (SELECT ingest_time FROM max_timestamp)
+  silver.mg_id,silver.action, silver.synced_at, silver.ingest_time
 FROM silver
 LEFT JOIN  platinum
   ON silver.mg_id = platinum.mg_id
