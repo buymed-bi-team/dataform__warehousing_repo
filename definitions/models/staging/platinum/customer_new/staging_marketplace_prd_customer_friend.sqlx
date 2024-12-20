@@ -11,7 +11,7 @@ config {
     bigquery: {
         partitionBy: "created_date"
     },
-    tags:["custom_1h_past7","marketplace_prd_customer"]
+    tags:["platinum_custom_1h_past7","marketplace_prd_customer"]
 }
 
 pre_operations {
