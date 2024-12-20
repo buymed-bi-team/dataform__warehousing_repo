@@ -10,7 +10,7 @@ config {
     bigquery: {
         partitionBy: "created_date"
     },
-    tags: ["marketplace_prd_product-v2","VN_product"]
+    tags: ["marketplace_prd_product-v2","VN_product","platinum_custom_20m"]
 }
 
 pre_operations {
