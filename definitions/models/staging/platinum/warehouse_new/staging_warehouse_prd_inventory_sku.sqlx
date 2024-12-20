@@ -49,33 +49,40 @@ pre_operations {
     )
   }
 }
-
-SELECT
- *,
- CASE 
+SELECT *,
+  CASE 
     WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
     ELSE "2099-01-01"
   END AS created_date
-FROM ${source.silver}.warehouse_prd_inventory_sku o 
- ${
-    when(incremental(), 
-      `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) 
-      QUALIFY ROW_NUMBER() OVER (_window) = 1`,
-      `QUALIFY ROW_NUMBER() OVER (_window) = 1
-       AND FIRST_VALUE(action) OVER (_window) <> 'd'`
-    )
-  }
-WINDOW
-  _window AS (
-  PARTITION BY
-    mg_id
-  ORDER BY
-    synced_at DESC,
-  IF
-    (action='d',3,
+FROM (
+  SELECT
+  *
+  FROM ${source.silver}.warehouse_prd_inventory_sku o 
+  ${
+      when(incremental(), 
+        `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) 
+        QUALIFY ROW_NUMBER() OVER (_window) = 1`,
+        `QUALIFY ROW_NUMBER() OVER (_window) = 1
+        AND FIRST_VALUE(action) OVER (_window) <> 'd'`
+      )
+    }
+  WINDOW
+    _window AS (
+    PARTITION BY
+      mg_id
+    ORDER BY
+      synced_at DESC,
     IF
-      (action='u',2,1)) DESC,
-    last_updated_time DESC)
+      (action='d',3,
+      IF
+        (action='u',2,1)) DESC,
+      last_updated_time DESC)
+)
+WHERE NOT( 
+  (created_time is not null and last_updated_time is not null) 
+  or (created_time is null and last_updated_time is not null) 
+  or (created_time is not null and last_updated_time is null)
+)
 
 post_operations {
   ${
