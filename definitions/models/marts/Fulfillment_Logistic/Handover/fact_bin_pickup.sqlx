@@ -1,0 +1,64 @@
+config {
+    type: "table",
+    description: 
+        `;
+        PIC: nguyen.tran; 
+        Type: Table; 
+		Refresh Schedule: hourly;
+        Source: 
+            ${source.ref}.fact_hub_order,
+            ${source.ref}.fact_outbound_ticket,
+            ${source.ref}.dim_bin,
+        `,
+    tags: ["custom_1h_past5"]
+}
+
+select
+    a.customer_code AS fc_code
+    , a.customer_name AS fc_name
+    , a.reference_code
+    , a.tracking_code
+    , a.do_parent_reference_code AS parent_reference_code
+    , COALESCE( ob.tracking_code, obb.tracking_code) AS tracking_code_of_so
+    , COALESCE( ob.reference_code, a.reference_code_of_so ) AS reference_code_of_so
+    , a.do_status
+    , a.status
+    , a.do_created_at
+    , a.created_at
+    , DATE(a.do_created_at) AS do_created_date
+    , tpl_code AS carrier_code
+    , tpl_name AS carrier_name
+    , a.hub_code
+    , a.reason
+    , a.from_customer_address as cust_address
+    , a.from_ward_name as cust_ward
+    , a.from_district_name as cust_district
+    , a.from_province_name as cust_province
+    , a.from_customer_name AS cust_name
+    , a.driver_id as employee_id
+    , a.driver_name as employee_name
+    , json_value(prd,"$.sku") as bin_code
+    , b.bin_type
+    , LEAD(a.do_created_at) over (PARTITION BY COALESCE( ob.reference_code, a.reference_code_of_so ), bin_code ORDER BY a.do_created_at) AS next_do_created_at
+from (
+        SELECT
+            *
+            , IF(
+                STRPOS(note, ']') > STRPOS(note, '['),
+                TRIM(SUBSTR(note, STRPOS(note, '[') + 1, STRPOS(note, ']') - STRPOS(note, '[') - 1)),
+                NULL
+              ) AS reference_code_of_so
+        FROM ${ref('fact_hub_order')}
+     ) AS a
+    left join unnest(json_extract_array(products)) prd
+    left join ${ref('fact_outbound_ticket')} AS ob 
+        ON coalesce(a.do_parent_reference_code, a.do_reference_code) = ob.tracking_code
+    left join ${ref('fact_outbound_ticket')} AS obb
+        ON a.reference_code_of_so = obb.reference_code
+    left join ${ref('dim_bin')} AS b ON json_value(prd,"$.sku") = b.bin_code
+where
+    a.type = 'PICKUP'
+    and a.hub_code not in ('HUBVSIPII', 'HUBHOACAM_DANANG', 'HUBVSIPBACNINH')
+    AND a.do_status <> 'CANCEL'
+qualify row_number() over (partition by a.reference_code, bin_code ) = 1
+    and json_value(prd,"$.category") = "BIN"
