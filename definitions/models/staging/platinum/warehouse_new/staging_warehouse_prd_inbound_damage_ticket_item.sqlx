@@ -8,7 +8,7 @@ config {
         uniqueKey: 'mg_id',
         
     },
-    tags: ["custom_1h_past7","warehouse_prd_inbound"]
+    tags: ["warehouse_prd_inbound","platinum_custom_20m"]
 }
 
 SELECT
