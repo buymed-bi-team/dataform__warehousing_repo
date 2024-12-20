@@ -1,7 +1,7 @@
 
 config {
     type: "assertion",
-    tags: ["platinum_daily_AM_9:00","delivery_prd_transporting"],
+    tags: ["platinum_daily_AM_9:00","delivery_prd_transporting","platinum_custom_20m_test"],
     dependencies: ["delivery_prd_transporting_hub_shipping_order"]
 }
 /*
