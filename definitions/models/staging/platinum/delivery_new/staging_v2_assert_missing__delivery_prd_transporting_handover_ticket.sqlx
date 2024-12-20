@@ -1,0 +1,53 @@
+
+config {
+    type: "assertion",
+    tags: ["platinum_daily_AM_9:00","delivery_prd_transporting"],
+    dependencies: ["delivery_prd_transporting_handover_ticket"]
+}
+/*
+    IF model cost less than 1 GB, I will check them all
+*/
+
+WITH platinum AS (
+  SELECT mg_id 
+  FROM `${source.platinum}.delivery_prd_transporting_handover_ticket`
+)
+
+, max_timestamp AS (
+  SELECT max(ingest_time ) ingest_time
+  FROM ${source.platinum}.delivery_prd_transporting_handover_ticket
+) 
+, silver AS (
+  SELECT
+    mg_id,
+    -- created_date,
+    created_time,
+    last_updated_time,
+    action,
+    synced_at,
+    ingest_time
+  FROM `${source.silver}.delivery_prd_transporting_handover_ticket`
+
+  
+  QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'
+  WINDOW
+  _window AS (
+  PARTITION BY
+      mg_id
+  ORDER BY
+      synced_at DESC,
+      IF
+        (action='d',3,
+        IF
+        (action='u',2,1)) DESC,
+      last_updated_time DESC)
+)
+
+
+SELECT 
+  silver.mg_id,silver.action, silver.synced_at, silver.ingest_time, (SELECT ingest_time FROM max_timestamp)
+FROM silver
+LEFT JOIN  platinum
+  ON silver.mg_id = platinum.mg_id
+WHERE silver.created_time >= CURRENT_TIMESTAMP() - INTERVAL 10 DAY 
+AND platinum.mg_id is null

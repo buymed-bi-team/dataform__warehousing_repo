@@ -5,7 +5,7 @@ config {
     assertions: {
         uniqueKey: 'mg_id',
     },
-    tags: ["delivery_prd_transporting"]
+    tags: ["delivery_prd_transporting","platinum_custom_20m"]
 }
 
 SELECT *
