@@ -2,19 +2,20 @@
 
 config {
     type: "assertion",
-    tags: ["platinum_daily_AM_9:00","warehouse_prd_inventory"]
+    tags: ["platinum_daily_AM_9:00","seller_prd_purchasing"],
+    dependencies: ["seller_prd_purchasing_vendor_bill"]
 }
 
 WITH platinum AS (
   SELECT mg_id 
-  FROM `${source.platinum}.warehouse_prd_inventory_sku`
+  FROM `${source.platinum}.seller_prd_purchasing_vendor_bill`
   WHERE created_time >= CURRENT_TIMESTAMP() - INTERVAL 12 DAY 
   AND created_date >= DATE(CURRENT_TIMESTAMP() - INTERVAL 12 DAY)
 )
 
 , max_timestamp AS (
   SELECT max(ingest_time ) ingest_time
-  FROM ${source.platinum}.warehouse_prd_inventory_sku
+  FROM ${source.platinum}.seller_prd_purchasing_vendor_bill
   WHERE created_date >= DATE(CURRENT_TIMESTAMP() - INTERVAL 12 DAY)
 ) 
 , silver AS (
@@ -26,7 +27,7 @@ WITH platinum AS (
     action,
     synced_at,
     ingest_time
-  FROM `${source.silver}.warehouse_prd_inventory_sku`
+  FROM `${source.silver}.seller_prd_purchasing_vendor_bill`
   WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 10 DAY
   -- AND created_time >= CURRENT_TIMESTAMP() - INTERVAL 10 DAY
   AND ingest_time <= (SELECT ingest_time FROM max_timestamp)
@@ -47,7 +48,7 @@ WITH platinum AS (
 
 
 SELECT 
-  silver.mg_id,silver.action, silver.synced_at, silver.ingest_time, (SELECT ingest_time FROM max_timestamp)
+  silver.mg_id,silver.action, silver.synced_at, silver.ingest_time
 FROM silver
 LEFT JOIN  platinum
   ON silver.mg_id = platinum.mg_id

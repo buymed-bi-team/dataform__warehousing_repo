@@ -1,20 +1,19 @@
-
-
 config {
     type: "assertion",
-    tags: ["platinum_daily_AM_9:00","seller_prd_purchasing"]
+    tags: ["platinum_custom_2h_past5","seller_prd_promotion"],
+    dependencies: ["seller_prd_promotion_rebate_result_item"]
 }
 
 WITH platinum AS (
   SELECT mg_id 
-  FROM `${source.platinum}.seller_prd_purchasing_vendor_bill_item`
+  FROM `${source.platinum}.seller_prd_promotion_rebate_result_item`
   WHERE created_time >= CURRENT_TIMESTAMP() - INTERVAL 12 DAY 
   AND created_date >= DATE(CURRENT_TIMESTAMP() - INTERVAL 12 DAY)
 )
 
 , max_timestamp AS (
   SELECT max(ingest_time ) ingest_time
-  FROM ${source.platinum}.seller_prd_purchasing_vendor_bill_item
+  FROM ${source.platinum}.seller_prd_promotion_rebate_result_item
   WHERE created_date >= DATE(CURRENT_TIMESTAMP() - INTERVAL 12 DAY)
 ) 
 , silver AS (
@@ -26,7 +25,7 @@ WITH platinum AS (
     action,
     synced_at,
     ingest_time
-  FROM `${source.silver}.seller_prd_purchasing_vendor_bill_item`
+  FROM `${source.silver}.seller_prd_promotion_rebate_result_item`
   WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 10 DAY
   -- AND created_time >= CURRENT_TIMESTAMP() - INTERVAL 10 DAY
   AND ingest_time <= (SELECT ingest_time FROM max_timestamp)
@@ -47,9 +46,12 @@ WITH platinum AS (
 
 
 SELECT 
-  silver.mg_id,silver.action, silver.synced_at, silver.ingest_time, (SELECT ingest_time FROM max_timestamp)
+  silver.mg_id,silver.action, silver.synced_at, silver.ingest_time
 FROM silver
 LEFT JOIN  platinum
   ON silver.mg_id = platinum.mg_id
 WHERE silver.created_time >= CURRENT_TIMESTAMP() - INTERVAL 10 DAY 
 AND platinum.mg_id is null
+
+
+

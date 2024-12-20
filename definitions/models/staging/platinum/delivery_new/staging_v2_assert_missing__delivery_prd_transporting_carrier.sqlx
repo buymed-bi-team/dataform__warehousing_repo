@@ -1,7 +1,7 @@
 
 config {
     type: "assertion",
-    tags: ["platinum_daily_AM_9:00","delivery_prd_transporting"],
+    tags: ["platinum_daily_AM_9:00","delivery_prd_transporting","platinum_custom_20m_test"],
     dependencies: ["delivery_prd_transporting_carrier"]
 }
 /*
@@ -45,7 +45,7 @@ WITH platinum AS (
 
 
 SELECT 
-  silver.mg_id,silver.action, silver.synced_at, silver.ingest_time, (SELECT ingest_time FROM max_timestamp)
+  silver.mg_id,silver.action, silver.synced_at, silver.ingest_time
 FROM silver
 LEFT JOIN  platinum
   ON silver.mg_id = platinum.mg_id

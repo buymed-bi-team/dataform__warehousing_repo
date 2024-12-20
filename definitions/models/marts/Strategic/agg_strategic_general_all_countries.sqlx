@@ -5,15 +5,18 @@ config {
 }
 
 
-SELECT *
+SELECT *, 
+"VND" as currency
 FROM ${ref(`agg_strategic_general_vn`)}
 
 UNION ALL
 
-SELECT *
+SELECT *,
+"THB" as currency
 FROM ${ref(`agg_strategic_general_thailand`)}
 
 UNION ALL
 
-SELECT *
+SELECT *,
+"KHR" as currency
 FROM ${ref(`agg_strategic_general_cambodia`)}
