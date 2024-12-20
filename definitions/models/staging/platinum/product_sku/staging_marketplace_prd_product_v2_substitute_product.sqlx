@@ -3,7 +3,6 @@ config {
     type: "incremental",
     name: "marketplace_prd_product_v2_substitute_product",
     schema: "platinum_buymed_vn",
-    tags:["custom_2h_past5"],
     assertions: {
         uniqueKey: 'mg_id',
         nonNull: ["created_date"]
@@ -11,7 +10,7 @@ config {
     bigquery: {
         partitionBy: "created_date"
     },
-    tags: ["marketplace_prd_product-v2","VN_product"]
+    tags: ["marketplace_prd_product-v2","VN_product","deprecated","platinum_custom_2h_past5"]
 }
 
 pre_operations {
