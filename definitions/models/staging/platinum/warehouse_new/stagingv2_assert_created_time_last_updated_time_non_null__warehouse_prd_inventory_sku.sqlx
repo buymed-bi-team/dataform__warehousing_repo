@@ -1,0 +1,20 @@
+
+
+config {
+    type: "assertion",
+    tags: ["platinum_custom_1h_past7","warehouse_prd_inventory"]
+}
+
+
+SELECT
+  mg_id
+  , created_time
+  , last_updated_time
+  , synced_at
+  , ingest_time
+FROM ${ref(`warehouse_prd_inventory_sku`)}
+WHERE NOT( 
+  (created_time is not null and last_updated_time is not null) 
+  or (created_time is null and last_updated_time is not null) 
+  or (created_time is not null and last_updated_time is null)
+)
