@@ -2,7 +2,7 @@
 
 
 config {
-    type: "incremental",
+    type: "table",
     name: "delivery_prd_transporting_carrier",
     schema: "platinum_buymed_vn",
     assertions: {
