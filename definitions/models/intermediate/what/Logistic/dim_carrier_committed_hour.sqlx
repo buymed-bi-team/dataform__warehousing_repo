@@ -31,3 +31,4 @@ FROM ${source.platinum}.delivery_prd_transporting_config_lead_time
 WHERE 
   JSON_EXTRACT_SCALAR(extra_props, "$.is_deleted") = "false"
   and compute_method = 'CONFIG'
+QUALIFY ROW_NUMBER() OVER(PARTITION BY from_hub, carrier_name, province_code) = 1
