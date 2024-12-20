@@ -78,7 +78,7 @@ FROM (
         (action='u',2,1)) DESC,
       last_updated_time DESC)
 )
-WHERE NOT( 
+WHERE ( 
   (created_time is not null and last_updated_time is not null) 
   or (created_time is null and last_updated_time is not null) 
   or (created_time is not null and last_updated_time is null)
