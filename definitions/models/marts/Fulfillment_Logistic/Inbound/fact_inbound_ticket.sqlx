@@ -134,16 +134,8 @@ from (
     from ${source.platinum}.warehouse_prd_inbound_inbound_ticket
     where created_date >= (select DATE(start_date) from cte_date)
 ) i
-    left join (
-        select *
-        from ${source.platinum}.seller_prd_purchasing_purchase_order
-        where created_date >= (select DATE(start_date) from cte_date)
-    ) as p on i.po_code = p.po_code
-    left join (
-        select *
-        from ${source.platinum}.seller_prd_wis_inbound
-        where created_date >= (select DATE(start_date) from cte_date)
-    ) as ps on i.po_code = ps.inbound_code
+    left join ${source.platinum}.seller_prd_purchasing_purchase_order as p on i.po_code = p.po_code
+    left join ${source.platinum}.seller_prd_wis_inbound as ps on i.po_code = ps.inbound_code
     LEFT JOIN check_it_popgh AS c ON c.po_code = i.po_code
 	LEFT JOIN first_checkin_destination_fc AS f ON f.po_code = i.po_code
 	LEFT JOIN first_location AS l ON l.po_code = i.po_code
