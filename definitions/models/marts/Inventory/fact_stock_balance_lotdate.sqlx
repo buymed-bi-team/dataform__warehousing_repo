@@ -50,6 +50,7 @@ SELECT
     , ne.location_code
     , ne.fc
     , ne.lot
+    , ne.expired_date
     , i.po_codes
     , o.so_codes
     , i.incoming_qty
