@@ -1,40 +1,57 @@
 config {
     type: "assertion",
-    schema: "platinum_buymed_vn",
-    tags: ["platinum_custom_2h_past5","seller_prd_promotion"]
+    tags: ["platinum_custom_2h_past5","seller_prd_promotion"],
+    dependencies: ["seller_prd_promotion_rebate_result_item"]
 }
 
--- DELETE FROM platinum_buymed_vn.seller_prd_promotion_rebate_result_item
--- WHERE ingest_time >= "2024-12-11"
-
-WITH silver AS (
-SELECT
-  mg_id, created_time, last_updated_time, synced_at, ingest_time, action
-
-FROM ${source.silver}.seller_prd_promotion_rebate_result_item o 
-QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'
-WINDOW
-_window AS (
-PARTITION BY
-    mg_id
-ORDER BY
-    synced_at DESC,
-IF
-    (action='d',3,
-    IF
-    (action='u',2,1)) DESC,
-    last_updated_time DESC
-))
-, platinum AS (
-  SELECT mg_id, created_time, last_updated_time, synced_at, ingest_time, action
-  FROM ${ref("seller_prd_promotion_rebate_result_item")}
+WITH platinum AS (
+  SELECT mg_id 
+  FROM `${source.platinum}.seller_prd_promotion_rebate_result_item`
+  WHERE created_time >= CURRENT_TIMESTAMP() - INTERVAL 12 DAY 
+  AND created_date >= DATE(CURRENT_TIMESTAMP() - INTERVAL 12 DAY)
 )
-SELECT silver.mg_id as silver_mg_id, platinum.mg_id as platinum_mg_id
-  FROM silver 
-  FULL JOIN platinum 
-    ON silver.mg_id = platinum.mg_id 
-  WHERE silver.mg_id <> platinum.mg_id 
 
+, max_timestamp AS (
+  SELECT max(ingest_time ) ingest_time
+  FROM ${source.platinum}.seller_prd_promotion_rebate_result_item
+  WHERE created_date >= DATE(CURRENT_TIMESTAMP() - INTERVAL 12 DAY)
+) 
+, silver AS (
+  SELECT
+    mg_id,
+    -- created_date,
+    created_time,
+    last_updated_time,
+    action,
+    synced_at,
+    ingest_time
+  FROM `${source.silver}.seller_prd_promotion_rebate_result_item`
+  WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 10 DAY
+  -- AND created_time >= CURRENT_TIMESTAMP() - INTERVAL 10 DAY
+  AND ingest_time <= (SELECT ingest_time FROM max_timestamp)
+  
+  QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'
+  WINDOW
+  _window AS (
+  PARTITION BY
+      mg_id
+  ORDER BY
+      synced_at DESC,
+      IF
+        (action='d',3,
+        IF
+        (action='u',2,1)) DESC,
+      last_updated_time DESC)
+)
+
+
+SELECT 
+  silver.mg_id,silver.action, silver.synced_at, silver.ingest_time
+FROM silver
+LEFT JOIN  platinum
+  ON silver.mg_id = platinum.mg_id
+WHERE silver.created_time >= CURRENT_TIMESTAMP() - INTERVAL 10 DAY 
+AND platinum.mg_id is null
 
 
 
