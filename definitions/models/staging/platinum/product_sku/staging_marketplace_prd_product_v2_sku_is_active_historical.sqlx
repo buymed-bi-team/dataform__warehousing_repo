@@ -1,5 +1,3 @@
-
--- new
 config {
     type: "incremental",
     name: "staging_marketplace_prd_product_v2_sku_is_active_historical",
@@ -10,7 +8,7 @@ config {
     bigquery: {
         partitionBy: "created_date"
     },
-    tags: ["marketplace_prd_product-v2","VN_product"]
+    tags: ["marketplace_prd_product-v2","VN_product","platinum_custom_1h_past7"]
 }
 
 pre_operations {
