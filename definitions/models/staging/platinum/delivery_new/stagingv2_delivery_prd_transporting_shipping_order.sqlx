@@ -11,7 +11,7 @@ config {
     bigquery: {
         partitionBy: "created_date"
     },
-    tags: ["delivery_prd_transporting", "platinum_custom_20m"]
+    tags: ["delivery_prd_transporting", "platinum_custom_1h_past7"]
 
 }
 
