@@ -15,15 +15,18 @@ config {
 
 SELECT DISTINCT
     gamification_code
-    , sku_code
+    , st.sku_code
+    , st.sku_key
 FROM ${ref('dim_gamification')},
     UNNEST(JSON_VALUE_ARRAY(condition.tags)) AS t
     LEFT JOIN ${ref('dim_sku_tag')} AS st ON st.tag_code = t
 WHERE 
-    SPLIT(sku_code, '.')[SAFE_OFFSET(0)] = 'MEDX'
+    SPLIT(st.sku_code, '.')[SAFE_OFFSET(0)] = 'MEDX'
 UNION DISTINCT
 SELECT
     gamification_code
     , s AS sku_code
+    , sku_key
 FROM ${ref('dim_gamification')},
     UNNEST(JSON_VALUE_ARRAY(condition.skus)) AS s
+    LEFT JOIN ${ref('dim_sku')} AS ss ON s = ss.sku_code
