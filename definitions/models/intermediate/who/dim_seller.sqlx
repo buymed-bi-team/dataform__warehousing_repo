@@ -1,0 +1,14 @@
+config {
+    type: "view",
+    description: "View from <Dim_Supplier>"
+}
+
+select 
+    s.*,
+    pic.cic_category_username AS seller_account
+from ${ ref('dim_supplier')} as s
+    left join ${ref('dim_supplier_fc_person_in_charge')} as pic
+        on pic.supplier_code = s.supplier_code AND pic.fc_code = 'BD'
+where
+    s.supplier_class IN ('INTERNAL', 'EXTERNAL')
+qualify row_number() over(partition by supplier_code) = 1
