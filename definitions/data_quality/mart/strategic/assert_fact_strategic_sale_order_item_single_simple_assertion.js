@@ -11,7 +11,7 @@ const columns = [
     'product_id_original',
     'sku_code_original',
     'supplier_code_original',
-    'created_dt',
+    'created_time',
     'price',
     'demand_quantity'
 ]
