@@ -1,5 +1,6 @@
 config {
     type: "table",
+    name:"marketplace_prd_promotion_lucky_wheel_item",
     description: "PIC: MinhLuu",
     schema: "platinum_buymed_vn",
     assertions: {

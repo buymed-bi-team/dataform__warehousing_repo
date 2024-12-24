@@ -11,11 +11,14 @@ config {
 WITH platinum AS (
   SELECT mg_id 
   FROM `${source.platinum}.delivery_prd_transporting_carrier`
+  WHERE created_time >= CURRENT_TIMESTAMP() - INTERVAL 12 DAY 
+  AND created_date >= DATE(CURRENT_TIMESTAMP() - INTERVAL 12 DAY)
 )
 
 , max_timestamp AS (
   SELECT max(ingest_time ) ingest_time
   FROM ${source.platinum}.delivery_prd_transporting_carrier
+  WHERE created_date >= DATE(CURRENT_TIMESTAMP() - INTERVAL 12 DAY)
 ) 
 , silver AS (
   SELECT
@@ -27,7 +30,9 @@ WITH platinum AS (
     synced_at,
     ingest_time
   FROM `${source.silver}.delivery_prd_transporting_carrier`
-
+  WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 10 DAY
+  -- AND created_time >= CURRENT_TIMESTAMP() - INTERVAL 10 DAY
+  AND ingest_time <= (SELECT ingest_time FROM max_timestamp)
   
   QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'
   WINDOW
