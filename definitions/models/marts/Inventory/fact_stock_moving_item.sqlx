@@ -166,11 +166,9 @@ FROM (
     SELECT
         sm.*
         , CASE
-            WHEN area_from = "WH-MAIN" AND area_to = 'WH-MISSING' THEN
+            WHEN area_from = "WH-MAIN" AND area_to IN ( 'WH-MISSING','WH-LOST','WH-DAMAGE') THEN
                 IF(c.seller_code = 'MEDX', c.purchase_price, c.sales_price)
-            WHEN area_from = "WH-MAIN" AND area_to = 'WH-LOST' THEN
-                IF(c.seller_code = 'MEDX', c.purchase_price, c.sales_price)
-            WHEN area_from = "WH-MAIN" AND area_to = 'WH-DAMAGE' THEN
+            WHEN area_from IN ( 'WH-MISSING','WH-LOST','WH-DAMAGE') AND area_to = "WH-MAIN" THEN
                 IF(c.seller_code = 'MEDX', c.purchase_price, c.sales_price)
             ELSE c.sales_price
           END AS res
