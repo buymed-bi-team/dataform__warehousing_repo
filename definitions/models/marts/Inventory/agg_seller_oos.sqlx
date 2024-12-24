@@ -1,0 +1,119 @@
+config {
+    type: "table", 
+    description: 
+        ` 
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly
+        Source: 
+            ${source.platinum}.warehouse_prd_inventory_transfer_sku,
+            ${source.platinum}.warehouse_prd_inventory_transfer
+        `,
+    tags: ["custom_1h_past5"],
+
+}
+
+SELECT
+    a.fc_code
+    , a.product_id
+    , a.sku_code
+    , a.item_code
+    , p.product_name
+    , a.catm_group
+    , dsr.GMV_by_Product_SR_L30D
+    , a.gmv_l30d
+    , sel.seller_account
+    , a.pic_purchase_name
+    , sel.supplier_id AS seller_id
+    , sel.supplier_name AS seller_name
+    , a.avg_demand_l15d AS qty_avg_demand_l15d
+    , a.available_qty AS qty_available
+    , a.latest_put_time
+    , inc.incoming_qty AS qty_incoming
+    , a.item_status
+    , b.last_oos_time
+    , DATE_DIFF(CURRENT_DATE("+7"), DATE(b.last_oos_time), DAY) AS no_oos_days
+    , ns.content AS last_system_note
+    , np.content AS last_pic_note
+    , nc.content AS last_cic_note
+FROM ${ref('dim_sku_item')} AS a
+    LEFT JOIN (
+       SELECT
+           sku_code
+            , sales_region_code
+            , status
+            , created_time AS last_oos_time
+        FROM ${ref('fact_changed_sku_internal_status')}
+        QUALIFY ROW_NUMBER() over (_window) = 1 AND FIRST_VALUE(status) over (_window) = "OUT_OF_STOCK"
+        WINDOW _window AS (PARTITION BY sku_key_sales_region_code ORDER BY created_time DESC)
+    ) AS b
+        USING(sku_code, sales_region_code)
+    LEFT JOIN (
+        SELECT item_code, content, note_created_time
+        FROM ${ref('dim_sku_note')}
+        WHERE note_type = "SYSTEM"
+        QUALIFY ROW_NUMBER() over (PARTITION BY item_code, note_type ORDER BY note_created_time DESC) = 1
+    ) AS ns ON ns.item_code = a.item_code
+    LEFT JOIN (
+        SELECT item_code, content, note_created_time, created_by_name
+        FROM ${ref('dim_sku_note')}
+        WHERE note_type = "PIC"
+        QUALIFY ROW_NUMBER() over (PARTITION BY item_code, note_type ORDER BY note_created_time DESC) = 1
+    ) AS np ON np.item_code = a.item_code AND np.note_created_time >= b.last_oos_time
+    LEFT JOIN (
+        SELECT item_code, content, note_created_time, created_by_name
+        FROM ${ref('dim_sku_note')}
+        WHERE note_type = "CIC"
+        QUALIFY ROW_NUMBER() over (PARTITION BY item_code, note_type ORDER BY note_created_time DESC) = 1
+    ) AS nc ON nc.item_code = a.item_code AND nc.note_created_time >= b.last_oos_time
+    LEFT JOIN (
+        SELECT item_code, content, note_created_time, created_by_name
+        FROM ${ref('dim_sku_note')}
+        WHERE note_type = "OTHER"
+        QUALIFY ROW_NUMBER() over (PARTITION BY item_code, note_type ORDER BY note_created_time DESC) = 1
+    ) AS n ON n.item_code = a.item_code AND n.note_created_time >= b.last_oos_time
+    LEFT JOIN ${ref('dim_product')} AS p ON p.product_id = a.product_id
+    LEFT JOIN (
+        WITH
+            agg_gmv AS (
+                SELECT
+                    product_id
+                    , oi.sales_region_code
+                    , SUM(oi.demand_quantity * sales_price) AS GMV_by_Product_SR_L30D
+                FROM ${ref('fact_order_item')} AS oi
+                    LEFT JOIN ${ref('fact_order')} AS o USING(order_id)
+                    LEFT JOIN ${ref('dim_supplier')} AS s ON oi.seller_code = s.supplier_code
+                WHERE
+                    DATE(oi.created_at) >= DATE_SUB(CURRENT_DATE("+7"), INTERVAL 30 DAY )
+                    AND DATE(o.created_at) >= DATE_SUB(CURRENT_DATE("+7"), INTERVAL 30 DAY )
+                    AND o.order_status <> 'CANCEL'
+                GROUP BY 1,2
+            )
+
+        SELECT
+            p.*
+            , GMV_by_Product_SR_L30D
+        FROM ${ref('dim_product_sales_region')} AS p
+            LEFT JOIN agg_gmv AS a ON p.product_sales_region_code = CONCAT(a.product_id, '_', a.sales_region_code)
+    ) AS dsr ON dsr.product_id = a.product_id AND dsr.sales_region_code = a.sales_region_code
+    LEFT JOIN ${ref('dim_seller')} AS sel ON sel.supplier_code = a.supplier_code
+    LEFT JOIN (
+        SELECT
+            sku_fc_key
+            , SUM(incoming_quantity) AS incoming_qty
+        FROM ${ref('fact_stock_incoming')}
+        WHERE ib_status <> "COMPLETED"
+        GROUP BY sku_fc_key
+    ) AS inc ON inc.sku_fc_key = a.sku_fc_key
+WHERE
+    (p.is_combo <> TRUE OR p.is_combo IS NULL)
+    AND a.item_code IS NOT NULL
+    AND a.item_is_active
+    AND a.item_status = "OUT_OF_STOCK"
+    AND p.product_report_category = "NORMAL"
+    AND sel.supplier_code NOT IN ("QMQEM8DN9F", "9SUUUUUUUU", "UQRRRRRRRR", "MARKETING")
+    AND a.supplier_class = "EXTERNAL"
+    AND dsr.status IN ("OUT_OF_STOCK", "SUSPENDED")
+    AND sel.supplier_id IS NOT NULL
+QUALIFY ROW_NUMBER() over (PARTITION BY dsr.product_sales_region_code, a.supplier_class ORDER BY b.last_oos_time DESC) = 1
+ORDER BY b.last_oos_time DESC
