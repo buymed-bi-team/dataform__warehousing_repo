@@ -23,7 +23,7 @@ config {
     ingest_time,
     key
   FROM
-     ${source.silver}.marketplace_prd_product_v2_history_update_price  a
+     ${source.platinum}.marketplace_prd_product_v2_history_update_price  a
  ${ when(incremental(), `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()})`)}
   QUALIFY
     (status != LAG(status) OVER (PARTITION BY item_code ORDER BY created_time)) OR
