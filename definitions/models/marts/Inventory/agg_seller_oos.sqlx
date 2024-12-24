@@ -6,8 +6,12 @@ config {
         Type: Table; 
         Refresh Schedule: hourly
         Source: 
-            ${source.platinum}.warehouse_prd_inventory_transfer_sku,
-            ${source.platinum}.warehouse_prd_inventory_transfer
+            ${source.ref}.dim_sku_item,
+            ${source.ref}.fact_changed_sku_internal_status,
+            ${source.ref}.dim_sku_note,
+            ${source.ref}.dim_product,
+            ${source.ref}.dim_product_sales_region,
+            ${source.ref}.fact_stock_incoming,
         `,
     tags: ["custom_1h_past5"],
 
