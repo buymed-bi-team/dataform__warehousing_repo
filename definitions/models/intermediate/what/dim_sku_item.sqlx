@@ -208,7 +208,9 @@ cte_sku_fc_agg AS (
     i.sku_leadtime as fv_vendor_leadtime,
 
 ----------------nguyen.tran added---------------
-    gl.gmv_l30d
+    gl.gmv_l30d,
+    i.available_qty
+
 -------------------------------------------------
 
   FROM cte_sku_item a
