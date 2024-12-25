@@ -1,7 +1,7 @@
 config {
   type: "table",
   name: "fact_fc_backlog_qc_item_missing",
-  tags: ['3HOUR']
+  tags: ['custom_1h_past5']
 }
 
 with cte_date as (
