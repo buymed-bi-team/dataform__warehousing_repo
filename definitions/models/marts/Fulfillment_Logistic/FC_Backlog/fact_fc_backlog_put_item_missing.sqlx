@@ -6,7 +6,7 @@ config {
 
 with cte_date as (
   select 
-      timestamp( date_sub( current_date("+7")  , interval 30 day ) ) as start_date_1
+      timestamp( date_sub( current_date("+7")  , interval 60 day ) ) as start_date_1
       , timestamp( date_trunc( current_date("+7")  , isoweek ) ) as start_date_2
 )
 
@@ -26,25 +26,19 @@ from (
     , timestamp_add( p.created_time, interval 7 hour ) as put_start_at
     , timestamp_add( coalesce(p.end_put_time, p.end_time, p.last_updated_time) , interval 7 hour ) as put_done_at
     , timestamp_add( current_timestamp, interval 7 hour ) as transformed_at
-  -- from ${ref("dedup_warehouse_prd_inbound_put_ticket_item")} as pi
   from (
     select * 
     from ${source.platinum}.warehouse_prd_inbound_put_ticket_item
-    where ingest_time >= (select start_date_1 from cte_date) 
-      and (created_time >= (select start_date_1 from cte_date) or created_time is null)
+    where created_date >= (select DATE(start_date_1) from cte_date) 
   ) pi
-  -- left join ${ref("dedup_warehouse_prd_inbound_put_ticket")} as p on pi.ticket_id = p.ticket_id
   left join (
     select * 
     from ${source.platinum}.warehouse_prd_inbound_put_ticket
-    where ingest_time >= (select start_date_1 from cte_date) 
-      and (created_time >= (select start_date_1 from cte_date) or created_time is null)
+    where created_date >= (select DATE(start_date_1) from cte_date) 
   ) as p on pi.ticket_id = p.ticket_id
   where
     pi.created_time >= (select start_date_1 from cte_date)
-    and coalesce(p.end_put_time, p.end_time, p.synced_at) >= (select start_date_2 from cte_date)
-    -- and pi.demand_quantity > pi.done_quantity
-    -- and p.status = "COMPLETED"
+    -- and coalesce(p.end_put_time, p.end_time, p.synced_at) >= (select start_date_2 from cte_date)
     and json_value(p.extra_props,"$.parent_ref") is null
     and p.source_location = "WH-INBOUND"
     and p.warehouse_code <> "HCM"
