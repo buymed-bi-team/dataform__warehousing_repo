@@ -25,6 +25,7 @@ SELECT
     , i.description
     , COALESCE(i.is_medicine, FALSE) AS is_medicine
     , p.usage
+    , IFNULL(i.is_ingredient_special, FALSE) AS is_ingredient_special
 FROM ${source.platinum}.marketplace_prd_product_v2_product AS p
     , UNNEST(JSON_EXTRACT_ARRAY(p.ingredients)) AS pi
 LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_ingredient AS i ON i.code = JSON_VALUE(pi.ingredient_code)

@@ -140,6 +140,14 @@ WITH product_retail_unit AS (
       QUALIFY ROW_NUMBER() OVER(PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
   )
 
+  , is_ingredient_special AS (
+    SELECT
+      product_id
+    FROM ${ref('dim_product_ingredient')}
+    WHERE is_ingredient_special
+    GROUP BY 1
+  )
+
 SELECT
   ${utils.ToTimezone('current_timestamp()')} as transformed_at,
   ${utils.ToTimezone('product.created_time')} as product_created_at,
@@ -193,7 +201,8 @@ SELECT
     END AS is_prescription,
   product.is_fragile,
   product.is_frozen,
-  product.is_ingredient_special,
+  -- product.is_ingredient_special,
+  IF(iis.product_id IS NOT NULL, TRUE, FALSE) AS is_ingredient_special,
   product.is_herb,
 
   product.height,
@@ -273,6 +282,7 @@ LEFT JOIN ${source.platinum}.core_prd_master_data_country AS tb3 ON tb3.code = p
 LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_main_category AS tb4 ON tb4.code = product.main_category_code
 LEFT JOIN product_cic AS cic ON cic.product_id = product.product_id
 LEFT JOIN high_margin_product AS hmp ON hmp.product_id = product.product_id
+LEFT JOIN is_ingredient_special AS iis ON iis.product_id = product.product_id
 
 WHERE
     LOWER(product.name) NOT LIKE '%(bỏ)%'
