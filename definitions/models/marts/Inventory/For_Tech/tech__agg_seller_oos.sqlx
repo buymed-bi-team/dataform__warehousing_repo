@@ -1,0 +1,9 @@
+config {
+    type: "table",
+    name: "tech__agg_seller_oos",
+    schema: "buymed_tech",
+    tags: ["custom_1h_past5"],
+}
+
+SELECT * 
+FROM ${ref(`agg_seller_oos`)}
