@@ -34,6 +34,7 @@ SELECT
     CONCAT(s.product_id,"_",s.seller_code) AS sku_key,
     CONCAT(s.sku_code,"_",sa.sales_region_code) AS sku_sales_region_code,
     CONCAT(s.product_id,"_",sa.sales_region_code) AS product_sales_region_code,
+    CONCAT(s.product_id,"_",sa.fc_code) AS product_fc_code,
     CONCAT(s.product_id,"_",s.seller_code,"_",sa.sales_region_code) AS sku_key_sales_region_code,
     sc.sku_system_status,
     sc.sku_system_active,
