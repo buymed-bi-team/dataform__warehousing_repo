@@ -4,7 +4,26 @@ config {
     name: "agg_latest_put_by_sku_fc"
 }
 
-WITH LatestPut AS (
+WITH LatestPutCombined AS (
+    SELECT
+        JSON_VALUE(b.extra_props, '$.inbound_code') AS inbound_code,
+        JSON_VALUE(b.extra_props, '$.parent_ref') AS code,
+        JSON_EXTRACT_SCALAR(sku_code) AS sku
+    FROM ${source.platinum}.warehouse_prd_inbound_put_ticket_item a
+        JOIN ${source.platinum}.warehouse_prd_inbound_put_ticket b
+            ON a.put_code = b.code
+        , UNNEST(JSON_EXTRACT_ARRAY(b.extra_props, '$.skus')) AS sku_code
+    WHERE
+        REGEXP_CONTAINS(
+            COALESCE(JSON_EXTRACT_SCALAR(b.extra_props, '$.inbound_code')
+            , JSON_VALUE(b.extra_props, '$.suggest_reference_codes.0'))
+            , r'PO|PGH|TO'
+        ) AND b.status <> "CANCEL" 
+    GROUP BY ALL
+    
+),
+
+LatestPut AS (
     SELECT
         a.sku,
         a.warehouse_code,
@@ -12,19 +31,14 @@ WITH LatestPut AS (
     FROM ${source.platinum}.warehouse_prd_inbound_put_ticket_item a
     JOIN ${source.platinum}.warehouse_prd_inbound_put_ticket b
         ON a.put_code = b.code
-    -- LEFT JOIN ${ref("dim_inbound_ticket")} c
-    --     ON json_value(b.extra_props, "$.inbound_code") = c.po_code
     WHERE
-        -- c.inbound_type = "PURCHASE" and
         REGEXP_CONTAINS(
             COALESCE(JSON_EXTRACT_SCALAR(b.extra_props, '$.inbound_code')
             , JSON_VALUE(b.extra_props, '$.suggest_reference_codes.0'))
             , r'PO|PGH|TO'
         ) AND
         b.status <> "CANCEL"
-    GROUP BY 1, 2
-    
-),
+    GROUP BY ALL),
 
 LatestFinalPut AS (
 SELECT
@@ -37,13 +51,12 @@ SELECT
     FROM ${source.platinum}.warehouse_prd_inbound_put_ticket_item a
     JOIN ${source.platinum}.warehouse_prd_inbound_put_ticket b
         ON a.put_code = b.code
-    LEFT JOIN gold_buymed_vn2.dim_product p
+    LEFT JOIN ${ref("dim_product")} p
         ON a.product_id = p.product_id
     WHERE
         b.status <> "CANCEL"
     QUALIFY
         ROW_NUMBER() OVER (PARTITION BY a.sku, a.warehouse_code ORDER BY b.end_put_time DESC) = 1) 
-
 
 SELECT DISTINCT
     f.sku,
@@ -54,8 +67,7 @@ SELECT DISTINCT
     b.code AS latest_put_code,
     f.code AS final_put_code,
     TIMESTAMP_DIFF(CURRENT_TIMESTAMP(), f.latest_time, DAY) AS aging_final_days,
-    COALESCE(json_value(b.extra_props, "$.inbound_code")
-    , JSON_VALUE(b.extra_props, '$.suggest_reference_codes.0')) AS latest_inbound_code
+    COALESCE(p.inbound_code, json_value(b.extra_props, "$.inbound_code")) AS latest_inbound_code
 FROM LatestPut l
 JOIN ${source.platinum}.warehouse_prd_inbound_put_ticket_item a
     ON l.sku = a.sku
@@ -63,6 +75,9 @@ JOIN ${source.platinum}.warehouse_prd_inbound_put_ticket_item a
 JOIN ${source.platinum}.warehouse_prd_inbound_put_ticket b
     ON a.put_code = b.code
     AND l.latest_put_time = b.end_put_time
+LEFT JOIN LatestPutCombined p
+    ON l.sku = p.sku
+    AND b.code = p.code
 RIGHT JOIN LatestFinalPut f
     ON l.sku = f.sku
     AND l.warehouse_code = f.warehouse_code
