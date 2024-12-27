@@ -29,7 +29,12 @@ WITH
 
 
 SELECT
-    DATE(TIMESTAMP_ADD(created_time, interval 7 HOUR)) AS rebate_date,
+    IF(
+        EXTRACT(HOUR FROM created_time) >= 11,
+        DATE_ADD(created_date, INTERVAL 1 DAY),
+        created_date
+    ) AS rebate_date,
+    TIMESTAMP_ADD(created_time, interval 7 HOUR) AS created_time,
     TIMESTAMP_ADD(last_updated_time, INTERVAL 7 HOUR) AS last_updated_at,
     TIMESTAMP_ADD(ingest_time, INTERVAL 7 HOUR) AS ingest_at,
     product_id,
@@ -43,11 +48,17 @@ SELECT
     price_after_rebate,
     price_after_rebate_with_adhoc_promotion,
     price_contract,
+    discount,
+    vat,
+    fixed_promotion,
+    adhoc_promotion,
     TIMESTAMP_ADD(start_time, INTERVAL 7 HOUR) AS start_time,
+    TIMESTAMP_ADD(end_time, INTERVAL 7 HOUR) AS end_time,
     SAFE_CAST(JSON_VALUE(a.extra_props, "$.price_expected") AS FLOAT64) AS price_expected_on_bill,
     rebate,
     a.contract_price_code,
-    b.contract_price_id
+    b.contract_price_id,
+    SAFE_CAST(JSON_VALUE(a.extra_props, '$.is_fav_vendor') AS BOOLEAN) AS is_fav_vendor
 FROM ${ref('seller_prd_promotion_log_price_after_rebate')} AS a
     LEFT JOIN contract_price AS b ON a.contract_price_code = b.contract_price_code
 WHERE
