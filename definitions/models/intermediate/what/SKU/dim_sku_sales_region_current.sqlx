@@ -104,6 +104,7 @@ SELECT
     sv.vendor_code AS fv_code,
     sv.vendor_name AS fv_name,
     sv.vendor_type AS sku_trading_by_fv,
+    vd.line_manager_combine AS fv_line_manager_code,
     COALESCE(sv.purchase_status, "Off") AS purchase_status ,
     sv.min_per_step,
     CONCAT(sv.vendor_code,"_",cte.fc_code) AS vendor_fc_code,
@@ -210,6 +211,8 @@ FROM cte_full AS cte
         ON CONCAT(sv.vendor_code, "_", cte.fc_code) = fv_vendor_fc.supplier_fc_code
     LEFT JOIN ${ref('dim_product_sales_region')} AS psr 
         ON psr.product_id = s.product_id AND psr.fc_code = cte.fc_code
+    LEFT JOIN ${ref('dim_vendor')} AS vd
+        ON vd.supplier_code = sv.vendor_code
 WHERE 
     cte.sales_region_code IS NOT NULL
 QUALIFY ROW_NUMBER() OVER(PARTITION BY sku_key_sales_region_code) = 1

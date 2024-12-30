@@ -36,7 +36,7 @@ cart as (
     c.cart_id,
     c.customer_id,
     r.area as sale_region
-  from platinum_buymed_vn.marketplace_prd_cart_cart as c
+  from ${source.platinum}.marketplace_prd_cart_cart as c
   left join region as r
     on c.province_code = r.province_code
   QUALIFY
@@ -56,12 +56,11 @@ select
   ct.quantity as added_quantity,
   ct.page as added_page
 
-from platinum_buymed_vn.marketplace_prd_cart_cart_item as ct
+from ${source.platinum}.marketplace_prd_cart_cart_item as ct
 left join cart as c
   on ct.ref_cart = c.ref_cart_item
   and ct.cart_id = c.cart_id
 LEFT JOIN ${ref('dim_sku')} as s
   ON ct.sku = s.sku_code
-where Date(timestamp_add(ct.created_time, interval 7 hour)) >= DATE_SUB(CURRENT_DATE(), INTERVAL 3 MONTH)
 QUALIFY
   ROW_NUMBER() OVER (PARTITION BY ct.ref_cart, ct.sku ORDER BY ct.ingest_time DESC) = 1

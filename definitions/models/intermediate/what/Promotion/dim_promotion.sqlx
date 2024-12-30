@@ -48,6 +48,13 @@ SELECT
 	, JSON_VALUE(a.rewards, '$[0].max_discount') AS max_discount
 	, JSON_VALUE(a.rewards, '$[0].percentage_discount') AS percentage_discount
     , b.campaign_brand
+    , e.fullname
+    , JSON_VALUE(a.extra_props, '$.charge_fee') as charge_fee
+    , JSON_VALUE(a.extra_props, '$.system_display') as system_display
+    , CASE
+        WHEN JSON_VALUE(a.extra_props, '$.apply_discount.not_in_skus.0') IS NULL THEN "Tất cả sản phẩm"
+        ELSE CONCAT("Tất cả sản phẩm ngoại trừ: ", TO_JSON_STRING(JSON_QUERY(a.extra_props, '$.apply_discount.not_in_skus')))
+        END AS apply_product
 FROM ${source.platinum}.marketplace_prd_promotion_promotion AS a
 ------ Retrieve Campaign Brand based on data imported by members of Clients Solutions Team
 LEFT JOIN (
@@ -62,5 +69,7 @@ LEFT JOIN (
         AND submit_id <> 4814
     QUALIFY ROW_NUMBER() over (PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
 ) AS b ON a.promotion_id = b.promotion_id
+LEFT JOIN ${ref("dim_employee")} e
+    ON a.created_by = e.branch_account_id
 WHERE
     a.end_time >= TIMESTAMP_SUB('2023-01-01', INTERVAL 7 HOUR)

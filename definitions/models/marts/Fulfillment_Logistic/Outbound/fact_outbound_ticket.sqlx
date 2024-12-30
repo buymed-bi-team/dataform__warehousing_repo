@@ -137,9 +137,9 @@ with cte_date as (
 						when so.sale_order_code LIKE 'RO%' THEN "RO"
 						when so.sale_order_code LIKE 'CO%' THEN "CO"
 					end
-				when so.type = 'NORMAL' then 'SO'
-				when so.type = 'TRANSFER' then 'TO'
-				when so.type = 'CONSIGNMENT' then 'CO'
+				when UPPER(so.type) = 'NORMAL' then 'SO'
+				when UPPER(so.type) = 'TRANSFER' then 'TO'
+				when UPPER(so.type) = 'CONSIGNMENT' then 'CO'
 			else 'RO'
 			end as order_type,
 			so.create_source,
