@@ -20,8 +20,10 @@ pre_operations {
       DECLARE Ingest_checkpoint TIMESTAMP;
       DECLARE checkpoint_date ARRAY<date>;
 
-      SET Ingest_checkpoint = (
-        SELECT max(ingest_time) FROM ${self()} 
+      SET Ingest_checkpoint = 
+      (
+        SELECT TIMESTAMP_SUB(TIMESTAMP(CURRENT_DATE("+7")), INTERVAL 7 HOUR)
+        -- SELECT max(ingest_time) FROM ${self()} 
       );
 
       SET checkpoint_date = ARRAY( 
