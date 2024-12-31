@@ -110,7 +110,19 @@ int_fc_location_2 AS (
       ELSE FALSE
     END AS hard_config
   FROM int_fc_location
-)
+),
+
+inventory_location as (
+    SELECT
+        CONCAT(code, "_", warehouse_code) AS location_fc_code
+        , CASE
+            WHEN COUNTIF(JSON_VALUE(tags) = "NEAR_EXPIRED") > 0 then True
+          ELSE False
+        END AS is_near_expired
+    FROM ${source.platinum}.warehouse_prd_inventory_location
+        , unnest(JSON_QUERY_ARRAY(tags)) AS tags
+    WHERE warehouse_code IN ('BD', 'HN', 'DN')
+    GROUP BY ALL)
 
 SELECT 
   * EXCEPT(is_pallet, hard_config),
@@ -123,9 +135,11 @@ SELECT
     WHEN fc_code LIKE "BD" AND ( is_pallet = TRUE OR hard_config = TRUE ) THEN NULL
     WHEN fc_code LIKE "BD" THEN CONCAT( shelf_level, location_number_key )
     ELSE NULL
-  END AS location_key
+  END AS location_key,
+  l.is_near_expired
 FROM
-  int_fc_location_2
+  int_fc_location_2 i
+LEFT JOIN inventory_location l ON i.location_fc_code = l.location_fc_code
 
 post_operations {                
     ALTER TABLE ${self()} ADD PRIMARY KEY (location_fc_code) NOT ENFORCED;
