@@ -13,6 +13,8 @@ WITH agg_stock_in AS (
         sku_code,
         fc_code,
         location,
+        location_code,
+        location_fc_code,
         COALESCE(l.lot, "N/A") as lot,
         COALESCE(expiration_status, "N/A") as expiration_status,
         e.days_until_expired,
@@ -30,6 +32,8 @@ agg_stock_out AS (
         sku_code,
         fc_code,
         location,
+        location_code,
+        location_fc_code,
         COALESCE(l.lot, "N/A") as lot,
         COALESCE(expiration_status, "N/A") as expiration_status,
         e.days_until_expired,
@@ -47,6 +51,7 @@ agg_stock_in_out AS (
         COALESCE(i.sku_code, o.sku_code) AS sku_code,
         COALESCE(i.fc_code, o.fc_code) AS fc_code,
         COALESCE(i.location, o.location) AS location,
+        COALESCE(i.location_code, o.location_code) AS location_code,
         COALESCE(i.lot, o.lot) AS lot,
         COALESCE(i.expiration_status, o.expiration_status) AS expiration_status,
         COALESCE(i.days_until_expired, o.days_until_expired) AS days_until_expired,
@@ -62,6 +67,7 @@ agg_stock_in_out AS (
         agg_stock_out AS o
     ON i.sku_code = o.sku_code
     AND i.fc_code = o.fc_code
+    AND i.location_fc_code = o.location_fc_code
     AND i.lot = o.lot
     AND i.expired_date = o.expired_date
 )
