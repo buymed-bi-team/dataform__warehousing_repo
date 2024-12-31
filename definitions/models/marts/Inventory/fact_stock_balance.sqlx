@@ -67,7 +67,6 @@ agg_stock_in_out AS (
         agg_stock_out AS o
     ON i.sku_code = o.sku_code
     AND i.fc_code = o.fc_code
-    AND i.location_fc_code = o.location_fc_code
     AND i.lot = o.lot
     AND i.expired_date = o.expired_date
 )
