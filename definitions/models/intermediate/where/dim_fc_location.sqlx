@@ -125,7 +125,7 @@ inventory_location as (
     GROUP BY ALL)
 
 SELECT 
-  * EXCEPT(is_pallet, hard_config),
+  * EXCEPT(is_pallet, hard_config, l.location_fc_code),
   CASE 
     WHEN fc_code LIKE "BD" AND ( is_pallet = TRUE OR hard_config = TRUE ) THEN location_code
     WHEN fc_code LIKE "BD" THEN CONCAT( zone_key, shelf_key )
