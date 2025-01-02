@@ -1,7 +1,8 @@
 config {
     name: "agg_strategic_customer",
     type: "view",
-    description: "PIC: minhluu"
+    description: "PIC: minhluu",
+    tags: ('STRATEGIC-REPORTING'),
 }
 
 SELECT 

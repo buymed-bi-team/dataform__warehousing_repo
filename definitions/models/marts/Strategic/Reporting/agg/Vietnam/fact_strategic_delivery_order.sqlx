@@ -2,14 +2,21 @@
 -- Tạo 1 bảng lấy delivery order là chính, có thể làm thành view nếu không có logic phức tạp
 config {
     type: "view",
-    description: `PIC: Minhluu
+    description: `PIC: Minhluu, HuongDang
     Source: 
-        ${source.platinum}.warehouse_prd_core_delivery_order`,
+        ${source.platinum}.warehouse_prd_core_delivery_order
+        ${source.platinum}.marketplace_prd_order_v2_order
+        ${source.platinum}.tender_prd_core_tender_orders
+        ${source.gold}.fact_strategic_sale_order_item_single
+        ${source.gold}.dim_order_channel
+        ${source.gold}.dim_order_sales_region
+    `,
     columns : {
         sale_order_code: "Nullable",
         delivery_order_code: "Nullable",
         qc_done_time: "Nullable"
-    }   
+    },
+    tags : ( 'STRATEGIC-REPORTING' ),
 }
 
 /*

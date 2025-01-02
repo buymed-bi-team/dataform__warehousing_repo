@@ -4,7 +4,8 @@ config {
     description: `PIC: huong.dang; Schedule: 0h00 daily
     Source;
         ${source.ref}.fact_inventory_sku_monthly_cutoff
-        ${source.ref}.fact_inventory_sku_recent`
+        ${source.ref}.fact_inventory_sku_recent`,
+    tags: ('STRATEGIC-REPORTING'),
 }
 
 --- 1. CUTOFF STOCK QUANTITY MONTHLY
