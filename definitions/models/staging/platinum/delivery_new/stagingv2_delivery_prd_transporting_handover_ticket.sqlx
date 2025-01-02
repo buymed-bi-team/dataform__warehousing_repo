@@ -50,11 +50,11 @@ pre_operations {
 --
 
 SELECT
-*,
-CASE 
-    WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
-    ELSE "2099-01-01"
-END AS created_date
+  *
+  ,CASE 
+      WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
+      ELSE "2099-01-01"
+  END AS created_date
 FROM ${source.silver}.delivery_prd_transporting_handover_ticket o
 ${ when(incremental(), `WHERE ingest_time > Ingest_checkpoint ` )}
 
