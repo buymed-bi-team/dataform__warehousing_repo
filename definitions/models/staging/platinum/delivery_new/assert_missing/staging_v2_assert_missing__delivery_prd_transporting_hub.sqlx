@@ -1,7 +1,7 @@
 
 config {
     type: "assertion",
-    tags: ["platinum_daily_AM_9:00","delivery_prd_transporting","platinum_custom_1h_past7_test"],
+    tags: ["platinum_daily_AM_9:00","delivery_prd_transporting"],
     dependencies: ["delivery_prd_transporting_hub"]
 }
 /*
@@ -27,6 +27,7 @@ WITH platinum AS (
     synced_at,
     ingest_time
   FROM `${source.silver}.delivery_prd_transporting_hub`
+  WHERE ingest_time <= (SELECT ingest_time FROM max_timestamp)
 
   
   QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'
