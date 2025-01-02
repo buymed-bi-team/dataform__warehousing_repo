@@ -48,10 +48,10 @@ select * from
           , oi.sku_status,
           cast(json_value(extra_props, "$.is_important") as BOOLEAN) as is_important
       -- from  ${source.silver}.marketplace_prd_order_v2_order_item  as oi
-      FROM ${source.silver}.marketplace_prd_order_v2_order_item as oi
+      FROM ${source.platinum}.marketplace_prd_order_v2_order_item as oi)
       -- from lakehouse-prod-394907._513c4051a7d94cc5f16470b9da40e24c2a97913a.anonead9caf2a3c74fb9d5e5ba78d4d488556c3878ac0646f0bcb2b2556661745865 as oi
-      where
-          oi.ingest_time >=  TIMESTAMP_SUB(TIMESTAMP_TRUNC(CURRENT_TIMESTAMP(), YEAR), INTERVAL 2 DAY)
-      qualify row_number() over (_window) = 1 AND FIRST_VALUE(action) over(_window) <> 'd'
-      WINDOW _window AS (PARTITION BY oi.mg_id ORDER BY oi.synced_at DESC))
+    --   where
+    --       oi.ingest_time >=  TIMESTAMP_SUB(TIMESTAMP_TRUNC(CURRENT_TIMESTAMP(), YEAR), INTERVAL 2 DAY)
+    --   qualify row_number() over (_window) = 1 AND FIRST_VALUE(action) over(_window) <> 'd'
+    --   WINDOW _window AS (PARTITION BY oi.mg_id ORDER BY oi.synced_at DESC))
 where date(created_at) >= (select start_date from cte_date)
