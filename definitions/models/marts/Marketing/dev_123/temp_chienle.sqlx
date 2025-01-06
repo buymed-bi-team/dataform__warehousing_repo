@@ -1,0 +1,25 @@
+config {
+    type: "table",
+    description: `PIC: chienle
+    source: 
+        ${source.platinum}.marketplace_prd_order_v2_order
+    `,
+    columns: {
+        col_1 : "NonNull | ",
+        col_timestamp : "Timezone in vietname",
+    },
+    tags: ["1h00", "custom_1h_past10", "custom_2h_past10"],
+    bigquery: {
+        partitionBy: `DATE(col_timestamp)`
+    }
+}
+
+SELECT 
+    1 as col_1 ,
+    2 as col_2 ,
+    current_timestamp() + interval 7 hour AS col_timestamp
+-- FROM ${source.silver}
+-- FROM ${source.platinum}.marketplace_prd_order_v2_order
+
+-- FROM ${ref(`dim_order`)}
+FROM ${source.ref}.dim_order
