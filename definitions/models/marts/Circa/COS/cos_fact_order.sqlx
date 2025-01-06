@@ -27,9 +27,9 @@ select id as order_id,
        source_type, 
        delivery_type, 
        channel,
-       date(created_at) as created_date,
-       created_at,
+       date(DATETIME_ADD(created_at, INTERVAL 7 HOUR)) as created_date,
+       DATETIME_ADD(created_at, INTERVAL 7 HOUR) as created_at,
        fulfillment_status,
-       date(completed_at) as completed_date,medicine_cutting_fee
+       date(DATETIME_ADD(completed_at, INTERVAL 7 HOUR))  as completed_date,medicine_cutting_fee
        
 from ${source.circa_os}.order_order
