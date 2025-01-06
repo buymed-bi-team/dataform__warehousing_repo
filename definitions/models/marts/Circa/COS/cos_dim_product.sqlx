@@ -13,17 +13,30 @@ config {
     }
 }
 
-select product_id,
+
+with product_base_unit as
+(
+      select a.product_id,
+            a.unit as base_unit
+      from ${source.circa_os}.product_retail_unit as a
+      -- right join ${source.circa_os}.product_product as b on a.product_id = b.product_id
+      where a.base_unit is true and (unit is not null or unit <> "")
+      qualify row_number() over(partition by product_id, unit order by unit ) =1
+      )
+
+select p.product_id,
        p.code as product_code,
        m.name as manufacturer_name,
        m.short_name as manufacturer_short_name,
        p.name as product_name,
        volumes,
        unit,
-       mc.name as main_category_name
---     efficacy_codes,
---     category_codes
+       mc.name as main_category_name,
+       bu.base_unit
 from ${source.circa_os}.product_product p
 left join ${source.circa_os}.product_main_category mc on p.main_category_code = mc.code
 left join ${source.circa_os}.product_manufacturer m on p.manufacturer_code = m.code
+left join product_base_unit bu on p.product_id = bu.product_id
+qualify  row_number() over(partition by p.product_id, unit order by bu.base_unit desc ) =1
+-- WHERE p.product_id>=1
 -- left join efficacy e on p.efficacy_code= e.efficacy_id
