@@ -33,6 +33,22 @@ WITH
             AND channel = "MARKETPLACE"
     )
 
+    , order_item_l3m AS (
+        SELECT
+            oi.customer_id
+            , DATE_TRUNC(DATE(oi.created_at), MONTH) AS som
+            -- , SUM(sales_price * demand_quantity) AS gmv
+            , COUNT(DISTINCT sku_code) AS no_skus
+        FROM ${ref('fact_order_item')} AS oi
+            LEFT JOIN ${ref('fact_order')} AS o USING(order_id)
+        WHERE
+            order_status <> "CANCEL"
+            AND channel = "MARKETPLACE" 
+            AND DATE(oi.created_at) >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 3 MONTH)
+            AND DATE(o.created_at) >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 3 MONTH)
+        GROUP BY ALL
+    )
+
     , cte_transaction_with_previous_order_time AS (
         SELECT
           *
@@ -100,9 +116,11 @@ WITH
                 -- ELSE "USER_ONLY"
               END AS customer_business_status
             , b.gmv
+            , d.no_skus
         FROM cte_main AS a
             LEFT JOIN cte_agg_customer_and_som AS b ON a.customer_id = b.customer_id AND a.som = b.som
             LEFT JOIN cte_agg_customer AS c ON a.customer_id = c.customer_id
+            LEFT JOIN order_item_l3m AS d ON a.customer_id = d.customer_id AND a.som = d.som
         WHERE
             c.first_order_time_without_cancel_ever IS NOT NULL
             AND a.som >= DATETIME_TRUNC(c.first_order_time_without_cancel_ever, MONTH)
@@ -119,6 +137,7 @@ WITH
             , NULL AS days_return_active
             , "USER_ONLY" AS customer_business_status
             , NULL AS gmv
+            , NULL AS no_skus
         FROM ${ref('dim_customer')} AS a
             LEFT JOIN cte_agg_customer AS c ON a.customer_id = c.customer_id
         WHERE
