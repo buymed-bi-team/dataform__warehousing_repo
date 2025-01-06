@@ -1,0 +1,29 @@
+config {
+    type: "table",
+    description: `Last 13 month| PIC: tu.dang; model_type: Table ;schedule: At minute 5 past hour 6, 8, 10, 12, 14, 16, 18, 20 and 22`
+    /*Source:
+      ${source.silver}.marketplace_prd_order_v2_order_item
+      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
+    tags: ["custom_2h_past5"],
+    name: "cos_fact_order_item",
+    columns: {
+
+        
+    }
+}
+
+
+select order_id,
+       product_id,
+       quantity,
+       unit,
+       unit_price,
+       lot_date,
+       base_quantity,
+       amount,
+       discount_amount,
+       tax_rate,
+       gift_code
+-- from order_item
+       
+from ${source.circa_os}.order_order_item
