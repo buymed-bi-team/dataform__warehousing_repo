@@ -1,0 +1,29 @@
+config {
+    type: "table",
+    description: `Last 13 month| PIC: tu.dang; model_type: Table ;schedule: At minute 5 past hour 6, 8, 10, 12, 14, 16, 18, 20 and 22`
+    /*Source:
+      ${source.silver}.marketplace_prd_order_v2_order_item
+      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
+    tags: ["10h30"],
+    name: "cos_dim_product",
+    columns: {/*
+        order_id: "NonNull |" + docs.order_id,
+        customer_id: "NonNull | The unique identifier for each customer"*/
+        
+    }
+}
+
+select product_id,
+       p.code as product_code,
+       m.name as manufacturer_name,
+       m.short_name as manufacturer_short_name,
+       p.name as product_name,
+       volumes,
+       unit,
+       mc.name as main_category_name
+--     efficacy_codes,
+--     category_codes
+from ${source.circa_os}.product_product p
+left join ${source.circa_os}.product_main_category mc on p.main_category_code = mc.code
+left join ${source.circa_os}.product_manufacturer m on p.manufacturer_code = m.code
+-- left join efficacy e on p.efficacy_code= e.efficacy_id
