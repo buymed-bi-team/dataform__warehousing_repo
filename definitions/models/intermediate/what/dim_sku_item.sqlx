@@ -209,7 +209,8 @@ cte_sku_fc_agg AS (
 
 ----------------nguyen.tran added---------------
     gl.gmv_l30d,
-    i.available_qty
+    i.available_qty,
+    i.is_auto_check_stock
 
 -------------------------------------------------
 

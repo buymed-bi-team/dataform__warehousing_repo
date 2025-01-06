@@ -31,7 +31,7 @@ SELECT
       ) AS value_by_condition
 FROM ${ref('fact_order_item')} AS oi
     LEFT JOIN ${ref('fact_order')} AS o ON oi.order_id = o.order_id
-    JOIN ${ref('dim_gamification_sku')} AS gs ON oi.sku_code = gs.sku_code
+    JOIN ${ref('dim_gamification_sku')} AS gs ON oi.sku_orignal_key = gs.sku_key
     LEFT JOIN ${ref('dim_gamification')} AS g ON gs.gamification_code = g.gamification_code
 WHERE
     oi.created_at >= '2024-06-01' AND

@@ -1,7 +1,7 @@
 config {
   type: "view",
   dependencies: ["fact_order", "dim_calendar"],
-  tags: ["Stream", "STRATEGIC"]
+  tags: ["STRATEGIC-DASHBOARDING"]
 }
 
 WITH cte_agg as (

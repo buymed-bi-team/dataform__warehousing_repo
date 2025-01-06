@@ -1,0 +1,22 @@
+config {
+    type:"table",
+    description: `PIC: Huong.Dang; Schedule: 0h00 daily`,
+    tags: ('0h00' , 'STRATEGIC-REPORTING')
+}
+
+
+SELECT *, 
+"VND" as currency
+FROM ${ref(`agg_strategic_general_vn`)}
+
+UNION ALL
+
+SELECT *,
+"THB" as currency
+FROM ${ref(`agg_strategic_general_thailand`)}
+
+UNION ALL
+
+SELECT *,
+"KHR" as currency
+FROM ${ref(`agg_strategic_general_cambodia`)}

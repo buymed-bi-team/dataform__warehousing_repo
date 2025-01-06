@@ -19,7 +19,7 @@ config {
 WITH
     target_date as (
         SELECT
-            DATE_SUB( DATE_TRUNC( CURRENT_DATE('Asia/Ho_Chi_Minh'), YEAR ), interval 2 YEAR) AS start_date
+            DATE_SUB( DATE_TRUNC( CURRENT_DATE('Asia/Ho_Chi_Minh'), YEAR ), interval 3 YEAR) AS start_date
     ),
     purchase_order as (
         SELECT

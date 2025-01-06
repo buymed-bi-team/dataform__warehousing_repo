@@ -1,7 +1,7 @@
 config {
     type: "table",
     dependencies: ['fact_strategic_gmv_monthly', 'fact_strategic_sales', 'fact_strategic_active_customer', 'fact_strategic_on_time', 'fact_strategic_cancellation', 'fact_strategic_aov', 'fact_strategic_marketplace', 'fact_strategic_inventory', "fact_strategic_new_customer", "fact_strategic_gmv_weekly", "fact_strategic_tpcs", "fact_strategic_cs_ontime"],
-    tags: ["Stream", "custom_1h_past5", "STRATEGIC"]
+    tags: ["STRATEGIC-DASHBOARDING", "custom_1h_past5"]
 }
 
 select

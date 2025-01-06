@@ -1,7 +1,7 @@
 config {
   type: "view",
   dependencies: ["fact_order_item", "dim_calendar", "agg_seller_classification"],
-  tags: ["Stream"]
+  tags: ["STRATEGIC-DASHBOARDING"]
 }
 
 WITH cte_date AS (

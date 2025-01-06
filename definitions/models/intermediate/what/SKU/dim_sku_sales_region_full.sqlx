@@ -20,7 +20,16 @@ config {
     }
 }
 
-SELECT
+WITH high_margin AS (
+    SELECT 
+        code AS sku_fc_code
+        , NULLIF(value, "NAN") as high_margin
+    FROM collector.data_prd
+    WHERE object = 'SKU' and type = 'HIGH_MARGIN'
+    QUALIFY ROW_NUMBER() OVER(PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
+),
+
+sku_sr AS (SELECT
     s.sku_created_at,
     s.sku_code,
     s.product_id,
@@ -61,4 +70,10 @@ FROM ${ref('dim_sku')} AS s
         ON sc.sku_code = s.sku_code AND sc.sales_region_code = sa.sales_region_code
     LEFT JOIN ${source.platinum}.seller_prd_core_seller AS sup
         ON sup.code = s.seller_code
-QUALIFY ROW_NUMBER() OVER(PARTITION BY sku_key_sales_region_code) = 1
+QUALIFY ROW_NUMBER() OVER(PARTITION BY sku_key_sales_region_code) = 1)
+
+SELECT 
+    s.*,
+    h.high_margin
+FROM sku_sr s
+LEFT JOIN high_margin h ON CONCAT(s.sku_key, "_", s.fc_code) = h.sku_fc_code

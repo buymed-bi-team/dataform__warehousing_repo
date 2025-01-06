@@ -1,7 +1,7 @@
 config {
   type: "table",
   dependencies: ["dim_calendar"],
-  tags: ["0h30"]
+  tags: ["0h30","STRATEGIC-DASHBOARDING"]
 }
 
 

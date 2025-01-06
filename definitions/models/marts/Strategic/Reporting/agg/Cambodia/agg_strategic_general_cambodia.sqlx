@@ -1,0 +1,44 @@
+config {
+    type:"table",
+    description: `PIC: Huong.Dang; Schedule: 0h00 daily`,
+    tags: ("0h00", 'STRATEGIC-REPORTING')
+}
+
+
+WITH base_calendar AS (
+  SELECT 
+    eom,
+    date
+  FROM ${ref(`dim_calendar`)}
+  WHERE date >= "2023-01-01"),
+
+order_metrics AS (
+  SELECT
+    DATE(created_at) as order_date,
+    "CAMBODIA" as location,
+    CAST(NULL AS STRING) as channel,
+    CAST(NULL AS STRING) as supplier_class,
+    SUM(gmv) as gmv_after_cancel,
+  FROM lakehouse-prod-394907.gold_buymed_cam.fact_order
+  GROUP BY 1, 2, 3, 4)
+
+SELECT 
+  CURRENT_DATETIME("+7") AS refresh_time,
+  c.eom as date,
+  location,
+  channel,
+  measure,
+  supplier_class,
+  value
+FROM order_metrics m
+CROSS JOIN UNNEST([
+  STRUCT("GMV_GENERAL" as measure, gmv_after_cancel as value)
+]) metrics
+JOIN base_calendar c 
+  ON DATE(m.order_date) = c.date
+
+UNION ALL
+
+SELECT a.* 
+FROM ${ref(`agg_strategic_customer_cambodia`)} as a
+INNER JOIN base_calendar c ON DATE(c.date) = a.date

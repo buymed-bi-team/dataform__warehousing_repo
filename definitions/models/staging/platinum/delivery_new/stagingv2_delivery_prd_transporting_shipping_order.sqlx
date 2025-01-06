@@ -22,7 +22,8 @@ pre_operations {
       DECLARE Ingest_checkpoint TIMESTAMP;
       DECLARE checkpoint_date ARRAY<date>;
 
-      SET Ingest_checkpoint = (SELECT max(ingest_time) FROM ${self()});
+      SET Ingest_checkpoint = (SELECT TIMESTAMP_SUB(TIMESTAMP(CURRENT_DATE("+7")), INTERVAL 7 HOUR));
+      -- Ingest_checkpoint = (SELECT max(ingest_time) FROM ${self()});
 
       SET checkpoint_date = ARRAY( 
         SELECT DISTINCT IF(created_time is NULL, "2099-01-01" , DATE( DATETIME(created_time,'Asia/Ho_Chi_Minh') ) )
