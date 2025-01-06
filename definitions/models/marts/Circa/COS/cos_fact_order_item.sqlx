@@ -7,12 +7,8 @@ config {
     tags: ["custom_2h_past5"],
     name: "cos_fact_order_item",
     columns: {
-        order_id: "NonNull |" + docs.order_id,
-        customer_id: "NonNull | The unique identifier for each customer"
+
         
-    },
-    bigquery: {
-        partitionBy: "date(created_at)"
     }
 }
 
