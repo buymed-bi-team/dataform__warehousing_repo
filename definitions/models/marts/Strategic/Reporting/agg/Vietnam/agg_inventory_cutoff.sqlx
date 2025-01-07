@@ -5,7 +5,7 @@ config {
     Source;
         ${source.ref}.fact_inventory_sku_monthly_cutoff
         ${source.ref}.fact_inventory_sku_recent`,
-    tags: ('STRATEGIC-REPORTING'),
+    tags: ['STRATEGIC-REPORTING'],
 }
 
 --- 1. CUTOFF STOCK QUANTITY MONTHLY

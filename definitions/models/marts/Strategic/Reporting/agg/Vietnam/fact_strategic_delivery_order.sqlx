@@ -16,7 +16,7 @@ config {
         delivery_order_code: "Nullable",
         qc_done_time: "Nullable"
     },
-    tags : ( 'STRATEGIC-REPORTING' ),
+    tags : ['STRATEGIC-REPORTING'],
 }
 
 /*

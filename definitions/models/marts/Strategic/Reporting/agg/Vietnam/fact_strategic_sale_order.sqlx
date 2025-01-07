@@ -9,7 +9,7 @@ config {
         order_status: "Nullable | Null means unknown",
         created_time: "NonNull | Timezone in +7"
     },
-    tags : ( 'STRATEGIC-REPORTING' )
+    tags : ['STRATEGIC-REPORTING']
 }
 
 js {
