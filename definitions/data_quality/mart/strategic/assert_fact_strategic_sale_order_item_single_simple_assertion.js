@@ -1,5 +1,5 @@
 contextable = {
-    tags:('0h00')
+    tags:['0h00']
 }
 
 const columns = [

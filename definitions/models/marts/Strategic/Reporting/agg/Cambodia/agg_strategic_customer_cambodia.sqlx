@@ -1,7 +1,7 @@
 config {
     type: "view",
     description: "PIC: huong.dang",
-    tags:('STRATEGIC-REPORTING'),
+    tags:['STRATEGIC-REPORTING'],
 }
 
 SELECT 

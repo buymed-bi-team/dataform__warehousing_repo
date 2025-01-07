@@ -1,7 +1,7 @@
 config {
     type:"table",
     description: `PIC: Huong.Dang; Schedule: 0h00 daily`,
-    tags: ("0h00", 'STRATEGIC-REPORTING')
+    tags: ["0h00", 'STRATEGIC-REPORTING']
 }
 
 

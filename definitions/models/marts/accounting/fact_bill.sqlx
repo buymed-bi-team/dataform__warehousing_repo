@@ -18,7 +18,7 @@ config {
         // uniqueKey: 'order_id || "__" || product_id',
         nonNull: ['order_id']
     },
-    tags: ('0h00'),
+    tags: ['0h00'],
     bigquery: {
         partitionBy: "DATE(created_time)"
     }
