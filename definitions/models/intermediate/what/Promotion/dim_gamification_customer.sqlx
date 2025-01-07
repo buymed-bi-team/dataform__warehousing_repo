@@ -1,0 +1,20 @@
+config {
+    type: "table", 
+    description: 
+        `
+        List of Customers Participating in Gamification;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.platinum}.marketplace_prd_promotion_gamification_customer
+        `,
+    tags: ["custom_1h_past5","PROMOTION_MKP"]
+}
+
+SELECT
+    gamification_id
+    , customer_id
+    , TIMESTAMP_ADD(TIMESTAMP(join_time), INTERVAL 7 HOUR) AS join_time
+FROM ${source.platinum}.marketplace_prd_promotion_gamification_customer
+
