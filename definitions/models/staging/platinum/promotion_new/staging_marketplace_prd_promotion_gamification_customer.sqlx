@@ -1,9 +1,6 @@
-
-
-
 config {
     type: "table",
-    name: "marketplace_prd_promotion_lucky_wheel",
+    name: "marketplace_prd_promotion_gamification_customer",
     schema: "platinum_buymed_vn",
     assertions: {
         uniqueKey: 'mg_id',
@@ -21,7 +18,7 @@ SELECT
     WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
     ELSE "2099-01-01"
   END AS created_date
-FROM lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_promotion_lucky_wheel o 
+FROM lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_promotion_gamification_customer o 
  QUALIFY ROW_NUMBER() OVER (_window) = 1
        AND FIRST_VALUE(action) OVER (_window) <> 'd'
 WINDOW
@@ -35,4 +32,3 @@ WINDOW
     IF
       (action='u',2,1)) DESC,
     last_updated_time DESC)
-

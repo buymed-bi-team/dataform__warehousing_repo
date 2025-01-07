@@ -15,7 +15,7 @@ config {
         measure: "NonNull |",
         value: "Nullable |"
     },
-    tags: ("0h00", 'STRATEGIC-REPORTING')
+    tags: ["0h00", 'STRATEGIC-REPORTING']
 }
 
 -- Optimized base calendar with date filtering
