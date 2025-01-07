@@ -1,0 +1,34 @@
+config {
+    type: "table",
+    name: "marketplace_prd_promotion_voucher_group_type",
+    schema: "platinum_buymed_vn",
+    assertions: {
+        uniqueKey: 'mg_id',
+        nonNull: ["created_date"]
+    },
+    bigquery: {
+        partitionBy: "created_date"
+    },
+    tags: ["custom_1h_past7","marketplace_prd_promotion"]
+}
+
+SELECT
+ *,
+ CASE 
+    WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
+    ELSE "2099-01-01"
+  END AS created_date
+FROM lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_promotion_voucher_group_type o 
+ QUALIFY ROW_NUMBER() OVER (_window) = 1
+       AND FIRST_VALUE(action) OVER (_window) <> 'd'
+WINDOW
+  _window AS (
+  PARTITION BY
+    mg_id
+  ORDER BY
+    synced_at DESC,
+  IF
+    (action='d',3,
+    IF
+      (action='u',2,1)) DESC,
+    last_updated_time DESC)
