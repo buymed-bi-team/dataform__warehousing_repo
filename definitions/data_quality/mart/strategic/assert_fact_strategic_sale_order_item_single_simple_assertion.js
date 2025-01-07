@@ -1,5 +1,5 @@
 contextable = {
-    tags:['0h00']
+    // tags:['0h00']
 }
 
 const columns = [
@@ -8,11 +8,11 @@ const columns = [
     'product_id',
     'sku_code',
     'supplier_code',
-    'product_id_original',
-    'sku_code_original',
-    'supplier_code_original',
+    // 'product_id_original',
+    // 'sku_code_original',
+    // 'supplier_code_original',
     'created_time',
-    'price',
+    // 'price',
     'demand_quantity'
 ]
 
