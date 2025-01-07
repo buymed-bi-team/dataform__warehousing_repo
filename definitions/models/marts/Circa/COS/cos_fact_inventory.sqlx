@@ -22,7 +22,7 @@ With inventory as (select a.product_id,
                           a.cost_price_include_tax,
                           a.on_hand_qty as on_hand_quantity,
                           a.location_id,
-                          a.doc_code
+                          a.doc_code, product_id || "_" || lot_date || "_" || tax_rate as product_lot_date_vat
                    from ${source.circa_os}.inventory_location_detail as a
 where 
 doc_code is not null and 

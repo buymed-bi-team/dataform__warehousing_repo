@@ -23,7 +23,8 @@ select order_id,
        amount,
        discount_amount,
        tax_rate,
-       gift_code
+       gift_code,
+       product_id || "_" || lot_date || "_" || tax_rate as product_lot_date_vat
 -- from order_item
        
 from ${source.circa_os}.order_order_item
