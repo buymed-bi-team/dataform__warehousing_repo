@@ -10,7 +10,11 @@ config {
             ${source.ref}.dim_sku_sales_region_current,
             ${source.ref}.fact_sku_status_day_by_date
         `,
-    tags: ["custom_1h_past5"]
+    tags: ["custom_1h_past5"],
+    bigquery: {
+        partitionBy: "date",
+        clusterBy: ["product_id", "sales_region_code"]
+    }
 }
 
 WITH
