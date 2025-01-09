@@ -131,6 +131,7 @@ WITH
       JSON_VALUE(a.extra_props, '$.auto_cancel_overdue_transfer') AS auto_cancel_overdue_transfer,
       a.system_display,
       JSON_VALUE(a.source_detail, '$.platform') AS source_detail_platform,
+      JSON_VALUE(a.source_detail, '$.ip') AS source_detail_ip,
       a.source,
       CASE
         WHEN TO_JSON_STRING(a.tags) LIKE '%MULTIPLE_DELIVERY_ORDER%' THEN 'split_order'
