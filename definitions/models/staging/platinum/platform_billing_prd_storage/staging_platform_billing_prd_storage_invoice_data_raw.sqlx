@@ -46,7 +46,7 @@ config {
         Tổng cộng tiền thuế GTGT : không có
         Tổng cộng tiền thanh toán : data "$.total_price_without_vat"
     `,
-    tags:["custom_1h_past5"]
+    tags:["platform_billing_prd_storage","custom_1h_past5"]
 }
 
 

@@ -8,7 +8,7 @@ config {
     bigquery: {
         partitionBy: "created_date"
     },
-    tags: ["custom_1h_past7"]
+    tags: ["platform_billing_prd_storage","custom_1h_past7"]
 }
 
 js {
