@@ -28,3 +28,8 @@ Before reading:
 If you commit a lot of features, it will be difficult to solve issues when one of them breaks
 
 If there are assertions to test a feature, let's commit both of them with the feature.
+
+# Template tp commit
+
+- [Gold] create model <file_name>
+- [Gold] Update model <file name>

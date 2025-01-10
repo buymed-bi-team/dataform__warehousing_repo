@@ -10,7 +10,11 @@ config {
             ${source.ref}.dim_sku_sales_region_current,
             ${source.ref}.fact_sku_status_day_by_date
         `,
-    tags: ["custom_1h_past5"]
+    tags: ["custom_1h_past5"],
+    bigquery: {
+        partitionBy: "date",
+        clusterBy: ["product_id", "sales_region_code"]
+    }
 }
 
 WITH
@@ -47,12 +51,12 @@ FROM ${ref('dim_sku_sales_region_current')} AS c
         ON c.sub_sku_code = a.item_code
             AND c.sales_region_code = a.sales_region_code
             AND DATE(c.sku_approved_at) <= a.date
-            AND a.date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), WEEK(MONDAY)), INTERVAL 5 WEEK )
+            -- AND a.date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), WEEK(MONDAY)), INTERVAL 5 WEEK )
 --             AND a.date = CURRENT_DATE("+7")
 WHERE
-    a.date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), WEEK(MONDAY)), INTERVAL 5 WEEK )
+    -- a.date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), WEEK(MONDAY)), INTERVAL 5 WEEK )
 --     a.date = CURRENT_DATE("+7")
-    AND c.seller_code NOT IN ('MEDX_E', 'MEDC', 'MED_NT', 'TENDER', 'MEDX-HN', 'DENX', 'MARKETING', '9SUUUUUUUU', 'QMQEM8DN9F', 'UQRRRRRRRR')
+    c.seller_code NOT IN ('MEDX_E', 'MEDC', 'MED_NT', 'TENDER', 'MEDX-HN', 'DENX', 'MARKETING', '9SUUUUUUUU', 'QMQEM8DN9F', 'UQRRRRRRRR')
     AND REGEXP_CONTAINS(c.product_name, r'\[|\]') = FALSE
     AND c.sku_system_status <> 'GIFT'
     AND c.seller_class IS NOT NULL
