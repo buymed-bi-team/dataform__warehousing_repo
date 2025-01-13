@@ -49,15 +49,23 @@ pre_operations {
     )
   }
 }
-SELECT *,
-  CASE 
-    WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
-    ELSE "2099-01-01"
-  END AS created_date
+SELECT *
+  ${ when(
+    dataform.projectConfig.vars.self_dedup === 'N',
+    `,CASE 
+      WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
+      ELSE "2099-01-01"
+    END AS created_date`,
+    ``
+  )}
 FROM (
   SELECT
-  *
-  FROM ${source.silver}.warehouse_prd_inventory_sku o 
+  * 
+  FROM ${ when( 
+      dataform.projectConfig.vars.self_dedup === 'N', 
+      `${source.silver}.warehouse_prd_inventory_sku`,
+      self()
+  )} o
   ${
       when(incremental(), 
         `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) 
