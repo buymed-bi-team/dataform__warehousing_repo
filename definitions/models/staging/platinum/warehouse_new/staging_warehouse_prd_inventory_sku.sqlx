@@ -56,8 +56,12 @@ SELECT *,
   END AS created_date
 FROM (
   SELECT
-  *
-  FROM ${source.silver}.warehouse_prd_inventory_sku o 
+  * 
+  FROM ${ when( 
+      dataform.projectConfig.vars.self_dedup === 'N', 
+      `${source.silver}.warehouse_prd_inventory_sku`,
+      self()
+  )} o
   ${
       when(incremental(), 
         `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) 

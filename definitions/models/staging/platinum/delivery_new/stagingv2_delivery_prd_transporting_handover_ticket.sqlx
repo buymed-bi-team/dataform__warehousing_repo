@@ -55,7 +55,11 @@ SELECT
       WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
       ELSE "2099-01-01"
   END AS created_date
-FROM ${source.silver}.delivery_prd_transporting_handover_ticket o
+FROM ${ when( 
+    dataform.projectConfig.vars.self_dedup === 'N', 
+    `${source.silver}.delivery_prd_transporting_handover_ticket`,
+    self()
+)} o
 ${ when(incremental(), `WHERE ingest_time > Ingest_checkpoint ` )}
 
 QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'
