@@ -1,5 +1,5 @@
 config {
-  type: "table",
+  type: "incremental",
   description: 
         `
         Information about lot, expired date and purchase order of each SKU in the order - The combo has been split into normal product;
@@ -13,12 +13,25 @@ config {
     partitionBy: "date(created_at)",
     clusterBy: ["order_id", "sku_bom_code"]
   },
-  tags: ["8h30", "10h30", "12h30", "15h30" ,"17h30"]
+  tags: ["custom_1h_past5", "MARKETPLACE"]
+}
+
+pre_operations {
+    ${when(
+        incremental(),
+        `     
+            DELETE FROM ${self()}
+            WHERE DATE(created_at) >= (SELECT DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 3 MONTH));
+            DELETE FROM ${self()}
+            WHERE DATE(created_at) < (SELECT DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 12 MONTH));
+            
+        `
+        )
+    }
 }
 
 with cte_date as (
-	select timestamp( date_trunc( date_sub( current_date('+7'), interval 12 month) , month ) )  as start_date
-    -- select date_sub( timestamp( date_trunc( current_date('+7'), month ) ) , interval 7 hour ) as start_date
+	select timestamp( date_trunc( date_sub( current_date('+7'), ${when(incremental(),'interval 3 month','interval 12 month')}) , month ) )  as start_date
 ),
 
 cte_order_item as (
