@@ -157,6 +157,7 @@ with cte_date as (
 				when activation_by > 0 then True 
 				else False 
 			end as is_manual_activation,
+			activation_by,
 			p.tags,
 			p.sort,
 			case 
