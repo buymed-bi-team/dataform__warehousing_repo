@@ -20,8 +20,8 @@ SELECT DISTINCT
 FROM ${ref('dim_gamification')},
     UNNEST(JSON_VALUE_ARRAY(condition.tags)) AS t
     LEFT JOIN ${ref('dim_sku_tag')} AS st ON st.tag_code = t
-WHERE 
-    SPLIT(st.sku_code, '.')[SAFE_OFFSET(0)] = 'MEDX'
+-- WHERE 
+--     SPLIT(st.sku_code, '.')[SAFE_OFFSET(0)] = 'MEDX'
 UNION DISTINCT
 SELECT
     gamification_code
