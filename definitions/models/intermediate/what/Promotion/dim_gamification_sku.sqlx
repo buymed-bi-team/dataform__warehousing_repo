@@ -35,7 +35,7 @@ WHERE
 UNION DISTINCT
 SELECT
     gamification_code
-    , s AS sku_code
+    , ss.sku_code
     , sku_key
 FROM ${ref('dim_gamification')},
     UNNEST(JSON_VALUE_ARRAY(condition.seller_codes)) AS s
