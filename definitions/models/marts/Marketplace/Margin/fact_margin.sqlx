@@ -37,6 +37,8 @@ WITH
             , a.po_code
             , DATE(TIMESTAMP_ADD(b.outbound_time, INTERVAL 7 HOUR)) AS outbound_date
             , seller_class
+            , a.lot
+            , a.exp_date
         FROM ${ref('fact_outbound_item')} AS a
             LEFT JOIN (
                 SELECT *
@@ -170,6 +172,8 @@ WITH
             , oi.seller_fulfillment_fee
             , oi.seller_sale_fee
             , oi.seller_tax
+            , ob.lot
+            , ob.exp_date
         FROM outbound_item AS ob
             LEFT JOIN order_item AS oi 
                 ON ob.mg_id = oi.mg_id AND ob.sku_code = oi.sku_code
