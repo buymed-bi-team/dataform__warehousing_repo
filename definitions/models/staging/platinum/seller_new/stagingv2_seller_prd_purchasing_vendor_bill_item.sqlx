@@ -50,12 +50,21 @@ pre_operations {
 --
 
 SELECT
-*,
-CASE 
-    WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
-    ELSE "2099-01-01"
-END AS created_date
-FROM ${source.silver}.seller_prd_purchasing_vendor_bill_item o 
+  *
+  ${ when(
+    dataform.projectConfig.vars.self_dedup === 'N',
+    `,CASE 
+      WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
+      ELSE "2099-01-01"
+    END AS created_date`,
+    ``
+  )}
+
+FROM ${ when( 
+      dataform.projectConfig.vars.self_dedup === 'N', 
+      `${source.silver}.seller_prd_purchasing_vendor_bill_item`,
+      self()
+  )} o
 ${ when(incremental(), `WHERE ingest_time > Ingest_checkpoint ` )}
 
 QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'

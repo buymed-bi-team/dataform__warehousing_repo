@@ -1,17 +1,15 @@
 config {
     type: "incremental",
-    name: "delivery_prd_transporting_trip",
+    name: "warehouse_prd_core_warehouse_kpi_report",
     schema: "platinum_buymed_vn",
-    assertions: {
-        uniqueKey: 'mg_id'
-    },
+    assertions: { // Will rewrite latter
+         uniqueKey: 'mg_id'
+     },
     bigquery: {
-        partitionBy: "created_date",
-        clusterBy: ["driver_id","trip_id"]
+        partitionBy: "created_date"
     },
-    tags:["platinum_custom_2h_past7","delivery_prd_transporting"]
+    tags: ["platinum_custom_1h_past7","warehouse_prd_core"]
 }
-
 pre_operations {
   ${
     when(incremental(),
@@ -22,8 +20,8 @@ pre_operations {
       SET Ingest_checkpoint = (SELECT max(ingest_time) FROM ${self()});
 
       SET checkpoint_date = ARRAY( 
-        SELECT DISTINCT IF(created_time is NULL, "2099-01-01" , DATE( DATETIME(created_time,'Asia/Ho_Chi_Minh') ) )
-        FROM ${source.silver}.delivery_prd_transporting_trip
+        SELECT DISTINCT IF(TIMESTAMP_SECONDS(date) is NULL, "2099-01-01" , DATE( DATETIME(TIMESTAMP_SECONDS(date),'Asia/Ho_Chi_Minh') ) )
+        FROM ${source.silver}.warehouse_prd_core_warehouse_kpi_report 
         WHERE ingest_time > Ingest_checkpoint
       );
       
@@ -32,7 +30,7 @@ pre_operations {
             where created_date in UNNEST(checkpoint_date)
             and mg_id in ( 
               SELECT DISTINCT mg_id 
-              FROM ${source.silver}.delivery_prd_transporting_trip
+              FROM ${source.silver}.warehouse_prd_core_warehouse_kpi_report
               WHERE ingest_time > Ingest_checkpoint
               );
       END IF;
@@ -46,20 +44,12 @@ pre_operations {
 --
 
 SELECT
-  *
-  ${ when(
-    dataform.projectConfig.vars.self_dedup === 'N',
-    `,CASE 
-      WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
-      ELSE "2099-01-01"
-    END AS created_date`,
-    ``
-  )}
-FROM ${ when( 
-      dataform.projectConfig.vars.self_dedup === 'N', 
-      `${source.silver}.delivery_prd_transporting_trip`,
-      self()
-  )} o
+*,
+CASE 
+    WHEN date IS NOT NULL THEN DATE(DATETIME(TIMESTAMP_SECONDS(date),"+7"))
+    ELSE "2099-01-01"
+END AS created_date
+FROM ${source.silver}.warehouse_prd_core_warehouse_kpi_report o 
 ${ when(incremental(), `WHERE ingest_time > Ingest_checkpoint ` )}
 
 QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'
@@ -69,10 +59,8 @@ PARTITION BY
     mg_id
 ORDER BY
     synced_at DESC,
-IF
-    (action='d',3,
     IF
-    (action='u',2,1)) DESC,
-    last_updated_time DESC)
-
-
+        (action='d',3,
+        IF
+        (action='u',2,1)) DESC,
+        last_updated_time DESC)

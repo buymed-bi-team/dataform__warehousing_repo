@@ -13,7 +13,7 @@ config {
 }
 
 SELECT
-    TIMESTAMP_ADD(TIMESTAMP(JSON_VALUE(extra_props, '$.created_time')), INTERVAL 7 HOUR) AS crawled_at
+    TIMESTAMP_ADD(created_time, INTERVAL 7 HOUR) AS crawled_at
     , JSON_VALUE(extra_props, '$.source') AS competitor
     , JSON_VALUE(extra_props, '$.market_name') AS competitor_product_name
     , SAFE_CAST(JSON_VALUE(extra_props, '$.market_price') AS INT64) AS competitor_price
@@ -25,4 +25,5 @@ SELECT
 FROM ${source.platinum}.marketplace_prd_product_v2_product_market_price
 WHERE 
     JSON_VALUE(extra_props, '$.source') IS NOT NULL
+    AND created_date >= DATE_SUB(CURRENT_DATE("+7"), INTERVAL 7 DAY)
 QUALIFY ROW_NUMBER() over (PARTITION BY product_id, competitor, competitor_unit ORDER BY crawled_at DESC) = 1

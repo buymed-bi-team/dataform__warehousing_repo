@@ -1,11 +1,11 @@
 config {
-    type: "table", 
+    type: "incremental", 
     description: 
         `
         Sales Price, Purchase Price, Price after rebate of MEDX's Products in each Order (for calculating margin)
         PIC: nguyen.tran; 
         Type: Table; 
-        Refresh Schedule: daily at 8h30, 10h30, 12h30, 15h30, 17h30;
+        Refresh Schedule: hourly;
         Source: 
             ${source.ref}.fact_outbound_item,
             ${source.ref}.fact_order_item,
@@ -15,7 +15,7 @@ config {
         `,
     columns: {
     },
-    tags: ["8h30", "10h30", "12h30", "15h30" ,"17h30"],
+    tags: ["custom_1h_past5", "MARKETPLACE"],
     bigquery: {
         partitionBy: "DATE(created_at)",
         clusterBy: ["sku_code", "product_id"]
@@ -23,8 +23,26 @@ config {
 
 }
 
+pre_operations {
+    ${when(
+        incremental(),
+        `     
+            DELETE FROM ${self()}
+            WHERE DATE(created_at) >= (SELECT DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 3 MONTH));
+            DELETE FROM ${self()}
+            WHERE DATE(created_at) < (SELECT DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 12 MONTH));
+            
+        `
+        )
+    }
+}
+
 WITH
-    outbound_item AS (
+    cte_date AS (
+        SELECT DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), ${when(incremental(),'INTERVAL 3 MONTH','INTERVAL 12 MONTH')}) AS target_date    
+    )
+    
+    , outbound_item AS (
         SELECT
             a.mg_id
             , a.order_id
@@ -37,11 +55,16 @@ WITH
             , a.po_code
             , DATE(TIMESTAMP_ADD(b.outbound_time, INTERVAL 7 HOUR)) AS outbound_date
             , seller_class
-        FROM ${ref('fact_outbound_item')} AS a
+            , a.lot
+            , a.exp_date
+        FROM (
+            SELECT * FROM ${ref('fact_outbound_item')}
+            WHERE DATE(created_at) >= (SELECT target_date FROM cte_date)
+        ) AS a
             LEFT JOIN (
                 SELECT *
                 FROM ${ref('warehouse_prd_core_delivery_order')}
-                WHERE created_date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 12 MONTH)
+                WHERE created_date >= (SELECT target_date FROM cte_date)
             ) AS b 
                 ON a.do_code = b.delivery_order_code
     )
@@ -74,6 +97,7 @@ WITH
                 AND p.product_category_code = JSON_VALUE(c.extra_props, '$.category_code')
             LEFT JOIN ${ref('dim_supplier')} AS s
                 ON s.supplier_code = oi.seller_code
+        WHERE DATE(oi.created_at) >= (SELECT target_date FROM cte_date)
     )
 
     , po_price AS (
@@ -170,6 +194,8 @@ WITH
             , oi.seller_fulfillment_fee
             , oi.seller_sale_fee
             , oi.seller_tax
+            , ob.lot
+            , ob.exp_date
         FROM outbound_item AS ob
             LEFT JOIN order_item AS oi 
                 ON ob.mg_id = oi.mg_id AND ob.sku_code = oi.sku_code

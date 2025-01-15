@@ -26,9 +26,7 @@ config {
 }
 
 with cte_date as (
-	select CAST(date_trunc(date_sub(current_date(),interval 3 month), month) as timestamp) as date_scan
-	, CAST(date_trunc(date_sub(current_date(),interval 7 month), month) as timestamp) as date_scan_2
-	, timestamp_sub(CAST(current_date() as timestamp), interval 7 hour) as current_date_,
+	select  CAST(date_trunc(date_sub(current_date(),interval 7 month), month) as timestamp) as date_scan_2
 )
 
 , cte_data as (

@@ -21,7 +21,7 @@ FROM ${ref('dim_gamification')},
     UNNEST(JSON_VALUE_ARRAY(condition.tags)) AS t
     LEFT JOIN ${ref('dim_sku_tag')} AS st ON st.tag_code = t
 WHERE 
-    SPLIT(st.sku_code, '.')[SAFE_OFFSET(0)] = 'MEDX'
+    JSON_VALUE(condition.type) = 'TAG'
 UNION DISTINCT
 SELECT
     gamification_code
@@ -30,3 +30,15 @@ SELECT
 FROM ${ref('dim_gamification')},
     UNNEST(JSON_VALUE_ARRAY(condition.skus)) AS s
     LEFT JOIN ${ref('dim_sku')} AS ss ON s = ss.sku_code
+WHERE 
+    JSON_VALUE(condition.type) = 'PRODUCT'
+UNION DISTINCT
+SELECT
+    gamification_code
+    , ss.sku_code
+    , sku_key
+FROM ${ref('dim_gamification')},
+    UNNEST(JSON_VALUE_ARRAY(condition.seller_codes)) AS s
+    LEFT JOIN ${ref('dim_sku')} AS ss ON s = ss.seller_code
+WHERE 
+    JSON_VALUE(condition.type) = 'SELLER'

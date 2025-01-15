@@ -13,7 +13,7 @@ config {
         partitionBy: "DATE_TRUNC(created_time, MONTH)",
         clusterBy: ['vendor_bill_id', 'po_code']
     },
-  tags: ["8h30", "10h30", "12h30", "15h30" ,"18h00"]
+  tags: ["custom_1h_past5", "MARKETPLACE"]
 }
 
 with
