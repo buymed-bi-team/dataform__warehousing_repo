@@ -2,7 +2,7 @@ config {
   type: "table",
   description: 
         `
-        Information about lot, expired date and purchase order of each SKU in the order that placed in 2023 - The combo has been split into normal product;
+        Information about lot, expired date and purchase order of each SKU in the order that placed in 2024 - The combo has been split into normal product;
         PIC: nguyen.tran; 
         Type: Table; 
         Source: 
@@ -38,7 +38,7 @@ cte_order_item as (
         , oi.vat
     FROM ${source.platinum}.marketplace_prd_order_v2_order_item as oi
     where
-        oi.created_date BETWEEN '2023-01-01' AND '2023-12-31'
+        oi.created_date BETWEEN '2024-01-01' AND '2024-12-31'
         AND (seller_code = 'MEDX' OR seller_class = 'EXTERNAL')
 ),
 

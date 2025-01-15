@@ -5,7 +5,7 @@ config {
         Information about lot, expired date and purchase order of each SKU in the order - The combo has been split into normal product;
         PIC: nguyen.tran; 
         Type: Table; 
-        Refresh Schedule: daily at 8h30, 10h30, 12h30, 15h30, 17h30;
+        Refresh Schedule: hourly;
         Source: 
             ${source.platinum}.marketplace_prd_order_v2_order_item
         `,
