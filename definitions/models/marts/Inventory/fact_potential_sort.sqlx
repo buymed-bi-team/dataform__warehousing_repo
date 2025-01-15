@@ -83,7 +83,7 @@ agg_sale_order_item AS (
     a.sku_code,
     a.unit_price,
     a.order_quantity,
-    a.reserved_quantity,
+    IFNULL(a.reserved_quantity, 0) AS reserved_quantity,
     (a.order_quantity - IFNULL(a.reserved_quantity, 0)) AS unfulfilled_quantity,
     LEAST(a.first_reserved_quantity, a.order_quantity) AS first_reserved_quantity, -- Force frq to be <= oq
     IF(a.reserved_quantity > 0, 1, 0) AS no_reserved_skus,
