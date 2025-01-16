@@ -179,7 +179,8 @@ with cte_date as (
 			do_1.driver_activities,
 			do_1.extra_props,
 			so.total_item,
-			so.total_sku
+			so.total_sku,
+			ARRAY_LENGTH(JSON_QUERY_ARRAY(do_1.extra_props, '$.baskets')) AS no_bins
 		from (
 			select *
 			from ${source.platinum}.warehouse_prd_core_sale_order
