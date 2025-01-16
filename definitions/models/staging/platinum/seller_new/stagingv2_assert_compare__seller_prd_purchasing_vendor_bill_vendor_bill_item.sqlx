@@ -2,7 +2,7 @@ config {
   type: "assertion",
   description: "Assure that total_amount between vendor_bill and vendor_bill item don't miss too much",
   tags: ["platinum_daily_AM_9:00","seller_prd_purchasing"],
-  dependencies: ["seller_prd_purchasing_vendor_bill","seller_prd_purchasing_vendor_bill_item"]
+  // dependencies: ["seller_prd_purchasing_vendor_bill","seller_prd_purchasing_vendor_bill_item"]
 }
 
 with cte_vendor_bill as (
