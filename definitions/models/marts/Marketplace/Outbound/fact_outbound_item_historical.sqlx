@@ -16,10 +16,6 @@ config {
 }
 
 with 
--- cte_date as (
--- 	select timestamp( date_trunc( date_sub( current_date('+7'), interval 12 month) , month ) )  as start_date
---     -- select date_sub( timestamp( date_trunc( current_date('+7'), month ) ) , interval 7 hour ) as start_date
--- ),
 
 cte_order_item as (
     select 
@@ -38,8 +34,8 @@ cte_order_item as (
         , oi.vat
     FROM ${source.platinum}.marketplace_prd_order_v2_order_item as oi
     where
-        oi.created_date BETWEEN '2024-01-01' AND '2024-12-31'
-        AND (seller_code = 'MEDX' OR seller_class = 'EXTERNAL')
+        created_date BETWEEN '2022-01-01' AND DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), YEAR ), INTERVAL 1 DAY)
+        AND (seller_code IN ("MEDX", "MEDX-HN") OR seller_class = "EXTERNAL")
 ),
 
 cte_combo_transaction as (
@@ -113,7 +109,7 @@ SELECT
   , oi.fc_code
   , oi.sales_region_code
 FROM final AS f
-  LEFT JOIN ${ref('fact_order_item_2023')} AS oi 
+  LEFT JOIN ${ref('fact_order_item_historical')} AS oi 
     ON f.mg_id = oi.mg_id
       AND f.sku_bom_code = oi.sku_code
 
