@@ -48,7 +48,11 @@ dedup_sale_order_item AS (
     JSON_VALUE(b.sku) as sku_code,
     -- a.reserved_quantity,
     -- a.order_quantity,
-    a.unit_price,
+    -- a.unit_price,
+    CASE 
+      WHEN product_type = 'combo' THEN a.unit_price * a.order_quantity / CAST(JSON_VALUE(b.order_quantity) AS INT64)
+      ELSE a.unit_price
+    END AS unit_price,
     a.created_time,
     a.created_date,
     a.pick_items,
