@@ -57,7 +57,7 @@ with
             e.product_category_code,
             f.fulfillment_fee_percent AS fullfilment_fee_seller,
             f.sale_fee_percent,
-            COALESCE(campaign_price, deal_price) as promotion_price,
+            IF(COALESCE(campaign_price, deal_price) > display_price, NULL, COALESCE(campaign_price, deal_price)) as promotion_price,
             a.sku_key_sales_region_code,
             a.sku_key
         from ${ref('adhoc_pricing_display_price')} AS a

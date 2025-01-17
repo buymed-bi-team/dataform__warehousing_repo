@@ -49,6 +49,7 @@ from (
                 NULL
               ) AS reference_code_of_so
         FROM ${ref('fact_hub_order')}
+        QUALIFY ROW_NUMBER() OVER(PARTITION BY reference_code, TO_JSON_STRING(products) ORDER BY created_at) = 1
      ) AS a
     left join unnest(json_extract_array(products)) prd
     left join ${ref('fact_outbound_ticket')} AS ob 
