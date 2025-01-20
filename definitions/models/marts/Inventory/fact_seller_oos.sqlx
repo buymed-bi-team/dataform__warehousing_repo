@@ -1,0 +1,21 @@
+config {
+    type: "incremental",
+    description: 
+        ` 
+        Snapshot table of the list of out-of-stock SKUs from sellers.
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly
+        `,
+    tags: ["17h30"],
+    bigquery: {
+        partitionBy: "snapshot_date",
+        clusterBy: ["sku_code", "item_code", "product_id"]
+    }
+}
+
+SELECT 
+    *
+    , CURRENT_DATE AS snapshot_date
+FROM ${ref('agg_seller_oos')}
+${when(incremental(), `WHERE CURRENT_DATE > (SELECT MAX(snapshot_date) FROM ${self()})`)}
