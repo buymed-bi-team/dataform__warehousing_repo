@@ -1,6 +1,6 @@
 config {
   type: "table",
-  tags: ["custom_1h_past5", "PRODUCT_MANAGEMENT"]
+  tags: [ "PRODUCT_MANAGEMENT"]
 }
 
 
