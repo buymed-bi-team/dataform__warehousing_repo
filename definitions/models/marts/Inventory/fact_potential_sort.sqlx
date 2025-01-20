@@ -50,7 +50,7 @@ dedup_sale_order_item AS (
     -- a.order_quantity,
     -- a.unit_price,
     CASE 
-      WHEN product_type = 'combo' THEN a.unit_price * a.order_quantity / CAST(JSON_VALUE(b.order_quantity) AS INT64)
+      WHEN a.product_type = 'combo' AND i.item_type = 'IN_COMBO' THEN i.sales_price
       ELSE a.unit_price
     END AS unit_price,
     a.created_time,
@@ -61,7 +61,12 @@ dedup_sale_order_item AS (
     CAST(JSON_VALUE(b.first_reserved_quantity) AS INT64) as first_reserved_quantity,
   FROM ${source.platinum}.warehouse_prd_core_sale_order_item a
   , UNNEST(JSON_QUERY_ARRAY(a.pick_items)) AS b
-  WHERE created_date >= DATE(timestamp(date_sub(current_date(),interval 45 day)))
+  LEFT JOIN ${ref("fact_order_item")} AS i
+    ON a.admin_id = i.order_id
+    AND JSON_VALUE(b.sku) = i.sku_code
+    AND CAST(JSON_VALUE(b.order_quantity) AS INT64) = i.demand_quantity
+    AND CAST(JSON_VALUE(b.reserved_quantity) AS INT64) = i.reserved_quantity
+  WHERE a.created_date >= DATE(timestamp(date_sub(current_date(),interval 45 day)))
 ),
 
 dedup_dim_order AS (
