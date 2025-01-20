@@ -14,7 +14,7 @@ js {
     const today = current_date()
 }
 
-CREATE SNAPSHOT TABLE ${source.ref}.inventory_location_detail_${today}
+CREATE SNAPSHOT TABLE ${source.ref}.inventory_location_detail${today}
 CLONE ${ref(`circa_inventory_location_detail`)}
 -- CLONE ${circa_os(`inventory_location_detail`)}
 -- FOR SYSTEM_TIME AS OF
