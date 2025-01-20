@@ -15,7 +15,7 @@ js {
 }
 
 CREATE SNAPSHOT TABLE ${source.ref}.inventory_location_detail_${today}
--- CLONE ${ref(`adhoc_pricing_display_price`)}
+CLONE ${ref(`circa_inventory_location_detail`)}
 -- CLONE ${circa_os(`inventory_location_detail`)}
 -- FOR SYSTEM_TIME AS OF
 --   TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR)
