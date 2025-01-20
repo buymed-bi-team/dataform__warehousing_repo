@@ -1,0 +1,22 @@
+config {
+    type:"operations",
+    description: `PIC: tu.dang; Schedule: 0h00 daily`,
+    tags:['0h00']
+}
+
+-- Create description for agg_strategic_general
+js {
+    function current_date() {
+        var d = new Date();
+        var strDate = d.getFullYear().toString() + ("0" + (d.getMonth() + 1)).slice(-2) +  ("0" + (d.getDate())).slice(-2);
+        return strDate
+    }
+    const today = current_date()
+}
+
+CREATE SNAPSHOT TABLE ${source.ref}.inventory_location_detail_${today}
+-- CLONE ${ref(`adhoc_pricing_display_price`)}
+-- CLONE ${circa_os(`inventory_location_detail`)}
+-- FOR SYSTEM_TIME AS OF
+--   TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR)
+;
