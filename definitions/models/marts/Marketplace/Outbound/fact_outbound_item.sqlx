@@ -125,6 +125,13 @@ final AS (
 SELECT
   a.*
   , s.supplier_class AS seller_class
+  , IFNULL(
+        price *
+            (1 - SAFE_CAST(JSON_VALUE(extra_props, "$.discount_detail.total_discount") AS INT64)
+                / SUM(price * outbound_quantity) OVER(PARTITION BY order_id, sku_bom_code)
+            )
+        ,  price
+    ) AS unit_price_UIP --- calculate unit price based on logic of UIP (Clinic-Portal)
 FROM final AS a
   LEFT JOIN ${ref('dim_supplier')} AS s ON a.seller_code = s.supplier_code
 
