@@ -7,7 +7,11 @@ config {
         Type: Table; 
         Refresh Schedule: hourly
     `,
-    tags: ["custom_1h_past5", "KPI_FULFILLMENT"]
+    tags: ["custom_1h_past5", "KPI_FULFILLMENT"],
+    bigquery: {
+        partitionBy: "DATE(ts_done)",
+        clusterBy: ["stage", "ticket_id"]
+    }
 }
 
 SELECT * FROM ${ref('fact_stage_app_check')}
