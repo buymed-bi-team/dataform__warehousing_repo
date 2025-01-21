@@ -1,0 +1,66 @@
+config {
+    type: "view",
+    tags: ["KPI_FULFILLMENT"]
+}
+
+WITH cte_date AS (
+  SELECT
+    DATETIME_SUB(DATETIME_TRUNC(CURRENT_DATETIME(), MONTH),INTERVAL 2 month ) AS start_date,
+    DATETIME_SUB(DATETIME_TRUNC(CURRENT_DATETIME(), MONTH),INTERVAL 3 month ) AS start_date_scan
+  )
+
+select
+      "PICK" as stage
+      -- , tsi.mg_id
+      , p.ticket_id as ticket_id
+      , p.status as original_status
+      , p.so as parent_code
+      , p.warehouse_code as location_code
+      , ts.handler_id as pic_id
+      , timestamp_add(TIMESTAMP_SECONDS(CAST(ts.start_time AS INT64)), interval 7 hour) as ts_start
+      , timestamp_add(TIMESTAMP_SECONDS(CAST(ts.end_time AS INT64)), interval 7 hour) ts_done
+      , tsi.sku as sku_code
+      , coalesce(
+            json_value(json_extract_array(tsi.location_details)[safe_offset(0)],"$.location_code"),
+            json_value(json_extract_array(spi.location_details)[safe_offset(0)],"$.location_code")
+      ) as location_shelf
+      , demand_quantity as qty_start
+      , processed_quantity as qty_done,
+      "" ticket_code,
+	"" ticket_type,
+	"" source_location,
+	FALSE is_not_increase_inventory,
+	timestamp_add(p.created_time , interval 7 hour) as ts_created,
+	"" basket_code,
+	NULL level_bin,
+	NULL no_packages
+from (
+      SELECT *
+      FROM ${source.platinum}.warehouse_prd_picking_pick_ticket
+      where created_date >= (select DATE(start_date_scan) from cte_date)
+) AS p
+left join (
+      SELECT *
+      FROM ${source.platinum}.warehouse_prd_picking_sub_pick_ticket
+      where created_date >= (select DATE(start_date_scan) from cte_date)
+) AS st on st.pick_ticket_id = p.ticket_id
+
+LEFT JOIN (
+      SELECT *
+      FROM ${source.platinum}.warehouse_prd_picking_task
+      where created_date >= (select DATE(start_date_scan) from cte_date)
+) ts ON st.ticket_id = ts.reference_id
+LEFT JOIN (
+      SELECT *
+      FROM ${source.platinum}.warehouse_prd_picking_task_item
+      where created_date >= (select DATE(start_date_scan) from cte_date)
+) tsi ON tsi.task_id = ts.task_id
+left join (
+      SELECT *
+      FROM ${source.platinum}.warehouse_prd_picking_sub_pick_ticket_item
+      where created_date >= (select DATE(start_date_scan) from cte_date)
+) as spi ON st.ticket_id = spi.ticket_id
+    AND tsi.sku = spi.sku
+    AND tsi.pick_ticket_line_id = spi.line_id
+WHERE tsi.processed_quantity > 0
+  and  TIMESTAMP_SECONDS(CAST(ts.end_time AS INT64)) >= (select timestamp(start_date) from cte_date)

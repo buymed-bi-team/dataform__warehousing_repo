@@ -28,9 +28,9 @@ pre_operations {
         incremental(),
         `     
             DELETE FROM ${self()}
-            WHERE DATE(created_at) >= (SELECT DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 3 MONTH));
+            WHERE DATE(created_at) >=  DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 3 MONTH);
             DELETE FROM ${self()}
-            WHERE DATE(created_at) < (SELECT DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 12 MONTH));
+            WHERE DATE(created_at) <  DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 12 MONTH);
             
         `
         )

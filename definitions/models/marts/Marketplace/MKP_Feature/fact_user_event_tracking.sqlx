@@ -26,9 +26,9 @@ pre_operations {
         when(incremental(),
         `
             DELETE FROM ${self()}
-            WHERE created_time >= (SELECT CURRENT_DATETIME("+7"));
+            WHERE created_time >= DATETIME(CURRENT_DATE("+7"));
             DELETE FROM ${self()}
-            WHERE created_time < (SELECT DATETIME_SUB(DATETIME_TRUNC(CURRENT_DATETIME("+7"), MONTH), INTERVAL 2 MONTH));
+            WHERE created_time < DATETIME_SUB(DATETIME_TRUNC(CURRENT_DATETIME("+7"), MONTH), INTERVAL 2 MONTH);
         `
 
     )}
@@ -70,7 +70,7 @@ WITH stg AS (
     `${source.platinum}.monitoring_prd_collector_user_stats` a
     left join `${source.platinum}.monitoring_prd_realtime_user_customer_session_v3`b 
         on a.customer_id= b.customer_id 
-        and a.created_time between b.start_time and end_time and b.created_date >= date( date_trunc( date_sub( current_date('+7'), interval 2 month) , month ) )
+        and a.created_time between b.start_time and end_time and b.created_date >= ${when(incremental(), `current_date("+7")`, `date( date_trunc( date_sub( current_date('+7'), interval 2 month) , month ) )`)}
     where
     -- _TABLE_SUFFIX BETWEEN '20240701'
     -- AND FORMAT_DATE('%Y%m%d', CURRENT_DATE())        
