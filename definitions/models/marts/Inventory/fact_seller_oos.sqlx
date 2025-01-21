@@ -23,5 +23,9 @@ ${
     `WHERE 
         DATE_SUB(CURRENT_DATE("+7"), INTERVAL 1 DAY) > (SELECT MAX(snapshot_date) FROM ${self()})
         AND last_oos_time < TIMESTAMP(DATE_TRUNC(CURRENT_DATE("+7"), DAY ))    
+    `,
+    `
+    WHERE 
+        last_oos_time < TIMESTAMP(DATE_TRUNC(CURRENT_DATE("+7"), DAY ))
     `
 )}
