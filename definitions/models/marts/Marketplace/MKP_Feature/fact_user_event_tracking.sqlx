@@ -26,9 +26,9 @@ pre_operations {
         when(incremental(),
         `
             DELETE FROM ${self()}
-            WHERE created_time >= (SELECT CURRENT_DATETIME("+7"));
+            WHERE created_time >= DATETIME(CURRENT_DATE("+7"));
             DELETE FROM ${self()}
-            WHERE created_time < (SELECT DATETIME_SUB(DATETIME_TRUNC(CURRENT_DATETIME("+7"), MONTH), INTERVAL 2 MONTH));
+            WHERE created_time < DATETIME_SUB(DATETIME_TRUNC(CURRENT_DATETIME("+7"), MONTH), INTERVAL 2 MONTH);
         `
 
     )}

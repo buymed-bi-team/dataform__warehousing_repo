@@ -1,0 +1,46 @@
+config {
+    type: "view",
+    tags: ["KPI_FULFILLMENT"]
+}
+
+WITH
+  cte_date AS (
+  SELECT
+    DATETIME_SUB(DATETIME_TRUNC(CURRENT_DATETIME(), MONTH),INTERVAL 2 MONTH) AS start_date,
+		DATETIME_SUB(DATETIME_TRUNC(CURRENT_DATETIME(), MONTH),INTERVAL 6 MONTH) AS start_scan_date
+	)
+
+
+select
+	'CONVEYOR_CHECK' as stage,
+	r.ticket_id as ticket_id,
+	r.status as original_status,
+	r.po_code as parent_code,
+	r.warehouse_code as location_code,
+	r.employee_id as pic_id,
+	timestamp_add(r.start_time , interval 7 hour) as ts_start,
+	timestamp_add(r.end_time , interval 7 hour) as ts_done,
+	ri.sku as sku_code,
+	"",
+	NULL,
+	ri.done_quantity as qty_done,
+	"",
+	"",
+	"",
+	NULL,
+	timestamp_add(r.created_time , interval 7 hour) as ts_created,
+	"",
+	NULL,
+	NULL
+from (
+  select *
+  from ${source.platinum}.warehouse_prd_inbound_receipt
+  where created_date >= (select date(start_scan_date) from cte_date)
+) r
+left join (
+  select *
+  from ${source.platinum}.warehouse_prd_inbound_receipt_item
+  where created_date >= (select date(start_scan_date) from cte_date)
+) as ri on r.ticket_id = ri.ticket_id
+where
+	type = 'CONVEYOR_CHECKING'

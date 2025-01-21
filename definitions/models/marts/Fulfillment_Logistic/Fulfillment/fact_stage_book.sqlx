@@ -1,0 +1,75 @@
+config {
+    type: "view",
+    tags: ["KPI_FULFILLMENT"]
+}
+
+WITH
+  cte_date AS (
+    SELECT date_sub( timestamp( date_trunc( date_sub( current_date('+7'), interval 2 month) , month ) ) , interval 7 hour ) as start_date
+  )
+
+,cte_data_callback as (
+  select * 
+  from ${ref('fact_delivery_evolving')} 
+--   union all
+--   select * 
+--   from gold_buymed_vn.fact_delivery_evolving_unique
+)
+
+
+,cte_do_book as
+(
+	SELECT 
+		so_code, 
+		MIN(delivery_ts) as ts_do_book
+  from (
+    select *
+    from cte_data_callback
+    WHERE delivery_ts >= (select timestamp(start_date) from cte_date)
+    qualify row_number() over (partition by so_code,delivery_status order by delivery_ts desc, transformed_at desc) = 1
+  )
+	GROUP BY so_code
+)
+
+select 
+	'BOOK' as stage,
+	p.ticket_id as ticket_id,
+  do_.status as original_status,
+  p.so as parent_code,
+	p.warehouse_code as location_code,
+  do_.created_by as pic_id,
+	timestamp_add(p.end_time, interval 7 hour) as ts_start,
+	timestamp_add(do_.created_time , interval 7 hour) as ts_done,
+  "",
+  "",
+  NULL,
+	p.package_num as qty_done,
+  "",
+  "",
+  "",
+  NULL,
+  timestamp_add(do_.created_time , interval 7 hour) as ts_created,
+  "",
+  NULL,
+  NULL
+from cte_do_book as t 
+left join (
+  SELECT *
+  FROM ${source.platinum}.delivery_prd_transporting_shipping_order
+  WHERE 
+    created_date >= (SELECT DATE(start_date) FROM cte_date)
+) as do_ on t.so_code = do_.reference_code
+left join (
+  SELECT *
+  FROM ${source.platinum}.warehouse_prd_core_delivery_order
+  WHERE 
+    created_date >= (SELECT DATE(start_date) FROM cte_date)
+) as wd on wd.delivery_order_code = do_.reference_code and wd.status <> 'MERGED'
+left join (
+   SELECT *
+  FROM ${source.platinum}.warehouse_prd_picking_pick_ticket
+  WHERE 
+    created_date >= (SELECT DATE(start_date) FROM cte_date)
+) as p on p.ticket_id = wd.reference_id
+where 
+  p.ticket_id is not null

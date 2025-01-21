@@ -1,0 +1,49 @@
+config {
+    type: "view",
+    tags: ["KPI_FULFILLMENT"]
+}
+
+WITH
+  cte_date AS (
+    SELECT date_sub( timestamp( date_trunc( date_sub( current_date('+7'), interval 2 month) , month ) ) , interval 7 hour ) as start_date
+  )
+
+select
+  'CARRIER_PICK' as stage,
+	p.ticket_id as ticket_id,
+	h.code as ticket_code,
+	json_value(hso,'$.so') as parent_code,
+	h.status as original_status,
+	h.handover_type as ticket_type,
+	case
+		when h.from_department_code = 'HUBTRUONGDINH' or h.from_department_code = 'HUBVSIPBACNINH' then 'HN'
+		when h.from_department_code = 'HUBVSIPII' then 'BD'
+		when h.from_department_code = 'HUBHOACAM_DANANG' then 'DN'
+		else ''
+	end as location_code,
+	h.created_by as pic_id,
+	timestamp_add(h.done_handover_time, interval 7 hour) as ts_done,
+	cast(json_value(hso,'$.scanned_quantity') as int64) as qty_done
+from (
+  SELECT *
+  FROM ${source.platinum}.delivery_prd_transporting_handover_ticket
+  WHERE
+    created_date >= (SELECT DATE(start_date) FROM cte_date)
+) h
+left join  unnest(json_extract_array(h.so_list)) hso
+left join (
+  SELECT *
+  FROM ${source.platinum}.warehouse_prd_core_delivery_order
+  WHERE
+     created_date >= (SELECT DATE(start_date) FROM cte_date)
+) as w on w.delivery_order_code = json_value(hso,'$.so')
+left join (
+  SELECT *
+  FROM ${source.platinum}.warehouse_prd_picking_pick_ticket
+  WHERE
+     created_date >= (SELECT DATE(start_date) FROM cte_date)
+) as p on p.ticket_id = w.reference_id
+where
+	h.created_time >= (select timestamp(start_date) from cte_date)
+	and h.from_department_code in ('HUBVSIPBACNINH','HUBTRUONGDINH','HUBVSIPII','HUBHOACAM_DANANG')
+  and json_value(hso,'$.scanned_quantity') is not null

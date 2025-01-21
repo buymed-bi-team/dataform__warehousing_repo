@@ -1,0 +1,50 @@
+config {
+    type: "view",
+    tags: ["KPI_FULFILLMENT"]
+}
+
+WITH
+  cte_date AS (
+  SELECT
+    DATETIME_SUB(DATETIME_TRUNC(CURRENT_DATETIME(), MONTH),INTERVAL 2 month) AS start_date 
+    )
+
+, cte_date_2 AS (
+  SELECT
+    DATETIME_SUB(DATETIME_TRUNC(CURRENT_DATETIME(), MONTH),INTERVAL 6 MONTH) AS start_date 
+)
+
+SELECT
+  'CYCLE_COUNT' AS stage,
+  CAST(SPLIT(a.audit_session_task_code, '-')[OFFSET(2)] AS INT64) AS ticket_id,
+  a.status AS original_status,
+  "", 
+  a.warehouse_code AS location_code,
+  a.audit_by AS pic_id,
+  TIMESTAMP_ADD(a.start_time, INTERVAL 7 hour) AS ts_start,
+  TIMESTAMP_ADD(a.end_time, INTERVAL 7 hour) AS ts_done,
+  "",
+  "",
+  NULL,
+  b.checked_quantity AS qty_done,
+  a.audit_session_task_code AS ticket_code,
+  "",
+	"",
+	NULL,
+	timestamp_add(a.created_time , interval 7 hour) as ts_created,
+	"",
+	NULL,
+	NULL
+from (
+  select * 
+  from ${source.platinum}.warehouse_prd_inventory_audit_session_task
+  where created_date >= (select date(start_date) from cte_date_2)
+    and end_time >= (select timestamp(start_date) from cte_date)
+) a
+left join (
+  select * 
+  from ${source.platinum}.warehouse_prd_inventory_audit_session_task_item
+  where created_date >= (select date(start_date) from cte_date_2)
+  --qualify row_number() over (partition by audit_session_task_code order by synced_at desc, last_updated_time desc) = 1 and action != "d"
+) as b on trim(a.audit_session_task_code) = trim(b.audit_session_task_code)
+-- where a.audit_session_task_code = 'AUDIT-TASK-148195'
