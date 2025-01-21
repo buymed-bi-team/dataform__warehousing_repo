@@ -25,7 +25,7 @@ select
   r.code AS ticket_code,
   "" AS ticket_type,
   "" AS source_location,
-  NULL AS is_not_increase_inventory,
+  FALSE AS is_not_increase_inventory,
   timestamp_add(r.created_time , interval 7 hour) as ts_created,
   "" AS basket_code,
   NULL AS level_bin,

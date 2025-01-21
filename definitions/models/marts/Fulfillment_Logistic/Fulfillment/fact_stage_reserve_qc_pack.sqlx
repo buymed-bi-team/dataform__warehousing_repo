@@ -15,7 +15,7 @@ cte_stage as (
 
 select
    s.stage
-  , pi.mg_id
+  -- , pi.mg_id
   , coalesce(p.ticket_id , st.ticket_id) as ticket_id
   , p.status as original_status
   , p.so as parent_code
@@ -43,6 +43,14 @@ select
     when s.stage = 'QC' then pi.scanned_quantity
     when s.stage = 'PACK' then pi.scanned_quantity
   end qty_done,
+  "" ticket_code,
+	"" ticket_type,
+	"" source_location,
+	FALSE is_not_increase_inventory,
+	timestamp_add(p.created_time , interval 7 hour) as ts_created,
+	"" basket_code,
+	NULL level_bin,
+	NULL no_packages
 from cte_stage as s,
   (
     select *

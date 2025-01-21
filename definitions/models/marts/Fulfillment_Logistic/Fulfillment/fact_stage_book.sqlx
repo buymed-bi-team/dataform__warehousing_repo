@@ -37,21 +37,21 @@ select
   do_.status as original_status,
   p.so as parent_code,
 	p.warehouse_code as location_code,
-  do_.created_by as pic_id,
+  SAFE_CAST(do_.created_by AS INT64) as pic_id,
 	timestamp_add(p.end_time, interval 7 hour) as ts_start,
 	timestamp_add(do_.created_time , interval 7 hour) as ts_done,
-  "",
-  "",
-  NULL,
+  "" AS sku_code,
+  "" AS location_shelf,
+  NULL qty_start,
 	p.package_num as qty_done,
-  "",
-  "",
-  "",
-  NULL,
+  "" ticket_code,
+  "" ticket_type,
+  "" source_location,
+  FALSE is_not_increase_inventory,
   timestamp_add(do_.created_time , interval 7 hour) as ts_created,
-  "",
-  NULL,
-  NULL
+  "" basket_code,
+  NULL level_bin,
+  NULL no_packages
 from cte_do_book as t 
 left join (
   SELECT *

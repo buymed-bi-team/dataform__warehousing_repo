@@ -21,17 +21,17 @@ select
 	timestamp_add(r.start_time , interval 7 hour) as ts_start,
 	timestamp_add(r.end_time , interval 7 hour) as ts_done,
 	ri.sku as sku_code,
-	"",
-	NULL,
+	"" location_shelf,
+	NULL AS qty_start,
 	ri.done_quantity as qty_done,
-	"",
-	"",
-	"",
-	NULL,
+	"" ticket_code,
+	"" ticket_type,
+	"" source_location,
+	FALSE is_not_increase_inventory,
 	timestamp_add(r.created_time , interval 7 hour) as ts_created,
-	"",
-	NULL,
-	NULL
+	"" basket_code,
+	NULL level_bin,
+	NULL no_packages
 from (
   select *
   from ${source.platinum}.warehouse_prd_inbound_receipt

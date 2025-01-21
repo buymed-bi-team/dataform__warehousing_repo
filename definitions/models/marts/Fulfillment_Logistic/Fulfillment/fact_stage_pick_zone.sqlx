@@ -11,7 +11,7 @@ WITH cte_date AS (
 
 select
       "PICK" as stage
-      , tsi.mg_id
+      -- , tsi.mg_id
       , p.ticket_id as ticket_id
       , p.status as original_status
       , p.so as parent_code
@@ -26,6 +26,14 @@ select
       ) as location_shelf
       , demand_quantity as qty_start
       , processed_quantity as qty_done,
+      "" ticket_code,
+	"" ticket_type,
+	"" source_location,
+	FALSE is_not_increase_inventory,
+	timestamp_add(p.created_time , interval 7 hour) as ts_created,
+	"" basket_code,
+	NULL level_bin,
+	NULL no_packages
 from (
       SELECT *
       FROM ${source.platinum}.warehouse_prd_picking_pick_ticket

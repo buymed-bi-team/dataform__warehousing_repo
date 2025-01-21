@@ -89,14 +89,14 @@ SELECT
     , ts_start
     , ts_done
     , "" AS sku_code
-    , ""
-    , NULL
-    , NULL
-    , ""
-    , ""
-    , ""
-    , NULL
-    , ts_start
+    , "" AS location_shelf
+    , NULL AS qty_start
+    , NULL AS qty_done
+    , "" AS ticket_code
+    , "" AS ticket_type
+    , "" AS source_location
+    , FALSE AS is_not_increase_inventory
+    , ts_start AS ts_created
     , basket_code
     , level_bin
     , no_packages

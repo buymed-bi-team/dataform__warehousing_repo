@@ -11,10 +11,8 @@ WITH
 select
   'CARRIER_PICK' as stage,
 	p.ticket_id as ticket_id,
-	h.code as ticket_code,
-	json_value(hso,'$.so') as parent_code,
-	h.status as original_status,
-	h.handover_type as ticket_type,
+  h.status as original_status,
+  json_value(hso,'$.so') as parent_code,
 	case
 		when h.from_department_code = 'HUBTRUONGDINH' or h.from_department_code = 'HUBVSIPBACNINH' then 'HN'
 		when h.from_department_code = 'HUBVSIPII' then 'BD'
@@ -22,8 +20,20 @@ select
 		else ''
 	end as location_code,
 	h.created_by as pic_id,
+	timestamp_add(h.created_time, interval 7 hour) as ts_start,
 	timestamp_add(h.done_handover_time, interval 7 hour) as ts_done,
-	cast(json_value(hso,'$.scanned_quantity') as int64) as qty_done
+  "" sku_code,
+  "" location_shelf,
+  NULL qty_start,
+	cast(json_value(hso,'$.scanned_quantity') as int64) as qty_done,
+  h.code as ticket_code,
+	h.handover_type as ticket_type,
+  "" source_location,
+	FALSE is_not_increase_inventory,
+	timestamp_add(h.created_time , interval 7 hour) as ts_created,
+	"" basket_code,
+	NULL level_bin,
+	NULL no_packages
 from (
   SELECT *
   FROM ${source.platinum}.delivery_prd_transporting_handover_ticket

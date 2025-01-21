@@ -18,23 +18,23 @@ SELECT
   'CYCLE_COUNT' AS stage,
   CAST(SPLIT(a.audit_session_task_code, '-')[OFFSET(2)] AS INT64) AS ticket_id,
   a.status AS original_status,
-  "", 
+  "" parent_code, 
   a.warehouse_code AS location_code,
   a.audit_by AS pic_id,
   TIMESTAMP_ADD(a.start_time, INTERVAL 7 hour) AS ts_start,
   TIMESTAMP_ADD(a.end_time, INTERVAL 7 hour) AS ts_done,
-  "",
-  "",
-  NULL,
+  "" sku_code,
+  "" location_shelf,
+  NULL qty_start,
   b.checked_quantity AS qty_done,
   a.audit_session_task_code AS ticket_code,
-  "",
-	"",
-	NULL,
+  "" ticket_type,
+	"" source_location,
+	FALSE is_not_increase_inventory,
 	timestamp_add(a.created_time , interval 7 hour) as ts_created,
-	"",
-	NULL,
-	NULL
+	"" basket_code,
+	NULL level_bin,
+	NULL no_packages
 from (
   select * 
   from ${source.platinum}.warehouse_prd_inventory_audit_session_task
