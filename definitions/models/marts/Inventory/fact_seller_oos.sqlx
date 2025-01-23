@@ -1,5 +1,6 @@
 config {
     type: "incremental",
+    protected: true,
     description: 
         ` 
         Snapshot table of the list of out-of-stock SKUs from sellers.
