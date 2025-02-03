@@ -132,7 +132,8 @@ left join (
   select * 
   from ${source.platinum}.delivery_prd_transporting_hub_shipping_order
   where created_date >= (select DATE(start_date) from cte_date)
-) as a on a.reference_code = m.reference_code and a.type = 'PICKUP' and a.status <> 'CANCEL'
+) as a on a.reference_code = m.reference_code and a.type = 'PICKUP' 
+	-- and a.status <> 'CANCEL'
 left join (
   select * 
   from ${source.platinum}.delivery_prd_transporting_shipping_order
