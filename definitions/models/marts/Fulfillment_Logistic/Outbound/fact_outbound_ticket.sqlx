@@ -147,8 +147,9 @@ with cte_date as (
 			do_1.status as do_status,
 			do_1.type as do_type,
 			coalesce(
-				nullif(o.customer_ward_code,'0'), o.customer_district_code,
-				nullif(do_1.customer_ward_code,'0'), do_1.customer_district_code
+				IF(SAFE_CAST(o.customer_ward_code AS INT64) > 0, o.customer_ward_code, o.customer_district_code),
+				IF(SAFE_CAST(do_1.customer_ward_code AS INT64) > 0, do_1.customer_ward_code, do_1.customer_district_code)
+				-- nullif(do_1.customer_ward_code,'0'), do_1.customer_district_code
 			) as shipping_ward_code,
 			coalesce(o.customer_district_code,do_1.customer_district_code) as shipping_district_code,
 			coalesce(o.customer_province_code,do_1.customer_province_code) as shipping_province_code,
