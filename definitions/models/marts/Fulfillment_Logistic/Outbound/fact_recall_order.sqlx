@@ -83,7 +83,7 @@ select
 	timestamp_add(a.last_updated_time, interval 7 hour) as last_updated_ts,
 	m.ticket_id,
 	COALESCE(m.reference_code, CAST(m.ticket_id AS STRING)) AS reference_code,
-	m.tracking_code,
+	COALESCE(m.tracking_code, a.tracking_code) AS tracking_code,
 	m.sale_order_code,
 	m.order_id,
 	m.warehouse_code as fc_code,
