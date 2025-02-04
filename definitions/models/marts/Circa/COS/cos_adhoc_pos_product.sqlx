@@ -19,8 +19,8 @@ with product_base_unit as
                           sum(a.on_hand_qty) as on_hand_quantity,
                           b.pos_id,
                           a.seller_code,
-                          sku_code,
-                          doc_code
+                          sku_code
+                        --   doc_code
                    from ${source.circa_os}.inventory_location_detail as a
                             left join ${source.circa_os}.inventory_location as b
                                       on a.location_id = b.id
@@ -48,7 +48,8 @@ with product_base_unit as
    , count_ord as ( select o.pos_id,
                            oi.product_id,
                            max(o.created_date) as latest_ord,
-                           COUNT(distinct o.order_id) as no_ord
+                           COUNT(distinct o.order_id) as no_ord,
+                           SUM(unit_price * quantity) AS GMV
 --                            count(distinct o)
                     from ${ref('cos_fact_order')} o
                               left join ${ref('cos_fact_order_item')} oi
@@ -65,24 +66,48 @@ select i.product_id,
        ps.last_updated_at,
        ps.sale_unit_price,
        ps.sku_unit_pos,
-       case when on_hand_quantity > 0 then "Available" else "Unavailable" end                   as have_stock,
+       case when i.on_hand_quantity > 0 then "Available" else "Unavailable" end                   as have_stock,
        case when ps.product_id is null then "Price not set" else "Price set" end as price_set_check,
        case when DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<16 THEN "15D"
             WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<31 THEN "30D"
             WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<46 THEN "45D"
             WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<61 THEN "60D"
-            WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<90 THEN "90D" else "No Orders Yet" END AS latest_date_order_range,
-            no_ord,
-            latest_ord
+            WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<90 THEN "90D" else "Others" END AS latest_date_order_range,
+            case when DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<16 and on_hand_quantity >0 THEN "DEAD-1:No-Demand 15D"
+            WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<31 and on_hand_quantity >0 THEN "DEAD-2:No-Demand 30D" 
+            WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<46 and on_hand_quantity >0 THEN "DEAD-3:No-Demand 45D" 
+            WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<61 and on_hand_quantity >0 THEN "DEAD-4:No-Demand 60D"
+            WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<90 and on_hand_quantity >0 THEN "DEAD-5:No-Demand 90D"
+            -- WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<90 and on_hand_quantity >0 THEN "DEAD-I||No-Demand 90D" 
+            else "Others" END AS stock_aging_type,
+            no_ord,GMV,
+            latest_ord,on_hand_quantity
 from inventory i
          left join price_sheet ps
                    on ps.product_id = i.product_id and ps.pos_id = i.pos_id and ps.seller_code = i.seller_code
          left join count_ord co
                    on i.pos_id=co.pos_id and i.product_id= co.product_id
--- select pos_id,
---        product_id,
---        count(distinct seller_code) no_seller
--- from buymed_circa_v2.product_price_sheet p
--- left join buymed_circa_v2.product_price_sheet_detail i on p.id = i.price_sheet_id
--- group by pos_id, product_id
--- where i.product_id = 70973 and i.pos_id = "3faa7e69-a4ef-4cf7-aa5b-97f935f498b1"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
