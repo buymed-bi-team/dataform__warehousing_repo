@@ -148,6 +148,14 @@ WITH product_retail_unit AS (
     GROUP BY 1
   )
 
+  , retail_price AS (
+    SELECT
+      product_id
+      , retail_price
+    FROM ${source.platinum}.pim_prd_product_product_retail_price
+    WHERE region_code = "ALL"
+  )
+
 SELECT
   ${utils.ToTimezone('current_timestamp()')} as transformed_at,
   ${utils.ToTimezone('product.created_time')} as product_created_at,
@@ -267,7 +275,9 @@ SELECT
   cic.cic_name,
   cic.cic_account_id,
 
-  hmp.high_margin
+  hmp.high_margin,
+
+  rp.retail_price
 
 FROM ${source.platinum}.marketplace_prd_product_v2_product AS product
 LEFT JOIN  ${source.platinum}.seller_prd_core_seller AS seller on product.owner = seller.code
@@ -283,6 +293,7 @@ LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_main_category AS tb4 ON 
 LEFT JOIN product_cic AS cic ON cic.product_id = product.product_id
 LEFT JOIN high_margin_product AS hmp ON hmp.product_id = product.product_id
 LEFT JOIN is_ingredient_special AS iis ON iis.product_id = product.product_id
+LEFT JOIN retail_price AS rp ON rp.product_id = product.product_id
 
 WHERE
     LOWER(product.name) NOT LIKE '%(bỏ)%'
