@@ -24,6 +24,14 @@ WHERE
     JSON_VALUE(condition.type) = 'TAG'
 UNION DISTINCT
 SELECT
+    "WGDU4V" AS gamification_code
+    , sku_code
+    , sku_key
+FROM gold_buymed_vn2.dim_sku
+WHERE product_id IN (3614, 8273, 3891, 8588)
+    AND seller_code = "MEDX"
+UNION DISTINCT
+SELECT
     gamification_code
     , s AS sku_code
     , sku_key
