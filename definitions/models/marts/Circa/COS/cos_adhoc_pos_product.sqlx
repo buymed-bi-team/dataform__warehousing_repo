@@ -67,11 +67,11 @@ select i.product_id,
        ps.sku_unit_pos,
        case when on_hand_quantity > 0 then "Available" else "Unavailable" end                   as have_stock,
        case when ps.product_id is null then "Price not set" else "Price set" end as price_set_check,
-       case when DATE_DIFF(latest_ord,CURRENT_DATE( "Asia/Ho_Chi_Minh"),day )<16 THEN "15D"
-            WHEN DATE_DIFF(latest_ord,CURRENT_DATE( "Asia/Ho_Chi_Minh"),day )<31 THEN "31D"
-            WHEN DATE_DIFF(latest_ord,CURRENT_DATE( "Asia/Ho_Chi_Minh"),day )<46 THEN "46D"
-            WHEN DATE_DIFF(latest_ord,CURRENT_DATE( "Asia/Ho_Chi_Minh"),day )<61 THEN "61D"
-            WHEN DATE_DIFF(latest_ord,CURRENT_DATE( "Asia/Ho_Chi_Minh"),day )<90 THEN "90D" else "No Orders Yet" END AS latest_date_order_range,
+       case when DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<16 THEN "15D"
+            WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<31 THEN "31D"
+            WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<46 THEN "46D"
+            WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<61 THEN "61D"
+            WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<90 THEN "90D" else "No Orders Yet" END AS latest_date_order_range,
             no_ord,
             latest_ord
 from inventory i
