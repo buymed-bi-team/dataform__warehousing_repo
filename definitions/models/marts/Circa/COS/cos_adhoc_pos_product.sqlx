@@ -71,7 +71,8 @@ select i.product_id,
             WHEN DATE_DIFF(latest_ord,CURRENT_DATE( "Asia/Ho_Chi_Minh"),day )<31 THEN "31D"
             WHEN DATE_DIFF(latest_ord,CURRENT_DATE( "Asia/Ho_Chi_Minh"),day )<46 THEN "46D"
             WHEN DATE_DIFF(latest_ord,CURRENT_DATE( "Asia/Ho_Chi_Minh"),day )<61 THEN "61D"
-            WHEN DATE_DIFF(latest_ord,CURRENT_DATE( "Asia/Ho_Chi_Minh"),day )<90 THEN "90D" else "No Orders Yet" END AS latest_date_order_range
+            WHEN DATE_DIFF(latest_ord,CURRENT_DATE( "Asia/Ho_Chi_Minh"),day )<90 THEN "90D" else "No Orders Yet" END AS latest_date_order_range,
+            no_ord
 from inventory i
          left join price_sheet ps
                    on ps.product_id = i.product_id and ps.pos_id = i.pos_id and ps.seller_code = i.seller_code
