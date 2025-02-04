@@ -1,0 +1,86 @@
+config {
+    type: "table",
+    description: ` PIC: tu.dang; model_type: Table ;schedule: At minute 5 past hour 6, 8, 10, 12, 14, 16, 18, 20 and 22`,
+    tags: ["custom_2h_past5"]
+}
+
+
+
+
+
+with product_base_unit as
+    (select product_id,
+            unit as convert_unit,
+            convert_rate
+     from ${source.circa_os}.product_retail_unit
+     qualify ROW_NUMBER() over (partition by product_id order by convert_rate desc) = 1)
+   , inventory as (select a.product_id,
+--                           a.cost_price_include_tax,
+                          sum(a.on_hand_qty) as on_hand_quantity,
+                          b.pos_id,
+                          a.seller_code,
+                          sku_code,
+                          doc_code
+                   from ${source.circa_os}.inventory_location_detail as a
+                            left join ${source.circa_os}.inventory_location as b
+                                      on a.location_id = b.id
+                   where deleted_at is null
+                   group by all)
+   , price_sheet as (select ps.pos_id,
+                            pd.product_id,
+                            pd.unit,
+                            pd.seller_code,
+                            a.convert_rate,
+                            pd.sale_price                                                as sale_unit_price,
+                            pd.product_id || '_' || pd.unit || '_' || ps.pos_id          as sku_unit_pos,
+                            base_unit                                                    as is_base_unit,
+                            case when bu.product_id is not null then true else false end as is_thuocsi_unit,
+--          case when on_hand_quantity > 0 then true else false end as have_stock,
+                            datetime(pd.updated_at, "Asia/Ho_Chi_Minh")                  as last_updated_at
+-- from inventory i
+                     from ${source.circa_os}.product_price_sheet_detail as pd
+                              left join ${source.circa_os}.product_price_sheet as ps
+                                        on pd.price_sheet_id = ps.id
+                              left join ${source.circa_os}.product_retail_unit as a
+                                        on a.product_id = pd.product_id and a.unit = pd.unit
+                              left join product_base_unit as bu
+                                        on pd.product_id = bu.product_id and pd.unit = bu.convert_unit)
+   , count_ord as ( select o.pos_id,
+                           oi.product_id,
+                           max(o.created_date) as latest_ord,
+                           COUNT(distinct o.order_id) as no_ord
+--                            count(distinct o)
+                    from ${ref('cos_fact_order')} o
+                              left join ${ref('cos_fact_order_item')} oi
+                                         on o.order_id = oi.order_id
+                    where status like "%COMPLETE%"
+                    group by 1,2)
+select i.product_id,
+       i.pos_id,
+       i.seller_code,
+       ps.unit,
+       ps.convert_rate,
+       ps.is_thuocsi_unit,
+       ps.is_base_unit,
+       ps.last_updated_at,
+       ps.sale_unit_price,
+       ps.sku_unit_pos,
+       case when on_hand_quantity > 0 then "Available" else "Unavailable" end                   as have_stock,
+       case when ps.product_id is null then "Price not set" else "Price set" end as price_set_check,
+       case when DATE_DIFF(latest_ord,CURRENT_DATE( "Asia/Ho_Chi_Minh"),day )<16 THEN "15D"
+            WHEN DATE_DIFF(latest_ord,CURRENT_DATE( "Asia/Ho_Chi_Minh"),day )<31 THEN "31D"
+            WHEN DATE_DIFF(latest_ord,CURRENT_DATE( "Asia/Ho_Chi_Minh"),day )<46 THEN "46D"
+            WHEN DATE_DIFF(latest_ord,CURRENT_DATE( "Asia/Ho_Chi_Minh"),day )<61 THEN "61D"
+            WHEN DATE_DIFF(latest_ord,CURRENT_DATE( "Asia/Ho_Chi_Minh"),day )<90 THEN "90D" else "No Orders Yet" END AS latest_date_order_range
+from inventory i
+         left join price_sheet ps
+                   on ps.product_id = i.product_id and ps.pos_id = i.pos_id and ps.seller_code = i.seller_code
+         left join count_ord co
+                   on i.pos_id=co.pos_id and i.product_id= co.product_id
+-- select pos_id,
+--        product_id,
+--        count(distinct seller_code) no_seller
+-- from buymed_circa_v2.product_price_sheet p
+-- left join buymed_circa_v2.product_price_sheet_detail i on p.id = i.price_sheet_id
+-- group by pos_id, product_id
+-- where i.product_id = 70973 and i.pos_id = "3faa7e69-a4ef-4cf7-aa5b-97f935f498b1"
