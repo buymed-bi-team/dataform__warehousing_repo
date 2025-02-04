@@ -73,15 +73,15 @@ select i.product_id,
             WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<46 THEN "45D"
             WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<61 THEN "60D"
             WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<90 THEN "90D" else "Others" END AS latest_date_order_range,
-            case when DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<16 and on_hand_quantity >0 THEN "DEAD-I:No-Demand 15D"
-            WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<31 and on_hand_quantity >0 THEN "DEAD-I:No-Demand 30D" 
-            WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<46 and on_hand_quantity >0 THEN "DEAD-I:No-Demand 45D" 
-            WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<61 and on_hand_quantity >0 THEN "DEAD-I:No-Demand 60D"
-            WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<90 and on_hand_quantity >0 THEN "DEAD-I:No-Demand 90D"
+            case when DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<16 and on_hand_quantity >0 THEN "DEAD-1I:No-Demand 15D"
+            WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<31 and on_hand_quantity >0 THEN "DEAD-2:No-Demand 30D" 
+            WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<46 and on_hand_quantity >0 THEN "DEAD-3:No-Demand 45D" 
+            WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<61 and on_hand_quantity >0 THEN "DEAD-4:No-Demand 60D"
+            WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<90 and on_hand_quantity >0 THEN "DEAD-5:No-Demand 90D"
             -- WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<90 and on_hand_quantity >0 THEN "DEAD-I||No-Demand 90D" 
             else "Others" END AS stock_aging_type,
             no_ord,GMV,
-            latest_ord
+            latest_ord,on_hand_quantity
 from inventory i
          left join price_sheet ps
                    on ps.product_id = i.product_id and ps.pos_id = i.pos_id and ps.seller_code = i.seller_code
