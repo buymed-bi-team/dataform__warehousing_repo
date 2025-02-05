@@ -41,8 +41,8 @@ from (
 		, ib.total_sku
 		, to_json_string(ib.tags) as tag_code
 		, row_number() over (partition by ib.mg_id order by ib.synced_at desc) row_num
-	from cte_main as a
-	left join ${source.platinum}.warehouse_prd_inbound_inbound_ticket as ib on a.ticket_id = ib.ticket_id
+	from ${source.platinum}.warehouse_prd_inbound_inbound_ticket  as ib
+	left join cte_main as a on a.ticket_id = ib.ticket_id
 )
 where
 	row_num = 1 and
