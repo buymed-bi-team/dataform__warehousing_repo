@@ -106,14 +106,8 @@ WITH
             , b.first_order_time_without_cancel_in_current_month
             , DATE_DIFF(b.first_order_time_without_cancel_in_current_month, b.last_order_time_without_cancel_before_current_month, DAY) AS days_return_active
             , CASE
-                -- WHEN DATE_TRUNC(c.first_order_time_without_cancel_ever, MONTH) > a.som  THEN "USER_ONLY"
-                WHEN /*c.first_order_time_without_cancel_ever IS NOT NULL
-                     AND*/
-                     b.first_order_time_without_cancel_in_current_month IS NULL THEN "CHURN"
-                WHEN /*c.first_order_time_without_cancel_ever IS NOT NULL
-                    AND*/ 
-                    b.first_order_time_without_cancel_in_current_month IS NOT NULL THEN "ACTIVE"
-                -- ELSE "USER_ONLY"
+                WHEN b.first_order_time_without_cancel_in_current_month IS NULL THEN "CHURN"
+                WHEN b.first_order_time_without_cancel_in_current_month IS NOT NULL THEN "ACTIVE"
               END AS customer_business_status
             , b.gmv
             , d.no_skus
