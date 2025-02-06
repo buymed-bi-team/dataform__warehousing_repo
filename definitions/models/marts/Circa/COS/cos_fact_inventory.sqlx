@@ -5,9 +5,6 @@ config {
         Type: Table; 
         Refresh Schedule: At minute 10 past hour 7, 10, 13, 16 and 19;
         Source: 
-            buymed_circa.product_retail_unit,
-            buymed_circa.inventory_location,
-            buymed_circa.inventory_cost_price
         `,
     tags: ["adhoc-office"],
     columns: {
@@ -30,14 +27,14 @@ deleted_at is null  )
 
 SELECT a.*,
        b.pos_id,
-       ru.unit as base_unit,
+    --    ru.unit as base_unit,
        b.location_type, 
-       ru.sale_allowed,
-       c.min_cost_price_include_tax,
-       c.max_cost_price_include_tax,
-       sku_code || '_' || unit || '_' || b.pos_id as sku_unit_pos
+    --    ru.sale_allowed,
+    --    c.min_cost_price_include_tax,
+    --    c.max_cost_price_include_tax,
+    --    sku_code || '_' || unit || '_' || b.pos_id as sku_unit_pos
 FROM inventory as a
          left join ${source.circa_os}.inventory_location as b on a.location_id = b.id
-         left join ${source.circa_os}.product_retail_unit as ru on a.product_id = ru.product_id and ru.base_unit = true
-         left join `${source.circa_os}.inventory_cost_price` as c on c.product_id = a.product_id and c.pos_id =b.pos_id
+        --  left join ${source.circa_os}.product_retail_unit as ru on a.product_id = ru.product_id and ru.base_unit = true
+        --  left join `${source.circa_os}.inventory_cost_price` as c on c.product_id = a.product_id and c.pos_id =b.pos_id
 WHERE deleted_at is null
