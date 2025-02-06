@@ -1,0 +1,14 @@
+config {
+    type: "view",
+    description: `Churn SKU: SKU tháng trước có mua ít nhất 1 đơn không tính đơn Cancel. Tháng kế tiếp không có đơn
+    PIC: Huong.Dang`
+}
+
+SELECT
+  sku_code,
+  year_month
+FROM
+  ${ref('agg_sku_profiling')}
+WHERE
+  (has_purchase = false
+  AND previous_month_purchase = true)
