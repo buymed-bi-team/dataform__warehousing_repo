@@ -1,0 +1,32 @@
+config {
+    type: "table", 
+    description: 
+        `PIC: tu.dang; 
+        Type: Table; 
+        Refresh Schedule: every 2 hour;
+        Source: 
+            ${source.circa_os}.product_product,
+            ${source.circa_os}.product_ingredient
+        `,
+    tags: ["custom_2h_past5"],
+    columns: {
+        ingredient_name: "The name of the ingredients in the product",
+        volume: "The volume of the ingredients",
+        ingredient_level: "The level of the ingredients",
+        is_medicine: "Indicates whether the product is medicine"
+    }
+}
+
+
+SELECT
+    p.product_id
+    , i.name AS ingredient_name
+    , REPLACE(JSON_EXTRACT_SCALAR(pi.volume), ' ', '') AS volume
+    , ROW_NUMBER() over (PARTITION BY p.product_id) AS ingredient_level
+    , i.description
+    , COALESCE(i.is_medicine, FALSE) AS is_medicine
+    , p.usage
+--     , IFNULL(i.is_ingredient_special, FALSE) AS is_ingredient_special
+FROM ${source.circa_os}.product_product AS p
+    , UNNEST(JSON_EXTRACT_ARRAY(PARSE_JSON(p.ingredients))) AS pi
+LEFT JOIN ${source.circa_os}.product_ingredient AS i ON i.code = REPLACE(JSON_EXTRACT_SCALAR(pi.ingredient_code), ' ', '')
