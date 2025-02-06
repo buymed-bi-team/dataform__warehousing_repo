@@ -24,7 +24,7 @@ WITH
     FROM ${ref('fact_order_item')} AS a
     LEFT JOIN ${ref('fact_order')} AS b on a.order_id = b.order_id
     WHERE b.order_status <> "CANCEL"
-    GROUP BY 1
+    GROUP BY ALL
   ),
 
   sku_calendar AS(
