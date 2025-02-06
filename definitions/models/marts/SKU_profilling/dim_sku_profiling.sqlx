@@ -18,6 +18,7 @@ config {
 WITH
   sku_calendar AS(
   SELECT
+    sku_key_sales_region_code,
     sku_code,
     year_month,
     som
@@ -25,6 +26,7 @@ WITH
     ${ref('agg_sku_profiling')} AS a)
 
 SELECT
+  a.sku_key_sales_region_code,
   a.sku_code,
   a.year_month,
   a.som,
