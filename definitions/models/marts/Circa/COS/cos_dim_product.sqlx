@@ -72,17 +72,33 @@ where ingredient_level =1
       where a.base_unit is true and (unit is not null or unit <> "")
       qualify row_number() over(partition by product_id, unit order by unit ) =1
       ),
+    convert_unit as
+(
+      select a.product_id,
+            convert_rate, unit
+      from ${source.circa_os}.product_retail_unit as a
+      -- right join ${source.circa_os}.product_product as b on a.product_id = b.product_id
+      where unit is not null or unit <> ""
+      qualify row_number() over(partition by product_id order by convert_rate desc ) =1
+      ),
+    
     brand_type as(
 select p.product_id,
        p.brand_type
 from ${ref('dim_product')} p
 left join ${ref('adhoc_pm_master_sku')} s using (product_id )
 where fc_code like "BD"
-qualify row_number() over(partition by p.product_id order by s.brand_type desc) = 1)
+qualify row_number() over(partition by p.product_id order by s.brand_type desc) = 1),
+sub_cat as (
+    select p.product_id, 
+    sc.name as seller_sub_category_name
+from `${source.platinum}.marketplace_prd_product_v2_product` p
+left join `${source.platinum}.marketplace_prd_product_v2_seller_sub_category` sc on p.seller_sub_category_code =sc.code
+)
 select pd.*,
-       a.unit as retail_unit,
-       a.convert_rate,
-       a.sale_allowed as is_sale_allowed,
+    --    a.unit as retail_unit,
+    --    a.convert_rate,
+    --    a.sale_allowed as is_sale_allowed,
        op.status as medship_status,
        op.unit_name as medship_unit,
         case when i.on_hand_quantity is not null then "Available" else "Not Available" end as stock_check,
@@ -92,15 +108,18 @@ select pd.*,
         ig.ingredient_name,
         ig.volume,usage,
         bu.base_unit,
-        bt.brand_type
+        bt.brand_type,
+        seller_sub_category_name
 from cte_product pd
-left join ${source.circa_os}.product_retail_unit as a
-                   on a.product_id = pd.product_id and a.unit = pd.unit
+-- left join ${source.circa_os}.product_retail_unit as a
+--                    on a.product_id = pd.product_id and a.unit = pd.unit
 left join platinum_buymed_vn.circa_online_prd_product_product as op on pd.product_id = op.product_id
 left join inventory i on pd.product_id = i.product_id
 left join ingregients ig on pd.product_id = ig.product_id
 left join product_base_unit bu on pd.product_id = bu.product_id
 left join brand_type bt on pd.product_id = bt.product_id
+left join convert_rate cr using (product_id)
+left join sub_cat using (product_id)
 -- where lower(product_name) like "%test%"
 -- WHERE p.product_id>=1
 -- left join efficacy e on p.efficacy_code= e.efficacy_id
