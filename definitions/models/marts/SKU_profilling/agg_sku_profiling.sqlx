@@ -77,7 +77,7 @@ SELECT
   purchase_year,
   purchase_month,
   has_purchase,
-  LAG(has_purchase) OVER (PARTITION BY sku_code ORDER BY purchase_year, purchase_month) AS previous_month_purchase
+  LAG(has_purchase) OVER (PARTITION BY sku_code ORDER BY purchase_year, purchase_month) AS previous_month_purchase,
   LAG(has_purchase, 2) OVER (PARTITION BY sku_code ORDER BY purchase_year, purchase_month) AS previous_2_month_purchase
 FROM
   calendar_order
