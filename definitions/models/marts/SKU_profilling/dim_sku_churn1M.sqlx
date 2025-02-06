@@ -5,6 +5,7 @@ config {
 }
 
 SELECT
+  sku_key_sales_region_code,
   sku_code,
   year_month
 FROM
