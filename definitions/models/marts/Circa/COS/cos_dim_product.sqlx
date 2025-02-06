@@ -31,7 +31,7 @@ with cte_product as (select p.product_id,
                             tp.origin,
                             manufacturer_short_name,
                             tp.registration_number,
-                            product_category,
+                            product_category as product_categories,
                             p.dosage_form,
                             product_report_category,
                             sc.name as product_categories,
@@ -76,8 +76,9 @@ where ingredient_level =1
 select p.product_id,
        p.brand_type
 from ${ref('dim_product')} p
-left join ${ref('adhoc_pm_master_sku')} s on p.product_id = s.product_id and fc_code like "BD"
-qualify ROW_NUMBER() over (partition by  p.product_id) = 1)
+left join ${ref('adhoc_pm_master_sku')} s using (product_id )
+where fc_code like "BD"
+qualify row_number() over(partition by p.product_id order by s.brand_type desc) = 1)
 select pd.*,
        a.unit as retail_unit,
        a.convert_rate,
