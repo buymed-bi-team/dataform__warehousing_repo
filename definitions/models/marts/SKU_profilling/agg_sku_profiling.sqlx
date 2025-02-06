@@ -1,0 +1,82 @@
+config {
+    type: "view",
+    description: "PIC: Huong.Dang"
+}
+
+
+WITH
+  dim_year_month AS(
+  SELECT
+    DISTINCT CAST(FORMAT_DATE('%Y-%m', som) AS STRING) AS year_month,
+    som
+  FROM
+    ${ref('dim_calendar')}
+  WHERE
+    date BETWEEN '2023-01-01'
+    AND CURRENT_DATE()),
+
+  min_order_date AS (
+    SELECT
+      a.sku_code,
+      DATE(MIN(b.created_at)) AS first_date_order,
+      DATE_TRUNC(DATE(MIN(a.created_at)), MONTH) AS som_first_date_order
+    FROM ${ref('fact_order_item')} AS a
+    LEFT JOIN ${ref('fact_order')} AS b on a.order_id = b.order_id
+    WHERE b.order_status <> "CANCEL"
+    GROUP BY 1
+  ),
+
+  sku_calendar AS(
+  SELECT
+    a.sku_code,
+    b.year_month,
+    b.som,
+    EXTRACT(YEAR
+    FROM
+      b.som) AS purchase_year,
+    EXTRACT(MONTH
+    FROM
+      b.som) AS purchase_month,
+  FROM
+    min_order_date AS a
+  CROSS JOIN
+    dim_year_month AS b
+  WHERE
+    b.som >= a.som_first_date_order),
+    
+  order_per_month AS (
+  SELECT
+    sku_code,
+    CAST(FORMAT_DATE('%Y-%m', b.created_at) AS STRING) AS year_month,
+    COUNTIF(order_status <> 'CANCEL') > 0 AS has_purchase
+  FROM ${ref('fact_order_item')} AS a
+LEFT JOIN ${ref('fact_order')} AS b on a.order_id = b.order_id
+  GROUP BY
+    ALL),
+
+  calendar_order AS(
+  SELECT
+    a.*,
+    CASE
+      WHEN b.has_purchase IS NULL THEN FALSE
+      ELSE b.has_purchase
+  END
+    AS has_purchase
+  FROM
+    sku_calendar AS A
+  LEFT JOIN
+    order_per_month AS B
+  ON
+    a.sku_code = b.sku_code
+    AND a.year_month = b.year_month )
+    
+SELECT
+  sku_code,
+  som,
+  year_month,
+  purchase_year,
+  purchase_month,
+  has_purchase,
+  LAG(has_purchase) OVER (PARTITION BY sku_code ORDER BY purchase_year, purchase_month) AS previous_month_purchase
+FROM
+  calendar_order
