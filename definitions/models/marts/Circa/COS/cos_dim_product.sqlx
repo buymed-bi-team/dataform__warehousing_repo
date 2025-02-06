@@ -79,7 +79,7 @@ where ingredient_level =1
       from ${source.circa_os}.product_retail_unit as a
       -- right join ${source.circa_os}.product_product as b on a.product_id = b.product_id
       where unit is not null or unit <> ""
-      qualify row_number() over(partition by product_id order by convert_rate desc ) =1
+      qualify row_number() over(partition by product_id, convert_rate  order by convert_rate desc ) =1
       ),
     
     brand_type as(
