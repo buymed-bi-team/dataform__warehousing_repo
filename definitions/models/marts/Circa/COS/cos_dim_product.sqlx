@@ -31,7 +31,7 @@ with cte_product as (select p.product_id,
                             tp.origin,
                             manufacturer_short_name,
                             tp.registration_number,
-                            product_category as product_categories,
+                            product_category ,
                             p.dosage_form,
                             product_report_category,
                             sc.name as product_categories,
@@ -75,11 +75,11 @@ where ingredient_level =1
     convert_unit as
 (
       select a.product_id,
-            convert_rate, unit
+            convert_rate, unit as convert_unit
       from ${source.circa_os}.product_retail_unit as a
       -- right join ${source.circa_os}.product_product as b on a.product_id = b.product_id
       where unit is not null or unit <> ""
-      qualify row_number() over(partition by product_id, convert_rate  order by convert_rate desc ) =1
+      qualify row_number() over(partition by product_id  order by convert_rate desc ) =1
       ),
     
     brand_type as(
@@ -97,7 +97,7 @@ left join `${source.platinum}.marketplace_prd_product_v2_seller_sub_category` sc
 )
 select pd.*,
     --    a.unit as retail_unit,
-    --    a.convert_rate,
+       cr.convert_rate,cr.convert_unit,
     --    a.sale_allowed as is_sale_allowed,
        op.status as medship_status,
        op.unit_name as medship_unit,
@@ -118,8 +118,8 @@ left join inventory i on pd.product_id = i.product_id
 left join ingregients ig on pd.product_id = ig.product_id
 left join product_base_unit bu on pd.product_id = bu.product_id
 left join brand_type bt on pd.product_id = bt.product_id
-left join convert_rate cr using (product_id)
-left join sub_cat using (product_id)
+left join convert_unit cr on pd.product_id = cr.product_id
+left join sub_cat on pd.product_id = sub_cat.product_id
 -- where lower(product_name) like "%test%"
 -- WHERE p.product_id>=1
 -- left join efficacy e on p.efficacy_code= e.efficacy_id
