@@ -1,0 +1,15 @@
+config {
+    type: "view",
+    description: `Repeat SKU: Những SKU có đơn hàng 2 tháng liên tiếp tại sàn thuocsi, loại trừ những đơn hàng CANCEL.
+    Vd: SKU A có đơn hàng trong 4/2024 và tháng 5/2024, thì type của SKU A trong tháng 5/2024 sẽ là Repeat SKU.
+    PIC: Huong.Dang`
+}
+
+SELECT
+  sku_code,
+  year_month
+FROM
+  ${ref('agg_sku_profiling')}
+WHERE
+  (has_purchase = true
+  AND previous_month_purchase = true)
