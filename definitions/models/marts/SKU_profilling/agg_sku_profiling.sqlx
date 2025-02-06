@@ -18,6 +18,7 @@ WITH
   min_order_date AS (
     SELECT
       a.sku_code,
+      a.sku_key_sales_region_code,
       DATE(MIN(b.created_at)) AS first_date_order,
       DATE_TRUNC(DATE(MIN(a.created_at)), MONTH) AS som_first_date_order
     FROM ${ref('fact_order_item')} AS a
@@ -29,6 +30,7 @@ WITH
   sku_calendar AS(
   SELECT
     a.sku_code,
+    a.sku_key_sales_region_code,
     b.year_month,
     b.som,
     EXTRACT(YEAR
@@ -47,6 +49,7 @@ WITH
   order_per_month AS (
   SELECT
     sku_code,
+    sku_key_sales_region_code,
     CAST(FORMAT_DATE('%Y-%m', b.created_at) AS STRING) AS year_month,
     COUNTIF(order_status <> 'CANCEL') > 0 AS has_purchase
   FROM ${ref('fact_order_item')} AS a
@@ -71,6 +74,7 @@ LEFT JOIN ${ref('fact_order')} AS b on a.order_id = b.order_id
     AND a.year_month = b.year_month )
     
 SELECT
+  sku_key_sales_region_code,
   sku_code,
   som,
   year_month,
