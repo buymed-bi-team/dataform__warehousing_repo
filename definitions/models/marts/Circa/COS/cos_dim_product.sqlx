@@ -1,6 +1,6 @@
 config {
     type: "table",
-    description: `Last 13 month| PIC: tu.dang; model_type: Table ;schedule: At minute 5 past hour 6, 8, 10, 12, 14, 16, 18, 20 and 22`
+    description: `Last 13 month| PIC: tu.dang; model_type: Table ;schedule: At 10h30`
     /*Source:
       ${source.silver}.marketplace_prd_order_v2_order_item
       ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
@@ -14,7 +14,56 @@ config {
 }
 
 
-with product_base_unit as
+with cte_product as (select p.product_id,
+                            p.name as product_name,
+                            p.volumes,
+                            p.unit,
+--                             tp.usage,
+                            p.length,
+                            p.height,
+                            p.weight,
+                            p.width,
+                            is_fragile,
+                            is_frozen,
+                            is_herb,
+                            is_ingredient_special,
+                            is_portable,
+                            tp.origin,
+                            manufacturer_short_name,
+                            tp.registration_number,
+                            product_category,
+                            p.dosage_form,
+                            product_report_category,
+                            sc.name as product_categories,
+                            m.name as manufacture_name,
+                            is_combo,
+                            is_gift,
+                            is_etc
+                     from ${source.circa_os}.product_product p
+                              left join ${source.circa_os}.product_main_category mc
+                                        on p.main_category_code = mc.code
+                              left join ${source.circa_os}.product_manufacturer m
+                                        on p.manufacturer_code = m.code
+                              left join ${source.circa_os}.product_seller_category sc
+                                        on p.seller_category_code = sc.seller_category_code
+                              left join ${ref('dim_product')} as tp on p.product_id = tp.product_id)
+,inventory as (select a.product_id,
+--                           a.cost_price_include_tax,
+                          sum(a.on_hand_qty) as on_hand_quantity,
+                          STRING_AGG(distinct ep.name, ", ") as stock_available_in_POSs,
+--                           a.seller_code,
+--                           sku_code
+                   from ${source.circa_os}.inventory_location_detail as a
+                            left join ${source.circa_os}.inventory_location as b
+                                      on a.location_id = b.id
+                   left join ${source.circa_os}.entity_pos_profile as ep on b.pos_id = ep.id
+                   where a.deleted_at is null and lower(ep.name) <> "%test%"
+                   group by all)
+, ingregients as (
+    select * from ${ref('cos_dim_product_ingredient')}
+where ingredient_level =1
+),
+    product_base_unit as
 (
       select a.product_id,
             a.unit as base_unit
@@ -22,21 +71,35 @@ with product_base_unit as
       -- right join ${source.circa_os}.product_product as b on a.product_id = b.product_id
       where a.base_unit is true and (unit is not null or unit <> "")
       qualify row_number() over(partition by product_id, unit order by unit ) =1
-      )
-
+      ),
+    brand_type as(
 select p.product_id,
-       p.code as product_code,
-       m.name as manufacturer_name,
-       m.short_name as manufacturer_short_name,
-       p.name as product_name,
-       volumes,
-       unit,
-       mc.name as main_category_name,
-       bu.base_unit
-from ${source.circa_os}.product_product p
-left join ${source.circa_os}.product_main_category mc on p.main_category_code = mc.code
-left join ${source.circa_os}.product_manufacturer m on p.manufacturer_code = m.code
-left join product_base_unit bu on p.product_id = bu.product_id
-qualify  row_number() over(partition by p.product_id, unit order by bu.base_unit desc ) =1
+       p.brand_type
+from ${ref('dim_product')} p
+left join ${ref('adhoc_pm_master_sku')} s on p.product_id = s.product_id and fc_code like "BD"
+qualify ROW_NUMBER() over (partition by  p.product_id) = 1)
+select pd.*,
+       a.unit as retail_unit,
+       a.convert_rate,
+       a.sale_allowed as is_sale_allowed,
+       op.status as medship_status,
+       op.unit_name as medship_unit,
+        case when i.on_hand_quantity is not null then "Available" else "Not Available" end as stock_check,
+        stock_available_in_POSs,
+        on_hand_quantity,
+        case when op.product_id is not null then "True" else "False" end as is_medship_product,
+        ig.ingredient_name,
+        ig.volume,usage,
+        bu.base_unit,
+        bt.brand_type
+from cte_product pd
+left join ${source.circa_os}.product_retail_unit as a
+                   on a.product_id = pd.product_id and a.unit = pd.unit
+left join platinum_buymed_vn.circa_online_prd_product_product as op on pd.product_id = op.product_id
+left join inventory i on pd.product_id = i.product_id
+left join ingregients ig on pd.product_id = ig.product_id
+left join product_base_unit bu on pd.product_id = bu.product_id
+left join brand_type bt on pd.product_id = bt.product_id
+-- where lower(product_name) like "%test%"
 -- WHERE p.product_id>=1
 -- left join efficacy e on p.efficacy_code= e.efficacy_id
