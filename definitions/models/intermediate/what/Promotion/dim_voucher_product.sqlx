@@ -17,6 +17,8 @@ SELECT
     v.voucher_code
     , SAFE_CAST(JSON_VALUE(p.product_condition.product_id) AS INT64) as product_id
     , SAFE_CAST(JSON_VALUE(p.product_condition.min_total_price) AS INT64) as mov
+    , SAFE_CAST(JSON_VALUE(p.product_condition.min_quantity) AS INT64) as min_sku_quantity
+    , JSON_VALUE(p.product_condition.seller_code) as seller_code
     , v.campaign_brand
 FROM ${ref('dim_voucher')} as v
     , UNNEST(JSON_QUERY_ARRAY(and_conditions, '$.PRODUCT.and_conditions')) AS p
@@ -25,6 +27,8 @@ SELECT DISTINCT
     v.voucher_code
     , s.product_id
     , SAFE_CAST(JSON_VALUE(p.product_tag_condition.min_total_price) AS INT64) as mov
+    , SAFE_CAST(JSON_VALUE(p.product_tag_condition.min_quantity) AS INT64) as min_sku_quantity
+    , JSON_VALUE(p.product_tag_condition.seller_code) as seller_code
     , v.campaign_brand
 FROM ${ref('dim_voucher')} as v
     , UNNEST(JSON_QUERY_ARRAY(and_conditions, '$.PRODUCT_TAG.and_conditions')) AS p
@@ -34,6 +38,8 @@ SELECT
     v.voucher_code
     , SAFE_CAST(JSON_VALUE(p.product_condition.product_id) AS INT64) as product_id
     , SAFE_CAST(JSON_VALUE(p.product_condition.min_total_price) AS INT64) as mov
+    , SAFE_CAST(JSON_VALUE(p.product_condition.min_quantity) AS INT64) as min_sku_quantity
+    , JSON_VALUE(p.product_condition.seller_code) as seller_code
     , v.campaign_brand
 FROM ${ref('dim_voucher')} as v
     , UNNEST(JSON_QUERY_ARRAY(and_conditions, '$.PRODUCT.or_conditions')) AS p
@@ -42,6 +48,8 @@ SELECT DISTINCT
     v.voucher_code
     , s.product_id
     , SAFE_CAST(JSON_VALUE(p.product_tag_condition.min_total_price) AS INT64) as mov
+    , SAFE_CAST(JSON_VALUE(p.product_tag_condition.min_quantity) AS INT64) as min_sku_quantity
+    , JSON_VALUE(p.product_tag_condition.seller_code) as seller_code
     , v.campaign_brand
 FROM ${ref('dim_voucher')} as v
     , UNNEST(JSON_QUERY_ARRAY(and_conditions, '$.PRODUCT_TAG.or_conditions')) AS p
