@@ -12,4 +12,4 @@ FROM
   ${ref('agg_sku_profiling')}
 WHERE
   (has_purchase = false
-  AND previous_month_purchase = false)
+  AND previous_month_purchase = true)
