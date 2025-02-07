@@ -39,7 +39,8 @@ WITH dedup_sale_order AS (
     created_date,
     type
   FROM ${source.platinum}.warehouse_prd_core_sale_order
-  WHERE created_date >= DATE(timestamp(date_sub(current_date(),interval 45 day)))
+  WHERE created_date >= '2024-12-01'
+  --DATE(timestamp(date_sub(current_date(),interval 45 day)))
 ),
 
 dedup_sale_order_item AS (
@@ -66,7 +67,8 @@ dedup_sale_order_item AS (
     AND JSON_VALUE(b.sku) = i.sku_code
     AND CAST(JSON_VALUE(b.order_quantity) AS INT64) = i.demand_quantity
     AND CAST(JSON_VALUE(b.reserved_quantity) AS INT64) = i.reserved_quantity
-  WHERE a.created_date >= DATE(timestamp(date_sub(current_date(),interval 45 day)))
+  WHERE a.created_date >= '2024-12-01'
+  --DATE(timestamp(date_sub(current_date(),interval 45 day)))
 ),
 
 dedup_dim_order AS (
