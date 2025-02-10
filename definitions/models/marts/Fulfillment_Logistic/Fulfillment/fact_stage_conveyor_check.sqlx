@@ -29,7 +29,7 @@ select
 	"" source_location,
 	FALSE is_not_increase_inventory,
 	timestamp_add(r.created_time , interval 7 hour) as ts_created,
-	"" basket_code,
+	basket_code,
 	NULL level_bin,
 	NULL no_packages
 from (
