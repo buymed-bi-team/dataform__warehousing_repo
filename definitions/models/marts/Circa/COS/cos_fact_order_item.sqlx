@@ -91,7 +91,7 @@ cte_online AS (
   tax_rate,
   product_id || '_' || lot_date || '_' || tax_rate AS product_lot_date_vat,
   cost_price_include_tax AS base_unit_cost_price,
-  "" as owner_name,
+  "CIRCA" as owner_name,
 from (
     SELECT * FROM cte_not_online
     UNION ALL
