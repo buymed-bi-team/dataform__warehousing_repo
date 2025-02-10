@@ -24,6 +24,7 @@ SELECT
     , CONCAT(oi.order_id, '_', ov.redeem_code) AS order_voucher_code
     , vp.campaign_brand
     , oi.item_type
+    , oi.customer_id
 FROM ${ref('fact_order_item')} AS oi
     LEFT JOIN ${ref('fact_order_voucher')} AS ov 
         ON oi.order_id = ov.order_id

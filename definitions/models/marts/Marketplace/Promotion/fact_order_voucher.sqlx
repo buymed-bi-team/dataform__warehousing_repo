@@ -17,6 +17,7 @@ WITH
         SELECT
             a.order_id
             , TIMESTAMP(a.created_at) AS created_at
+            , DATE(a.created_at) AS created_date
             , a.ordered_amount AS gmv
             , a.customer_id
             , JSON_VALUE(r, '$.code') AS redeem_code
@@ -24,6 +25,7 @@ WITH
             , CONCAT(a.order_id, "_", JSON_VALUE(r, '$.code')) AS order_voucher_code
         FROM ${ref('fact_order')} AS a
             , UNNEST(JSON_QUERY_ARRAY(a.redeem_apply_result)) AS r
+            
     )
 
 SELECT 
