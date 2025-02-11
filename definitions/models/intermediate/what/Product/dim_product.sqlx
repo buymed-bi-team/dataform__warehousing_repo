@@ -131,7 +131,7 @@ WITH product_retail_unit AS (
       QUALIFY ROW_NUMBER() OVER(PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
   )
 
-    , high_margin_product AS (
+  , high_margin_product AS (
       SELECT 
           SAFE_CAST(code AS INT64) AS product_id
           , NULLIF(value, "NAN") as high_margin
