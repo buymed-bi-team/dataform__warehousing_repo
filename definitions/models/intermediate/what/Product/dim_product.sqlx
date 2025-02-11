@@ -302,6 +302,7 @@ WHERE
     AND LOWER(product.name) NOT LIKE '%[tech%'
     AND LOWER(product.name) NOT LIKE '%[oanh%'
     AND LOWER(product.name) NOT LIKE '%sp test%'
+    AND LOWER(product.name) NOT LIKE '%[removed]%'
 QUALIFY ROW_NUMBER() OVER(PARTITION BY product_id) = 1
 
 post_operations {                
