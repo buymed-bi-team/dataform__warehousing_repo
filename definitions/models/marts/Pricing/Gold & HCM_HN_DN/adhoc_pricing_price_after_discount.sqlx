@@ -72,28 +72,44 @@ WITH
             , b.area_code
         FROM voucher AS a
             LEFT JOIN area AS b USING(voucher_code)
+    ),
+
+    final_price AS (
+        SELECT
+            a.*
+            , b.campaign_price
+            , b.deal_price
+            , ROUND(
+                COALESCE(
+                    b.campaign_price,
+                    LEAST( b.deal_price, a.display_price ),
+                    a.display_price
+                ),
+                -2
+            )
+                AS sku_final_price
+        FROM ${ref('adhoc_pricing_display_price')} AS a
+            LEFT JOIN ${ref('adhoc_pricing_promotion_price')} AS b USING(sku_key_sales_region_code)
     )
 
 SELECT
     a.product_id
     , a.sku_code
+    , a.sku_key
+    , a.sku_key_sales_region_code
     , a.sales_region_code
     , a.display_price
-    , b.campaign_price
-    , b.deal_price
+    , a.campaign_price
+    , a.deal_price
+    , sku_final_price
     , ROUND(
-        COALESCE(
-            b.campaign_price,
-            LEAST( b.deal_price, a.display_price ),
-            a.display_price
-        ) *0.99 - c.avg_discount
-        ,-2
-    ) AS sku_final_price
+        a.sku_final_price * 0.995 - ROUND(a.sku_final_price * 0.005, -2)  - IFNULL(c.avg_discount,0)
+        , -2
+    ) AS price_after_discount
 
-FROM ${ref('adhoc_pricing_display_price')} AS a
-    LEFT JOIN ${ref('adhoc_pricing_promotion_price')} AS b USING(sku_key_sales_region_code)
+
+FROM final_price AS a
     LEFT JOIN discount_value AS c 
-        ON c.product_id = a.product_id AND c.seller_code = a.seller_code 
-WHERE
-    (c.area_code IS NULL
-    OR c.area_code = a.sales_region_code)
+        ON (c.product_id = a.product_id AND c.seller_code = a.seller_code )
+            AND  (c.area_code IS NULL OR c.area_code = a.sales_region_code)
+
