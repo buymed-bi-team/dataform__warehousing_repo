@@ -70,7 +70,7 @@ where ingredient_level =1
       from ${source.circa_os}.product_retail_unit as a
       -- right join ${source.circa_os}.product_product as b on a.product_id = b.product_id
       where a.base_unit is true and (unit is not null or unit <> "")
-      qualify row_number() over(partition by product_id, unit order by unit ) =1
+      qualify row_number() over(partition by product_id order by unit ) =1
       ),
     convert_unit as
 (
@@ -113,7 +113,7 @@ select pd.*,
 from cte_product pd
 -- left join ${source.circa_os}.product_retail_unit as a
 --                    on a.product_id = pd.product_id and a.unit = pd.unit
-left join platinum_buymed_vn.circa_online_prd_product_product as op on pd.product_id = op.product_id
+left join ${source.platinum}.circa_online_prd_product_product as op on pd.product_id = op.product_id
 left join inventory i on pd.product_id = i.product_id
 left join ingregients ig on pd.product_id = ig.product_id
 left join product_base_unit bu on pd.product_id = bu.product_id
