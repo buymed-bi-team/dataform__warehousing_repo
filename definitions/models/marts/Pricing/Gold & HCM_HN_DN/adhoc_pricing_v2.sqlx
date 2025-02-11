@@ -73,7 +73,7 @@ WITH
             -- ) AS sku_display_price
             COALESCE(
                 b.campaign_price,
-                LEAST( COALESCE(b.deal_price, a.display_price), a.display_price),
+                LEAST( b.deal_price, a.display_price ),
                 a.display_price
             ) AS sku_display_price,
             CASE

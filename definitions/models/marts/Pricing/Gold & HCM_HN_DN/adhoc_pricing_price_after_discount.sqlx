@@ -1,0 +1,99 @@
+config {
+    type: "table", 
+    description: 
+        `
+        Price after discount of SKUs;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.ref}.dim_sku_sales_region_current,
+            ${source.ref}.adhoc_pricing_display_price,
+            ${source.platinum}.marketplace_prd_promotion_campaign,
+            ${source.platinum}.marketplace_prd_promotion_campaign_product, 
+            ${source.platinum}.marketplace_prd_product_v2_deal
+        `,
+    tags: ["custom_1h_past5", "PRICING"],
+
+    assertions: {
+      uniqueKey: ["sku_key_sales_region_code"],
+      nonNull: ["sku_code", "sku_key", "sales_region_code"]
+    }
+}
+
+WITH
+    area AS (
+        SELECT
+            voucher_code
+            , CASE
+                WHEN b LIKE "%MIENBAC%" THEN "MIENBAC"
+                WHEN b LIKE "%MB_ADM%" THEN "MIENBAC"
+                WHEN b LIKE "%113RVDTCV2U1%"THEN "MIENBAC"
+                WHEN b LIKE "%01%" THEN "MIENBAC"
+                WHEN b LIKE "%MIENNAM%" THEN "MIENNAM"
+                WHEN b LIKE "%MN_ADM%" THEN "MIENNAM"
+                WHEN b LIKE "%107TQTAR1Y7G%" THEN "MIENNAM"
+                WHEN b LIKE "%79%" THEN "MIENNAM"
+                WHEN b LIKE "%MIENTRUNG%" THEN "MIENTRUNG"
+                WHEN b LIKE "%MT_ADM%" THEN "MIENTRUNG"
+                WHEN b LIKE "%528UQP72U1Y%" THEN "MIENTRUNG"
+                WHEN b LIKE "%48%" THEN "MIENTRUNG"
+                ELSE c.sales_region_code
+            END AS area_code
+        FROM ${ref('dim_voucher')}
+            , UNNEST(JSON_QUERY_ARRAY(scopes)) AS a
+            LEFT JOIN UNNEST(JSON_VALUE_ARRAY(a, "$.area_codes")) AS b
+            LEFT JOIN ${ref('dim_fc_service_area')} AS c ON c.service_area_code = b
+        WHERE JSON_VALUE(a, '$.type') = "AREA"
+    ),
+
+    voucher AS (
+        SELECT
+            a.product_id
+            , a.seller_code
+            , a.voucher_code
+            , b.voucher_discount
+            , a.min_sku_quantity
+            , SAFE_DIVIDE(b.voucher_discount, a.min_sku_quantity) AS avg_discount
+            , mov
+        FROM ${ref('dim_voucher_product')} AS a
+            LEFT JOIN ${ref('dim_voucher')} AS b USING(voucher_code)
+        WHERE
+            b.voucher_status = "ACTIVE"
+            AND b.discount_type = "ABSOLUTE"
+            AND b.is_specific
+            AND b.all_customer
+        QUALIFY ROW_NUMBER() over (PARTITION BY product_id, a.seller_code ORDER BY mov, a.min_sku_quantity, voucher_discount DESC) = 1
+    ),
+
+    discount_value AS (
+        SELECT
+            a.*
+            , b.area_code
+        FROM voucher AS a
+            LEFT JOIN area AS b USING(voucher_code)
+    )
+
+SELECT
+    a.product_id
+    , a.sku_code
+    , a.sales_region_code
+    , a.display_price
+    , b.campaign_price
+    , b.deal_price
+    , ROUND(
+        COALESCE(
+            b.campaign_price,
+            LEAST( b.deal_price, a.display_price ),
+            a.display_price
+        ) *0.99 - c.avg_discount
+        ,-2
+    ) AS sku_final_price
+
+FROM ${ref('adhoc_pricing_display_price')} AS a
+    LEFT JOIN ${ref('adhoc_pricing_promotion_price')} AS b USING(sku_key_sales_region_code)
+    LEFT JOIN discount_value AS c 
+        ON c.product_id = a.product_id AND c.seller_code = a.seller_code 
+WHERE
+    (c.area_code IS NULL
+    OR c.area_code = a.sales_region_code)
