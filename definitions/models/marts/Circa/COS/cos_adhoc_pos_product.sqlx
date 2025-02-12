@@ -34,8 +34,8 @@ with product_base_unit as
                             pd.sale_price                                                as sale_unit_price,
                             pd.product_id || '_' || pd.unit || '_' || ps.pos_id          as sku_unit_pos,
                             base_unit                                                    as is_base_unit,
-                            -- case when bu.product_id is not null then true else false end as is_thuocsi_unit,
-                            is_thuocsi_unit,
+                            case when bu.product_id is not null then true else false end as is_thuocsi_unit,
+                            -- is_thuocsi_unit,
 --          case when on_hand_quantity > 0 then true else false end as have_stock,
                             datetime(pd.updated_at, "Asia/Ho_Chi_Minh")                  as last_updated_at
 -- from inventory i
