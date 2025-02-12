@@ -28,7 +28,7 @@ pre_operations {
       SET checkpoint_date = ARRAY( 
         SELECT DISTINCT IF(created_time is NULL, "2099-01-01" , DATE( DATETIME(created_time,'Asia/Ho_Chi_Minh') ) )
         FROM silver_buymed_vn.delivery_prd_transporting_shipping_order
-        WHERE ingest_time > Ingest_checkpoint
+        WHERE ingest_time >= Ingest_checkpoint
       );
       
       IF ( SELECT ARRAY_LENGTH(checkpoint_date) > 0 ) THEN
@@ -37,7 +37,7 @@ pre_operations {
             and mg_id in ( 
               SELECT DISTINCT mg_id 
               FROM silver_buymed_vn.delivery_prd_transporting_shipping_order
-              WHERE ingest_time > Ingest_checkpoint
+              WHERE ingest_time >= Ingest_checkpoint
               );
       END IF;
 
