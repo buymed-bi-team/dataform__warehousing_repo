@@ -186,11 +186,11 @@ SELECT
 
   CASE
       WHEN product.origin IN ('Vietnam', 'VN') THEN 'Vietnam'
-      ELSE 'International'
-    END AS origin,
+      WHEN product.origin NOT IN ('Vietnam', 'VN') THEN 'International'
+  END AS origin,
   CASE
     WHEN product.origin IN ('Vietnam', 'VN') THEN 'Local'
-    ELSE 'Import'
+    WHEN product.origin NOT IN ('Vietnam', 'VN') THEN 'Import'
   END AS origin_type,
   tb3.name as country_origin,
   product.registration_number,
