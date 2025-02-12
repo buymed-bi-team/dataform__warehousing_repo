@@ -59,7 +59,7 @@ CASE
     ELSE "2099-01-01"
 END AS created_date
 FROM ${source.silver}.warehouse_prd_picking_pick_ticket_item o
-${ when(incremental(), `WHERE ingest_time > Ingest_checkpoint ` )}
+${ when(incremental(), `WHERE ingest_time >= Ingest_checkpoint ` )}
 
 QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'
 WINDOW
