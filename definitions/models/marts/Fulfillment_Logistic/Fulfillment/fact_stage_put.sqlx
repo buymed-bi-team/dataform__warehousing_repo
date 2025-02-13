@@ -19,7 +19,7 @@ select
 	, pi.sku as sku_code
 	, json_value(loca,"$.location") as location_shelf
   , pi.demand_quantity as qty_start	
-	, pi.done_quantity as qty_done
+	, SAFE_CAST(json_value(loca,"$.quantity") AS INT64) as qty_done
   , "" ticket_code
   , "" ticket_type
   , p.source_location
