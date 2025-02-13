@@ -22,7 +22,7 @@ WITH checkpoint_timestamp AS (
 
   WINDOW _window AS (PARTITION BY mg_id ORDER BY synced_at DESC, IF(action='d',3,IF(action='u',2,1)) DESC, last_updated_time desc)
 ), wrong_deleted_records_2 AS (
-  SELECT tbl1.mg_id, tbl1.ingest_time, tbl1.synced_at,tbl2.synced_at,  tbl1.action, tbl2.action, tbl1.r
+  SELECT tbl1.mg_id, tbl1.ingest_time, tbl1.synced_at synced_at_1 ,tbl2.synced_at synced_at_2,  tbl1.action action_1, tbl2.action action_2, tbl1.r
   FROM wrong_deleted_records_1 tbl1 
   LEFT JOIN wrong_deleted_records_1 tbl2 
     ON tbl1.mg_id = tbl2.mg_id 
