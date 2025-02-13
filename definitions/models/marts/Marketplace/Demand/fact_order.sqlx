@@ -126,6 +126,12 @@ WITH
         ELSE a.warehouse_code
       END
         AS fc_code,
+      CASE
+        WHEN (a.warehouse_code IS NULL) OR (a.warehouse_code ="") OR a.warehouse_code = "BD" THEN "MIENNAM" 
+        WHEN a.warehouse_code = "HN" THEN "MIENBAC"
+        WHEN a.warehouse_code = "DN" THEN "MIENTRUNG"
+      END
+        AS sales_region_code,
       a.sale_order_status AS so_status,
       JSON_VALUE(a.extra_props, '$.note') AS note,
       JSON_VALUE(a.extra_props, '$.auto_cancel_overdue_transfer') AS auto_cancel_overdue_transfer,
