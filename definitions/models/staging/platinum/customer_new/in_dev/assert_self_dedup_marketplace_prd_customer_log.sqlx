@@ -39,8 +39,7 @@ IF ( _assert <> 0 ) THEN
             IF
                 (action='d',3,
                 IF
-                (action='u',2,1)) DESC,
-                last_updated_time DESC)
+                (action='u',2,1)) DESC)
     );
     SET _assert = ( -- If Stll duplicate
         SELECT
