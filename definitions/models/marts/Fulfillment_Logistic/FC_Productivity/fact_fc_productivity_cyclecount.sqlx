@@ -21,5 +21,4 @@ select
     , 'CYCLE_COUNT' as stage_code
 FROM ${source.platinum}.warehouse_prd_inventory_audit_session_task as a
 where
-    a.created_date >= (select DATE(start_date) from cte_date)
-    AND a.end_time >= (select start_date from cte_date)
+   a.end_time >= (select start_date from cte_date)
