@@ -164,7 +164,7 @@ cte_sku_fc_location AS (
   gmv_l30d AS (
       SELECT
         sku_code
-        , sales_region_code
+        , oi.sales_region_code
         , SUM(demand_quantity * sales_price) AS gmv_l30d
       FROM ${ref('fact_order_item')} AS oi
         LEFT JOIN ${ref('fact_order')} AS o USING(order_id)
