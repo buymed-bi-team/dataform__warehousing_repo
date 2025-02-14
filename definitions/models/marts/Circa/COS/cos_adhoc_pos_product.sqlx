@@ -61,7 +61,7 @@ with product_base_unit as
     select product_id,
            pos_id,
            count(unit) as no_unit,
-           MAX(CASE WHEN sale_unit_price IS NULL THEN 1 ELSE 0 END) AS check_price_unit
+           MAX(CASE WHEN sale_unit_price = 0 THEN 1 ELSE 0 END) AS check_price_unit
     from price_sheet
     group by all
 )
