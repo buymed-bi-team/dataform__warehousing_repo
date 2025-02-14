@@ -57,15 +57,9 @@ with product_base_unit as
                                          on o.order_id = oi.order_id
                     where status like "%COMPLETE%"
                     group by 1,2)
-, check_unit_pricing as (
-    select product_id,
-           pos_id,
-           count(unit) as no_unit,
-           MAX(CASE WHEN sale_unit_price = 0 THEN 1 ELSE 0 END) AS check_price_unit
-    from price_sheet
-    group by all
-)
-select i.product_id,
+
+, combine as
+(select i.product_id,
        i.pos_id,
        i.seller_code,
        ps.unit,
@@ -83,22 +77,33 @@ select i.product_id,
             WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<61 THEN "60D"
             WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<90 THEN "90D" else "Others" END AS latest_date_order_range,
             case when DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<16 and on_hand_quantity >0 THEN "DEAD-1:No-Demand 15D"
-            WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<31 and on_hand_quantity >0 THEN "DEAD-2:No-Demand 30D" 
-            WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<46 and on_hand_quantity >0 THEN "DEAD-3:No-Demand 45D" 
+            WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<31 and on_hand_quantity >0 THEN "DEAD-2:No-Demand 30D"
+            WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<46 and on_hand_quantity >0 THEN "DEAD-3:No-Demand 45D"
             WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<61 and on_hand_quantity >0 THEN "DEAD-4:No-Demand 60D"
             WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<90 and on_hand_quantity >0 THEN "DEAD-5:No-Demand 90D"
-            -- WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<90 and on_hand_quantity >0 THEN "DEAD-I||No-Demand 90D" 
+            -- WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<90 and on_hand_quantity >0 THEN "DEAD-I||No-Demand 90D"
             else "Others" END AS stock_aging_type,
             no_ord,GMV,
             latest_ord,
             on_hand_quantity,
-            case when cup.check_price_unit = 1 then "contain unit not set" else "set full" end as check_unit_price_set
+--             case when cup.check_price_unit = 1 then "contain unit not set" else "set full" end as check_unit_price_set
 from inventory i
          left join price_sheet ps
                    on ps.product_id = i.product_id and ps.pos_id = i.pos_id and ps.seller_code = i.seller_code
          left join count_ord co
-                   on i.pos_id=co.pos_id and i.product_id= co.product_id
-                   left join check_unit_pricing cup on i.product_id= cup.product_id and i.pos_id = cup.pos_id
+                   on i.pos_id=co.pos_id and i.product_id= co.product_id),
+    check_unit_pricing as
+        (
+            select product_id,
+                   pos_id,
+                   max(case when sale_unit_price is null then 1 else 0 end ) as check_price_unit
+            from combine
+            group by all
+        )
+select i.*,
+       case when cup.check_price_unit = 1 then "contain unit not set" else "set full" end as check_unit_price_set
+from combine i
+left join check_unit_pricing cup on i.product_id= cup.product_id and i.pos_id = cup.pos_id
 
 
 
