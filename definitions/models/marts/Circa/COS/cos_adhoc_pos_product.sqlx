@@ -96,12 +96,14 @@ from inventory i
         (
             select product_id,
                    pos_id,
-                   max(case when sale_unit_price is null then 1 else 0 end ) as check_price_unit
+                   max(case when sale_unit_price >=0 then 0 else 1 end ) as check_price_unit
             from combine
+            where unit is not null
             group by all
         )
 select i.*,
-       case when (cup.check_price_unit = 1 and i.unit is not null) then "contain unit not set" else "set full" end as check_unit_price_set
+       case when (cup.check_price_unit = 1 and i.unit is not null) or price_set_check like "Price not set" then "contain unit not set" 
+       else "set full" end as check_unit_price_set
 from combine i
 left join check_unit_pricing cup on i.product_id= cup.product_id and i.pos_id = cup.pos_id
 where unit is not null
