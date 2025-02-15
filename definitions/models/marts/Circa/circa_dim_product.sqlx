@@ -79,7 +79,15 @@ qualify row_number() over( partition by product_id, unit) = 1 -- base on latest 
       from lakehouse-prod-394907.buymed_circa.product_retail_unit as a
       where a.sale_allowed is true 
       qualify row_number() OVER (PARTITION BY a.product_id ORDER BY convert_rate DESC) = 1
-)
+),
+
+    o2o_product AS (
+      SELECT 
+          CAST(REGEXP_EXTRACT(code, r'^\d{4,6}') AS INT64) AS product_id
+          , value as o2o
+      FROM collector.data_prd
+      WHERE object = 'CIRCA_PRODUCT' and type = 'IS_O2O' and submit_id = 5329
+    )
 
 select 
 (case
@@ -122,6 +130,10 @@ select
      , case 
         when p.brand is null or p.brand = "" then m.short_name 
         else p.brand end as brand_name
+    , case 
+        when op.o2o is null then "FALSE"
+        else op.o2o
+      end as is_o2o
 --      , mv.catm_group
 from lakehouse-prod-394907.buymed_circa.product_product as p
          left join efficacy_product as ep on ep.product_id = p.product_id
@@ -134,6 +146,7 @@ from lakehouse-prod-394907.buymed_circa.product_product as p
          left join convert_rate_ths as cr on cr.product_id = p.product_id
          left join cvr_po_ts as pt on pt.product_id = p.product_id
          left join rlv_price as rp on p.product_id = rp.product_id
+         left join o2o_product as op on p.product_id = op.product_id
 /* where p.name not like '%(Bỏ)%'
       and p.name not like  '%(bỏ)%'
       -- and cr._rank = 1 */
