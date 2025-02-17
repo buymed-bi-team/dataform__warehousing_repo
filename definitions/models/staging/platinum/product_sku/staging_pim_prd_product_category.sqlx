@@ -1,0 +1,34 @@
+config {
+    type: "table",
+    name: "pim_prd_product_category",
+    schema: "platinum_buymed_vn",
+    description: "Internal: https://product.buymed.com/category",
+    assertions: {
+        uniqueKey: 'mg_id',
+        nonNull: ["created_date"]
+    },
+    bigquery: {
+        partitionBy: "created_date"
+    },
+    tags:["custom_1h_past7"]
+}
+
+SELECT *,
+ CASE 
+    WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
+    ELSE "2099-01-01"
+  END AS created_date
+FROM ${source.silver}.pim_prd_product_category
+QUALIFY ROW_NUMBER() OVER (_window) = 1
+       AND FIRST_VALUE(action) OVER (_window) <> 'd'
+WINDOW
+  _window AS (
+  PARTITION BY
+    mg_id
+  ORDER BY
+    synced_at DESC,
+  IF
+    (action='d',3,
+    IF
+      (action='u',2,1)) DESC,
+    last_updated_time DESC)
