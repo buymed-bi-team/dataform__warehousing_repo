@@ -22,8 +22,9 @@ SELECT
         LOWER(JSON_VALUE(extra_props, '$.market_data.unit'))
         , ''
       ) AS competitor_unit
+    , SAFE_CAST(JSON_VALUE(extra_props, '$.is_checked') AS BOOL) AS is_checked
 FROM ${source.platinum}.marketplace_prd_product_v2_product_market_price
 WHERE 
     JSON_VALUE(extra_props, '$.source') IS NOT NULL
     AND created_date >= DATE_SUB(CURRENT_DATE("+7"), INTERVAL 7 DAY)
-QUALIFY ROW_NUMBER() over (PARTITION BY product_id, competitor, competitor_unit ORDER BY crawled_at DESC) = 1
+QUALIFY ROW_NUMBER() over (PARTITION BY product_id, competitor, competitor_unit, is_checked ORDER BY crawled_at DESC) = 1
