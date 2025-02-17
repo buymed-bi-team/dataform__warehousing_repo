@@ -13,7 +13,7 @@ config {
     bigquery: {
         partitionBy: "created_date"
     },
-    tags: ["custom_1h_past7","warehouse_prd_picking"]
+    tags: ["platinum_custom_20m","warehouse_prd_picking"]
 }
 
 
