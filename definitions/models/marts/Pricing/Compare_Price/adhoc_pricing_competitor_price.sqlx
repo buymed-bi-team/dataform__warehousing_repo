@@ -29,4 +29,5 @@ FROM ${source.platinum}.marketplace_prd_product_v2_product_market_price
 WHERE 
     JSON_VALUE(extra_props, '$.source') IS NOT NULL
     AND created_date >= DATE_SUB(CURRENT_DATE("+7"), INTERVAL 7 DAY)
+    AND LOWER(JSON_VALUE(extra_props, '$.source')) <> 'trungtamthuoc'
 QUALIFY ROW_NUMBER() over (PARTITION BY product_id, competitor, competitor_unit, is_checked ORDER BY crawled_at DESC) = 1
