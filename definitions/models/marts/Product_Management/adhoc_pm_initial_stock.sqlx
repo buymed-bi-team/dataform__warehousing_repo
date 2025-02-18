@@ -31,3 +31,4 @@ FROM ${source.platinum}.seller_prd_purchasing_initial_stock_draft AS a
     LEFT JOIN ${ref('dim_sku_sales_region_current')} AS b 
         ON a.sku = b.sku_code
         AND a.warehouse_code = b.fc_code
+WHERE b.sku_key_sales_region_code IS NOT NULL
