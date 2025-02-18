@@ -100,12 +100,38 @@ from inventory i
             from combine
             where unit is not null
             group by all
-        )
+        ),
+
+    cte_os as (
+        select
+            id as pos_id,
+            province,
+            s.sales_region_code
+        from buymed_circa_v2.entity_pos_profile m
+        left join gold_buymed_vn2.dim_fc_service_area s on m.province = s.service_area_code),
+        
+    cte_fs as (
+        select
+            id as pos_id,
+            province,
+            s.sales_region_code
+        from buymed_circa.entity_pos_profile m
+        left join gold_buymed_vn2.dim_fc_service_area s on m.province = s.service_area_code
+        where id in ("b6c40920-af79-4fb0-bdc4-9965ddb885d2", "e737c882-e90c-4fd2-8a4f-ac6afd248a33")
+        ), 
+
+    pos_region as (
+    select * from cte_fs
+    union all
+    select * from cte_os)
+
 select i.*,
        case when (cup.check_price_unit = 1 and i.unit is not null) or price_set_check like "Price not set" then "contain unit not set" 
-       else "set full" end as check_unit_price_set
+       else "set full" end as check_unit_price_set,
+       pr.sales_region_code
 from combine i
 left join check_unit_pricing cup on i.product_id= cup.product_id and i.pos_id = cup.pos_id
+left join pos_region pr on i.pos_id = pr.pos_id
 where unit is not null
 
 
