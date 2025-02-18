@@ -23,6 +23,7 @@ SELECT
         , ''
       ) AS competitor_unit
     , IFNULL(SAFE_CAST(JSON_VALUE(extra_props, '$.is_checked') AS BOOL), FALSE) AS is_checked
+    , IFNULL(SAFE_CAST(JSON_VALUE(extra_props, '$.is_checked_manual') AS BOOL), FALSE) AS is_verified
     , SAFE_CAST(JSON_VALUE(extra_props, '$.conversion_rate') AS INT64) AS conversion_rate
     , SAFE_CAST(JSON_VALUE(extra_props, '$.market_price') AS INT64) * SAFE_CAST(JSON_VALUE(extra_props, '$.conversion_rate') AS INT64) AS market_price_aft_convert
     , JSON_VALUE(extra_props, '$.province') AS province_code
