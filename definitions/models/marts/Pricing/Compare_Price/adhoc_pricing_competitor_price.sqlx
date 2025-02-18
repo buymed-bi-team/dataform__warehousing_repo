@@ -22,8 +22,14 @@ SELECT
         LOWER(JSON_VALUE(extra_props, '$.market_data.unit'))
         , ''
       ) AS competitor_unit
+    , IFNULL(SAFE_CAST(JSON_VALUE(extra_props, '$.is_checked') AS BOOL), FALSE) AS is_checked
+    , IFNULL(SAFE_CAST(JSON_VALUE(extra_props, '$.is_checked_manual') AS BOOL), FALSE) AS is_verified
+    , SAFE_CAST(JSON_VALUE(extra_props, '$.conversion_rate') AS INT64) AS conversion_rate
+    , SAFE_CAST(JSON_VALUE(extra_props, '$.market_price') AS INT64) * SAFE_CAST(JSON_VALUE(extra_props, '$.conversion_rate') AS INT64) AS market_price_aft_convert
+    , JSON_VALUE(extra_props, '$.province_code') AS province_code
 FROM ${source.platinum}.marketplace_prd_product_v2_product_market_price
 WHERE 
     JSON_VALUE(extra_props, '$.source') IS NOT NULL
     AND created_date >= DATE_SUB(CURRENT_DATE("+7"), INTERVAL 7 DAY)
-QUALIFY ROW_NUMBER() over (PARTITION BY product_id, competitor, competitor_unit ORDER BY crawled_at DESC) = 1
+    AND LOWER(JSON_VALUE(extra_props, '$.source')) <> 'trungtamthuoc'
+QUALIFY ROW_NUMBER() over (PARTITION BY product_id, competitor, competitor_unit, is_checked ORDER BY crawled_at DESC) = 1

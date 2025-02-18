@@ -37,6 +37,7 @@ with
     , get_columns as (
         select
             a.sku_code,
+            a.product_id,
             a.sales_region_code,
             c.seller_code,
             sel.supplier_type,

@@ -44,8 +44,6 @@ pre_operations {
   }
 }
 
---
-
 SELECT
 *,
 CASE 
