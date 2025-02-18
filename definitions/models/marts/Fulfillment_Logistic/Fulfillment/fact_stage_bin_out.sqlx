@@ -19,8 +19,9 @@ WITH
             wh.level as level_bin,
             timestamp_add(p.start_time, interval 7 hour) as ts_start,
             timestamp_add(p.end_time, interval 7 hour) as ts_done,
-            1 AS no_packages,
+            IF(json_value(p_b,'$.type') = "DELIVERY",1, 0) AS no_packages,
             t.num_package AS package_num,
+            json_value(p_b,'$.type') AS type
         from (
           SELECT *
           FROM ${source.platinum}.warehouse_prd_picking_pick_ticket
@@ -50,7 +51,7 @@ WITH
             ) as wh on wh.code = b
         where
             p.end_time >= (select start_date from cte_date)
-            and json_value(p_b,'$.type') = 'DELIVERY'
+            -- and json_value(p_b,'$.type') = 'DELIVERY'
     ),
 
     carton AS (
@@ -63,16 +64,18 @@ WITH
             , NULL
             , MAX(ts_start) as ts_start
             , MAX(ts_done) as ts_done
-            , AVG(package_num) - COUNT(1) AS no_packages
+            , AVG(package_num) - IFNULL(COUNTIF(type = "DELIVERY"),0) AS no_packages1
         FROM bin
         GROUP BY ALL
-        HAVING AVG(package_num) > COUNT(1)
+--         HAVING AVG(package_num) > COUNT(1)
+        HAVING no_packages1 > 0
     ),
 
     final AS (
       SELECT
-          * EXCEPT (package_num)
+          * EXCEPT (package_num, type)
       FROM bin
+      WHERE type = "DELIVERY"
       UNION ALL
       SELECT
           *
