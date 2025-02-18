@@ -1,0 +1,11 @@
+config {
+    type: "table", 
+    description: 
+        `PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.platinum}.seller_prd_purchasing_initial_stock_draft
+        `,
+    tags: ["custom_1h_past5", "PRODUCT_MANAGEMENT"]
+}
