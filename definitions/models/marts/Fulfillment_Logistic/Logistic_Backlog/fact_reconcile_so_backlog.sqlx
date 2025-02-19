@@ -56,4 +56,4 @@ left join (
 left join ${ref('dim_employee')} as acc on s.user_id = acc.branch_account_id
 where
 s.status not in ('DONE', 'CANCEL')
-QUALIFY ROW_NUMBER() OVER(PARTITION BY reference_code, hub_code ORDER BY created_ts DESC) = 1
+QUALIFY ROW_NUMBER() OVER(PARTITION BY reference_code, hub_code ORDER BY last_updated_ts DESC) = 1
