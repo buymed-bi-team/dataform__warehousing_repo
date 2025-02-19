@@ -27,9 +27,9 @@ pre_operations {
         DECLARE new_records ARRAY<STRING>;
         DECLARE deleted_records ARRAY<STRING>;
         
-        DECLARE TEMP_timestamp TIMESTAMP;
+        -- DECLARE TEMP_timestamp TIMESTAMP;
 
-        SET TEMP_timestamp = (SELECT TIMESTAMP("2025-01-23T06:07:00"));
+        -- SET TEMP_timestamp = (SELECT TIMESTAMP("2025-01-23T06:07:00"));
         
         SET Ingest_checkpoint = (SELECT max(ingest_time) FROM ${self()});
 
@@ -51,7 +51,8 @@ pre_operations {
                     DISTINCT IF(action = 'd',mg_id, NULL) IGNORE NULLS
                 ) AS deleted_records
             FROM ${source.silver}.seller_prd_purchasing_vendor_bill_item
-            WHERE ingest_time > Ingest_checkpoint AND ingest_time < TEMP_timestamp
+            WHERE ingest_time > Ingest_checkpoint 
+            -- AND ingest_time < TEMP_timestamp
         );
 
         IF ( has_new_data = TRUE ) THEN
@@ -88,9 +89,9 @@ END AS created_date
 FROM ${source.silver}.seller_prd_purchasing_vendor_bill_item s
 ${ when(incremental(), 
 `WHERE s.ingest_time > Ingest_checkpoint - INTERVAL 2 HOUR
-    AND s.ingest_time < TEMP_timestamp
+    -- AND s.ingest_time < TEMP_timestamp
     AND s.mg_id IN UNNEST(new_records) `, 
-`WHERE ingest_time > "2025-01-01" AND ingest_time <= "2025-01-22T13:00:00"` 
+// `WHERE ingest_time > "2025-01-01" AND ingest_time <= "2025-01-22T13:00:00"` 
 )}
 
 QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(s.action) OVER (_window) <> 'd'
