@@ -48,7 +48,7 @@ DELETED_RECORDS AS (
 -- UNION ALL
 
 SELECT 
-    "DELETED_RECORDS",mg_id, s_action, p_action , 0, s_ingest_time, p_ingest_time
+    "DELETED_RECORDS" info,mg_id, s_action, p_action , 0 as uname, s_ingest_time, p_ingest_time
 FROM DELETED_RECORDS
 
 UNION ALL 
