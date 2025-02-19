@@ -218,7 +218,7 @@ SELECT
   product.width,
   product.weight,
 
-  product.usage,
+  IF(product.usage = "Dùng tại chổ","Dùng tại chỗ", product.usage) AS usage,
   JSON_EXTRACT_SCALAR(product.extra_props, '$.is_portable') as is_portable,
   atc2.name AS act_2,
   atc3.name AS act_3,
