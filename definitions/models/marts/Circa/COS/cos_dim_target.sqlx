@@ -13,4 +13,4 @@ config {
     }
 }
 
-select * from buymed_external.cos_dim_target
+select * from buymed_external.os_dim_target
