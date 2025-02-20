@@ -40,7 +40,7 @@ select
     , json_value(prd,"$.sku") as bin_code
     , b.bin_type
     , LEAD(a.do_created_at) over (PARTITION BY COALESCE( ob.reference_code, a.reference_code_of_so ), bin_code ORDER BY a.do_created_at) AS next_do_created_at
-    , de.delivery_ts AS first_picked_at
+    , de.delivery_ts AS first_handover_at
 from (
         SELECT
             *
