@@ -5,4 +5,4 @@ config {
     name: "cos_dim_target"
 }
 
-select * from buymed_external.os_dim_target
+select * from buymed_external.store_target
