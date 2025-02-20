@@ -1,6 +1,6 @@
 config {
     type: "table",
-    description: `Schedule: hourly | PIC: dong.le
+    description: `Schedule: hourly | PIC: nguyen.tran
     Source:
       ${source.platinum}.marketplace_prd_product_v2_sku,
       ${source.ref}.dim_fc_service_area

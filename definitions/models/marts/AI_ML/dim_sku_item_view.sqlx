@@ -1,12 +1,14 @@
 config {
     type: "view",
-    description: "Schedule: daily at 12am, 12pm | PIC: dong.le",
+    description: "Schedule: hourly | PIC: nguyen.tran",
     name: "dim_sku_item_view",
     schema: "buymed_product_recommendation",
      columns: {
        sku_fc_key: "primary-key, concatenation of product_id, seller_code, and fc_code",
        sku_sr_key: "concatenation of sku and sales region code",
-       item_system_active: "the status of sku_item in system ( ACTIVE or INACTIVE )"
+       item_status: "status from internal",
+       item_is_active: "is_active from internal",
+       item_system_active: "the status of sku_item in system ( ACTIVE or INACTIVE ). if item_status IN ('NORMAL', 'LIMIT') AND item_is_active IS TRUE, 'ACTIVE', else 'INACTIVE'"
     }
 
 }
