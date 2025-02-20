@@ -142,8 +142,14 @@ WHERE
   o.status LIKE '%COMPLETE%'
   -- group by all
     qualify row_number() over(partition by oi.id order by base_unit_cost_price desc) = 1
-    )
-select *
+    ),
+
+order_items as (select *
 from cte_fs
 union all
-select * from cte_os
+select * from cte_os)
+
+select i.*, fo.order_code
+from order_items i
+left join ${ref('cos_fact_order')} fo on i.order_id = fo.order_id
+where fo.order_id is not null
