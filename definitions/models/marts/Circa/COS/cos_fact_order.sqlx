@@ -46,12 +46,13 @@ cte_fs as
        fulfillment_status,
        date(DATETIME_ADD(completed_at, INTERVAL 7 HOUR))  as completed_date,
        medicine_cutting_fee,
-       CAST(return_id as string) as return_codes
+       STRING_AGG(CAST(return_id as string)) as return_codes
 from ${source.circa}.order_order o
 left join UNNEST(JSON_VALUE_ARRAY(order_return_codes)) AS return_id
 left join ${source.circa}.entity_pos_profile p on o.pos_id = p.id
 where pos_id in ("b6c40920-af79-4fb0-bdc4-9965ddb885d2", "e737c882-e90c-4fd2-8a4f-ac6afd248a33")
-    AND o.type <> 'RETURN'),
+    AND o.type <> 'RETURN'
+group by all),
 
 cte_os as
     (select o.id as order_id,
@@ -68,11 +69,12 @@ cte_os as
        fulfillment_status,
        date(DATETIME_ADD(completed_at, INTERVAL 7 HOUR))  as completed_date,
        medicine_cutting_fee,
-       CAST(return_id as string) as return_codes
+       STRING_AGG(CAST(return_id as string)) as return_codes
 from ${source.circa_os}.order_order o
 left join UNNEST(JSON_VALUE_ARRAY(order_return_codes)) AS return_id
 left join ${source.circa_os}.entity_pos_profile p on o.pos_id = p.id
-where o.type <> 'RETURN')
+where o.type <> 'RETURN'
+group by all)
 
 select
     *
