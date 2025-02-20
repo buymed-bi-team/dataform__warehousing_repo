@@ -1,0 +1,16 @@
+config {
+    type: "table",
+    description: `Last 13 month| PIC: huyen.nguyenthu; model_type: Table ;schedule: At minute 5 past hour 6, 8, 10, 12, 14, 16, 18, 20 and 22`,
+    tags: ["custom_2h_past5"],
+    name: "có_dim_target",
+    columns: {
+        order_id: "NonNull |" + docs.order_id,
+        customer_id: "NonNull | The unique identifier for each customer"
+        
+    },
+    bigquery: {
+        partitionBy: "date(created_at)"
+    }
+}
+
+select * from buymed_external.cos_dim_target
