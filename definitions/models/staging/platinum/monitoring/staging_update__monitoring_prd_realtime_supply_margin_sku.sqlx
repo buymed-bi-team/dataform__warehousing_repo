@@ -11,30 +11,39 @@ config {
     },
     tags:["platinum_custom_2h_past7","monitoring_prd_realtime-supply"]
 }
+
+/*
+Currently I expect that monitoring_prd_realtime_supply margin_sku will never have delete action and deleting field update action
+*/
+
 pre_operations {
   ${
     when(incremental(),
       `
       DECLARE Ingest_checkpoint TIMESTAMP;
-      DECLARE checkpoint_date ARRAY<date>;
+      DECLARE checkpoint_date ARRAY<DATE>;
+      DECLARE new_records ARRAY<STRING>;
+      DECLARE deleted_key ARRAY <STRING>;
 
       SET Ingest_checkpoint = (SELECT max(ingest_time) FROM ${self()});
 
-      SET checkpoint_date = ARRAY( 
-        SELECT DISTINCT IF(created_time is NULL, "2099-01-01" , DATE( DATETIME(created_time,'Asia/Ho_Chi_Minh') ) )
-        FROM silver_buymed_vn.monitoring_prd_realtime_supply_pricing 
+      SET (checkpoint_date, new_records) = ( 
+        SELECT AS STRUCT 
+          ARRAY_AGG( IF(created_time is NULL, "2099-01-01" , DATE( DATETIME(created_time,'Asia/Ho_Chi_Minh') ) ) ) checkpoint_date,
+          ARRAY_AGG( mg_id ) new_records
+        FROM silver_buymed_vn.monitoring_prd_realtime_supply_margin_sku 
         WHERE ingest_time > Ingest_checkpoint
       );
       
-      IF ( SELECT ARRAY_LENGTH(checkpoint_date) > 0 ) THEN
-            DELETE FROM ${self()}
-            where created_date in UNNEST(checkpoint_date)
-            and mg_id in ( 
-              SELECT DISTINCT mg_id 
-              FROM silver_buymed_vn.monitoring_prd_realtime_supply_pricing
-              WHERE ingest_time > Ingest_checkpoint
-              );
-      END IF;
+      -- IF ( SELECT ARRAY_LENGTH(checkpoint_date) > 0 ) THEN
+      --       DELETE FROM ${self()}
+      --       where created_date in UNNEST(checkpoint_date)
+      --       and mg_id in ( 
+      --         SELECT DISTINCT mg_id 
+      --         FROM silver_buymed_vn.monitoring_prd_realtime_supply_margin_sku
+      --         WHERE ingest_time > Ingest_checkpoint
+      --         );
+      -- END IF;
 
       `,
       ``
@@ -42,26 +51,173 @@ pre_operations {
   }
 }
 
+
 --
+WITH CDC_With_UpdateLookup AS (
+  ${when(incremental(),
+  `
+  SELECT * FROM ${self()}
+  WHERE created_date in UNNEST(checkpoint_date)
+  AND mg_id in UNNEST( new_records )`,
+  `
+  SELECT
+  *
+  FROM ${source.silver}.monitoring_prd_realtime_supply_margin_sku o 
+  QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'
+  WINDOW
+  _window AS (
+  PARTITION BY
+      mg_id
+  ORDER BY
+      synced_at DESC,
+  IF
+      (action='d',3,
+      IF
+      (action='u',2,1)) DESC,
+      last_updated_time DESC)
+  `)}
+  
+)
+, CDC_Without_UpdateLookUp As (
+  SELECT *
+  FROM 
+  (
+    SELECT 
+      mg_id,
+      FIRST_VALUE(key IGNORE NULLS) OVER(w) key, 
+      -- ingest_time,
+      FIRST_VALUE(ingest_time IGNORE NULLS) OVER(w) ingest_time, 
+      -- ARRAY_AGG(key order by last_updated_time desc)[0] AS key  ,
+      -- ARRAY_AGG(synced_at order by last_updated_time desc)[0] AS synced_at ,
+      -- created_time,
+      FIRST_VALUE(created_time IGNORE NULLS)  OVER(w) created_time,
+      FIRST_VALUE(synced_at IGNORE NULLS)  OVER(w) synced_at, 
+      FIRST_VALUE(last_updated_time IGNORE NULLS)  OVER(w) last_updated_time,
+      FIRST_VALUE(action IGNORE NULLS)  OVER(w) action,
+      -- action ,
+      FIRST_VALUE(extra_props IGNORE NULLS) OVER(w) extra_props
+      -- extra_props
 
-SELECT
-*,
-CASE 
-    WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
-    ELSE "2099-01-01"
-END AS created_date
-FROM ${source.silver}.monitoring_prd_realtime_supply_pricing o 
-${ when(incremental(), `WHERE ingest_time > Ingest_checkpoint ` )}
+      , FIRST_VALUE(day_str IGNORE NULLS) OVER(w) day_str
+      , FIRST_VALUE(location_code IGNORE NULLS) OVER(w) location_code
+      , FIRST_VALUE(minute_str IGNORE NULLS) OVER(w) minute_str
+      , FIRST_VALUE(sku IGNORE NULLS) OVER(w) sku
+      , FIRST_VALUE(span IGNORE NULLS) OVER(w) span
+      , FIRST_VALUE(margin IGNORE NULLS) OVER(w) margin
+      , FIRST_VALUE(margin_percent IGNORE NULLS) OVER(w) margin_percent
+      , FIRST_VALUE(profit IGNORE NULLS) OVER(w) profit
+      , FIRST_VALUE(total_price IGNORE NULLS) OVER(w) total_price
+      , FIRST_VALUE(total_purchasing_value IGNORE NULLS) OVER(w) total_purchasing_value
+      , FIRST_VALUE(total_quantity IGNORE NULLS) OVER(w) total_quantity
+      
+    FROM ${source.silver}.monitoring_prd_realtime_supply_margin_sku__update
+    ${ when(incremental(), `WHERE ingest_time > Ingest_checkpoint ` )}
+    WINDOW w AS (
+      partition by mg_id 
+      ORDER BY 
+        IF(action = "d", 3, IF(action IN ('r','u') , 2, 1)) DESC,
+        last_updated_time DESC,
+        synced_at DESC
+      ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+    )
+  ) cte_table 
+  QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'
+  WINDOW _window AS (
+    partition by mg_id 
+    ORDER BY 
+      IF(action = "d", 3, IF(action IN ('r','u') , 2, 1)) DESC,
+      last_updated_time DESC,
+      synced_at DESC
+  )
+), merge_old AS (
+  /*
+  SELECT 
+    CONCAT( "IF( o. last_updated_time > n. last_updated_time, o.", column_name , ", COALESCE( n.",  column_name ,", o.", column_name, " ) ) AS ", column_name, "," )
+  FROM `lakehouse-prod-394907.silver_buymed_vn.INFORMATION_SCHEMA.COLUMNS`
+  WHERE table_name = "monitoring_prd_realtime_supply_margin_sku"
+  AND column_name not like "mg_id"
 
-QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'
-WINDOW
-_window AS (
-PARTITION BY
-    mg_id
-ORDER BY
-    synced_at DESC,
-IF
-    (action='d',3,
-    IF
-    (action='u',2,1)) DESC,
-    last_updated_time DESC)
+  */
+  SELECT 
+    o.mg_id,
+    IF( o. last_updated_time > n. last_updated_time OR n.last_updated_time IS NULL , o.key, COALESCE( n.key, o.key ) ) AS key,
+    IF( o. last_updated_time > n. last_updated_time OR n.last_updated_time IS NULL , o.day_str, COALESCE( n.day_str, o.day_str ) ) AS day_str,
+    IF( o. last_updated_time > n. last_updated_time OR n.last_updated_time IS NULL , o.location_code, COALESCE( n.location_code, o.location_code ) ) AS location_code,
+    IF( o. last_updated_time > n. last_updated_time OR n.last_updated_time IS NULL , o.minute_str, COALESCE( n.minute_str, o.minute_str ) ) AS minute_str,
+    IF( o. last_updated_time > n. last_updated_time OR n.last_updated_time IS NULL , o.sku, COALESCE( n.sku, o.sku ) ) AS sku,
+    IF( o. last_updated_time > n. last_updated_time OR n.last_updated_time IS NULL , o.span, COALESCE( n.span, o.span ) ) AS span,
+    IF( o. last_updated_time > n. last_updated_time OR n.last_updated_time IS NULL , o.created_time, COALESCE( n.created_time, o.created_time ) ) AS created_time,
+    IF( o. last_updated_time > n. last_updated_time OR n.last_updated_time IS NULL , o.last_updated_time, COALESCE( n.last_updated_time, o.last_updated_time ) ) AS last_updated_time,
+    IF( o. last_updated_time > n. last_updated_time OR n.last_updated_time IS NULL , o.margin, COALESCE( n.margin, o.margin ) ) AS margin,
+    IF( o. last_updated_time > n. last_updated_time OR n.last_updated_time IS NULL , o.margin_percent, COALESCE( n.margin_percent, o.margin_percent ) ) AS margin_percent,
+    IF( o. last_updated_time > n. last_updated_time OR n.last_updated_time IS NULL , o.profit, COALESCE( n.profit, o.profit ) ) AS profit,
+    IF( o. last_updated_time > n. last_updated_time OR n.last_updated_time IS NULL , o.total_price, COALESCE( n.total_price, o.total_price ) ) AS total_price,
+    IF( o. last_updated_time > n. last_updated_time OR n.last_updated_time IS NULL , o.total_purchasing_value, COALESCE( n.total_purchasing_value, o.total_purchasing_value ) ) AS total_purchasing_value,
+    IF( o. last_updated_time > n. last_updated_time OR n.last_updated_time IS NULL , o.total_quantity, COALESCE( n.total_quantity, o.total_quantity ) ) AS total_quantity,
+    IF( o. last_updated_time > n. last_updated_time OR n.last_updated_time IS NULL , o.synced_at, COALESCE( n.synced_at, o.synced_at ) ) AS synced_at,
+    IF( o. last_updated_time > n. last_updated_time OR n.last_updated_time IS NULL , o.extra_props, COALESCE( n.extra_props, o.extra_props ) ) AS extra_props,
+    IF( o. last_updated_time > n. last_updated_time OR n.last_updated_time IS NULL , o.action, COALESCE( n.action, o.action ) ) AS action,
+    IF( o. last_updated_time > n. last_updated_time OR n.last_updated_time IS NULL , o.ingest_time, COALESCE( n.ingest_time, o.ingest_time ) ) AS ingest_time
+  FROM CDC_With_UpdateLookup o
+  LEFT JOIN CDC_Without_UpdateLookUp n
+    ON o.mg_id = n.mg_id 
+  -- WHERE NOT a.last_updated_time > b.last_updated_time
+), get_new AS (
+  SELECT 
+    n.mg_id,
+    n.key,
+    n.day_str,
+    n.location_code,
+    n.minute_str,
+    n.sku,
+    n.span,
+    n.created_time,
+    n.last_updated_time,
+    n.margin,
+    n.margin_percent,
+    n.profit,
+    n.total_price,
+    n.total_purchasing_value,
+    n.total_quantity,
+    n.synced_at,
+    n.extra_props,
+    n.action,
+    n.ingest_time
+  FROM CDC_With_UpdateLookup o
+  RIGHT JOIN CDC_Without_UpdateLookUp n 
+    ON o.mg_id = n.mg_id 
+  WHERE o.mg_id IS NULL
+), Merge_version AS (
+  SELECT * FROM merge_old
+  UNION ALL 
+  SELECT * FROM get_new
+)
+SELECT *,
+  CASE 
+      WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
+      ELSE "2099-01-01"
+  END AS created_date
+FROM Merge_version 
+
+post_operations {
+  ${when(incremental(),`
+  SET deleted_key = ARRAY(
+    SELECT key
+    FROM ${self()}
+    WHERE created_date in UNNEST(checkpoint_date)
+      AND mg_id in UNNEST( new_records )
+    QUALIFY ROW_NUMBER() OVER (_window) = 2
+    WINDOW _window AS (
+      partition by mg_id 
+      ORDER BY 
+        IF(action = "d", 3, IF(action IN ('r','u') , 2, 1)) DESC,
+        last_updated_time DESC,
+        synced_at DESC
+    )
+  );
+  DELETE FROM ${self()}
+  WHERE created_date in UNNEST(checkpoint_date)
+  AND key in UNNEST(deleted_key)
+
+  `,``)}
+}
