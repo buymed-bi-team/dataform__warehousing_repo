@@ -5,17 +5,21 @@ config {
     name: "warehouse_prd_inbound_damage_ticket",
     schema: "platinum_buymed_vn",
     assertions: {
-        uniqueKey: 'mg_id'
-        //nonNull: ["created_date"]
+        uniqueKey: 'mg_id',
+        nonNull: ["created_date"]
     },
-   // bigquery: {
-   //     partitionBy: "created_date"
-    //},
+    bigquery: {
+        partitionBy: "created_date"
+    },
     tags: ["warehouse_prd_inbound","platinum_custom_20m"]
 }
 
 SELECT
  * ,
+ CASE 
+    WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
+    ELSE "2099-01-01"
+END AS created_date
 FROM ${source.silver}.warehouse_prd_inbound_damage_ticket o 
 QUALIFY ROW_NUMBER() OVER (_window) = 1
 AND FIRST_VALUE(action) OVER (_window) <> 'd'
