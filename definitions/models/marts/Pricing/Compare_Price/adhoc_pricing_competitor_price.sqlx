@@ -27,8 +27,8 @@ SELECT
     , IFNULL(SAFE_CAST(JSON_VALUE(a.extra_props, '$.is_checked') AS BOOL), FALSE) AS is_checked
     , IFNULL(SAFE_CAST(JSON_VALUE(a.extra_props, '$.is_checked_manual') AS BOOL), FALSE) AS is_verified
     , IFNULL(JSON_VALUE(a.extra_props, '$.qc'), "NOT_QC_YET") AS qc
-    , SAFE_CAST(JSON_VALUE(a.extra_props, '$.conversion_rate') AS INT64) AS conversion_rate
-    , SAFE_CAST(JSON_VALUE(a.extra_props, '$.market_price') AS INT64) * SAFE_CAST(JSON_VALUE(a.extra_props, '$.conversion_rate') AS INT64) AS market_price_aft_convert
+    , SAFE_CAST(JSON_VALUE(a.extra_props, '$.conversion_rate') AS FLOAT64) AS conversion_rate
+    , SAFE_CAST(JSON_VALUE(a.extra_props, '$.market_price') AS INT64) * SAFE_CAST(JSON_VALUE(a.extra_props, '$.conversion_rate') AS FLOAT64) AS market_price_aft_convert
     , JSON_VALUE(a.extra_props, '$.province_code') AS province_code
 FROM ${source.platinum}.marketplace_prd_product_v2_product_market_price AS a
     LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_market_price_source AS b 
