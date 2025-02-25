@@ -6,5 +6,5 @@ config {
 }
 
 select *,
-    concat(year_month, "_", employee_code) as extra_hour_id
+    concat(year_month, "_", emp_code) as extra_hour_id
 from buymed_external.dim_extra_hour
