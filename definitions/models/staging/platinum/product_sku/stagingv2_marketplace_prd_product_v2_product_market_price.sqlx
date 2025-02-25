@@ -1,0 +1,102 @@
+
+
+config {
+    type: "incremental",
+    name: "marketplace_prd_product_v2_product_market_price",
+    schema: "platinum_buymed_vn",
+    assertions: {
+        uniqueKey: 'mg_id',
+        nonNull: ["created_date"]
+    },
+    bigquery: {
+        partitionBy: "created_date"
+    },
+    tags:["custom_1h_past7","marketplace_prd_product-v2","VN_product"]
+}
+
+
+pre_operations {
+  ${
+    when(incremental(),
+        `
+        # Incremental
+        DECLARE has_new_data BOOLEAN;
+        DECLARE Ingest_checkpoint TIMESTAMP;
+        DECLARE checkpoint_date ARRAY<date>;
+        DECLARE new_records ARRAY<STRING>;
+        DECLARE deleted_records ARRAY<STRING>;
+        
+        SET Ingest_checkpoint = (SELECT max(ingest_time) FROM ${self()});
+
+        SET ( has_new_data, checkpoint_date, new_records, deleted_records ) = ( 
+            SELECT AS STRUCT 
+                IF ( 
+                    COUNT(*) > 0 , TRUE, FALSE 
+                ) has_new_data,
+                /* 
+                    has_new_data describe the existance of data after the last refresh time of platinum 
+                */
+                ARRAY_AGG(
+                    DISTINCT IF(created_time is NULL, "2099-01-01" , DATE( DATETIME(created_time,'Asia/Ho_Chi_Minh') ) )
+                ) AS checkpoint_date,
+                ARRAY_AGG (
+                    DISTINCT mg_id IGNORE NULLS
+                ) AS new_records,
+                ARRAY_AGG (
+                    DISTINCT IF(action = 'd',mg_id, NULL) IGNORE NULLS
+                ) AS deleted_records
+            FROM ${source.silver}.marketplace_prd_product_v2_product_market_price
+            WHERE ingest_time > Ingest_checkpoint
+        );
+
+        IF ( has_new_data = TRUE ) THEN
+            IF (SELECT ARRAY_LENGTH(deleted_records) > 0) THEN 
+              SET checkpoint_date = ARRAY( 
+                SELECT DISTINCT created_date
+                FROM ${self()} 
+                WHERE mg_id IN UNNEST(new_records)
+              );
+            END IF;
+
+            DELETE FROM ${self()}
+            WHERE 
+                created_date IN UNNEST(checkpoint_date)
+                AND mg_id IN UNNEST(new_records)
+            ;
+        ELSE 
+            SET Ingest_checkpoint = TIMESTAMP("2099-01-01T00:00:00");
+        END IF ;
+    
+      `,
+      ``
+    )
+  }
+}
+
+--
+SELECT
+s.*,
+CASE 
+    WHEN s.created_time IS NOT NULL THEN DATE(DATETIME(s.created_time,'Asia/Ho_Chi_Minh'))
+    ELSE "2099-01-01"
+END AS created_date
+FROM ${source.silver}.marketplace_prd_product_v2_product_market_price s
+${ when(incremental(), 
+`WHERE s.ingest_time > Ingest_checkpoint - INTERVAL 2 HOUR
+    AND s.mg_id IN UNNEST(new_records) `, 
+`` 
+)}
+
+QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(s.action) OVER (_window) <> 'd'
+WINDOW
+_window AS (
+PARTITION BY
+    s.mg_id
+ORDER BY
+    s.synced_at DESC,
+    IF
+        (s.action='d',3,
+        IF
+        (s.action='u',2,1)) DESC,
+        s.last_updated_time DESC)
+
