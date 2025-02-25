@@ -1,9 +1,9 @@
 config {
-    type: 'table',
+    type: 'incremental',
     name: "fact_user_search_event",
     description: `Started time: 20240901 | PIC: tu.dang; schedule: 0h00 daily; model type: table
     Source:
-        ${source.silver}.monitoring_prd_collector_user_stats_*`,
+        ${source.ref}.fact_user_event_tracking`,
     columns: {
         event: `NonNull | In all Customer Search Action`,
         customer_id: "NonNull | The unique identifier for the customer",
@@ -15,53 +15,59 @@ config {
         sku_code: "NonNull" | docs.sku,
         is_sku_customer_first_interaction_in_30_days: "NonNull | A boolean indicating whether this is the customer's first interaction with the SKU in the past 30 days. It's determined by checking if there are any previous interactions with the same customer_id, sku_code, and event within 30 days before the current created_time.",
     },
-    /* tags: ['2h00'],*/
+    tags: ["custom_1h_past5"],
     bigquery: {
         partitionBy: "date(created_time)",
-        clusterBy: ["event", "customer_id"]
+        clusterBy: ["customer_id"]
     },
+}
+
+pre_operations {
+    ${
+        when(incremental(),
+        `
+            DELETE FROM ${self()}
+            WHERE created_time >= DATETIME(CURRENT_DATE("+7"));
+            DELETE FROM ${self()}
+            WHERE created_time < DATETIME_SUB(DATETIME_TRUNC(CURRENT_DATETIME("+7"), MONTH), INTERVAL 1 MONTH);
+        `
+
+    )}
 }
 
 WITH stg AS (
     SELECT
-        event,
-        customer_id,
-        created_time,
-        JSON_EXTRACT_SCALAR(extra_props, '$.user_metadata.LOCATION') AS province_code,
-        -- JSON_EXTRACT_SCALAR(extra_props, '$.metadata.screen') AS screen,
-        -- JSON_EXTRACT_SCALAR(extra_props, '$.metadata.source') AS source,
-        JSON_EXTRACT_SCALAR(extra_props, '$.metadata.content') AS search_content,
-        JSON_EXTRACT_SCALAR(extra_props, '$.metadata.status') AS search_status,
-        -- JSON_EXTRACT_SCALAR(extra_props, '$.metadata.sku') AS sku_code,
-        JSON_EXTRACT_SCALAR(extra_props, '$.ua_metadata.CLIENT') AS client,    
-        JSON_EXTRACT_SCALAR(extra_props, '$.ua_metadata.PLATFORM') AS platform,
-        JSON_EXTRACT_SCALAR(extra_props, '$.metadata.host') AS host,
-        ingest_time,
-    LEAD(event) over(partition by customer_id order by created_time) as next_action,
-    LEAD(datetime(created_time, "Asia/Ho_Chi_Minh")) over(partition by customer_id order by created_time) as next_action_created_time
-    FROM
-    `${source.silver}.monitoring_prd_collector_user_stats_*`
-  WHERE
-    _TABLE_SUFFIX BETWEEN '20240901'
-    AND FORMAT_DATE('%Y%m%d', CURRENT_DATE())
-    -- AND event IN ( "SEARCH") 
-    )
+        event
+        , customer_id
+        , created_time
+        , province_code
+        , client
+        , platform
+        , search_content
+        , search_status
+        , LEAD(event) over(partition by customer_id order by created_time) as next_action
+        , LEAD(created_time) over(partition by customer_id order by created_time) as next_action_created_time
+    FROM ${ref('fact_user_event_tracking')}
+    WHERE 
+        DATE(created_time) >= ${when(incremental(), `current_date("+7")`, `DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 1 MONTH)`)}
+    -- DATE(created_time) >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 1 MONTH)
+)
 SELECT
     event,
     customer_id,
-    DATETIME(created_time, "Asia/Ho_Chi_Minh") AS created_time,
+    created_time,
     province_code,
     -- screen,
     -- source,
     client,
     platform,
-    host,
     search_content,
     search_status, 
-    next_action,next_action_created_time
+    next_action,
+    next_action_created_time
 FROM
     stg
-where customer_id >0 AND event IN ( "SEARCH") 
+where customer_id >0 AND event ="SEARCH"
 
 
 
