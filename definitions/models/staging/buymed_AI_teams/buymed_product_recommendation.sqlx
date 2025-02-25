@@ -1,0 +1,35 @@
+config {
+    type:"operations"
+}
+
+js {
+    internal_source = "buymed_product_recommendation"
+}
+
+
+CREATE VIEW IF NOT EXISTS  `${internal_source}.integration_prd_chat_message`
+AS ( SELECT * FROM `${source.platinum}.integration_prd_chat_message` );
+
+ALTER VIEW IF EXISTS `${internal_source}.integration_prd_chat_message`
+SET OPTIONS (
+    description = "PARTITION BY created_date"
+);
+
+GRANT `roles/bigquery.dataViewer`
+ON TABLE `${source.platinum}.integration_prd_chat_message`
+TO 
+"user:thi.nguyenhoang@buymed.com";
+
+
+CREATE VIEW IF NOT EXISTS  `${internal_source}.marketplace_prd_ticket_ticket`
+AS ( SELECT * FROM `${source.platinum}.marketplace_prd_ticket_ticket` );
+
+ALTER VIEW IF EXISTS `${internal_source}.marketplace_prd_ticket_ticket`
+SET OPTIONS (
+    description = "PARTITION BY created_date"
+);
+
+GRANT `roles/bigquery.dataViewer`
+ON TABLE `${source.platinum}.marketplace_prd_ticket_ticket`
+TO 
+"user:thi.nguyenhoang@buymed.com";
