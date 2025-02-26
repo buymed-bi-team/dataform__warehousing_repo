@@ -1,7 +1,7 @@
 config {
     type: 'table',
     name: "agg_online_customer_by_date",
-    schema: "buymed_product_recommendation",
+    schema: "buymed_innovation",
     description: `date_start: 2024-06-01 | PIC: tu.dang; schedule: 0h00 daily; model type: table
     Source:
         ${source.platinum}.monitoring_prd_realtime_user_customer_session_v3
