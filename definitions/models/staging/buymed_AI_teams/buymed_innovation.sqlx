@@ -1,0 +1,81 @@
+config {
+    type:"operations"
+}
+
+js {
+    internal_source = "buymed_innovation"
+}
+
+
+-- integration_prd_chat_message
+CREATE VIEW IF NOT EXISTS  `${internal_source}.integration_prd_chat_message`
+AS ( SELECT * FROM `${source.platinum}.integration_prd_chat_message` );
+
+ALTER VIEW IF EXISTS `${internal_source}.integration_prd_chat_message`
+SET OPTIONS (
+    description = "PARTITION BY created_date"
+);
+
+GRANT `roles/bigquery.dataViewer`
+ON TABLE `${source.platinum}.integration_prd_chat_message`
+TO 
+"user:thi.nguyenhoang@buymed.com",
+"serviceAccount:bia-333@lakehouse-prod-394907.iam.gserviceaccount.com";
+
+
+-- marketplace_prd_ticket_ticket
+
+CREATE VIEW IF NOT EXISTS  `${internal_source}.marketplace_prd_ticket_ticket`
+AS ( SELECT * FROM `${source.platinum}.marketplace_prd_ticket_ticket` );
+
+ALTER VIEW IF EXISTS `${internal_source}.marketplace_prd_ticket_ticket`
+SET OPTIONS (
+    description = "PARTITION BY created_date"
+);
+
+GRANT `roles/bigquery.dataViewer`
+ON TABLE `${source.platinum}.marketplace_prd_ticket_ticket`
+TO 
+"user:thi.nguyenhoang@buymed.com",
+"serviceAccount:bia-333@lakehouse-prod-394907.iam.gserviceaccount.com";
+
+
+-- dim_customer
+CREATE VIEW IF NOT EXISTS  `${internal_source}.dim_customer` 
+(
+    customer_id OPTIONS (DESCRIPTION="NonNull"),
+    customer_report_category OPTIONS (DESCRIPTION=CONCAT(
+      "NonNull | Is one of TECH, TENDER, MARKETPLACE, or CIRCA?"
+      ,"\nCategory assigned to the customer based on specific conditions:"
+      ,"\n- TECH: If the customer's name contains keywords like 'TECH SELLER', 'TEST', 'TECH-QC', etc."
+      ,"\n- TENDER: If the customer's tags contain 'TENDER'."
+      ,"\n- MARKETPLACE: If the customer's tags contain 'TERMINATE_CIRCA' or as a default category."
+      ,"\n- CIRCA: If the customer's tags contain 'CIRCA'"
+    )),
+    business_scope OPTIONS (DESCRIPTION="Nullable | Null means UNKNOWN scope"),
+    customer_status OPTIONS (DESCRIPTION="NonNull | Must be one of following: 'DELETED','ACTIVATE','INACTIVE'"),
+    customer_ward_code OPTIONS (DESCRIPTION="Nullable | If the customer doesn't have a ward_code, then get ward_code of last order of customer from the order table. Otherwise, return null"),
+    customer_level 
+)
+AS ( 
+    select customer_id, customer_report_category, 
+    business_scope, customer_level, customer_ward_code, customer_status
+    from `${source.ref}.dim_customer`
+);
+
+ALTER VIEW IF EXISTS `${internal_source}.dim_customer` 
+SET OPTIONS (
+    description = CONCAT(
+        "PIC: minh.luu; model_type: table; schedule 0h00"
+        ,"\nSource:"
+        ,"\n${source.silver}.marketplace_prd_customer_customer customer"
+        ,"\n${source.silver}.marketplace_prd_order_v2_order order`"
+    )
+);
+
+GRANT `roles/bigquery.dataViewer`
+ON TABLE `${source.ref}.dim_customer`
+TO 
+"user:thi.nguyenhoang@buymed.com",
+"serviceAccount:bia-333@lakehouse-prod-394907.iam.gserviceaccount.com";
+
