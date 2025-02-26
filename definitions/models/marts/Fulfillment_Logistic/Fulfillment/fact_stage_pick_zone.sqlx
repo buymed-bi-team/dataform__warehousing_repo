@@ -31,7 +31,7 @@ select
 	"" source_location,
 	FALSE is_not_increase_inventory,
 	timestamp_add(p.created_time , interval 7 hour) as ts_created,
-	"" basket_code,
+	ARRAY_TO_STRING(JSON_VALUE_ARRAY(p.baskets, "$.0.codes"), ", ") AS basket_code,
 	NULL level_bin,
 	NULL no_packages
 from (
