@@ -28,6 +28,11 @@ WITH
 
 SELECT
   a.customer_id,
+  case
+  when loc.area = "MIENTRUNG" then "CENTRAL"
+  when loc.area = "MIENBAC" then "NORTHERN"
+  when loc.area = "MIENNAM" then "SOUTHERN"
+  end as location,
   a.year_month,
   a.som,
   a.gmv,
@@ -44,5 +49,6 @@ LEFT JOIN ${ref('dim_customer_profiling_repeat')} AS c ON a.customer_id = c.cust
 LEFT JOIN ${ref('dim_customer_profiling_reacquire')} AS d ON a.customer_id = d.customer_id AND a.year_month = d.year_month
 LEFT JOIN ${ref('dim_customer_profilling_active')} AS e ON a.customer_id = e.customer_id AND a.year_month = e.year_month
 LEFT JOIN ${ref('dim_customer_churn')} AS f ON a.customer_id = f.customer_id AND a.year_month = f.year_month
+LEFT JOIN ${ref('dim_geo_location')} AS loc on cust.location_code = loc.location_code
 WHERE cust.customer_report_category <> "EMPLOYEE"
 GROUP BY ALL
