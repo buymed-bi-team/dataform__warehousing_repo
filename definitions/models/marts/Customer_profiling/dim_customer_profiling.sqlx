@@ -28,6 +28,11 @@ WITH
 
 SELECT
   a.customer_id,
+  case
+  when cust.config_fc = "MIENTRUNG" then "CENTRAL"
+  when cust.config_fc = "MIENBAC" then "NORTHERN"
+  when cust.config_fc = "MIENNAM" then "SOUTHERN"
+  end as location,
   a.year_month,
   a.som,
   a.gmv,
