@@ -1,8 +1,8 @@
 config {
     type: "incremental",
-    name: "pim_prd_product_product_retail_price_retail_price",
+    name: "pim_prd_product_product",
     schema: "platinum_buymed_vn",
-    description: "Internal: https://product.buymed.com/product_retail_price",
+    description: "Internal: https://product.buymed.com/product",
     assertions: {
         uniqueKey: 'mg_id',
         nonNull: ["created_date"]
@@ -10,8 +10,9 @@ config {
     bigquery: {
         partitionBy: "created_date"
     },
-    tags:["pim_prd_product","custom_1h_past7"]
+    tags:["custom_1h_past7"]
 }
+
 
 pre_operations {
   ${
@@ -47,7 +48,7 @@ pre_operations {
                 ARRAY_AGG (
                     DISTINCT IF(action = 'd',mg_id, NULL) IGNORE NULLS
                 ) AS deleted_records
-            FROM ${source.silver}.pim_prd_product_product_retail_price
+            FROM ${source.silver}.pim_prd_product_product
             WHERE ingest_time > Ingest_checkpoint 
             -- AND ingest_time < TEMP_timestamp
         );
@@ -83,7 +84,7 @@ CASE
     WHEN s.created_time IS NOT NULL THEN DATE(DATETIME(s.created_time,'Asia/Ho_Chi_Minh'))
     ELSE "2099-01-01"
 END AS created_date
-FROM ${source.silver}.pim_prd_product_product_retail_price s
+FROM ${source.silver}.pim_prd_product_product s
 ${ when(incremental(), 
 `WHERE s.ingest_time > Ingest_checkpoint - INTERVAL 2 HOUR
     -- AND s.ingest_time < TEMP_timestamp
