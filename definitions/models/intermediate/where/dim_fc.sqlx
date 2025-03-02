@@ -27,7 +27,7 @@ select
         when wh.code = 'DN' THEN 'PUR_DN'
     end as purchaser_code
     , extra_props as fc_extra_props
-FROM ${ref("dedup_warehouse_prd_core_warehouse")} as wh
+FROM ${dedup.dedup(`${source.silver}.warehouse_prd_core_warehouse`,`code, name, status, areas, extra_props`)} as wh
 WHERE json_value(wh.extra_props, "$.group_code") = "BUYMED" and wh.status = "ACTIVE"
 
 post_operations {                
