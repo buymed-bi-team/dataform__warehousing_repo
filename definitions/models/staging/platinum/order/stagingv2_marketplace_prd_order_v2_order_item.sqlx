@@ -21,10 +21,6 @@ pre_operations {
         DECLARE new_records ARRAY<STRING>;
         DECLARE deleted_records ARRAY<STRING>;
         
-        -- DECLARE TEMP_timestamp TIMESTAMP;
-
-        -- SET TEMP_timestamp = (SELECT TIMESTAMP("2025-01-23T06:07:00"));
-        
         SET Ingest_checkpoint = (SELECT max(ingest_time) FROM ${self()});
 
         SET ( has_new_data, checkpoint_date, new_records, deleted_records ) = ( 
@@ -44,7 +40,7 @@ pre_operations {
                 ARRAY_AGG (
                     DISTINCT IF(action = 'd',mg_id, NULL) IGNORE NULLS
                 ) AS deleted_records
-            FROM ${source.silver}.seller_prd_purchasing_vendor_bill_item
+            FROM ${source.silver}.marketplace_prd_order_v2_order_item
             WHERE ingest_time > Ingest_checkpoint 
             -- AND ingest_time < TEMP_timestamp
         );
@@ -86,7 +82,7 @@ FROM (
     END AS created_date
 
   FROM
-    ${source.silver}.marketplace_prd_order_v2_order_item o 
+    ${source.silver}.marketplace_prd_order_v2_order_item s
     ${ when(incremental(), 
       `WHERE s.ingest_time > Ingest_checkpoint - INTERVAL 2 HOUR
           -- AND s.ingest_time < TEMP_timestamp
