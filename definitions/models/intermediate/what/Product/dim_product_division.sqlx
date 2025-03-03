@@ -37,7 +37,7 @@ WITH
         SELECT
             *
         FROM UNNEST([
-            STRUCT (1246 AS division_id, "https://thuocsi1-my.sharepoint.com/:i:/g/personal/bi_buymed_com/EfOGh4eYWgFClpXIT8UbByABxtsNiSprBM7X5dEBewTXwA?e=U2POIi?download=1" AS image_link)
+            STRUCT (1246 AS division_id, "https://thuocsi1-my.sharepoint.com/:i:/g/personal/bi_buymed_com/EeCA2ecC4gRGrAAK4wRY228BzKwmKleK7RLGSknb7bi9Xw?e=L0yv7k?download=1" AS image_link)
         ])
     )
 
