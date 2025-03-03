@@ -58,6 +58,7 @@ SELECT
     , JSON_VALUE(extra_props, '$.seller_codes.0') AS seller_code
     , JSON_VALUE(extra_props, '$.seller_name') AS seller_name
     , JSON_VALUE(extra_props, '$.charge_fee') AS charge_fee
+    , JSON_VALUE(extra_props, '$.link_to_page') AS link_to_page
     , SAFE_CAST(JSON_VALUE(extra_props, '$.is_specific') AS BOOL) AS is_specific
     , REGEXP_REPLACE(JSON_VALUE(v.extra_props, '$.condition_description'), r'\\n|\\|<[^>]*>|&nbsp;', '') AS condition_description
     , SAFE_CAST(JSON_VALUE(v.and_conditions, '$.ORDER_VALUE.or_conditions.0.order_condition.min_sku_quantity') AS INT64) AS min_sku_quantity
