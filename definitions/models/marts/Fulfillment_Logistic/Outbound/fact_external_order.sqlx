@@ -62,7 +62,7 @@ select
 from (
 	select *
 	from ${ref('fact_hub_order')}
-	qualify row_number() over (partition by reference_code order by created_at asc) = 1
+	qualify row_number() over (partition by reference_code order by created_at desc) = 1
 ) ho
 left join (
     select * 
