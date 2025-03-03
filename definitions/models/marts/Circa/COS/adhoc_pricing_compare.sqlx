@@ -24,6 +24,7 @@ WITH
     , max(market_price_aft_convert) AS max_price
   FROM ${ref('adhoc_pricing_competitor_price')} m
   LEFT JOIN ${ref('dim_fc_service_area')} s ON m.province_code = s.service_area_code
+    WHERE qc <> "NOT_QC_YET"
   GROUP BY ALL
   ),
 
