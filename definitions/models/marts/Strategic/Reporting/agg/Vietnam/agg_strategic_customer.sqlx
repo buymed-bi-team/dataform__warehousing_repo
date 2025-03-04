@@ -5,6 +5,7 @@ config {
     tags: ['STRATEGIC-REPORTING'],
 }
 
+With Union_table As (
 SELECT 
     CURRENT_DATETIME("+7") AS refresh_time,
     dc.eom as date,
@@ -61,4 +62,14 @@ SELECT
 
 FROM ${ref(`dim_customer_profiling`)} dcp 
 LEFT JOIN ${ref(`dim_calendar`)} dc ON dcp.som = dc.som 
-GROUP BY 1,2,3,4,5
+GROUP BY 1,2,3,4,5)
+
+Select 
+refresh_time,
+date,
+location,
+channel,
+measure,
+supplier_class,
+value
+From Union_table
