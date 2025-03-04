@@ -37,7 +37,9 @@ WITH
         SELECT
             *
         FROM UNNEST([
-            STRUCT (1246 AS division_id, "https://thuocsi1-my.sharepoint.com/:i:/g/personal/bi_buymed_com/EWKBYGK9CEpCnn1tSZQRQoMBRfc18Yj6QY-Dd_5crdTJRw?download=1" AS image_link)
+            STRUCT (1246 AS division_id, "https://thuocsi1-my.sharepoint.com/:i:/g/personal/bi_buymed_com/EWKBYGK9CEpCnn1tSZQRQoMBRfc18Yj6QY-Dd_5crdTJRw?download=1" AS image_link),
+            STRUCT (1099 AS division_id, "https://thuocsi1-my.sharepoint.com/:i:/g/personal/bi_buymed_com/EYAdS8myrV9OpX1h1wY43csBLyadwftfPlCaLzlGbP7eJg?download=1" AS image_link),
+            STRUCT (254 AS division_id, "https://thuocsi1-my.sharepoint.com/:i:/g/personal/bi_buymed_com/EUGHjrDeECNIgJv_nyy92nwBV48QZTaWI4ioJwxFcK63hA?download=1" AS image_link)
         ])
     )
 
