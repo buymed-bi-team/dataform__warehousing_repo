@@ -55,7 +55,7 @@ WITH
             , b.voucher_discount
             , a.min_sku_quantity
             , SAFE_DIVIDE(b.voucher_discount, a.min_sku_quantity) AS avg_discount
-            , mov
+            , IFNULL(mov,0) AS mov1
         FROM ${ref('dim_voucher_product')} AS a
             LEFT JOIN ${ref('dim_voucher')} AS b USING(voucher_code)
         WHERE
@@ -63,7 +63,7 @@ WITH
             AND b.discount_type = "ABSOLUTE"
             AND b.is_specific
             AND b.all_customer
-        QUALIFY ROW_NUMBER() over (PARTITION BY product_id, a.seller_code ORDER BY mov, a.min_sku_quantity, voucher_discount DESC) = 1
+        QUALIFY ROW_NUMBER() over (PARTITION BY product_id, a.seller_code ORDER BY mov1, a.min_sku_quantity, voucher_discount DESC) = 1
     ),
 
     discount_value AS (
