@@ -98,7 +98,7 @@ WITH
             status = "ACTIVE"
             and (select current_timestamp_ from cte_date) between TIMESTAMP_ADD(start_time,INTERVAL 7 HOUR) and TIMESTAMP_ADD(end_time,INTERVAL 7 HOUR)
         qualify 
-            row_number() over (partition by code,sku_code,sales_region_code order by ingest_time desc) = 1
+            row_number() over (partition by sku_code,sales_region_code order by created_date desc) = 1
     )
 
 -- step 3: skus in step 1 join to sku_sales_region with key sku and sales_region_code (I want to modeling data with 1-1 dim_sku_sales_region_current in powerbi model layer)
@@ -174,7 +174,7 @@ WITH
         where
             campaign_code is not null
             or deal_code is not null
-        qualify row_number() over (partition by a.sku_code, a.sales_region_code) = 1
+        qualify row_number() over (partition by a.sku_code, a.sales_region_code ) = 1
     )
 
 -- step 6: Calculate promotion price accorrding to logic.

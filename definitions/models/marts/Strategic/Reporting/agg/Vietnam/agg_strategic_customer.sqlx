@@ -62,48 +62,8 @@ SELECT
 
 FROM ${ref(`dim_customer_profiling`)} dcp 
 LEFT JOIN ${ref(`dim_calendar`)} dc ON dcp.som = dc.som 
-GROUP BY 1,2,3,4,5),
-
-previous_active AS (
-  SELECT
-    date,
-    location,
-    channel,
-    LAG(value) OVER (PARTITION BY location, channel ORDER BY date DESC) AS previous_value
-  FROM union_table
-  WHERE measure = 'CUSTOMER_ACTIVE'
-),
-
-sum_new_reacquired AS (
-  SELECT
-    date,
-    location,
-    channel,
-    SUM(value) AS sum_new_reacquired
-  FROM union_table
-  WHERE measure IN ('CUSTOMER_NEW', 'CUSTOMER_REACQUIRED')
-  GROUP BY date, location, channel
-),
-
-churn_rate as (
-SELECT
-  CURRENT_DATETIME("+7") AS refresh_time,
-  b.date,
-  b.location,
-  b.channel,
-  'CHURN_CUSTOMER_RATE' AS measure,
-  CAST(NULL AS STRING) AS supplier_class,
-  SAFE_DIVIDE(b.value, (p.previous_value - n.sum_new_reacquired)) AS value
-FROM union_table b
-LEFT JOIN previous_active p ON b.date = p.date AND b.location = p.location AND b.channel = p.channel
-LEFT JOIN sum_new_reacquired n ON b.date = n.date AND b.location = n.location AND b.channel = n.channel
-WHERE b.measure = 'CUSTOMER_ACTIVE')
+GROUP BY 1,2,3,4,5)
 
 
 SELECT *
 FROM union_table
-
-UNION ALL
-
-SELECT *
-FROM churn_rate

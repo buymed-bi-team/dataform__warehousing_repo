@@ -63,11 +63,17 @@ SELECT
     , REGEXP_REPLACE(JSON_VALUE(v.extra_props, '$.condition_description'), r'\\n|\\|<[^>]*>|&nbsp;', '') AS condition_description
     , SAFE_CAST(JSON_VALUE(v.and_conditions, '$.ORDER_VALUE.or_conditions.0.order_condition.min_sku_quantity') AS INT64) AS min_sku_quantity
     , SAFE_CAST(JSON_VALUE(v.and_conditions, '$.ORDER_VALUE.or_conditions.0.order_condition.min_total_price') AS INT64) AS min_total_price
-    , applied_customers IS NULL AS all_customer 
+    , applied_customers IS NULL AND u.voucher_code IS NULL AS all_customer 
     , scopes
 FROM ${source.platinum}.marketplace_prd_promotion_voucher AS v
     LEFT JOIN UNNEST(JSON_QUERY_ARRAY(rewards)) AS r
     LEFT JOIN ${ref('dim_promotion')} AS p ON v.promotion_id = p.promotion_id
+    LEFT JOIN (
+        SELECT DISTINCT
+            voucher_code
+        FROM ${source.platinum}.marketplace_prd_promotion_user_promotion
+        WHERE status = "INACTIVE"
+    ) AS u ON u.voucher_code = v.code
 WHERE
     v.voucher_id NOT IN (6475,41228,43668, 286759)
     AND v.end_time >= TIMESTAMP_SUB('2023-01-01', INTERVAL 7 HOUR)
