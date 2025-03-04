@@ -1,0 +1,87 @@
+
+
+config {
+    type: "assertion",
+    disabled: true, // For docs or deprecated
+    name: "platinum_template_version_2_assertions",
+    // tags: ["platinum_daily_AM_9:00","warehouse_prd_inventory"],
+    dependencies: ["platinum_template_version_2"]
+}
+
+
+WITH 
+PLATINUM AS (
+    SELECT mg_id, created_time,last_updated_time, ingest_time,action
+    FROM ${ref(`platinum_template_version_2`)} o 
+)
+,
+tbl_timestamp AS (
+    SELECT MIN(ingest_time) min_time, max(ingest_time) max_time
+    FROM  ${ref(`platinum_template_version_2`)} o 
+), 
+SILVER AS (
+    SELECT
+        mg_id, created_time, last_updated_time, synced_at, ingest_time, action,
+        CASE 
+            WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
+            ELSE "2099-01-01"
+        END AS created_date
+    FROM lakehouse-prod-394907.silver_buymed_vn.seller_prd_purchasing_vendor_bill_item o 
+    WHERE  ingest_time BETWEEN (SELECT min_time FROM tbl_timestamp ) AND (SELECT max_time FROM tbl_timestamp )
+
+    QUALIFY ROW_NUMBER() OVER (_window) = 1
+    WINDOW _window AS (
+        PARTITION BY mg_id
+        ORDER BY 
+            synced_at DESC,
+            IF (action='d',3, IF (action='u',2,1)) DESC, 
+            last_updated_time DESC
+    )
+),
+DELETED_RECORDS AS (
+    SELECT 
+        s.mg_id, s.action as s_action, p.action p_action, CAST(null AS INT64) AS value, s.ingest_time s_ingest_time, p.ingest_time p_ingest_time
+    FROM lakehouse-prod-394907.silver_buymed_vn.seller_prd_purchasing_vendor_bill_item s 
+    LEFT JOIN PLATINUM p ON s.mg_id = p.mg_id 
+    WHERE  s.ingest_time BETWEEN (SELECT min_time FROM tbl_timestamp ) AND (SELECT max_time FROM tbl_timestamp )
+        AND s.action = "d"
+        AND p.mg_id IS NOT NULL        
+)
+
+SELECT
+    "INFO DELETE ACTION CNT" , "","",CAST(COUNT(DISTINCT mg_id) AS STRING), COUNTIF(action = "d") , min(ingest_time), max(ingest_time)
+FROM SILVER
+
+UNION ALL
+
+SELECT 
+    "DELETED_RECORDS",mg_id, s_action, p_action , 0, s_ingest_time, p_ingest_time
+FROM DELETED_RECORDS
+
+UNION ALL 
+SELECT
+    "MISSING_RECORDS", s.mg_id, s.action, p.action , 0, s.ingest_time, p.ingest_time
+FROM SILVER s 
+LEFT JOIN PLATINUM p 
+    ON s.mg_id = p.mg_id
+WHERE p.mg_id is null
+AND s.action <> "d"
+
+
+UNION ALL 
+SELECT 
+    "WRONG_UPDATE", s.mg_id, s.action, p.action, 0 , s.ingest_time, p.ingest_time 
+FROM SILVER s 
+LEFT JOIN PLATINUM p 
+    ON s.mg_id = p.mg_id
+WHERE s.last_updated_time > p.last_updated_time
+AND s.action <> "d"
+
+
+/*
+    SELECT mg_id, count(*)
+    FROM ${ref(`platinum_template_version_2`)}
+    GROUP BY 1 
+    HAVING COUNT(*) > 1
+*/
+
