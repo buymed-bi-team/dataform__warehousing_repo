@@ -8,4 +8,6 @@ config {
 SELECT * 
 FROM ${ref(`agg_seller_oos`)}
 WHERE 
-    qty_incoming = 0 OR qty_incoming IS NULL
+    (qty_incoming = 0 OR qty_incoming IS NULL)
+    AND (qty_available = 0 OR qty_available IS NULL)
+    
