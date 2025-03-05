@@ -23,20 +23,15 @@ with product_base_unit as
     group by all),
 
 full_unit as (SELECT
-    ps.pos_id,
+    i.pos_id,
     ru.product_id,
     ru.unit,
     ru.convert_rate,
     ru.base_unit,
-    pd.seller_code
-FROM  ${source.circa_os}.product_price_sheet_detail AS pd
+    i.seller_code
+FROM  inventory AS i
 JOIN  ${source.circa_os}.product_retail_unit AS ru
-    ON pd.product_id = ru.product_id
-JOIN  ${source.circa_os}.product_price_sheet AS ps
-    ON pd.price_sheet_id = ps.id
-LEFT JOIN product_base_unit AS bu
-    ON pd.product_id = bu.product_id
-    AND pd.unit = bu.convert_unit
+    ON i.product_id = ru.product_id
 GROUP BY ALL),
 
 inventory_full_unit as (select i.pos_id
