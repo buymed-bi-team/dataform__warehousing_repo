@@ -23,12 +23,12 @@ pre_operations {
         DECLARE has_new_data BOOLEAN;
         DECLARE Ingest_checkpoint TIMESTAMP;
         DECLARE checkpoint_date ARRAY<date>;
-        DECLARE new_records ARRAY<STRING>;
+        -- DECLARE new_records ARRAY<STRING>;
         DECLARE deleted_records ARRAY<STRING>;
         
         SET Ingest_checkpoint = (SELECT max(ingest_time) FROM ${self()});
 
-        SET ( has_new_data, checkpoint_date, new_records, deleted_records ) = ( 
+        SET ( has_new_data, checkpoint_date, deleted_records ) = ( 
             SELECT AS STRUCT 
                 IF ( 
                     COUNT(*) > 0 , TRUE, FALSE 
@@ -39,12 +39,18 @@ pre_operations {
                 ARRAY_AGG(
                     DISTINCT IF(created_time is NULL, "2099-01-01" , DATE( DATETIME(created_time,'Asia/Ho_Chi_Minh') ) )
                 ) AS checkpoint_date,
-                ARRAY_AGG (
-                    DISTINCT mg_id IGNORE NULLS
-                ) AS new_records,
+                -- ARRAY_AGG (
+                --     DISTINCT mg_id IGNORE NULLS
+                -- ) AS new_records,
                 ARRAY_AGG (
                     DISTINCT IF(action = 'd',mg_id, NULL) IGNORE NULLS
                 ) AS deleted_records
+            FROM ${source.silver}.marketplace_prd_product_v2_product_market_price
+            WHERE ingest_time > Ingest_checkpoint
+        );
+
+        CREATE TEMP TABLE new_records_tbl AS (
+            SELECT DISTINCT mg_id 
             FROM ${source.silver}.marketplace_prd_product_v2_product_market_price
             WHERE ingest_time > Ingest_checkpoint
         );
@@ -54,14 +60,14 @@ pre_operations {
               SET checkpoint_date = ARRAY( 
                 SELECT DISTINCT created_date
                 FROM ${self()} 
-                WHERE mg_id IN UNNEST(new_records)
+                WHERE mg_id IN (SELECT mg_id FROM new_records_tbl)
               );
             END IF;
 
             DELETE FROM ${self()}
             WHERE 
                 created_date IN UNNEST(checkpoint_date)
-                AND mg_id IN UNNEST(new_records)
+                AND mg_id IN (SELECT mg_id FROM new_records_tbl)
             ;
         ELSE 
             SET Ingest_checkpoint = TIMESTAMP("2099-01-01T00:00:00");
@@ -83,7 +89,7 @@ END AS created_date
 FROM ${source.silver}.marketplace_prd_product_v2_product_market_price s
 ${ when(incremental(), 
 `WHERE s.ingest_time > Ingest_checkpoint - INTERVAL 2 HOUR
-    AND s.mg_id IN UNNEST(new_records) `, 
+    AND s.mg_id IN (SELECT mg_id FROM new_records_tbl) `, 
 `` 
 )}
 
