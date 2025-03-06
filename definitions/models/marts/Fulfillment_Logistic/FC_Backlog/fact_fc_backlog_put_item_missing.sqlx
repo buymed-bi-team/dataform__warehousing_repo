@@ -37,7 +37,7 @@ from (
     where created_date >= (select DATE(start_date_1) from cte_date) 
   ) as p on pi.ticket_id = p.ticket_id
   where
-    pi.created_time >= (select start_date_1 from cte_date)
+    pi.created_date >= (select DATE(start_date_1) from cte_date)
     -- and coalesce(p.end_put_time, p.end_time, p.synced_at) >= (select start_date_2 from cte_date)
     and json_value(p.extra_props,"$.parent_ref") is null
     and p.source_location = "WH-INBOUND"
