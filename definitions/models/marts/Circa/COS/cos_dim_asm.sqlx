@@ -5,4 +5,6 @@ config {
     name: "cos_dim_asm"
 }
 
-select * from buymed_external.cos_dim_asm
+select *,
+    CONCAT(pos_code, "_", year_month) as ym_pos_id 
+from buymed_external.cos_dim_asm
