@@ -29,8 +29,7 @@ from (
   from (
     select *
     from ${source.platinum}.warehouse_prd_inventory_transfer
-    where ingest_time >= (select timestamp(start_date) from cte_date)
-      and (created_date >= (select date(start_date) from cte_date) or created_date is null) 
+    where created_date >= (select date(start_date) from cte_date)
   ) i
 )
   where status in ('READY')

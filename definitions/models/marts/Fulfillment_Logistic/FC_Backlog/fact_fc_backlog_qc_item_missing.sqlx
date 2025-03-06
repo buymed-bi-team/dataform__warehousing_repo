@@ -25,7 +25,7 @@ select
 from ${source.platinum}.warehouse_prd_picking_pick_ticket_item as pi
 left join ${source.platinum}.warehouse_prd_picking_pick_ticket as p on pi.ticket_id = p.ticket_id
 where
-  pi.created_time >= (select start_date_1 from cte_date)
+  pi.created_date >= (select DATE(start_date_1) from cte_date)
   and coalesce( p.end_qc_time, p.end_pick_time ) >= (select start_date_2 from cte_date)
   and pi.fulfilled_quantity > pi.scanned_quantity
   and p.warehouse_code <> "HCM"

@@ -2,8 +2,8 @@ config {
     type: "table",
     description: `PIC: nguyen.tran; model_type: table; schedule hourly
     SOURCE:
-        ${source.silver}.warehouse_prd_inventory_location
-        ${source.silver}.warehouse_prd_inventory_sku_location_merge`,
+        ${source.platinum}.warehouse_prd_inventory_location
+        ${source.platinum}.warehouse_prd_inventory_sku_location`,
     name: "dim_fc_location",
     tags: ["custom_1h_past5"],
     assertions: {
@@ -133,6 +133,6 @@ SELECT
 FROM
   int_fc_location_2 
 
--- post_operations {                
---     ALTER TABLE ${self()} ADD PRIMARY KEY (location_fc_code) NOT ENFORCED;
--- }
+post_operations {                
+    ALTER TABLE ${self()} ADD PRIMARY KEY (location_fc_code) NOT ENFORCED;
+}
