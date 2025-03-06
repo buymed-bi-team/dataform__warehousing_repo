@@ -5,4 +5,4 @@ config {
     name: "cos_dim_asm"
 }
 
-select * from buymed_external.dim_asm
+select * from buymed_external.cos_dim_asm
