@@ -28,7 +28,7 @@ pre_operations {
         FROM silver_buymed_vn.monitoring_prd_realtime_supply_margin_sku 
         WHERE ingest_time > Ingest_checkpoint
       );
-      CREATE TEMP TABLE new_records AS (
+      CREATE TEMP TABLE new_records_tbl AS (
         SELECT DISTINCT mg_id 
               FROM silver_buymed_vn.monitoring_prd_realtime_supply_margin_sku
               WHERE ingest_time > Ingest_checkpoint
@@ -64,7 +64,7 @@ AND ingest_time > Ingest_checkpoint
 AND mg_id in ( 
   SELECT mg_id
   FROM new_records_tbl
-)` )}
+)`,`` )}
 
 QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'
 WINDOW
