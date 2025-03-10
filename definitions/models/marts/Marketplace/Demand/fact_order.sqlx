@@ -183,14 +183,36 @@ WITH
       a.province_code,
       a.redeem_code,
 
+      -- CASE
+      --   WHEN a.source = 'brand-portal' AND JSON_VALUE(a.extra_props, "$.brand_code") IN ('Q8HDUVQX', '2E84FW961P', 'PG961P') THEN 'TENDER'
+      --   WHEN TO_JSON_STRING(JSON_VALUE_ARRAY(a.extra_props, '$.customer_tags')) LIKE '%TENDER%' THEN 'TENDER'
+      --   WHEN a.source IN ('brand-portal', 'clinic-portal') OR customer_id IN (360299, 360439) THEN 'DISTRIBUTION'
+      --   WHEN a.source = 'internal-portal' THEN 'CONSIGNMENT'
+      --   WHEN TO_JSON_STRING(JSON_VALUE_ARRAY(a.extra_props, '$.customer_tags')) LIKE '%"CIRCA"%' THEN 'CIRCA'
+      --   ELSE 'MARKETPLACE'
+      -- END AS channel,
+
       CASE
+        WHEN TO_JSON_STRING(JSON_VALUE_ARRAY(a.extra_props, '$.customer_tags')) LIKE '%"CIRCA"%' THEN 'CIRCA'
         WHEN a.source = 'brand-portal' AND JSON_VALUE(a.extra_props, "$.brand_code") IN ('Q8HDUVQX', '2E84FW961P', 'PG961P') THEN 'TENDER'
         WHEN TO_JSON_STRING(JSON_VALUE_ARRAY(a.extra_props, '$.customer_tags')) LIKE '%TENDER%' THEN 'TENDER'
-        WHEN a.source IN ('brand-portal', 'clinic-portal') OR customer_id IN (360299, 360439) THEN 'DISTRIBUTION'
-        WHEN a.source = 'internal-portal' THEN 'CONSIGNMENT'
-        WHEN TO_JSON_STRING(JSON_VALUE_ARRAY(a.extra_props, '$.customer_tags')) LIKE '%"CIRCA"%' THEN 'CIRCA'
+        WHEN a.source IN ('brand-portal', 'clinic-portal') OR customer_id IN (360299, 360439) THEN 'TENDER'
+        -- WHEN a.source = 'internal-portal' THEN 'MARKETPLACE' 
         ELSE 'MARKETPLACE'
       END AS channel,
+
+      CASE
+        WHEN TO_JSON_STRING(JSON_VALUE_ARRAY(a.extra_props, '$.customer_tags')) LIKE '%"CIRCA"%' THEN NULL
+        WHEN a.source = 'brand-portal' AND JSON_VALUE(a.extra_props, "$.brand_code") IN ('Q8HDUVQX', '2E84FW961P', 'PG961P') THEN NULL
+        WHEN TO_JSON_STRING(JSON_VALUE_ARRAY(a.extra_props, '$.customer_tags')) LIKE '%TENDER%' THEN NULL
+        WHEN a.source IN ('brand-portal', 'clinic-portal') OR customer_id IN (360299, 360439) THEN NULL
+        ELSE 
+          CASE 
+            WHEN TO_JSON_STRING(JSON_VALUE_ARRAY(a.extra_props, '$.customer_tags')) LIKE '%"WHOLESALER"%' 
+              OR TO_JSON_STRING(JSON_VALUE_ARRAY(a.extra_props, '$.customer_tags')) LIKE '%"BANSI"%' THEN 'WHOLESALE'
+            ELSE "RETAIL"
+          END
+      END AS channel_wholesale_retail,
 
       CASE
           WHEN a.status = 'WAIT_TO_CONFIRM' THEN 1
