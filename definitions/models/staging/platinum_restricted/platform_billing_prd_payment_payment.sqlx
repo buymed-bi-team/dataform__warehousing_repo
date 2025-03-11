@@ -4,6 +4,7 @@ config {
     description: `PIC: minhLuu ; 
     Internal: 
       - Accounting/Payment ; danh sách phiếu thanh toán của kế toán
+      - accounting.buymed.com/payment/detail
       - internal-seller/MEDX/PUR_HCM/payment : JSON_EXTRACT_SCALAR(extra_props,"\$.source") ="THUOCSIVN_INTERNAL_SELLER" OR 
     `,
     schema: "platinum_buymed_vn_restricted",
