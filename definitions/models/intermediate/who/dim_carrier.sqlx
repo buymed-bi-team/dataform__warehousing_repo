@@ -7,7 +7,7 @@ config {
         Type: Table; 
         Refresh Schedule: daily at 0h;
         Source: 
-            ${source.platinum}.warehouse_prd_picking_pick_ticket
+            ${source.platinum}.delivery_prd_transporting_carrier
         `,
     tags: ["0h00"],
     columns: {
