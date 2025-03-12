@@ -86,6 +86,6 @@ FROM ${ref('dim_product')} AS p
     LEFT JOIN ${ref('dim_sku_location')} AS sl
         ON sl.product_id = p.product_id 
             AND sl.fc_code = sa.fc_code
-            AND sl.seller_code NOT IN ('MEDX_E', 'MEDC', 'MED_NT', 'TENDER', 'MEDX-HN', 'DENX', 'MARKETING', '9SUUUUUUUU', 'QMQEM8DN9F', 'UQRRRRRRRR')
+            AND sl.seller_code NOT IN ('MEDX_E', 'MEDC', 'MED_NT', 'TENDER', 'MEDX-HN', 'DENX', 'MARKETING', '9SUUUUUUUU', 'QMQEM8DN9F', 'UQRRRRRRRR', 'TAM_GIA')
             AND sl.status <> 'GIFT'
 GROUP BY ALL
