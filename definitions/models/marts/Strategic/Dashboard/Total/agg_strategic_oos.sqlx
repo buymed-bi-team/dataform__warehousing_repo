@@ -47,5 +47,40 @@ WHERE b.product_report_category <> "TECH"
     AND c.sku_system_status <> 'GIFT'
     AND a.status NOT IN ("NORMAL","LIMIT")
 GROUP BY ALL
+UNION ALL
+SELECT
+    ""
+    , "AVAILABLE" AS status
+    , COUNT( DISTINCT c.product_id) AS count_product
+    , MAX(c.transformed_at) AS last_refreshed_at
+FROM ${ref("dim_sku_sales_region_current")}  AS c
+    LEFT JOIN ${ref('dim_product')} AS b ON c.product_id = b.product_id
+WHERE b.product_report_category <> "TECH" 
+    AND c.seller_class IN ("EXTERNAL","INTERNAL")
+    AND c.seller_code NOT IN ('MEDX_E', 'MEDC', 'MED_NT', 'TENDER', 'MEDX-HN', 'DENX', 'MARKETING', '9SUUUUUUUU', 'QMQEM8DN9F', 'UQRRRRRRRR', "TAM_GIA")
+    AND REGEXP_CONTAINS(c.product_name, r'\[|\]') = FALSE
+    AND c.sku_system_status IN ("NORMAL","LIMIT")
+GROUP BY ALL
+UNION ALL
+SELECT
+    "" 
+    , "UNAVAILABLE" AS status
+    , COUNT(DISTINCT a.product_id) AS count_product
+    , MAX(a.last_refreshed_at) AS last_refreshed_at
+FROM ${ref("dim_sku_sales_region_current")}  AS c
+    LEFT JOIN ${ref('agg_product_status_by_date')} AS a 
+        ON c.product_id = a.product_id 
+        AND c.sales_region_code = a.sales_region_code
+        AND a.date = CURRENT_DATE("+7")
+    LEFT JOIN ${ref('dim_product')} AS b ON c.product_id = b.product_id
+WHERE b.product_report_category <> "TECH" 
+    AND a.date = CURRENT_DATE("+7")
+    AND c.seller_class IN ("EXTERNAL","INTERNAL")
+    AND c.seller_code NOT IN ('MEDX_E', 'MEDC', 'MED_NT', 'TENDER', 'MEDX-HN', 'DENX', 'MARKETING', '9SUUUUUUUU', 'QMQEM8DN9F', 'UQRRRRRRRR', "TAM_GIA")
+    AND REGEXP_CONTAINS(c.product_name, r'\[|\]') = FALSE
+    AND c.sku_system_status <> 'GIFT'
+    AND a.status NOT IN ("NORMAL","LIMIT")
+GROUP BY ALL
+    
     
 
