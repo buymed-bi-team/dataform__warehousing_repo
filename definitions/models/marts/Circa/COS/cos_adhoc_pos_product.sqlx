@@ -1,6 +1,6 @@
 config {
     type: "table",
-    description: ` PIC: tu.dang; model_type: Table ;schedule: At minute 5 past hour 6, 8, 10, 12, 14, 16, 18, 20 and 22`,
+    description: ` PIC: huyen.nguyen; model_type: Table ;schedule: At minute 5 past hour 6, 8, 10, 12, 14, 16, 18, 20 and 22`,
     tags: ["custom_2h_past5"]
 }
 
@@ -9,7 +9,7 @@ with product_base_unit as
             unit as convert_unit,
             convert_rate
      from  ${source.circa_os}.product_retail_unit
-     qualify ROW_NUMBER() over (partition by product_id order by convert_rate desc) = 1)
+     )
 
     , inventory as (
     select a.product_id,
@@ -53,6 +53,7 @@ has_price as (
         pd.sale_price,
         pd.unit,
         bu.convert_rate,
+        pd.product_id || '_' || pd.unit || '_' || ps.pos_id as sku_unit_pos,
         case when bu.product_id is not null then true else false end as is_thuocsi_unit,
         max(datetime(pd.updated_at, "Asia/Ho_Chi_Minh")) as last_updated_at
     from  ${source.circa_os}.product_price_sheet_detail as pd
@@ -71,7 +72,7 @@ count_ord as ( select o.pos_id,
              where status like "%COMPLETE%"
              group by 1,2),
 
-combine as (select i.product_id,
+combine_has_stock as (select i.product_id,
            i.pos_id,
            i.seller_code,
            i.unit,
@@ -83,7 +84,7 @@ combine as (select i.product_id,
            i.sku_unit_pos,
            case when i.on_hand_quantity > 0 then "Available" else "Unavailable" end as have_stock,
            case when p.sale_price is null then "Price not set" else "Price set" end as price_set_check,
-                  case when DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<16 THEN "15D"
+            case when DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<16 THEN "15D"
             WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<31 THEN "30D"
             WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<46 THEN "45D"
             WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<61 THEN "60D"
@@ -103,6 +104,36 @@ combine as (select i.product_id,
     left join count_ord co on i.pos_id = co.pos_id and i.product_id = co.product_id
     group by all),
 
+has_price_non_stock as (
+        select p.product_id,
+           p.pos_id,
+           p.seller_code,
+           p.unit,
+           p.convert_rate,
+           p.is_thuocsi_unit,
+           u.base_unit as is_base_unit,
+           p.last_updated_at,
+           p.sale_price as sale_unit_price,
+           p.sku_unit_pos,
+           "Unavailable" as have_stock,
+           case when p.sale_price is null then "Price not set" else "Price set" end as price_set_check,
+           "Others" as latest_date_order_range,
+            "Others" AS stock_aging_type,
+            0 as no_ord,
+            0 as GMV,
+            CAST(NULL AS DATE) as latest_ord,
+            0 as on_hand_quantity
+    from has_price p
+    left join full_unit u on p.pos_id = u.pos_id and p.product_id = u.product_id
+    where concat(p.pos_id, p.product_id, p.seller_code, p.unit) not in (select concat(pos_id, product_id, seller_code, unit) from combine_has_stock)
+),
+
+combine as (
+    select * from combine_has_stock
+    union all
+    select * from has_price_non_stock
+),
+
 check_unit_pricing as
     (
         select product_id,
@@ -118,7 +149,7 @@ check_unit_pricing as
             province,
             s.sales_region_code
         from  ${source.circa_os}.entity_pos_profile m
-        left join gold_buymed_vn2.dim_fc_service_area s on m.province = s.service_area_code),
+        left join ${ref('dim_fc_service_area')} s on m.province = s.service_area_code),
 
     cte_fs as (
         select
@@ -126,7 +157,7 @@ check_unit_pricing as
             province,
             s.sales_region_code
         from buymed_circa.entity_pos_profile m
-        left join gold_buymed_vn2.dim_fc_service_area s on m.province = s.service_area_code
+        left join ${ref('dim_fc_service_area')} s on m.province = s.service_area_code
         where id in ("b6c40920-af79-4fb0-bdc4-9965ddb885d2", "e737c882-e90c-4fd2-8a4f-ac6afd248a33")
         ),
 
@@ -134,7 +165,6 @@ check_unit_pricing as
     select * from cte_fs
     union all
     select * from cte_os)
-
 select i.*,
        case when (cup.check_price_unit = 1 and i.unit is not null) or price_set_check like "Price not set" then "contain unit not set"
        else "set full" end as check_unit_price_set,
@@ -143,4 +173,3 @@ from combine i
 left join check_unit_pricing cup on i.product_id= cup.product_id and i.pos_id = cup.pos_id
 left join pos_region pr on i.pos_id = pr.pos_id
 group by all
-
