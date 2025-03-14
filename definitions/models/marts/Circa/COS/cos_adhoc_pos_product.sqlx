@@ -40,6 +40,7 @@ inventory_full_unit as (select i.pos_id
     , u.convert_rate
     , i.on_hand_quantity
     , i.seller_code
+    , i.sku_code
     , u.base_unit
     , i.product_id || '_' || u.unit || '_' || i.pos_id          as sku_unit_pos
 from inventory i
@@ -50,6 +51,7 @@ has_price as (
         ps.pos_id,
         pd.product_id,
         pd.seller_code,
+        pd.sku_code,
         pd.sale_price,
         pd.unit,
         bu.convert_rate,
@@ -75,6 +77,7 @@ count_ord as ( select o.pos_id,
 combine_has_stock as (select i.product_id,
            i.pos_id,
            i.seller_code,
+           i.sku_code,
            i.unit,
            i.convert_rate,
            p.is_thuocsi_unit,
@@ -108,6 +111,7 @@ has_price_non_stock as (
         select p.product_id,
            p.pos_id,
            p.seller_code,
+           p.sku_code,
            p.unit,
            p.convert_rate,
            p.is_thuocsi_unit,
