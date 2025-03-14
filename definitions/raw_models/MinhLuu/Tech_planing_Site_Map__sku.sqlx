@@ -1,0 +1,22 @@
+config {
+    type: "view",
+    name: "Dev__Tech_planing_Site_Map__sku",
+    assertions: {
+        nonNull: ["name"],
+        uniqueKey: "sku_code",
+    }
+}
+
+
+SELECT 
+  DISTINCT
+    sku.mg_id as _id,
+    sku.code as sku_code,
+    product.name as name,
+    sku.slug,
+    sku.created_time
+FROM platinum_buymed_vn.marketplace_prd_product_v2_sku_main_v2 sku
+LEFT JOIN platinum_buymed_vn.marketplace_prd_product_v2_product product
+  ON sku.product_id = product.product_id
+
+

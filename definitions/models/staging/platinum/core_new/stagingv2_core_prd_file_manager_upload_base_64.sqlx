@@ -1,6 +1,6 @@
 config {
     type: "incremental",
-    name: "marketplace_prd_order_v2_order_item",
+    name: "core_prd_file_manager_upload_base_64",
     schema: "platinum_buymed_vn",
     assertions: {
          uniqueKey: 'mg_id'
@@ -8,7 +8,7 @@ config {
     bigquery: {
         partitionBy: "created_date"
     },
-    tags: ["platinum_custom_30m","marketplace_prd_order-v2"]
+    tags: ["custom_1h_past7","marketplace_prd_order-v2"]
 }
 pre_operations {
   ${
@@ -39,14 +39,14 @@ pre_operations {
                 ARRAY_AGG (
                     DISTINCT IF(action = 'd',mg_id, NULL) IGNORE NULLS
                 ) AS deleted_records
-            FROM ${source.silver}.marketplace_prd_order_v2_order_item
+            FROM ${source.silver}.core_prd_file_manager_upload_base_64
             WHERE ingest_time > Ingest_checkpoint 
             -- AND ingest_time < TEMP_timestamp
         );
 
         CREATE TEMP TABLE new_records AS (
           SELECT DISTINCT mg_id
-          FROM ${source.silver}.marketplace_prd_order_v2_order_item
+          FROM ${source.silver}.core_prd_file_manager_upload_base_64
           WHERE ingest_time > Ingest_checkpoint 
         );
 
@@ -77,9 +77,7 @@ pre_operations {
 
 --
 
-SELECT 
-  *
-FROM (
+
   SELECT
     *,
     CASE 
@@ -88,7 +86,7 @@ FROM (
     END AS created_date
 
   FROM
-    ${source.silver}.marketplace_prd_order_v2_order_item s
+    ${source.silver}.core_prd_file_manager_upload_base_64 s
     ${ when(incremental(), 
       `WHERE s.ingest_time > Ingest_checkpoint - INTERVAL 2 HOUR
           -- AND s.ingest_time < TEMP_timestamp
@@ -100,9 +98,7 @@ FROM (
     PARTITION BY mg_id
     ORDER BY 
       synced_at DESC,
-      IF (action='d',3, IF (action='u',2,1)) DESC,
-      last_updated_time DESC)
-)
-WHERE created_time is not null and last_updated_time is not null 
+      IF (action='d',3, IF (action='u',2,1)) DESC)
+
 -- all record deleted include action "d"
 -- Special case for order -- PIC: AnhLe
