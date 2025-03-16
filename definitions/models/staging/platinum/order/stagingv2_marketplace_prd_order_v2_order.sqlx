@@ -39,14 +39,14 @@ pre_operations {
                 ARRAY_AGG (
                     DISTINCT IF(action = 'd',mg_id, NULL) IGNORE NULLS
                 ) AS deleted_records
-            FROM ${source.silver}.marketplace_prd_order_v2_order_item
+            FROM ${source.silver}.marketplace_prd_order_v2_order
             WHERE ingest_time > Ingest_checkpoint 
             -- AND ingest_time < TEMP_timestamp
         );
 
         CREATE TEMP TABLE new_records AS (
           SELECT DISTINCT mg_id
-          FROM ${source.silver}.marketplace_prd_order_v2_order_item
+          FROM ${source.silver}.marketplace_prd_order_v2_order
           WHERE ingest_time > Ingest_checkpoint 
         );
 
@@ -88,7 +88,7 @@ FROM (
     END AS created_date
 
   FROM
-    ${source.silver}.marketplace_prd_order_v2_order_item s
+    ${source.silver}.marketplace_prd_order_v2_order s
     ${ when(incremental(), 
       `WHERE s.ingest_time > Ingest_checkpoint - INTERVAL 2 HOUR
           -- AND s.ingest_time < TEMP_timestamp
