@@ -22,6 +22,7 @@ WITH base_data AS (
         a.note,
         c.type,
         a.product_id,
+        "NULL" AS sku_code,
         a.unit,
 --         a.unit_id,
 --         a.location_id,
@@ -83,6 +84,7 @@ cte_online AS (
 (select
     order_id,
   product_id,
+  sku_code,
   quantity,
   unit,
   unit_price,
@@ -105,6 +107,7 @@ SELECT
   order_id,
 --   o.code AS order_code,
   oi.product_id,
+  oi.sku_code,
   quantity,
   unit,
   unit_price,
