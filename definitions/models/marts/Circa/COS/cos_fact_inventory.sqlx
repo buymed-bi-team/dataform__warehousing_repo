@@ -12,6 +12,7 @@ config {
     }}
 
 With inventory as (select a.product_id,
+                          a.sku_code,
                           a.lot_date,
                           case
             when tax_rate <= 0 then 0
