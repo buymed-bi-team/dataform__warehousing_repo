@@ -52,6 +52,7 @@ WITH cte_date AS (
         select *
         from ${source.platinum}.warehouse_prd_inbound_receipt
         where created_date >= (select DATE(start_date) from cte_date)
+            AND JSON_VALUE(extra_props, "$.previous_vendor_completed_time") IS NULL
     ) 
     where 
         status <> 'CANCEL'
@@ -67,6 +68,7 @@ WITH cte_date AS (
 		select *
 		from ${source.platinum}.warehouse_prd_inbound_receipt
 		where created_date >= (select DATE(start_date) from cte_date)
+            AND JSON_VALUE(extra_props, "$.previous_vendor_completed_time") IS NULL
   )
 	where
 		status <> 'CANCEL'
