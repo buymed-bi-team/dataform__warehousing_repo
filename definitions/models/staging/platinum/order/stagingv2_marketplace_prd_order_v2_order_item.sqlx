@@ -8,7 +8,7 @@ config {
     bigquery: {
         partitionBy: "created_date"
     },
-    tags: ["platinum_custom_30m","marketplace_prd_order-v2"]
+    tags: ["platinum_custom_1h_past7","marketplace_prd_order-v2"]
 }
 pre_operations {
   ${
@@ -85,7 +85,8 @@ FROM (
     CASE 
       WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
       ELSE "2099-01-01"
-    END AS created_date
+    END AS created_date,
+    CURRENT_DATETIME("+7") AS platinum_refresh
 
   FROM
     ${source.silver}.marketplace_prd_order_v2_order_item s

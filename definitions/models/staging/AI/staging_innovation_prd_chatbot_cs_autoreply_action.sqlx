@@ -9,7 +9,7 @@ config {
     bigquery: {
         partitionBy: "updated_date"
     },
-    tags: ["custom_2h_past5"]
+    // tags: ["platinum_custom_2h_past5"]
 }
 
 pre_operations {
