@@ -1,6 +1,6 @@
 config {
     type: "assertion",
-    tags: ["platinum_custom_1h_past7"]
+    tags: ["platinum_custom_30min"]
 }
 
 js {
