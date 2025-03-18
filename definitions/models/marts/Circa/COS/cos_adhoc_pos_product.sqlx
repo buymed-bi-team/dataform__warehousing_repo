@@ -4,7 +4,13 @@ config {
     tags: ["custom_2h_past5"]
 }
 
-with product_base_unit as
+with thuosi_unit as (
+    select product_id
+          , unit
+    from ${ref('dim_product')}
+),
+
+product_base_unit as
     (select product_id,
             unit as convert_unit,
             convert_rate
@@ -56,11 +62,12 @@ has_price as (
         pd.unit,
         bu.convert_rate,
         pd.product_id || '_' || pd.unit || '_' || ps.pos_id as sku_unit_pos,
-        case when bu.product_id is not null then true else false end as is_thuocsi_unit,
+        case when t.unit is not null then true else false end as is_thuocsi_unit,
         max(datetime(pd.updated_at, "Asia/Ho_Chi_Minh")) as last_updated_at
     from  ${source.circa_os}.product_price_sheet_detail as pd
     left join  ${source.circa_os}.product_price_sheet as ps on pd.price_sheet_id = ps.id
     left join product_base_unit as bu on pd.product_id = bu.product_id and pd.unit = bu.convert_unit
+    left join thuosi_unit t on pd.product_id = t.product_id and lower(pd.unit) = lower(t.unit)
     group by all),
 
 count_ord as ( select o.pos_id,
