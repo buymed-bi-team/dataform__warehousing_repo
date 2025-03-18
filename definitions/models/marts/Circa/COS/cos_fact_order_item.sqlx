@@ -92,6 +92,7 @@ cte_online AS (
   base_quantity,
   tax_rate,
   product_id || '_' || lot_date || '_' || tax_rate AS product_lot_date_vat,
+  sku_code || '_' || lot_date || '_' || tax_rate AS sku_lotdate_vat,
   cost_price_include_tax AS base_unit_cost_price,
   "CIRCA" as owner_name,
 from (
@@ -116,6 +117,7 @@ SELECT
 --   amount,
   oi.tax_rate,
   oi.product_id || '_' || oi.lot_date || '_' || oi.tax_rate AS product_lot_date_vat,
+  oi.sku_code || '_' || oi.lot_date || '_' || oi.tax_rate AS sku_lotdate_vat,
   al.cost_price_include_tax AS base_unit_cost_price,
 --   item_ref_id,
 --   oi.product_id || '_' || oi.unit|| '_' || o.pos_id as sku_unit_pos,
