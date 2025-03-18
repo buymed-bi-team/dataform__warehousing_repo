@@ -60,10 +60,12 @@ WITH base_data AS (
         CASE WHEN a.type = 'RETURN' THEN base_quantity_original * (-1) ELSE base_quantity_original END AS base_quantity,
         CASE WHEN a.unit_price = 0 THEN 0 ELSE ia.cost_price_include_tax END AS cost_price_include_tax,
         CASE WHEN a.unit_price = 0 THEN 0 ELSE ia.cost_price_without_tax END AS cost_price_without_tax,
-        il.location_type
+        il.location_type,
+        ld.doc_code
     FROM base_data AS a
     LEFT JOIN ${source.circa}.inventory_allocation AS ia ON a.item_id = ia.item_ref_id
     LEFT JOIN ${source.circa}.inventory_location AS il ON ia.location_id = il.id
+    LEFT JOIN ${source.circa}.inventory_location_detail ld ON ia.location_detail_id = ld.id
     WHERE a.type <> 'ONLINE'
 ),
 cte_online AS (
@@ -74,10 +76,12 @@ cte_online AS (
         CASE WHEN a.type = 'RETURN' THEN base_quantity_original * (-1) ELSE base_quantity_original END AS base_quantity,
          ia.cost_price_include_tax  AS cost_price_include_tax,
          ia.cost_price_without_tax  AS cost_price_without_tax,
-        il.location_type
+        il.location_type,
+        ld.doc_code
     FROM base_data AS a
     LEFT JOIN ${source.circa}.inventory_allocation AS ia ON a.item_id = ia.item_ref_id
     LEFT JOIN ${source.circa}.inventory_location AS il ON ia.location_id = il.id
+    LEFT JOIN ${source.circa}.inventory_location_detail ld ON ia.location_detail_id = ld.id
     WHERE a.type = 'ONLINE'
 )
 ,cte_fs as
@@ -95,6 +99,7 @@ cte_online AS (
   sku_code || '_' || lot_date || '_' || tax_rate AS sku_lotdate_vat,
   cost_price_include_tax AS base_unit_cost_price,
   "CIRCA" as owner_name,
+  doc_code
 from (
     SELECT * FROM cte_not_online
     UNION ALL
@@ -124,8 +129,8 @@ SELECT
 --   latest_cost_price,
 --   max_cost_price_include_tax,
 --   min_cost_price_include_tax,
-  eo.name as owner_name
---   doc_code
+  eo.name as owner_name,
+  ld.doc_code
 FROM
   ${source.circa_os}.order_order o
 LEFT JOIN
