@@ -53,12 +53,14 @@ WITH cte_date AS (
             put_code
             , MIN(TIMESTAMP_ADD(start_time, INTERVAL 7 HOUR)) AS started_at_conveyor_checking
             , MAX(TIMESTAMP_ADD(end_time, INTERVAL 7 HOUR)) AS done_at_conveyor_checking
+            , MIN(TIMESTAMP(JSON_VALUE(extra_props, "$.previous_vendor_completed_time"))) AS previous_vendor_completed_time
         FROM  ${source.platinum}.warehouse_prd_inbound_receipt
         WHERE
             created_date >= (select date(start_date) from cte_date)
             and status <> 'CANCEL'
             and type = 'CONVEYOR_CHECKING'
             and warehouse_code is not null
+            -- AND JSON_VALUE(extra_props, "$.previous_vendor_completed_time") IS NULL
         GROUP BY 1
 
     )
@@ -78,4 +80,4 @@ select
 from put_details AS a
 left join ${ref('export_inbound_leadtime_data')} AS b ON a.inbound_code = b.po_code
 left join conveyor AS c ON a.put_code = c.put_code
-
+WHERE previous_vendor_completed_time IS NULL
