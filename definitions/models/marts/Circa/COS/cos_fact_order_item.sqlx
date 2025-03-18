@@ -61,7 +61,8 @@ WITH base_data AS (
         CASE WHEN a.unit_price = 0 THEN 0 ELSE ia.cost_price_include_tax END AS cost_price_include_tax,
         CASE WHEN a.unit_price = 0 THEN 0 ELSE ia.cost_price_without_tax END AS cost_price_without_tax,
         il.location_type,
-        ld.doc_code
+        ld.doc_code,
+        to_json_string(ld.sale_order_numbers) as sale_order_number
     FROM base_data AS a
     LEFT JOIN ${source.circa}.inventory_allocation AS ia ON a.item_id = ia.item_ref_id
     LEFT JOIN ${source.circa}.inventory_location AS il ON ia.location_id = il.id
@@ -77,7 +78,8 @@ cte_online AS (
          ia.cost_price_include_tax  AS cost_price_include_tax,
          ia.cost_price_without_tax  AS cost_price_without_tax,
         il.location_type,
-        ld.doc_code
+        ld.doc_code,
+        to_json_string(ld.sale_order_numbers) as sale_order_number
     FROM base_data AS a
     LEFT JOIN ${source.circa}.inventory_allocation AS ia ON a.item_id = ia.item_ref_id
     LEFT JOIN ${source.circa}.inventory_location AS il ON ia.location_id = il.id
@@ -99,7 +101,8 @@ cte_online AS (
   sku_code || '_' || lot_date || '_' || tax_rate AS sku_lotdate_vat,
   cost_price_include_tax AS base_unit_cost_price,
   "CIRCA" as owner_name,
-  doc_code
+  doc_code as po_code,
+  sale_order_number
 from (
     SELECT * FROM cte_not_online
     UNION ALL
@@ -130,7 +133,8 @@ SELECT
 --   max_cost_price_include_tax,
 --   min_cost_price_include_tax,
   eo.name as owner_name,
-  ld.doc_code
+  po.code as po_code,
+  po.sale_order_number
 FROM
   ${source.circa_os}.order_order o
 LEFT JOIN
