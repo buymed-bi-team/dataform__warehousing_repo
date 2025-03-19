@@ -16,27 +16,59 @@ pre_operations {
   ${
     when(incremental(),
       `
-      DECLARE Ingest_checkpoint TIMESTAMP;
-      DECLARE checkpoint_date ARRAY<date>;
+        # Incremental
+        DECLARE has_new_data BOOLEAN;
+        -- DECLARE Support_Ingest_checkpoint DATE;  # Only sp big table
+        DECLARE Ingest_checkpoint TIMESTAMP;
+        DECLARE checkpoint_date ARRAY<date>;
+        DECLARE deleted_records ARRAY<STRING>;
+        
+        -- SET Support_Ingest_checkpoint = (SELECT DATE(CURRENT_DATE() - INTERVAL 1 DAY));
+        SET Ingest_checkpoint = (SELECT max(ingest_time) FROM ${self()});
 
-      SET Ingest_checkpoint = (SELECT max(ingest_time) FROM ${self()});
+        SET ( has_new_data, checkpoint_date, deleted_records ) = ( 
+            SELECT AS STRUCT 
+                IF ( 
+                    COUNT(*) > 0 , TRUE, FALSE 
+                ) has_new_data,
+                /* 
+                    has_new_data describe the existance of data after the last refresh time of platinum 
+                */
+                ARRAY_AGG(
+                    DISTINCT IF(created_time is NULL, "2099-01-01" , DATE( DATETIME(created_time,'Asia/Ho_Chi_Minh') ) )
+                ) AS checkpoint_date,
+                ARRAY_AGG (
+                    DISTINCT IF(action = 'd',mg_id, NULL) IGNORE NULLS
+                ) AS deleted_records
+            FROM ${source.silver}.marketplace_prd_order_v2_order
+            WHERE ingest_time > Ingest_checkpoint 
+        );
 
-      SET checkpoint_date = ARRAY( 
-        SELECT DISTINCT IF(created_time is NULL, "2099-01-01" , DATE( DATETIME(created_time,'Asia/Ho_Chi_Minh') ) )
-        FROM silver_buymed_vn.seller_prd_promotion_rebate_result_item 
-        WHERE ingest_time > Ingest_checkpoint
-      );
-      
-      IF ( SELECT ARRAY_LENGTH(checkpoint_date) > 0 ) THEN
-            DELETE FROM ${self()}
-            where created_date in UNNEST(checkpoint_date)
-            and mg_id in ( 
-              SELECT DISTINCT mg_id 
-              FROM silver_buymed_vn.seller_prd_promotion_rebate_result_item 
-              WHERE ingest_time > Ingest_checkpoint
+        CREATE TEMP TABLE new_records AS (
+          SELECT DISTINCT mg_id
+          FROM ${source.silver}.marketplace_prd_order_v2_order
+          WHERE ingest_time > Ingest_checkpoint 
+        );
+
+        IF ( has_new_data = TRUE ) THEN
+            IF (SELECT ARRAY_LENGTH(deleted_records) > 0) THEN 
+              SET checkpoint_date = ARRAY( 
+                SELECT DISTINCT created_date
+                FROM ${self()} 
+                WHERE mg_id IN (SELECT mg_id FROM new_records)
               );
-      END IF;
+            END IF;
 
+            DELETE FROM ${self()}
+            WHERE 
+                created_date IN UNNEST(checkpoint_date)
+                AND mg_id IN (SELECT mg_id FROM new_records)
+            ;
+        ELSE 
+            SET Ingest_checkpoint = TIMESTAMP("2099-01-01T00:00:00");
+        END IF ;
+
+    
       `,
       ``
     )
@@ -47,7 +79,7 @@ pre_operations {
 WITH wrong_deleted_records_1 AS (
     SELECT mg_id, last_updated_time, TIMESTAMP_TRUNC(synced_at, SECOND) synced_at, action, ROW_NUMBER() OVER(_window) r
     FROM silver_buymed_vn.seller_prd_promotion_rebate_result_item
-    ${when(incremental(), `WHERE ingest_time > Ingest_checkpoint `, ``)}
+    ${when(incremental(), `WHERE ingest_time > Ingest_checkpoint - INTERVAL 2 HOUR AND mg_id IN (SELECT mg_id FROM new_records)`, ``)}
     WINDOW _window AS (PARTITION BY mg_id ORDER BY synced_at DESC, IF(action='d',3,IF(action='u',2,1)) DESC, last_updated_time DESC)
 )
 , wrong_deleted_records_2 AS (
@@ -69,7 +101,10 @@ CASE
     ELSE "2099-01-01"
 END AS created_date
 FROM ${source.silver}.seller_prd_promotion_rebate_result_item o 
-${ when(incremental(), `WHERE ingest_time > Ingest_checkpoint ` )}
+${ when(incremental(), `
+WHERE ingest_time > Ingest_checkpoint - INTERVAL 2 HOUR
+    AND mg_id IN (SELECT mg_id FROM new_records)
+` )}
 
 QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'
 WINDOW
@@ -94,7 +129,10 @@ CASE
 END AS created_date
 FROM ${source.silver}.seller_prd_promotion_rebate_result_item
 WHERE mg_id IN ( SELECT mg_id FROM wrong_deleted_records_2)
-${when(incremental() , `AND ingest_time > (SELECT MAX(ingest_time) FROM ${self()})`,``)}
+${when(incremental() , `
+    AND ingest_time > Ingest_checkpoint - INTERVAL 2 HOUR
+    AND mg_id IN (SELECT mg_id FROM new_records)
+`,``)}
 QUALIFY ROW_NUMBER() OVER(_window) = 1
 WINDOW _window AS (PARTITION BY mg_id ORDER BY synced_at DESC, IF(action='d',3,2) ASC, last_updated_time desc)
 
