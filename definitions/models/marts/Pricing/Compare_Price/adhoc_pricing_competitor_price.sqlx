@@ -31,10 +31,10 @@ SELECT
     , SAFE_CAST(JSON_VALUE(a.extra_props, '$.market_price') AS INT64) * SAFE_CAST(JSON_VALUE(a.extra_props, '$.conversion_rate') AS FLOAT64) AS market_price_aft_convert
     , JSON_VALUE(a.extra_props, '$.province_code') AS province_code
 FROM ${source.platinum}.marketplace_prd_product_v2_product_market_price AS a
-    LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_market_price_source AS b 
-        ON LOWER(JSON_VALUE(a.extra_props, '$.source')) = LOWER(b.source)
-WHERE 
-    JSON_VALUE(a.extra_props, '$.source') IS NOT NULL
+    -- LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_market_price_source AS b 
+    --     ON LOWER(JSON_VALUE(a.extra_props, '$.source')) = LOWER(b.source)
+-- WHERE 
+    -- JSON_VALUE(a.extra_props, '$.source') IS NOT NULL
     -- AND a.created_date >= DATE_SUB(CURRENT_DATE("+7"), INTERVAL 7 DAY)
     -- AND b.is_active
     -- AND JSON_VALUE(a.extra_props, '$.is_active') = "true"
