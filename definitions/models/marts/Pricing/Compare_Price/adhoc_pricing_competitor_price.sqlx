@@ -38,4 +38,4 @@ FROM ${source.platinum}.marketplace_prd_product_v2_product_market_price AS a
     -- AND a.created_date >= DATE_SUB(CURRENT_DATE("+7"), INTERVAL 7 DAY)
     -- AND b.is_active
     -- AND JSON_VALUE(a.extra_props, '$.is_active') = "true"
-QUALIFY ROW_NUMBER() over (PARTITION BY product_id, competitor ORDER BY market_price_aft_convert DESC, last_updated_time DESC) = 1
+QUALIFY ROW_NUMBER() over (PARTITION BY product_id, competitor, qc ORDER BY market_price_aft_convert DESC, last_updated_time DESC) = 1
