@@ -11,15 +11,15 @@ WITH
 PLATINUM AS (
     SELECT mg_id, created_time,last_updated_time, ingest_time,action, platinum_refresh
     FROM ${ref(`marketplace_prd_order_v2_order_item`)} o 
-    WHERE ingest_time >= ${start_ingest_time}
-    -- AND created_date >= "2025-01-01"
+    WHERE created_date >= ${start_ingest_time}
+
     
 )
 ,
 tbl_timestamp AS (
-    SELECT MIN(ingest_time) min_time, max(ingest_time) max_time
+    SELECT MIN(ingest_time) min_time, max(ingest_time) max_time, min(created_time) min_created_time, max(created_time) max_created_time
     FROM  ${ref(`marketplace_prd_order_v2_order_item`)} o 
-    WHERE ingest_time >= ${start_ingest_time}
+    WHERE created_date >= ${start_ingest_time}
 ), 
 SILVER AS (
     SELECT *
@@ -32,6 +32,10 @@ SILVER AS (
             END AS created_date
         FROM ${source.silver}.marketplace_prd_order_v2_order_item o 
         WHERE  ingest_time BETWEEN (SELECT min_time FROM tbl_timestamp ) AND (SELECT max_time FROM tbl_timestamp )
+            AND (
+                created_time BETWEEN (SELECT min_created_time FROM tbl_timestamp ) AND (SELECT max_created_time FROM tbl_timestamp )
+                OR created_time IS NULL -- For delete action
+            )
 
         QUALIFY ROW_NUMBER() OVER (_window) = 1
         WINDOW _window AS (
