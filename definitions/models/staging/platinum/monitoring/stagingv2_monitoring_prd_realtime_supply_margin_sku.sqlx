@@ -4,7 +4,6 @@ config {
     type: "incremental",
     name: "monitoring_prd_realtime_supply_margin_sku",
     schema: "platinum_buymed_vn",
-    description: "Deprecated",
     assertions: {
         uniqueKey: 'mg_id',
         nonNull: ["created_date"]
@@ -12,7 +11,7 @@ config {
     bigquery: {
         partitionBy: "created_date"
     },
-    tags:["platinum_custom_2h_past5","monitoring_prd_realtime-supply"]
+    tags:["platinum_custom_10min","monitoring_prd_realtime-supply"]
 }
 pre_operations {
   ${
@@ -56,7 +55,8 @@ SELECT
 CASE 
     WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
     ELSE "2099-01-01"
-END AS created_date
+END AS created_date,
+current_datetime platinum_refresh
 FROM ${source.silver}.monitoring_prd_realtime_supply_margin_sku o 
 ${ when(incremental(), 
 `WHERE 1=1
