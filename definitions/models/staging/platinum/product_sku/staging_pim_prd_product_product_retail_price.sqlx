@@ -1,6 +1,6 @@
 config {
     type: "incremental",
-    name: "pim_prd_product_product_retail_price_retail_price",
+    name: "pim_prd_product_product_retail_price",
     schema: "platinum_buymed_vn",
     description: "Internal: https://product.buymed.com/product_retail_price",
     assertions: {
