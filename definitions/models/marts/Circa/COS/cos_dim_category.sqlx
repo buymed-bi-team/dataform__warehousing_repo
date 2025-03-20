@@ -34,9 +34,18 @@ recursive_cte AS (
   SELECT ct.*, c.name
   FROM recursive_cte ct
   left join platinum_buymed_vn.pim_prd_product_category c on ct.category_code = c.code
-)
+),
 
-SELECT
+cat_name_1_add AS (
+    SELECT 
+        SAFE_CAST(code as int64) AS product_id
+        , NULLIF(value, "NAN") as cat_name_1
+    FROM collector.data_prd
+    WHERE object = 'Product' and type = 'NGANH_HANG'
+    QUALIFY ROW_NUMBER() OVER(PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
+),
+
+cte as (SELECT
   product_id,
   MAX(IF(idx = 0, category_code, NULL)) AS cat1,
   MAX(IF(idx = 1, category_code, NULL)) AS cat2,
@@ -51,4 +60,10 @@ SELECT
   MAX(IF(idx = 4, name, NULL)) AS cat_name_5
 FROM cte_name
 GROUP BY 1
-HAVING cat3 IS not null
+HAVING cat3 IS not null)
+
+SELECT 
+    c.* EXCEPT(cat_name_1)
+    , COALESCE(c.cat_name_1, cn.cat_name_1) as cat_name_1
+FROM cte c 
+LEFT JOIN cat_name_1_add cn ON c.product_id = cte.product_id
