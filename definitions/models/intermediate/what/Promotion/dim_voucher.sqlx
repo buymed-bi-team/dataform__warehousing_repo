@@ -65,6 +65,7 @@ SELECT
     , SAFE_CAST(JSON_VALUE(v.and_conditions, '$.ORDER_VALUE.or_conditions.0.order_condition.min_total_price') AS INT64) AS min_total_price
     , applied_customers IS NULL AND u.voucher_code IS NULL AS all_customer 
     , scopes
+    , JSON_QUERY(and_conditions, "$.ORDER_VALUE") IS NOT NULL AS is_order_value_condition
 FROM ${source.platinum}.marketplace_prd_promotion_voucher AS v
     LEFT JOIN UNNEST(JSON_QUERY_ARRAY(rewards)) AS r
     LEFT JOIN ${ref('dim_promotion')} AS p ON v.promotion_id = p.promotion_id
