@@ -9,7 +9,7 @@ config {
         Source: 
             ${source.platinum}.marketplace_prd_product_v2_product_market_price
         `,
-    tags: ["custom_1h_past10", "PRICING"]
+    tags: ["custom_1h_past5", "PRICING"]
 }
 
 SELECT
