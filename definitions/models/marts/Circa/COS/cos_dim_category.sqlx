@@ -45,7 +45,7 @@ cat_name_1_add AS (
     QUALIFY ROW_NUMBER() OVER(PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
 ),
 
-cte as (SELECT
+cte AS  (SELECT
   product_id,
   MAX(IF(idx = 0, category_code, NULL)) AS cat1,
   MAX(IF(idx = 1, category_code, NULL)) AS cat2,
@@ -66,4 +66,4 @@ SELECT
     c.* EXCEPT(cat_name_1)
     , COALESCE(c.cat_name_1, cn.cat_name_1) as cat_name_1
 FROM cte c 
-LEFT JOIN cat_name_1_add cn ON c.product_id = cte.product_id
+LEFT JOIN cat_name_1_add cn ON c.product_id = cn.product_id
