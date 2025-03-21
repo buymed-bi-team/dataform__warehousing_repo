@@ -23,7 +23,7 @@ pre_operations {
         DECLARE deleted_records ARRAY<STRING>;
         
         SET Support_Ingest_checkpoint = (SELECT DATE(CURRENT_DATE() - INTERVAL 1 DAY));
-        SET Ingest_checkpoint = (SELECT max(ingest_time) FROM ${self()} WHERE created_date >= Support_Ingest_checkpoint);
+        SET Ingest_checkpoint = (SELECT max(ingest_time)  - INTERVAL 1 HOUR  FROM ${self()} WHERE created_date >= Support_Ingest_checkpoint);
 
         SET ( has_new_data, checkpoint_date, deleted_records ) = ( 
             SELECT AS STRUCT 
