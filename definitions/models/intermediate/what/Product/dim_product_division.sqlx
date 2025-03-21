@@ -40,7 +40,8 @@ WITH
             STRUCT (1246 AS division_id, "https://i.ibb.co/cKhYMyjB/Astrazeneca-02.jpg" AS image_link),
             STRUCT (1099 AS division_id, "https://i.ibb.co/dw5mhLwP/organon.png" AS image_link),
             STRUCT (254 AS division_id, "https://i.ibb.co/ymknkf22/imexpharm.png" AS image_link),
-            STRUCT (208 AS division_id, "https://i.ibb.co/fYsbXXc3/Menarini.png" AS image_link)
+            STRUCT (208 AS division_id, "https://i.ibb.co/fYsbXXc3/Menarini.png" AS image_link),
+            STRUCT (1133 AS division_id, "https://i.ibb.co/1fX6vtbD/zuellig.png" AS image_link)
         ])
     )
 
