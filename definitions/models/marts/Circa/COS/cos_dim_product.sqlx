@@ -103,6 +103,15 @@ brand_type_add AS (
     FROM collector.data_prd
     WHERE object = 'Product' and type = 'BRAND_TYPE'
     QUALIFY ROW_NUMBER() OVER(PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
+),
+
+popular_product AS (
+    SELECT 
+        SAFE_CAST(code as int64) AS product_id
+        , NULLIF(value, "NAN") as popular
+    FROM collector.data_prd
+    WHERE object = 'Product' and type = 'POPULAR'
+    QUALIFY ROW_NUMBER() OVER(PARTITION BY code, object, type ORDER BY submit_id DESC) = 1  
 )
 
 select pd.*,
@@ -119,7 +128,8 @@ select pd.*,
         ig.volume,usage,
         bu.base_unit,
         COALESCE(bt.brand_type, ba.brand_type) as brand_type,
-        seller_sub_category_name
+        seller_sub_category_name,
+        pop.popular as is_popular
 from cte_product pd
 -- left join ${source.circa_os}.product_retail_unit as a
 --                    on a.product_id = pd.product_id and a.unit = pd.unit
@@ -131,6 +141,7 @@ left join brand_type bt on pd.product_id = bt.product_id
 left join convert_unit cr on pd.product_id = cr.product_id
 left join sub_cat on pd.product_id = sub_cat.product_id
 left join brand_type_add ba on pd.product_id = ba.product_id
+left join popular pop on pd.product_id = pop.product_id
 -- where lower(product_name) like "%test%"
 -- WHERE p.product_id>=1
 -- left join efficacy e on p.efficacy_code= e.efficacy_id
