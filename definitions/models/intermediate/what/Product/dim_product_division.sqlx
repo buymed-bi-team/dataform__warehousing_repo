@@ -37,10 +37,11 @@ WITH
         SELECT
             *
         FROM UNNEST([
-            STRUCT (1246 AS division_id, "https://thuocsi1-my.sharepoint.com/:i:/g/personal/bi_buymed_com/EWKBYGK9CEpCnn1tSZQRQoMBRfc18Yj6QY-Dd_5crdTJRw?download=1" AS image_link),
-            STRUCT (1099 AS division_id, "https://thuocsi1-my.sharepoint.com/:i:/g/personal/bi_buymed_com/EYAdS8myrV9OpX1h1wY43csBLyadwftfPlCaLzlGbP7eJg?download=1" AS image_link),
-            STRUCT (254 AS division_id, "https://thuocsi1-my.sharepoint.com/:i:/g/personal/bi_buymed_com/EUGHjrDeECNIgJv_nyy92nwBV48QZTaWI4ioJwxFcK63hA?download=1" AS image_link),
-            STRUCT (208 AS division_id, "https://thuocsi1-my.sharepoint.com/:i:/g/personal/bi_buymed_com/EV0T2OaREX5JkgvLb_fxS8QBSsPWQBo2Ob6m5rPHZV4Cqg?download=1" AS image_link)
+            STRUCT (1246 AS division_id, "https://i.ibb.co/cKhYMyjB/Astrazeneca-02.jpg" AS image_link),
+            STRUCT (1099 AS division_id, "https://i.ibb.co/dw5mhLwP/organon.png" AS image_link),
+            STRUCT (254 AS division_id, "https://i.ibb.co/ymknkf22/imexpharm.png" AS image_link),
+            STRUCT (208 AS division_id, "https://i.ibb.co/fYsbXXc3/Menarini.png" AS image_link),
+            STRUCT (1133 AS division_id, "https://i.ibb.co/1fX6vtbD/zuellig.png" AS image_link)
         ])
     )
 

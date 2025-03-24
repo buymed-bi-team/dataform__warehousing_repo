@@ -62,11 +62,12 @@ WITH base_data AS (
         CASE WHEN a.unit_price = 0 THEN 0 ELSE ia.cost_price_without_tax END AS cost_price_without_tax,
         il.location_type,
         ld.doc_code,
-        to_json_string(ld.sale_order_numbers) as sale_order_number
+        so as sale_order_number
     FROM base_data AS a
     LEFT JOIN ${source.circa}.inventory_allocation AS ia ON a.item_id = ia.item_ref_id
     LEFT JOIN ${source.circa}.inventory_location AS il ON ia.location_id = il.id
     LEFT JOIN ${source.circa}.inventory_location_detail ld ON ia.location_detail_id = ld.id
+    LEFT JOIN UNNEST(JSON_VALUE_ARRAY(ld.sale_order_numbers)) AS so
     WHERE a.type <> 'ONLINE'
 ),
 cte_online AS (
@@ -79,11 +80,12 @@ cte_online AS (
          ia.cost_price_without_tax  AS cost_price_without_tax,
         il.location_type,
         ld.doc_code,
-        to_json_string(ld.sale_order_numbers) as sale_order_number
+        so as sale_order_number
     FROM base_data AS a
     LEFT JOIN ${source.circa}.inventory_allocation AS ia ON a.item_id = ia.item_ref_id
     LEFT JOIN ${source.circa}.inventory_location AS il ON ia.location_id = il.id
     LEFT JOIN ${source.circa}.inventory_location_detail ld ON ia.location_detail_id = ld.id
+    LEFT JOIN UNNEST(JSON_VALUE_ARRAY(ld.sale_order_numbers)) AS so
     WHERE a.type = 'ONLINE'
 )
 ,cte_fs as
@@ -94,6 +96,8 @@ cte_online AS (
   quantity,
   unit,
   unit_price,
+  discount_amount,
+  unit_price_before_discount,
   lot_date,
   base_quantity,
   tax_rate,
@@ -120,6 +124,8 @@ SELECT
   quantity,
   unit,
   unit_price,
+  oi.discount_amount,
+  (oi.discount_amount + oi.unit_price) AS unit_price_before_discount,
   oi.lot_date,
   oi.base_quantity,
 --   amount,
