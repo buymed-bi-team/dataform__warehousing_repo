@@ -40,13 +40,13 @@ pre_operations {
                 ARRAY_AGG (
                     DISTINCT IF(action = 'd',mg_id, NULL) IGNORE NULLS
                 ) AS deleted_records
-            FROM ${source.silver}.marketplace_prd_order_v2_order
+            FROM ${source.silver}.seller_prd_promotion_rebate_result_item
             WHERE ingest_time > Ingest_checkpoint 
         );
 
         CREATE TEMP TABLE new_records AS (
           SELECT DISTINCT mg_id
-          FROM ${source.silver}.marketplace_prd_order_v2_order
+          FROM ${source.silver}.seller_prd_promotion_rebate_result_item
           WHERE ingest_time > Ingest_checkpoint 
         );
 
