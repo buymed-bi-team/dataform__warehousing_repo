@@ -43,7 +43,9 @@ WITH cte AS (SELECT
          WHEN type = 'SALE_ORDERED' THEN -1
          ELSE 1
       END * base_quantity
-   ) AS ending_stock
+   ) AS ending_stock,
+   ld.cost_price_include_tax,
+   ld.cost_price_without_tax
 FROM ${source.circa_os}.inventory_allocation a
 LEFT JOIN ${source.circa_os}.inventory_location_detail ld ON a.location_detail_id = ld.id
 LEFT JOIN ${source.circa_os}.inventory_location l ON ld.location_id = l.id
