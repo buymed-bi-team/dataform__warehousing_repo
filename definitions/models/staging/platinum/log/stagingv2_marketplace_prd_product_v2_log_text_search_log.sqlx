@@ -1,7 +1,7 @@
 config {
     type: "incremental",
     name: "marketplace_prd_product_v2_log_text_search_log",
-    disable : true,
+    disabled : true,
     schema: "platinum_buymed_vn",
     assertions: {
          uniqueKey: 'mg_id'
