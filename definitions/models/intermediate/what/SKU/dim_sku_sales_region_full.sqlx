@@ -58,7 +58,8 @@ sku_sr AS (SELECT
     sc.purchase_status,
     sc.catm_group,
     sc.fv_name as favourite_vendor,
-    sc.fv_code
+    sc.fv_code,
+    sc.sku_demand_class
 FROM ${ref('dim_sku')} AS s
     CROSS JOIN (
         SELECT DISTINCT
