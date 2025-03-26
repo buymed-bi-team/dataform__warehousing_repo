@@ -9,7 +9,7 @@ WITH RECURSIVE input AS (
   SELECT
     product_id
     , JSON_EXTRACT_STRING_ARRAY(category_codes,"$.") as category_codes
-  FROM platinum_buymed_vn.pim_prd_product_product
+  FROM ${source.platinum}.pim_prd_product_product
 ),
 recursive_cte AS (
 
@@ -33,7 +33,7 @@ recursive_cte AS (
 ), cte_name AS (
   SELECT ct.*, c.name
   FROM recursive_cte ct
-  left join platinum_buymed_vn.pim_prd_product_category c on ct.category_code = c.code
+  left join ${source.platinum}.pim_prd_product_category c on ct.category_code = c.code
 ),
 
 cat_name_1_add AS (
