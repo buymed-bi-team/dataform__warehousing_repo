@@ -59,8 +59,8 @@ cte AS  (SELECT
   MAX(IF(idx = 3, name, NULL)) AS cat_name_4,
   MAX(IF(idx = 4, name, NULL)) AS cat_name_5
 FROM cte_name
-GROUP BY 1
-HAVING cat3 IS not null)
+GROUP BY 1)
+--HAVING cat3 IS not null
 
 SELECT 
     c.* EXCEPT(cat_name_1)
