@@ -2,15 +2,16 @@ config {
   type: "view",
   disabled: true
 }
-WITH time_range AS (
+WITH input AS (
   SELECT 
-    TIMESTAMP("2025-03-01") AS min_timestamp
+    TIMESTAMP("2025-03-01") AS min_timestamp,
+    "HOUR" as monitoring_span,
 )
 , order_without_cancel AS (
   SELECT order_id, province_code AS location_code, confirmation_date
   FROM `platinum_buymed_vn.marketplace_prd_order_v2_order`
   WHERE status not like "CANCEL"
-  AND created_date > (SELECT DATE(min_timestamp) FROM time_range)
+  AND created_date > (SELECT DATE(min_timestamp) FROM input)
 )
 , order_item AS (
   SELECT 
@@ -22,28 +23,30 @@ WITH time_range AS (
   FROM platinum_buymed_vn.marketplace_prd_order_v2_order_item oi
   RIGHT JOIN order_without_cancel o
     ON oi.order_id = o.order_id
-  WHERE created_date > (SELECT DATE(min_timestamp) FROM time_range)
+  WHERE created_date > (SELECT DATE(min_timestamp) FROM input)
   
 )
 , int_order_sum_quantity_by_sku_and_confirmation_date_province AS (
   SELECT 
     FORMAT_TIMESTAMP("%Y/%m/%d",confirmation_date + INTERVAL 7 HOUR) day_str,
+    FORMAT_TIMESTAMP("%Y/%m/%d %H:00",confirmation_date + INTERVAL 7 HOUR) minute_str,
     sku,
     location_code,
     SUM(quantity) total_quantity,
     COUNT(DISTINCT order_id) order_cnt
   FROM order_item 
-  GROUP BY 1,2,3
+  GROUP BY 1,2,3,4
 )
 , int_order_sum_quantity_by_sku_and_confirmation_date_region AS (
   SELECT 
     FORMAT_TIMESTAMP("%Y/%m/%d",confirmation_date + INTERVAL 7 HOUR) day_str,
+    FORMAT_TIMESTAMP("%Y/%m/%d %H:00",confirmation_date + INTERVAL 7 HOUR) minute_str,
     sku,
     "00" AS location_code,
     SUM(quantity) total_quantity,
     COUNT(DISTINCT order_id) order_cnt
   FROM order_item 
-  GROUP BY 1,2,3
+  GROUP BY 1,2,3,4
 )
 , int_order_sum_quantity_by_sku_and_confirmation_date AS (
   SELECT *
@@ -69,12 +72,13 @@ WITH time_range AS (
     TRIM(location_code," ") location_code,
     sku,
     TRIM(day_str," ") day_str,
-    total_quantity
+    TRIM(minute_str," ") minute_str,
+    total_quantity,
+    span
 
   FROM platinum_buymed_vn.monitoring_prd_realtime_supply_margin_sku
-  WHERE created_date >= (SELECT DATE(min_timestamp) FROM time_range)
+  WHERE created_date >= (SELECT DATE(min_timestamp) FROM input)
 
-  AND SPAN = "DAY"
 )
 , assert_location_code AS (
   -- Chắc chắn rằng location_code phải là province_code
@@ -88,22 +92,38 @@ WITH time_range AS (
   WHERE location_class NOT LIKE "PROVINCE"
   AND m.location_code NOT LIKE "00"
 )
-, mart_final AS (
+, mart AS (
   SELECT 
     m.sku,
     m.location_code, 
     m.day_str,
+    m.minute_str,
     m.total_quantity monitoring_sum_quantity,
     o.total_quantity order_sum_quantity,
-    order_cnt,
+    order_cnt
 
-    ABS(m.total_quantity -  o.total_quantity) delta_quantity
   FROM monitoring m
-  LEFT JOIN int_order_sum_quantity_by_sku_and_confirmation_date o
+  FULL JOIN int_order_sum_quantity_by_sku_and_confirmation_date o
     ON m.sku = o.sku
     AND m.location_code = o.location_code
     AND m.day_str = o.day_str 
-  WHERE o.sku is not null
+    AND m.minute_str = o.minute_str
+  -- WHERE o.sku is not null
+)
+, mart_final AS (
+  SELECT 
+    sku,
+    location_code,
+    IF(monitoring_span = "DAY", day_str, minute_str) partition_str,
+
+    SUM(monitoring_sum_quantity) monitoring_sum_quantity,
+    SUM(order_sum_quantity) order_sum_quantity,
+    SUM(order_cnt) order_cnt,
+
+    ABS( SUM(monitoring_sum_quantity) - SUM(order_sum_quantity)) delta_quantity
+  FROM mart 
+  CROSS JOIN input
+  GROUP BY 1,2,3
 )
 SELECT 
   COUNTIF(monitoring_sum_quantity <> order_sum_quantity)/ COUNT(*) * 100 
@@ -112,7 +132,7 @@ SELECT
 
   , " " space
 
-  , ARRAY_AGG( IF( location_code not like "00", STRUCT(monitoring_sum_quantity, order_cnt, order_sum_quantity, day_str , sku, location_code) , null) IGNORE NULLS ORDER BY delta_quantity DESC LIMIT 100)
+  , ARRAY_AGG( IF( location_code not like "00", STRUCT(monitoring_sum_quantity, order_cnt, order_sum_quantity, partition_str , sku, location_code) , null) IGNORE NULLS ORDER BY delta_quantity DESC LIMIT 100)
 FROM mart_final
 CROSS JOIN assert_location_code
 
@@ -136,5 +156,6 @@ WHERE
   AND DATE(REPLACE(day_str, '/', '-')) >= DATE_SUB(CURRENT_DATE(), INTERVAL 3 MONTH)
 GROUP BY 1,2,3,4,5
 */
+
 
 
