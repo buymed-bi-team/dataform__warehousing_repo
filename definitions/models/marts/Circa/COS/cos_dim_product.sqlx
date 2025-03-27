@@ -60,8 +60,13 @@ with cte_product as (select p.product_id,
                    where a.deleted_at is null and lower(ep.name) <> "%test%"
                    group by all)
 , ingregients as (
-    select * from ${ref('cos_dim_product_ingredient')}
-where ingredient_level =1
+    select
+        product_id,
+        ingredient_name,
+        JSON_VALUE(extra_props, '$.ingredients[0].ingredient_code') AS ingredient_code
+    from ${source.platinum}.pim_prd_product_product p 
+    left join ${source.platinum}.marketplace_prd_product_v2_ingredient i ON p.ingredient_code = i.ingredient_code
+    where ingredient_level = 1
 ),
     product_base_unit as
 (
