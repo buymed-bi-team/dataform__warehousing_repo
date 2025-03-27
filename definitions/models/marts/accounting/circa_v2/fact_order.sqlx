@@ -11,7 +11,7 @@ config {
 WITH cte_pos AS (
   SELECT DISTINCT
     pf.code AS pos_code,
-    pf.id AS pos_id,
+    pf.id,
     pf.name AS pos_name,
     pf.full_address AS pos_address
   FROM `${source.circa_os}.entity_pos_profile` pf
