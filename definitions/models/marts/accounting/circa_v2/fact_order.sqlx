@@ -7,12 +7,12 @@ config {
     name: "fact_circa_order"
 
 }
-// Hello World
+
 
 WITH cte_pos AS (
   SELECT DISTINCT
     pf.code AS pos_code,
-    pf.id,
+    pf.id AS pos_id,
     pf.name AS pos_name,
     pf.full_address AS pos_address
   FROM `${source.circa_os}.entity_pos_profile` pf
