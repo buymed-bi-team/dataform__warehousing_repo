@@ -7,6 +7,7 @@ config {
     name: "fact_circa_order"
 
 }
+// Hello World
 
 WITH cte_pos AS (
   SELECT DISTINCT
