@@ -158,4 +158,54 @@ GROUP BY 1,2,3,4,5
 */
 
 
+/*
+  CONCAT(
+      "db.order_item_", FORMAT_DATE("%Y_%m",created_date) , ".aggregate(["
+      , "\n{"
+        ,"\n$match:{"
+          -- ,"order_id:{$in:[",STRING_AGG(DISTINCT CAST( a.order_id AS STRING)," , " ),"]},"
+          ,"\nsku:\"",sku,"\","
+          ,"\ncreated_time:{$gte:ISODate(\"",FORMAT_DATE("%Y-%m-%dT17:00:00", created_date - INTERVAL 1 DAY),"\"), $lt:ISODate(\"",FORMAT_DATE("%Y-%m-%dT17:00:00", created_date),"\")}"
+          ,"\n}}"
+        -- ,"\n,{$group: {_id: \"$sku\",total_quantity: { $sum: \"$quantity\" }}}"
+        ,"\n        ,{"
+        ,"\n    $group: {"
+        ,"\n      _id: null, "
+        ,"\n      total_quantity: { $sum: \"$quantity\" },"
+        ,"\n      order_ids: { $addToSet: \"$order_id\" },"
+        ,"\n      product_ids: { $addToSet: \"$product_id\" }"
+        ,"\n    }"
+        ,"\n  },"
+        ,"\n  {"
+        ,"\n    $project: {"
+        ,"\n      total_quantity: 1,"
+        ,"\n      order_count: { $size: \"$order_ids\" },"
+        ,"\n      product_id_count: { $size: \"$product_ids\" }"
+        ,"\n    }"
+        ,"\n  }"
+        ,"\n]);"
+      ,"\n])"
+    ) mkp_mg_command
+  from `platinum_buymed_vn.marketplace_prd_order_v2_order_item` a
+*/
+
+
+/*
+    , CONCAT(
+      "db.margin_sku.aggregate(["
+      , "{"
+        ,"$match:{"
+          -- ,"order_id:{$in:[",STRING_AGG(DISTINCT CAST( a.order_id AS STRING)," , " ),"]},"
+          ,"span:\"HOUR\","
+          ,"location_code:\"00\","
+          ,"day_str:\"" , a.day_str,"\","
+          ,"sku:\"",sku,"\""
+          
+          
+          
+          ,"}}"
+        ,",{$group: {_id: \"$sku\",total_quantity: { $sum: \"$total_quantity\" }}}"
+      ,"])"
+    ) mon_mg_command
+*/
 
