@@ -57,9 +57,9 @@ GROUP BY ALL)
 SELECT *
     , SUM(ending_stock) OVER (PARTITION BY pos_id, product_id, sku_code, location_id, lot_date, tax_rate ORDER BY created_time ASC) AS cumulative_ending_stock
 from cte
-group by all
 ${
    when(incremental(), 
      `WHERE cte.created_time > (SELECT MAX(created_time) FROM ${self()})`
    )
  }
+group by all
