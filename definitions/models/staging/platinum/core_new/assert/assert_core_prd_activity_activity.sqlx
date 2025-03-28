@@ -7,7 +7,7 @@ js {
 }
 WITH 
 PLATINUM AS (
-    SELECT mg_id, created_time, ingest_time,action, platinum_refresh
+    SELECT mg_id, created_time,synced_at , ingest_time,action, platinum_refresh
     FROM ${ref(`core_prd_activity_activity`)} o 
     WHERE created_date >= ${start_ingest_time}
 
