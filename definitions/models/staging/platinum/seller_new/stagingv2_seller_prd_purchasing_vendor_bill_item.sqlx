@@ -11,6 +11,7 @@ config {
          //    'action != "d"'
          // ]
      },
+    description:"internal: internal-seller/MEDX/PUR_HCM/vendor-bill",
     bigquery: {
         partitionBy: "created_date"
     },
