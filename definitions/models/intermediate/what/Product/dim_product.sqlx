@@ -159,8 +159,10 @@ WITH product_retail_unit AS (
   , brand AS (
     SELECT
       product_id
-      , brand
-    FROM ${source.platinum}.pim_prd_product_product
+      , b.name AS brand
+    FROM ${source.platinum}.pim_prd_product_product AS a
+      LEFT JOIN ${source.platinum}.pim_prd_product_brand AS b 
+        ON JSON_VALUE(a.extra_props, "$.brand_code") = b.brand_code
   )
 
 SELECT
