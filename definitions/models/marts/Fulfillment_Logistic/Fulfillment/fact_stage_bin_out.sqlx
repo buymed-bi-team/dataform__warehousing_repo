@@ -5,7 +5,7 @@ config {
 
 WITH
   cte_date AS (
-    SELECT date_sub( timestamp( date_trunc( date_sub( current_date('+7'), interval 2 month) , month ) ) , interval 7 hour ) as start_date
+    SELECT date_sub( timestamp( date_trunc( date_sub( current_date('+7'), interval 6 month) , month ) ) , interval 7 hour ) as start_date
       , date_sub( timestamp( date_trunc( date_sub( current_date('+7'), interval 3 month) , month ) ) , interval 7 hour ) as start_date_2
   ),
 
@@ -45,9 +45,9 @@ WITH
             left join (
               select *
               from ${source.platinum}.warehouse_prd_inventory_location
-              where
-                created_date >= (select date(start_date_2) from cte_date)
-              qualify row_number() over (partition by code order by synced_at desc, last_updated_time desc) = 1
+              -- where
+                -- created_date >= (select date(start_date_2) from cte_date)
+              -- qualify row_number() over (partition by code order by synced_at desc, last_updated_time desc) = 1
             ) as wh on wh.code = b
         where
             p.end_time >= (select start_date from cte_date)

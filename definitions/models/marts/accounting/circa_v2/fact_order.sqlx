@@ -1,0 +1,146 @@
+config {
+    type: "table",
+    disabled: true,
+    description: `
+    PIC: Minh Ly
+    `,
+    name: "fact_circa_order"
+
+}
+
+
+WITH cte_pos AS (
+  SELECT DISTINCT
+    pf.code AS pos_code,
+    pf.id AS pos_id,
+    pf.name AS pos_name,
+    pf.full_address AS pos_address
+  FROM `${source.circa_os}.entity_pos_profile` pf
+  WHERE 1=1
+    -- AND LOWER(pf.name) NOT LIKE '%test%'
+    -- AND id = 'c95a3338-4f5e-4264-958b-0d02e3fea49b'
+),
+cte_order AS (
+  SELECT
+    oo.code AS order_code,
+    oo.id AS order_id,
+    oo.type,
+    oo.pos_id,
+    oo.status,
+    oo.channel,
+    DATE(oo.completed_at + INTERVAL 7 hour) AS completed_date,
+    oo.delivery_type,  -- delivery or pickup
+    oo.payment_method,
+    SUM(oo.total_amount) AS total_amount,
+    SUM(oo.medicine_cutting_fee) AS total_medicine_cutting_fee,
+    SUM(oo.discount_amount) AS total_discount_amount,
+    SUM(oo.total_item_amount) AS total_item_amount
+  FROM `${source.circa_os}.order_order` oo
+  WHERE 1=1
+    AND DATE(oo.completed_at + INTERVAL 7 hour) >= '2024-01-01'
+    AND oo.type IN ('ONLINE','OFFLINE')
+    AND oo.status = 'COMPLETED'
+    -- AND oo.code IN ('DH00000089','DH00000070')
+  GROUP BY
+    oo.code,
+    oo.id,
+    oo.type,
+    oo.pos_id,
+    oo.status,
+    oo.status,
+    oo.channel,
+    DATE(oo.completed_at + INTERVAL 7 hour),
+    oo.delivery_type,
+    oo.payment_method
+),
+cte_delivery AS (
+  SELECT
+    delivery_id,
+    order_id,
+    delivered_date,
+    delivery_unit_name,
+    delivery_group,
+    SUM(transport_fee) AS transport_fee
+  FROM (
+    SELECT
+      di.id AS delivery_id,
+      di.order_id,
+      DATE(di.delivered_at + INTERVAL 7 hour) AS delivered_date,
+      di.delivery_unit_name,
+      CASE
+        WHEN CONTAINS_SUBSTR(LOWER(di.delivery_unit_name),'ktls') THEN 'KTLS'
+        WHEN CONTAINS_SUBSTR(LOWER(di.delivery_unit_name),'ahamove') THEN 'AHAMOVE'
+        WHEN CONTAINS_SUBSTR(LOWER(di.delivery_unit_name),'shopee') THEN 'SHOPEE'
+        WHEN CONTAINS_SUBSTR(LOWER(di.delivery_unit_name),'vnpost') THEN 'VNPOST'
+        WHEN CONTAINS_SUBSTR(LOWER(di.delivery_unit_name),'lazada') THEN 'LAZADA'
+        WHEN CONTAINS_SUBSTR(LOWER(di.delivery_unit_name),'tiết kiệm') THEN 'LAZADA'
+        WHEN CONTAINS_SUBSTR(LOWER(di.delivery_unit_name),'tiktok') THEN 'TIKKOK'
+        WHEN CONTAINS_SUBSTR(LOWER(di.delivery_unit_name),'nv') THEN 'NHÂN VIÊN CÔNG TY'
+      ELSE 'BML'
+      END AS delivery_group,
+      COALESCE(di.transport_fee,0) AS transport_fee
+    FROM `${source.circa_os}.order_delivery_info` di
+  )
+  GROUP BY
+    delivery_id,
+    order_id,
+    delivered_date,
+    delivery_unit_name,
+    delivery_group
+),
+cte_order_item AS (
+  SELECT
+    oi.order_id,
+    SUM(oi.unit_price * oi.quantity) AS amount_after_discount,
+    SUM(oi.system_price * oi.quantity) AS amount_before_discount,
+    SUM(oi.discount_amount) AS discount_amount   
+  FROM `${source.circa_os}.order_order_item` oi
+  GROUP BY
+    oi.order_id
+  -- HAVING discount_amount > 0
+)
+SELECT
+  pos.pos_code,
+  pos.pos_name,
+  pos.pos_address,
+  oo.order_code,
+  oo.order_id,
+  oo.type,
+  oo.channel,
+  oo.completed_date,
+  di.delivered_date,
+  oo.delivery_type,
+  oo.payment_method,
+  di.delivery_unit_name,
+  di.delivery_group,
+  SUM(oo.total_amount) AS total_amount,
+  SUM(oo.total_medicine_cutting_fee) AS total_medicine_cutting_fee,
+  SUM(oo.total_item_amount) AS total_item_amount,
+  SUM(oo.total_discount_amount) AS order_discount_amount, -- VOUCHER amount
+  SUM(oi.discount_amount) AS item_discount_amount, -- DEAL amount
+  SUM(oi.amount_after_discount) AS order_amount_after_item_discount,
+  SUM(oi.amount_before_discount) AS order_amount_before_item_discount,
+  SUM(di.transport_fee) AS delivery_fee
+FROM cte_order oo
+LEFT JOIN cte_pos pos
+  ON oo.pos_id = pos.pos_id
+LEFT JOIN cte_delivery di
+  ON oo.order_id = di.order_id
+LEFT JOIN cte_order_item oi
+  ON oo.order_id = oi.order_id
+WHERE 1=1
+  -- and oo.order_code IN ('DH00000089','DH00000070')
+GROUP BY
+  pos.pos_code,
+  pos.pos_name,
+  pos.pos_address,
+  oo.order_code,
+  oo.order_id,
+  oo.type,
+  oo.channel,
+  oo.completed_date,
+  di.delivered_date,
+  oo.delivery_type,
+  oo.payment_method,
+  di.delivery_unit_name,
+  di.delivery_group

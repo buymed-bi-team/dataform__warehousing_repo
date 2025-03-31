@@ -1,0 +1,211 @@
+config {
+  type: "view",
+  disabled: true
+}
+WITH input AS (
+  SELECT 
+    TIMESTAMP("2025-03-01") AS min_timestamp,
+    "HOUR" as monitoring_span,
+)
+, order_without_cancel AS (
+  SELECT order_id, province_code AS location_code, confirmation_date
+  FROM `platinum_buymed_vn.marketplace_prd_order_v2_order`
+  WHERE status not like "CANCEL"
+  AND created_date > (SELECT DATE(min_timestamp) FROM input)
+)
+, order_item AS (
+  SELECT 
+    o.order_id ,  
+    sku, 
+    quantity,
+    location_code,
+    confirmation_date
+  FROM platinum_buymed_vn.marketplace_prd_order_v2_order_item oi
+  RIGHT JOIN order_without_cancel o
+    ON oi.order_id = o.order_id
+  WHERE created_date > (SELECT DATE(min_timestamp) FROM input)
+  
+)
+, int_order_sum_quantity_by_sku_and_confirmation_date_province AS (
+  SELECT 
+    FORMAT_TIMESTAMP("%Y/%m/%d",confirmation_date + INTERVAL 7 HOUR) day_str,
+    FORMAT_TIMESTAMP("%Y/%m/%d %H:00",confirmation_date + INTERVAL 7 HOUR) minute_str,
+    sku,
+    location_code,
+    SUM(quantity) total_quantity,
+    COUNT(DISTINCT order_id) order_cnt
+  FROM order_item 
+  GROUP BY 1,2,3,4
+)
+, int_order_sum_quantity_by_sku_and_confirmation_date_region AS (
+  SELECT 
+    FORMAT_TIMESTAMP("%Y/%m/%d",confirmation_date + INTERVAL 7 HOUR) day_str,
+    FORMAT_TIMESTAMP("%Y/%m/%d %H:00",confirmation_date + INTERVAL 7 HOUR) minute_str,
+    sku,
+    "00" AS location_code,
+    SUM(quantity) total_quantity,
+    COUNT(DISTINCT order_id) order_cnt
+  FROM order_item 
+  GROUP BY 1,2,3,4
+)
+, int_order_sum_quantity_by_sku_and_confirmation_date AS (
+  SELECT *
+  FROM int_order_sum_quantity_by_sku_and_confirmation_date_province
+  UNION ALL 
+  SELECT *
+  FROM int_order_sum_quantity_by_sku_and_confirmation_date_region
+)
+, dim_geo_location AS (
+  SELECT 
+    location_code, location_class, location_name
+  FROM gold_buymed_vn2.dim_geo_location 
+  WHERE location_class = "PROVINCE"
+
+  UNION ALL 
+  SELECT 
+    "00",
+    "REGION",
+    "VN"
+)
+, monitoring AS (
+  SELECT 
+    TRIM(location_code," ") location_code,
+    sku,
+    TRIM(day_str," ") day_str,
+    TRIM(minute_str," ") minute_str,
+    total_quantity,
+    span
+
+  FROM platinum_buymed_vn.monitoring_prd_realtime_supply_margin_sku
+  WHERE created_date >= (SELECT DATE(min_timestamp) FROM input)
+
+)
+, assert_location_code AS (
+  -- Chắc chắn rằng location_code phải là province_code
+  -- Hoặc là location_code = 00 tức là Toàn VN
+  SELECT 
+    -- IF(COUNT(*) > 0, TRUE, FALSE) assert_location_code
+    COUNT(*) assert_location_code
+  FROM monitoring m
+  LEFT JOIN dim_geo_location geo
+    ON m.location_code = geo.location_code
+  WHERE location_class NOT LIKE "PROVINCE"
+  AND m.location_code NOT LIKE "00"
+)
+, mart AS (
+  SELECT 
+    m.sku,
+    m.location_code, 
+    m.day_str,
+    m.minute_str,
+    m.total_quantity monitoring_sum_quantity,
+    o.total_quantity order_sum_quantity,
+    order_cnt
+
+  FROM monitoring m
+  FULL JOIN int_order_sum_quantity_by_sku_and_confirmation_date o
+    ON m.sku = o.sku
+    AND m.location_code = o.location_code
+    AND m.day_str = o.day_str 
+    AND m.minute_str = o.minute_str
+  -- WHERE o.sku is not null
+)
+, mart_final AS (
+  SELECT 
+    sku,
+    location_code,
+    IF(monitoring_span = "DAY", day_str, minute_str) partition_str,
+
+    SUM(monitoring_sum_quantity) monitoring_sum_quantity,
+    SUM(order_sum_quantity) order_sum_quantity,
+    SUM(order_cnt) order_cnt,
+
+    ABS( SUM(monitoring_sum_quantity) - SUM(order_sum_quantity)) delta_quantity
+  FROM mart 
+  CROSS JOIN input
+  GROUP BY 1,2,3
+)
+SELECT 
+  COUNTIF(monitoring_sum_quantity <> order_sum_quantity)/ COUNT(*) * 100 
+  , AVG(ABS(monitoring_sum_quantity - order_sum_quantity) / order_sum_quantity) * 100 
+  , SUM(assert_location_code.assert_location_code)
+
+  , " " space
+
+  , ARRAY_AGG( IF( location_code not like "00", STRUCT(monitoring_sum_quantity, order_cnt, order_sum_quantity, partition_str , sku, location_code) , null) IGNORE NULLS ORDER BY delta_quantity DESC LIMIT 100)
+FROM mart_final
+CROSS JOIN assert_location_code
+
+/*
+SELECT 
+  DATE(REPLACE(day_str, '/', '-'))    as created_date
+  , sku                               as sku
+  , product_id
+  , seller_code
+  , location_code
+  , SUM(total_price)                  as sales_amount
+  , SUM(total_purchasing_value)       as purchase_amount
+  , SUM(total_quantity)               as total_quantity
+  , SUM(profit)                       as profit
+FROM `lakehouse-prod-394907.platinum_buymed_vn.monitoring_prd_realtime_supply_margin_sku` msku
+JOIN `lakehouse-prod-394907.gold_buymed_vn2.dim_sku` s
+  ON msku.sku = s.sku_code
+WHERE 
+  span = "HOUR" 
+  AND location_code <> '00'
+  AND DATE(REPLACE(day_str, '/', '-')) >= DATE_SUB(CURRENT_DATE(), INTERVAL 3 MONTH)
+GROUP BY 1,2,3,4,5
+*/
+
+
+/*
+  CONCAT(
+      "db.order_item_", FORMAT_DATE("%Y_%m",created_date) , ".aggregate(["
+      , "\n{"
+        ,"\n$match:{"
+          -- ,"order_id:{$in:[",STRING_AGG(DISTINCT CAST( a.order_id AS STRING)," , " ),"]},"
+          ,"\nsku:\"",sku,"\","
+          ,"\ncreated_time:{$gte:ISODate(\"",FORMAT_DATE("%Y-%m-%dT17:00:00", created_date - INTERVAL 1 DAY),"\"), $lt:ISODate(\"",FORMAT_DATE("%Y-%m-%dT17:00:00", created_date),"\")}"
+          ,"\n}}"
+        -- ,"\n,{$group: {_id: \"$sku\",total_quantity: { $sum: \"$quantity\" }}}"
+        ,"\n        ,{"
+        ,"\n    $group: {"
+        ,"\n      _id: null, "
+        ,"\n      total_quantity: { $sum: \"$quantity\" },"
+        ,"\n      order_ids: { $addToSet: \"$order_id\" },"
+        ,"\n      product_ids: { $addToSet: \"$product_id\" }"
+        ,"\n    }"
+        ,"\n  },"
+        ,"\n  {"
+        ,"\n    $project: {"
+        ,"\n      total_quantity: 1,"
+        ,"\n      order_count: { $size: \"$order_ids\" },"
+        ,"\n      product_id_count: { $size: \"$product_ids\" }"
+        ,"\n    }"
+        ,"\n  }"
+        ,"\n]);"
+      ,"\n])"
+    ) mkp_mg_command
+  from `platinum_buymed_vn.marketplace_prd_order_v2_order_item` a
+*/
+
+
+/*
+    , CONCAT(
+      "db.margin_sku.aggregate(["
+      , "{"
+        ,"$match:{"
+          -- ,"order_id:{$in:[",STRING_AGG(DISTINCT CAST( a.order_id AS STRING)," , " ),"]},"
+          ,"span:\"HOUR\","
+          ,"location_code:\"00\","
+          ,"day_str:\"" , a.day_str,"\","
+          ,"sku:\"",sku,"\""
+          
+          
+          
+          ,"}}"
+        ,",{$group: {_id: \"$sku\",total_quantity: { $sum: \"$total_quantity\" }}}"
+      ,"])"
+    ) mon_mg_command
+*/
+
