@@ -54,8 +54,7 @@ SELECT
     LEFT JOIN ${ref("dim_product")} p
         ON a.product_id = p.product_id
     WHERE
-        b.status <> "CANCEL" 
-        and source_location <> 'EMPTY-LOCATION'
+        b.status <> "CANCEL" and b.code <> 'PUT-2284711' 
     QUALIFY
         ROW_NUMBER() OVER (PARTITION BY a.sku, a.warehouse_code ORDER BY b.end_put_time DESC) = 1) 
 
