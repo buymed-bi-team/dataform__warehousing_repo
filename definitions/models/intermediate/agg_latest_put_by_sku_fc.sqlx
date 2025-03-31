@@ -54,7 +54,9 @@ SELECT
     LEFT JOIN ${ref("dim_product")} p
         ON a.product_id = p.product_id
     WHERE
-        b.status <> "CANCEL"
+        b.status <> "CANCEL" 
+        and source_location <> 'EMPTY-LOCATION'
+        and NOT REGEXP_CONTAINS(reference, r'SO|RO|TO|CO')
     QUALIFY
         ROW_NUMBER() OVER (PARTITION BY a.sku, a.warehouse_code ORDER BY b.end_put_time DESC) = 1) 
 
