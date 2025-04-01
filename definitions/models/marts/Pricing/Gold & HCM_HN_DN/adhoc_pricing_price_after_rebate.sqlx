@@ -36,7 +36,8 @@ SELECT
     rebate,
     contract_price_id,
     product_sales_region_code,
-    sku_key_sales_region_code
+    sku_key_sales_region_code,
+    rebate_reserve
 FROM ${ref('fact_price_after_rebate_fv_vendor')}
 WHERE rebate_date >= DATE_SUB(CURRENT_DATE("+7"), INTERVAL 2 DAY)
 QUALIFY ROW_NUMBER() OVER(PARTITION BY product_id, sales_region_code ORDER BY last_updated_at DESC) = 1

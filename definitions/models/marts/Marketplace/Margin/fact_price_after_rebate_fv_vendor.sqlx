@@ -36,7 +36,8 @@ with
             g.rebate,
             g.contract_price_id,
             CONCAT(a.product_id, "_", a.sales_region_code) AS product_sales_region_code,
-            a.sku_key_sales_region_code
+            a.sku_key_sales_region_code,
+            g.rebate_reserve
         from ${ref('dim_sku_sales_region_full')} a
             left join ${ref('dim_vendor')} vend on a.fv_code = vend.supplier_code
             left join ${ref('fact_price_after_rebate')} g
@@ -65,7 +66,8 @@ with
             g.rebate,
             g.contract_price_id,
             CONCAT(a.product_id, "_", a.sales_region_code) AS product_sales_region_code,
-            a.sku_key_sales_region_code
+            a.sku_key_sales_region_code,
+            g.rebate_reserve
         from ${ref('dim_sku_sales_region_full')} a
             left join ${ref('dim_vendor')} vend on a.fv_code = vend.supplier_code
             left join ${ref('fact_price_after_rebate')} g on a.sales_region_code = g.sales_region_code and a.product_id = g.product_id
