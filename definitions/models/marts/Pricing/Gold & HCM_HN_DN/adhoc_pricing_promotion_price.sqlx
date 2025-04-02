@@ -90,6 +90,7 @@ WITH
             FROM ${source.platinum}.marketplace_prd_product_v2_deal 
             where 
                 created_date >= (select DATE(start_date) from cte_date) 
+                AND JSON_VALUE(extra_props, "$.deal_tags.0") = "NORMAL_DEAL"
         ) a
             left join unnest(JSON_QUERY_ARRAY(a.skus)) as sku_json
             left join unnest (JSON_QUERY_ARRAY(a.area_codes)) area_code
