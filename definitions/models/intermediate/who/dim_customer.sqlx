@@ -295,6 +295,7 @@ SELECT
     flom.no_orders,
     flom.last_purchase,
     flom.first_purchase,
+    JSON_VALUE(customer.gpp, "$.0.public_url") AS gpp_url
 FROM ${source.platinum}.marketplace_prd_customer_customer customer
 LEFT JOIN customer_order ON customer.customer_id = customer_order.customer_id
 LEFT JOIN first_last_order_marketplace AS flom ON customer.customer_id = flom.customer_id
