@@ -55,11 +55,13 @@ CREATE VIEW IF NOT EXISTS  `${internal_source}.dim_customer`
     business_scope OPTIONS (DESCRIPTION="Nullable | Null means UNKNOWN scope"),
     customer_status OPTIONS (DESCRIPTION="NonNull | Must be one of following: 'DELETED','ACTIVATE','INACTIVE'"),
     customer_ward_code OPTIONS (DESCRIPTION="Nullable | If the customer doesn't have a ward_code, then get ward_code of last order of customer from the order table. Otherwise, return null"),
-    customer_level 
+    customer_level ,
+    gpp_url
 )
 AS ( 
     select customer_id, customer_report_category, 
-    business_scope, customer_level, customer_ward_code, customer_status
+    business_scope, customer_level, customer_ward_code, customer_status,
+    gpp_url
     from `${source.ref}.dim_customer`
 );
 
