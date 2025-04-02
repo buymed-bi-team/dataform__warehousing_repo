@@ -1,0 +1,32 @@
+config {
+    type: "table",
+    name: "accounting_prd_invoice_transfer_order_item",
+    schema: "platinum_buymed_vn",
+    // assertions: {
+    //      uniqueKey: 'mg_id'
+    //  },
+    bigquery: {
+        partitionBy: "created_date"
+    },
+    tags: ["platinum_custom_1h_past7","accounting_prd_invoice"]
+}
+--
+
+
+  SELECT
+    *,
+    CASE 
+      WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
+      ELSE "2099-01-01"
+    END AS created_date,
+    CURRENT_DATETIME() AS platinum_refresh
+
+  FROM
+    ${source.silver}.accounting_prd_invoice_transfer_order_item s
+      
+  QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'
+  WINDOW _window AS ( 
+    PARTITION BY mg_id
+    ORDER BY 
+      synced_at DESC,
+      IF (action='d',3, IF (action='u',2,1)) DESC)
