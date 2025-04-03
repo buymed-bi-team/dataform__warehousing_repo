@@ -41,7 +41,7 @@ TO
 
 
 -- dim_customer
-CREATE VIEW IF NOT EXISTS  `${internal_source}.dim_customer` 
+CREATE OR REPLACE VIEW  `${internal_source}.dim_customer` 
 (
     customer_id OPTIONS (DESCRIPTION="NonNull"),
     customer_report_category OPTIONS (DESCRIPTION=CONCAT(
@@ -56,12 +56,12 @@ CREATE VIEW IF NOT EXISTS  `${internal_source}.dim_customer`
     customer_status OPTIONS (DESCRIPTION="NonNull | Must be one of following: 'DELETED','ACTIVATE','INACTIVE'"),
     customer_ward_code OPTIONS (DESCRIPTION="Nullable | If the customer doesn't have a ward_code, then get ward_code of last order of customer from the order table. Otherwise, return null"),
     customer_level ,
-    gpp_url
+    gpp_url, gdp_url, pharmacy_eligibility_url
 )
 AS ( 
     select customer_id, customer_report_category, 
     business_scope, customer_level, customer_ward_code, customer_status,
-    gpp_url
+    gpp_url, gdp_url, pharmacy_eligibility_url
     from `${source.ref}.dim_customer`
 );
 
