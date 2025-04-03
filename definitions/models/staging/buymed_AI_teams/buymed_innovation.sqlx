@@ -8,7 +8,7 @@ js {
 
 
 -- integration_prd_chat_message
-CREATE VIEW IF NOT EXISTS  `${internal_source}.integration_prd_chat_message`
+CREATE OR REPLACE VIEW `${internal_source}.integration_prd_chat_message`
 AS ( SELECT * FROM `${source.platinum}.integration_prd_chat_message` );
 
 ALTER VIEW IF EXISTS `${internal_source}.integration_prd_chat_message`
@@ -20,12 +20,13 @@ GRANT `roles/bigquery.dataViewer`
 ON TABLE `${source.platinum}.integration_prd_chat_message`
 TO 
 "user:thi.nguyenhoang@buymed.com",
-"serviceAccount:bia-333@lakehouse-prod-394907.iam.gserviceaccount.com";
+"serviceAccount:bia-333@lakehouse-prod-394907.iam.gserviceaccount.com",
+"user:hung.vo@buymed.com";
 
 
 -- marketplace_prd_ticket_ticket
 
-CREATE VIEW IF NOT EXISTS  `${internal_source}.marketplace_prd_ticket_ticket`
+CREATE OR REPLACE VIEW  `${internal_source}.marketplace_prd_ticket_ticket`
 AS ( SELECT * FROM `${source.platinum}.marketplace_prd_ticket_ticket` );
 
 ALTER VIEW IF EXISTS `${internal_source}.marketplace_prd_ticket_ticket`
@@ -37,7 +38,8 @@ GRANT `roles/bigquery.dataViewer`
 ON TABLE `${source.platinum}.marketplace_prd_ticket_ticket`
 TO 
 "user:thi.nguyenhoang@buymed.com",
-"serviceAccount:bia-333@lakehouse-prod-394907.iam.gserviceaccount.com";
+"serviceAccount:bia-333@lakehouse-prod-394907.iam.gserviceaccount.com",
+"user:hung.vo@buymed.com";
 
 
 -- dim_customer
@@ -79,5 +81,8 @@ GRANT `roles/bigquery.dataViewer`
 ON TABLE `${source.ref}.dim_customer`
 TO 
 "user:thi.nguyenhoang@buymed.com",
-"serviceAccount:bia-333@lakehouse-prod-394907.iam.gserviceaccount.com";
+"serviceAccount:bia-333@lakehouse-prod-394907.iam.gserviceaccount.com",
+"user:hung.vo@buymed.com"
+
+;
 
