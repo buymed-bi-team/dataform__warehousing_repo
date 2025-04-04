@@ -41,8 +41,8 @@ WITH cte AS (SELECT
          WHEN type = 'CHANGE_QUANTITY_DECREASE' THEN -1
          WHEN type = 'ADD_DETAIL_TRANSFER_IN' THEN -1
          WHEN type = 'GOODS_RETURN_RECEIPT' THEN -1
-         WHEN type = 'SALE_ORDERED' THEN -1
          WHEN type = 'COMPLETED_PURCHASE_ORDER' then -1
+         WHEN type = 'COMPLETED_RETURN_ORDER' then -1
          ELSE 1
       END * base_quantity
    ) AS ending_stock,
