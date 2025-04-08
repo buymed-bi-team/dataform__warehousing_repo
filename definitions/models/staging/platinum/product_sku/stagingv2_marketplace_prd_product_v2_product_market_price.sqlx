@@ -6,12 +6,12 @@ config {
     schema: "platinum_buymed_vn",
     assertions: {
         uniqueKey: 'mg_id',
-        nonNull: ["created_date"]
+        // nonNull: ["created_date"]
     },
     bigquery: {
         partitionBy: "created_date"
     },
-    tags:["custom_1h_past7","marketplace_prd_product-v2","VN_product"]
+    tags:["platinum_custom_1h_past7","marketplace_prd_product-v2","VN_product"]
 }
 
 
