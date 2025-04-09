@@ -4,7 +4,7 @@ config {
     Source:
         ${source.ref}.adhoc_pricing_competitor_price
         ${source.ref}.dim_fc_service_area
-        ${source.ref}.adhoc_pricing_v2
+        ${source.ref}.adhoc_pricing_full
         ${source.ref}.cos_adhoc_pos_product`
       ,
     tags: ["custom_1h_past5"],
