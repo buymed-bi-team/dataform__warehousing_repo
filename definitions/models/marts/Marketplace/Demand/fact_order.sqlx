@@ -73,7 +73,7 @@ WITH
   actual_sales_amount AS(
     SELECT 
       a.order_id
-      , GREATEST(SUM(a.invoice_amount) - SUM(b.return_amount), 0) AS actual_sales_amount,
+      , GREATEST(SUM(a.invoice_amount) - IFNULL(SUM(b.return_amount),0), 0) AS actual_sales_amount,
     FROM invoice_amount AS a
       LEFT JOIN return_amount AS b ON a.order_id = b.order_id
     GROUP BY 1 
