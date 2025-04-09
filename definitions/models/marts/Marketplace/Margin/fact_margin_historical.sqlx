@@ -1,0 +1,192 @@
+config {
+    type: "table", 
+    bigquery: {
+        partitionBy: "DATE(created_at)",
+        clusterBy: ["sku_code", "product_id"]
+    }
+
+}
+
+WITH
+    outbound_item AS (
+        SELECT
+            a.mg_id
+            , a.order_id
+            , a.created_at
+            , a.customer_id
+            , a.sku_bom_code AS sku_code
+            , a.product_bom_id AS product_id
+            , a.seller_code
+            , a.outbound_quantity
+            , a.po_code
+            , DATE(TIMESTAMP_ADD(b.outbound_time, INTERVAL 7 HOUR)) AS outbound_date
+            , seller_class
+            , a.lot
+            , a.exp_date
+        FROM (
+            SELECT * FROM ${ref('fact_outbound_item_historical')}
+            WHERE DATE(created_at) BETWEEN "2024-01-01" AND "2024-12-31"
+        ) AS a
+            LEFT JOIN (
+                SELECT *
+                FROM ${ref('warehouse_prd_core_delivery_order')}
+                WHERE created_date BETWEEN "2024-01-01" AND "2025-01-31"
+            ) AS b 
+                ON a.do_code = b.delivery_order_code
+    )
+
+    , order_item AS (
+        SELECT
+            oi.mg_id
+            , oi.order_id
+            , oi.sku_code
+            , oi.product_id
+            , oi.sales_price AS unit_price
+            , oi.item_type
+            , oi.seller_price
+            , oi.seller_revenue
+            , oi.sku_key_sales_region_code
+            , oi.fc_code
+            , seller_revenue * (1 - ( c.fulfillment_fee_percent + c.sale_fee_percent 
+                + IF(s.supplier_type IN ("MARKET", "BIZ_HOUSEHOLD"), 1.5, 0) ) / 100
+              ) AS seller_received_amount
+            , seller_revenue * c.fulfillment_fee_percent / 100 AS seller_fulfillment_fee
+            , seller_revenue * c.sale_fee_percent / 100 AS seller_sale_fee
+            , seller_revenue * IF(s.supplier_type IN ("MARKET", "BIZ_HOUSEHOLD"), 1.5, 0) / 100 AS seller_tax
+            , sku_orignal_key
+            , oi.sales_region_code
+        FROM ${ref('fact_order_item_historical')} AS oi
+            LEFT JOIN ${ref('dim_product')} AS p 
+                ON oi.product_id = p.product_id
+            LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_seller_category_level AS c
+                ON oi.sku_level = c.level 
+                AND p.product_category_code = JSON_VALUE(c.extra_props, '$.category_code')
+            LEFT JOIN ${ref('dim_supplier')} AS s
+                ON s.supplier_code = oi.seller_code
+        WHERE DATE(oi.created_at) BETWEEN "2024-01-01" AND "2024-12-31"
+    )
+
+    , po_price AS (
+        SELECT
+            DATE(created_time) AS po_created_date
+            , po_code
+            , product_id
+            , REGEXP_REPLACE(sku, r'MEDX-HN', 'MEDX') AS sku_code
+            , fc_code
+            , avg_unit_price AS po_purchase_price
+            , vendor_code
+            , line_manager_combine
+            , ARRAY_AGG(DISTINCT FLOOR(unit_price)) AS list_unit_price
+        FROM ${ref('fact_po_item')}
+        GROUP BY ALL
+    )
+
+    , vendor_bill_price AS (
+        SELECT
+            po_code
+            , product_id
+            , REGEXP_REPLACE(sku_code, r'MEDX-HN', 'MEDX') AS sku_code
+            , fc_code
+            , price_unit_vat AS vb_purchase_price
+        FROM ${ref('fact_vendor_bill_item')} 
+        GROUP BY ALL
+    )
+
+    , vb_prev_month AS (
+        SELECT
+            FORMAT_DATE("%Y-%m", issued_date) AS ym_issued
+            , product_id
+            , sku_code
+            , IFNULL(SAFE_DIVIDE(SUM(total_amount), SUM(quantity)), 0) AS avg_vb_price
+        FROM ${ref('fact_vendor_bill_item')} 
+        GROUP BY 1, 2, 3
+    )
+
+    , price_after_rebate AS (
+        SELECT
+            rebate_date
+            , a.product_id
+            , fc_code
+            , vendor_code
+            , price_after_rebate
+            , price_after_rebate_with_adhoc_promotion
+            , contract_price_code
+            , price_contract
+            , MAX(COALESCE(price_after_rebate_with_adhoc_promotion, price_after_rebate)) OVER
+                (PARTITION BY fc_code, vendor_code, product_id, FORMAT_DATE("%Y-%m", rebate_date)) AS highest_price_of_month
+        FROM ${ref('fact_price_after_rebate')} AS a
+    )
+
+    , margin AS (
+        SELECT
+            ob.mg_id
+            , ob.created_at
+            , ob.outbound_date
+            , ob.order_id
+            , ob.customer_id
+            , ob.sku_code
+            , ob.product_id
+            , ob.seller_code
+            , oi.unit_price
+            , ob.outbound_quantity
+            , ob.po_code
+            , p.po_purchase_price
+            , v.vb_purchase_price
+            , COALESCE(
+                v.vb_purchase_price
+                , p.po_purchase_price
+                , vpm.avg_vb_price
+                , oi.seller_price
+            ) AS purchase_price
+            , r.price_after_rebate
+            , r.price_after_rebate_with_adhoc_promotion
+            , COALESCE(
+                r.price_after_rebate_with_adhoc_promotion
+                , r.price_after_rebate
+                , r.highest_price_of_month
+                , v.vb_purchase_price
+                , p.po_purchase_price
+                , vpm.avg_vb_price
+                , oi.seller_received_amount
+                , oi.seller_revenue
+            ) AS final_price_after_rebate
+            , oi.item_type
+            , oi.sku_key_sales_region_code
+            , p.line_manager_combine
+            , oi.fc_code
+            , ob.seller_class
+            , oi.sku_orignal_key AS sku_key_original
+            , oi.sales_region_code
+            , oi.seller_fulfillment_fee
+            , oi.seller_sale_fee
+            , oi.seller_tax
+            , ob.lot
+            , ob.exp_date
+        FROM outbound_item AS ob
+            LEFT JOIN order_item AS oi 
+                ON ob.mg_id = oi.mg_id AND ob.sku_code = oi.sku_code
+            LEFT JOIN ${ref('fact_order')} AS o 
+                ON ob.order_id = o.order_id
+            LEFT JOIN vendor_bill_price AS v
+                ON v.po_code = ob.po_code AND v.sku_code = ob.sku_code
+            LEFT JOIN po_price AS p 
+                ON p.po_code = ob.po_code AND p.sku_code = ob.sku_code
+            LEFT JOIN vb_prev_month AS vpm 
+                ON vpm.sku_code = ob.sku_code
+                AND FORMAT_DATE("%Y-%m", DATE_SUB(ob.outbound_date, INTERVAL 1 MONTH)) = vpm.ym_issued
+            LEFT JOIN price_after_rebate AS r
+                ON r.product_id = ob.product_id
+                AND r.vendor_code = p.line_manager_combine
+                AND r.fc_code = p.fc_code
+                AND r.rebate_date = p.po_created_date
+                AND FLOOR(r.price_contract) IN UNNEST(p.list_unit_price)
+                -- AND FLOOR(r.price_after_rebate_with_adhoc_promotion) <= FLOOR(COALESCE(v.vb_purchase_price, NULLIF(p.po_purchase_price, 0)))
+        WHERE 
+            o.order_status <> 'CANCEL'
+    )
+
+
+SELECT
+    *
+FROM margin
+

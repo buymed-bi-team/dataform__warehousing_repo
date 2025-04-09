@@ -32,6 +32,7 @@ cte_order_item as (
         -- , oi.price
         , oi.seller_code
         , oi.vat
+        , seller_class
     FROM ${source.platinum}.marketplace_prd_order_v2_order_item as oi
     where
         created_date BETWEEN '2022-01-01' AND DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), YEAR ), INTERVAL 1 DAY)
@@ -64,6 +65,7 @@ select
     safe_cast( json_extract_scalar( item.vat ) as INT64 )
     , a.vat
   ) as vat
+  , seller_class
   -- , json_extract_scalar( ob.vat ) as vat
 from cte_order_item as a
 , unnest( json_query_array(a.extra_props, "$.sub_items") ) as item
@@ -92,6 +94,7 @@ cte_normal_transaction as (
   , json_extract_scalar( ob.do_code ) as do_code
   , json_extract_scalar( ob.po_code ) as po_code
   , a.vat
+  , seller_class
   -- , json_extract_scalar( ob.vat ) as vat
 from cte_order_item as a
 , unnest( json_query_array(a.outbound_infos) ) as ob
