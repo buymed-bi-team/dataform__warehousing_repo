@@ -34,8 +34,6 @@ WITH
   SELECT
       product_id
        , sales_region_code
-       , sku_key_sales_region_code
-       , sku_code
        , MIN(sku_display_price) as sku_display_price
        , "medx" as source_price
   FROM ${ref('adhoc_pricing_full')}
@@ -47,8 +45,6 @@ WITH
   seller_price_vat AS (SELECT
       f.product_id
        , f.sales_region_code
-       , f.sku_key_sales_region_code
-       , f.sku_code
        , MIN(f.sku_display_price) as sku_display_price
        , "seller" as source_price
   FROM ${ref('adhoc_pricing_full')} f
@@ -71,8 +67,6 @@ WITH
     SELECT
         f.product_id
          , f.sales_region_code
-         , f.sku_key_sales_region_code
-         , f.sku_code
          , MIN(sku_display_price) as sku_display_price
          , "nonvat" as source_price
     FROM ${ref('adhoc_pricing_full')} f
