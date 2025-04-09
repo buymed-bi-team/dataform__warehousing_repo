@@ -46,7 +46,7 @@ from (
 )
 where
 	row_num = 1 and
-	status not in ('CANCEL', 'COMPLETED', 'WAITING')
+	status not in ('CANCEL', 'COMPLETED', 'WAITING',"INBOUND_COMPLETED")
 
 
 
