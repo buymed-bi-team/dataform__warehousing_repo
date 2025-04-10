@@ -106,11 +106,13 @@ SELECT
     , sku_final_price
     , ROUND(
         a.sku_final_price * 0.995 - ROUND(a.sku_final_price * 0.005, -2)  
-            - IF(
-                discount_type = "ABSOLUTE",
-                IFNULL(c.avg_discount,0),
-                a.display_price * SAFE_CAST(c.percentage_discount AS FLOAT64) / 100
-              )
+            - IFNULL(
+                IF(
+                    discount_type = "ABSOLUTE",
+                    c.avg_discount,
+                    a.display_price * SAFE_CAST(c.percentage_discount AS FLOAT64) / 100
+                )
+              , 0)
         , -2
     ) AS price_after_discount
 
