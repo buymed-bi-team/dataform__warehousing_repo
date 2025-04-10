@@ -53,14 +53,16 @@ WITH
             , a.seller_code
             , a.voucher_code
             , b.voucher_discount
+            , b.percentage_discount
             , a.min_sku_quantity
             , SAFE_DIVIDE(b.voucher_discount, a.min_sku_quantity) AS avg_discount
             , IFNULL(mov,0) AS mov1
+            , discount_type
         FROM ${ref('dim_voucher_product')} AS a
             LEFT JOIN ${ref('dim_voucher')} AS b USING(voucher_code)
         WHERE
             b.voucher_status = "ACTIVE"
-            AND b.discount_type = "ABSOLUTE"
+            -- AND b.discount_type = "ABSOLUTE"
             AND b.is_specific
             AND b.all_customer
         QUALIFY ROW_NUMBER() over (PARTITION BY product_id, a.seller_code ORDER BY mov1, a.min_sku_quantity, voucher_discount DESC) = 1
@@ -103,7 +105,12 @@ SELECT
     , a.deal_price
     , sku_final_price
     , ROUND(
-        a.sku_final_price * 0.995 - ROUND(a.sku_final_price * 0.005, -2)  - IFNULL(c.avg_discount,0)
+        a.sku_final_price * 0.995 - ROUND(a.sku_final_price * 0.005, -2)  
+            - IF(
+                discount_type = "ABSOLUTE",
+                IFNULL(c.avg_discount,0),
+                a.display_price * SAFE_CAST(c.percentage_discount AS FLOAT64) / 100
+              )
         , -2
     ) AS price_after_discount
 
