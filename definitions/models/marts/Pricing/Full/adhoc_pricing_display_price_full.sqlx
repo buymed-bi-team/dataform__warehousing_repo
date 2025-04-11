@@ -150,6 +150,7 @@ with
         WHERE
             use_skus_price IS NULL
             OR use_skus_price = FALSE
+            OR seller_class = "EXTERNAL"
     ),
 
     combo_product AS (
@@ -170,7 +171,7 @@ with
                 LEFT JOIN normal_product AS n 
                     ON JSON_VALUE(ss, '$.item_code') = n.sub_sku_code
                     AND n.prices = a.prices
-            WHERE a.use_skus_price = true
+            WHERE a.use_skus_price = true AND a.seller_class <> "EXTERNAL"
         )
         GROUP BY ALL
     )
