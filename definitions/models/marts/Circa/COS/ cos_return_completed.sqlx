@@ -62,6 +62,7 @@ where o.type <> 'RETURN'
 group by all)
 
 select f.* except(return_codes),
+       COALESCE(SUM(f.total_amount), 0) as total_return_amount,
        f.total_amount - COALESCE(SUM(c.total_amount), 0) AS exclude_return
 from cte_fs f
 left join return_completed c on f.return_codes = c.code
