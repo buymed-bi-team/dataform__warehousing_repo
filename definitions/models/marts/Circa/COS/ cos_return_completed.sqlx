@@ -71,6 +71,7 @@ group by all
 union all
 
 select o.* except(return_codes),
+       COALESCE(SUM(c.total_amount), 0) as total_return_amount,
        o.total_amount - COALESCE(SUM(c.total_amount), 0) AS exclude_return
 from cte_os o
 left join return_completed c on o.return_codes = c.code
