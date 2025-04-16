@@ -80,9 +80,9 @@ from ${source.circa_os}.order_order o
 left join UNNEST(JSON_VALUE_ARRAY(order_return_codes)) AS return_id
 left join ${source.circa_os}.entity_pos_profile p on o.pos_id = p.id
 where o.type <> 'RETURN'
-group by all)
+group by all),
 
-select
+total_amount as (select
     *
     , CASE
         WHEN return_codes IS NULL OR return_codes in (select * from return_cancel) THEN "NORMAL"
@@ -100,4 +100,9 @@ select
         ELSE "RETURN"
     END AS order_type
 from cte_os
-where return_codes is null 
+where return_codes is null)
+
+select t.*
+    , r.exclude_return
+from total_amount t
+left join ${ref('cos_return_completed')} r on t.order_code = r.order_code
