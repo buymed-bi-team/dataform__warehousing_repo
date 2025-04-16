@@ -89,7 +89,6 @@ select
         ELSE "RETURN"
     END AS order_type
 from cte_fs
-where return_codes is null 
 
 union all
 
@@ -100,4 +99,3 @@ select
         ELSE "RETURN"
     END AS order_type
 from cte_os
-where return_codes is null
