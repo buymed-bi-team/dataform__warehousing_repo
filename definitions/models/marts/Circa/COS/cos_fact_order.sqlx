@@ -85,19 +85,19 @@ group by all)
 select
     *
     , CASE
-        WHEN return_codes IS NULL THEN "NORMAL"
+        WHEN return_codes IS NULL OR return_codes in (select * from return_cancel) THEN "NORMAL"
         ELSE "RETURN"
     END AS order_type
 from cte_fs
-where return_codes is null or return_codes not in (select * from return_cancel)
+where return_codes is null 
 
 union all
 
 select
     *
     , CASE
-        WHEN return_codes IS NULL THEN "NORMAL"
+        WHEN return_codes IS NULL OR return_codes in (select * from return_cancel) THEN "NORMAL"
         ELSE "RETURN"
     END AS order_type
 from cte_os
-where return_codes is null or return_codes not in (select * from return_cancel)
+where return_codes is null 
