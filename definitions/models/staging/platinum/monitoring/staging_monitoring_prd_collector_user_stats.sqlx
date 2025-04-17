@@ -12,7 +12,7 @@ config {
         partitionBy: "created_date",
         clusterBy: ["event, customer_id, mg_id"]
     },
-    tags:["custom_1h_past7"]
+    tags:["platinum_custom_5min"]
 }
 
 pre_operations {
