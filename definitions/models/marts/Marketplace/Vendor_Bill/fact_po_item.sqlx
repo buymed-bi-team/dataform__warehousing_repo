@@ -84,9 +84,9 @@ with
         SELECT
             po_code
             , sku
-            , SUM(actual_quantity) as Sum_Qty
+            , SUM(expect_quantity) as Sum_Qty
             , SUM(total_price) as Total_Amount
-            , IFNULL(SAFE_DIVIDE(SUM(total_price), SUM(actual_quantity)), 0) as avg_unit_price
+            , IFNULL(SAFE_DIVIDE(SUM(total_price), SUM(expect_quantity)), 0) as avg_unit_price
         FROM cte
         GROUP BY 1,2
     ),
