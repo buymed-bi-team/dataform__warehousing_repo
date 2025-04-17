@@ -17,4 +17,5 @@ SELECT
     , customer_id
     , TIMESTAMP_ADD(TIMESTAMP(join_time), INTERVAL 7 HOUR) AS join_time
 FROM ${source.platinum}.marketplace_prd_promotion_gamification_customer
+WHERE status = "ACTIVE"
 
