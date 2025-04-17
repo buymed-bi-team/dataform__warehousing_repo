@@ -1,0 +1,32 @@
+config {
+    type: "table",
+    description: "PIC: van.lethuy",
+    schema: "gold_buymed_vn2",
+    name: "dim_reason"
+}
+
+SELECT
+  DISTINCT rs.key,
+  rs.mg_id,
+  rs.created_time,
+  rs.last_updated_time,
+  rs.reason_setting_id AS reason_id,
+  rs.reason_setting_code AS reason_code,
+  rs.status,
+  rs.name AS reason_name,
+  rs.reason_setting_type AS reason_type
+FROM
+  platinum_buymed_vn.accounting_prd_core_reason_setting rs
+UNION DISTINCT
+SELECT
+  DISTINCT KEY,
+  mg_id,
+  created_time,
+  last_updated_time,
+  reason_id,
+  reason_code,
+  status,
+  reason_name,
+  reason_type
+FROM
+  platinum_buymed_vn.platform_billing_prd_payment_reason_setting prs
