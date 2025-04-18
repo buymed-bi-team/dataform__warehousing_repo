@@ -16,31 +16,66 @@ config {
     tags: ["platinum_custom_20m","warehouse_prd_picking"]
 }
 
+
 pre_operations {
   ${
     when(incremental(),
-      `
-      DECLARE Ingest_checkpoint TIMESTAMP;
-      DECLARE checkpoint_date ARRAY<date>;
+        `
+        # Incremental
+        DECLARE has_new_data BOOLEAN;
+        DECLARE Support_Ingest_checkpoint DATE;
+        DECLARE Ingest_checkpoint TIMESTAMP;
+        DECLARE checkpoint_date ARRAY<date>;
+        -- DECLARE new_records ARRAY<STRING>; -- Change to Table because exceeds the 1 MB limit during query execution
+        DECLARE deleted_records ARRAY<STRING>;
+        
+        SET Support_Ingest_checkpoint = (SELECT DATE(CURRENT_DATE() - INTERVAL 1 DAY));
+        SET Ingest_checkpoint = (SELECT max(ingest_time) - INTERVAL 1 HOUR FROM ${self()} WHERE created_date >= Support_Ingest_checkpoint);
 
-      SET Ingest_checkpoint = TIMESTAMP_SUB(TIMESTAMP(CURRENT_DATE("+7")), INTERVAL 31 HOUR);
+        SET ( has_new_data, checkpoint_date, deleted_records ) = ( 
+            SELECT AS STRUCT 
+                IF ( 
+                    COUNT(*) > 0 , TRUE, FALSE 
+                ) has_new_data,
+                /* 
+                    has_new_data describe the existance of data after the last refresh time of platinum 
+                */
+                ARRAY_AGG(
+                    DISTINCT IF(created_time is NULL, "2099-01-01" , DATE( DATETIME(created_time,'Asia/Ho_Chi_Minh') ) )
+                ) AS checkpoint_date,
+                ARRAY_AGG (
+                    DISTINCT IF(action = 'd',mg_id, NULL) IGNORE NULLS
+                ) AS deleted_records
+            FROM ${source.silver}.warehouse_prd_picking_pick_ticket
+            WHERE ingest_time > Ingest_checkpoint 
+            -- AND ingest_time < TEMP_timestamp
+        );
 
-      SET checkpoint_date = ARRAY( 
-        SELECT DISTINCT IF(created_time is NULL, "2099-01-01" , DATE( DATETIME(created_time,'Asia/Ho_Chi_Minh') ) )
-        FROM silver_buymed_vn.warehouse_prd_picking_pick_ticket
-        WHERE ingest_time >= Ingest_checkpoint
-      );
-      
-      IF ( SELECT ARRAY_LENGTH(checkpoint_date) > 0 ) THEN
-            DELETE FROM ${self()}
-            where created_date in UNNEST(checkpoint_date)
-            and mg_id in ( 
-              SELECT DISTINCT mg_id 
-              FROM silver_buymed_vn.warehouse_prd_picking_pick_ticket
-              WHERE ingest_time >= Ingest_checkpoint
+        CREATE TEMP TABLE new_records AS (
+          SELECT DISTINCT mg_id
+          FROM ${source.silver}.warehouse_prd_picking_pick_ticket
+          WHERE ingest_time > Ingest_checkpoint 
+        );
+
+        IF ( has_new_data = TRUE ) THEN
+            IF (SELECT ARRAY_LENGTH(deleted_records) > 0) THEN 
+              SET checkpoint_date = ARRAY( 
+                SELECT DISTINCT created_date
+                FROM ${self()} 
+                WHERE mg_id IN (SELECT mg_id FROM new_records)
               );
-      END IF;
+            END IF;
 
+            DELETE FROM ${self()}
+            WHERE 
+                created_date IN UNNEST(checkpoint_date)
+                AND mg_id IN (SELECT mg_id FROM new_records)
+            ;
+        ELSE 
+            SET Ingest_checkpoint = TIMESTAMP("2099-01-01T00:00:00");
+        END IF ;
+
+    
       `,
       ``
     )
@@ -49,171 +84,27 @@ pre_operations {
 
 --
 
+
 SELECT
-*,
-CASE 
+  *,
+  CASE 
     WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
     ELSE "2099-01-01"
-END AS created_date
-FROM ${source.silver}.warehouse_prd_picking_pick_ticket o
-${ when(incremental(), 
-`WHERE ingest_time >= Ingest_checkpoint - INTERVAL 2 HOUR
- AND mg_id NOT IN (SELECT mg_id FROM ${self()})` 
-)}
+  END AS created_date,
+  CURRENT_DATETIME() AS platinum_refresh
 
+FROM
+  ${source.silver}.warehouse_prd_picking_pick_ticket s
+  ${ when(incremental(), 
+    `WHERE s.ingest_time > Ingest_checkpoint - INTERVAL 2 HOUR
+        -- AND s.ingest_time < TEMP_timestamp
+        AND s.mg_id IN (SELECT mg_id FROM new_records) `, 
+    // `WHERE ingest_time > "2025-01-01" AND ingest_time <= "2025-01-22T13:00:00"` 
+    )}  
 QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'
-WINDOW
-_window AS (
-PARTITION BY
-    mg_id
-ORDER BY
+WINDOW _window AS ( 
+  PARTITION BY mg_id
+  ORDER BY 
     synced_at DESC,
-IF
-    (action='d',3,
-    IF
-    (action='u',2,1)) DESC,
+    IF (action='d',3, IF (action='u',2,1)) DESC,
     last_updated_time DESC)
-
--- pre_operations {
---   ${
---     when(incremental(), 
---       `
-      
---       DECLARE min_created_date DATE;
---       DECLARE max_created_date DATE;
---       DECLARE check_deleted_action INT64;
---       DECLARE min_created_date_deleted DATE;
---       DECLARE max_created_date_deleted DATE; 
-
---       -- Define the range of created times
---       CREATE OR REPLACE TEMP TABLE range_created_time_table AS (
---         SELECT 
---           MIN(created_date) AS min_created_date, 
---           MAX(created_date) AS max_created_date 
---         FROM (
---           SELECT  
---             CASE 
---               WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh')) 
---               ELSE DATE("2099-01-01") 
---             END AS created_date
---           FROM ${source.silver}.warehouse_prd_picking_pick_ticket 
---           WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) 
---             AND (
---               (created_time IS NOT NULL AND last_updated_time IS NOT NULL) 
---               OR (created_time IS NULL AND last_updated_time IS NOT NULL) 
---               OR (created_time IS NOT NULL AND last_updated_time IS NULL)
---             ) 
---             AND action != "d"
---         )
---       );
-
---       CREATE OR REPLACE TEMP TABLE get_deleted_record AS (
---           SELECT mg_id 
---           FROM ${source.silver}.warehouse_prd_picking_pick_ticket 
---           WHERE  ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) and 
---           created_time IS NULL AND last_updated_time IS NULL
---         );
-
---       -- Set the minimum and maximum created dates
---       SET min_created_date = (SELECT min_created_date FROM range_created_time_table);
---       SET max_created_date = (SELECT max_created_date FROM range_created_time_table);
---       --SET check_deleted_action = (SELECT check FROM check_deleted_action);
-      
---       `
---     )
---   }
--- }
-
--- -- for marketplace_prd_cart only
--- WITH deleted_records_table AS (
---   SELECT mg_id
---   FROM ${source.silver}.warehouse_prd_picking_pick_ticket
---   WHERE action = 'd'
---     AND date(ingest_time) >= current_date() - 1
--- )
--- SELECT *, 
---   CASE 
---     WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
---     ELSE "2099-01-01"
---   END AS created_date
--- FROM (
---   SELECT *
---   FROM ${source.silver}.warehouse_prd_picking_pick_ticket o 
---   ${
---     when(incremental(), 
---       `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()}) 
---        QUALIFY ROW_NUMBER() OVER (_window) = 1`,
---       `QUALIFY ROW_NUMBER() OVER (_window) = 1
---        AND FIRST_VALUE(action) OVER (_window) <> 'd'`
---     )
---   }
---   WINDOW _window AS (
---     PARTITION BY mg_id
---     ORDER BY synced_at DESC,
---       IF(action = 'd', 3, IF(action = 'u', 2, 1)) DESC,
---       last_updated_time DESC
---   )
--- ) 
--- ${
---     when(incremental(), 
---       `WHERE created_time is null and last_updated_time is null -- all record deleted include action "d"
---   OR (created_time IS NOT NULL AND last_updated_time IS NOT NULL AND mg_id NOT IN (SELECT mg_id FROM deleted_records_table))
---   OR (created_time IS NULL AND last_updated_time IS NOT NULL AND mg_id NOT IN (SELECT mg_id FROM deleted_records_table))
---   OR (action = 'i' AND mg_id NOT IN (SELECT mg_id FROM deleted_records_table))`,
---       `WHERE (created_time IS NOT NULL OR last_updated_time IS NOT NULL )`
---     )
---   }
-
-
--- post_operations {
---   ${
---     when(incremental(),
---       `
-      
---       -- Delete rows using the temporary table
---       IF min_created_date IS NOT NULL AND max_created_date IS NOT NULL THEN
---       DELETE FROM ${self()}
---       WHERE (created_date BETWEEN min_created_date AND max_created_date)
---         AND (key) IN (
---           SELECT (key) FROM ${self()} 
---           WHERE created_date BETWEEN min_created_date AND max_created_date 
---           QUALIFY ROW_NUMBER() OVER (_window) > 1
---           --OR FIRST_VALUE(action) OVER (_window) = "d"
---           WINDOW _window AS (
---             PARTITION BY mg_id
---             ORDER BY synced_at DESC,
---             IF(action = 'd', 3, IF(action = 'u', 2, 1)) DESC,
---             last_updated_time DESC
---           )
---         );
---       END IF;
-
---       IF EXISTS(select * from get_deleted_record limit 1) THEN
-
---         CREATE OR REPLACE TEMP TABLE get_range_deleted AS (
---           SELECT 
---             MIN(created_date) AS min_created_date_deleted, 
---             MAX(created_date) AS max_created_date_deleted 
---           FROM ${self()} 
---           WHERE mg_id IN (SELECT mg_id FROM get_deleted_record) 
---             AND created_date != "2099-01-01" 
---         );
-        
---         SET min_created_date_deleted = (SELECT min_created_date_deleted FROM get_range_deleted);
---         SET max_created_date_deleted = (SELECT max_created_date_deleted FROM get_range_deleted);
---         IF min_created_date_deleted is not null and max_created_date_deleted is not null THEN
---           DELETE FROM ${self()} 
---           WHERE created_date BETWEEN min_created_date_deleted AND max_created_date_deleted 
---             AND mg_id IN (SELECT mg_id FROM get_deleted_record);
---         END IF;
-
---         DELETE FROM ${self()} 
---         WHERE created_date = "2099-01-01" 
---           AND created_time IS NULL 
---           AND last_updated_time IS NULL;
---       END IF;
---       `,
---       ``
---     )
---   }
--- }
