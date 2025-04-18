@@ -2,10 +2,10 @@ config {
     type: "incremental",
     name: "warehouse_prd_picking_pick_ticket_item",
     schema: "platinum_buymed_vn",
-    assertions: {
-        uniqueKey: 'mg_id',
-        nonNull: ['created_date'],
-     },
+    // assertions: {
+    //     uniqueKey: 'mg_id',
+    //     nonNull: ['created_date'],
+    //  },
     bigquery: {
         partitionBy: "created_date"
     },
