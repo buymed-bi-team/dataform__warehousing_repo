@@ -31,6 +31,7 @@ WITH
         FROM platinum_buymed_vn.marketplace_prd_promotion_gamification_customer AS a
             LEFT JOIN gold_buymed_vn2.dim_gamification AS g USING(gamification_id)
         WHERE a.status <> "ACTIVE"
+            AND g.gamification_id IS NOT NULL
     )
 
     , final AS (
