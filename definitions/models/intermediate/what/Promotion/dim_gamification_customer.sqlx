@@ -12,10 +12,46 @@ config {
     tags: ["custom_1h_past5","PROMOTION_MKP"]
 }
 
+WITH
+    customer_and_gami AS (
+        SELECT
+            c.customer_id
+            , g.gamification_id
+            , g.gamification_code
+        FROM gold_buymed_vn2.dim_customer AS c
+            , gold_buymed_vn2.dim_gamification AS g
+        WHERE customer_status = "ACTIVE"
+    )
+
+    , excluding_customer AS (
+        SELECT
+            a.customer_id
+            , g.gamification_id
+            , g.gamification_code
+        FROM platinum_buymed_vn.marketplace_prd_promotion_gamification_customer AS a
+            LEFT JOIN gold_buymed_vn2.dim_gamification AS g USING(gamification_id)
+        WHERE a.status <> "ACTIVE"
+    )
+
+    , final AS (
+        SELECT
+            *
+        FROM customer_and_gami
+        EXCEPT DISTINCT
+        SELECT
+            *
+        FROM excluding_customer
+    )
+
 SELECT
-    gamification_id
-    , customer_id
-    , TIMESTAMP_ADD(TIMESTAMP(join_time), INTERVAL 7 HOUR) AS join_time
-FROM ${source.platinum}.marketplace_prd_promotion_gamification_customer
-WHERE status = "ACTIVE"
+    a.customer_id
+    , a.gamification_id
+    , g.gamification_code
+FROM ${source.platinum}.marketplace_prd_promotion_gamification_customer AS a
+    LEFT JOIN ${ref('dim_gamification')} AS g USING(gamification_id)
+WHERE a.status = "ACTIVE"
+    AND g.gamification_id IS NOT NULL
+UNION DISTINCT
+SELECT *
+FROM final
 
