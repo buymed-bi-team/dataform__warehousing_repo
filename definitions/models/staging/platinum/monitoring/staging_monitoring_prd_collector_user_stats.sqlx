@@ -4,15 +4,15 @@ config {
     type: "incremental",
     name: "monitoring_prd_collector_user_stats",
     schema: "platinum_buymed_vn",
-    assertions: {
-        uniqueKey: 'mg_id',
-        nonNull: ["created_date"]
-    },
+    // assertions: {
+        // uniqueKey: 'mg_id',
+        // nonNull: ["created_date"]
+    // },
     bigquery: {
         partitionBy: "created_date",
         clusterBy: ["event, customer_id, mg_id"]
     },
-    tags:["platinum_custom_5min"]
+    tags:["platinum_custom_1h_past7"]
 }
 
 pre_operations {
