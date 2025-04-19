@@ -17,8 +17,8 @@ SELECT
     a.gamification_id
     , a.gamification_code
     , a.name AS gamification_name
-    , TIMESTAMP_ADD(TIMESTAMP(JSON_VALUE(b.condition, '$.start_time')), INTERVAL 7 HOUR) AS start_time
-    , TIMESTAMP_ADD(TIMESTAMP(JSON_VALUE(b.condition, '$.end_time')), INTERVAL 7 HOUR) AS end_time
+    , TIMESTAMP_ADD(COALESCE(TIMESTAMP(JSON_VALUE(b.condition, '$.start_time')), a.start_time), INTERVAL 7 HOUR) AS start_time
+    , TIMESTAMP_ADD(COALESCE(TIMESTAMP(JSON_VALUE(b.condition, '$.end_time')), a.end_time), INTERVAL 7 HOUR) AS end_time
     , REGEXP_REPLACE(a.description, r'\\n|\\', '') AS description
     , a.scope
     , b.condition

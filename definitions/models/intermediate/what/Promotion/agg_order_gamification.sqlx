@@ -15,15 +15,6 @@ config {
     tags: ["custom_1h_past5","PROMOTION_MKP"]
 }
 
--- WITH 
---     cte AS (
---         SELECT
---             *
---             , IF(sku_code IN ("MEDX.SAN-ALE-001","MEDX.5b4213a5d8495","MEDX.SAN-OFL-002"),
---                    IF( DATE(created_at) BETWEEN "2024-11-15" AND "2024-12-31", 1, 0), 1) flag_gamification 
---         FROM ${ref('fact_order_item')}
---     )
-
 SELECT
     o.customer_id
     , g.gamification_code
@@ -42,11 +33,13 @@ FROM ${ref('fact_order_item')} AS oi
     LEFT JOIN ${ref('fact_order')} AS o ON oi.order_id = o.order_id
     JOIN ${ref('dim_gamification_sku')} AS gs ON oi.sku_orignal_key = gs.sku_key
     LEFT JOIN ${ref('dim_gamification')} AS g ON gs.gamification_code = g.gamification_code
+    LEFT JOIN ${ref('dim_gamification_customer')} AS gc ON gc.customer_id = oi.customer_id AND gc.gamification_code = g.gamification_code
 WHERE
     oi.created_at >= '2024-06-01' AND
     oi.created_at >= g.start_time
     AND oi.created_at <= g.end_time
     AND o.order_status <> 'CANCEL'
+    AND gc.customer_id IS NOT NULL
     AND o.province_code IN (SELECT a.province_code FROM ${ref('dim_gamification_location')} AS a WHERE a.gamification_code = g.gamification_code)
     -- AND flag_gamification = 1
 GROUP BY ALL
