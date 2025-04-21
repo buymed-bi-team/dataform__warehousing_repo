@@ -129,6 +129,8 @@ and outbound_infos is null
 )
 , so as (
     select order_id
+        , customer_id
+        , warehouse_code
         , sale_order_code as so_code
         , status
     from platinum_buymed_vn.marketplace_prd_order_v2_order o
@@ -145,6 +147,8 @@ and outbound_infos is null
 )
 , soi as (
 select so.so_code
+    , so.customer_id
+    , so.warehouse_code
     , so.status
     , tdo.outbound_date_local
     , soi0.*
