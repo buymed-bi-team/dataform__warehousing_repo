@@ -20,21 +20,29 @@ config {
 }
 
 pre_operations {
-    ${when(
-        incremental(),
-        `     
-            DELETE FROM ${self()}
-            WHERE outbound_date_local >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 3 MONTH);
-            DELETE FROM ${self()}
-            WHERE outbound_date_local < DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 12 MONTH);
-            
-        `
-        )
-    }
+  ${when(
+    incremental(),
+    `
+      DELETE FROM ${self()}
+      WHERE outbound_date_local >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 3 MONTH);
+
+      DELETE FROM ${self()}
+      WHERE outbound_date_local < DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 12 MONTH);
+    `,
+    `
+      DELETE FROM ${self()} WHERE TRUE;
+    `
+  )}
 }
 
+
 with params as (
-    select date_trunc(date_sub(current_date('+07'), ${when(incremental(),'interval 3 month','interval 12 month')}) , month) as start_date
+    select 
+        ${when(
+            incremental(),
+            "date_trunc(date_sub(current_date('+07'), interval 3 month), month)",
+            "date('2024-01-01')"
+        )} as start_date
 )
 , t0 as (
 select date(created_time,'+07') as created_date_local
@@ -94,7 +102,7 @@ select m.*
     , json_extract_scalar(combo_item.sku ) as bom_sku_code
     , safe_cast(json_extract_scalar(combo_item.product_id) as int64) as bom_product_id
     , json_extract_scalar(combo_item.sku_level ) as bom_sku_level
-    , safe_cast(json_extract_scalar(combo_item.price) as float64) as original_bom_price
+    , coalesce(safe_cast(json_extract_scalar(combo_item.price) as float64),0) as original_bom_price
     , safe_cast(json_extract_scalar(combo_item.seller_price) as float64) as bom_seller_price
     , safe_cast(json_extract_scalar(ob_info.quantity) as int64) as bom_outbound_qty
     , json_extract_scalar(ob_info.exp_date) as bom_exp_date
@@ -121,6 +129,8 @@ and outbound_infos is null
 )
 , so as (
     select order_id
+        , customer_id
+        , warehouse_code
         , sale_order_code as so_code
         , status
     from platinum_buymed_vn.marketplace_prd_order_v2_order o
@@ -137,12 +147,14 @@ and outbound_infos is null
 )
 , soi as (
 select so.so_code
+    , so.customer_id
+    , so.warehouse_code
     , so.status
     , tdo.outbound_date_local
     , soi0.*
     , case
         when product_type = 'product' then original_bom_price
-        when product_type = 'combo' then original_bom_price * least((actual_sale_price
+        when product_type = 'combo' then original_bom_price * least(((actual_sale_price * actual_outbound_qty)
             / sum(original_bom_price * bom_outbound_qty) over (partition by soi0.order_id, soi0.product_id))
             ,1)
         end as bom_sale_price
@@ -156,8 +168,8 @@ where 1=1
     from soi
     where 1=1
     and outbound_date_local is not null
+    and outbound_date_local >= (select start_date from params)
 )
 select *
 from fin
 where 1=1
-and outbound_date_local >= (select start_date from params)

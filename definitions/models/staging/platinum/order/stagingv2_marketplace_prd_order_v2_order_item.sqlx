@@ -8,7 +8,7 @@ config {
     bigquery: {
         partitionBy: "created_date"
     },
-    tags: ["platinum_custom_10min","marketplace_prd_order-v2"]
+    tags: ["platinum_custom_10min","marketplace_prd_order-v2","Finance/margin"]
 }
 pre_operations {
   ${
