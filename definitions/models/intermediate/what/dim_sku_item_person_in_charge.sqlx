@@ -21,11 +21,9 @@ SELECT
     , a.pic_account_id
     -- , a.action
     -- , a.synced_at
-FROM silver_buymed_vn.seller_prd_purchasing_pic as a
+FROM ${source.platinum}.seller_prd_purchasing_pic as a
 WHERE
     COALESCE(a.object_type, 'SKU') = "SKU"
-QUALIFY ROW_NUMBER() OVER(_window) = 1 AND FIRST_VALUE(a.action) OVER(_window) <> "d"
-WINDOW _window AS (PARTITION BY a.mg_id ORDER BY synced_at DESC)
 )
 
 SELECT
