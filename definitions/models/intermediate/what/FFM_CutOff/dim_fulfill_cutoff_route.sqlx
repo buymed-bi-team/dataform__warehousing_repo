@@ -103,11 +103,27 @@ WITH
     cut_off_time AS (
         SELECT
             *
-            , IF(
-                flag = 1 AND is_same_day
-                , PARSE_TIMESTAMP("%Y-%m-%d %H:%M", CONCAT(DATE(ready_for_pick_time), " ", FLOOR(cut_off_hour), ":", FLOOR((cut_off_hour - FLOOR(cut_off_hour)) * 60)))
-                , PARSE_TIMESTAMP("%Y-%m-%d %H:%M", CONCAT(DATE_ADD(DATE(ready_for_pick_time), INTERVAL 1 DAY), " ", FLOOR(cut_off_hour), ":", FLOOR((cut_off_hour - FLOOR(cut_off_hour)) * 60)))
-              ) AS cut_off_ts
+            , CASE flag
+                WHEN 1 THEN
+                    IF(
+                        is_same_day
+                        , PARSE_TIMESTAMP("%Y-%m-%d %H:%M", CONCAT(DATE(ready_for_pick_time), " ", FLOOR(cut_off_hour), ":", FLOOR((cut_off_hour - FLOOR(cut_off_hour)) * 60)))
+                        , PARSE_TIMESTAMP("%Y-%m-%d %H:%M", CONCAT(DATE_ADD(DATE(ready_for_pick_time), INTERVAL 1 DAY), " ", FLOOR(cut_off_hour), ":", FLOOR((cut_off_hour - FLOOR(cut_off_hour)) * 60)))
+                    )
+                WHEN 0 THEN
+                    IF(
+                        is_same_day
+                        , PARSE_TIMESTAMP("%Y-%m-%d %H:%M", CONCAT(DATE_ADD(DATE(ready_for_pick_time), INTERVAL 1 DAY), " ", FLOOR(cut_off_hour), ":", FLOOR((cut_off_hour - FLOOR(cut_off_hour)) * 60)))
+                        , PARSE_TIMESTAMP("%Y-%m-%d %H:%M", CONCAT(DATE_ADD(DATE(ready_for_pick_time), INTERVAL 2 DAY), " ", FLOOR(cut_off_hour), ":", FLOOR((cut_off_hour - FLOOR(cut_off_hour)) * 60)))
+
+                    )
+                ELSE PARSE_TIMESTAMP("%Y-%m-%d %H:%M", CONCAT(DATE_ADD(DATE(ready_for_pick_time), INTERVAL 1 DAY), " ", FLOOR(cut_off_hour), ":", FLOOR((cut_off_hour - FLOOR(cut_off_hour)) * 60)))
+              END AS cut_off_ts
+            -- , IF(
+            --     flag = 1 AND is_same_day
+            --     , PARSE_TIMESTAMP("%Y-%m-%d %H:%M", CONCAT(DATE(ready_for_pick_time), " ", FLOOR(cut_off_hour), ":", FLOOR((cut_off_hour - FLOOR(cut_off_hour)) * 60)))
+            --     , PARSE_TIMESTAMP("%Y-%m-%d %H:%M", CONCAT(DATE_ADD(DATE(ready_for_pick_time), INTERVAL 1 DAY), " ", FLOOR(cut_off_hour), ":", FLOOR((cut_off_hour - FLOOR(cut_off_hour)) * 60)))
+            --   ) AS cut_off_ts
         FROM cut_off_route
     ),
 
