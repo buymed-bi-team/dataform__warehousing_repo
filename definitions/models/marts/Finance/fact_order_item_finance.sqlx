@@ -102,7 +102,7 @@ select m.*
     , json_extract_scalar(combo_item.sku ) as bom_sku_code
     , safe_cast(json_extract_scalar(combo_item.product_id) as int64) as bom_product_id
     , json_extract_scalar(combo_item.sku_level ) as bom_sku_level
-    , safe_cast(json_extract_scalar(combo_item.price) as float64) as original_bom_price
+    , coalesce(safe_cast(json_extract_scalar(combo_item.price) as float64),0) as original_bom_price
     , safe_cast(json_extract_scalar(combo_item.seller_price) as float64) as bom_seller_price
     , safe_cast(json_extract_scalar(ob_info.quantity) as int64) as bom_outbound_qty
     , json_extract_scalar(ob_info.exp_date) as bom_exp_date
