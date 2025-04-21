@@ -23,21 +23,22 @@ WITH
     SELECT
         account_id,
         type,
-        COALESCE(JSON_VALUE(w), JSON_VALUE(d.district_code), JSON_VALUE(p.province_code)) AS code
+        COALESCE(w, JSON_VALUE(d.district_code), JSON_VALUE(p.province_code)) AS code
     FROM ${ref('marketplace_prd_customer_pic')} c
-        , UNNEST(JSON_EXTRACT_ARRAY(provinces, '$')) AS p
-        LEFT JOIN UNNEST(JSON_QUERY_ARRAY(p.district_code,'$')) AS d
-        LEFT JOIN UNNEST(JSON_QUERY_ARRAY(d.ward_codes,'$')) AS w 
+        , UNNEST(JSON_QUERY_ARRAY(provinces, '$')) AS p
+        LEFT JOIN UNNEST(JSON_QUERY_ARRAY(p.districts,'$')) AS d
+        LEFT JOIN UNNEST(JSON_VALUE_ARRAY(d.ward_codes)) AS w
 )
 
 SELECT
   account_id,
   type,
-  COALESCE(d1.location_code, d2.location_code) AS ward_code,
+  COALESCE(d1.location_code, d2.location_code, d3.location_code) AS ward_code,
   LEFT(e.email, STRPOS(email, '@') - 1) AS user_name,
   e.fullname
 FROM unnest_ward p
     LEFT JOIN ${ref('dim_geo_location')} d1 ON p.code=d1.province_code AND d1.province_code IS NOT NULL
     LEFT JOIN ${ref('dim_geo_location')} d2 ON p.code=d2.district_code AND d2.district_code IS NOT NULL
+    LEFT JOIN ${ref('dim_geo_location')} d3 ON p.code=d3.ward_code AND d3.ward_code IS NOT NULL
 LEFT JOIN ${ref('dim_employee')}  AS e ON e.branch_account_id = p.account_id
 
