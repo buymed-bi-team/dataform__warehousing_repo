@@ -20,21 +20,29 @@ config {
 }
 
 pre_operations {
-    ${when(
-        incremental(),
-        `     
-            DELETE FROM ${self()}
-            WHERE outbound_date_local >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 3 MONTH);
-            DELETE FROM ${self()}
-            WHERE outbound_date_local < DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 12 MONTH);
-            
-        `
-        )
-    }
+  ${when(
+    incremental(),
+    `
+      DELETE FROM ${self()}
+      WHERE outbound_date_local >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 3 MONTH);
+
+      DELETE FROM ${self()}
+      WHERE outbound_date_local < DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 12 MONTH);
+    `,
+    `
+      DELETE FROM ${self()} WHERE TRUE;
+    `
+  )}
 }
 
+
 with params as (
-    select date_trunc(date_sub(current_date('+07'), ${when(incremental(),'interval 3 month','interval 12 month')}) , month) as start_date
+    select 
+        ${when(
+            incremental(),
+            "date_trunc(date_sub(current_date('+07'), interval 3 month), month)",
+            "date('2024-01-01')"
+        )} as start_date
 )
 , t0 as (
 select date(created_time,'+07') as created_date_local
@@ -142,7 +150,7 @@ select so.so_code
     , soi0.*
     , case
         when product_type = 'product' then original_bom_price
-        when product_type = 'combo' then original_bom_price * least((actual_sale_price
+        when product_type = 'combo' then original_bom_price * least(((actual_sale_price * actual_outbound_qty)
             / sum(original_bom_price * bom_outbound_qty) over (partition by soi0.order_id, soi0.product_id))
             ,1)
         end as bom_sale_price
@@ -156,8 +164,8 @@ where 1=1
     from soi
     where 1=1
     and outbound_date_local is not null
+    and outbound_date_local >= (select start_date from params)
 )
 select *
 from fin
 where 1=1
-and outbound_date_local >= (select start_date from params)
