@@ -19,8 +19,8 @@ config {
     "total_qty": "sum of order_quantity for the whole sale order",
     "total_amt": "sum of unit_price * order_quantity for the whole sale order",
     "total_sku": "total distinct SKU count for the whole sale order",
-    "expected_sort": "= 10% order_quantity / total_qty + 25% order_amount / total_amt + 25% / total_sku",
-    "actual_sort": "= 10% order_quantity / total_qty + 25% order_amount / total_amt + 25% no_reserved_skus / total_sku",
+    "expected_sort": "= 10% order_quantity / total_qty + 60% order_amount / total_amt + 30% / total_sku",
+    "actual_sort": "= 10% order_quantity / total_qty + 60% order_amount / total_amt + 30% no_reserved_skus / total_sku",
     "potential_sort": "expected_sort - actual_sort for in-progress statuses (DRAFT, CONFIRM, RESERVING, WAIT-TO-CHECK, CHECKING, WAIT-TO-PICK, PICKING)",
     "unFF_sort": "expected_sort - actual_sort for other statuses"
   },
