@@ -109,7 +109,7 @@ select date(created_time,'+07') as created_date_local
     , extra_props
     , outbound_infos
     , return_infos
-from platinum_buymed_vn.marketplace_prd_order_v2_order_item oi
+from ${source.platinum}.marketplace_prd_order_v2_order_item oi
 where 1=1
 and created_date >= (select date_sub(start_date, interval 3 month) from params)
 )
@@ -175,14 +175,14 @@ and outbound_infos is null
         , warehouse_code
         , sale_order_code as so_code
         , status
-    from platinum_buymed_vn.marketplace_prd_order_v2_order o
+    from ${source.platinum}.marketplace_prd_order_v2_order o
     where 1=1
     and created_date >= (select date_sub(start_date, interval 3 month) from params)
 )
 , tdo as (
     select delivery_order_code as do_code
         , date(outbound_time,'+07') as outbound_date_local
-    from  platinum_buymed_vn.warehouse_prd_core_delivery_order tdo
+    from  ${source.platinum}.warehouse_prd_core_delivery_order tdo
     where 1=1
     and created_date >= (select date_sub(start_date, interval 3 month) from params)
     and status not like '%CANCEL%'
