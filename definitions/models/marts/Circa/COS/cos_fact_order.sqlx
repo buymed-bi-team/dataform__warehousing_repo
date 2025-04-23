@@ -48,6 +48,7 @@ cte_fs as
        date(DATETIME_ADD(o.created_at, INTERVAL 7 HOUR)) as created_date,
        DATETIME_ADD(o.created_at, INTERVAL 7 HOUR) as created_at,
        fulfillment_status,
+       '' as reference_order_in_platform,
        date(DATETIME_ADD(completed_at, INTERVAL 7 HOUR))  as completed_date,
        medicine_cutting_fee,
        STRING_AGG(CAST(return_id as string)) as return_codes
@@ -76,6 +77,7 @@ cte_os as
        date(DATETIME_ADD(o.created_at, INTERVAL 7 HOUR)) as created_date,
        DATETIME_ADD(o.created_at, INTERVAL 7 HOUR) as created_at,
        fulfillment_status,
+       reference_order_in_platform,
        date(DATETIME_ADD(completed_at, INTERVAL 7 HOUR))  as completed_date,
        medicine_cutting_fee,
        STRING_AGG(CAST(return_id as string)) as return_codes

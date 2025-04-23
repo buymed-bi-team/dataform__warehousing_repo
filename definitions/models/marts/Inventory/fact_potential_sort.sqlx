@@ -19,8 +19,8 @@ config {
     "total_qty": "sum of order_quantity for the whole sale order",
     "total_amt": "sum of unit_price * order_quantity for the whole sale order",
     "total_sku": "total distinct SKU count for the whole sale order",
-    "expected_sort": "= 50% order_quantity / total_qty + 25% order_amount / total_amt + 25% / total_sku",
-    "actual_sort": "= 50% order_quantity / total_qty + 25% order_amount / total_amt + 25% no_reserved_skus / total_sku",
+    "expected_sort": "= 10% order_quantity / total_qty + 60% order_amount / total_amt + 30% / total_sku",
+    "actual_sort": "= 10% order_quantity / total_qty + 60% order_amount / total_amt + 30% no_reserved_skus / total_sku",
     "potential_sort": "expected_sort - actual_sort for in-progress statuses (DRAFT, CONFIRM, RESERVING, WAIT-TO-CHECK, CHECKING, WAIT-TO-PICK, PICKING)",
     "unFF_sort": "expected_sort - actual_sort for other statuses"
   },
@@ -117,23 +117,23 @@ agg_sale_order_item AS (
 agg_sale_order_item_sort AS (
   SELECT
     *,
-      COALESCE(50 * SAFE_DIVIDE(order_quantity, NULLIF(total_qty, 0)), 0)
-      + COALESCE(25 * SAFE_DIVIDE(order_amount, NULLIF(total_amt, 0)), 0) 
-      + COALESCE(25 * SAFE_DIVIDE(1, NULLIF(total_sku, 0)), 0) AS expected_sort,
-      COALESCE(50 * SAFE_DIVIDE(reserved_quantity, NULLIF(total_qty, 0)), 0) 
-      + COALESCE(25 * SAFE_DIVIDE(reserved_amount, NULLIF(total_amt, 0)), 0) 
-      + COALESCE(25 * SAFE_DIVIDE(no_reserved_skus, NULLIF(total_sku, 0)), 0) AS actual_sort,
-      COALESCE(50 * SAFE_DIVIDE(first_reserved_quantity, NULLIF(total_qty, 0)), 0) 
-      + COALESCE(25 * SAFE_DIVIDE(first_reserved_amount, NULLIF(total_amt, 0)), 0) 
-      + COALESCE(25 * SAFE_DIVIDE(no_first_reserved_skus, NULLIF(total_sku, 0)), 0) AS actual_sort_first_reserved
+      COALESCE(10 * SAFE_DIVIDE(order_quantity, NULLIF(total_qty, 0)), 0)
+      + COALESCE(60 * SAFE_DIVIDE(order_amount, NULLIF(total_amt, 0)), 0) 
+      + COALESCE(30 * SAFE_DIVIDE(1, NULLIF(total_sku, 0)), 0) AS expected_sort,
+      COALESCE(10 * SAFE_DIVIDE(reserved_quantity, NULLIF(total_qty, 0)), 0) 
+      + COALESCE(60 * SAFE_DIVIDE(reserved_amount, NULLIF(total_amt, 0)), 0) 
+      + COALESCE(30 * SAFE_DIVIDE(no_reserved_skus, NULLIF(total_sku, 0)), 0) AS actual_sort,
+      COALESCE(10 * SAFE_DIVIDE(first_reserved_quantity, NULLIF(total_qty, 0)), 0) 
+      + COALESCE(60 * SAFE_DIVIDE(first_reserved_amount, NULLIF(total_amt, 0)), 0) 
+      + COALESCE(30 * SAFE_DIVIDE(no_first_reserved_skus, NULLIF(total_sku, 0)), 0) AS actual_sort_first_reserved
   FROM agg_sale_order_item
 )
 
 SELECT
   *,
-  (0.5 * SAFE_DIVIDE(SUM(reserved_quantity) OVER (PARTITION BY sale_order_code), total_qty))
-  + (0.25 * SAFE_DIVIDE(SUM(reserved_amount) OVER (PARTITION BY sale_order_code), total_amt)) 
-  + (0.25 * LEAST(SAFE_DIVIDE(SUM(no_reserved_skus) OVER (PARTITION BY sale_order_code), total_sku), 1)) AS actual_sort_percentage_full_order,
+  (0.1 * SAFE_DIVIDE(SUM(reserved_quantity) OVER (PARTITION BY sale_order_code), total_qty))
+  + (0.6 * SAFE_DIVIDE(SUM(reserved_amount) OVER (PARTITION BY sale_order_code), total_amt)) 
+  + (0.3 * LEAST(SAFE_DIVIDE(SUM(no_reserved_skus) OVER (PARTITION BY sale_order_code), total_sku), 1)) AS actual_sort_percentage_full_order,
   IF(status IN ("CHECKING", "DRAFT", "WAIT_TO_PICK", "RESERVING", "WAIT_TO_CHECK", "CONFIRM", "PICKING"), expected_sort - actual_sort, 0) AS potential_sort,
   IF(status NOT IN ("CHECKING", "DRAFT", "WAIT_TO_PICK", "RESERVING", "WAIT_TO_CHECK", "CONFIRM", "PICKING"), expected_sort - actual_sort, 0) AS unFF_sort
 FROM agg_sale_order_item_sort

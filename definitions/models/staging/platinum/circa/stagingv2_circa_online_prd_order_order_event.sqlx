@@ -1,16 +1,19 @@
 config {
     type: "incremental",
-    name: "seller_prd_reporting_tax_report_item",
+    name: "circa_online_prd_order_order_event",
     schema: "platinum_buymed_vn",
     assertions: {
-        uniqueKey: 'mg_id',
-    },
+         uniqueKey: 'mg_id'
+     },
     bigquery: {
         partitionBy: "created_date"
     },
-    description: `Internal: internal.thuocsi.vn/seller/orders/revenue-declaration/detail?`,
-    tags: ["platinum_custom_1h_past7","seller_prd_reporting"]
+    columns: {
+
+    },
+    tags: ["platinum_custom_2h_past7","circa-online_prd_order"]
 }
+
 
 pre_operations {
   ${
@@ -40,13 +43,13 @@ pre_operations {
                 ARRAY_AGG (
                     DISTINCT IF(action = 'd',mg_id, NULL) IGNORE NULLS
                 ) AS deleted_records
-            FROM ${source.silver}.seller_prd_reporting_tax_report_item
+            FROM ${source.silver}.circa_online_prd_order_order_event
             WHERE ingest_time > Ingest_checkpoint 
         );
 
         CREATE TEMP TABLE new_records AS (
           SELECT DISTINCT mg_id
-          FROM ${source.silver}.seller_prd_reporting_tax_report_item
+          FROM ${source.silver}.circa_online_prd_order_order_event
           WHERE ingest_time > Ingest_checkpoint 
         );
 
@@ -84,7 +87,7 @@ SELECT
     END AS created_date,
     CURRENT_DATETIME() AS platinum_refresh
 FROM
-${source.silver}.seller_prd_reporting_tax_report_item s
+${source.silver}.circa_online_prd_order_order_event s
 ${ when(incremental(), 
     `WHERE s.ingest_time > Ingest_checkpoint - INTERVAL 2 HOUR
         -- AND s.ingest_time < TEMP_timestamp
