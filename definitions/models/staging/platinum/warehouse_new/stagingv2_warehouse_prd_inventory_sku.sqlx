@@ -1,5 +1,3 @@
-
-
 config {
     type: "incremental",
     name: "warehouse_prd_inventory_sku",
