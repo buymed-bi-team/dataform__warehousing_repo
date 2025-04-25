@@ -1,0 +1,420 @@
+config {
+    type: "incremental",
+    description: 
+        `PIC: van.lethuy; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        `,
+    bigquery: {
+        partitionBy: "outbound_date_local",
+        clusterBy: ["order_id", "sku_code"]
+    },
+    tags: ["custom_1h_past5"],
+
+}
+
+pre_operations {
+  ${when(
+    incremental(),
+    `
+      MERGE INTO ${self()} AS target
+      USING (
+        SELECT *
+        FROM ${self()}  -- References the query output (fin CTE)
+        WHERE outbound_date_local >= DATE_SUB(DATE_TRUNC(CURRENT_DATE('+7'), MONTH), INTERVAL 6 MONTH)
+      ) AS source
+      ON target.outbound_date_local = source.outbound_date_local
+         AND target.order_id = source.order_id
+         AND target.sku_code = source.sku_code
+      WHEN MATCHED THEN
+        UPDATE SET
+          so_code = source.so_code,
+          customer_id = source.customer_id,
+          warehouse_code = source.warehouse_code,
+          status = source.status,
+          created_date_local = source.created_date_local,
+          product_type = source.product_type,
+          do_code = source.do_code,
+          product_id = source.product_id,
+          type = source.type,
+          seller_code = source.seller_code,
+          seller_class = source.seller_class,
+          deal_code = source.deal_code,
+          deal_sale_price = source.deal_sale_price,
+          bom_product_id = source.bom_product_id,
+          bom_sku_code = source.bom_sku_code,
+          bom_vat = source.bom_vat,
+          bom_sale_price = source.bom_sale_price,
+          bom_seller_price = source.bom_seller_price,
+          bom_deal_purchase_price = source.bom_deal_purchase_price,
+          po_code = source.po_code,
+          bom_outbound_qty = source.bom_outbound_qty,
+          bom_returned_qty = source.bom_returned_qty,
+          vb_purchase_price = source.vb_purchase_price,
+          po_purchase_price = source.po_purchase_price,
+          avg_vb_purchase_price = source.avg_vb_purchase_price,
+          price_after_rebate = source.price_after_rebate,
+          price_after_rebate_with_adhoc_promotion = source.price_after_rebate_with_adhoc_promotion,
+          highest_price_of_month = source.highest_price_of_month,
+          line_manager_combine = source.line_manager_combine,
+          final_unit_purchase_price = source.final_unit_purchase_price,
+          unit_purchase_price_source = source.unit_purchase_price_source,
+          final_purchase_price_after_rebate = source.final_purchase_price_after_rebate,
+          price_after_rebate_source = source.price_after_rebate_source
+      WHEN NOT MATCHED THEN
+        INSERT ROW
+      WHEN NOT MATCHED BY SOURCE
+         AND target.outbound_date_local < DATE_SUB(DATE_TRUNC(CURRENT_DATE('+7'), MONTH), INTERVAL 12 MONTH) THEN
+        DELETE;
+    `,
+    `
+      MERGE INTO ${self()} AS target
+      USING (
+        SELECT *
+        FROM ${self()}  -- References the query output (full dataset)
+      ) AS source
+      ON target.outbound_date_local = source.outbound_date_local
+         AND target.order_id = source.order_id
+         AND target.sku_code = source.sku_code
+      WHEN MATCHED THEN
+        UPDATE SET
+          so_code = source.so_code,
+          customer_id = source.customer_id,
+          warehouse_code = source.warehouse_code,
+          status = source.status,
+          created_date_local = source.created_date_local,
+          product_type = source.product_type,
+          do_code = source.do_code,
+          product_id = source.product_id,
+          type = source.type,
+          seller_code = source.seller_code,
+          seller_class = source.seller_class,
+          deal_code = source.deal_code,
+          deal_sale_price = source.deal_sale_price,
+          bom_product_id = source.bom_product_id,
+          bom_sku_code = source.bom_sku_code,
+          bom_vat = source.bom_vat,
+          bom_sale_price = source.bom_sale_price,
+          bom_seller_price = source.bom_seller_price,
+          bom_deal_purchase_price = source.bom_deal_purchase_price,
+          po_code = source.po_code,
+          bom_outbound_qty = source.bom_outbound_qty,
+          bom_returned_qty = source.bom_returned_qty,
+          vb_purchase_price = source.vb_purchase_price,
+          po_purchase_price = source.po_purchase_price,
+          avg_vb_purchase_price = source.avg_vb_purchase_price,
+          price_after_rebate = source.price_after_rebate,
+          price_after_rebate_with_adhoc_promotion = source.price_after_rebate_with_adhoc_promotion,
+          highest_price_of_month = source.highest_price_of_month,
+          line_manager_combine = source.line_manager_combine,
+          final_unit_purchase_price = source.final_unit_purchase_price,
+          unit_purchase_price_source = source.unit_purchase_price_source,
+          final_purchase_price_after_rebate = source.final_purchase_price_after_rebate,
+          price_after_rebate_source = source.price_after_rebate_source
+      WHEN NOT MATCHED THEN
+        INSERT ROW
+      WHEN NOT MATCHED BY SOURCE THEN
+        DELETE;
+    `
+  )}
+}
+
+with params as (
+    select 
+        ${when(
+            incremental(),
+            "date_trunc(date_sub(current_date('+07'), interval 6 month), month)",
+            "date('2024-01-01')"
+        )} as start_date
+
+    -- date('2025-01-01') as start_date
+
+    , date_trunc(date_sub(current_date('+07'), interval 2 year), month) as target_date
+)
+, poi as (
+select date(po.created_time,'+07') as po_created_date
+    , poi.po_code
+    , po.status
+    , poi.contract_price_code
+    , poi.seller_code
+    , poi.product_id
+    , regexp_replace(poi.sku, r'MEDX-HN', 'MEDX') as sku_code
+    , poi.warehouse_code
+    , poi.discount_percent /100 as discount_percent
+    , poi.unit_price
+    , poi.discount_price
+    , poi.expect_quantity
+    , poi.actual_quantity
+    , poi.gift_quantity
+    , poi.total_price
+    , poi.price_after_rebate
+    , poi.price_after_discount
+    , case
+        when poi.vat > 0 then 'Trading'
+        else 'Non-Trading' end as sku_trading_po
+    , sum(poi.total_price) over (partition by poi.po_code, poi.sku) /
+        nullif(sum(poi.expect_quantity) over (partition by poi.po_code, sku),0) as avg_unit_price
+    , poi.vendor_code
+    , line_manager_combine
+-- from platinum_buymed_vn.seller_prd_purchasing_purchase_order_item poi
+  from  ${source.platinum}.seller_prd_purchasing_purchase_order_item poi
+-- left join platinum_buymed_vn.seller_prd_purchasing_purchase_order po on poi.po_code = po.po_code
+left join ${source.platinum}.seller_prd_purchasing_purchase_order po on poi.po_code = po.po_code
+-- left join gold_buymed_vn2.dim_vendor dv on poi.vendor_code = dv.supplier_code
+left join ${ref('dim_vendor')} dv on poi.vendor_code = dv.supplier_code
+where 1=1
+and poi.created_date >= (select target_date from params)
+and po.created_date >= (select target_date from params)
+and po.status not in ('DRAFT','CANCELED')
+)
+, po_price as (
+select po_created_date
+    , po_code
+    , product_id
+    , sku_code
+    , warehouse_code
+    , avg_unit_price as po_purchase_price
+    , vendor_code
+    , line_manager_combine
+    , array_agg(distinct floor(unit_price) ignore nulls) as list_unit_price
+from poi
+group by 1,2,3,4,5,6,7,8
+)
+, vbi_0 as (
+select vbi.po_code
+    , CASE
+        WHEN vb.po_code LIKE 'POHN%' then 'HN'
+        WHEN vb.po_code LIKE 'PODN%' then 'DN'
+        ELSE 'BD' end as fc_code
+    , vb.seller_code
+    , vbi.product_id
+    , date(vb.created_time ,'+07') as vb_created_date
+    , date(vb.issued_time, '+07') as issued_date
+    , vb.status
+    , vbi.vendor_bill_id
+    , vbi.vendor_bill_code
+    , date(vbi.last_updated_time, '+07') as last_updated_date
+    , vbi.sku as sku_code
+    , vbi.lot
+    , vbi.exp_date
+    , vbi.quantity
+    , vbi.price
+    , vbi.price_after_discount
+    , vbi.vat
+    , vbi.discount_percent / 100 as discount_percent
+    , vbi.discount_price
+    , vbi.quantity * vbi.price as raw_amount
+    , vbi.quantity * vbi.price_after_discount as amount_after_discount
+    , case when vbi.vat > 0 then vbi.vat else 0 end as vat
+    , vbi.total_price
+    , sum(quantity) over (partition by vbi.po_code, vbi.sku) as sum_qty
+    , sum(vbi.quantity * vbi.price_after_discount) over (partition by vbi.po_code, vbi.sku) as total_amount
+    , sum(vbi.total_price) over (partition by vbi.po_code, vbi.sku) as total_amount_vat
+    , sum(vbi.quantity * vbi.price) over (partition by vbi.po_code, vbi.sku) as total_raw_amt
+    , count(1) over (partition by vbi.po_code, vbi.sku) as sku_rows
+-- from platinum_buymed_vn.seller_prd_purchasing_vendor_bill_item vbi
+from ${source.platinum}.seller_prd_purchasing_vendor_bill_item vbi
+-- left join platinum_buymed_vn.seller_prd_purchasing_vendor_bill vb
+left join ${source.platinum}.seller_prd_purchasing_vendor_bill vb
+on vbi.vendor_bill_id = vb.vendor_bill_id
+
+where 1=1
+and vbi.created_date >= (select target_date from params)
+and vb.created_date >= (select target_date from params)
+and vb.status not like '%DRAFT%'
+and vb.status not like '%CANCEL%%'
+and vbi.sku is not null
+)
+, vbi as (
+    select *
+        , if( total_raw_amt > 0,
+        SAFE_DIVIDE( 1 - total_amount /total_raw_amt, sku_rows ),
+        SAFE_DIVIDE( 1 , sku_rows)
+        ) as discount_per
+        , IFNULL( SAFE_DIVIDE(total_amount, sum_qty), 0 ) as price_unit
+        , IFNULL( SAFE_DIVIDE(total_amount_vat, sum_qty), 0 ) as price_unit_vat
+    from vbi_0
+)
+, vendor_bill_price as (
+select po_code
+      , product_id
+      , regexp_replace(sku_code, r'MEDX-HN', 'MEDX') as sku_code
+      , fc_code
+      , price_unit_vat as vb_purchase_price
+from vbi
+group by 1,2,3,4,5
+)
+
+, vb_prev_month as (
+select format_date("%Y-%m", issued_date) as ym_issued
+    , product_id
+    , sku_code
+    , ifnull(safe_divide(sum(total_amount), sum(quantity)), 0) as avg_vb_price
+from vbi
+group by 1, 2, 3
+)
+, par_0 as (
+SELECT datetime(created_time, '+07') as created_time
+    , datetime(last_updated_time, '+07') AS last_updated_at
+    , datetime(ingest_time, '+07') AS ingest_at
+    , case
+        when EXTRACT(HOUR FROM created_time) >= 11 then DATE_ADD(created_date, INTERVAL 1 DAY)
+        else created_date end AS rebate_date
+    , product_id
+    , vendor_code
+    , warehouse_code
+    , price_after_rebate
+    , price_after_rebate_with_adhoc_promotion
+    , price_contract
+    , discount
+    , vat
+    , fixed_promotion
+    , adhoc_promotion
+    , contract_price_code
+FROM platinum_buymed_vn.seller_prd_promotion_log_price_after_rebate AS a
+WHERE
+    created_date >= '2024-01-01'
+    AND warehouse_code IN ('BD', 'HN', 'DN')
+QUALIFY ROW_NUMBER() OVER (PARTITION BY product_id, warehouse_code,vendor_code, rebate_date ORDER BY last_updated_time DESC) = 1
+)
+, price_after_rebate as (
+    select rebate_date
+    , product_id
+    , warehouse_code
+    , vendor_code
+    , price_after_rebate
+    , price_after_rebate_with_adhoc_promotion
+    , price_contract
+    , contract_price_code
+    , max(coalesce(price_after_rebate_with_adhoc_promotion, price_after_rebate)) over
+        (partition by warehouse_code, vendor_code, product_id, date_trunc(rebate_date, month)) as highest_price_of_month
+from par_0
+)
+, soi as (
+select so_code
+    , customer_id
+    , warehouse_code
+    , status
+    , outbound_date_local
+    , created_date_local
+    , product_type
+    , order_id
+    , do_code
+    , product_id
+    , sku_code
+    , type
+    , seller_code
+    , seller_class
+    , deal_code
+    , deal_sale_price
+    , bom_product_id
+    , bom_sku_code
+    , bom_vat
+    , bom_sale_price
+    , bom_seller_price
+    , bom_deal_purchase_price
+    , po_code
+    , sum(bom_outbound_qty) as bom_outbound_qty
+    , sum(bom_outbound_qty / actual_outbound_qty * actual_returned_qty) as bom_returned_qty
+from ${ref('fact_order_item_finance')}
+where 1=1
+and outbound_date_local >= (select start_date from params)
+and seller_class = 'INTERNAL'
+group by all
+)
+, margin_0 as (
+select soi.*
+    , v.vb_purchase_price
+    , p.po_purchase_price
+    , vpm.avg_vb_price as avg_vb_purchase_price
+    , r.price_after_rebate
+    , r.price_after_rebate_with_adhoc_promotion
+    , r.highest_price_of_month
+    , p.line_manager_combine
+from soi
+left join vendor_bill_price as v
+    on v.po_code = soi.po_code and v.sku_code = soi.bom_sku_code
+left join po_price as p 
+    on p.po_code = soi.po_code and p.sku_code = soi.bom_sku_code
+left join vb_prev_month as vpm
+    on vpm.sku_code = soi.bom_sku_code
+    and FORMAT_DATE("%Y-%m", DATE_SUB(soi.outbound_date_local, INTERVAL 1 MonTH)) = vpm.ym_issued
+left join price_after_rebate as r
+    on r.product_id = soi.bom_product_id
+    and r.vendor_code = p.line_manager_combine
+    and r.warehouse_code = p.warehouse_code
+    and r.rebate_date = p.po_created_date
+    and FLOOR(r.price_contract) IN UNNEST(p.list_unit_price)
+where 1=1
+)
+, fin as (
+select *
+    , coalesce(vb_purchase_price, po_purchase_price, avg_vb_purchase_price) as final_unit_purchase_price
+    , case
+    when vb_purchase_price is not null then 'vb'
+    when vb_purchase_price is null and po_purchase_price is not null then 'po'
+    when vb_purchase_price is null and po_purchase_price is null
+        and avg_vb_purchase_price is not null then 'avg_vb'
+    when vb_purchase_price is null and po_purchase_price is null
+        and avg_vb_purchase_price is null and bom_seller_price is not null then 'seller'
+    end as final_unit_purchase_price_source
+    , coalesce(bom_deal_purchase_price
+        , price_after_rebate_with_adhoc_promotion
+        , price_after_rebate
+        , highest_price_of_month
+        , vb_purchase_price
+        , po_purchase_price
+        , avg_vb_purchase_price
+        , bom_seller_price) as final_purchase_price_after_rebate
+    , case
+    when bom_deal_purchase_price is not null
+        then 'deal'
+    when bom_deal_purchase_price is null
+        and price_after_rebate_with_adhoc_promotion is not null
+        then 'rebate_w_adhoc'
+    when bom_deal_purchase_price is null
+        and price_after_rebate_with_adhoc_promotion is null
+        and price_after_rebate is not null
+        then 'rebate_wo_adhoc'
+    when bom_deal_purchase_price is null
+        and price_after_rebate_with_adhoc_promotion is null
+        and price_after_rebate is null
+        and highest_price_of_month is not null
+        then 'highest_price_of_month'
+    when bom_deal_purchase_price is null
+        and price_after_rebate_with_adhoc_promotion is null
+        and price_after_rebate is null
+        and highest_price_of_month is null
+        and vb_purchase_price is not null
+        then 'vb'
+    when bom_deal_purchase_price is null
+        and price_after_rebate_with_adhoc_promotion is null
+        and price_after_rebate is null
+        and highest_price_of_month is null
+        and vb_purchase_price is null
+        and po_purchase_price is not null
+        then 'po'
+    when bom_deal_purchase_price is null
+        and price_after_rebate_with_adhoc_promotion is null
+        and price_after_rebate is null
+        and highest_price_of_month is null
+        and vb_purchase_price is null
+        and po_purchase_price is null
+        and avg_vb_purchase_price is not null
+        then 'avg_vb'
+    when bom_deal_purchase_price is null
+        and price_after_rebate_with_adhoc_promotion is null
+        and price_after_rebate is null
+        and highest_price_of_month is null
+        and vb_purchase_price is null
+        and po_purchase_price is null
+        and avg_vb_purchase_price is null
+        and bom_seller_price is not null
+        then 'seller'
+    end as final_price_after_rebate_source
+from margin_0
+where 1=1
+)
+select *
+from fin
+where 1=1
