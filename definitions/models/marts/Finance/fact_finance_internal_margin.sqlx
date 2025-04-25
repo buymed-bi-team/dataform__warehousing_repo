@@ -58,9 +58,9 @@ pre_operations {
           highest_price_of_month = source.highest_price_of_month,
           line_manager_combine = source.line_manager_combine,
           final_unit_purchase_price = source.final_unit_purchase_price,
-          unit_purchase_price_source = source.unit_purchase_price_source,
+          final_unit_purchase_price_source = source.final_unit_purchase_price_source,
           final_purchase_price_after_rebate = source.final_purchase_price_after_rebate,
-          price_after_rebate_source = source.price_after_rebate_source
+          final_price_after_rebate_source = source.final_price_after_rebate_source
       WHEN NOT MATCHED THEN
         INSERT ROW
       WHEN NOT MATCHED BY SOURCE
@@ -109,9 +109,9 @@ pre_operations {
           highest_price_of_month = source.highest_price_of_month,
           line_manager_combine = source.line_manager_combine,
           final_unit_purchase_price = source.final_unit_purchase_price,
-          unit_purchase_price_source = source.unit_purchase_price_source,
+          final_unit_purchase_price_source = source.final_unit_purchase_price_source,
           final_purchase_price_after_rebate = source.final_purchase_price_after_rebate,
-          price_after_rebate_source = source.price_after_rebate_source
+          final_price_after_rebate_source = source.final_price_after_rebate_source
       WHEN NOT MATCHED THEN
         INSERT ROW
       WHEN NOT MATCHED BY SOURCE THEN
@@ -272,7 +272,8 @@ SELECT datetime(created_time, '+07') as created_time
     , fixed_promotion
     , adhoc_promotion
     , contract_price_code
-FROM platinum_buymed_vn.seller_prd_promotion_log_price_after_rebate AS a
+-- FROM platinum_buymed_vn.seller_prd_promotion_log_price_after_rebate as a
+FROM ${source.platinum}.seller_prd_promotion_log_price_after_rebate as a
 WHERE
     created_date >= '2024-01-01'
     AND warehouse_code IN ('BD', 'HN', 'DN')
@@ -350,22 +351,26 @@ where 1=1
 )
 , fin as (
 select *
-    , coalesce(vb_purchase_price, po_purchase_price, avg_vb_purchase_price) as final_unit_purchase_price
+    , coalesce(
+        avg_vb_purchase_price
+        , vb_purchase_price
+        , po_purchase_price
+        , bom_seller_price) as final_unit_purchase_price
     , case
-    when vb_purchase_price is not null then 'vb'
-    when vb_purchase_price is null and po_purchase_price is not null then 'po'
-    when vb_purchase_price is null and po_purchase_price is null
-        and avg_vb_purchase_price is not null then 'avg_vb'
-    when vb_purchase_price is null and po_purchase_price is null
-        and avg_vb_purchase_price is null and bom_seller_price is not null then 'seller'
+    when avg_vb_purchase_price is not null then 'avg_vb'
+    when avg_vb_purchase_price is null and vb_purchase_price is not null then 'vb'
+    when avg_vb_purchase_price is null and vb_purchase_price is null
+        and po_purchase_price is not null then 'po'
+    when avg_vb_purchase_price is null and vb_purchase_price is null
+        and po_purchase_price is null and bom_seller_price is not null then 'seller'
     end as final_unit_purchase_price_source
     , coalesce(bom_deal_purchase_price
         , price_after_rebate_with_adhoc_promotion
         , price_after_rebate
         , highest_price_of_month
+        , avg_vb_purchase_price
         , vb_purchase_price
         , po_purchase_price
-        , avg_vb_purchase_price
         , bom_seller_price) as final_purchase_price_after_rebate
     , case
     when bom_deal_purchase_price is not null
@@ -386,12 +391,20 @@ select *
         and price_after_rebate_with_adhoc_promotion is null
         and price_after_rebate is null
         and highest_price_of_month is null
+        and avg_vb_purchase_price is not null
+        then 'avg_vb'
+    when bom_deal_purchase_price is null
+        and price_after_rebate_with_adhoc_promotion is null
+        and price_after_rebate is null
+        and highest_price_of_month is null
+        and avg_vb_purchase_price is null
         and vb_purchase_price is not null
         then 'vb'
     when bom_deal_purchase_price is null
         and price_after_rebate_with_adhoc_promotion is null
         and price_after_rebate is null
         and highest_price_of_month is null
+        and avg_vb_purchase_price is null
         and vb_purchase_price is null
         and po_purchase_price is not null
         then 'po'
@@ -399,17 +412,9 @@ select *
         and price_after_rebate_with_adhoc_promotion is null
         and price_after_rebate is null
         and highest_price_of_month is null
-        and vb_purchase_price is null
-        and po_purchase_price is null
-        and avg_vb_purchase_price is not null
-        then 'avg_vb'
-    when bom_deal_purchase_price is null
-        and price_after_rebate_with_adhoc_promotion is null
-        and price_after_rebate is null
-        and highest_price_of_month is null
-        and vb_purchase_price is null
-        and po_purchase_price is null
         and avg_vb_purchase_price is null
+        and vb_purchase_price is null
+        and po_purchase_price is not null
         and bom_seller_price is not null
         then 'seller'
     end as final_price_after_rebate_source
