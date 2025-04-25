@@ -72,6 +72,7 @@ pre_operations {
       USING (
         SELECT *
         FROM ${self()}  -- References the query output (full dataset)
+        WHERE outbound_date_local >= '2024-01-01'
       ) AS source
       ON target.outbound_date_local = source.outbound_date_local
          AND target.order_id = source.order_id
