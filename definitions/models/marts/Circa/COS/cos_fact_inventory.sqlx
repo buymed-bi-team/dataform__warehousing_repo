@@ -20,17 +20,21 @@ With inventory as (select a.product_id,
                           a.cost_price_include_tax,
                           a.on_hand_qty as on_hand_quantity,
                           a.location_id,
-                          a.doc_code, 
+                          --a.doc_code, 
                           product_id || "_" || lot_date || "_" || tax_rate as product_lot_date_vat
                    from ${source.circa_os}.inventory_location_detail as a
 where 
 doc_code is not null and 
 deleted_at is null  )
 
-SELECT a.*,
-       b.pos_id,
+SELECT distinct product_id,
+      a.* except (product_id,on_hand_quantity),
+      sum(on_hand_quantity),
+      name,
+      pos_id
+      
     --    ru.unit as base_unit,
-       b.location_type, 
+       --b.location_type, 
     --    ru.sale_allowed,
     --    c.min_cost_price_include_tax,
     --    c.max_cost_price_include_tax,
@@ -40,3 +44,4 @@ FROM inventory as a
         --  left join ${source.circa_os}.product_retail_unit as ru on a.product_id = ru.product_id and ru.base_unit = true
         --  left join `${source.circa_os}.inventory_cost_price` as c on c.product_id = a.product_id and c.pos_id =b.pos_id
 -- WHERE deleted_at is null
+group by all
