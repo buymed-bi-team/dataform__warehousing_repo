@@ -34,6 +34,7 @@ SELECT
     a.sku_code,
     a.lot_date,
     a.tax_rate,
+    doc_code,a.cost_price_include_tax,
     a.location_id,
     a.product_lot_date_vat,
     SUM(a.on_hand_quantity) AS on_hand_quantity,
@@ -42,11 +43,4 @@ SELECT
 FROM inventory AS a
 LEFT JOIN ${source.circa_os}.inventory_location AS b ON a.location_id = b.id
 GROUP BY 
-    a.product_id,
-    a.sku_code,
-    a.lot_date,
-    a.tax_rate,
-    a.location_id,
-    a.product_lot_date_vat,
-    b.pos_id,
-    b.name
+    all
