@@ -17,109 +17,17 @@ pre_operations {
   ${when(
     incremental(),
     `
-      MERGE INTO ${self()} AS target
-      USING (
-        SELECT *
-        FROM ${self()}  -- References the query output (fin CTE)
-        WHERE outbound_date_local >= DATE_SUB(DATE_TRUNC(CURRENT_DATE('+7'), MONTH), INTERVAL 6 MONTH)
-      ) AS source
-      ON target.outbound_date_local = source.outbound_date_local
-         AND target.order_id = source.order_id
-         AND target.sku_code = source.sku_code
-      WHEN MATCHED THEN
-        UPDATE SET
-          so_code = source.so_code,
-          customer_id = source.customer_id,
-          warehouse_code = source.warehouse_code,
-          status = source.status,
-          created_date_local = source.created_date_local,
-          product_type = source.product_type,
-          do_code = source.do_code,
-          product_id = source.product_id,
-          type = source.type,
-          seller_code = source.seller_code,
-          seller_class = source.seller_class,
-          deal_code = source.deal_code,
-          deal_sale_price = source.deal_sale_price,
-          bom_product_id = source.bom_product_id,
-          bom_sku_code = source.bom_sku_code,
-          bom_vat = source.bom_vat,
-          bom_sale_price = source.bom_sale_price,
-          bom_seller_price = source.bom_seller_price,
-          bom_deal_purchase_price = source.bom_deal_purchase_price,
-          po_code = source.po_code,
-          bom_outbound_qty = source.bom_outbound_qty,
-          bom_returned_qty = source.bom_returned_qty,
-          vb_purchase_price = source.vb_purchase_price,
-          po_purchase_price = source.po_purchase_price,
-          avg_vb_purchase_price = source.avg_vb_purchase_price,
-          price_after_rebate = source.price_after_rebate,
-          price_after_rebate_with_adhoc_promotion = source.price_after_rebate_with_adhoc_promotion,
-          highest_price_of_month = source.highest_price_of_month,
-          line_manager_combine = source.line_manager_combine,
-          final_unit_purchase_price = source.final_unit_purchase_price,
-          final_unit_purchase_price_source = source.final_unit_purchase_price_source,
-          final_purchase_price_after_rebate = source.final_purchase_price_after_rebate,
-          final_price_after_rebate_source = source.final_price_after_rebate_source
-      WHEN NOT MATCHED THEN
-        INSERT ROW
-      WHEN NOT MATCHED BY SOURCE
-         AND target.outbound_date_local < DATE_SUB(DATE_TRUNC(CURRENT_DATE('+7'), MONTH), INTERVAL 12 MONTH) THEN
-        DELETE;
+      DELETE FROM ${self()}
+      WHERE outbound_date_local >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 6 MONTH);
+
+      DELETE FROM ${self()}
+      WHERE outbound_date_local >= '2024-01-01';
     `,
     `
-      MERGE INTO ${self()} AS target
-      USING (
-        SELECT *
-        FROM ${self()}  -- References the query output (full dataset)
-        WHERE outbound_date_local >= '2024-01-01'
-      ) AS source
-      ON target.outbound_date_local = source.outbound_date_local
-         AND target.order_id = source.order_id
-         AND target.sku_code = source.sku_code
-      WHEN MATCHED THEN
-        UPDATE SET
-          so_code = source.so_code,
-          customer_id = source.customer_id,
-          warehouse_code = source.warehouse_code,
-          status = source.status,
-          created_date_local = source.created_date_local,
-          product_type = source.product_type,
-          do_code = source.do_code,
-          product_id = source.product_id,
-          type = source.type,
-          seller_code = source.seller_code,
-          seller_class = source.seller_class,
-          deal_code = source.deal_code,
-          deal_sale_price = source.deal_sale_price,
-          bom_product_id = source.bom_product_id,
-          bom_sku_code = source.bom_sku_code,
-          bom_vat = source.bom_vat,
-          bom_sale_price = source.bom_sale_price,
-          bom_seller_price = source.bom_seller_price,
-          bom_deal_purchase_price = source.bom_deal_purchase_price,
-          po_code = source.po_code,
-          bom_outbound_qty = source.bom_outbound_qty,
-          bom_returned_qty = source.bom_returned_qty,
-          vb_purchase_price = source.vb_purchase_price,
-          po_purchase_price = source.po_purchase_price,
-          avg_vb_purchase_price = source.avg_vb_purchase_price,
-          price_after_rebate = source.price_after_rebate,
-          price_after_rebate_with_adhoc_promotion = source.price_after_rebate_with_adhoc_promotion,
-          highest_price_of_month = source.highest_price_of_month,
-          line_manager_combine = source.line_manager_combine,
-          final_unit_purchase_price = source.final_unit_purchase_price,
-          final_unit_purchase_price_source = source.final_unit_purchase_price_source,
-          final_purchase_price_after_rebate = source.final_purchase_price_after_rebate,
-          final_price_after_rebate_source = source.final_price_after_rebate_source
-      WHEN NOT MATCHED THEN
-        INSERT ROW
-      WHEN NOT MATCHED BY SOURCE THEN
-        DELETE;
+      DELETE FROM ${self()} WHERE TRUE;
     `
   )}
 }
-
 with params as (
     select 
         ${when(
@@ -351,26 +259,30 @@ where 1=1
 )
 , fin as (
 select *
-    , coalesce(
-        avg_vb_purchase_price
-        , vb_purchase_price
+    , coalesce(  
+        vb_purchase_price
         , po_purchase_price
+        , avg_vb_purchase_price
         , bom_seller_price) as final_unit_purchase_price
     , case
-    when avg_vb_purchase_price is not null then 'avg_vb'
-    when avg_vb_purchase_price is null and vb_purchase_price is not null then 'vb'
-    when avg_vb_purchase_price is null and vb_purchase_price is null
+    when vb_purchase_price is not null then 'vb'
+    when vb_purchase_price is null 
         and po_purchase_price is not null then 'po'
-    when avg_vb_purchase_price is null and vb_purchase_price is null
-        and po_purchase_price is null and bom_seller_price is not null then 'seller'
+    when vb_purchase_price is null 
+        and po_purchase_price is null
+        and avg_vb_purchase_price is not null then 'avg_vb'
+    when vb_purchase_price is null 
+        and po_purchase_price is null
+        and avg_vb_purchase_price is null 
+        and bom_seller_price is not null then 'seller'
     end as final_unit_purchase_price_source
     , coalesce(bom_deal_purchase_price
         , price_after_rebate_with_adhoc_promotion
         , price_after_rebate
         , highest_price_of_month
-        , avg_vb_purchase_price
         , vb_purchase_price
         , po_purchase_price
+        , avg_vb_purchase_price
         , bom_seller_price) as final_purchase_price_after_rebate
     , case
     when bom_deal_purchase_price is not null
@@ -391,20 +303,12 @@ select *
         and price_after_rebate_with_adhoc_promotion is null
         and price_after_rebate is null
         and highest_price_of_month is null
-        and avg_vb_purchase_price is not null
-        then 'avg_vb'
-    when bom_deal_purchase_price is null
-        and price_after_rebate_with_adhoc_promotion is null
-        and price_after_rebate is null
-        and highest_price_of_month is null
-        and avg_vb_purchase_price is null
         and vb_purchase_price is not null
         then 'vb'
     when bom_deal_purchase_price is null
         and price_after_rebate_with_adhoc_promotion is null
         and price_after_rebate is null
         and highest_price_of_month is null
-        and avg_vb_purchase_price is null
         and vb_purchase_price is null
         and po_purchase_price is not null
         then 'po'
@@ -412,9 +316,17 @@ select *
         and price_after_rebate_with_adhoc_promotion is null
         and price_after_rebate is null
         and highest_price_of_month is null
-        and avg_vb_purchase_price is null
         and vb_purchase_price is null
-        and po_purchase_price is not null
+        and po_purchase_price is null
+        and avg_vb_purchase_price is not null
+        then 'avg_vb'
+    when bom_deal_purchase_price is null
+        and price_after_rebate_with_adhoc_promotion is null
+        and price_after_rebate is null
+        and highest_price_of_month is null
+        and vb_purchase_price is null
+        and po_purchase_price is null
+        and avg_vb_purchase_price is not null
         and bom_seller_price is not null
         then 'seller'
     end as final_price_after_rebate_source
