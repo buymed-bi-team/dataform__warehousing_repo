@@ -1,13 +1,16 @@
 config {
     type: "incremental",
     schema: "buymed_circa_v2",
-    name: "inventory_location_detail_cut_off",
+    name: "inventory_location_detail_historical_cut_off",
     description: "PIC:minhluu",
+    bigquery: {
+        partitionBy : "date_index",
+    },
     tags: ["2h00"]
 }
 
 SELECT 
     *,
     DATE(DATETIME(created_at,'Asia/Ho_Chi_Minh')) as date_created_at, 
-    CAST(FORMAT_TIMESTAMP('%y%m%d', TIMESTAMP(current_timestamp())) as INT64) as date_index, 
+    CAST(FORMAT_TIMESTAMP('%y%m%d', TIMESTAMP(current_timestamp())) as INT64) as date_index
 FROM ${source.circa_os}.inventory_location_detail
