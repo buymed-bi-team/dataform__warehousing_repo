@@ -21,6 +21,7 @@ WITH inventory AS (
         END AS tax_rate,
         a.on_hand_qty AS on_hand_quantity,
         a.location_id,
+        doc_code,a.cost_price_include_tax
         product_id || "_" || lot_date || "_" || tax_rate AS product_lot_date_vat
     FROM ${source.circa_os}.inventory_location_detail AS a
     WHERE 
