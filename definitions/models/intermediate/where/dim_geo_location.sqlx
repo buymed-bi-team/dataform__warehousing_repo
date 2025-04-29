@@ -139,13 +139,18 @@ WITH
         FROM dedup_region
     )
 
-SELECT *,
+SELECT a.*,
     case
         when lower(district_name) = 'quận 12' or lower(district_name) = 'quận 9' then 'Rural'
         when lower(district_name) LIKE 'quận%' or lower(district_name) LIKE 'thành phố%' then 'Urban'
         else 'Rural'
     end urban_rural
-FROM tbl
+    , fc.fc_code
+    , fc.sales_region_code
+FROM tbl AS a
+    LEFT JOIN ${ref('dim_fc_service_area')} AS fc 
+        ON a.province_code = fc.service_area_code
+        AND fc.area_type = "PROVINCE"
 
 post_operations {
     ALTER TABLE ${self()} ADD PRIMARY KEY (location_code) NOT ENFORCED;
