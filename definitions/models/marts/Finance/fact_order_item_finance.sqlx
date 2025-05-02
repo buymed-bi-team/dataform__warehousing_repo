@@ -67,6 +67,8 @@ select date(created_time,'+07') as created_date_local
     , reserved_quantity as actual_reserved_qty
     , outbound_quantity as actual_outbound_qty
     , returned_quantity as actual_returned_qty
+    , delivered_quantity as actual_delivered_quantity
+    , completed_quantity as actual_completed_quantity
     , seller_revenue
     , extra_props
     , outbound_infos
