@@ -32,6 +32,7 @@ With A as (select date(datetime(o.created_at, 'Asia/Ho_Chi_Minh'))    as created
                   is_rotated,
                   total_amount,
                   total_item_amount,
+                  medicine_cutting_fee,
                   delivery_amount,
                   discount_amount,
                   reference_order_in_platform,
