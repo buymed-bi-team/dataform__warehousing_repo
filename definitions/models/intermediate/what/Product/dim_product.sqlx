@@ -177,7 +177,7 @@ SELECT
   product.vat,
   -- product.brand,
   br.brand,
-  product.category_management as brand_type,
+  JSON_VALUE(product.extra_props, "$.product_category_management") as brand_type,
 
   seller.code as owner_code,
   seller.name as owner_name,
