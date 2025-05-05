@@ -24,7 +24,7 @@ with
             , SAFE_CAST(JSON_EXTRACT_SCALAR(f, '$.category_in_charge') as INT64) as cic_account_id
             , acc3.user_name as cic_name
             , acc3.fullname as cic_fullname
-            , REGEXP_REPLACE(UPPER(JSON_EXTRACT_SCALAR(f, '$.category_management')), r'\_', '') as brand_type
+            -- , REGEXP_REPLACE(UPPER(JSON_EXTRACT_SCALAR(f, '$.category_management')), r'\_', '') as brand_type
         FROM ${source.platinum}.marketplace_prd_product_v2_product_category_in_charge as e
             LEFT JOIN UNNEST(JSON_EXTRACT_ARRAY(e.category_in_charge_data)) as f
             LEFT JOIN ${ref('dim_employee')} acc3
@@ -58,10 +58,11 @@ SELECT
     , p.cic_name AS cic_name_import
     , cic.cic_name AS cic_name
     , cic.cic_fullname AS cic_full_name_internal
-    , NULLIF(cic.brand_type, '') AS brand_type
+    -- , NULLIF(cic.brand_type, '') AS brand_type
+    , NULLIF(p.brand_type, '') AS brand_type
     , CASE
-        WHEN cic.brand_type IS NULL OR cic.brand_type IN ("#N/A", "") THEN NULL
-        WHEN cic.brand_type = 'BRANDNAME' THEN 'BRANDNAME'
+        WHEN p.brand_type IS NULL OR p.brand_type IN ("#N/A", "") THEN NULL
+        WHEN p.brand_type = 'BRANDNAME' THEN 'BRANDNAME'
         ELSE "GENERIC"
       END AS brand_type_group
     , NULLIF(cat.catm_group, '') AS catm_group

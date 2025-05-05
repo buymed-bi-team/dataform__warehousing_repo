@@ -201,7 +201,7 @@ FROM cte_full AS cte
         QUALIFY ROW_NUMBER() OVER(PARTITION BY item_code ORDER BY ingest_time DESC) = 1
     ) AS sl
         ON sl.item_code = s.item_code
-    LEFT JOIN ${source.gold}.adhoc_pricing_agg_vendor_bill_price AS bill
+    LEFT JOIN ${ref('adhoc_pricing_agg_vendor_bill_price')} AS bill
         ON bill.sku_code = cte.sku_code AND bill.sales_region_code = cte.sales_region_code
     LEFT JOIN ${ref('dim_sku')} AS ds
         ON ds.sku_code = cte.sku_code
