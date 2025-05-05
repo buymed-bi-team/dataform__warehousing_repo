@@ -10,33 +10,38 @@ config {
     columns: {
 
     }}
+WITH inventory AS (
+    SELECT 
+        a.product_id,
+        a.sku_code,
+        a.lot_date,
+        CASE
+            WHEN tax_rate <= 0 THEN 0
+            ELSE tax_rate
+        END AS tax_rate,
+        a.on_hand_qty AS on_hand_quantity,
+        a.location_id,
+        doc_code,a.cost_price_include_tax,
+        product_id || "_" || lot_date || "_" || tax_rate AS product_lot_date_vat
+    FROM ${source.circa_os}.inventory_location_detail AS a
+    WHERE 
+        doc_code IS NOT NULL 
+        AND deleted_at IS NULL
+)
 
-With inventory as (select a.product_id,
-                          a.sku_code,
-                          a.lot_date,
-                          case
-            when tax_rate <= 0 then 0
-                else tax_rate end as tax_rate,
-                          a.cost_price_include_tax,
-                          a.on_hand_qty as on_hand_quantity,
-                          a.location_id,
-                          a.doc_code, 
-                          product_id || "_" || lot_date || "_" || tax_rate as product_lot_date_vat
-                   from ${source.circa_os}.inventory_location_detail as a
-where 
-doc_code is not null and 
-deleted_at is null  )
-
-SELECT a.*,
-       b.pos_id,
-    --    ru.unit as base_unit,
-       b.location_type, 
-    --    ru.sale_allowed,
-    --    c.min_cost_price_include_tax,
-    --    c.max_cost_price_include_tax,
-    --    a.product_id || '_' || unit || '_' || b.pos_id as sku_unit_pos
-FROM inventory as a
-         left join ${source.circa_os}.inventory_location as b on a.location_id = b.id
-        --  left join ${source.circa_os}.product_retail_unit as ru on a.product_id = ru.product_id and ru.base_unit = true
-        --  left join `${source.circa_os}.inventory_cost_price` as c on c.product_id = a.product_id and c.pos_id =b.pos_id
--- WHERE deleted_at is null
+SELECT 
+    a.product_id,
+    a.sku_code,
+    a.lot_date,
+    a.tax_rate,
+    doc_code,a.cost_price_include_tax,
+    a.location_id,
+    a.product_lot_date_vat,
+    SUM(a.on_hand_quantity) AS on_hand_quantity,
+    b.pos_id,
+    location_type,
+    b.name AS location_name
+FROM inventory AS a
+LEFT JOIN ${source.circa_os}.inventory_location AS b ON a.location_id = b.id
+GROUP BY 
+    all

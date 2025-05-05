@@ -58,7 +58,8 @@ select
 	ho.delivery_amount,
 	ho.fee_amount,
 	ho.reason,
-  ho.customer_code as customer_id
+  	ho.customer_code as customer_id,
+	ho.note
 from (
 	select *
 	from ${ref('fact_hub_order')}

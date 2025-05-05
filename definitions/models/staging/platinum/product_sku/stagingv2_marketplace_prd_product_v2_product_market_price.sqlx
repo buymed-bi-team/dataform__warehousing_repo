@@ -26,7 +26,7 @@ pre_operations {
         -- DECLARE new_records ARRAY<STRING>;
         DECLARE deleted_records ARRAY<STRING>;
         
-        SET Ingest_checkpoint = (SELECT max(ingest_time) FROM ${self()});
+        SET Ingest_checkpoint = (SELECT max(ingest_time) - INTERVAL 2 HOUR FROM ${self()});
 
         SET ( has_new_data, checkpoint_date, deleted_records ) = ( 
             SELECT AS STRUCT 
@@ -88,7 +88,7 @@ CASE
 END AS created_date
 FROM ${source.silver}.marketplace_prd_product_v2_product_market_price s
 ${ when(incremental(), 
-`WHERE s.ingest_time > Ingest_checkpoint - INTERVAL 2 HOUR
+`WHERE s.ingest_time > Ingest_checkpoint - INTERVAL 1 HOUR
     AND s.mg_id IN (SELECT mg_id FROM new_records_tbl) `, 
 `` 
 )}
