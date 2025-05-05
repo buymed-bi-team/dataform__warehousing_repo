@@ -1,0 +1,64 @@
+config {
+    disabled : true
+}
+/*
+    This code used to fix old wrong deleted replace ( which one is deleted then insert immediately )
+    
+*/
+CREATE TEMP TABLE tbl AS (
+  SELECT 
+    key,
+    mg_id,
+    created_time,
+    last_updated_time,
+    synced_at,
+    ingest_time,
+    action,
+    ROW_NUMBER() OVER (_window) r
+  FROM silver_buymed_vn.seller_prd_purchasing_purchase_order_item 
+  QUALIFY ROW_NUMBER() OVER (_window) <= 2
+  WINDOW _window AS ( 
+  PARTITION BY mg_id
+  ORDER BY 
+      synced_at DESC,
+      IF (action='d',3, IF (action='u',2,1)) DESC,
+      last_updated_time DESC)
+);
+
+CREATE TEMP TABLE wrong_delete AS (
+  SELECT
+    t2.key,
+    t1.mg_id,
+    t1.created_time,
+    t1.ingest_time,
+    STRUCT( t1.last_updated_time as t1, t2. last_updated_time as t2) last_updated_time,
+    STRUCT( t1.synced_at as t1, t2. synced_at as t2) synced_at,
+    STRUCT( t1.action as t1, t2. action as t2) action,
+    STRUCT( t1.r as t1, t2. r as t2) r,
+
+  FROM tbl t1
+  LEFT JOIN tbl t2
+    ON t1.mg_id = t2.mg_id 
+    AND t1.r + 1 = t2.r
+  WHERE t1.synced_at = t2.synced_at
+  AND ( t1.action = "d" OR t2.action = "d" ) 
+  AND t1.action <> t2.action
+  ORDER BY ingest_time DESC
+);
+
+
+IF (SELECT COUNT(*) FROM wrong_delete  ) > 1 THEN 
+  CREATE TABLE silver_buymed_vn.seller_prd_purchasing_purchase_order_item_2025_04_24_04_13
+  OPTIONS (
+    expiration_timestamp = CURRENT_TIMESTAMP() + INTERVAL 2 WEEK
+  )
+  AS (
+    SELECT * FROM silver_buymed_vn.seller_prd_purchasing_purchase_order_item
+  );
+
+  UPDATE  silver_buymed_vn.seller_prd_purchasing_purchase_order_item
+  SET synced_at = synced_at + INTERVAL 1 MICROSECOND 
+  WHERE key IN (
+    SELECT key FROM wrong_delete
+  );
+  END IF;
