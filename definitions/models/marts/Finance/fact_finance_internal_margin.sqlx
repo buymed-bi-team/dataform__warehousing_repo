@@ -21,10 +21,7 @@ pre_operations {
       WHERE outbound_date_local >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 6 MONTH);
 
       DELETE FROM ${self()}
-      WHERE outbound_date_local >= '2024-01-01';
-    `,
-    `
-      DELETE FROM ${self()} WHERE TRUE;
+      WHERE outbound_date_local < '2024-01-01';
     `
   )}
 }
