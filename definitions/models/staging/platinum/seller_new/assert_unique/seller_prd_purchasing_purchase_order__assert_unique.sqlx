@@ -1,6 +1,6 @@
 config {
     type: "operations",
-    tags: ["custom_1h_past7","seller_prd_purchasing","Finance/margin"],
+    tags: ["critical_custom_1h_past7","seller_prd_purchasing","Finance/margin"],
 }
 -- script_tag: ["assert","assert_duplicate"]
 
