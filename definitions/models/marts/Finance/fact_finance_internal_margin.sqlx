@@ -198,7 +198,8 @@ QUALIFY ROW_NUMBER() OVER (PARTITION BY product_id, warehouse_code,vendor_code, 
 from par_0
 )
 , soi as (
-select so_code
+select mg_id
+    , so_code
     , customer_id
     , warehouse_code
     , status
