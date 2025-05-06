@@ -35,7 +35,7 @@ IF ( _assert <> 0 ) THEN
                 CURRENT_TIMESTAMP(),
                 `${table_name}__assert_operations`,
                 _loop_index,
-                PARSE_JSON('{"level":"CRITITCAL"}'),
+                null,
                 "dataform"
         );
     
