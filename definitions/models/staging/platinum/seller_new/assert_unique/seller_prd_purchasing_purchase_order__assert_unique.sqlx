@@ -75,7 +75,7 @@ DO
     -- Prepare for new loop
     SET is_assert = assert_condition();
     SET _loop_index = _loop_index + 1;
-END WHILE
+END WHILE;
 
 IF is_assert = TRUE THEN 
     INSERT INTO lakehouse-prod-394907.dataform_assertions.log_script
