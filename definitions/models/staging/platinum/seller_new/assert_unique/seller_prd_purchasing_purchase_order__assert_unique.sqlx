@@ -5,40 +5,52 @@ config {
 -- script_tag: ["assert","assert_duplicate"]
 
 js {
+    const retry_cnt = 2;
+    const assert_checkpoint_start_time = `DATE( "2001-01-01" )`;
     const table_name = "seller_prd_purchasing_purchase_order"
+    const assert_name = `${table_name}__assert_unique`
 }
 
-DECLARE _assert INT64;
-DECLARE sef_dedup BOOL;
+DECLARE is_assert BOOL;
+DECLARE _loop_index INT64;
 DECLARE keys ARRAY <STRING>;
 DECLARE dates ARRAY <date>;
 
-SET _assert = (
+CREATE TEMP FUNCTION assert_condition()
+RETURNS BOOL
+AS ((
     SELECT
-        COUNT(*)
+        COUNT(*) > 0
     FROM (
     SELECT
         mg_id,
         COUNT(1) AS index_row_count
     FROM ${ref(`${table_name}`)}
+    WHERE created_date >= ${assert_checkpoint_start_time}
     GROUP BY mg_id
     ) AS data
     WHERE index_row_count > 1
-);
+));
 
-IF ( _assert <> 0 ) THEN 
+SET is_assert = assert_condition();
+SET _loop_index = 0;
+WHILE 
+    is_assert = TRUE 
+    AND _loop_index < 2
+DO 
     INSERT INTO lakehouse-prod-394907.dataform_assertions.log_script
         (key, created_time, name, retry_index, extra_props, platform)
         (
             SELECT 
                 GENERATE_UUID(),
                 CURRENT_TIMESTAMP(),
-                `${table_name}__assert_operations`,
+                `${assert_name}`,
                 _loop_index,
-                PARSE_JSON('{"level":"CRITITCAL"}'),
+                PARSE_JSON('{"dataset": "platinum_buymed_vn"}'),
                 "dataform"
         );
     
+    -- Action -- Delete the old duplicate records
     CREATE TEMP TABLE deleted_records AS (
     SELECT key, created_date
     FROM (
@@ -55,23 +67,27 @@ IF ( _assert <> 0 ) THEN
         SELECT ARRAY_AGG(created_date) FROM deleted_records
     );
 
-    SELECT *
-    FROM ${ref(`${table_name}`)}
+
+    DELETE FROM ${ref(`${table_name}`)}
     WHERE key IN UNNEST(keys)
         AND created_date IN UNNEST(dates);
     
-    SET _assert = ( -- If Still duplicate
-        SELECT
-            COUNT(*)
-        FROM (
-        SELECT
-            mg_id,
-            COUNT(1) AS index_row_count
-        FROM ${ref(`${table_name}`)}
-        GROUP BY mg_id
-        ) AS data
-        WHERE index_row_count > 1
-    );
+    -- Prepare for new loop
+    SET is_assert = assert_condition();
+    SET _loop_index = _loop_index + 1;
+END WHILE;
 
-    ASSERT ( _assert = 0) AS "mg_id must be unique key" ;
-END IF
+IF is_assert = TRUE THEN 
+    INSERT INTO lakehouse-prod-394907.dataform_assertions.log_script
+        (key, created_time, name, retry_index, extra_props, platform)
+        (
+            SELECT 
+                GENERATE_UUID(),
+                CURRENT_TIMESTAMP(),
+                `${assert_name}`,
+                _loop_index,
+                PARSE_JSON('{"dataset": "platinum_buymed_vn", "level":"CRITITCAL"}'),
+                "dataform"
+        );
+    ASSERT FALSE AS "Cannot auto fix seller_prd_purchasing_purchase_order";
+END IF;
