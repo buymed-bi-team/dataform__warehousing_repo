@@ -21,17 +21,11 @@ js {
     const retry_cnt = 2;
     const assert_checkpoint_start_time = `DATE( "2001-01-01" )`;
     const table_name = "seller_prd_purchasing_purchase_order";
+    const assert_name = `${table_name}__assert_operations`
 }
 
-DECLARE cnt_missing_mg_id INT64;
-DECLARE cnt_not_update_mg_id INT64;
-DECLARE cnt_not_delete_mg_id INT64;
-
 DECLARE is_assert BOOL;
-DECLARE assert_qualify_start_time TIMESTAMP; -- an assertion that triggers an alert if more than 1% of records are missing for two consecutive days
 DECLARE _loop_index INT64;
-
-SET assert_qualify_start_time = CURRENT_TIMESTAMP() - INTERVAL 2 DAY;
 
 -- SET force_full_refresh = FALSE;
 
@@ -65,6 +59,7 @@ AS ((
 
 -- END FOR;
 SET is_assert = assert_condition();
+SET _loop_index = 0;
 WHILE 
     _loop_index < ${retry_cnt}
     AND  is_assert = TRUE
@@ -76,9 +71,9 @@ DO
             SELECT 
                 GENERATE_UUID(),
                 CURRENT_TIMESTAMP(),
-                `${table_name}__assert_operations`,
+                `${assert_name}`,
                 _loop_index,
-                null,
+                PARSE_JSON('{"dataset": "platinum_buymed_vn"}'),
                 "dataform"
         );
     END IF;
@@ -128,9 +123,9 @@ IF is_assert = TRUE THEN
             SELECT 
                 GENERATE_UUID(),
                 CURRENT_TIMESTAMP(),
-                `${table_name}__assert_operations`,
+                `${assert_name}`,
                 _loop_index,
-                PARSE_JSON('{"level":"CRITITCAL"}'),
+                PARSE_JSON('{"dataset": "platinum_buymed_vn", "level":"CRITITCAL"}'),
                 "dataform"
         );
     ASSERT FALSE AS "Cannot auto fix seller_prd_purchasing_purchase_order";
