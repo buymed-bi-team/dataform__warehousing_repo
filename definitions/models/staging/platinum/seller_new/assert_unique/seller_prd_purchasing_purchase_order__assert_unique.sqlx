@@ -33,7 +33,7 @@ IF ( _assert <> 0 ) THEN
             SELECT 
                 GENERATE_UUID(),
                 CURRENT_TIMESTAMP(),
-                `${table_name}__assert_operations`,
+                `${table_name}__assert_unique`,
                 _loop_index,
                 null,
                 "dataform"
