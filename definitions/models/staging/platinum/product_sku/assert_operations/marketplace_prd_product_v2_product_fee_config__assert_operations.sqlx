@@ -71,7 +71,7 @@ DO
             SELECT 
                 GENERATE_UUID(),
                 CURRENT_TIMESTAMP(),
-                `${assert_name}`,
+                "${assert_name}",
                 _loop_index,
                 PARSE_JSON('{"dataset": "platinum_buymed_vn"}'),
                 "dataform"
@@ -123,7 +123,7 @@ IF is_assert = TRUE THEN
             SELECT 
                 GENERATE_UUID(),
                 CURRENT_TIMESTAMP(),
-                `${assert_name}`,
+                "${assert_name}",
                 _loop_index,
                 PARSE_JSON('{"dataset": "platinum_buymed_vn", "level":"CRITITCAL"}'),
                 "dataform"
