@@ -44,6 +44,41 @@ with params as (
         )} as start_date
 
 )
+
+-- Missing order_item detail of Tender seller_code
+, tender_0 as (
+select wdoi.mg_id
+    , wdo.admin_id as order_id
+    , wdoi.delivery_order_code as do_code
+    , p.product_id as product_id
+    , p.product_id as sub_product_id
+    , p.sku_code as sku
+    , json_extract_scalar(detail, '$.pocode') as po_code
+    , cast(json_extract_scalar(detail, '$.quantity') as int64) as outbound_quantity
+    , date(outbound_time,'+07') as outbound_date
+    , regexp_extract(sku, r'^([^\.]+)') AS seller_code
+    , coalesce(unit_price, 0) as unit_price
+    , cast(json_extract_scalar(detail, '$.vat') as int64) as vat
+    , regexp_replace(json_extract_scalar(detail, '$.lot'), r'[^\wd]+', '') as lot
+    , regexp_replace(json_extract_scalar(detail, '$.exp_date'), r'[^\wd]+', '') as exp_date
+
+-- from platinum_buymed_vn.warehouse_prd_core_delivery_order wdo
+from ${source.platinum}.warehouse_prd_core_delivery_order wdo
+-- left join platinum_buymed_vn.warehouse_prd_core_delivery_order_item wdoi
+left join ${source.platinum}.warehouse_prd_core_delivery_order_item wdoi
+    on wdo.delivery_order_code = wdoi.delivery_order_code
+-- left join gold_buymed_vn2.dim_sku p
+left join ${ref('dim_sku')} p
+    on p.sku_code = wdoi.sku
+left join unnest(json_extract_array(wdoi.pick_items, '$')) as item
+    on true
+left join unnest(json_extract_array(item, '$.scanned_details')) as detail
+    on true
+where 1=1
+    and wdo.created_date >= (select date_sub(start_date, interval 3 month) from params)
+    and wdoi.created_date >= (select date_sub(start_date, interval 3 month) from params)
+    and date(outbound_time,'+07') >= (select start_date from params)
+)
 , t0 as (
 select date(created_time,'+07') as created_date_local
     , mg_id
@@ -70,9 +105,10 @@ select date(created_time,'+07') as created_date_local
     , extra_props
     , outbound_infos
     , return_infos
+-- from platinum_buymed_vn.marketplace_prd_order_v2_order_item oi
 from ${source.platinum}.marketplace_prd_order_v2_order_item oi
 where 1=1
-and created_date >= (select date_sub(start_date, interval 3 month) from params)
+    and created_date >= (select date_sub(start_date, interval 3 month) from params)
 )
 , prd_0 as (
 select m.*
@@ -121,14 +157,45 @@ from t0 as m
 where 1=1
 and outbound_infos is null
 )
+, tender as (
+select m.*
+    , deal_code as promotion_code
+    , sku_code as bom_sku_code
+    , m.product_id as bom_product_id
+    , sku_level as bom_sku_level
+    , actual_sale_price as original_bom_price
+    , actual_seller_price as bom_seller_price
+    , actual_outbound_qty as bom_outbound_qty
+    , t.exp_date as bom_exp_date
+    , t.lot as bom_lot
+    , t.do_code as do_code
+    , t.po_code as po_code
+    , m.vat as bom_vat
+    , safe_cast(json_value(extra_props, '$.deal_vendor_price') as float64) as deal_vendor_price
+    , safe_cast(json_value(extra_props, '$.deal_info.discounted') as float64) as deal_sale_price
+from t0 as m
+left join tender_0 t on 1=1
+    and m.order_id = t.order_id
+    and m.sku_code = t.sku
+where 1=1
+and m.seller_code in ('TENDER')
+)
 , soi0 as (
     select 'combo' as product_type
         , c.*
     from combo c
+
     union all
+
     select 'product' as product_type
         , p.*
     from product p
+
+    union all
+
+    select 'product' as product_type
+        ,t.*
+    from tender t
 )
 , so as (
     select order_id
@@ -136,13 +203,16 @@ and outbound_infos is null
         , warehouse_code
         , sale_order_code as so_code
         , status
+        , date(outbound_date,'+07') as outbound_date
     from ${source.platinum}.marketplace_prd_order_v2_order o
+    -- from platinum_buymed_vn.marketplace_prd_order_v2_order o
     where 1=1
     and created_date >= (select date_sub(start_date, interval 3 month) from params)
 )
 , tdo as (
     select delivery_order_code as do_code
         , date(outbound_time,'+07') as outbound_date_local
+    -- from  platinum_buymed_vn.warehouse_prd_core_delivery_order tdo
     from  ${source.platinum}.warehouse_prd_core_delivery_order tdo
     where 1=1
     and created_date >= (select date_sub(start_date, interval 3 month) from params)
@@ -153,7 +223,7 @@ select so.so_code
     , so.customer_id
     , so.warehouse_code
     , so.status
-    , tdo.outbound_date_local
+    , coalesce(tdo.outbound_date_local, so.outbound_date) as outbound_date_local
     , soi0.*
     , coalesce(case
         when product_type = 'product' then original_bom_price
@@ -168,18 +238,18 @@ select so.so_code
             ,1)
         end as bom_deal_purchase_price
 from soi0
-inner join so on so.order_id = soi0.order_id
-inner join tdo on soi0.do_code = tdo.do_code
+left join so on so.order_id = soi0.order_id
+left join tdo on soi0.do_code = tdo.do_code
 where 1=1
 )
+
 , fin as (
     select *
     from soi
     where 1=1
-    and outbound_date_local is not null
+--     and outbound_date_local is not null
     and outbound_date_local >= (select start_date from params)
 )
 select *
 from fin
 where 1=1
-
