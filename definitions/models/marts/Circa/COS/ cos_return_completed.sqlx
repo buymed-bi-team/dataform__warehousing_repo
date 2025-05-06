@@ -26,9 +26,9 @@ with return_completed as (
     union all
 
     select c.code, total_amount
-    from ${source.circa_os}.order_order c
+    from ${source.circa_os}.order_return_order c
     left join ${source.circa_os}.entity_pos_profile p on c.pos_id = p.id
-    where c.type = 'RETURN' and c.status = 'COMPLETED'
+    where c.status = 'COMPLETED'
 ),
 
 cte_fs as
