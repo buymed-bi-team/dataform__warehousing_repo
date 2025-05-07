@@ -62,15 +62,28 @@ union all
 union all
        Select distinct date(date_add(l.created_time, interval 7 hour) )
            ,entity_code as pos_code
-           ,sum(l.line_amount) as circa_collect
+           ,sum(l.line_amount) + SUM(coalesce (extrafee.amount,0)) as circa_collect
         from ${source.platinum}.platform_accounting_prd_reconcile_CIRCA_FS_EXTERNAL_reconcile_line l
+        left join (select rec_code
+                   ,cast(json_extract_scalar(extra_fee, '$.amount') AS FLOAT64) as amount
+                   from `${source.platinum}.platform_accounting_prd_reconcile_reconcile` l,
+                   unnest (JSON_EXTRACT_ARRAY(extra_fees)) AS extra_fee
+                   where extra_fees IS NOT NULL
+                        and date(date_add(l.created_time, interval 7 hour) ) > (
+                                                         Select date(t.Date_convert)
+                                                         from buymed_external.fs_new_contract t
+                                                         where Pos_code = l.entity_code)
+                        and entity_code in (select Pos_code from buymed_external.fs_new_contract)
+                  ) extrafee on l.rec_code = extrafee.rec_code -- extrafee lấy giá trị phí extra theo từng phiên đối soát
         where date(date_add(l.created_time, interval 7 hour) ) > (
                                        Select date(t.Date_convert)
                                        from buymed_external.fs_new_contract t
                                        where Pos_code = l.entity_code)
               and entity_code in (select Pos_code from buymed_external.fs_new_contract)
 							and name <> 'Khoản trả góp định kỳ'
+              and entity_code = 'POS2239'
 	      group by all
+
 
 				-- công nợ của các FS sau ngày chuyển đổi 
    
