@@ -1,13 +1,16 @@
 config {
-    type: "assertion",
-    tags: ["platinum","platinum_custom_1h_past7","seller_prd_purchasing"]
+    type: "view",
+    name: "seller_prd_purchasing_vendor_bill__assert",
+    schema: "dataform_assertions",
+    tags: ["seller_prd_purchasing","Finance/margin"]
 }
+
 WITH 
 -- Time Range for validate
 checkpoint_tbl AS (
     SELECT 
-        current_timestamp() - interval 5 DAY AS _timestamp,
-        DATE(current_timestamp() - interval 5 DAY,"+7") AS _date
+        current_timestamp() - interval 2 DAY AS _timestamp,
+        DATE(current_timestamp() - interval 2 DAY,"+7") AS _date
 )
 -- Prepare Platinum data
 , PLATINUM AS (
@@ -91,12 +94,38 @@ checkpoint_tbl AS (
 -- UNION ALL
 
 SELECT 
-    "DELETED_RECORDS" info,mg_id, s_action, p_action , 0 as uname, s_ingest_time, p_ingest_time, action_history, platinum_refresh
+    "TOTAL COUNT" reason,
+    "" AS mg_id,
+    STRUCT ( "" as silver, "" as platinum) newest_action,
+    STRUCT ( CURRENT_TIMESTAMP() as silver, CURRENT_TIMESTAMP() as platinum) ingest_time,
+    COUNT(*) as value,
+    CURRENT_DATETIME() platinum_refresh,
+    null AS action_history
+FROM SILVER
+
+UNION ALL
+
+SELECT 
+    "DELETED_RECORDS" reason,
+    mg_id, 
+    STRUCT (s_action as silver, p_action as platinum) newest_action,
+    STRUCT (s_ingest_time  as silver, p_ingest_time  as platinum) ingest_time,
+    0 as value, 
+    platinum_refresh,
+    action_history
+    
 FROM DELETED_RECORDS
 
 UNION ALL 
 SELECT
-    "MISSING_RECORDS", s.mg_id, s.action, p.action , 0, s.ingest_time, p.ingest_time, action_history, platinum_refresh
+    "MISSING_RECORDS", 
+    s.mg_id, 
+    STRUCT (s.action as silver, p.action as platinum) newest_action,
+    STRUCT (s.ingest_time  as silver, p.ingest_time  as platinum) ingest_time,
+    0 as value, 
+    platinum_refresh,
+    action_history
+    
 FROM SILVER s 
 LEFT JOIN PLATINUM p 
     ON s.mg_id = p.mg_id
@@ -106,12 +135,19 @@ AND s.action <> "d"
 
 UNION ALL 
 SELECT 
-    "WRONG_UPDATE", s.mg_id, s.action, p.action, 0 , s.ingest_time, p.ingest_time , action_history, platinum_refresh
+    "WRONG_UPDATE", 
+    s.mg_id,
+    STRUCT (s.action as silver, p.action as platinum) newest_action,
+    STRUCT (s.ingest_time  as silver, p.ingest_time  as platinum) ingest_time,
+    0 as value, 
+    platinum_refresh,
+    action_history
 FROM SILVER s 
 LEFT JOIN PLATINUM p 
     ON s.mg_id = p.mg_id
 WHERE s.last_updated_time > p.last_updated_time
 AND s.action <> "d"
+
 
 
 /*
@@ -120,5 +156,4 @@ AND s.action <> "d"
     GROUP BY 1 
     HAVING COUNT(*) > 1
 */
-
 

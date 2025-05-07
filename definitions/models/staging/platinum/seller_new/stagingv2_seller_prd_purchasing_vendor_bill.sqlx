@@ -2,14 +2,13 @@ config {
     type: "incremental",
     name: "seller_prd_purchasing_vendor_bill",
     schema: "platinum_buymed_vn",
-    assertions: {
-        uniqueKey: 'mg_id',
-    },
+    description:"internal: internal-seller/MEDX/PUR_HCM/vendor-bill",
     bigquery: {
         partitionBy: "created_date"
     },
-    tags: ["platinum","platinum_custom_1h_past7","seller_prd_purchasing","Finance/margin"]
+    tags: ["critical_custom_1h_past7","seller_prd_purchasing","Finance/margin"]
 }
+
 
 pre_operations {
   ${
@@ -17,11 +16,15 @@ pre_operations {
         `
         # Incremental
         DECLARE has_new_data BOOLEAN;
+        -- DECLARE Support_Ingest_checkpoint DATE;
         DECLARE Ingest_checkpoint TIMESTAMP;
         DECLARE checkpoint_date ARRAY<date>;
+        -- DECLARE new_records ARRAY<STRING>; -- Change to Table because exceeds the 1 MB limit during query execution
         DECLARE deleted_records ARRAY<STRING>;
         
+        -- SET Support_Ingest_checkpoint = (SELECT DATE(CURRENT_DATE() - INTERVAL 1 DAY));
         SET Ingest_checkpoint = (SELECT max(ingest_time)  - INTERVAL 1 HOUR  FROM ${self()}
+            -- WHERE created_date >= Support_Ingest_checkpoint
         );
 
         SET ( has_new_data, checkpoint_date, deleted_records ) = ( 
@@ -76,7 +79,32 @@ pre_operations {
 
 --
 
+WITH over_tbl AS (
+  SELECT 
+    s. key,
+    s. mg_id,
+    s. created_time,
+    s. last_updated_time,
+    s. synced_at,
+    s. ingest_time,
+    s. action 
+  FROM ${source.silver}.seller_prd_purchasing_vendor_bill s
+  ${ when(incremental(), 
+    `WHERE s.ingest_time > Ingest_checkpoint - INTERVAL 2 HOUR
+        -- AND s.ingest_time < TEMP_timestamp
+        AND s.mg_id IN (SELECT mg_id FROM new_records) `, 
+    // `WHERE ingest_time > "2025-01-01" AND ingest_time <= "2025-01-22T13:00:00"` 
+    )}  
+  QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'
+  WINDOW _window AS ( 
+  PARTITION BY mg_id
+  ORDER BY 
+      synced_at DESC,
+      IF (action='d',3, IF (action='u',2,1)) DESC,
+      last_updated_time DESC)
+  
 
+)
 SELECT
     *,
     CASE 
@@ -86,16 +114,9 @@ SELECT
     CURRENT_DATETIME() AS platinum_refresh
 FROM
 ${source.silver}.seller_prd_purchasing_vendor_bill s
+WHERE key IN (SELECT key FROM over_tbl )
 ${ when(incremental(), 
-    `WHERE s.ingest_time > Ingest_checkpoint - INTERVAL 2 HOUR
-        -- AND s.ingest_time < TEMP_timestamp
-        AND s.mg_id IN (SELECT mg_id FROM new_records) `, 
-    // `WHERE ingest_time > "2025-01-01" AND ingest_time <= "2025-01-22T13:00:00"` 
-    )}  
-QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'
-WINDOW _window AS ( 
-PARTITION BY mg_id
-ORDER BY 
-    synced_at DESC,
-    IF (action='d',3, IF (action='u',2,1)) DESC,
-    last_updated_time DESC)
+  `AND s.ingest_time > Ingest_checkpoint - INTERVAL 2 HOUR`
+)}
+
+
