@@ -25,16 +25,16 @@ config {
 -- step 1: get some fee to calculate seller_received_value
 with
 
-    cte_category_seller_level as (
-        select
-            JSON_EXTRACT_SCALAR(a.extra_props, '$.category_code') || '_' || level as cate_level_code,
-            sale_fee_percent,
-            fulfillment_fee_percent
-        from ${source.platinum}.marketplace_prd_product_v2_seller_category_level AS a
-    )
+    -- cte_category_seller_level as (
+    --     select
+    --         JSON_EXTRACT_SCALAR(a.extra_props, '$.category_code') || '_' || level as cate_level_code,
+    --         sale_fee_percent,
+    --         fulfillment_fee_percent
+    --     from ${source.platinum}.marketplace_prd_product_v2_seller_category_level AS a
+    -- )
 
 -- step 2: get necessary columns to calculate price for seller
-    , get_columns as (
+    get_columns as (
         select
             a.sku_code,
             a.product_id,
@@ -70,8 +70,10 @@ with
                 on c.seller_code = sel.supplier_code
             left join ${ref('dim_product')} AS e
                 on c.product_id = e.product_id
-            left join cte_category_seller_level AS f
-                on concat(e.product_category_code,"_",IF(sel.supplier_type = "MARKET", "MARKET", c.sku_level)) = f.cate_level_code
+            -- left join cte_category_seller_level AS f
+            --     on concat(e.product_category_code,"_",IF(sel.supplier_type = "MARKET", "MARKET", c.sku_level)) = f.cate_level_code
+            left join ${source.platinum}.marketplace_prd_product_v2_product_fee_config AS f
+                on f.product_id = c.product_id and f.location_code = c.sales_region_code
         where sel.supplier_class = "EXTERNAL"
     )
 
