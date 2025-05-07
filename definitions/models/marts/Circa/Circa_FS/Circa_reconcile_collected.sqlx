@@ -1,0 +1,49 @@
+config {
+    type: "table",
+    description: `Last 13 month| PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 past hour 6, 8, 10, 12, 14, 16, 18, 20 and 22`
+    /*Source:
+      ${source.silver}.marketplace_prd_order_v2_order_item
+      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
+    tags: ["custom_2h_past5"],
+    name: "circa_reconcile_collected",
+    columns: {
+        order_id: "NonNull |" + docs.order_id,
+        customer_id: "NonNull | The unique identifier for each customer"
+        
+    },
+    bigquery: {
+    partitionBy: "created_date"
+}
+}
+
+with base_payment as (
+select
+    p.created_time
+    ,p.created_date
+    ,p.partner_code as pos_code
+	,pi.amount as collected_amount
+from platinum_buymed_vn_restricted.platform_billing_prd_payment_payment_item pi
+inner join (
+           select
+              date_add(created_time, interval 7 hour) as created_time
+             ,date(date_add(created_time, interval 7 hour)) as created_date
+             , partner_code
+             , payment_code
+           from platinum_buymed_vn_restricted.platform_billing_prd_payment_payment 
+           where
+             initcap(replace(status,'_',' ')) = 'Completed'
+             and type = 'RECEIPT'
+             and partner_type = 'CIRCA_FS'
+             and contains_substr(coalesce(note,'null'),'test') = false
+           ) p on pi.payment_code = p.payment_code
+)
+Select * except(created_time) from base_payment
+where base_payment.pos_code not in (select Pos_code from buymed_external.fs_new_contract)
+--lấy những FS chưa chuyển đổi
+union all
+Select * except(created_time) from base_payment
+where base_payment.pos_code in (select Pos_code from buymed_external.fs_new_contract)
+      and date(date_add(base_payment.created_time, interval 7 hour)) > (
+                                       Select date(t.Date_convert)
+                                       from buymed_external.fs_new_contract t
+                                       where t.Pos_code = base_payment.pos_code)
