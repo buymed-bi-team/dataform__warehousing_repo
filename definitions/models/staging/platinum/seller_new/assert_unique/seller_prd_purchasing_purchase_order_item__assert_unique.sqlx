@@ -7,7 +7,7 @@ config {
 js {
     const retry_cnt = 2;
     const assert_checkpoint_start_time = `DATE( "2001-01-01" )`;
-    const table_name = "seller_prd_purchasing_purchase_order"
+    const table_name = "seller_prd_purchasing_purchase_order_item"
     const assert_name = `${table_name}__assert_unique`
 }
 
