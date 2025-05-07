@@ -81,7 +81,6 @@ union all
                                        where Pos_code = l.entity_code)
               and entity_code in (select Pos_code from buymed_external.fs_new_contract)
 							and name <> 'Khoản trả góp định kỳ'
-              and entity_code = 'POS2239'
 	      group by all
 
 
