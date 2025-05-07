@@ -38,7 +38,7 @@ WHILE
     is_assert = TRUE 
     AND _loop_index < 2
 DO 
-    INSERT INTO lakehouse-prod-394907.dataform_assertions.log_script
+    INSERT INTO ${source.log}
         (key, created_time, name, retry_index, extra_props, platform)
         (
             SELECT 
@@ -78,7 +78,7 @@ DO
 END WHILE;
 
 IF is_assert = TRUE THEN 
-    INSERT INTO lakehouse-prod-394907.dataform_assertions.log_script
+    INSERT INTO ${source.log}
         (key, created_time, name, retry_index, extra_props, platform)
         (
             SELECT 
