@@ -86,7 +86,7 @@ IF is_assert = TRUE THEN
                 CURRENT_TIMESTAMP(),
                 "${assert_name}",
                 _loop_index,
-                PARSE_JSON('{"dataset": "platinum_buymed_vn", "level":"CRITITCAL"}'),
+                PARSE_JSON('{"dataset": "platinum_buymed_vn", "level":"CRITICAL"}'),
                 "dataform"
         );
     ASSERT FALSE AS "${table_name} is still duplicated";
