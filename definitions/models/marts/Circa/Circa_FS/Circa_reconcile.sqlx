@@ -68,7 +68,7 @@ union all
                                        Select date(t.Date_convert)
                                        from buymed_external.fs_new_contract t
                                        where Pos_code = l.entity_code)
-
+              and entity_code in (select Pos_code from buymed_external.fs_new_contract)
 							and name <> 'Khoản trả góp định kỳ'
 	      group by all
 
