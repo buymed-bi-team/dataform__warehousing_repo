@@ -22,7 +22,7 @@ with cte_pos_info as (
 		,pp.id						as pos_id
 		,tag.tag_name
 	from ${source.circa}.entity_pos_profile pp
-		left join (
+	left join (
 			select
 				epp.pos_code
 				,string_agg(pos_tag)		            as tag_code
@@ -36,18 +36,16 @@ with cte_pos_info as (
 				left join unnest(tag_array)	as pos_tag
 				left join ${source.circa}.entity_tag et
 					on pos_tag = et.code
-			group by
-				pos_code
-		) tag
-			on tag.pos_code = pp.code
+			group by pos_code
+		) tag on tag.pos_code = pp.code
 	where
 		contains_substr(tag.tag_name,'test') = false
     and pp.deleted_at is null
 )
       select
-        created_date
-	    , entity_code                                                          as pos_code
-        ,final_amount                                                         as circa_collect
+       created_date
+	    ,entity_code                                                          as pos_code
+      ,final_amount                                                         as circa_collect
 	    from
         ${source.platinum}.platform_accounting_prd_reconcile_reconcile
       where
