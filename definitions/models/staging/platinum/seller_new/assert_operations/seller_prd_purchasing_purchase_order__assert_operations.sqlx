@@ -128,5 +128,5 @@ IF is_assert = TRUE THEN
                 PARSE_JSON('{"dataset": "platinum_buymed_vn", "level":"CRITITCAL"}'),
                 "dataform"
         );
-    ASSERT FALSE AS "seller_prd_purchasing_purchase_order is still have mismatch records";
+    ASSERT FALSE AS "${table_name} is still have mismatch records";
 END IF;

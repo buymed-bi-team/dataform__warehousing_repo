@@ -89,5 +89,5 @@ IF is_assert = TRUE THEN
                 PARSE_JSON('{"dataset": "platinum_buymed_vn", "level":"CRITITCAL"}'),
                 "dataform"
         );
-    ASSERT FALSE AS "Cannot auto fix seller_prd_purchasing_purchase_order";
+    ASSERT FALSE AS "${table_name} is still duplicated";
 END IF;
