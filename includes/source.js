@@ -7,4 +7,17 @@ const collector = "lakehouse-prod-394907.collector"
 const circa = "lakehouse-prod-394907.buymed_circa"
 const circa_os = "lakehouse-prod-394907.buymed_circa_v2"
 
-module.exports = {silver,gold,ref, platinum, silver_restricted, collector,circa, circa_os}
+// Special table
+const log = "lakehouse-prod-394907.gold_buymed_vn2.log_script"
+
+module.exports = {
+    silver,
+    gold,
+    ref, 
+    platinum, 
+    silver_restricted, 
+    collector,
+    circa, 
+    circa_os, 
+    log
+}
