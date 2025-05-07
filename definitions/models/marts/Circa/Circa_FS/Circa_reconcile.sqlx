@@ -1,0 +1,78 @@
+config {
+    type: "table",
+    description: `Last 13 month| PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 past hour 6, 8, 10, 12, 14, 16, 18, 20 and 22`
+    /*Source:
+      ${source.silver}.marketplace_prd_order_v2_order_item
+      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
+    tags: ["custom_2h_past5"],
+    name: "circa_reconcile",
+    columns: {
+        order_id: "NonNull |" + docs.order_id,
+        customer_id: "NonNull | The unique identifier for each customer"
+        
+    },
+    bigquery: {
+    partitionBy: "created_date"
+}
+}
+
+with cte_pos_info as (
+	select
+		pp.code						as pos_code
+		,pp.id						as pos_id
+		,tag.tag_name
+	from ${source.circa}.entity_pos_profile pp
+		left join (
+			select
+				epp.pos_code
+				,string_agg(pos_tag)		            as tag_code
+				,coalesce(string_agg(et.name),'')		as tag_name
+			from (
+				select
+					code																		as pos_code
+					, json_extract_string_array(tag_code)		as tag_array
+				from ${source.circa}.entity_pos_profile
+			) epp
+				left join unnest(tag_array)	as pos_tag
+				left join ${source.circa}.entity_tag et
+					on pos_tag = et.code
+			group by
+				pos_code
+		) tag
+			on tag.pos_code = pp.code
+	where
+		contains_substr(tag.tag_name,'test') = false
+    and pp.deleted_at is null
+)
+      select
+        created_date
+	    , entity_code                                                          as pos_code
+        ,final_amount                                                         as circa_collect
+	    from
+        ${source.platinum}.platform_accounting_prd_reconcile_reconcile
+      where
+        status <> 'IN_SESSION'
+        and entity_code in (select pos_code from cte_pos_info)
+        and entity_code not in (select Pos_code from buymed_external.fs_new_contract)
+     --lấy những FS chưa chuyển đổi
+union all
+       Select distinct date(t.Date_convert) as created_date
+                       ,Pos_code as pos_code
+                       ,reconcile_amount as circa_collect
+       from buymed_external.fs_new_contract t
+			 -- công nợ chốt tại ngày chuyển đổi
+union all
+       Select distinct date(date_add(l.created_time, interval 7 hour) )
+           ,entity_code as pos_code
+           ,sum(l.line_amount) as circa_collect
+        from ${source.platinum}.platform_accounting_prd_reconcile_CIRCA_FS_EXTERNAL_reconcile_line l
+        where date(date_add(l.created_time, interval 7 hour) ) > (
+                                       Select date(t.Date_convert)
+                                       from buymed_external.fs_new_contract t
+                                       where Pos_code = l.entity_code)
+
+							and name <> 'Khoản trả góp định kỳ'
+	      group by all
+
+				-- công nợ của các FS sau ngày chuyển đổi 
+   
