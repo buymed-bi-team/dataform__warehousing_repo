@@ -2,7 +2,7 @@ config {
     type: "operations",
     name: "warehouse_prd_inbound_receipt__assert_operations",
     dependencies: ["warehouse_prd_inbound_receipt__assert_unique"],
-    tags: ["critical_custom_1h_past7","warehouse_prd_inbound"],
+    tags: ["critical_custom_10min","warehouse_prd_inbound"],
     description: ""
 }
 
