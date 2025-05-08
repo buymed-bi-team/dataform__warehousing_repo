@@ -17,7 +17,7 @@ WITH
             type,
             IF(value = 'NAN', null, value) as value
         from collector.data_prd
-        where object = 'Product' and submit_id >= 4300 and type  in ('DIVISION_NAME', 'IMAGE_LINK', 'DATA_SHARING')
+        where object = 'Product' and submit_id >= 4300 and type  in ('DIVISION_NAME', 'IMAGE_LINK', 'DATA_SHARING', "DIVISION_GROUP")
           and code not in ('216','217','218','219')
         qualify ROW_NUMBER() over (partition by code, object, type order by submit_at desc) = 1
     ),
@@ -50,10 +50,12 @@ select
     a.*,
     b.value as brand_name,
     COALESCE(lower(c.value), i.image_link) as image_link,
-    d.value AS data_sharing_type
+    d.value AS data_sharing_type,
+    e.value AS brand_group
 from division AS a
     left join client b on b.division_id = a.division_id and b.type = 'DIVISION_NAME'
     left join client c on c.division_id = a.division_id and c.type = 'IMAGE_LINK'
     left join client d on d.division_id = a.division_id and d.type = 'DATA_SHARING'
+    left join client e on e.division_id = a.division_id and e.type = 'DIVISION_GROUP'
     left join image AS i on i.division_id = a.division_id
 
