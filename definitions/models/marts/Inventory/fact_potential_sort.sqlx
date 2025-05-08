@@ -31,15 +31,18 @@ config {
 
 WITH dedup_sale_order AS (
   SELECT
-    sale_order_code,
-    admin_id,
-    warehouse_code as fc_code,
-    status,
-    created_time,
-    created_date,
-    type
-  FROM ${source.platinum}.warehouse_prd_core_sale_order
-  WHERE created_date >= DATE(timestamp(date_sub(current_date(),interval 45 day)))
+    so.sale_order_code,
+    so.admin_id,
+    so.warehouse_code as fc_code,
+    so.status,
+    so.created_time,
+    so.created_date,
+    so.type,
+    MIN(p.end_time) as pack_done_at
+  FROM ${source.platinum}.warehouse_prd_core_sale_order so 
+  LEFT JOIN ${source.platinum}.warehouse_prd_picking_pick_ticket p ON so.admin_id = p.admin_id
+  WHERE so.created_date >= DATE(timestamp(date_sub(current_date(),interval 45 day)))
+  GROUP BY ALL 
 ),
 
 dedup_sale_order_item AS (
@@ -101,7 +104,8 @@ agg_sale_order_item AS (
     SUM(a.order_quantity) OVER (PARTITION BY a.sale_order_code) AS total_qty,
     SUM(a.order_quantity * a.unit_price) OVER (PARTITION BY a.sale_order_code) AS total_amt,
     COUNT(DISTINCT a.sku_code) OVER (PARTITION BY a.sale_order_code) AS total_sku,
-    d.location_code
+    d.location_code,
+    TIMESTAMP(DATETIME(b.pack_done_at, "Asia/Ho_Chi_Minh")) AS pack_done_at
   FROM dedup_sale_order_item a
   LEFT JOIN dedup_sale_order b
     ON a.sale_order_code = b.sale_order_code
