@@ -2,7 +2,7 @@ config {
     type: "operations",
     name: "seller_prd_purchasing_purchase_order__assert_operations",
     dependencies: ["seller_prd_purchasing_purchase_order__assert_unique"],
-    tags: ["critical_custom_1h_past7","seller_prd_purchasing","Finance/margin"],
+    tags: ["critical_custom_10min","seller_prd_purchasing","Finance/margin"],
     description: ""
 }
 

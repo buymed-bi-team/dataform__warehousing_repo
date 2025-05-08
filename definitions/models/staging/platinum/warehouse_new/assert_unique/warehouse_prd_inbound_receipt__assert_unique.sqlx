@@ -1,6 +1,6 @@
 config {
     type: "operations",
-    tags: ["critical_custom_1h_past7","warehouse_prd_inbound"],
+    tags: ["critical_custom_10min","warehouse_prd_inbound"],
 }
 -- script_tag: ["assert","assert_duplicate"]
 

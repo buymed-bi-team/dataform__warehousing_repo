@@ -10,20 +10,20 @@ config {
     },
     tags: ["platinum_custom_10min","marketplace_prd_order-v2","Finance/margin"]
 }
+js {
+  const last_day = `DATE(CURRENT_DATE() - INTERVAL 1 DAY)`
+}
 pre_operations {
   ${
     when(incremental(),
         `
         # Incremental
         DECLARE has_new_data BOOLEAN;
-        DECLARE Support_Ingest_checkpoint DATE;
         DECLARE Ingest_checkpoint TIMESTAMP;
         DECLARE checkpoint_date ARRAY<date>;
-        -- DECLARE new_records ARRAY<STRING>; -- Change to Table because exceeds the 1 MB limit during query execution
         DECLARE deleted_records ARRAY<STRING>;
         
-        SET Support_Ingest_checkpoint = (SELECT DATE(CURRENT_DATE() - INTERVAL 1 DAY));
-        SET Ingest_checkpoint = (SELECT max(ingest_time)  - INTERVAL 1 HOUR  FROM ${self()} WHERE created_date >= Support_Ingest_checkpoint);
+        SET Ingest_checkpoint = (SELECT max(ingest_time)  - INTERVAL 1 HOUR  FROM ${self()} WHERE created_date >= ${last_day});
 
         SET ( has_new_data, checkpoint_date, deleted_records ) = ( 
             SELECT AS STRUCT 
