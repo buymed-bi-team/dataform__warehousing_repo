@@ -287,6 +287,7 @@ where 1=1
         , customer_id
         , order_id
         , so_code
+        , do_code
         , status
         , product_id
         , product_type
@@ -315,6 +316,7 @@ where 1=1
         , promotion_code
         , bom_sku_code as sub_sku_code
         , bom_product_id as sub_product_id
+        , po_code
         , bom_sku_level as sub_sku_level
         , coalesce(bom_sale_price,0) as sub_unit_price
         , coalesce(bom_seller_price, 0) as sub_seller_price
