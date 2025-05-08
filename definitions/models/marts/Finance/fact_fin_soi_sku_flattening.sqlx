@@ -1,0 +1,335 @@
+config {
+    type: "incremental",
+    description: 
+        `
+        Details of the items in the order, with combos split into normal products and its prices recalculated according to the corresponding combo
+        PIC: van.lethuy; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.platinum}.marketplace_prd_order_v2_order_item,
+            ${source.platinum}.marketplace_prd_order_v2_order,
+            ${source.platinum}.warehouse_prd_core_delivery_order
+        `,
+    bigquery: {
+        partitionBy: "created_date_local",
+        clusterBy: ["order_id", "sku_code"]
+    },
+    tags: ["custom_1h_past5", "MARKETPLACE"],
+
+}
+
+pre_operations {
+  ${when(
+    incremental(),
+    `
+      DELETE FROM ${self()}
+      WHERE created_date_local >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 3 MONTH);
+
+      DELETE FROM ${self()}
+      WHERE created_date_local < '2024-01-01';
+    `
+  )}
+}
+
+with params as (
+    select
+            -- date('2025-01-01') as start_date
+
+        ${when(
+            incremental(),
+            "date_trunc(date_sub(current_date('+07'), interval 3 month), month)",
+            "date('2024-01-01')"
+        )} as start_date
+
+)
+-- Tender info from warehouse
+, tender_0 as (
+select wdoi.mg_id
+    , wdo.admin_id as order_id
+    , wdoi.delivery_order_code as do_code
+    , p.product_id as product_id
+    , p.product_id as sub_product_id
+    , p.sku_code as sku
+    , json_extract_scalar(detail, '$.pocode') as po_code
+    , cast(json_extract_scalar(detail, '$.quantity') as int64) as outbound_quantity
+    , date(outbound_time,'+07') as outbound_date
+    , regexp_extract(sku, r'^([^\.]+)') AS seller_code
+    , coalesce(unit_price, 0) as unit_price
+    , cast(json_extract_scalar(detail, '$.vat') as int64) as vat
+    , regexp_replace(json_extract_scalar(detail, '$.lot'), r'[^\wd]+', '') as lot
+    , regexp_replace(json_extract_scalar(detail, '$.exp_date'), r'[^\wd]+', '') as exp_date
+
+-- from platinum_buymed_vn.warehouse_prd_core_delivery_order wdo
+from ${source.platinum}.warehouse_prd_core_delivery_order wdo
+-- left join platinum_buymed_vn.warehouse_prd_core_delivery_order_item wdoi
+left join ${source.platinum}.warehouse_prd_core_delivery_order_item wdoi
+    on wdo.delivery_order_code = wdoi.delivery_order_code
+-- left join gold_buymed_vn2.dim_sku p
+left join ${ref('dim_sku')} p
+    on p.sku_code = wdoi.sku
+left join unnest(json_extract_array(wdoi.pick_items, '$')) as item
+    on true
+left join unnest(json_extract_array(item, '$.scanned_details')) as detail
+    on true
+where 1=1
+    and wdo.created_date >= (select date_sub(start_date, interval 3 month) from params)
+    and wdoi.created_date >= (select date_sub(start_date, interval 3 month) from params)
+    and date(outbound_time,'+07') >= (select start_date from params)
+)
+, t0 as (
+select date(created_time,'+07') as created_date_local
+    , key
+    , mg_id
+    , order_id
+    , oi.product_id
+    , case when p.is_combo = true then 'combo' else 'product' end as product_type
+    , sku_level
+    , sku as sku_code
+    , oi.vat
+    , type
+    , seller_code
+    , seller_class
+    , deal_code
+    , deal_pricing_type
+    , price as actual_sale_price
+    , seller_price as actual_seller_price
+    , charge_deal_fee_value
+    , quantity as actual_ordered_qty
+    , reserved_quantity as actual_reserved_qty
+    , outbound_quantity as actual_outbound_qty
+    , returned_quantity as actual_returned_qty
+    , delivered_quantity as actual_delivered_quantity
+    , completed_quantity as actual_completed_quantity
+    , seller_revenue
+    , tags
+    , fee
+    , extra_props
+    , outbound_infos
+    , return_infos
+-- from platinum_buymed_vn.marketplace_prd_order_v2_order_item oi
+from ${source.platinum}.marketplace_prd_order_v2_order_item oi
+-- left join gold_buymed_vn2.dim_product p
+left join ${ref('dim_product')} p
+    on oi.product_id = p.product_id
+where 1=1
+    and created_date >= (select date_sub(start_date, interval 3 month) from params)
+)
+, product as (
+select key
+    , order_id
+    , product_id
+    , coalesce(json_extract_scalar(ob.campaign_code), deal_code) as promotion_code
+    , sku_code as bom_sku_code
+    , product_id as bom_product_id
+    , sku_level as bom_sku_level
+    , actual_sale_price as bom_sale_price
+    , actual_seller_price as bom_seller_price
+    , safe_cast(json_extract_scalar(ob.quantity) as int64) as bom_outbound_qty
+    , json_extract_scalar(ob.exp_date) as bom_exp_date
+    , json_extract_scalar(ob.lot) as bom_lot
+    , json_extract_scalar(ob.do_code) as do_code
+    , json_extract_scalar(ob.po_code) as po_code
+    , m.vat as bom_vat
+    , safe_cast(json_value(extra_props, '$.deal_vendor_price') as float64) as bom_deal_vendor_price
+    , safe_cast(json_value(extra_props, '$.deal_info.discounted') as float64) as deal_sale_price
+from t0 as m, unnest(json_query_array(outbound_infos)) as ob
+where 1=1
+and product_type = 'product'
+and seller_code not in ('TENDER')
+)
+, combo_0 as (
+select key
+    , order_id
+    , product_id
+    , actual_sale_price
+    , actual_ordered_qty
+    , case when actual_outbound_qty = 0 then actual_ordered_qty else actual_outbound_qty end as actual_outbound_qty
+    , coalesce(json_extract_scalar(combo_item.campaign_code), deal_code) as promotion_code
+    , json_extract_scalar(combo_item.sku ) as bom_sku_code
+    , safe_cast(json_extract_scalar(combo_item.product_id) as int64) as bom_product_id
+    , json_extract_scalar(combo_item.sku_level ) as bom_sku_level
+    , safe_cast(json_extract_scalar(combo_item.price) as float64) as original_bom_price
+    , safe_cast(json_extract_scalar(combo_item.seller_price) as float64) as bom_seller_price
+    , safe_cast(json_extract_scalar(ob_info.quantity) as int64) as bom_outbound_qty
+    , json_extract_scalar(ob_info.exp_date) as bom_exp_date
+    , json_extract_scalar(ob_info.lot) as bom_lot
+    , json_extract_scalar(ob_info.do_code) as do_code
+    , json_extract_scalar(ob_info.po_code) as po_code
+    , coalesce(safe_cast(json_extract_scalar(combo_item.vat) as int64), m.vat) as bom_vat
+    , safe_cast(json_value(extra_props, '$.deal_vendor_price') as float64) as deal_vendor_price
+    , safe_cast(json_value(extra_props, '$.deal_info.discounted') as float64) as deal_sale_price
+    , count(distinct json_extract_scalar(combo_item.sku )) over (partition by order_id, product_id) as sku_in_combo
+    , sum(safe_cast(json_extract_scalar(ob_info.quantity) as int64)) over
+        (partition by order_id, product_id, safe_cast(json_extract_scalar(combo_item.product_id) as int64))
+          / (actual_outbound_qty) as sku_qty_in_combo
+from t0 as m
+    , unnest(json_query_array(m.extra_props, '$.sub_items')) AS combo_item
+    , unnest(json_query_array(combo_item.outbound_infos)) AS ob_info
+where 1=1
+and product_type = 'combo'
+and actual_outbound_qty > 0
+)
+, combo as (
+select key
+    , order_id
+    , m.product_id
+    , promotion_code
+    , bom_sku_code
+    , bom_product_id
+    , bom_sku_level
+    , case
+       when sku_in_combo = 1 then actual_sale_price * actual_outbound_qty / sum(bom_outbound_qty) over (partition by order_id, m.product_id, bom_product_id)
+       else original_bom_price * (actual_sale_price * actual_outbound_qty
+            / sum(original_bom_price * bom_outbound_qty) over (partition by order_id, m.product_id))
+       end as bom_sale_price
+    , bom_seller_price
+    , bom_outbound_qty
+    , bom_exp_date
+    , bom_lot
+    , do_code
+    , po_code
+    , bom_vat
+    , case
+       when sku_in_combo = 1 then deal_vendor_price * actual_outbound_qty / sum(bom_outbound_qty) over (partition by order_id, m.product_id, bom_product_id)
+       else original_bom_price * (deal_vendor_price * actual_outbound_qty
+            / sum(original_bom_price * bom_outbound_qty) over (partition by order_id, m.product_id))
+       end as deal_vendor_price
+    , deal_sale_price
+from combo_0 as m
+left join gold_buymed_vn2.dim_product p on m.bom_product_id = p.product_id
+where 1=1
+)
+, tender as (
+select m.key
+    , m.order_id
+    , m.product_id
+    , deal_code as promotion_code
+    , sku_code as bom_sku_code
+    , m.product_id as bom_product_id
+    , sku_level as bom_sku_level
+    , t.unit_price as bom_sale_price
+    , actual_seller_price as bom_seller_price
+    , t.outbound_quantity as bom_outbound_qty
+    , t.exp_date as bom_exp_date
+    , t.lot as bom_lot
+    , t.do_code as do_code
+    , t.po_code as po_code
+    , m.vat as bom_vat
+    , safe_cast(json_value(extra_props, '$.deal_vendor_price') as float64) as deal_vendor_price
+    , safe_cast(json_value(extra_props, '$.deal_info.discounted') as float64) as deal_sale_price
+from t0 as m
+left join tender_0 t on 1=1
+    and m.order_id = t.order_id
+    and m.sku_code = t.sku
+where 1=1
+and m.seller_code in ('TENDER')
+)
+, soi0 as (
+    select *
+    from combo c
+
+    union all
+
+    select *
+    from product p
+
+    union all
+
+    select *
+    from tender t
+)
+, so as (
+    select order_id
+        , customer_id
+        , warehouse_code
+        , sale_order_code as so_code
+        , status
+        , date(outbound_date,'+07') as outbound_date
+    from ${source.platinum}.marketplace_prd_order_v2_order o
+    -- from platinum_buymed_vn.marketplace_prd_order_v2_order o
+    where 1=1
+    and created_date >= (select date_sub(start_date, interval 3 month) from params)
+)
+, tdo as (
+    select delivery_order_code as do_code
+        , date(outbound_time,'+07') as outbound_date_local
+    -- from  platinum_buymed_vn.warehouse_prd_core_delivery_order tdo
+    from  ${source.platinum}.warehouse_prd_core_delivery_order tdo
+    where 1=1
+    and created_date >= (select date_sub(start_date, interval 3 month) from params)
+    and status not like '%CANCEL%'
+)
+, soi as (
+select so.so_code
+    , so.customer_id
+    , so.warehouse_code
+    , so.status
+    , coalesce(tdo.outbound_date_local, so.outbound_date) as outbound_date_local
+    , t0.*
+    , soi0.* except (key, order_id, product_id )
+from t0
+left join soi0 on 1=1
+    and t0.key = soi0.key
+    and t0.order_id = soi0.order_id
+    and t0.product_id = soi0.product_id
+left join so on so.order_id = t0.order_id
+left join tdo on tdo.do_code = soi0.do_code
+where 1=1
+)
+
+, fin as (
+    select key
+        , mg_id
+        , created_date_local
+        , outbound_date_local
+        , warehouse_code
+        , customer_id
+        , order_id
+        , so_code
+        , do_code
+        , status
+        , product_id
+        , product_type
+        , sku_level
+        , sku_code
+        , seller_code
+        , seller_class
+        , vat
+        , type
+        , deal_code
+        , deal_pricing_type
+        , actual_sale_price
+        , actual_seller_price
+        , actual_ordered_qty
+        , actual_reserved_qty
+        , actual_outbound_qty
+        , actual_delivered_quantity
+        , actual_completed_quantity
+        , actual_returned_qty
+        , seller_revenue
+        , tags
+        , fee
+        , extra_props
+        , outbound_infos
+        , return_infos
+        , promotion_code
+        , bom_sku_code as sub_sku_code
+        , bom_product_id as sub_product_id
+        , po_code
+        , bom_sku_level as sub_sku_level
+        , coalesce(bom_sale_price,0) as sub_unit_price
+        , coalesce(bom_seller_price, 0) as sub_seller_price
+        , coalesce(bom_outbound_qty, 0) as sub_outbound_quantity
+        , deal_vendor_price as sub_deal_purchase_price
+        , bom_vat as sub_vat
+        , bom_lot as lot
+        , bom_exp_date as exp_date
+from soi
+    where 1=1
+--     and outbound_date_local is not null
+--     and outbound_date_local >= (select start_date from params)
+)
+select *
+from fin
+where 1=1

@@ -214,21 +214,22 @@ select mg_id
     , seller_code
     , seller_class
     , deal_code
-    , deal_sale_price
-    , bom_product_id
-    , bom_sku_code
-    , bom_vat
-    , bom_sale_price
-    , bom_seller_price
-    , bom_deal_purchase_price
+    , sub_product_id as bom_product_id
+    , sub_sku_code as bom_sku_code
+    , sub_vat as bom_vat
+    , sub_unit_price as bom_sale_price
+    , sub_seller_price as bom_seller_price
+    , sub_deal_purchase_price as bom_deal_purchase_price
     , po_code
-    , sum(bom_outbound_qty) as bom_outbound_qty
-    , sum(bom_outbound_qty / actual_outbound_qty * actual_returned_qty) as bom_returned_qty
+    , lot
+    , exp_date
+    , sub_outbound_quantity as bom_outbound_qty
+    , sub_outbound_quantity / nullif(actual_outbound_qty,0) * actual_returned_qty as bom_returned_qty
+-- from gold_buymed_vn2.fact_order_item_finance
 from ${ref('fact_order_item_finance')}
 where 1=1
 and outbound_date_local >= (select start_date from params)
 and seller_class = 'INTERNAL'
-group by all
 )
 , margin_0 as (
 select soi.*
