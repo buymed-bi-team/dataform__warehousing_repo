@@ -1,0 +1,84 @@
+config {
+    type: "operations",
+}
+
+-- js {
+--   const table_name = "marketplace_prd_order_v2_order_item"
+
+--   const created_time = `created_time`
+--   // const created_time = ` silver_buymed_vn.MONGOID_TIMESTAMP(created_time) ` // for if table has no created_time column
+
+--   const basic_guarantee_time_range = `AND created_date >= CURRENT_DATE() - INTERVAL 1 MONTH`
+
+-- }
+
+CREATE OR REPLACE PROCEDURE platinum_buymed_vn.unique_assertion(
+  table_name STRING,
+  has_created_time BOOL,
+  default_guarantee_time_start_point DATE,
+  OUT duplicate_mg_id ARRAY<STRING>
+)
+BEGIN
+  /*
+    Warning :
+        - This cannot apply to warehouse_prd_inventory_sku - the case that mg_id can have different created_time and timestamp come from mg_id itself
+        - Where timestamp from mg_id is created_time that mg_id created in mongoDB, which is our source
+  */
+  DECLARE created_time_expr STRING;
+  DECLARE created_date_array ARRAY<DATE>;
+  DECLARE query STRING;
+
+  -- Step 1: Determine the created_time expression
+  SET created_time_expr = (
+    CASE
+      WHEN has_created_time THEN "created_time"
+      ELSE "silver_buymed_vn.MONGOID_TIMESTAMP(mg_id)"
+    END
+  );
+
+  -- Step 2: Create created_date_array using dynamic SQL
+  SET query = '''
+    SELECT ARRAY_AGG(
+      IF(''' || created_time_expr || ''' IS NULL, DATE("2099-01-01"),
+        DATE(DATETIME(''' || created_time_expr || ''', "Asia/Ho_Chi_Minh"))
+      )
+    ) AS created_date_array
+    FROM ${source.silver}.''' || table_name || '''
+    WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 2 HOUR
+  ''';
+
+  EXECUTE IMMEDIATE query INTO created_date_array;
+
+  -- Step 3: Query duplicate mg_id from platinum using the dates
+  SET query = '''
+    SELECT ARRAY_AGG(mg_id) FROM (
+      SELECT mg_id
+      FROM ${source.platinum}.''' || table_name || '''
+      WHERE created_date IN UNNEST(@created_date_array)
+        AND created_date >= @default_guarantee_time_start_point
+      GROUP BY mg_id
+      HAVING COUNT(*) > 1
+    )
+  ''';
+
+  EXECUTE IMMEDIATE query INTO duplicate_mg_id
+  USING created_date_array AS created_date_array,
+        default_guarantee_time_start_point AS default_guarantee_time_start_point;
+
+END;
+
+BEGIN
+  -- Declare the output array as a variable
+  DECLARE example_array ARRAY<STRING>;
+
+  -- Call the procedure and pass the variable directly
+  CALL platinum_buymed_vn.unique_assertion(
+    'marketplace_prd_order_v2_order_item',
+    TRUE,
+    DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH),
+    example_array
+  );
+
+  -- Use the output (print, inspect, or pass it to a query)
+  SELECT example_array;
+END;
