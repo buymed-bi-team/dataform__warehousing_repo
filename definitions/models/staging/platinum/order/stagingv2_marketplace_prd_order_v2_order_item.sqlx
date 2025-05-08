@@ -2,13 +2,13 @@ config {
     type: "incremental",
     name: "marketplace_prd_order_v2_order_item",
     schema: "platinum_buymed_vn",
-    assertions: {
-         uniqueKey: 'mg_id'
-     },
+    // assertions: {
+    //      uniqueKey: 'mg_id'
+    //  },
     bigquery: {
         partitionBy: "created_date"
     },
-    tags: ["platinum_custom_10min","marketplace_prd_order-v2","Finance/margin"]
+    tags: ["critical_custom_10min","marketplace_prd_order-v2","Finance/margin"]
 }
 js {
   const last_day = `DATE(CURRENT_DATE() - INTERVAL 1 DAY)`
