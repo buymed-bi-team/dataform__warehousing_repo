@@ -75,7 +75,7 @@ left join unnest(json_extract_array(item, '$.scanned_details')) as detail
 where 1=1
     and wdo.created_date >= (select date_sub(start_date, interval 3 month) from params)
     and wdoi.created_date >= (select date_sub(start_date, interval 3 month) from params)
-    and date(outbound_time,'+07') >= (select start_date from params)
+    -- and date(outbound_time,'+07') >= (select start_date from params)
 )
 , t0 as (
 select date(created_time,'+07') as created_date_local
@@ -249,7 +249,7 @@ and m.seller_code in ('TENDER')
     from ${source.platinum}.marketplace_prd_order_v2_order o
     -- from platinum_buymed_vn.marketplace_prd_order_v2_order o
     where 1=1
-    and created_date >= (select date_sub(start_date, interval 3 month) from params)
+    and created_date >= (select date_sub(start_date, interval 6 month) from params)
 )
 , tdo as (
     select delivery_order_code as do_code
@@ -257,7 +257,7 @@ and m.seller_code in ('TENDER')
     -- from  platinum_buymed_vn.warehouse_prd_core_delivery_order tdo
     from  ${source.platinum}.warehouse_prd_core_delivery_order tdo
     where 1=1
-    and created_date >= (select date_sub(start_date, interval 3 month) from params)
+    and created_date >= (select date_sub(start_date, interval 6 month) from params)
     and status not like '%CANCEL%'
 )
 , soi as (
