@@ -8,7 +8,10 @@ config {
     bigquery: {
         partitionBy: "created_date"
     },
-    tags: ["custom_1h_past7","marketplace_prd_order-v2"]
+    tags: ["platinum_custom_1h_past7","core_prd_file_manager"]
+}
+js {
+  const last_day = `CURRENT_DATE() - INTERVAL 1 MONTH`
 }
 pre_operations {
   ${
@@ -16,14 +19,11 @@ pre_operations {
         `
         # Incremental
         DECLARE has_new_data BOOLEAN;
-        DECLARE Support_Ingest_checkpoint DATE;
         DECLARE Ingest_checkpoint TIMESTAMP;
         DECLARE checkpoint_date ARRAY<date>;
-        -- DECLARE new_records ARRAY<STRING>; -- Change to Table because exceeds the 1 MB limit during query execution
         DECLARE deleted_records ARRAY<STRING>;
         
-        SET Support_Ingest_checkpoint = (SELECT DATE(CURRENT_DATE() - INTERVAL 1 DAY));
-        SET Ingest_checkpoint = (SELECT max(ingest_time) FROM ${self()} WHERE created_date >= Support_Ingest_checkpoint);
+        SET Ingest_checkpoint = (SELECT max(ingest_time)  - INTERVAL 1 HOUR  FROM ${self()} WHERE created_date >= ${last_day});
 
         SET ( has_new_data, checkpoint_date, deleted_records ) = ( 
             SELECT AS STRUCT 
@@ -83,7 +83,8 @@ pre_operations {
     CASE 
       WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
       ELSE "2099-01-01"
-    END AS created_date
+    END AS created_date,
+    CURRENT_DATETIME() AS platinum_refresh
 
   FROM
     ${source.silver}.core_prd_file_manager_upload_base_64 s
