@@ -55,6 +55,7 @@ SELECT
         WHEN JSON_VALUE(a.extra_props, '$.apply_discount.not_in_skus.0') IS NULL THEN "Tất cả sản phẩm"
         ELSE CONCAT("Tất cả sản phẩm ngoại trừ: ", TO_JSON_STRING(JSON_QUERY(a.extra_props, '$.apply_discount.not_in_skus')))
         END AS apply_product
+    , JSON_VALUE(a.extra_props, '$.type_schema') as type_schema
 FROM ${source.platinum}.marketplace_prd_promotion_promotion AS a
 ------ Retrieve Campaign Brand based on data imported by members of Clients Solutions Team
 LEFT JOIN (
