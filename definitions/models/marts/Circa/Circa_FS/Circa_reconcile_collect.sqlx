@@ -46,6 +46,7 @@ with cte_pos_info as (
        created_date
 	    ,entity_code                                                          as pos_code
       ,final_amount                                                         as circa_collect
+      ,'FS chưa chuyển đổi' as type_amount
 	    from
         ${source.platinum}.platform_accounting_prd_reconcile_reconcile
       where
@@ -57,6 +58,7 @@ union all
        Select distinct date(t.Date_convert) as created_date
                        ,Pos_code as pos_code
                        ,reconcile_amount as circa_collect
+                       ,'Công nợ chuyển đổi' as type_amount
        from buymed_external.fs_new_contract t
 			 -- công nợ chốt tại ngày chuyển đổi
 -- union all
@@ -77,13 +79,14 @@ union all
        Select distinct date(date_add(l.created_time, interval 7 hour) )
            ,entity_code as pos_code
            ,sum(l.line_amount) as circa_collect
+           ,'Phí theo tháng' as type_amount
         from ${source.platinum}.platform_accounting_prd_reconcile_CIRCA_FS_EXTERNAL_reconcile_line l
 where rec_template_code = 'CIRCAFS_FEE'
 --  date(date_add(l.created_time, interval 7 hour) ) > (
 --                                        Select date(t.Date_convert)
 --                                        from buymed_external.fs_new_contract t
 --                                        where Pos_code = l.entity_code)
---               and entity_code in (select Pos_code from buymed_external.fs_new_contract)
+               and entity_code in (select Pos_code from buymed_external.fs_new_contract)
               ---- các loại phí sau chuyển đổi
 group by all
 
@@ -92,6 +95,7 @@ union all
 select distinct date(date_add(l.created_time, interval 7 hour) )
                   ,entity_code
                    ,cast(json_extract_scalar(extra_fee, '$.amount') AS FLOAT64) as amount
+                   ,'Extra_fee' as type_amount
                    from ${source.platinum}.platform_accounting_prd_reconcile_reconcile l,
                    unnest (JSON_EXTRACT_ARRAY(extra_fees)) AS extra_fee
 where extra_fees IS NOT NULL
@@ -109,6 +113,7 @@ Select distinct
      created_date
      ,p.code
     ,sum(PO_amount)
+    ,'Công nợ phát sinh' as type_amount
  from ${source.ref}.circa_purchase_order o 
  left join ${source.circa}.entity_pos_profile p on o.pos_id = p.id
  where o.created_date > (
