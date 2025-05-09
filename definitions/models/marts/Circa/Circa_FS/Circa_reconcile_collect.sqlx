@@ -59,19 +59,34 @@ union all
                        ,reconcile_amount as circa_collect
        from buymed_external.fs_new_contract t
 			 -- công nợ chốt tại ngày chuyển đổi
+-- union all
+--        Select distinct date(date_add(l.created_time, interval 7 hour) )
+--            ,entity_code as pos_code
+--            ,sum(l.line_amount) as circa_collect
+--         from ${source.platinum}.platform_accounting_prd_reconcile_CIRCA_FS_EXTERNAL_reconcile_line l
+-- where rec_template_code = 'CIRCAFS_DEBT'
+-- --  date(date_add(l.created_time, interval 7 hour) ) > (
+-- --                                        Select date(t.Date_convert)
+-- --                                        from buymed_external.fs_new_contract t
+-- --                                        where Pos_code = l.entity_code)
+-- --               and entity_code in (select Pos_code from buymed_external.fs_new_contract)
+-- 							and name like '%Phí%' 
+--               ---- các loại phí sau chuyển đổi
+-- group by all
 union all
        Select distinct date(date_add(l.created_time, interval 7 hour) )
            ,entity_code as pos_code
            ,sum(l.line_amount) as circa_collect
         from ${source.platinum}.platform_accounting_prd_reconcile_CIRCA_FS_EXTERNAL_reconcile_line l
-where date(date_add(l.created_time, interval 7 hour) ) > (
-                                       Select date(t.Date_convert)
-                                       from buymed_external.fs_new_contract t
-                                       where Pos_code = l.entity_code)
-              and entity_code in (select Pos_code from buymed_external.fs_new_contract)
-							and name like '%Phí%'
+where rec_template_code = 'CIRCAFS_FEE'
+--  date(date_add(l.created_time, interval 7 hour) ) > (
+--                                        Select date(t.Date_convert)
+--                                        from buymed_external.fs_new_contract t
+--                                        where Pos_code = l.entity_code)
+--               and entity_code in (select Pos_code from buymed_external.fs_new_contract)
               ---- các loại phí sau chuyển đổi
 group by all
+
 
 union all
 select distinct date(date_add(l.created_time, interval 7 hour) )
