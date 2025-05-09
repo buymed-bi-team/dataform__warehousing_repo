@@ -95,10 +95,11 @@ select distinct date(date_add(l.created_time, interval 7 hour) )
                    from ${source.platinum}.platform_accounting_prd_reconcile_reconcile l,
                    unnest (JSON_EXTRACT_ARRAY(extra_fees)) AS extra_fee
 where extra_fees IS NOT NULL
-      and date(date_add(l.created_time, interval 7 hour) ) > (
-                Select date(t.Date_convert)
-                from buymed_external.fs_new_contract t
-                where Pos_code = l.entity_code)
+      -- and date(date_add(l.created_time, interval 7 hour) ) > (
+      --           Select date(t.Date_convert)
+      --           from buymed_external.fs_new_contract t
+      --           where Pos_code = l.entity_code)
+      and ( rec_template_code = 'CIRCAFS_FEE' or  rec_template_code = 'CIRCAFS_DEBT' )
       and entity_code in (select Pos_code from buymed_external.fs_new_contract)
       group by all
       -- extra phí (nhập manual) sau ngày chuyển đổi 
