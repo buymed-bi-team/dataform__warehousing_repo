@@ -38,7 +38,7 @@ WITH dedup_sale_order AS (
     so.created_time,
     so.created_date,
     so.type,
-    MIN(p.end_time) as pack_done_at
+    MIN(COALESCE(p.ready_for_pick_time, p.activation_time, p.start_pick_time)) as pack_done_at
   FROM ${source.platinum}.warehouse_prd_core_sale_order so 
   LEFT JOIN ${source.platinum}.warehouse_prd_picking_pick_ticket p ON so.admin_id = p.admin_id
   WHERE so.created_date >= DATE(timestamp(date_sub(current_date(),interval 45 day)))
