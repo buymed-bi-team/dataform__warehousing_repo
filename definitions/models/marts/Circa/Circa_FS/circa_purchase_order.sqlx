@@ -23,7 +23,7 @@ select a.id                as po_id
        ,a.distributor_id
        ,a.code              as PO_code
        ,a.status            as PO_status
-       ,a.total_item_amount as PO_amount
+       ,a.total_amount as PO_amount
        ,date(DATETIME_ADD(a.created_at, INTERVAL 7 HOUR))  as created_date
        ,date(DATETIME_ADD(a.completed_at, INTERVAL 7 HOUR)) as completed_date
        ,DATETIME_ADD(a.created_at, INTERVAL 7 HOUR) as created_at
