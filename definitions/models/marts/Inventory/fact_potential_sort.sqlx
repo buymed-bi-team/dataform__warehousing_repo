@@ -62,6 +62,7 @@ dedup_sale_order_item AS (
     CAST(JSON_VALUE(b.order_quantity) AS INT64) as order_quantity,
     CAST(JSON_VALUE(b.reserved_quantity) AS INT64) as reserved_quantity,
     CAST(JSON_VALUE(b.first_reserved_quantity) AS INT64) as first_reserved_quantity,
+    o.customer_id
   FROM ${source.platinum}.warehouse_prd_core_sale_order_item a
   , UNNEST(JSON_QUERY_ARRAY(a.pick_items)) AS b
   LEFT JOIN ${ref("fact_order_item")} AS i
@@ -69,6 +70,8 @@ dedup_sale_order_item AS (
     AND JSON_VALUE(b.sku) = i.sku_code
     AND CAST(JSON_VALUE(b.order_quantity) AS INT64) = i.demand_quantity
     AND CAST(JSON_VALUE(b.reserved_quantity) AS INT64) = i.reserved_quantity
+  LEFT JOIN ${ref("fact_order")} AS o 
+    ON a.admin_id = o.order_id
   WHERE a.created_date >= DATE(timestamp(date_sub(current_date(),interval 45 day)))
 ),
 
