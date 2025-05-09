@@ -116,7 +116,6 @@ Select distinct
                 from buymed_external.fs_new_contract t
                 where Pos_code = o.code)
       and o.code in (select Pos_code from buymed_external.fs_new_contract)
-      and payment_code is null
       and (o.recon_payment_method = 'PREPAYMENT_DEBT' or o.recon_payment_method = 'PURCHASING_DEBT' )
       group by all
       -- SI sau ngày chuyển đổi
