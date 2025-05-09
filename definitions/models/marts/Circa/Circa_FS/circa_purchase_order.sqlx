@@ -52,6 +52,7 @@ select a.id                as po_id
        when TO_JSON_STRING(o.tags) LIKE '%VIP%' Then "VIP"
        else "OTHERS" end as VIP_tag
     , so_code
+    ,recon_payment_method
 from ${source.circa}.order_purchase_order as a
 left join ${source.circa}.order_payment_receipt_voucher prv on a.code = prv.ref_number
 left join ${source.ref}.fact_order o on a.sale_order_number = SAFE_CAST(o.order_id as string)
