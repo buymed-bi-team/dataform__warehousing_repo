@@ -10,13 +10,16 @@ config {
         clusterBy: ["user_email","state","job_id"]
     }
 }
-pre_operations {
-    SET @@query_label = 'mode:dev'
-}
 
-js {
-    const start_date = `"2025-04-01"`
-    const refresh_interval = `INTERVAL 2 HOUR`
+pre_operations {
+    DECLARE execution_time_checkpoint TIMESTAMP;
+    ${when(
+        incremental(),
+        `
+        SET execution_time_checkpoint = (SELECT max(execution_time) - INTERVAL 2 HOUR FROM ${self()});
+        DELETE FROM ${self()} WHERE execution_time >= execution_time_checkpoint;`,
+        `SET execution_time_checkpoint = CURRENT_TIMESTAMP() - INTERVAL 15 DAY`
+    )}
 }
 
 SELECT 
@@ -43,8 +46,5 @@ SELECT
 FROM ${ref('base_information_schema_job')} base 
 LEFT JOIN ${ref('int_bq_label_and_table')} label USING ( base_key )
 
-WHERE execution_time >= ${start_date}
-${when(
-    incremental(),
-    `AND execution_time >= CURRENT_TIMESTAMP() - ${refresh_interval}`
-)}
+WHERE execution_time >= execution_time_checkpoint
+
