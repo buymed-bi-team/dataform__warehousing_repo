@@ -1,19 +1,22 @@
 config {
-    type: "table", // view, table , incremental
+    type: "incremental", // view, table , incremental
     name: "fact_bigquery_activity",
     description: `PIC: <minh.luu> , model_type: incremental ; schedule: every 1h`,
     columns:{
     },
-    tags: ["test"],
+    tags: ["bq_job"],
     bigquery: { /* except view */
-        partitionBy: "DATE(created_time)",
-        clusterBy: ["cart_id"]
+        partitionBy: "DATE(execution_time)",
+        clusterBy: ["user_email","state","job_id"]
     }
+}
+pre_operations {
+    SET @@query_label = 'mode:dev'
 }
 
 js {
     const start_date = `"2025-04-01"`
-    const refresh_interval = `"INTERVAL 2 HOUR"`
+    const refresh_interval = `INTERVAL 2 HOUR`
 }
 
 SELECT 
@@ -41,3 +44,7 @@ FROM ${ref('base_information_schema_job')} base
 LEFT JOIN ${ref('int_bq_label_and_table')} label USING ( base_key )
 
 WHERE execution_time >= ${start_date}
+${when(
+    incremental(),
+    `AND execution_time >= CURRENT_TIMESTAMP() - ${refresh_interval}`
+)}

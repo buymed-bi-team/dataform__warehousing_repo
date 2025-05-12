@@ -1,11 +1,12 @@
 config {
     type: "incremental",
+    tags: ["bq_job"],
     description: "PIC: minh.luu "
 }
 
 js {
     const start_date = `"2025-05-11"`
-    const refresh_interval = `"INTERVAL 2 HOUR"`
+    const refresh_interval = `INTERVAL 2 HOUR`
 }
 
 WITH base AS (

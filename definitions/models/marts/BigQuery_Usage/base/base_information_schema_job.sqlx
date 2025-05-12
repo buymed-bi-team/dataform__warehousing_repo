@@ -3,14 +3,13 @@ config {
     description: `PIC:minh.luu
     Use to Extract necessary field of INFORMATION_SCHEMA JOBS
     `,
+    tags: ["bq_job"],
     bigquery: {
-        labels:{
-            "mode": "stg"
-        }
     }
 }
 -- Filter date, Create temporary primary key, Get column
 SELECT
+    job_id,
     user_email || job_id || CAST(UNIX_SECONDS(creation_time) AS STRING) base_key, -- For temp key
     user_email ,
     referenced_tables,
