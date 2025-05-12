@@ -50,7 +50,7 @@ AS ((
     )
     SELECT
         --  AS STRUCT 
-        ROUND( (mismatch_count ) * 100 / total_count )  >= 1
+        ROUND( COALESCE(SAFE_DIVIDE( mismatch_count  * 100 , total_count ), 0 ))  >= 1
     FROM tbl
 ));
 
