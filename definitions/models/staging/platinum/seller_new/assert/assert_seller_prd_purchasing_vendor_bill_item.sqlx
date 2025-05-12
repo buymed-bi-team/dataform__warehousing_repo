@@ -4,13 +4,17 @@ config {
     schema: "dataform_assertions",
     tags: ["seller_prd_purchasing","Finance/margin"]
 }
+js {
+    const start_timestamp = `current_timestamp() - interval 2 DAY`
+    // const start_timestamp = `TIMESTAMP("1990-01-01")`
+}
 
 WITH 
 -- Time Range for validate
 checkpoint_tbl AS (
     SELECT 
-        current_timestamp() - interval 2 DAY AS _timestamp,
-        DATE(current_timestamp() - interval 2 DAY,"+7") AS _date
+        ${start_timestamp} AS _timestamp,
+        DATE( ${start_timestamp} ,"+7") AS _date
 )
 -- Prepare Platinum data
 , PLATINUM AS (
