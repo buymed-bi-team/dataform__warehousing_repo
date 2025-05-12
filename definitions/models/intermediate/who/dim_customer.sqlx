@@ -133,6 +133,18 @@ WITH
       FROM ${dedup.dedup( source.silver + '.platform_event_prd_management_participant','*')} AS a  
       LEFT JOIN ${dedup.dedup( source.silver + '.platform_event_prd_management_event','*')} AS b on a.event_id = b.event_id
   ),
+
+  customer_bank AS (
+      SELECT
+        customer_id
+        , bank_code
+        , bank_name
+        , bank_account_name
+      FROM ${source.platinum}.marketplace_prd_customer_bank
+      WHERE bank_branch_code IS NOT NULL
+      QUALIFY ROW_NUMBER() OVER(PARTITION BY customer_id ORDER BY created_time DESC) = 1
+  ),
+
 stg_province AS (
     SELECT 
       DISTINCT
@@ -291,6 +303,9 @@ SELECT
         WHEN STRPOS(list_channel, "TENDER") > 0 THEN "TENDER"
         WHEN STRPOS(list_channel, "CONSIGNMENT") > 0 THEN "CONSIGNMENT"
     END AS customer_channel,
+    cb.bank_code,
+    cb.bank_account_name,
+    cb.bank_name,
 
     flom.ordered_amount,
     flom.no_orders,
@@ -309,6 +324,7 @@ LEFT JOIN ${source.platinum}.core_prd_account_account AS b ON customer.account_i
 LEFT JOIN stg_customer_note AS note ON note.customer_code = customer.code 
 LEFT JOIN stg_province AS p ON p.province_code = customer.province_code
 LEFT JOIN customer_event as c on c.registrant_phone = customer.phone and c.created_date_event= date(TIMESTAMP_ADD(customer.created_time, INTERVAL 7 hour)) and c.row_num=1
+LEFT JOIN customer_bank AS cb ON cb.customer_id = customer.customer_id
 LEFT JOIN (
   SELECT
     code,
