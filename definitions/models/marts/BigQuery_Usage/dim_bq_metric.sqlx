@@ -1,0 +1,9 @@
+config {
+    type: "view",
+    description : `PIC: minhluu
+    A View that store calculation metric as script`
+}
+
+SELECT 
+    1/1e9 byte_to_MB,
+    

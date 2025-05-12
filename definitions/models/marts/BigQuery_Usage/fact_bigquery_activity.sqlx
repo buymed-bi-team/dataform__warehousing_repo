@@ -1,61 +1,43 @@
 config {
     type: "table", // view, table , incremental
     name: "fact_bigquery_activity",
-    description: `PIC: <trung.tran> , model_type: <table> ; schedule: 0h00 daily
-    Source:
-        ${source.silver}.<table_name>
-        ${source.silver}.<table2_name>`,
+    description: `PIC: <minh.luu> , model_type: incremental ; schedule: every 1h`,
     columns:{
-        ele_id: "NonNull | <more description if required> | <When it is reference column from silver or platinum, you can write which source here>",
-        ele_name: "Nullable | <Null Reason> | <more desciption if required>",
-        created_time: "NonNull | Datetime is in +7 timezone", // Timestamp_add + 7 rather than datetime(col, "+7") 
-        Logic_column : "Nullable | Reason for this column | if a = b then Wrong, if a = a then Right, else Null",
-        Nullable_Column : "Nullable | < When is it Null? > ",
-        Source_insure_NonNull : "NonNull | <more desciption if required>",
-        NonNull_Column : "NonNull | <more desciption if required>"
     },
-    tags: ["test"]
-    // bigquery: { /* except view */
-    //     partitionBy: "DATE(created_time)",
-    //     // clusterBy: ["cart_id"] // Optional
-    // },
-    //  assertions: { /* guaranteed columns: primary key, Source_insure_NonNull */
-    //     uniqueKey : "ele_id",
-    //     /* uniqueKeys : [["order_id","item_id"]] // For if composite primary key */
-// 
-    //     nonNull : ("ele_id" , "Source_insure_NonNull"),
-    //     rowConditions : [
-    //         `created_time BETWEEN ( TIMESTAMP(CURRENT_DATETIME("+7") - INTERVAL 1 MONTH) ) AND TIMESTAMP(CURRENT_DATETIME("+7"))`, // snapshot
-    //         `email like "%@%.%"`, // format
-    //         `Source_insure_NonNull in ("AAAA","BBBB","CCCC")` // Source system insure data in cases 
-    //     ]
-    //     /* For more detail read: https://cloud.google.com/dataform/docs/assertions */
-    // },
+    tags: ["test"],
+    bigquery: { /* except view */
+        partitionBy: "DATE(created_time)",
+        clusterBy: ["cart_id"]
+    }
 }
 
+js {
+    const start_date = `"2025-04-01"`
+    const refresh_interval = `"INTERVAL 2 HOUR"`
+}
 
-WITH cte_date AS (
-  select date_sub( timestamp( date_trunc( date_sub( current_date('+7'), interval 1 month) , month ) ) , interval 7 hour ) as start_date
-  -- SELECT date_sub( timestamp( date_trunc( date_sub( current_date('+7'), interval 1 day) , day ) ) , interval 7 hour ) as start_date
-)
-
-SELECT
-    a.project_id,
-    a.user_email as user,
-    a.job_id,
-    ref.dataset_id,
-    ref.table_id,
-    DATETIME(creation_time, "Asia/Ho_Chi_Minh") as execution_time,
+SELECT 
+    base_key,
+    job_id,
     job_type,
-    statement_type,
     priority,
-    query as query_script,
     state,
+    statement_type,
+    query,
+    
     total_bytes_processed,
     total_bytes_billed,
-    count(1) over (partition by a.job_id) as num_deplicates
-FROM 
-  region-asia-southeast1.INFORMATION_SCHEMA.JOBS as a
-  , UNNEST(a.referenced_tables) as ref
-WHERE
-  a.creation_time >= (SELECT start_date FROM cte_date)
+    
+    execution_time + INTERVAL 7 HOUR AS execution_time_vn,
+    execution_time,
+    user_email,
+    
+
+    label.* except(base_key)
+    
+
+    
+FROM ${ref('base_information_schema_job')} base 
+LEFT JOIN ${ref('int_bq_label_and_table')} label USING ( base_key )
+
+WHERE execution_time >= ${start_date}
