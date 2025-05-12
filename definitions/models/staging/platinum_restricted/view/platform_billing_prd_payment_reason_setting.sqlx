@@ -1,0 +1,14 @@
+config {
+    type: "operations",
+    tags: ["platform_billing_prd_payment"]
+}
+
+CREATE OR REPLACE VIEW platinum_buymed_vn.platform_billing_prd_payment_reason_setting
+AS (
+SELECT 
+    *
+FROM ${source.platinum_restricted}.platform_billing_prd_payment_reason_setting
+);
+
+ALTER VIEW platinum_buymed_vn.platform_billing_prd_payment_reason_setting
+SET OPTIONS ( description = "Internal: Accounting/Payment");
