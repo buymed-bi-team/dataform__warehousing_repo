@@ -5,8 +5,7 @@ config {
     name: "platform_insider_prd_communication_web_push_delivery",
     schema: "platinum_buymed_vn",
     assertions: {
-        uniqueKey: 'mg_id',
-        nonNull: ["created_date"]
+        uniqueKey: 'mg_id'
     },
     bigquery: {
         partitionBy: "created_date"
