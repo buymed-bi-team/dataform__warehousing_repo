@@ -51,7 +51,7 @@ WITH base AS (
 
     SELECT i.name, i.team, ARRAY_TO_STRING(i.regexp,"|" ) regexp_pattern
     FROM UNNEST( [
-        STRUCT('minh.luu' AS name, 'Infra' AS team,     ['minhluu','minh.luu','minh-luu'] AS regexp),
+        STRUCT('minh.luu' AS name, 'Infra' AS team,     ['minhluu','minh.luu','minh-luu','minh.luugia','minhluugia'] AS regexp),
         STRUCT('huong.dang',       'BI-core' ,          ['huongdang','huong.dang','huong-dang']),
         STRUCT('huyen.nguyen',     'BI-core' ,          ['huyennguyen','huyen.nguyen','huyen-nguyen']),
         STRUCT('nguyen.tran',      'BI-core' ,          ['nguyentran','nguyen.tran','nguyen-tran']),
