@@ -37,28 +37,14 @@ pre_operations {
 }
 
 SELECT 
-    base_key,
-    job_id,
-    job_type,
-    priority,
-    state,
-    statement_type,
-    query,
-    
-    total_bytes_processed,
-    total_bytes_billed,
-    
-    execution_time + INTERVAL 7 HOUR AS execution_time_vn,
-    execution_time,
-    user_email,
-    
-
-    label.* except(base_key)
-    
-
+    base.* except(referenced_tables, destination_table),
+    label.* except(base_key,execution_time ),
+    base.execution_time + INTERVAL 7 HOUR AS execution_time_vn,
     
 FROM ${ref('base_information_schema_job')} base 
 LEFT JOIN ${ref('int_bq_label_and_table')} label USING ( base_key )
 
-WHERE execution_time >= execution_time_checkpoint
+WHERE 1=1
+AND base.execution_time >= execution_time_checkpoint
+AND label.execution_time >= execution_time_checkpoint
 
