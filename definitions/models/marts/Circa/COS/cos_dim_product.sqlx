@@ -129,7 +129,8 @@ popular_product AS (
     QUALIFY ROW_NUMBER() OVER(PARTITION BY code, object, type ORDER BY submit_id DESC) = 1  
 )
 
-select pd.*,
+select distinct pd.product_id
+         ,pd.* except (product_id),
     --    a.unit as retail_unit,
        cr.convert_rate,cr.convert_unit,
     --    a.sale_allowed as is_sale_allowed,
