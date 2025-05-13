@@ -259,6 +259,7 @@ WITH
         WHEN sales_status IN ("CANCEL", "REVERTING") THEN 0
         WHEN sales_status IN ("RETURN","RETURNING","RETURNED","REFUNDED") THEN actual_sales_amount
         WHEN sales_status IN ("COMPLETED", "DELIVERED") AND return_amount > 0 THEN actual_sales_amount
+        WHEN sales_status IN ("COMPLETED", "DELIVERED", "DELIVERING") THEN total_notional_amount
         ELSE ordered_amount_aft_discount
       END AS sales_amount,
         --old loggic
