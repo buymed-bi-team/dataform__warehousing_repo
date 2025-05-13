@@ -1,0 +1,39 @@
+config {
+    type: "incremental", 
+    protected: true,
+    description: 
+        `
+        PIC: minh.luu; 
+        Type: Table; 
+        Refresh Schedule: 9h00 and 13h00;
+        Source: 
+            ${source.ref}.adhoc_pricing_v2,
+        `,
+    tags: ["13h00","9h00", "PRICING"],
+    
+    columns: {
+        purchase_price: "The unit price in the latest PO (purchase order)",
+        purchase_price_after_VAT: "The unit price after VAT in the latest PO (purchase order)",
+        retail_price_value: 'The setting price of SKUs',
+        rebate_price: 'Price after rebate',
+        rebate_price_with_adhoc_promotion: 'Price after rebate with adhoc promotion',
+        display_price: 'The price is calculated using the pricing formula from the setting price',
+        campaign_price: 'The price in the latest active campaign.',
+        deal_price: 'The price in the latest active deal',
+        display_price_seller_without_promo: "The price of the external SKUs is calculated using the pricing formula from the setting price.",
+        display_price_seller_with_promo: "Campaign Price or Deal Price of external SKUs",
+        seller_received_with_promo: "The amount that the seller will receive for a SKUs in promotion (Estimated)",
+        seller_received_without_promo: "The amount that the seller will receive based on the setting price (without promotion)",
+        sku_display_price: 'The actual display price of SKUs on the thuocsi.vn platform',
+        cutoff_timestamp:'partition field',
+  },
+  bigquery: {
+    partitionBy: "DATE(cutoff_timestamp) ",
+    clusterBy: ["seller_class","sku_code","transformed_at","sku_last_updated_at"] 
+  }
+}
+
+SELECT 
+    *,
+    TIMESTAMP_TRUNC(CURRENT_TIMESTAMP(), HOUR) cutoff_timestamp ,
+FROM ${ref(`adhoc_pricing_v2`)}
