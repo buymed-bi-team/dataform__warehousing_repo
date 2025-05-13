@@ -226,7 +226,7 @@ WITH
 
       a.customer_level,
       a.tags,
-      TO_JSON_STRING(JSON_QUERY(a.extra_props, '$.customer_tags')) AS customer_tags,
+      JSON_QUERY(a.extra_props, '$.customer_tags') AS customer_tags,
       IF(a.status = 'CANCEL', "CANCELLED", "NORMAL") AS cancellation,
 
       redeem_apply_result
