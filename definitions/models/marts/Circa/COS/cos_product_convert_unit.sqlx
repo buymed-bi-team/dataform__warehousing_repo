@@ -1,0 +1,55 @@
+config {
+    type: "table",
+    description: `Last 13 month| PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`
+    /*Source:
+      ${source.silver}.marketplace_prd_order_v2_order_item
+      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
+    tags: ["custom_1h_past5"],
+    name: "cos_product_convert_unit",
+    columns: {
+        order_id: "NonNull |" + docs.order_id,
+        customer_id: "NonNull | The unique identifier for each customer"
+        
+    },
+    bigquery: {
+        partitionBy: "date(created_at)"
+    }
+}
+
+
+
+with cte_product as (select p.product_id,
+                            p.name as product_name,
+                            p.volumes,
+--                             p.unit,
+                     from ${source.circa_os}.product_product p)
+,
+    product_base_unit as
+(
+      select a.product_id,
+            a.unit as base_unit
+      from ${source.circa_os}.product_retail_unit as a
+      -- right join ${source.circa_os}.product_product as b on a.product_id = b.product_id
+      where a.base_unit is true and (unit is not null or unit <> "")
+      qualify row_number() over(partition by product_id order by created_at desc ) =1
+      ),
+    convert_unit as
+(
+      select a.product_id,
+--              rank () over(partition by product_id order by convert_rate desc ) as rn
+--              COUNT(product_id) as np
+            convert_rate, unit as convert_unit
+      from ${source.circa_os}.product_retail_unit as a
+      -- right join ${source.circa_os}.product_product as b on a.product_id = b.product_id
+      where unit is not null or unit <> ""
+     -- qualify rank() over(partition by product_id  order by convert_rate desc ) =1
+      )
+select distinct pd.product_id
+    --    a.unit as retail_unit,
+       ,cr.convert_rate,cr.convert_unit,
+        bu.base_unit,
+from cte_product pd
+left join product_base_unit bu on pd.product_id = bu.product_id
+left join convert_unit cr on pd.product_id = cr.product_id
+--where pd.product_id = 1107
+order by  1
