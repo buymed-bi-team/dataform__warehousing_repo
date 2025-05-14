@@ -1,0 +1,56 @@
+config {
+    type: "table",
+    description: `Circa OS Transaction order item detail PIC: huyen.nguyenthu; model_type: Table ;schedule: At minute 5 every hour`,
+    /*Source:
+      ${source.silver}.marketplace_prd_order_v2_order_item
+      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5,*/
+    tags: ["custom_1h_past5"],
+    name: "cos_purchase_order_item",
+    columns: {
+
+        
+    }
+}
+
+select
+       a.created_at,
+       a.purchase_order_id as po_id,
+       a.product_id,
+       a.sku as sku_code,
+       c.status,
+       case when b.quantity <> 0 then b.quantity
+        else b.received_quantity end as quantity,
+       b.received_quantity,
+       b.base_quantity,
+       case when b.tax_rate <= 0 then 0 else b.tax_rate end as tax_rate,
+       a.unit_price,
+       a.unit,
+       a.unit_id,
+      --  case
+      --      when a.amount <> 0 then a.amount
+      --      when a.amount = 0 then b.quantity * a.unit_price
+      --   end as PO_item_amount,
+      b.quantity * a.unit_price as PO_item_amount,
+       b.lot_date,
+       product_id || "_" || lot_date || "_" || b.tax_rate as product_lot_date_vat,
+       a.sku || "_" || lot_date || "_" || b.tax_rate as sku_lotdate_vat,
+       il.location_type,
+       --a.discount_amount,
+       b.discount_amount as item_discount_amt,
+       c.code || "_" || a.sku || "_" || lot_date || "_" || b.tax_rate as item_src_po_code,
+       a.seller_code,
+       eo.name,
+       c.distributor_id,
+       dis.name as Vendor
+       
+from ${source.circa_os}.order_purchase_order_item as a
+left join ${source.circa_os}.order_purchase_order as c on a.purchase_order_id = c.id
+left join ${source.circa_os}.order_po_item_detail as b on a.id = b.po_item_id
+left join ${source.circa_os}.inventory_location as il on b.location_id = il.id
+left join ${source.circa_os}.entity_owner eo on a.seller_code = eo.seller_code
+left join ${source.circa_os}.entity_distributor dis on c.distributor_id = dis.id
+where c.status <> 'CANCELED'
+     and eo.name NOT LIKE '%TEST%'
+     and c.pos_id not in ('c95a3338-4f5e-4264-958b-0d02e3fea49b','0d4c2e76-c6bf-487d-bf3e-d0b608d9fb5d')
+group by all
+
