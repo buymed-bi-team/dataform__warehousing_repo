@@ -1,0 +1,54 @@
+config {
+    type: "table",
+    description: `Circa OS Transaction order item detail PIC: huyen.nguyenthu; model_type: Table ;schedule: At minute 5 every hour`,
+    /*Source:
+      ${source.silver}.marketplace_prd_order_v2_order_item
+      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5,*/
+    tags: ["custom_1h_past5"],
+    name: "cos_purchase_order",
+    columns: {
+
+        
+    }
+}
+
+select
+     a.id as po_id
+    ,a.pos_id
+    ,a.distributor_id
+    ,a.source_id
+    ,a.code as po_code
+    ,a.status as po_status
+    ,a.total_item_amount as po_amount
+    ,a.actual_total_amount as actual_po_amount
+    ,date(datetime_add(a.created_at, interval 7 hour)) as created_date
+    ,date(datetime_add(a.completed_at, interval 7 hour)) as completed_date
+    ,datetime_add(a.created_at, interval 7 hour) as created_at
+    ,a.location_type
+    ,a.fulfillment_method
+    ,a.sale_order_number as order_id
+    ,a.created_by
+    ,a.note
+    ,source_type
+    ,discount_amount
+    ,delivery_fee_amount
+    ,sub_payment_method
+    ,sub_type
+    ,o.order_status
+    ,o.so_status
+    ,o.payment_method
+    ,date(o.created_at) as so_created_date
+    ,tags
+    ,case 
+        when to_json_string(o.tags) like '%vip%' then 'vip'
+        else 'others'
+     end as vip_tag
+    ,so_code
+    ,eo.name as owner_name
+
+from ${source.circa_os}.order_purchase_order as a
+left join ${source.ref}.fact_order as o on a.sale_order_number = safe_cast(o.order_id as string)
+left join ${source.circa_os}.entity_owner as eo on a.owner_id = eo.id
+where a.status <> 'CANCELED'
+      and a.pos_id not in ('c95a3338-4f5e-4264-958b-0d02e3fea49b','0d4c2e76-c6bf-487d-bf3e-d0b608d9fb5d')
+-- and date(a.created_at) >= date(date_trunc(date_sub(current_date('+7'), interval 11 month), month))
