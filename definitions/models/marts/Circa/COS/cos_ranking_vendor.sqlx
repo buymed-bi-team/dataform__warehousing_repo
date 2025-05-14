@@ -59,7 +59,8 @@ select distinct
     ,fulfillment_method as Channel
     ,Total_base_Quantity 
     ,base_unit
-    ,base_unit_price as Latest_Tax_Rate
+    ,base_unit_price 
+    ,tax_rate as Latest_Tax_Rate
     ,Rank
 from RankedTable left join last_unit_price on RankedTable.product_id = last_unit_price.product_id and RankedTable.distributor_id = last_unit_price.distributor_id
 where rn= 1
