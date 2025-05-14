@@ -13,39 +13,70 @@ config {
     }
 }
 
+with extracted_pairs as (
+  select
+     product_id
+    ,unit
+    ,volumes
+    -- trích tất cả các cặp (số + đơn vị)
+    ,regexp_extract_all(volumes, r'(\d+(?:[.,]?\d*)?\s*[^\s\dx\)\(]+)') as qty_unit_pairs
+  from ${source.ref}.cos_dim_product
+  where volumes like '%x%'
+    and product_name not like '%[tech]%'
+    and unit is not null 
+    and trim(unit) <> ''
+)
 
-with cte_product as (select p.product_id,
-                            p.name as product_name,
-                            p.volumes,
---                             p.unit,
-                     from ${source.circa_os}.product_product p)
-,
-    product_base_unit as
-(
-      select a.product_id,
-            a.unit as base_unit
-      from ${source.circa_os}.product_retail_unit as a
-      -- right join ${source.circa_os}.product_product as b on a.product_id = b.product_id
-      where a.base_unit is true and (unit is not null or unit <> "")
-      qualify row_number() over(partition by product_id order by created_at desc ) =1
-      ),
-    convert_unit as
-(
-      select a.product_id,
---              rank () over(partition by product_id order by convert_rate desc ) as rn
---              COUNT(product_id) as np
-            convert_rate, unit as convert_unit
-      from ${source.circa_os}.product_retail_unit as a
-      -- right join ${source.circa_os}.product_product as b on a.product_id = b.product_id
-      where unit is not null or unit <> ""
-     -- qualify rank() over(partition by product_id  order by convert_rate desc ) =1
-      )
-select distinct pd.product_id
-    --    a.unit as retail_unit,
-       ,cr.convert_rate,cr.convert_unit,
-        bu.base_unit,
-from cte_product pd
-left join product_base_unit bu on pd.product_id = bu.product_id
-left join convert_unit cr on pd.product_id = cr.product_id
---where pd.product_id = 1107
-order by  1
+,split_pairs as (
+  select
+     product_id
+    ,unit
+    ,volumes
+    ,pair
+    ,regexp_extract(pair, r'^(\d+(?:[.,]?\d*)?)') as qty
+    ,regexp_extract(pair, r'^\d+(?:[.,]?\d*)?\s*([^\s\dx\)\(]+)') as unit_in_pair
+  from extracted_pairs
+  ,unnest(qty_unit_pairs) as pair
+)
+
+,ranked_candidates as (
+  select
+     *
+    ,lower(unit_in_pair) as candidate_unit
+    ,safe_cast(qty as float64) as candidate_qty
+    ,case
+        when lower(unit_in_pair) <> lower(unit) 
+             and lower(unit_in_pair) not in ('ml', 'g', 'gr', 'gram', '.', 'cm') then 1
+        when lower(unit_in_pair) = lower(unit) 
+             and lower(unit_in_pair) in ('ml', 'g', 'gr', 'gram', '.', 'cm') then 2
+        else 3
+     end as priority
+  from split_pairs
+)
+
+,final_result as (
+  select
+     product_id
+    ,unit
+    ,volumes
+    ,lower(unit) as convert_unit
+    ,trim(candidate_unit) as base_unit
+    ,candidate_qty as raw_rate
+    ,ifnull(candidate_qty, 1) as convert_rate
+  from (
+    select
+       *
+      ,row_number() over (partition by product_id order by priority asc) as rn
+    from ranked_candidates
+    where lower(unit_in_pair) not in ('ml', 'g', 'gr', 'gram', '.', 'cm') 
+  )
+  where rn = 1
+)
+
+select
+   *
+from final_result
+where product_id in (
+  select distinct product_id from ${source.circa_os}.order_purchase_order_item
+)
+order by product_id
