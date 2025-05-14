@@ -37,7 +37,7 @@ with cte_product as (select p.product_id,
             convert_rate, unit as convert_unit
       from ${source.circa_os}.product_retail_unit as a
       -- right join ${source.circa_os}.product_product as b on a.product_id = b.product_id
-      where unit is not null or unit <> ""
+      where (unit is not null or unit <> "") and convert_rate <> 0
      -- qualify rank() over(partition by product_id  order by convert_rate desc ) =1
       )
 select distinct pd.product_id
