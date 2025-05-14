@@ -10,11 +10,9 @@ config {
             ${source.ref}.dim_fc_service_area,
             ${source.ref}.dim_geo_location
         `,
-    tags: ["custom_1h_past5"],
-    bigquery: {
-        clusterBy: ["deal_code"]
-    }
+    tags: ["custom_1h_past5"]
 }
+
 WITH sales_region_code AS (
     SELECT service_area_code, sales_region_code, fc_code
     FROM ${ref('dim_fc_service_area')}
