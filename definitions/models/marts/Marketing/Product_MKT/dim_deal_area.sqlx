@@ -1,0 +1,49 @@
+config {
+    type: "table", 
+    description: 
+        `
+        PIC: huyen.nguyenthu; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.platinum}.marketplace_prd_product_v2_deal,
+            ${source.ref}.dim_fc_service_area,
+            ${source.ref}.dim_geo_location
+        `,
+    tags: ["custom_1h_past5"],
+    bigquery: {
+        clusterBy: ["deal_code"]
+    }
+}
+WITH sales_region_code AS (
+    SELECT service_area_code, sales_region_code, fc_code
+    FROM ${ref('dim_fc_service_area')}
+    GROUP BY ALL
+
+    UNION ALL
+
+    SELECT sales_region_code, sales_region_code, fc_code
+    FROM ${ref('dim_fc_service_area')}
+    GROUP BY ALL
+
+    UNION ALL
+
+    SELECT region_code as service_area_code, sales_region_code, fc_code
+    FROM ${ref('dim_geo_location')}
+    GROUP BY ALL
+),
+
+region_code AS (
+    SELECT distinct *
+    FROM sales_region_code
+    WHERE sales_region_code IS NOT NULL AND fc_code IS NOT NULL
+)
+
+SELECT
+    code
+     , REGEXP_REPLACE(a, r'MIEM(NAM|TRUNG|BAC)', r'MIEN\1') as area_code
+     , s.sales_region_code
+     , s.fc_code
+FROM ${source.platinum}.marketplace_prd_product_v2_deal d
+LEFT JOIN UNNEST(JSON_VALUE_ARRAY(area_codes)) as a
+LEFT JOIN region_code s ON REGEXP_REPLACE(a, r'MIEM(NAM|TRUNG|BAC)', r'MIEN\1') = s.service_area_code
