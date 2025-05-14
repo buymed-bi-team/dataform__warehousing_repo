@@ -49,7 +49,7 @@ DO
     SELECT key, created_date
     FROM (
         SELECT key, mg_id, synced_at, action, created_date 
-        FROM dataform_assertions.${table_name}
+        FROM ${ref(`${table_name}`)}
         QUALIFY ROW_NUMBER() over(w ) != 1
         WINDOW w AS (PARTITION BY mg_id ORDER BY synced_at desc, IF (action = "u", 2, 1) desc )
     ));
