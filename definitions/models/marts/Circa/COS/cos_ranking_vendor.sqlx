@@ -53,11 +53,11 @@ select distinct
     RankedTable.product_id
     ,RankedTable.distributor_id
     ,vendor
-    ,fulfillment_method as Channel
-    ,Total_base_Quantity 
+    ,fulfillment_method as channel
+    ,total_base_quantity 
     ,base_unit
     ,base_unit_price 
-    ,tax_rate as Latest_Tax_Rate
-    ,Rank
+    ,tax_rate as latest_tax_rate
+    ,Rank as rank
 from RankedTable left join last_unit_price on RankedTable.product_id = last_unit_price.product_id and RankedTable.distributor_id = last_unit_price.distributor_id
 where rn= 1
