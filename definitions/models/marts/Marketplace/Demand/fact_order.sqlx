@@ -226,6 +226,7 @@ WITH
 
       a.customer_level,
       a.tags,
+      JSON_QUERY(a.extra_props, '$.customer_tags') AS customer_tags,
       IF(a.status = 'CANCEL', "CANCELLED", "NORMAL") AS cancellation,
 
       redeem_apply_result
@@ -259,6 +260,7 @@ WITH
         WHEN sales_status IN ("CANCEL", "REVERTING") THEN 0
         WHEN sales_status IN ("RETURN","RETURNING","RETURNED","REFUNDED") THEN actual_sales_amount
         WHEN sales_status IN ("COMPLETED", "DELIVERED") AND return_amount > 0 THEN actual_sales_amount
+        WHEN sales_status IN ("COMPLETED", "DELIVERED", "DELIVERING") THEN total_notional_amount
         ELSE ordered_amount_aft_discount
       END AS sales_amount,
         --old loggic

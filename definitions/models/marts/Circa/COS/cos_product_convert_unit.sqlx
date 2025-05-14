@@ -1,0 +1,82 @@
+config {
+    type: "table",
+    description: `PIC: huyen.ngo; model_type: Table ;schedule: At 10h30`
+    /*Source:
+      ${source.silver}.marketplace_prd_order_v2_order_item
+      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
+    tags: ["10h30"],
+    name: "cos_product_convert_unit",
+    columns: {/*
+        order_id: "NonNull |" + docs.order_id,
+        customer_id: "NonNull | The unique identifier for each customer"*/
+        
+    }
+}
+
+with extracted_pairs as (
+  select
+     product_id
+    ,unit
+    ,volumes
+    -- trích tất cả các cặp (số + đơn vị)
+    ,regexp_extract_all(volumes, r'(\d+(?:[.,]?\d*)?\s*[^\s\dx\)\(]+)') as qty_unit_pairs
+  from ${source.ref}.cos_dim_product
+  where volumes like '%x%'
+    and product_name not like '%[tech]%'
+    and unit is not null 
+    and trim(unit) <> ''
+)
+
+,split_pairs as (
+  select
+     product_id
+    ,unit
+    ,volumes
+    ,pair
+    ,regexp_extract(pair, r'^(\d+(?:[.,]?\d*)?)') as qty
+    ,regexp_extract(pair, r'^\d+(?:[.,]?\d*)?\s*([^\s\dx\)\(]+)') as unit_in_pair
+  from extracted_pairs
+  ,unnest(qty_unit_pairs) as pair
+)
+
+,ranked_candidates as (
+  select
+     *
+    ,lower(unit_in_pair) as candidate_unit
+    ,safe_cast(qty as float64) as candidate_qty
+    ,case
+        when lower(unit_in_pair) <> lower(unit) 
+             and lower(unit_in_pair) not in ('ml', 'g', 'gr', 'gram', '.', 'cm') then 1
+        when lower(unit_in_pair) = lower(unit) 
+             and lower(unit_in_pair) in ('ml', 'g', 'gr', 'gram', '.', 'cm') then 2
+        else 3
+     end as priority
+  from split_pairs
+)
+
+,final_result as (
+  select
+     product_id
+    ,unit
+    ,volumes
+    ,lower(unit) as convert_unit
+    ,trim(candidate_unit) as base_unit
+    ,candidate_qty as raw_rate
+    ,ifnull(candidate_qty, 1) as convert_rate
+  from (
+    select
+       *
+      ,row_number() over (partition by product_id order by priority asc) as rn
+    from ranked_candidates
+    where lower(unit_in_pair) not in ('ml', 'g', 'gr', 'gram', '.', 'cm') 
+  )
+  where rn = 1
+)
+
+select
+   *
+from final_result
+where product_id in (
+  select distinct product_id from ${source.circa_os}.order_purchase_order_item
+)
+order by product_id

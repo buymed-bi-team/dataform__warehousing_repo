@@ -17,7 +17,7 @@ SELECT
   rs.name AS reason_name,
   rs.reason_setting_type AS reason_type
 FROM
-  platinum_buymed_vn.accounting_prd_core_reason_setting rs
+  ${source.platinum_restricted}.accounting_prd_core_reason_setting rs
 UNION DISTINCT
 SELECT
   DISTINCT KEY,
@@ -30,4 +30,4 @@ SELECT
   reason_name,
   reason_type
 FROM
-  platinum_buymed_vn.platform_billing_prd_payment_reason_setting prs
+  ${source.platinum_restricted}.platform_billing_prd_payment_reason_setting prs

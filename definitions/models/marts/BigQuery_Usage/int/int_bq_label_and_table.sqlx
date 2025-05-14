@@ -8,6 +8,7 @@ config {
 
 SELECT 
     base_key,
+    execution_time, -- For filter partition time on dependent model
     -- Raw table
     referenced_tables,
     destination_table,
