@@ -48,10 +48,11 @@ SELECT
       WHEN JSON_EXTRACT_SCALAR(a.area_codes[0]) = 'MIENBAC' THEN 'MIENBAC'
       WHEN JSON_EXTRACT_SCALAR(a.area_codes[0]) = 'MIENNAM' THEN 'MIENNAM'
       WHEN JSON_EXTRACT_SCALAR(a.area_codes[0]) = 'MIENTRUNG' THEN 'MIENTRUNG'
-      WHEN JSON_EXTRACT_SCALAR(a.area_codes[0]) IN (SELECT service_area_code FROM `gold_buymed_vn2.dim_fc_service_area` WHERE area_type = 'PROVINCE') THEN b.sales_region_code
+      WHEN JSON_EXTRACT_SCALAR(a.area_codes[0]) IN (SELECT service_area_code FROM ${ref('dim_fc_service_area')} WHERE area_type = 'PROVINCE') THEN b.sales_region_code
       ELSE c.region_name
     END AS region_code
   , JSON_EXTRACT_SCALAR(a.extra_props.vendor_promo_info.promo_code) AS vendor_promo_code
+  , IFNULL(JSON_VALUE(a.extra_props, "$.deal_tags.0"), "NORMAL_DEAL") AS deal_tag
 FROM ${source.platinum}.marketplace_prd_product_v2_deal a
 LEFT JOIN (SELECT * FROM ${ref('dim_fc_service_area')} WHERE area_type = 'PROVINCE') b
   ON JSON_EXTRACT_SCALAR(a.area_codes[0]) = b.service_area_code
