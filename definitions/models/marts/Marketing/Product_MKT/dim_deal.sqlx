@@ -36,7 +36,7 @@ SELECT
       ELSE 'EXTERNAL' 
     END AS seller_class
   , a.seller_code
-  , a.charge_deal_fee AS charge_fee
+  , REGEXP_REPLACE(a.charge_deal_fee, r'MARKTEPLACE|MARKETPALCE', 'MARKETPLACE') AS charge_fee
   , JSON_EXTRACT_SCALAR(extra_props, '$.reason') AS reason
   , a.ticket_code AS ticket
   , CASE WHEN a.ticket_code IS NOT NULL THEN true ELSE false END AS has_ticket
@@ -60,4 +60,5 @@ LEFT JOIN (SELECT region_code, region_name FROM ${source.platinum}.core_prd_mast
   ON JSON_EXTRACT_SCALAR(a.area_codes[0]) = c.region_code
 WHERE a.action <> 'd'
   AND a.deal_id NOT IN (50105, 50103, 2, 2101, 50008, 20134)
+  AND a.created_date >= "2025-01-01"
 QUALIFY row_number() OVER(PARTITION BY a.code ORDER BY a.last_updated_time DESC) = 1
