@@ -1,13 +1,13 @@
 config {
     type: "operations",
-    tags: ["critical_custom_10min","marketplace_prd_order-v2","Finance/margin"],
+    tags: ["platinum_custom_2h_past7","circa-online_prd_order"],
 }
 -- script_tag: ["assert","assert_duplicate"]
 
 js {
     const retry_cnt = 2;
     const assert_checkpoint_start_time = `DATE( "2001-01-01" )`;
-    const table_name = "marketplace_prd_order_v2_order_item"
+    const table_name = "circa_online_prd_order_order_event"
     const assert_name = `${table_name}__assert_unique`
 }
 
@@ -16,17 +16,23 @@ DECLARE _loop_index INT64;
 DECLARE keys ARRAY <STRING>;
 DECLARE dates ARRAY <date>;
 
-DECLARE duplicate ARRAY <STRING> ;
+CREATE TEMP FUNCTION assert_condition()
+RETURNS BOOL
+AS ((
+    SELECT
+        COUNT(*) > 0
+    FROM (
+    SELECT
+        mg_id,
+        COUNT(1) AS index_row_count
+    FROM ${ref(`${table_name}`)}
+    WHERE created_date >= ${assert_checkpoint_start_time}
+    GROUP BY mg_id
+    ) AS data
+    WHERE index_row_count > 1
+));
 
-BEGIN
-    CALL platinum_buymed_vn.unique_assertion(
-        "${table_name}",
-        TRUE,
-        DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH),
-        duplicate
-    );
-END ;
-SET is_assert = (SELECT ARRAY_LENGTH(duplicate) != 0);
+SET is_assert = assert_condition();
 SET _loop_index = 0;
 WHILE 
     is_assert = TRUE 
@@ -67,15 +73,7 @@ DO
         AND created_date IN UNNEST(dates);
     
     -- Prepare for new loop
-    BEGIN
-        CALL platinum_buymed_vn.unique_assertion(
-            "${table_name}",
-            TRUE,
-            DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH),
-            duplicate
-        );
-    END ;
-    SET is_assert = (SELECT ARRAY_LENGTH(duplicate) != 0);
+    SET is_assert = assert_condition();
     SET _loop_index = _loop_index + 1;
 END WHILE;
 
