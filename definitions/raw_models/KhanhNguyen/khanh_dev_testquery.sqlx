@@ -3,7 +3,6 @@ config {
     description: "Khanh_Dev_Testbigquery",
         
 }
-
 SELECT *
 FROM gold_buymed_vn2.dim_product
 limit 10 
