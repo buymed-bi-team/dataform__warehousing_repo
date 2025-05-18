@@ -75,11 +75,20 @@ WITH cte_date AS (
 		SELECT
 			po_code
 			, MIN_BY(hub_code, received_ts) AS first_received_location
-            , MIN(IF(hub_code NOT IN ('HN','BD','DN'), received_ts, NULL)) AS first_received_time_at_hub
+            -- , MIN(IF(hub_code NOT IN ('HN','BD','DN'), received_ts, NULL)) AS first_received_time_at_hub
 		FROM ${ref('fact_inbound_receipts')}
 		-- WHERE receipt_fc_code = destination_location
 		GROUP BY 1
-	)
+	),
+
+	first_receive_at_hub AS (
+        SELECT
+            po_code
+            , MIN(IF(hub_code NOT IN ('HN','BD','DN') OR first_received_location <> a.fc_code, received_ts, NULL)) AS first_received_time_at_hub
+        FROM ${ref('fact_inbound_receipts')} AS a
+            LEFT JOIN first_location USING (po_code)
+        GROUP BY 1
+    )
 
 select
 	i.ticket_id,
@@ -112,7 +121,7 @@ select
 	p.bill_status as po_bill_status,
 	c.received_ts AS first_received_check_in,
 	l.first_received_location,
-	l.first_received_time_at_hub,
+	r.first_received_time_at_hub,
 	c.receipt_fc_code,
 	f.first_checkin_destination_fc,
 	c.is_it_po_pgh,
@@ -139,3 +148,4 @@ from (
     LEFT JOIN check_it_popgh AS c ON c.po_code = i.po_code
 	LEFT JOIN first_checkin_destination_fc AS f ON f.po_code = i.po_code
 	LEFT JOIN first_location AS l ON l.po_code = i.po_code
+	LEFT JOIN first_receive_at_hub AS r ON r.po_code = i.po_code

@@ -12,35 +12,68 @@ config {
     bigquery: {
         partitionBy: "created_date"
     },
-    tags: ["delivery_prd_transporting","platinum_custom_1h_past7"]
+    tags: ["platinum","delivery_prd_transporting","platinum_custom_1h_past7"]
 }
+
+
 pre_operations {
   ${
     when(incremental(),
-      `
-      DECLARE Ingest_checkpoint TIMESTAMP;
-      DECLARE checkpoint_date ARRAY<date>;
+        `
+        # Incremental
+        DECLARE has_new_data BOOLEAN;
+        DECLARE Ingest_checkpoint TIMESTAMP;
+        DECLARE checkpoint_date ARRAY<date>;
+        DECLARE deleted_records ARRAY<STRING>;
+        
+        SET Ingest_checkpoint = (SELECT max(ingest_time)  - INTERVAL 1 HOUR  FROM ${self()}
 
-      SET Ingest_checkpoint = (
-        SELECT max(ingest_time) FROM ${self()} 
-      );
+        );
 
-      SET checkpoint_date = ARRAY( 
-        SELECT DISTINCT IF(created_time is NULL, "2099-01-01" , DATE( DATETIME(created_time,'Asia/Ho_Chi_Minh') ) )
-        FROM silver_buymed_vn.delivery_prd_transporting_handover_ticket
-        WHERE ingest_time > Ingest_checkpoint
-      );
-      
-      IF ( SELECT ARRAY_LENGTH(checkpoint_date) > 0 ) THEN
-            DELETE FROM ${self()}
-            where created_date in UNNEST(checkpoint_date)
-            and mg_id in ( 
-              SELECT DISTINCT mg_id 
-              FROM silver_buymed_vn.delivery_prd_transporting_handover_ticket
-              WHERE ingest_time > Ingest_checkpoint
+        SET ( has_new_data, checkpoint_date, deleted_records ) = ( 
+            SELECT AS STRUCT 
+                IF ( 
+                    COUNT(*) > 0 , TRUE, FALSE 
+                ) has_new_data,
+                /* 
+                    has_new_data describe the existance of data after the last refresh time of platinum 
+                */
+                ARRAY_AGG(
+                    DISTINCT IF(created_time is NULL, "2099-01-01" , DATE( DATETIME(created_time,'Asia/Ho_Chi_Minh') ) )
+                ) AS checkpoint_date,
+                ARRAY_AGG (
+                    DISTINCT IF(action = 'd',mg_id, NULL) IGNORE NULLS
+                ) AS deleted_records
+            FROM ${source.silver}.delivery_prd_transporting_handover_ticket
+            WHERE ingest_time > Ingest_checkpoint 
+            -- AND ingest_time < TEMP_timestamp
+        );
+
+        CREATE TEMP TABLE new_records AS (
+          SELECT DISTINCT mg_id
+          FROM ${source.silver}.delivery_prd_transporting_handover_ticket
+          WHERE ingest_time > Ingest_checkpoint 
+        );
+
+        IF ( has_new_data = TRUE ) THEN
+            IF (SELECT ARRAY_LENGTH(deleted_records) > 0) THEN 
+              SET checkpoint_date = ARRAY( 
+                SELECT DISTINCT created_date
+                FROM ${self()} 
+                WHERE mg_id IN (SELECT mg_id FROM new_records)
               );
-      END IF;
+            END IF;
 
+            DELETE FROM ${self()}
+            WHERE 
+                created_date IN UNNEST(checkpoint_date)
+                AND mg_id IN (SELECT mg_id FROM new_records)
+            ;
+        ELSE 
+            SET Ingest_checkpoint = TIMESTAMP("2099-01-01T00:00:00");
+        END IF ;
+
+    
       `,
       ``
     )
@@ -49,24 +82,26 @@ pre_operations {
 
 --
 
-SELECT
-  *
-  ,CASE 
-      WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
-      ELSE "2099-01-01"
-  END AS created_date
-FROM ${source.silver}.delivery_prd_transporting_handover_ticket o
-${ when(incremental(), `WHERE ingest_time > Ingest_checkpoint ` )}
 
+SELECT
+    *,
+    CASE 
+        WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
+        ELSE "2099-01-01"
+    END AS created_date,
+    CURRENT_DATETIME() AS platinum_refresh
+FROM
+${source.silver}.delivery_prd_transporting_handover_ticket s
+${ when(incremental(), 
+    `WHERE s.ingest_time > Ingest_checkpoint - INTERVAL 2 HOUR
+        -- AND s.ingest_time < TEMP_timestamp
+        AND s.mg_id IN (SELECT mg_id FROM new_records) `, 
+    // `WHERE ingest_time > "2025-01-01" AND ingest_time <= "2025-01-22T13:00:00"` 
+    )}  
 QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'
-WINDOW
-_window AS (
-PARTITION BY
-    mg_id
-ORDER BY
+WINDOW _window AS ( 
+PARTITION BY mg_id
+ORDER BY 
     synced_at DESC,
-IF
-    (action='d',3,
-    IF
-    (action='u',2,1)) DESC,
+    IF (action='d',3, IF (action='u',2,1)) DESC,
     last_updated_time DESC)

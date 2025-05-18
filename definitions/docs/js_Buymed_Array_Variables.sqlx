@@ -1,0 +1,28 @@
+
+# << DEPRECATED >>
+${ BuymedArrayVariables.DeclareArrayVariables("myVar",  5, "STRING" ) }
+DECLARE remaining_bytes INT64;
+DECLARE Another_variable STRING ;
+
+SET ( ${ BuymedArrayVariables.ArrayVariables("myVar", 5) } , remaining_bytes, Another_variable) = (
+    SELECT AS STRUCT 
+        ${ BuymedArrayVariables.ArrayVariables("myVar", 5) },
+        myVar_remaining_bytes remaining_bytes,
+
+        field_A as Another_variable
+    FROM (
+        ${ BuymedArrayVariables.DistributeValuesToArrs(
+            `silver_buymed_vn.marketplace_prd_order_v2_order_item`,
+            `ingest_time >= "2025-03-03" and ingest_time <= "2025-03-04"`,
+            "myVar",5,"mg_id",true
+        )}
+    )
+    CROSS JOIN (SELECT "AAAA" AS field_A)
+);
+
+SELECT 
+    mg_id_distinct,
+    remaining_bytes
+FROM UNNEST( ${ BuymedArrayVariables.ArrayConcat("myVar", 5)}) as mg_id_distinct;
+
+

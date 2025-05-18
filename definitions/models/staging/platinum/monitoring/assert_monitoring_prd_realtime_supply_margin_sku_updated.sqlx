@@ -1,0 +1,32 @@
+-- config {
+--     type: "assertion"
+-- }
+-- -- SELECT *
+-- -- FROM ${ref(`monitoring_prd_realtime_supply_margin_sku`)}
+-- -- WHERE 1=1
+-- -- AND key is null 
+-- -- AND day_str is null 
+-- -- AND location_code is null 
+-- -- AND minute_str is null 
+-- -- AND sku is null 
+-- -- AND span is null 
+-- -- AND created_time is null 
+-- -- AND last_updated_time is null 
+-- -- AND margin is null 
+-- -- AND margin_percent is null 
+-- -- AND profit is null 
+-- -- AND total_price is null 
+-- -- AND total_purchasing_value is null 
+-- -- AND total_quantity is null 
+-- -- AND synced_at is null 
+-- -- AND extra_props is null 
+-- -- AND action is null 
+-- -- AND ingest_time is null 
+
+-- -- UNION ALL 
+
+-- SELECT * 
+-- FROM ${ref(`monitoring_prd_realtime_supply_margin_sku`)}
+-- WHERE 1=1
+-- AND created_time >= TIMESTAMP(CURRENT_DATE() )
+-- AND created_date = CURRENT_DATE()

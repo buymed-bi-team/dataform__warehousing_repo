@@ -61,10 +61,10 @@ SELECT
 
 FROM
     dedup_pic
-LEFT JOIN `lakehouse-prod-394907.gold_buymed_vn2.dim_employee` dim_employee_1
-    ON pic_purchase_id = dim_employee_1.branch_account_id
-LEFT JOIN `lakehouse-prod-394907.gold_buymed_vn2.dim_employee` dim_employee_2
-    ON cic_category_id = dim_employee_2.branch_account_id
+LEFT JOIN ${ref('dim_employee')} dim_employee_1
+    ON pic_purchase_id = dim_employee_1.branch_account_id AND dim_employee_1.employee_status= "ACTIVE"
+LEFT JOIN ${ref('dim_employee')} dim_employee_2
+    ON cic_category_id = dim_employee_2.branch_account_id AND dim_employee_2.employee_status= "ACTIVE"
 
 -- post_operations {                
 --     ALTER VIEW ${self()} 

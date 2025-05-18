@@ -1,0 +1,47 @@
+config {
+    type: "view",
+    tags: ["KPI_FULFILLMENT"]
+}
+
+WITH
+  cte_date AS (
+    SELECT date_sub( timestamp( date_trunc( date_sub( current_date('+7'), interval 2 month) , month ) ) , interval 7 hour ) as start_date
+  )
+select 
+	'PUT' as stage
+	, p.ticket_id
+  , p.status as original_status
+	, coalesce(json_value(p.extra_props,'$.inbound_code'), p.reference) as parent_code
+	, p.warehouse_code as location_code
+  , p.employee_id as pic_id
+	, timestamp_add(p.start_put_time , interval 7 hour) as ts_start
+	, timestamp_add(p.end_time , interval 7 hour) as ts_done
+	, pi.sku as sku_code
+	, json_value(loca,"$.location") as location_shelf
+  , pi.demand_quantity as qty_start	
+	, SAFE_CAST(json_value(loca,"$.quantity") AS INT64) as qty_done
+  , "" ticket_code
+  , "" ticket_type
+  , p.source_location
+  , if(source_location = 'EMPTY-LOCATION',
+      true,
+      false
+    ) as is_not_increase_inventory
+  , timestamp_add(p.created_time , interval 7 hour) as ts_created
+  , p.basket_code
+  , NULL level_bin
+  , NULL no_packages
+from (
+  SELECT *
+  FROM ${source.platinum}.warehouse_prd_inbound_put_ticket
+  WHERE 
+    created_date >= (SELECT DATE(start_date) FROM cte_date)
+) p
+left join (
+  SELECT *
+  FROM ${source.platinum}.warehouse_prd_inbound_put_ticket_item
+  WHERE 
+    created_date >= (SELECT DATE(start_date) FROM cte_date)
+) as pi on p.ticket_id = pi.ticket_id,
+	unnest(json_extract_array(pi.location_details)) loca
+where p.end_time >= (select timestamp(start_date) from cte_date)

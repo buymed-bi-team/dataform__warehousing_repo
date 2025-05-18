@@ -32,6 +32,7 @@ SELECT
 	, po.original_pos
 	, po.type
 	, po.estimated_delivery_time as expected_delivery_ts
+	, ib.seller_code
 FROM ${source.platinum}.warehouse_prd_inbound_inbound_ticket as ib
 LEFT JOIN ${source.platinum}.seller_prd_purchasing_purchase_order as po on ib.po_code = po.po_code
 LEFT JOIN cte_checkin as ch on ib.po_code = ch.po_code

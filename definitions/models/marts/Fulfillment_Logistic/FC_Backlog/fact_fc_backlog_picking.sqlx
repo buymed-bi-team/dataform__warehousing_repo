@@ -1,7 +1,7 @@
 config {
   type: "table",
   name: "fact_fc_backlog_picking",
-  tags: ['custom_1h_past5']
+  tags: ['gold_custom_20m', "FC_BACKLOG"]
 }
 
 WITH cte_date AS (
@@ -32,7 +32,7 @@ SELECT
   end as ticket_type
 FROM ${source.platinum}.warehouse_prd_picking_pick_ticket AS p
 WHERE
-  p.ingest_time >= (select start_date from cte_date)
+  p.created_date >= (select DATE(start_date) from cte_date)
   AND status NOT IN ('HIDE', 'CANCEL', 'DONE', 'DRAFT', 'WAIT_TO_DELIVERY', 'ONHOLD', 'WAIT_CS')
 )
 

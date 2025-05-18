@@ -61,4 +61,4 @@ SELECT
 FROM dedup_inbound_ticket_item b
 LEFT JOIN dedup_inbound_ticket a on b.ticket_id = a.ticket_id
 LEFT JOIN ${ref("dim_sku")} c on b.sku_code = c.sku_code
-WHERE a.status NOT IN ("DRAFT", "CANCEL")
+WHERE a.status NOT IN ("DRAFT", "CANCEL", "COMPLETED")

@@ -40,6 +40,7 @@ select
     , json_value(prd,"$.sku") as bin_code
     , b.bin_type
     , LEAD(a.do_created_at) over (PARTITION BY COALESCE( ob.reference_code, a.reference_code_of_so ), bin_code ORDER BY a.do_created_at) AS next_do_created_at
+    , de.delivery_ts AS first_handover_at
 from (
         SELECT
             *
@@ -49,6 +50,7 @@ from (
                 NULL
               ) AS reference_code_of_so
         FROM ${ref('fact_hub_order')}
+        QUALIFY ROW_NUMBER() OVER(PARTITION BY reference_code, TO_JSON_STRING(products) ORDER BY created_at) = 1
      ) AS a
     left join unnest(json_extract_array(products)) prd
     left join ${ref('fact_outbound_ticket')} AS ob 
@@ -56,6 +58,14 @@ from (
     left join ${ref('fact_outbound_ticket')} AS obb
         ON a.reference_code_of_so = obb.reference_code
     left join ${ref('dim_bin')} AS b ON json_value(prd,"$.sku") = b.bin_code
+    left join (
+        SELECT
+            so_code
+            , delivery_ts
+        FROM ${ref('fact_delivery_evolving')}
+        WHERE delivery_status = "PICKED"
+        QUALIFY ROW_NUMBER() OVER(PARTITION BY so_code ORDER BY delivery_ts) = 2
+    ) AS de ON de.so_code = a.reference_code
 where
     a.type = 'PICKUP'
     and a.hub_code not in ('HUBVSIPII', 'HUBHOACAM_DANANG', 'HUBVSIPBACNINH')

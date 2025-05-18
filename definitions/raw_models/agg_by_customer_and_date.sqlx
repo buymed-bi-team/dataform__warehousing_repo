@@ -1,6 +1,7 @@
 config {
-    type:"view",
-    description: "PIC: tu.dang; model_type: view",
+    type:"table",
+    description: "PIC: tu.dang; model_type: table",
+    tags: ["custom_2h_past5"],
     columns :
     {
         "date":"daily date in calendar",
@@ -19,41 +20,40 @@ WITH DateSeries AS
 )
 , order_item as 
 (select
-    -- cast(cast(FORMAT_DATE('%Y-%m', oi.created_at)as string)||"-01" as date ) as start_of_month,
     date(oi.created_at) as created_date,
     customer_id,
     count(distinct sku_code ) as no_skus,
     count(distinct product_id ) as no_products,
     sum (demand_quantity) as  order_qty,
-    count(distinct oi.order_id) as no_orders,count(oi.product_id) as no_order_item,
-    -- sum(sales_price* demand_quantity)/count(distinct oi.order_id) as average_order_value,
+    count(distinct oi.order_id) as no_orders,
+    count(oi.product_id) as no_order_item,
     sum(sales_price* demand_quantity) as order_amount
 from ${ref('fact_order_item')} oi
 left join ${ref('dim_order_status')} o on oi.order_id = o.order_id
-where 
-date (date_trunc( date_sub( current_date('+7'), interval 12 month) , month ))<= date(oi.created_at) and 
-CRM_status not in  ("CANCEL","RETURNED")
+where  
+    CRM_status not in  ("CANCEL","RETURNED")
 group by all)
+
 , user_event as 
 (
     select 
         created_date,
         customer_id,
         sum(
-            case
-                when event = "ADD_TO_CART" then 1 else 0 end
-            ) as count_add_cart,
-            sum(
-            case
-                when event = "SKU_IMPRESSION" then 1 else 0 end
-            ) as count_sku_impression,
-            sum(
-            case
-                when event = "SKU_DETAIL_VIEW"  then 1 else 0 end
-            ) as count_sku_detail_view
-        from ${ref('fact_user_event_tracking')}
+        case
+            when event = "ADD_TO_CART" then 1 else 0 end
+        ) as count_add_cart,
+        sum(
+        case
+            when event = "SKU_IMPRESSION" then 1 else 0 end
+        ) as count_sku_impression,
+        sum(
+        case
+            when event = "SKU_DETAIL_VIEW"  then 1 else 0 end
+        ) as count_sku_detail_view
+    from ${ref('fact_user_event_tracking')}
     where 
-    date (date_trunc( date_sub( current_date('+7'), interval 3 month) , month ))<= created_date 
+        DATE(created_time) >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 1 MONTH)
     -- and event = "ADD_TO_CART"
     group by 1, 2
 )
@@ -63,7 +63,7 @@ group by all)
     customer_id,
     1 as is_online
 from ${source.platinum}.monitoring_prd_realtime_user_customer_event oi
-where DATE(created_time, "Asia/Ho_Chi_Minh")>= "2024-06-01"
+where created_date>= "2024-06-01"
 qualify ROW_NUMBER() over (partition by created_date,customer_id)= 1
 )
 , chat_cus as 
@@ -73,7 +73,7 @@ qualify ROW_NUMBER() over (partition by created_date,customer_id)= 1
         customer_id,
         1 as is_chat
     from ${source.platinum}.integration_prd_chat_conversation
-    where DATE(created_time, "Asia/Ho_Chi_Minh")>= "2024-06-01"
+    where created_date >= "2024-06-01"
     qualify ROW_NUMBER() over (partition by created_date,customer_id)= 1
 )
 SELECT 

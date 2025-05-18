@@ -1,0 +1,42 @@
+config {
+    type: "table",
+    description: 
+        `
+        Sale Reps Checkin;
+        PIC: nguyen.tran; 
+        Type: Table; 
+		Refresh Schedule: hourly;
+        Source: 
+            ${source.platinum}.marketplace_prd_sales_check_in_history,
+            ${source.ref}.dim_customer,
+            ${source.ref}.dim_employee
+        `,
+    tags: ["custom_1h_past5"]
+}
+
+select timestamp_add(c.created_time , interval 7 hour) as visit_time,
+       DATE(timestamp_add(c.created_time , interval 7 hour)) AS visit_date,
+        --date(c.created_time + interval '7 hours') as visit_date,
+        c.employee_account_id, 
+        c.check_in_id, 
+        coalesce(c.customer_code,cust.customer_code, "LEAD") as customer_code,
+        coalesce(c.customer_id,cust.customer_id, -1) as customer_id,
+        check_in_time,
+        check_out_time,
+        case when div(timestamp_diff(timestamp_add(check_out_time,interval 1 second),check_in_time, second),60) <10 
+        then 
+                concat("0",
+                cast(div(timestamp_diff(timestamp_add(check_out_time,interval 1 second),check_in_time, second),60) as string),":",
+                cast(mod(timestamp_diff(timestamp_add(check_out_time,interval 1 second),check_in_time, second),60) as string))
+         else
+                concat(
+                cast(div(timestamp_diff(timestamp_add(check_out_time,interval 1 second),check_in_time, second),60) as string),":",
+                cast(mod(timestamp_diff(timestamp_add(check_out_time,interval 1 second),check_in_time, second),60) as string))
+        end as visit_length_minute,
+        emp.fullname as sr_name,
+       json_value(address_detail, "$.province_code") as province_code, 
+        care_type  
+from ${source.platinum}.marketplace_prd_sales_check_in_history c
+left join ${ref('dim_customer')} cust on cust.customer_phone = c.phone
+left join ${ref('dim_employee')} emp on emp.branch_account_id = c.employee_account_id
+where is_success is not null

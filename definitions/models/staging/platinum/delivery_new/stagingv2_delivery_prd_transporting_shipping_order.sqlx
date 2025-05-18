@@ -22,13 +22,13 @@ pre_operations {
       DECLARE Ingest_checkpoint TIMESTAMP;
       DECLARE checkpoint_date ARRAY<date>;
 
-      SET Ingest_checkpoint = (SELECT TIMESTAMP_SUB(TIMESTAMP(CURRENT_DATE("+7")), INTERVAL 7 HOUR));
+      SET Ingest_checkpoint = TIMESTAMP_SUB(TIMESTAMP(CURRENT_DATE("+7")), INTERVAL 31 HOUR);
       -- Ingest_checkpoint = (SELECT max(ingest_time) FROM ${self()});
 
       SET checkpoint_date = ARRAY( 
         SELECT DISTINCT IF(created_time is NULL, "2099-01-01" , DATE( DATETIME(created_time,'Asia/Ho_Chi_Minh') ) )
         FROM silver_buymed_vn.delivery_prd_transporting_shipping_order
-        WHERE ingest_time > Ingest_checkpoint
+        WHERE ingest_time >= Ingest_checkpoint
       );
       
       IF ( SELECT ARRAY_LENGTH(checkpoint_date) > 0 ) THEN
@@ -37,7 +37,7 @@ pre_operations {
             and mg_id in ( 
               SELECT DISTINCT mg_id 
               FROM silver_buymed_vn.delivery_prd_transporting_shipping_order
-              WHERE ingest_time > Ingest_checkpoint
+              WHERE ingest_time >= Ingest_checkpoint
               );
       END IF;
 
@@ -56,7 +56,10 @@ CASE
     ELSE "2099-01-01"
 END AS created_date
 FROM ${source.silver}.delivery_prd_transporting_shipping_order o
-${ when(incremental(), `WHERE ingest_time > Ingest_checkpoint ` )}
+${ when(incremental(), 
+`WHERE ingest_time >= Ingest_checkpoint - INTERVAL 2 HOUR
+ AND mg_id NOT IN (SELECT mg_id FROM ${self()})` 
+)}
 
 QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'
 WINDOW

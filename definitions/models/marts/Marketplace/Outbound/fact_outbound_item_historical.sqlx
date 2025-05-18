@@ -1,0 +1,118 @@
+config {
+  type: "table",
+  description: 
+        `
+        Information about lot, expired date and purchase order of each SKU in the order that placed in 2024 - The combo has been split into normal product;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Source: 
+            ${source.platinum}.marketplace_prd_order_v2_order_item
+        `,
+  bigquery: {
+    partitionBy: "date(created_at)",
+    clusterBy: ["order_id", "sku_bom_code"]
+  },
+
+}
+
+with 
+
+cte_order_item as (
+    select 
+        oi.mg_id
+        , timestamp_add( oi.ingest_time, interval 7 hour ) as ingested_at
+        , timestamp_add( oi.created_time, interval 7 hour ) as created_at
+        , timestamp_add( current_timestamp, interval 7 hour ) as transformed_at
+        , oi.order_id
+        , oi.customer_id
+        , oi.outbound_infos
+        , oi.extra_props
+        , oi.sku as sku_code
+        , oi.product_id
+        -- , oi.price
+        , oi.seller_code
+        , oi.vat
+        , seller_class
+    FROM ${source.platinum}.marketplace_prd_order_v2_order_item as oi
+    where
+        created_date BETWEEN '2022-01-01' AND DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), YEAR ), INTERVAL 1 DAY)
+        AND (seller_code IN ("MEDX", "MEDX-HN") OR seller_class = "EXTERNAL")
+),
+
+cte_combo_transaction as (
+select
+  a.mg_id
+  , a.created_at
+  , a.ingested_at
+  , a.transformed_at
+  , a.order_id
+  , safe_cast( json_extract_scalar( item.customer_id ) as INT64 ) as customer_id
+--   , a.outbound_infos
+  , JSON_QUERY(item, '$.outbound_infos') AS outbound_infos
+  -- , a.extra_props
+  , a.sku_code
+  , a.product_id
+  -- , a.price
+  , a.seller_code
+  , json_extract_scalar( item.sku ) as sku_bom_code
+  , SAFE_CAST(json_extract_scalar( item.product_id ) AS INT64) as product_bom_id
+  , SAFE_CAST(json_extract_scalar( ob.quantity ) AS INT64) as outbound_quantity
+  , json_extract_scalar( ob.exp_date ) as exp_date
+  , json_extract_scalar( ob.lot ) as lot
+  , json_extract_scalar( ob.do_code ) as do_code
+  , json_extract_scalar( ob.po_code ) as po_code
+  , coalesce(
+    safe_cast( json_extract_scalar( item.vat ) as INT64 )
+    , a.vat
+  ) as vat
+  , seller_class
+  -- , json_extract_scalar( ob.vat ) as vat
+from cte_order_item as a
+, unnest( json_query_array(a.extra_props, "$.sub_items") ) as item
+, unnest( json_query_array(item.outbound_infos) ) as ob
+),
+
+cte_normal_transaction as (
+  select
+  a.mg_id
+  , a.created_at
+  , a.ingested_at
+  , a.transformed_at
+  , a.order_id
+  , a.customer_id
+  , a.outbound_infos
+  -- , a.extra_props
+  , a.sku_code
+  , a.product_id
+  -- , a.price
+  , a.seller_code
+  , a.sku_code as sku_bom_code
+  , a.product_id as product_bom_id
+  , SAFE_CAST(json_extract_scalar( ob.quantity )AS INT64) as outbound_quantity
+  , json_extract_scalar( ob.exp_date ) as exp_date
+  , json_extract_scalar( ob.lot ) as lot
+  , json_extract_scalar( ob.do_code ) as do_code
+  , json_extract_scalar( ob.po_code ) as po_code
+  , a.vat
+  , seller_class
+  -- , json_extract_scalar( ob.vat ) as vat
+from cte_order_item as a
+, unnest( json_query_array(a.outbound_infos) ) as ob
+),
+
+final AS (
+  select * from cte_combo_transaction
+  union all
+  select * from cte_normal_transaction
+)
+
+SELECT
+  f.*
+  , oi.sales_price AS unit_price
+  , oi.fc_code
+  , oi.sales_region_code
+FROM final AS f
+  LEFT JOIN ${ref('fact_order_item_historical')} AS oi 
+    ON f.mg_id = oi.mg_id
+      AND f.sku_bom_code = oi.sku_code
+

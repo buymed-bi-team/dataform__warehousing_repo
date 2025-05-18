@@ -1,7 +1,7 @@
 config {
   type: "table",
   description: "PIC: tu.dang; The Ad-hoc to compare status between now and previous month",
-  tags: ["adhoc-office", "PRODUCT_MANAGEMENT"]
+  tags: ["custom_1h_past5", "PRODUCT_MANAGEMENT"]
 }
 
 with sku_status as (

@@ -1,21 +1,21 @@
 config {
-  type: "table",
-  description: 
+    type: "incremental",
+    description: 
         `
         Details of the items in the order, with combos split into normal products and its prices recalculated according to the corresponding combo;
         PIC: nguyen.tran; 
         Type: Table; 
-        Refresh Schedule: daily at 6h00, 8h30, 10h30, 12h30, 15h30, 17h30, 20h30;
+        Refresh Schedule: hourly;
         Source: 
             ${source.platinum}.marketplace_prd_order_v2_order_item,
             ${source.ref}.fact_order
         `,
-  bigquery: {
-    partitionBy: "date(created_at)",
-    clusterBy: ["order_id", "sku_code"]
-  },
-  tags: ["6h30", "8h30", "10h30", "12h30", "15h30" ,"17h30", "20h30"],
-  columns: {
+    bigquery: {
+        partitionBy: "DATE(created_at)",
+        clusterBy: ["order_id", "sku_code"]
+    },
+    tags: ["custom_1h_past5", "MARKETPLACE"],
+    columns: {
     created_timekey: "Foreign-Key to Dim_DateTime ",
     created_at: "UTC, When the item was placed",
     item_type: "Normal: type + Combo: sub_type",
@@ -25,20 +25,269 @@ config {
     product_id: "Single/BOM producdt_id if it original is a combo one",
     demand_quantity: "Quantity by BOM SKUs",
     sales_price: "UnitPrice by BOM SKUs"
-  }
+    }
 }
+
+pre_operations {
+    ${when(
+        incremental(),
+        `     
+            DELETE FROM ${self()}
+            WHERE DATE(created_at) >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 3 MONTH);
+            DELETE FROM ${self()}
+            WHERE DATE(created_at) < DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 12 MONTH);
+            
+        `
+        )
+    }
+}
+
+
+with cte_date as (
+	select timestamp( date_trunc( date_sub( current_date('+7'), ${when(incremental(),'interval 3 month','interval 12 month')}) , month ) ) as start_date
+),
+
+cte_order_item as (
+    select 
+        oi.mg_id
+        , oi.order_id
+        , oi.customer_id
+        , FORMAT_TIMESTAMP("%Y%m%d%H", oi.created_time ) as created_timekey
+        , TIMESTAMP_ADD(oi.created_time, INTERVAL 7 HOUR) as created_at
+        , oi.ingest_time as ingested_at
+        , current_timestamp transformed_at
+        , oi.extra_props
+        , oi.product_id
+        , oi.sku as sku_code
+        , CONCAT(oi.product_id, "_", oi.seller_code) AS sku_key
+        , oi.item_code
+        , oi.seller_code
+        , oi.type as item_type
+        , oi.deal_code
+        , oi.quantity as demand_quantity
+        , oi.price as sales_price
+        , SAFE_CAST(JSON_VALUE(oi.extra_props, '$.price_after_discount') AS INT64) AS price_after_discount
+        , oi.charge_deal_fee_value
+        , oi.reserved_quantity
+        , oi.outbound_quantity
+        , oi.returned_quantity
+        , oi.seller_price
+        , oi.source
+        , oi.vat
+        , oi.none_vat
+        , to_json_string(oi.tags) as tag_code
+        , oi.sku_status
+        , DATETIME(oi.cart_item_created_time, "Asia/Ho_Chi_Minh") AS incart_at
+        , event_source
+        , event_screen
+        , JSON_VALUE(extra_props, '$.block_code') AS block_code
+        , seller_revenue
+        , sku_level
+        , coalesce(
+          safe_cast( json_extract_scalar( oi.extra_props, "$.charge_campaign_fee_value" ) as INT64 )
+          , oi.charge_deal_fee_value
+        ) as promotion_amount
+        , created_date
+    FROM ${source.platinum}.marketplace_prd_order_v2_order_item as oi
+    where
+        created_date >= (select DATE(start_date) from cte_date)
+),
+
+cte_combo_item as (
+    select
+    oi.mg_id
+    , oi.extra_props
+    , oi.created_timekey
+    , oi.created_at
+    , oi.ingested_at
+    , oi.transformed_at
+    , oi.order_id 
+    , oi.customer_id
+    -- , oi.item_type
+    , json_extract_scalar( bom.type ) as item_type
+    , coalesce(
+        json_extract_scalar( oi.extra_props, "$.campaign_code" )
+        , oi.deal_code
+    ) as promotion_code
+    , oi.promotion_amount
+    , oi.seller_code
+    , oi.product_id
+    , safe_cast( json_extract_scalar( bom.product_id ) as INT64 ) as product_bom_id
+    , oi.sku_code
+    , oi.sku_key
+    , oi.item_code
+    , oi.sales_price as combo_price
+    , oi.price_after_discount
+    , oi.seller_price
+    , SAFE_CAST( JSON_VALUE( bom.seller_price ) AS INT64 ) AS bom_seller_price
+    , oi.demand_quantity AS  combo_quantity
+    , json_extract_scalar( bom.sku ) as sku_bom_code
+    , json_value(bom.item_code) as item_bom_code
+    , safe_cast( json_extract_scalar( bom.quantity ) as INT64 )  as bom_quantity
+    , safe_cast( json_extract_scalar( bom.price ) as INT64 ) as bom_price
+    , oi.reserved_quantity
+    , oi.outbound_quantity
+    , oi.returned_quantity
+    , oi.source
+    , coalesce(
+        safe_cast( json_extract_scalar( bom.none_vat ) as BOOL )
+        , oi.none_vat
+    ) as none_vat
+    , coalesce(
+        safe_cast( json_extract_scalar( bom.vat ) as INT64 )
+        , oi.vat
+    ) as vat
+    , tag_code
+    , sku_status
+    , incart_at
+    , TO_JSON_STRING(JSON_QUERY(bom, '$.tags')) AS sub_tag_code
+    , event_source
+    , event_screen
+    , block_code
+    , IF(item_type <>'GIFT', seller_price - promotion_amount, 0) AS combo_seller_revenue
+    , SAFE_CAST( JSON_VALUE( bom.seller_revenue ) AS INT64 ) AS bom_seller_revenue
+    , sku_level AS combo_sku_level
+    , JSON_VALUE( bom.sku_level ) AS bom_sku_level
+    , created_date
+    from cte_order_item as oi
+    , unnest( json_query_array(oi.extra_props, "$.sub_items") ) as bom
+), 
+
+cte_combo_item_pricing as (
+    select
+    mg_id
+    , order_id
+    , customer_id
+    , created_timekey
+    , created_at
+    , ingested_at
+    , transformed_at
+    , item_type
+    , promotion_code
+    , promotion_amount
+    , seller_code
+    , product_id AS product_original_id
+    , sku_code as sku_orignal_code
+    , sku_key as sku_orignal_key
+    , item_code as item_original_code
+    , sku_bom_code as sku_code
+    , item_bom_code as item_code
+    , product_bom_id as product_id
+    , combo_quantity / COUNT(1) OVER(PARTITION BY order_id, sku_code) as combo_quantity -- nguyen.tran
+    , outbound_quantity / COUNT(1) OVER(PARTITION BY order_id, sku_code) as combo_outbound_quantity -- nguyen.tran
+    , combo_quantity * bom_quantity as demand_quantity
+    , reserved_quantity * bom_quantity as reserved_quantity
+    , outbound_quantity * bom_quantity as outbound_quantity
+    , returned_quantity * bom_quantity as returned_quantity
+    , bom_price * LEAST(
+        (combo_price / sum(bom_quantity * bom_price) over (partition by order_id, sku_code))
+        , 1
+    ) as sales_price
+    , bom_price * LEAST(
+        (price_after_discount / sum(bom_quantity * bom_price) over (partition by order_id, sku_code))
+        , 1
+    ) as price_after_discount
+    , bom_price AS sales_price_original
+    , bom_seller_price AS seller_price
+    , combo_price
+    , source
+    -- , bom_price as sales_price_original
+    , case  
+        when none_vat is true then -1
+        else vat
+        end as vat_code
+    , tag_code
+    , sku_status
+    , extra_props
+    , incart_at
+    , sub_tag_code
+    , event_source
+    , event_screen
+    , block_code
+    , vat
+    , combo_seller_revenue
+    , bom_seller_revenue * LEAST(
+        (combo_seller_revenue / sum(bom_quantity * bom_seller_revenue) over (partition by order_id, sku_code))
+        , 1
+    ) as seller_revenue
+    , combo_sku_level
+    , bom_sku_level AS sku_level
+    , created_date
+    from cte_combo_item
+),
+
+cte_normal_item as (
+  select 
+    oi.mg_id
+    , oi.order_id
+    , oi.customer_id
+    , oi.created_timekey
+    , oi.created_at
+    , oi.ingested_at
+    , oi.transformed_at
+    , oi.item_type
+    , coalesce(
+      json_extract_scalar( oi.extra_props, "$.campaign_code" )
+      , oi.deal_code
+    ) as promotion_code
+    , oi.promotion_amount
+    , oi.seller_code
+    , oi.product_id AS product_original_id
+    , oi.sku_code as sku_orignal_code
+    , oi.sku_key as sku_orignal_key
+    , oi.item_code as item_original_code
+    , oi.sku_code
+    , oi.item_code
+    , oi.product_id
+    , null as combo_quantity --nguyen.tran
+    , null as combo_outbound_quantity --nguyen.tran
+    , oi.demand_quantity
+    , oi.reserved_quantity
+    , oi.outbound_quantity
+    , oi.returned_quantity
+    , oi.sales_price
+    , oi.price_after_discount
+    , oi.sales_price as sales_price_original
+    , oi.seller_price
+    , oi.sales_price AS combo_price
+    , oi.source
+    , case  
+      when none_vat is true then -1
+      else vat
+    end as vat_code
+    , tag_code
+    , sku_status
+    , extra_props
+    , incart_at
+    , tag_code AS sub_tag_code
+    , event_source
+    , event_screen
+    , block_code
+    , vat
+    , IF(item_type <>'GIFT', seller_price - promotion_amount, 0) AS combo_seller_revenue
+    , IF(item_type <>'GIFT', seller_price - promotion_amount, 0) AS seller_revenue
+    , sku_level AS combo_sku_level
+    , sku_level
+    , created_date
+  from cte_order_item as oi
+  where
+    oi.mg_id not in ( select mg_id from cte_combo_item_pricing )
+), 
+
+final AS (
+    select * from cte_combo_item_pricing
+    union all
+    select * from cte_normal_item
+)
+
 
 SELECT 
     oi.*
     , CONCAT(product_id, "_", seller_code) AS sku_key
     , o.shipping_province_code AS province_code
-    , fc.sales_region_code
-    , fc.fc_code
-    , CONCAT(oi.product_id, "_", oi.seller_code, "_", fc.sales_region_code) AS sku_key_sales_region_code
-    , CASE
-        WHEN STRPOS(tag_code, "E7GB") > 0 OR STRPOS(sub_tag_code, "E7GB") > 0 THEN "E7GB_MIENBAC"
-        WHEN STRPOS(tag_code, "C7GB") > 0 OR STRPOS(sub_tag_code, "C7GB") >0  THEN "C7GB_MIENNAM"
-      END AS push_tag
-FROM ${ref("fact_order_item_combo")} AS oi 
+    , o.sales_region_code
+    , o.fc_code
+    , CONCAT(oi.product_id, "_", oi.seller_code, "_", o.sales_region_code) AS sku_key_sales_region_code
+FROM final AS oi 
     LEFT JOIN ${ref('fact_order')} AS o ON oi.order_id = o.order_id
-    LEFT JOIN ${ref('dim_fc_service_area')} AS fc ON fc.service_area_code = o.shipping_province_code
+WHERE o.sales_region_code IS NOT NULL

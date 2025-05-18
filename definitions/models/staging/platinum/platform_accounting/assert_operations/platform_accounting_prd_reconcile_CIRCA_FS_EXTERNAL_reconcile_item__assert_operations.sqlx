@@ -1,0 +1,132 @@
+config {
+    type: "operations",
+    name: "platform_accounting_prd_reconcile_CIRCA_FS_EXTERNAL_reconcile_item__assert_operations",
+    dependencies: ["platform_accounting_prd_reconcile_CIRCA_FS_EXTERNAL_reconcile_item__assert_unique"],
+    tags: ["platform_custom_2h_past7","platform_accounting_prd_reconcile"],
+    description: ""
+}
+
+/*
+TODO 
+    - [ ] assertion condition
+    - [ ] full refresh
+    - [ ] retry?
+    - [ ] alert if retry fail
+
+*/
+
+-- script_tag: ["assert","assert_duplicate"]
+
+js {
+    const retry_cnt = 2;
+    const assert_checkpoint_start_time = `DATE( "2001-01-01" )`;
+    const table_name = "platform_accounting_prd_reconcile_CIRCA_FS_EXTERNAL_reconcile_item";
+    const assert_name = `${table_name}__assert_operations`
+}
+
+DECLARE is_assert BOOL;
+DECLARE _loop_index INT64;
+
+-- SET force_full_refresh = FALSE;
+
+CREATE TEMP FUNCTION assert_condition()
+RETURNS BOOL
+AS ((
+    WITH tbl AS (
+        SELECT 
+            m.cnt mismatch_count,
+            sf.value total_count
+        FROM (
+            SELECT COUNT(*) cnt 
+            FROM ${ref(`${table_name}__assert`)}
+            WHERE reason IN ( "MISSING_RECORDS" ,  "DELETED_RECORDS", "WRONG_UPDATE")
+        ) m
+        CROSS JOIN (
+            SELECT 
+                value
+            FROM ${ref(`${table_name}__assert`)}
+            WHERE reason = "TOTAL COUNT" 
+        ) sf
+    )
+    SELECT
+        --  AS STRUCT 
+        ROUND( COALESCE(SAFE_DIVIDE( mismatch_count  * 100 , total_count ), 0 ))  >= 1
+    FROM tbl
+));
+
+
+-- FOR _index_loop IN (SELECT i FROM UNNEST(GENERATE_ARRAY(1, ${retry_cnt})) i ) DO  
+
+-- END FOR;
+SET is_assert = assert_condition();
+SET _loop_index = 0;
+WHILE 
+    _loop_index < ${retry_cnt}
+    AND  is_assert = TRUE
+DO 
+    IF _loop_index > 0 THEN 
+        INSERT INTO ${source.log}
+        (key, created_time, name, retry_index, extra_props, platform)
+        (
+            SELECT 
+                GENERATE_UUID(),
+                CURRENT_TIMESTAMP(),
+                "${assert_name}",
+                _loop_index,
+                PARSE_JSON('{"dataset": "platinum_buymed_vn"}'),
+                "dataform"
+        );
+    END IF;
+
+    CREATE OR REPLACE TABLE ${ref(`${table_name}`)}
+    PARTITION BY created_date
+    AS (
+        WITH over_tbl AS (
+            SELECT 
+                s. key,
+                s. mg_id,
+                s. created_time,
+                s. last_updated_time,
+                s. synced_at,
+                s. ingest_time,
+                s. action 
+            FROM ${source.silver}.${table_name} s
+                
+            QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'
+            WINDOW _window AS ( 
+            PARTITION BY mg_id
+            ORDER BY 
+                synced_at DESC,
+                IF (action='d',3, IF (action='u',2,1)) DESC,
+                last_updated_time DESC)
+            )
+            SELECT
+                *,
+                CASE 
+                    WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
+                    ELSE "2099-01-01"
+                END AS created_date,
+                CURRENT_DATETIME() AS platinum_refresh
+            FROM
+            ${source.silver}.${table_name} s
+            WHERE key IN (SELECT key FROM over_tbl )
+    );
+
+    SET is_assert = assert_condition();
+    SET _loop_index = _loop_index + 1;    
+END WHILE ;
+
+IF is_assert = TRUE THEN 
+    INSERT INTO ${source.log}
+        (key, created_time, name, retry_index, extra_props, platform)
+        (
+            SELECT 
+                GENERATE_UUID(),
+                CURRENT_TIMESTAMP(),
+                "${assert_name}",
+                _loop_index,
+                PARSE_JSON('{"dataset": "platinum_buymed_vn", "level":"CRITICAL"}'),
+                "dataform"
+        );
+    ASSERT FALSE AS "${table_name} is still have mismatch records";
+END IF;

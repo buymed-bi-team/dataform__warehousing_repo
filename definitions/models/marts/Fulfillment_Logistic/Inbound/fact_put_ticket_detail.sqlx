@@ -51,31 +51,56 @@ WITH cte_date AS (
     conveyor AS (
         SELECT
             put_code
+            , receipt_session_code
             , MIN(TIMESTAMP_ADD(start_time, INTERVAL 7 HOUR)) AS started_at_conveyor_checking
             , MAX(TIMESTAMP_ADD(end_time, INTERVAL 7 HOUR)) AS done_at_conveyor_checking
+            , MIN(TIMESTAMP(JSON_VALUE(extra_props, "$.previous_vendor_completed_time"))) AS previous_vendor_completed_time
         FROM  ${source.platinum}.warehouse_prd_inbound_receipt
         WHERE
             created_date >= (select date(start_date) from cte_date)
             and status <> 'CANCEL'
             and type = 'CONVEYOR_CHECKING'
             and warehouse_code is not null
-        GROUP BY 1
+            -- AND JSON_VALUE(extra_props, "$.previous_vendor_completed_time") IS NULL
+        GROUP BY 1,2
+    ),
 
+    app AS (
+        SELECT
+            receipt_session_code
+            , MIN(TIMESTAMP_ADD(start_time, INTERVAL 7 HOUR)) AS started_at_app_checking
+            , MAX(TIMESTAMP_ADD(end_time, INTERVAL 7 HOUR)) AS done_at_app_checking
+            , MIN(TIMESTAMP(JSON_VALUE(extra_props, "$.previous_vendor_completed_time"))) AS previous_vendor_completed_time
+        FROM  ${source.platinum}.warehouse_prd_inbound_receipt
+        WHERE
+            created_date >= (select date(start_date) from cte_date)
+            and status <> 'CANCEL'
+            and type = 'MANUAL_CHECKING'
+            and warehouse_code is not null
+            -- AND JSON_VALUE(extra_props, "$.previous_vendor_completed_time") IS NULL
+        GROUP BY 1
     )
 
 select
     a.*
     , b.first_checkin_destination_fc
-    , b.started_at_app_check_awaiting
-    , b.done_at_app_check_awaiting
-    , b.started_at_app_checking
-    , b.done_at_app_checking
-    , COALESCE(b.done_at_app_checking, b.done_at_hub_transporting, b.done_at_partner_shipping) AS started_at_conveyor_check_awaiting
+    , e.received_ts AS receipt_session_received_ts
+    -- , b.started_at_app_check_awaiting
+    -- , b.done_at_app_check_awaiting
+    -- , b.started_at_app_checking
+    -- , b.done_at_app_checking
+    , e.received_ts AS started_at_app_check_awaiting
+    , d.started_at_app_checking AS done_at_app_check_awaiting
+    , d.started_at_app_checking
+    , d.done_at_app_checking
+    , COALESCE(d.done_at_app_checking, e.received_ts) AS started_at_conveyor_check_awaiting
     , c.started_at_conveyor_checking AS done_at_conveyor_check_awaiting
     , c.started_at_conveyor_checking
     , c.done_at_conveyor_checking
     , DATE(ts_done) AS done_date
 from put_details AS a
-left join ${ref('export_inbound_leadtime_data')} AS b ON a.inbound_code = b.po_code
+left join ${ref('fact_inbound_ticket')} AS b ON a.inbound_code = b.po_code
 left join conveyor AS c ON a.put_code = c.put_code
-
+left join app AS d ON d.receipt_session_code = c.receipt_session_code
+left join ${ref('fact_inbound_receipts')} AS e ON e.receipt_code = c.receipt_session_code
+WHERE c.previous_vendor_completed_time IS NULL

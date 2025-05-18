@@ -2,7 +2,7 @@
 
 config {
     type: "assertion",
-    tags: ["platinum_custom_1h_past7","warehouse_prd_inventory"]
+    tags: ["platinum_daily_AM_9_00","warehouse_prd_inventory"]
 }
 
 

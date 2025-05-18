@@ -1,0 +1,62 @@
+config {
+    type: "table",
+    description: `Last 13 month| PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 past hour 6, 8, 10, 12, 14, 16, 18, 20 and 22`
+    /*Source:
+      ${source.silver}.marketplace_prd_order_v2_order_item
+      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
+    tags: ["custom_2h_past5"],
+    name: "circa_purchase_order",
+    columns: {
+        order_id: "NonNull |" + docs.order_id,
+        customer_id: "NonNull | The unique identifier for each customer"
+        
+    },
+    bigquery: {
+    partitionBy: "created_date"
+}
+}
+
+
+select a.id                as po_id
+       ,a.pos_id
+       ,p.code
+       ,a.distributor_id
+       ,a.code              as PO_code
+       ,a.status            as PO_status
+       ,a.total_amount as PO_amount
+       ,date(DATETIME_ADD(a.created_at, INTERVAL 7 HOUR))  as created_date
+       ,date(DATETIME_ADD(a.completed_at, INTERVAL 7 HOUR)) as completed_date
+       ,DATETIME_ADD(a.created_at, INTERVAL 7 HOUR) as created_at
+       ,a.location_type
+       ,a.sale_order_number as order_id
+       ,a.created_by
+       ,a.note
+       ,a.type
+       ,a.is_non_payment
+       ,prv.code as payment_code
+       ,case
+           when is_non_payment = True then 'FS tự trả tiền'
+           when is_non_payment = FALSE then 'Thanh toán tạm ứng' end
+           as payment_bbc_status
+    ,source_type
+    ,discount_amount
+    ,delivery_fee_amount
+    ,sub_payment_method
+    ,sub_type
+    ,o.order_status
+    ,o.so_status
+    ,o.payment_method
+    ,date(o.created_at) as so_created_date
+    ,tags
+    ,case
+       when TO_JSON_STRING(o.tags) LIKE '%VIP%' Then "VIP"
+       else "OTHERS" end as VIP_tag
+    , so_code
+    ,recon_payment_method
+from ${source.circa}.order_purchase_order as a
+left join ${source.circa}.order_payment_receipt_voucher prv on a.code = prv.ref_number
+left join ${source.ref}.fact_order o on a.sale_order_number = SAFE_CAST(o.order_id as string)
+left join ${source.circa}.entity_pos_profile p on a.pos_id = p.id
+where a.status <>'CANCELED'
+      and a.status <>'DRAFT'
+       and a.code not in ('PO00000080','PO00000369','PO00000939')

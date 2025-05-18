@@ -22,5 +22,5 @@ select
   , 'PACK' as stage_code
 FROM ${source.platinum}.warehouse_prd_picking_pick_ticket AS p
 where
-  p.created_date >= (select DATE(start_date) from cte_date) and 
+--   p.created_date >= (select DATE(start_date) from cte_date) and 
   p.end_time >= (select start_date from cte_date)

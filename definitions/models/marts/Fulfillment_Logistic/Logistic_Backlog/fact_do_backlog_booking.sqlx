@@ -29,7 +29,8 @@ select
 		when o.order_code like 'RO%' then 'RO'
 		when o.order_code like 'TO%' then 'TO'
 		when o.order_code like 'CO%' then 'CO'
-	else 'BIN'
+		when o.order_code like 'LO%' then 'LO'
+	else 'OTHER'
 	end type_order,
 	o.order_status,
 	o.do_status as logistic_status,

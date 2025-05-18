@@ -1,0 +1,143 @@
+config {
+    type: "operations",
+    // schema: "buymed_circa_v2",
+    // name: "inventory_location_detail_historical_cut_off",
+    description: "PIC:minhluu",
+    // bigquery: {
+    //     partitionBy : "cutoff_date_index",
+    // },
+    tags: ["circa_2h00"]
+}
+
+-- -- SELECT 
+-- --     *,
+-- --     DATE(DATETIME(created_at,'Asia/Ho_Chi_Minh')) as date_created_at, 
+-- --     CAST(FORMAT_TIMESTAMP('%y%m%d', TIMESTAMP(current_timestamp())) as INT64) as date_index,
+-- --     CURRENT_DATE() as cutoff_date_index
+-- --     -- PAR
+-- --     -- CAST( current_timestamp()
+
+-- -- FROM ${source.circa_os}.inventory_location_detail
+-- -- FOR SYSTEM_TIME AS OF TIMESTAMP("2025-04-23T18:00:00")
+
+js {
+   const dataset_lst = ["buymed_circa_v2"]; 
+
+   function create_table_function () {
+        let return_operations = ``
+        dataset_lst.forEach( datasetId => {
+            return_operations += `
+                            
+                CREATE TABLE IF NOT EXISTS ${datasetId}.inventory_location_detail_historical_cut_off
+                (
+                    _airbyte_raw_id STRING OPTIONS(description=""),
+                    _airbyte_extracted_at TIMESTAMP OPTIONS(description=""),
+                    _airbyte_meta JSON OPTIONS(description=""),
+                    id STRING OPTIONS(description=""),
+                    lot_id STRING OPTIONS(description=""),
+                    doc_code STRING OPTIONS(description=""),
+                    doc_type STRING OPTIONS(description=""),
+                    lot_date STRING OPTIONS(description=""),
+                    sku_code STRING OPTIONS(description=""),
+                    tax_rate NUMERIC OPTIONS(description=""),
+                    client_id INT64 OPTIONS(description=""),
+                    created_at TIMESTAMP OPTIONS(description=""),
+                    deleted_at TIMESTAMP OPTIONS(description=""),
+                    product_id INT64 OPTIONS(description=""),
+                    updated_at TIMESTAMP OPTIONS(description=""),
+                    location_id STRING OPTIONS(description=""),
+                    on_hand_qty INT64 OPTIONS(description=""),
+                    seller_code STRING OPTIONS(description=""),
+                    expired_date TIMESTAMP OPTIONS(description=""),
+                    available_qty INT64 OPTIONS(description=""),
+                    source_doc_code STRING OPTIONS(description=""),
+                    sale_order_numbers JSON OPTIONS(description=""),
+                    is_cost_price_change BOOL OPTIONS(description=""),
+                    cost_price_include_tax NUMERIC OPTIONS(description=""),
+                    cost_price_without_tax INT64 OPTIONS(description=""),
+                    date_created_at DATE OPTIONS(description="Created date of this record with VN timezone, PIC: DE"),
+                    date_index INT64 OPTIONS(description="Cutoff date in string format, PIC: DE"),
+                    cutoff_date_index DATE OPTIONS(description="Cutoff date")
+                )
+                PARTITION BY cutoff_date_index
+                CLUSTER BY date_created_at
+                OPTIONS(
+                    description = "PIC: minhluu. This table stores daily snapshot versions taken at 2:00 AM (Vietnam time)"
+                );
+
+                INSERT INTO  ${datasetId}.inventory_location_detail_historical_cut_off
+                (
+                    _airbyte_raw_id
+                    ,_airbyte_extracted_at
+                    ,_airbyte_meta
+                    ,id
+                    ,lot_id
+                    ,doc_code
+                    ,doc_type
+                    ,lot_date
+                    ,sku_code
+                    ,tax_rate
+                    ,client_id
+                    ,created_at
+                    ,deleted_at
+                    ,product_id
+                    ,updated_at
+                    ,location_id
+                    ,on_hand_qty
+                    ,seller_code
+                    ,expired_date
+                    ,available_qty
+                    ,source_doc_code
+                    ,sale_order_numbers
+                    ,is_cost_price_change
+                    ,cost_price_include_tax
+                    ,cost_price_without_tax
+                    ,date_created_at
+                    ,date_index
+                    ,cutoff_date_index
+                )
+                (
+                    SELECT 
+                        _airbyte_raw_id
+                        ,_airbyte_extracted_at
+                        ,_airbyte_meta
+                        ,id
+                        ,lot_id
+                        ,doc_code
+                        ,doc_type
+                        ,lot_date
+                        ,sku_code
+                        ,tax_rate
+                        ,client_id
+                        ,created_at
+                        ,deleted_at
+                        ,product_id
+                        ,updated_at
+                        ,location_id
+                        ,on_hand_qty
+                        ,seller_code
+                        ,expired_date
+                        ,available_qty
+                        ,source_doc_code
+                        ,sale_order_numbers
+                        ,is_cost_price_change
+                        ,cost_price_include_tax
+                        ,cost_price_without_tax
+                        , DATE(DATETIME(created_at,'Asia/Ho_Chi_Minh')) as date_created_at
+                        , CAST(FORMAT_TIMESTAMP('%y%m%d', TIMESTAMP(current_timestamp())) as INT64) as date_index
+                        , CURRENT_DATE() as cutoff_date_index
+                    FROM ${datasetId}.inventory_location_detail
+                );
+            `
+        })
+        return return_operations
+   }
+}
+
+${
+    create_table_function()
+}
+-- FOR _index_dataset IN (( SELECT * FROM UNNEST(["buymed_circa_v2"])) ) DO 
+
+--     CREATE TABLE IF NOT EXISTS _index_dataset  
+

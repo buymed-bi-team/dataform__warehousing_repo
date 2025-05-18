@@ -112,15 +112,19 @@ with
             -- platform fee
             if (
                 a.retail_price_value > 0,
-                a.retail_price_value * 0.02 * d.fee_value * COALESCE(b.fee_value,1)  * c.fee_value *
-                    IF(a.pricing_strategy = 0, 1, a.pricing_strategy),
+                a.retail_price_value * 0.02 * d.fee_value                                          -- Customer Level
+                    * IF( p.is_combo AND a.seller_class = "EXTERNAL", 1, COALESCE(b.fee_value,1))  -- Dynamic Level
+                    * c.fee_value                                                                  -- Price Range
+                    * IF(a.pricing_strategy = 0, 1, a.pricing_strategy),                           -- Pricing Strategy
                 null
             ) as platform_fee,
 
             -- delivery fee, If fee_value corresponding to dynamic_pricing_level of SKU greater than 4, we assign fee_value = 4 to calculate delivery fee
             if (
                 a.retail_price_value > 0,
-                a.retail_price_value * 0.01 * e.fee_value * LEAST(COALESCE(b.fee_value,1),4) * c.fee_value,
+                a.retail_price_value * 0.01 * e.fee_value                                               -- Delivery Level
+                * IF( p.is_combo AND a.seller_class = "EXTERNAL", 1, LEAST(COALESCE(b.fee_value,1),4))  -- Dynamic Level 
+                * c.fee_value,                                                                          -- Price Range
                 null
             ) as logistic_fee,
 
@@ -131,11 +135,12 @@ with
             a.use_skus_price
 
         from ${ref('dim_sku_sales_region_current')} AS a
+            left join ${ref('dim_product')} AS p ON a.product_id = p.product_id
             left join (
                 select *
                 from  ${source.platinum}.marketplace_prd_pricing_v2_dynamic_level
                 QUALIFY ROW_NUMBER() OVER (PARTITION BY level ORDER BY ingest_time desc) = 1
-            ) AS b on a.dynamic_pricing_level = b.level
+            ) AS b on a.dynamic_pricing_level = b.level 
             cross join get_price_range_fee AS c
             cross join get_customer_level_fee AS d
             left join get_delivery_fee AS e on a.sales_region_code = e.sales_region_code
@@ -178,6 +183,7 @@ with
         WHERE
             use_skus_price IS NULL
             OR use_skus_price = FALSE
+            OR seller_class = "EXTERNAL"
     ),
 
     combo_product AS (
@@ -196,7 +202,7 @@ with
                 LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_sku AS s ON a.mg_id = s.mg_id
                 , UNNEST(JSON_QUERY_ARRAY(s.skus)) AS ss
                 LEFT JOIN normal_product AS n ON JSON_VALUE(ss, '$.item_code') = n.sub_sku_code
-            WHERE a.use_skus_price = true
+            WHERE a.use_skus_price = true AND a.seller_class <> "EXTERNAL"
         )
         GROUP BY ALL
     )

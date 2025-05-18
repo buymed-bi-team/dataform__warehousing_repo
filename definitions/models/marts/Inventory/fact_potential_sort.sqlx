@@ -19,8 +19,8 @@ config {
     "total_qty": "sum of order_quantity for the whole sale order",
     "total_amt": "sum of unit_price * order_quantity for the whole sale order",
     "total_sku": "total distinct SKU count for the whole sale order",
-    "expected_sort": "= 50% order_quantity / total_qty + 25% order_amount / total_amt + 25% / total_sku",
-    "actual_sort": "= 50% order_quantity / total_qty + 25% order_amount / total_amt + 25% no_reserved_skus / total_sku",
+    "expected_sort": "= 10% order_quantity / total_qty + 60% order_amount / total_amt + 30% / total_sku",
+    "actual_sort": "= 10% order_quantity / total_qty + 60% order_amount / total_amt + 30% no_reserved_skus / total_sku",
     "potential_sort": "expected_sort - actual_sort for in-progress statuses (DRAFT, CONFIRM, RESERVING, WAIT-TO-CHECK, CHECKING, WAIT-TO-PICK, PICKING)",
     "unFF_sort": "expected_sort - actual_sort for other statuses"
   },
@@ -31,16 +31,18 @@ config {
 
 WITH dedup_sale_order AS (
   SELECT
-    sale_order_code,
-    admin_id,
-    warehouse_code as fc_code,
-    status,
-    created_time,
-    created_date,
-    type
-  FROM ${source.platinum}.warehouse_prd_core_sale_order
-  WHERE created_date >= '2024-11-01'
-  --DATE(timestamp(date_sub(current_date(),interval 45 day)))
+    so.sale_order_code,
+    so.admin_id,
+    so.warehouse_code as fc_code,
+    so.status,
+    so.created_time,
+    so.created_date,
+    so.type,
+    p.end_time as pack_done_at
+  FROM ${source.platinum}.warehouse_prd_core_sale_order so 
+  LEFT JOIN ${source.platinum}.warehouse_prd_picking_pick_ticket p ON so.admin_id = p.admin_id
+  WHERE so.created_date >= DATE(timestamp(date_sub(current_date(),interval 45 day)))
+  GROUP BY ALL 
 ),
 
 dedup_sale_order_item AS (
@@ -49,17 +51,28 @@ dedup_sale_order_item AS (
     JSON_VALUE(b.sku) as sku_code,
     -- a.reserved_quantity,
     -- a.order_quantity,
-    a.unit_price,
+    -- a.unit_price,
+    CASE 
+      WHEN a.product_type = 'combo' AND i.item_type = 'IN_COMBO' THEN i.sales_price
+      ELSE a.unit_price
+    END AS unit_price,
     a.created_time,
     a.created_date,
     a.pick_items,
     CAST(JSON_VALUE(b.order_quantity) AS INT64) as order_quantity,
     CAST(JSON_VALUE(b.reserved_quantity) AS INT64) as reserved_quantity,
     CAST(JSON_VALUE(b.first_reserved_quantity) AS INT64) as first_reserved_quantity,
+    o.customer_id
   FROM ${source.platinum}.warehouse_prd_core_sale_order_item a
   , UNNEST(JSON_QUERY_ARRAY(a.pick_items)) AS b
-  WHERE created_date >= '2024-11-01'
-  --DATE(timestamp(date_sub(current_date(),interval 45 day)))
+  LEFT JOIN ${ref("fact_order_item")} AS i
+    ON a.admin_id = i.order_id
+    AND JSON_VALUE(b.sku) = i.sku_code
+    AND CAST(JSON_VALUE(b.order_quantity) AS INT64) = i.demand_quantity
+    AND CAST(JSON_VALUE(b.reserved_quantity) AS INT64) = i.reserved_quantity
+  LEFT JOIN ${ref("fact_order")} AS o 
+    ON a.admin_id = o.order_id
+  WHERE a.created_date >= DATE(timestamp(date_sub(current_date(),interval 45 day)))
 ),
 
 dedup_dim_order AS (
@@ -83,8 +96,8 @@ agg_sale_order_item AS (
     a.sku_code,
     a.unit_price,
     a.order_quantity,
-    a.reserved_quantity,
-    (a.order_quantity - a.reserved_quantity) AS unfulfilled_quantity,
+    IFNULL(a.reserved_quantity, 0) AS reserved_quantity,
+    (a.order_quantity - IFNULL(a.reserved_quantity, 0)) AS unfulfilled_quantity,
     LEAST(a.first_reserved_quantity, a.order_quantity) AS first_reserved_quantity, -- Force frq to be <= oq
     IF(a.reserved_quantity > 0, 1, 0) AS no_reserved_skus,
     IF(a.first_reserved_quantity > 0, 1, 0) AS no_first_reserved_skus,
@@ -94,7 +107,9 @@ agg_sale_order_item AS (
     SUM(a.order_quantity) OVER (PARTITION BY a.sale_order_code) AS total_qty,
     SUM(a.order_quantity * a.unit_price) OVER (PARTITION BY a.sale_order_code) AS total_amt,
     COUNT(DISTINCT a.sku_code) OVER (PARTITION BY a.sale_order_code) AS total_sku,
-    d.location_code
+    d.location_code,
+    TIMESTAMP(DATETIME(b.pack_done_at, "Asia/Ho_Chi_Minh")) AS pack_done_at,
+    a.customer_id
   FROM dedup_sale_order_item a
   LEFT JOIN dedup_sale_order b
     ON a.sale_order_code = b.sale_order_code
@@ -110,23 +125,23 @@ agg_sale_order_item AS (
 agg_sale_order_item_sort AS (
   SELECT
     *,
-      COALESCE(50 * SAFE_DIVIDE(order_quantity, NULLIF(total_qty, 0)), 0)
-      + COALESCE(25 * SAFE_DIVIDE(order_amount, NULLIF(total_amt, 0)), 0) 
-      + COALESCE(25 * SAFE_DIVIDE(1, NULLIF(total_sku, 0)), 0) AS expected_sort,
-      COALESCE(50 * SAFE_DIVIDE(reserved_quantity, NULLIF(total_qty, 0)), 0) 
-      + COALESCE(25 * SAFE_DIVIDE(reserved_amount, NULLIF(total_amt, 0)), 0) 
-      + COALESCE(25 * SAFE_DIVIDE(no_reserved_skus, NULLIF(total_sku, 0)), 0) AS actual_sort,
-      COALESCE(50 * SAFE_DIVIDE(first_reserved_quantity, NULLIF(total_qty, 0)), 0) 
-      + COALESCE(25 * SAFE_DIVIDE(first_reserved_amount, NULLIF(total_amt, 0)), 0) 
-      + COALESCE(25 * SAFE_DIVIDE(no_first_reserved_skus, NULLIF(total_sku, 0)), 0) AS actual_sort_first_reserved
+      COALESCE(10 * SAFE_DIVIDE(order_quantity, NULLIF(total_qty, 0)), 0)
+      + COALESCE(60 * SAFE_DIVIDE(order_amount, NULLIF(total_amt, 0)), 0) 
+      + COALESCE(30 * SAFE_DIVIDE(1, NULLIF(total_sku, 0)), 0) AS expected_sort,
+      COALESCE(10 * SAFE_DIVIDE(reserved_quantity, NULLIF(total_qty, 0)), 0) 
+      + COALESCE(60 * SAFE_DIVIDE(reserved_amount, NULLIF(total_amt, 0)), 0) 
+      + COALESCE(30 * SAFE_DIVIDE(no_reserved_skus, NULLIF(total_sku, 0)), 0) AS actual_sort,
+      COALESCE(10 * SAFE_DIVIDE(first_reserved_quantity, NULLIF(total_qty, 0)), 0) 
+      + COALESCE(60 * SAFE_DIVIDE(first_reserved_amount, NULLIF(total_amt, 0)), 0) 
+      + COALESCE(30 * SAFE_DIVIDE(no_first_reserved_skus, NULLIF(total_sku, 0)), 0) AS actual_sort_first_reserved
   FROM agg_sale_order_item
 )
 
 SELECT
   *,
-  (0.5 * SAFE_DIVIDE(SUM(reserved_quantity) OVER (PARTITION BY sale_order_code), total_qty))
-  + (0.25 * SAFE_DIVIDE(SUM(reserved_amount) OVER (PARTITION BY sale_order_code), total_amt)) 
-  + (0.25 * LEAST(SAFE_DIVIDE(SUM(no_reserved_skus) OVER (PARTITION BY sale_order_code), total_sku), 1)) AS actual_sort_percentage_full_order,
+  (0.1 * SAFE_DIVIDE(SUM(reserved_quantity) OVER (PARTITION BY sale_order_code), total_qty))
+  + (0.6 * SAFE_DIVIDE(SUM(reserved_amount) OVER (PARTITION BY sale_order_code), total_amt)) 
+  + (0.3 * LEAST(SAFE_DIVIDE(SUM(no_reserved_skus) OVER (PARTITION BY sale_order_code), total_sku), 1)) AS actual_sort_percentage_full_order,
   IF(status IN ("CHECKING", "DRAFT", "WAIT_TO_PICK", "RESERVING", "WAIT_TO_CHECK", "CONFIRM", "PICKING"), expected_sort - actual_sort, 0) AS potential_sort,
   IF(status NOT IN ("CHECKING", "DRAFT", "WAIT_TO_PICK", "RESERVING", "WAIT_TO_CHECK", "CONFIRM", "PICKING"), expected_sort - actual_sort, 0) AS unFF_sort
 FROM agg_sale_order_item_sort

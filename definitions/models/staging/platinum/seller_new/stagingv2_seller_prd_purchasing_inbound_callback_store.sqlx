@@ -1,0 +1,46 @@
+
+
+config {
+    type: "table",
+    name: "seller_prd_purchasing_inbound_callback_store",
+    schema: "platinum_buymed_vn",
+    assertions: {
+         uniqueKey: 'mg_id',
+         // rowConditions: [
+         //    '(created_time is not null and last_updated_time is not null) or (created_time is null and last_updated_time is not null) or (created_time is not null and last_updated_time is null)',
+         //    'action != "d"'
+         // ]
+     },
+    bigquery: {
+        partitionBy: "created_date"
+    },
+    tags: ["platinum_custom_1h_past7","seller_prd_purchasing"]
+}
+/*
+{
+    type: "table",
+    tags: ["platinum_custom_1h_past7","seller_prd_purchasing"]
+}
+*/
+--
+SELECT
+s.*,
+CASE 
+    WHEN s.created_time IS NOT NULL THEN DATE(DATETIME(s.created_time,'Asia/Ho_Chi_Minh'))
+    ELSE "2099-01-01"
+END AS created_date
+FROM lakehouse-prod-394907.silver_buymed_vn.seller_prd_purchasing_inbound_callback_store s
+
+
+QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(s.action) OVER (_window) <> 'd'
+WINDOW
+_window AS (
+PARTITION BY
+    s.mg_id
+ORDER BY
+    s.synced_at DESC,
+    IF
+        (s.action='d',3,
+        IF
+        (s.action='u',2,1)) DESC,
+        s.last_updated_time DESC)

@@ -1,0 +1,30 @@
+config {
+    type: "table",
+    description: 
+        `Total Gross Merchandise Value (GMV) of the product over the past three months.;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.ref}.fact_order_item,
+            ${source.ref}.fact_order
+        `,
+    schema: "buymed_tech",
+    tags: ["custom_1h_past10"]
+}
+
+SELECT
+    oi.product_id
+    , SUM(oi.sales_price * oi.demand_quantity) AS gmv
+FROM ${ref('fact_order_item')} AS oi
+    LEFT JOIN ${ref('fact_order')} AS o USING(order_id)
+WHERE 1=1
+    AND o.order_status <> "CANCEL"
+    AND o.channel = "MARKETPLACE"
+    AND DATE(oi.created_at) 
+        BETWEEN DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 3 MONTH)
+            AND DATE_TRUNC(CURRENT_DATE("+7"), MONTH) - 1
+    AND DATE(o.created_at) 
+        BETWEEN DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 3 MONTH)
+            AND DATE_TRUNC(CURRENT_DATE("+7"), MONTH) - 1
+GROUP BY 1

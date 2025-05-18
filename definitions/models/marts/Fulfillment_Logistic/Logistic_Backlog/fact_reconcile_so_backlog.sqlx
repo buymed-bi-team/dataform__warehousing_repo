@@ -54,5 +54,7 @@ left join (
     where created_date >= (select DATE(start_date) from cte_date)
 ) as s on o.reconcile_code = s.code
 left join ${ref('dim_employee')} as acc on s.user_id = acc.branch_account_id
-where
-s.status not in ('DONE', 'CANCEL')
+-- where
+-- s.status not in ('DONE', 'CANCEL')
+QUALIFY ROW_NUMBER() OVER(PARTITION BY reference_code ORDER BY last_updated_ts DESC) = 1
+    AND FIRST_VALUE(s.status) over (PARTITION BY reference_code ORDER BY last_updated_ts DESC) NOT IN ('DONE', 'CANCEL')

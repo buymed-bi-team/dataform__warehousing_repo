@@ -1,0 +1,42 @@
+config {
+    type: "table",
+    description: "PIC: Huong.Dang",
+    tags: ["24HOUR"],
+    columns: {
+        new_sku: "Những SKU có đơn hàng đầu tiên tại thuocsi trong tháng đó, stt đơn <> CANCEL. Vd: SKU A có đơn hàng đầu tiên tại thuocsi vào tháng 5/2024, có stt đơn <> CANCEL, thì SKU đó sẽ là New_SKU trong tháng 5/2024",
+        repeat_sku: "Những SKU có đơn hàng 2 tháng liên tiếp tại sàn thuocsi, loại trừ những đơn hàng CANCEL. Vd: SKU A có đơn hàng trong 4 / 2024 và tháng 5 / 2024,thì type của SKU A trong tháng 5 / 2024 sẽ là Repeat SKU",
+        reacquire_sku: "Những SKU chưa được mua hàng từ 1 tháng trở lên, tính từ tháng cuối cùng được mua, quay lại được mua hàng, loại trừ những đơn hàng CANCEL.Vd: Tháng 3/2024 SKU A được mua, tháng 4/2024 SKU A không được mua, tháng 5/2024 quay lại mua hàng, khách A sẽ là Reacquire sku trong tháng 5/2024",
+        active_sku: "SKU có mua ít nhất 1 đơn trong tháng không tính Cancel",
+        churn_sku: "SKU tháng trước có mua ít nhất 1 đơn không tính đơn Cancel. Tháng kế tiếp không mua"
+    },
+    bigquery: {
+        partitionBy: "som",
+        clusterBy: ["sku_code"]
+    }
+}
+
+WITH
+  sku_calendar AS(
+  SELECT
+    sku_key_sales_region_code,
+    sku_code,
+    year_month,
+    som
+  FROM
+    ${ref('agg_sku_profiling')} AS a)
+
+SELECT
+  a.sku_key_sales_region_code,
+  a.sku_code,
+  a.year_month,
+  a.som,
+  COUNT (DISTINCT c.sku_code) AS repeat_sku,
+  COUNT (DISTINCT d.sku_code) AS churn1M_sku,
+  COUNT (DISTINCT e.sku_code) AS churn2M_sku
+FROM sku_calendar AS a
+LEFT JOIN ${ref('dim_sku')} AS b on a.sku_code = b.sku_code
+LEFT JOIN ${ref('dim_sku_profiling_repeat')} AS c ON a.sku_code = c.sku_code AND a.year_month = c.year_month
+LEFT JOIN ${ref('dim_sku_churn1M')} AS d ON a.sku_code = d.sku_code AND a.year_month = d.year_month
+LEFT JOIN ${ref('dim_sku_churn2M')} AS e ON a.sku_code = e.sku_code AND a.year_month = e.year_month
+-- WHERE cust.sku_report_category <> "EMPLOYEE"
+GROUP BY ALL

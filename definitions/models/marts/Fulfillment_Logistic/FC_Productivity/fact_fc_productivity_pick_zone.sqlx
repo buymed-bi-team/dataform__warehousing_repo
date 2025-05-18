@@ -5,7 +5,7 @@ config {
 }
 
 with cte_date as (
-	select date_sub(date_trunc(date_sub( current_timestamp() , interval 2 day), day), interval 7 hour)  as start_date_scan
+	select date_sub(date_trunc(date_sub( current_timestamp() , interval 30 day), day), interval 7 hour)  as start_date_scan
 )
 
 select

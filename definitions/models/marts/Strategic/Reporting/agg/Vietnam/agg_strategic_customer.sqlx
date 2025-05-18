@@ -1,14 +1,15 @@
 config {
     name: "agg_strategic_customer",
     type: "view",
-    description: "PIC: minhluu",
+    description: "PIC: huong.dang",
     tags: ['STRATEGIC-REPORTING'],
 }
 
+With union_table As (
 SELECT 
     CURRENT_DATETIME("+7") AS refresh_time,
     dc.eom as date,
-    CAST(NULL AS STRING) AS location,
+    location,
     CAST(NULL AS STRING) AS channel,
     'CUSTOMER_ACTIVE' AS measure,
     CAST(NULL AS STRING) AS supplier_class,
@@ -23,7 +24,7 @@ UNION ALL
 SELECT 
     CURRENT_DATETIME("+7") AS refresh_time,
     dc.eom as date,
-    CAST(NULL AS STRING) AS location,
+    location,
     CAST(NULL AS STRING) AS channel,
     'CUSTOMER_NEW' AS measure,
     CAST(NULL AS STRING) AS supplier_class,
@@ -38,7 +39,7 @@ UNION ALL
 SELECT 
     CURRENT_DATETIME("+7") AS refresh_time,
     dc.eom as date,
-    CAST(NULL AS STRING) AS location,
+    location,
     CAST(NULL AS STRING) AS channel,
     'CUSTOMER_REACQUIRED' AS measure,
     CAST(NULL AS STRING) AS supplier_class,
@@ -53,7 +54,7 @@ UNION ALL
 SELECT 
     CURRENT_DATETIME("+7") AS refresh_time,
     dc.eom as date,
-    CAST(NULL AS STRING) AS location,
+    location,
     CAST(NULL AS STRING) AS channel,
     'CUSTOMER_REPEAT' AS measure,
     CAST(NULL AS STRING) AS supplier_class,
@@ -61,4 +62,8 @@ SELECT
 
 FROM ${ref(`dim_customer_profiling`)} dcp 
 LEFT JOIN ${ref(`dim_calendar`)} dc ON dcp.som = dc.som 
-GROUP BY 1,2,3,4,5
+GROUP BY 1,2,3,4,5)
+
+
+SELECT *
+FROM union_table

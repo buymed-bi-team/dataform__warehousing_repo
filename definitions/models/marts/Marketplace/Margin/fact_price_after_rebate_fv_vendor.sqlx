@@ -36,7 +36,8 @@ with
             g.rebate,
             g.contract_price_id,
             CONCAT(a.product_id, "_", a.sales_region_code) AS product_sales_region_code,
-            a.sku_key_sales_region_code
+            a.sku_key_sales_region_code,
+            g.rebate_reserve
         from ${ref('dim_sku_sales_region_full')} a
             left join ${ref('dim_vendor')} vend on a.fv_code = vend.supplier_code
             left join ${ref('fact_price_after_rebate')} g
@@ -45,6 +46,7 @@ with
                 and vend.line_manager_combine = g.vendor_code
         where g.sales_region_code is not null
             AND a.seller_code = 'MEDX'
+            AND is_fav_vendor AND is_active_contract_price
     )
 
 ------------ Retrieve max price after rebate of products from other vendors in case there are no price after rebate from favourite vendor --------
@@ -64,7 +66,8 @@ with
             g.rebate,
             g.contract_price_id,
             CONCAT(a.product_id, "_", a.sales_region_code) AS product_sales_region_code,
-            a.sku_key_sales_region_code
+            a.sku_key_sales_region_code,
+            g.rebate_reserve
         from ${ref('dim_sku_sales_region_full')} a
             left join ${ref('dim_vendor')} vend on a.fv_code = vend.supplier_code
             left join ${ref('fact_price_after_rebate')} g on a.sales_region_code = g.sales_region_code and a.product_id = g.product_id
@@ -77,6 +80,7 @@ with
                                 AND fv.rebate_date = g.rebate_date
                             )
             AND a.seller_code = 'MEDX'
+            AND is_fav_vendor AND is_active_contract_price
         qualify ROW_NUMBER() over (partition by a.product_id, a.sales_region_code, g.rebate_date order by g.price_after_rebate_with_adhoc_promotion DESC) = 1
     )
 

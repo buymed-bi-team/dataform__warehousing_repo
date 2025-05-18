@@ -1,0 +1,53 @@
+config {
+    type: "view",
+    tags: ["bq_job"],
+    description: `PIC: minh.luu
+    BigQuery Extracted Labels per job
+    `
+}
+
+SELECT 
+    base_key,
+    execution_time, -- For filter partition time on dependent model
+    -- Raw table
+    referenced_tables,
+    destination_table,
+    -- table Processing
+    ARRAY (
+        SELECT t.dataset_id  || "." || t.table_id
+        FROM UNNEST(referenced_tables) t
+        WINDOW w as (ORDER BY t.tableId asc)
+    ) AS source_tables_full_id_list,
+    ARRAY_TO_STRING(
+        ARRAY (
+            SELECT t.dataset_id  || "." || t.table_id
+            FROM UNNEST(referenced_tables) t
+            WINDOW w as (ORDER BY t.tableId asc)
+        ), "\n"
+    ) source_tables_full_id,
+    -- output table
+    destination_table.dataset_id || "." || destination_table.table_id destination_table_full_id,
+
+
+    -- Dataform labels
+    (SELECT value FROM UNNEST(labels) WHERE key = 'dataform_repository_project_number') AS dataform_repository_project_number,
+    (SELECT value FROM UNNEST(labels) WHERE key = 'dataform_repository_location') AS dataform_repository_location,
+    (SELECT value FROM UNNEST(labels) WHERE key = 'dataform_repository_id') AS dataform_repository_id,
+    (SELECT value FROM UNNEST(labels) WHERE key = 'dataform_workflow_execution_id') AS dataform_workflow_execution_id,
+    (SELECT value FROM UNNEST(labels) WHERE key = 'dataform_workflow_execution_action_id_schema') AS dataform_workflow_execution_action_id_schema,
+    (SELECT value FROM UNNEST(labels) WHERE key = 'dataform_workflow_execution_action_id_database') AS dataform_workflow_execution_action_id_database,
+    (SELECT value FROM UNNEST(labels) WHERE key = 'dataform_workflow_execution_action_id_name') AS dataform_workflow_execution_action_id_name,
+    (SELECT value FROM UNNEST(labels) WHERE key = 'dataform-action-type') AS dataform_action_type,
+
+    -- dts -- ?
+    (SELECT value FROM UNNEST(labels) WHERE key = 'dts_config_id') AS dts_config_id,
+    (SELECT value FROM UNNEST(labels) WHERE key = 'dts_run_id') AS dts_run_id,
+
+    (SELECT value FROM UNNEST(labels) WHERE key = 'data_source_id') AS data_source_id,
+
+    -- gg sheet
+    (SELECT value FROM UNNEST(labels) WHERE key = 'sheets_connector') AS sheets_connector,
+    (SELECT value FROM UNNEST(labels) WHERE key = 'sheets_trigger') AS sheets_trigger,
+    (SELECT value FROM UNNEST(labels) WHERE key = 'sheets_access_type') AS sheets_access_type
+
+FROM ${ref(`base_information_schema_job`)}

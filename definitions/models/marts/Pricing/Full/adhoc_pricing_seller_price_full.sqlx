@@ -20,17 +20,12 @@ config {
 -- step 1: get some fee to calculate seller_received_value
 with
 
-    cte_category_seller_level as (
-        select
-            JSON_EXTRACT_SCALAR(a.extra_props, '$.category_code') || '_' || level as cate_level_code,
-            sale_fee_percent,
-            fulfillment_fee_percent
-        from ${source.platinum}.marketplace_prd_product_v2_seller_category_level AS a
-        QUALIFY ROW_NUMBER() OVER (_window) = 1
-            AND FIRST_VALUE(action) over (_window) <> 'd'
-        WINDOW _window AS ( PARTITION BY mg_id
-            ORDER BY synced_at DESC, IF(action = 'd', 3, IF(action = 'u', 2, 1)) DESC, last_updated_time DESC
-        )
+    seller_fee_config as (
+        SELECT
+            *
+            , IFNULL(SAFE.PARSE_TIMESTAMP("%F %T", from_time_index), created_time) AS index
+        FROM ${source.platinum}.marketplace_prd_product_v2_product_fee_config
+        QUALIFY ROW_NUMBER() over (PARTITION BY product_id, location_code ORDER BY index DESC) = 1
     )
 
 -- step 2: get necessary columns to calculate price for seller
@@ -69,8 +64,8 @@ with
                 on c.seller_code = sel.supplier_code
             left join ${ref('dim_product')} AS e
                 on c.product_id = e.product_id
-            left join cte_category_seller_level AS f
-                on concat(e.product_category_code,"_",IF(sel.supplier_type = "MARKET", "MARKET", c.sku_level)) = f.cate_level_code
+            left join seller_fee_config AS f
+                on f.product_id = c.product_id and f.location_code = c.sales_region_code
         where sel.supplier_class = "EXTERNAL"
     )
 

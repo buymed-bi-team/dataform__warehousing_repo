@@ -45,8 +45,11 @@ select * from
           , oi.vat
           , oi.none_vat
           , to_json_string(oi.tags) as tag_code
-          , oi.sku_status,
-          cast(json_value(extra_props, "$.is_important") as BOOLEAN) as is_important
+          , oi.sku_status
+          , cast(json_value(extra_props, "$.is_important") as BOOLEAN) as is_important
+          , coalesce(
+            json_extract_scalar( oi.extra_props, "$.campaign_code" ), oi.deal_code
+            ) as promotion_code
       -- from  ${source.silver}.marketplace_prd_order_v2_order_item  as oi
       FROM ${source.platinum}.marketplace_prd_order_v2_order_item as oi)
       -- from lakehouse-prod-394907._513c4051a7d94cc5f16470b9da40e24c2a97913a.anonead9caf2a3c74fb9d5e5ba78d4d488556c3878ac0646f0bcb2b2556661745865 as oi

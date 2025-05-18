@@ -33,7 +33,8 @@ select
 		when o.reference_code like 'TO%' then 'TO'
 		when o.reference_code like 'RONS%' then 'RONS'
 		when o.reference_code like 'RO%' then 'RO'
-    when o.reference_code like 'CO%' then 'CO'
+    	when o.reference_code like 'CO%' then 'CO'
+		when o.order_code like 'LO%' then 'LO'
 	else 'OTHER' end type_order,
 	o.carrier_code,
 	o.carrier_name,

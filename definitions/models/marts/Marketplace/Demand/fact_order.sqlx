@@ -11,7 +11,7 @@ config {
             ${source.platinum}.accounting_prd_core_credit_note,
             ${source.platinum}.accounting_prd_core_bill
         `,
-    tags: ["custom_1h_past5"],
+    tags: ["custom_1h_past5", "MARKETPLACE"],
     columns: {
         created_at: "The date and time when the order was placed, timezone +7",
         last_updated_time: "The last and time when the record was updated, timezone +7",
@@ -73,7 +73,7 @@ WITH
   actual_sales_amount AS(
     SELECT 
       a.order_id
-      , GREATEST(SUM(a.invoice_amount) - SUM(b.return_amount), 0) AS actual_sales_amount,
+      , GREATEST(SUM(a.invoice_amount) - IFNULL(SUM(b.return_amount),0), 0) AS actual_sales_amount,
     FROM invoice_amount AS a
       LEFT JOIN return_amount AS b ON a.order_id = b.order_id
     GROUP BY 1 
@@ -126,11 +126,18 @@ WITH
         ELSE a.warehouse_code
       END
         AS fc_code,
+      CASE
+        WHEN (a.warehouse_code IS NULL) OR (a.warehouse_code ="") OR a.warehouse_code = "BD" THEN "MIENNAM" 
+        WHEN a.warehouse_code = "HN" THEN "MIENBAC"
+        WHEN a.warehouse_code = "DN" THEN "MIENTRUNG"
+      END
+        AS sales_region_code,
       a.sale_order_status AS so_status,
       JSON_VALUE(a.extra_props, '$.note') AS note,
       JSON_VALUE(a.extra_props, '$.auto_cancel_overdue_transfer') AS auto_cancel_overdue_transfer,
       a.system_display,
       JSON_VALUE(a.source_detail, '$.platform') AS source_detail_platform,
+      JSON_VALUE(a.source_detail, '$.ip') AS source_detail_ip,
       a.source,
       CASE
         WHEN TO_JSON_STRING(a.tags) LIKE '%MULTIPLE_DELIVERY_ORDER%' THEN 'split_order'
@@ -176,14 +183,36 @@ WITH
       a.province_code,
       a.redeem_code,
 
+      -- CASE
+      --   WHEN a.source = 'brand-portal' AND JSON_VALUE(a.extra_props, "$.brand_code") IN ('Q8HDUVQX', '2E84FW961P', 'PG961P') THEN 'TENDER'
+      --   WHEN TO_JSON_STRING(JSON_VALUE_ARRAY(a.extra_props, '$.customer_tags')) LIKE '%TENDER%' THEN 'TENDER'
+      --   WHEN a.source IN ('brand-portal', 'clinic-portal') OR customer_id IN (360299, 360439) THEN 'DISTRIBUTION'
+      --   WHEN a.source = 'internal-portal' THEN 'CONSIGNMENT'
+      --   WHEN TO_JSON_STRING(JSON_VALUE_ARRAY(a.extra_props, '$.customer_tags')) LIKE '%"CIRCA"%' THEN 'CIRCA'
+      --   ELSE 'MARKETPLACE'
+      -- END AS channel,
+
       CASE
+        WHEN TO_JSON_STRING(JSON_VALUE_ARRAY(a.extra_props, '$.customer_tags')) LIKE '%"CIRCA"%' THEN 'CIRCA'
         WHEN a.source = 'brand-portal' AND JSON_VALUE(a.extra_props, "$.brand_code") IN ('Q8HDUVQX', '2E84FW961P', 'PG961P') THEN 'TENDER'
         WHEN TO_JSON_STRING(JSON_VALUE_ARRAY(a.extra_props, '$.customer_tags')) LIKE '%TENDER%' THEN 'TENDER'
-        WHEN a.source IN ('brand-portal', 'clinic-portal') OR customer_id IN (360299, 360439) THEN 'DISTRIBUTION'
-        WHEN a.source = 'internal-portal' THEN 'CONSIGNMENT'
-        WHEN TO_JSON_STRING(JSON_VALUE_ARRAY(a.extra_props, '$.customer_tags')) LIKE '%"CIRCA"%' THEN 'CIRCA'
+        WHEN a.source IN ('brand-portal', 'clinic-portal') OR customer_id IN (360299, 360439) THEN 'TENDER'
+        -- WHEN a.source = 'internal-portal' THEN 'MARKETPLACE' 
         ELSE 'MARKETPLACE'
       END AS channel,
+
+      CASE
+        WHEN TO_JSON_STRING(JSON_VALUE_ARRAY(a.extra_props, '$.customer_tags')) LIKE '%"CIRCA"%' THEN NULL
+        WHEN a.source = 'brand-portal' AND JSON_VALUE(a.extra_props, "$.brand_code") IN ('Q8HDUVQX', '2E84FW961P', 'PG961P') THEN NULL
+        WHEN TO_JSON_STRING(JSON_VALUE_ARRAY(a.extra_props, '$.customer_tags')) LIKE '%TENDER%' THEN NULL
+        WHEN a.source IN ('brand-portal', 'clinic-portal') OR customer_id IN (360299, 360439) THEN NULL
+        ELSE 
+          CASE 
+            WHEN TO_JSON_STRING(JSON_VALUE_ARRAY(a.extra_props, '$.customer_tags')) LIKE '%"WHOLESALER"%' 
+              OR TO_JSON_STRING(JSON_VALUE_ARRAY(a.extra_props, '$.customer_tags')) LIKE '%"BANSI"%' THEN 'WHOLESALE'
+            ELSE "RETAIL"
+          END
+      END AS channel_wholesale_retail,
 
       CASE
           WHEN a.status = 'WAIT_TO_CONFIRM' THEN 1
@@ -197,6 +226,7 @@ WITH
 
       a.customer_level,
       a.tags,
+      JSON_QUERY(a.extra_props, '$.customer_tags') AS customer_tags,
       IF(a.status = 'CANCEL', "CANCELLED", "NORMAL") AS cancellation,
 
       redeem_apply_result
@@ -230,6 +260,7 @@ WITH
         WHEN sales_status IN ("CANCEL", "REVERTING") THEN 0
         WHEN sales_status IN ("RETURN","RETURNING","RETURNED","REFUNDED") THEN actual_sales_amount
         WHEN sales_status IN ("COMPLETED", "DELIVERED") AND return_amount > 0 THEN actual_sales_amount
+        WHEN sales_status IN ("COMPLETED", "DELIVERED", "DELIVERING") THEN total_notional_amount
         ELSE ordered_amount_aft_discount
       END AS sales_amount,
         --old loggic

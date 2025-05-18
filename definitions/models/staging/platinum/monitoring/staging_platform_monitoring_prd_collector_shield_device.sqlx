@@ -50,7 +50,7 @@ pre_operations {
 }
 
 SELECT
- * EXCEPT( timestamp_i),
+ * ,
  CASE 
     WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
     ELSE "2099-01-01"

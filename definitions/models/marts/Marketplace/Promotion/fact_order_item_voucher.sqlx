@@ -5,13 +5,13 @@ config {
         List of SKUs corresponding to each voucher in each order;
         PIC: nguyen.tran; 
         Type: Table; 
-        Refresh Schedule: daily at 8h30, 10h30, 12h30, 15h30, 18h, 20h30;
+        Refresh Schedule: hourly;
         Source: 
             ${source.platinum}.marketplace_prd_order_v2_order_item,
             ${source.ref}.fact_order
         `,
 
-  tags: ["8h30", "10h30", "12h30", "15h30" ,"18h00", "20h30", "PROMOTION_MKP"]
+  tags: ["custom_1h_past5", "PROMOTION_MKP"]
 }
 
 SELECT
@@ -24,11 +24,18 @@ SELECT
     , CONCAT(oi.order_id, '_', ov.redeem_code) AS order_voucher_code
     , vp.campaign_brand
     , oi.item_type
+    , oi.customer_id
+    , oi.sku_orignal_code AS sku_code
 FROM ${ref('fact_order_item')} AS oi
     LEFT JOIN ${ref('fact_order_voucher')} AS ov 
         ON oi.order_id = ov.order_id
-    LEFT JOIN ${ref('dim_voucher_product')} AS vp 
-        ON vp.voucher_code = ov.redeem_code AND vp.product_id = oi.product_original_id 
+    LEFT JOIN 
+        (SELECT DISTINCT voucher_code, product_id, campaign_brand, seller_code
+        FROM ${ref('dim_voucher_product')}
+        ) AS vp 
+        ON vp.voucher_code = ov.redeem_code 
+            AND vp.product_id = oi.product_original_id 
+            AND vp.seller_code = oi.seller_code
 WHERE
     vp.voucher_code IS NOT NULL
     AND vp.product_id IS NOT NULL 

@@ -11,6 +11,10 @@ config {
     bigquery: {
         partitionBy: "created_date"
     },
+    description: `
+    Tech PIC: Thiện Bùi, Hoàng Hồ
+    Internal Site: accounting.buymed.com/invoice/detail
+    `,
     tags: ["another_custom_2h_past5","platform_billing_prd_invoice"]
 }
 

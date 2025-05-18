@@ -39,6 +39,7 @@ WITH
             , DATE_TRUNC(DATE(oi.created_at), MONTH) AS som
             -- , SUM(sales_price * demand_quantity) AS gmv
             , COUNT(DISTINCT sku_code) AS no_skus
+            , COUNT(DISTINCT IF(oi.outbound_quantity > 0, sku_code, NULL)) AS no_skus_outbound
         FROM ${ref('fact_order_item')} AS oi
             LEFT JOIN ${ref('fact_order')} AS o USING(order_id)
         WHERE
@@ -106,17 +107,12 @@ WITH
             , b.first_order_time_without_cancel_in_current_month
             , DATE_DIFF(b.first_order_time_without_cancel_in_current_month, b.last_order_time_without_cancel_before_current_month, DAY) AS days_return_active
             , CASE
-                -- WHEN DATE_TRUNC(c.first_order_time_without_cancel_ever, MONTH) > a.som  THEN "USER_ONLY"
-                WHEN /*c.first_order_time_without_cancel_ever IS NOT NULL
-                     AND*/
-                     b.first_order_time_without_cancel_in_current_month IS NULL THEN "CHURN"
-                WHEN /*c.first_order_time_without_cancel_ever IS NOT NULL
-                    AND*/ 
-                    b.first_order_time_without_cancel_in_current_month IS NOT NULL THEN "ACTIVE"
-                -- ELSE "USER_ONLY"
+                WHEN b.first_order_time_without_cancel_in_current_month IS NULL THEN "CHURN"
+                WHEN b.first_order_time_without_cancel_in_current_month IS NOT NULL THEN "ACTIVE"
               END AS customer_business_status
             , b.gmv
             , d.no_skus
+            , d.no_skus_outbound
         FROM cte_main AS a
             LEFT JOIN cte_agg_customer_and_som AS b ON a.customer_id = b.customer_id AND a.som = b.som
             LEFT JOIN cte_agg_customer AS c ON a.customer_id = c.customer_id
@@ -138,6 +134,7 @@ WITH
             , "USER_ONLY" AS customer_business_status
             , NULL AS gmv
             , NULL AS no_skus
+            , NULL AS no_skus_outbound
         FROM ${ref('dim_customer')} AS a
             LEFT JOIN cte_agg_customer AS c ON a.customer_id = c.customer_id
         WHERE

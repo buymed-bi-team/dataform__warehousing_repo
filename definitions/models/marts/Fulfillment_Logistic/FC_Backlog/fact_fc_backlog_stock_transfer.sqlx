@@ -1,7 +1,7 @@
 config {
   type: "table",
   name: "fact_fc_backlog_stock_transfer",
-  tags: ['custom_1h_past5']
+  tags: ['custom_1h_past5', "FC_BACKLOG"]
 }
 
 WITH cte_date AS (
@@ -29,8 +29,7 @@ from (
   from (
     select *
     from ${source.platinum}.warehouse_prd_inventory_transfer
-    where ingest_time >= (select timestamp(start_date) from cte_date)
-      and (created_time >= (select timestamp(start_date) from cte_date) or created_time is null) 
+    where created_date >= (select date(start_date) from cte_date)
   ) i
 )
   where status in ('READY')

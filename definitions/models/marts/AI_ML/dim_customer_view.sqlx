@@ -25,5 +25,6 @@ config {
 
 
 select customer_id, customer_report_category, 
-business_scope, customer_level, customer_ward_code, customer_status
+business_scope, customer_level, customer_ward_code, customer_status,
+gpp_url
 from gold_buymed_vn2.dim_customer

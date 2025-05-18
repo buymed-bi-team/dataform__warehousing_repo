@@ -1,0 +1,93 @@
+config {
+    type: "operations",
+    tags: ["critical_custom_10min","seller_prd_purchasing","Finance/margin"],
+}
+-- script_tag: ["assert","assert_duplicate"]
+
+js {
+    const retry_cnt = 2;
+    const assert_checkpoint_start_time = `DATE( "2001-01-01" )`;
+    const table_name = "seller_prd_purchasing_purchase_order_item"
+    const assert_name = `${table_name}__assert_unique`
+}
+
+DECLARE is_assert BOOL;
+DECLARE _loop_index INT64;
+DECLARE keys ARRAY <STRING>;
+DECLARE dates ARRAY <date>;
+
+CREATE TEMP FUNCTION assert_condition()
+RETURNS BOOL
+AS ((
+    SELECT
+        COUNT(*) > 0
+    FROM (
+    SELECT
+        mg_id,
+        COUNT(1) AS index_row_count
+    FROM ${ref(`${table_name}`)}
+    WHERE created_date >= ${assert_checkpoint_start_time}
+    GROUP BY mg_id
+    ) AS data
+    WHERE index_row_count > 1
+));
+
+SET is_assert = assert_condition();
+SET _loop_index = 0;
+WHILE 
+    is_assert = TRUE 
+    AND _loop_index < 2
+DO 
+    INSERT INTO ${source.log}
+        (key, created_time, name, retry_index, extra_props, platform)
+        (
+            SELECT 
+                GENERATE_UUID(),
+                CURRENT_TIMESTAMP(),
+                "${assert_name}",
+                _loop_index,
+                PARSE_JSON('{"dataset": "platinum_buymed_vn"}'),
+                "dataform"
+        );
+    
+    -- Action -- Delete the old duplicate records
+    CREATE TEMP TABLE deleted_records AS (
+    SELECT key, created_date
+    FROM (
+        SELECT key, mg_id, synced_at, action, created_date 
+        FROM ${ref(`${table_name}`)}
+        QUALIFY ROW_NUMBER() over(w ) != 1
+        WINDOW w AS (PARTITION BY mg_id ORDER BY synced_at desc, IF (action = "u", 2, 1) desc )
+    ));
+
+    SET keys = (
+        SELECT ARRAY_AGG(key) FROM deleted_records
+    );
+    SET dates = (
+        SELECT ARRAY_AGG(created_date) FROM deleted_records
+    );
+
+
+    DELETE FROM ${ref(`${table_name}`)}
+    WHERE key IN UNNEST(keys)
+        AND created_date IN UNNEST(dates);
+    
+    -- Prepare for new loop
+    SET is_assert = assert_condition();
+    SET _loop_index = _loop_index + 1;
+END WHILE;
+
+IF is_assert = TRUE THEN 
+    INSERT INTO ${source.log}
+        (key, created_time, name, retry_index, extra_props, platform)
+        (
+            SELECT 
+                GENERATE_UUID(),
+                CURRENT_TIMESTAMP(),
+                "${assert_name}",
+                _loop_index,
+                PARSE_JSON('{"dataset": "platinum_buymed_vn", "level":"CRITICAL"}'),
+                "dataform"
+        );
+    ASSERT FALSE AS "${table_name} is still duplicated";
+END IF;

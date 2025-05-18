@@ -2,13 +2,13 @@ config {
     type: "incremental",
     name: "accounting_prd_core_bill_historical_cut_off",
     schema: "platinum_buymed_vn",
-    // assertions: {
-    //     uniqueKey: 'mg_id || date_index'
-    // },
+    assertions: {
+        uniqueKey: 'mg_id || date_index'
+    },
     bigquery: {
         partitionBy: "created_date"
     },
-    tags: ["som_cutoff"]
+    tags: ["platinum_som_cutoff"]
 }
 
 js {
@@ -16,7 +16,7 @@ js {
         Trigger time : 2h10am at start of month with vietnam timezone
         It means current_timestamp will be 19h00 at end of previous month with UTC timezone
     */
-    const start_of_VN_month_timestamp_in_UTC = `TIMESTAMP_TRUNC(CURRENT_TIMESTAMP(), DAY) + INTERVAL 17 HOUR` 
+    const start_of_VN_month_timestamp_in_UTC = `TIMESTAMP_TRUNC(CURRENT_TIMESTAMP()  + INTERVAL 7 HOUR, DAY)` 
     const end_of_VN_month_day = `TIMESTAMP_TRUNC(CURRENT_TIMESTAMP(), DAY)`
 }
 
@@ -28,10 +28,10 @@ SELECT
     END AS created_date,
     FORMAT_TIMESTAMP('%y%m%d', ${end_of_VN_month_day} )   as date_index 
 
-    -- 241231 as date_index 
+    -- "250228" as date_index 
     -- the date_index alway is the end of month, because we run in 0h15m the som in UTC +7, but timestamp return UTC timezone meaning 0h15m -7 Hour so finaly it return last day in our timezone perspective
 FROM ${source.silver}.accounting_prd_core_bill 
--- WHERE last_updated_time < TIMESTAMP("2025-01-01") - INTERVAL 7 HOUR
+-- WHERE last_updated_time < TIMESTAMP("2025-03-01") - INTERVAL 7 HOUR
 WHERE last_updated_time < ${start_of_VN_month_timestamp_in_UTC}
 QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'
 WINDOW _window AS ( 

@@ -1,0 +1,153 @@
+config {
+    type: "table", 
+    description: 
+        `PIC: tu.dang; 
+        Type: Table; 
+        Refresh Schedule: At minute 10 past hour 7, 10, 13, 16 and 19;
+        Source: 
+            ${source.gold}.dim_sku_tag,
+            buymed_circa.order_purchase_order_item,
+            buymed_circa.order_purchase_order,
+            buymed_circa.product_retail_unit,
+            buymed_circa.product_product,
+            buymed_circa.product_main_category,
+            buymed_circa.product_category,
+            buymed_circa.product_efficacy,
+            buymed_circa.product_manufacturer
+        `,
+    tags: ["adhoc-office"],
+    columns: {
+
+    }
+/*    ,
+
+    assertions: {
+      uniqueKey: ["product_id"],
+      nonNull: ["product_id"]
+    }*/
+}
+
+
+
+with rlv_price  as 
+(select product_id,tag_code
+from `${source.gold}.dim_sku_tag`
+where tag_code = 'QWER'
+qualify row_number() over (partition by product_id) = 1)
+,
+cte_unit_thuocsi AS -- union later
+(
+select 
+  pi.product_id,
+  pi.unit
+from `buymed_circa.order_purchase_order_item` as pi
+left join `buymed_circa.order_purchase_order`  po on pi.purchase_order_id = po.id
+where (po.sale_order_number <> '' and po.sale_order_number is not null) and  po.sale_order_number like '%Import%'
+qualify row_number() over( partition by product_id, unit) = 1 -- base on latest order to get product_unit unique
+)
+, cvr_po_ts as 
+(
+  select a.*, ru.convert_rate
+  from cte_unit_thuocsi as a 
+  left join `buymed_circa.product_retail_unit` ru on a.product_id = ru.product_id and a.unit = ru.unit 
+    qualify row_number() over( partition by a.product_id order by ru.convert_rate desc) = 1
+)
+,efficacy_product as (select p.product_id,
+                                 case
+                                     when p.efficacy_code = '' then main_category_code
+                                     else p.efficacy_code
+                                     end as efficacy_code
+                          from lakehouse-prod-394907.buymed_circa.product_product as p
+                          -- left join marvelon as m on m.product_id = p.product_id
+ )
+,product_base_unit as
+(
+      select distinct b.product_id,
+            a.unit 
+      from lakehouse-prod-394907.buymed_circa.product_retail_unit as a
+      right join lakehouse-prod-394907.buymed_circa.product_product as b on a.product_id = b.product_id
+      where a.base_unit is true
+)
+      ,convert_rate_ths as
+(
+      select distinct a.product_id,
+            a.unit
+            ,
+            a.id as unit_id,
+            a.convert_rate
+            -- b.name as product_name
+      from lakehouse-prod-394907.buymed_circa.product_retail_unit as a
+      where a.sale_allowed is true 
+      qualify row_number() OVER (PARTITION BY a.product_id ORDER BY convert_rate DESC) = 1
+),
+
+    o2o_product AS (
+      SELECT 
+          CAST(REGEXP_EXTRACT(code, r'^\d{4,6}') AS INT64) AS product_id
+          , value as o2o
+      FROM collector.data_prd
+      WHERE object = 'CIRCA_PRODUCT' and type = 'IS_O2O' and submit_id = 5329
+    )
+
+select 
+(case
+            when date(p.created_at) is null then '2020-01-01'
+            else date(p.created_at) end) as created_date
+     , p.product_id
+     , p.barcode
+--      , lower (p.unit) as unit
+     , case
+            when lower (p.unit) = '' then lower(cr.unit)
+            when lower (p.unit) <> lower(cr.unit) then lower(cr.unit)
+            when lower (cr.unit)<> p.unit and cr.convert_rate = 1 and p.unit = "" then ""
+            else lower (cr.unit) end as unit
+     , lower(bu.unit) as base_unit
+     , lower(cr.unit) as thuocsi_unit
+     , cr.convert_rate 
+     , p.retail_unit
+     , p.retail_unit_quantity_per_unit
+     , m.short_name                      as manufacturer_name
+     , p.name                            as product_name
+     , p.volumes
+     , p.dosage_form
+     , case
+           when p.origin = 'VN' or p.origin = 'Vietnam' then 'VN'
+           else 'International'
+    end                                  as Original
+     , p.is_pos_product
+     , p.is_etc
+     , p.cold_storage
+     , e.name                            as efficacy_name
+     , mc.name                           as category_name
+     , c.name                            as main_category_name
+     , p.is_self_managed
+     , pt.convert_rate as po_convert_rate
+     , pt.unit as po_unit
+     , case
+        when rp.tag_code is not null then true
+        else false end as is_relevant_price
+     , rp.tag_code 
+     , case 
+        when p.brand is null or p.brand = "" then m.short_name 
+        else p.brand end as brand_name
+    , case 
+        when op.o2o is null then "FALSE"
+        else op.o2o
+      end as is_o2o
+--      , mv.catm_group
+from lakehouse-prod-394907.buymed_circa.product_product as p
+         left join efficacy_product as ep on ep.product_id = p.product_id
+         left join lakehouse-prod-394907.buymed_circa.product_manufacturer as m on m.code = p.manufacturer_code
+         left join lakehouse-prod-394907.buymed_circa.product_efficacy as e on e.code = ep.efficacy_code
+         left join lakehouse-prod-394907.buymed_circa.product_category mc on mc.code = COALESCE(JSON_EXTRACT_SCALAR(p.category_codes, '$[0]'), 'default_value') 
+         left join lakehouse-prod-394907.buymed_circa.product_main_category c on c.code = p.main_category_code
+       --   left join marvelon as mv on mv.product_id = p.product_id
+         left join product_base_unit as bu on bu.product_id = p.product_id
+         left join convert_rate_ths as cr on cr.product_id = p.product_id
+         left join cvr_po_ts as pt on pt.product_id = p.product_id
+         left join rlv_price as rp on p.product_id = rp.product_id
+         left join o2o_product as op on p.product_id = op.product_id
+/* where p.name not like '%(Bỏ)%'
+      and p.name not like  '%(bỏ)%'
+      -- and cr._rank = 1 */
+qualify row_number() over(partition by p.product_id) = 1

@@ -1,10 +1,10 @@
 config {
     type: "table",
-    description: `Last 13 month| PIC: tu.dang; model_type: Table ;schedule: At minute 5 past hour 6, 8, 10, 12, 14, 16, 18, 20 and 22`
+    description: `Circa OS Transaction order item detail PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`,
     /*Source:
       ${source.silver}.marketplace_prd_order_v2_order_item
-      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
-    tags: ["custom_2h_past5"],
+      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5,*/
+    tags: ["custom_1h_past5"],
     name: "cos_fact_order_item",
     columns: {
 
@@ -13,18 +13,165 @@ config {
 }
 
 
-select order_id,
-       product_id,
-       quantity,
-       unit,
-       unit_price,
-       lot_date,
-       base_quantity,
-       amount,
-       discount_amount,
-       tax_rate,
-       gift_code,
-       product_id || "_" || lot_date || "_" || tax_rate as product_lot_date_vat
--- from order_item
-       
-from ${source.circa_os}.order_order_item
+WITH base_data AS (
+    SELECT
+        a.id,
+        CASE WHEN c.type = 'ONLINE' THEN b.id ELSE a.id END AS item_id,--=llocation.item_ref_id
+        a.order_id,
+        c.code,
+        a.note,
+        c.type,
+        a.product_id,
+        "NULL" AS sku_code,
+        a.unit,
+--         a.unit_id,
+--         a.location_id,
+        CASE WHEN c.type = 'ONLINE' THEN b.base_quantity ELSE a.base_quantity END AS base_quantity_original,
+        CASE
+            WHEN a.product_id = 1 THEN 1
+            WHEN a.lot_date = '' THEN b.quantity
+            ELSE a.quantity
+        END AS original_quantity,
+        a.unit_price,
+        case
+            when a.tax_rate <= 0 then 0
+                else a.tax_rate end as tax_rate,
+        a.discount_amount,
+        a.promotion_event_code,
+        CASE WHEN c.type = 'ONLINE' THEN b.lot_date ELSE a.lot_date END AS lot_date,
+        CASE WHEN c.type = 'ONLINE' THEN b.lot_id ELSE a.lot_id END AS lot_id,
+        CASE
+            WHEN a.quantity = 0 THEN 0
+            WHEN c.total_item_amount = 0 THEN 0
+            WHEN c.total_item_amount < c.discount_amount THEN a.unit_price
+            ELSE ROUND((a.unit_price / c.total_item_amount) * c.discount_amount, 4)
+        END AS discount_voucher_on_item,
+        DATETIME(a.created_at, "Asia/Ho_Chi_Minh") AS created_at, pos_id
+    FROM ${source.circa}.order_order_item AS a
+    LEFT JOIN ${source.circa}.order_so_item_detail AS b ON a.id = b.item_id
+    LEFT JOIN ${source.circa}.order_order AS c ON c.id = a.order_id
+    WHERE date(c.created_at) >= "2024-11-01"
+)
+,cte_not_online AS (
+    SELECT
+        a.*,
+        (a.discount_amount + a.unit_price) AS unit_price_before_discount,
+        CASE WHEN a.type = 'RETURN' THEN original_quantity * (-1) ELSE original_quantity END AS quantity,
+        CASE WHEN a.type = 'RETURN' THEN base_quantity_original * (-1) ELSE base_quantity_original END AS base_quantity,
+        CASE WHEN a.unit_price = 0 THEN 0 ELSE ia.cost_price_include_tax END AS cost_price_include_tax,
+        CASE WHEN a.unit_price = 0 THEN 0 ELSE ia.cost_price_without_tax END AS cost_price_without_tax,
+        il.location_type,
+        ld.doc_code,
+        so as sale_order_number
+    FROM base_data AS a
+    LEFT JOIN ${source.circa}.inventory_allocation AS ia ON a.item_id = ia.item_ref_id
+    LEFT JOIN ${source.circa}.inventory_location AS il ON ia.location_id = il.id
+    LEFT JOIN ${source.circa}.inventory_location_detail ld ON ia.location_detail_id = ld.id
+    LEFT JOIN UNNEST(JSON_VALUE_ARRAY(ld.sale_order_numbers)) AS so
+    WHERE a.type <> 'ONLINE'
+),
+cte_online AS (
+    SELECT
+        a.*,
+        (a.discount_amount + a.unit_price) AS unit_price_before_discount,
+        CASE WHEN a.type = 'RETURN' THEN original_quantity * (-1) ELSE original_quantity END AS quantity,
+        CASE WHEN a.type = 'RETURN' THEN base_quantity_original * (-1) ELSE base_quantity_original END AS base_quantity,
+         ia.cost_price_include_tax  AS cost_price_include_tax,
+         ia.cost_price_without_tax  AS cost_price_without_tax,
+        il.location_type,
+        ld.doc_code,
+        so as sale_order_number
+    FROM base_data AS a
+    LEFT JOIN ${source.circa}.inventory_allocation AS ia ON a.item_id = ia.item_ref_id
+    LEFT JOIN ${source.circa}.inventory_location AS il ON ia.location_id = il.id
+    LEFT JOIN ${source.circa}.inventory_location_detail ld ON ia.location_detail_id = ld.id
+    LEFT JOIN UNNEST(JSON_VALUE_ARRAY(ld.sale_order_numbers)) AS so
+    WHERE a.type = 'ONLINE'
+)
+,cte_fs as
+(select
+    order_id,
+  product_id,
+  sku_code,
+  quantity,
+  unit,
+  unit_price,
+  discount_amount,
+  unit_price_before_discount,
+  lot_date,
+  base_quantity,
+  tax_rate,
+  product_id || '_' || lot_date || '_' || tax_rate AS product_lot_date_vat,
+  sku_code || '_' || lot_date || '_' || tax_rate AS sku_lotdate_vat,
+  cost_price_include_tax AS base_unit_cost_price,
+  "CIRCA" as owner_name,
+  doc_code as po_code,
+  sale_order_number
+from (
+    SELECT * FROM cte_not_online
+    UNION ALL
+    SELECT * FROM cte_online
+    qualify row_number() over(partition by id) = 1) a
+where item_id  is not null or item_id <> ""
+-- and date(created_at) >= "2024-11-01" --date( date_trunc( date_sub( current_date('+7'), interval 12 month) , month ) )
+and pos_id in ("b6c40920-af79-4fb0-bdc4-9965ddb885d2", "e737c882-e90c-4fd2-8a4f-ac6afd248a33")),
+ cte_os as (
+SELECT
+  order_id,
+--   o.code AS order_code,
+  oi.product_id,
+  oi.sku_code,
+  quantity,
+  unit,
+  unit_price,
+  oi.discount_amount,
+  (oi.discount_amount + oi.unit_price) AS unit_price_before_discount,
+  oi.lot_date,
+  oi.base_quantity,
+--   amount,
+  oi.tax_rate,
+  oi.product_id || '_' || oi.lot_date || '_' || oi.tax_rate AS product_lot_date_vat,
+  oi.sku_code || '_' || oi.lot_date || '_' || oi.tax_rate AS sku_lotdate_vat,
+  al.cost_price_include_tax AS base_unit_cost_price,
+--   item_ref_id,
+--   oi.product_id || '_' || oi.unit|| '_' || o.pos_id as sku_unit_pos,
+--   latest_cost_price,
+--   max_cost_price_include_tax,
+--   min_cost_price_include_tax,
+  eo.name as owner_name,
+  po.code as po_code,
+  po.sale_order_number
+FROM
+  ${source.circa_os}.order_order o
+LEFT JOIN
+  ${source.circa_os}.order_order_item oi
+ON
+  o.id = oi.order_id
+LEFT JOIN
+  ${source.circa_os}.inventory_allocation AS al
+ON
+  oi.id = al.item_ref_id
+LEFT JOIN
+  ${source.circa_os}.inventory_location_detail ld
+ON
+  al.location_detail_id = ld.id --
+left join ${source.circa_os}.inventory_cost_price as cp on oi.product_id = cp.product_id and o.pos_id=cp.pos_id
+left join ${source.circa_os}.order_purchase_order po on  ld.doc_code = po.code
+left join ${source.circa_os}.entity_owner eo on po.owner_id = eo.id
+WHERE
+  o.status LIKE '%COMPLETE%'
+  -- group by all
+    qualify row_number() over(partition by oi.id order by base_unit_cost_price desc) = 1
+    ),
+
+order_items as (select *
+from cte_fs
+union all
+select * from cte_os)
+
+select i.*
+      ,base_unit_cost_price * convert_rate as unit_cost_price
+from order_items i
+left join ${ref('cos_fact_order')} fo on i.order_id = fo.order_id
+left join  ${source.ref}.cos_product_convert_base_unit  cv on cv.product_id = i.product_id and cv.convert_unit = i.unit
+where fo.order_id is not null

@@ -1,0 +1,8 @@
+config {
+    type: "table",
+    description: `Last 13 month| PIC: huyen.nguyenthu; model_type: Table ;schedule: At minute 5 past hour 6, 8, 10, 12, 14, 16, 18, 20 and 22`,
+    tags: ["custom_2h_past5"],
+    name: "cos_dim_target"
+}
+
+select * from buymed_external.ciros_dim_target

@@ -10,10 +10,10 @@ config {
 }
 
 WITH
-dedup_product_catm AS ${dedup.dedup(
-  source.silver + `.marketplace_prd_product_v2_product_category_management`,
-  "product_id, category_management_data, category_management"
-)},
+dedup_product_catm AS (
+  SELECT product_id, category_management_data, category_management
+  FROM ${source.platinum}.marketplace_prd_product_v2_product_category_management
+),
 
 unnest_product_catm AS (
   SELECT

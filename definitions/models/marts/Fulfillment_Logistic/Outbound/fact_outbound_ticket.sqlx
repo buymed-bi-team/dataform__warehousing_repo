@@ -136,10 +136,12 @@ with cte_date as (
 						when so.sale_order_code LIKE 'TO%' THEN "TO"
 						when so.sale_order_code LIKE 'RO%' THEN "RO"
 						when so.sale_order_code LIKE 'CO%' THEN "CO"
+						when so.sale_order_code LIKE 'LO%' THEN "LO"
 					end
 				when UPPER(so.type) = 'NORMAL' then 'SO'
 				when UPPER(so.type) = 'TRANSFER' then 'TO'
 				when UPPER(so.type) = 'CONSIGNMENT' then 'CO'
+				when UPPER(so.type) = 'LIQUIDATION' then 'LO'
 			else 'RO'
 			end as order_type,
 			so.create_source,
@@ -147,8 +149,9 @@ with cte_date as (
 			do_1.status as do_status,
 			do_1.type as do_type,
 			coalesce(
-				nullif(o.customer_ward_code,'0'), o.customer_district_code,
-				nullif(do_1.customer_ward_code,'0'), do_1.customer_district_code
+				IF(SAFE_CAST(o.customer_ward_code AS INT64) > 0, o.customer_ward_code, o.customer_district_code),
+				IF(SAFE_CAST(do_1.customer_ward_code AS INT64) > 0, do_1.customer_ward_code, do_1.customer_district_code)
+				-- nullif(do_1.customer_ward_code,'0'), do_1.customer_district_code
 			) as shipping_ward_code,
 			coalesce(o.customer_district_code,do_1.customer_district_code) as shipping_district_code,
 			coalesce(o.customer_province_code,do_1.customer_province_code) as shipping_province_code,
@@ -157,6 +160,7 @@ with cte_date as (
 				when activation_by > 0 then True 
 				else False 
 			end as is_manual_activation,
+			activation_by,
 			p.tags,
 			p.sort,
 			case 
@@ -178,7 +182,8 @@ with cte_date as (
 			do_1.driver_activities,
 			do_1.extra_props,
 			so.total_item,
-			so.total_sku
+			so.total_sku,
+			ARRAY_LENGTH(JSON_QUERY_ARRAY(do_1.extra_props, '$.baskets')) AS no_bins
 		from (
 			select *
 			from ${source.platinum}.warehouse_prd_core_sale_order
@@ -217,48 +222,13 @@ with cte_date as (
 
 SELECT
 	ot.*
-	, o.cut_off_ts AS outbound_cut_off_time
-	, o.route_name AS outbound_route_name
-	, o.status_cut_off AS outbound_status_cut_off
-	, d.cut_off_ts AS delivery_cut_off_time
-	, d.route_name AS delivery_route_name
-	, IF(
-        ot.carrier_picked_at IS NOT NULL,
-        IF(
-            d.flag
-            , IF(
-                TIMESTAMP_TRUNC(d.pack_done_time, DAY) = TIMESTAMP_TRUNC(ot.carrier_picked_at, DAY)
-                , IF( EXTRACT(HOUR FROM ot.carrier_picked_at) + EXTRACT(MINUTE FROM ot.carrier_picked_at) / 60 + EXTRACT(SECOND FROM ot.carrier_picked_at) / 3600
-                     <= d.cut_off_time + 3, "ON_TIME", "LATE" )
-				, IF( EXTRACT(HOUR FROM ot.carrier_picked_at) + EXTRACT(MINUTE FROM ot.carrier_picked_at) / 60 + EXTRACT(SECOND FROM ot.carrier_picked_at) / 3600 + 24
-                     <= d.cut_off_time + 3, "ON_TIME", "LATE" )
-              )
-            , IF(
-                TIMESTAMP_TRUNC(d.pack_done_time, DAY) = TIMESTAMP_TRUNC(ot.carrier_picked_at, DAY)
-                , "ON_TIME"
-                , IF( EXTRACT(HOUR FROM ot.carrier_picked_at) + EXTRACT(MINUTE FROM ot.carrier_picked_at) / 60 + EXTRACT(SECOND FROM ot.carrier_picked_at) / 3600
-                     <= d.cut_off_time + 3, "ON_TIME", "LATE" )
-              )
-        ),
-        NULL
-    ) AS delivery_status_cut_off
 	, f.cut_off_ts AS fulfill_cut_off_time
 	, f.route_name AS fulfill_route_name
 	, f.fulfill_status_cut_off
 	, f.actual_delivery_route_name
 	, f.actual_delivery_route_ts
 	, f.delay_hours
-	-- , IF(
-    --     ot.carrier_picked_at IS NOT NULL
-	--     , IF(
-    --             ot.carrier_picked_at <= TIMESTAMP_ADD(TIMESTAMP_ADD(f.cut_off_ts, INTERVAL 3 HOUR), INTERVAL 30 MINUTE )
-	--             , "ON_TIME"
-	--             , "LATE"
-	--       )
-    --     , IF(f.cut_off_ts < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR), "LATE", NULL) 
-    -- ) AS fulfill_status_cut_off
+
 FROM outbound_ticket AS ot
-	LEFT JOIN ${ref('dim_outbound_cutoff_route')} AS o ON ot.ticket_id = o.ticket_id
-	LEFT JOIN ${ref('dim_delivery_cutoff_route')} AS d ON ot.ticket_id = d.ticket_id
 	LEFT JOIN ${ref('dim_fulfill_cutoff_route')} AS f ON ot.ticket_id = f.ticket_id
 QUALIFY ROW_NUMBER() OVER(PARTITION BY ticket_id) = 1

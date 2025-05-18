@@ -1,0 +1,60 @@
+
+config {
+    type: "operations",
+    tags: ["platinum_custom_1h_past7","marketplace_prd_customer"]
+}
+
+DECLARE _assert INT64;
+DECLARE sef_dedup BOOL;
+
+SET _assert = (
+    SELECT
+        COUNT(*)
+    FROM (
+    SELECT
+        mg_id,
+        COUNT(1) AS index_row_count
+    FROM ${ref(`marketplace_prd_customer_log`)}
+    GROUP BY mg_id
+    ) AS data
+    WHERE index_row_count > 1
+);
+
+IF ( _assert <> 0 ) THEN 
+    CREATE OR REPLACE TABLE ${ref(`marketplace_prd_customer_log`)}
+    PARTITION BY  created_date 
+    AS (
+        SELECT
+            * except(created_date),
+            CASE 
+                WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
+                ELSE "2099-01-01"
+            END AS created_date
+        FROM ${ref(`marketplace_prd_customer_log`)} o 
+        QUALIFY ROW_NUMBER() OVER (_window) = 1
+                AND FIRST_VALUE(action) OVER (_window) <> 'd'
+        WINDOW _window AS (
+            PARTITION BY mg_id
+            ORDER BY synced_at DESC,
+            IF
+                (action='d',3,
+                IF
+                (action='u',2,1)) DESC)
+    );
+    SET _assert = ( -- If Stll duplicate
+        SELECT
+            COUNT(*)
+        FROM (
+        SELECT
+            mg_id,
+            COUNT(1) AS index_row_count
+        FROM ${ref(`marketplace_prd_customer_log`)}
+        GROUP BY mg_id
+        ) AS data
+        WHERE index_row_count > 1
+    );
+
+    ASSERT ( _assert = 0) AS "mg_id must be unique key" ;
+END IF
+
+

@@ -1,0 +1,35 @@
+config {
+    type: "table", 
+    description: 
+        `PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.platinum}.seller_prd_purchasing_initial_stock_draft
+        `,
+    tags: ["custom_1h_past5", "PRODUCT_MANAGEMENT"]
+}
+
+SELECT
+    a.seller_code
+    , a.sku
+    , a.sku_demand
+    , a.warehouse_code
+    , a.avg_demand
+    , SAFE_CAST(JSON_VALUE(a.extra_props, "$.cleaning_avg_demand") AS FLOAT64) AS avg_demand_new
+    , a.initial_stock
+    , a.origin_initial_stock
+    , SAFE_CAST(JSON_VALUE(a.extra_props, "$.max_quantity") AS FLOAT64) AS max_initial_stock
+    , SAFE_CAST(JSON_VALUE(a.extra_props, "$.leadtime") AS FLOAT64) AS leadtime
+    , SAFE_CAST(JSON_VALUE(a.extra_props, "$.stock_day") AS FLOAT64) AS stock_day
+    , SAFE_CAST(JSON_VALUE(a.extra_props, "$.max_stock_day") AS FLOAT64) AS max_stock_day
+    -- , lead_time
+    , TIMESTAMP_ADD(a.last_updated_time, INTERVAL 7 HOUR) AS last_updated_time
+    , a.extra_props
+    , b.sku_key_sales_region_code
+FROM ${source.platinum}.seller_prd_purchasing_initial_stock_draft AS a
+    LEFT JOIN ${ref('dim_sku_sales_region_current')} AS b 
+        ON a.sku = b.sku_code
+        AND a.warehouse_code = b.fc_code
+WHERE b.sku_key_sales_region_code IS NOT NULL
+    AND b.seller_code = "MEDX"

@@ -13,7 +13,7 @@ config {
     partitionBy: "created_time",
     clusterBy: ["vendor_bill_id"]
   },
-  tags: ["8h30", "10h30", "12h30", "15h30" ,"18h00"]
+  tags: ["custom_1h_past5", "MARKETPLACE"]
 }
 
 WITH

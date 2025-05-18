@@ -4,6 +4,10 @@
 config {
     type: "incremental",
     name: "accounting_prd_invoice_order_invoice",
+    description: `
+      source: https://internal.thuocsi.vn/crm/invoice/order
+
+    `,
     schema: "platinum_buymed_vn",
     assertions: {
         uniqueKey: 'mg_id',
@@ -12,7 +16,7 @@ config {
     bigquery: {
         partitionBy: "created_date"
     },
-    tags: ["custom_1h_past5", "accounting_prd_invoice"]
+    tags: ["custom_1h_past7", "accounting_prd_invoice"]
 }
 
 pre_operations {

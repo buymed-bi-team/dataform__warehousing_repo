@@ -1,5 +1,5 @@
 config {
-    type: 'table',
+    type: 'incremental',
     name: "fact_user_event_tracking",
     description: `Last 2 month | PIC: tu.dang; schedule: 8h30 daily; model type: table
     Source:
@@ -14,11 +14,24 @@ config {
         source: "Nullable | The source of the event, indicating how the item was created",
         sku_code: "NonNull" | docs.sku
         },
-    tags: ['8h30'],
+    tags: ["custom_1h_past5"],
     bigquery: {
         partitionBy: "date(created_time)",
         clusterBy: ["event", "customer_id"]
     },
+}
+
+pre_operations {
+    ${
+        when(incremental(),
+        `
+            DELETE FROM ${self()}
+            WHERE created_time >= DATETIME(CURRENT_DATE("+7"));
+            DELETE FROM ${self()}
+            WHERE created_time < DATETIME_SUB(DATETIME_TRUNC(CURRENT_DATETIME("+7"), MONTH), INTERVAL 2 MONTH);
+        `
+
+    )}
 }
 
 WITH stg AS (
@@ -41,6 +54,7 @@ WITH stg AS (
         JSON_EXTRACT_SCALAR(a.extra_props, '$.metadata.status') AS search_status,
         JSON_EXTRACT_SCALAR(a.extra_props, '$.metadata.page') AS page,
         JSON_EXTRACT_SCALAR(a.extra_props, '$.ua_metadata.OS') AS device_os,
+        JSON_EXTRACT_SCALAR(a.extra_props, '$.ua_metadata.CLIENT') AS client,
         JSON_EXTRACT_SCALAR(a.extra_props, '$.ua_metadata.PLATFORM') AS platform,
         JSON_EXTRACT_SCALAR(a.extra_props, '$.user_metadata.LOCATION') AS location,
         JSON_EXTRACT_SCALAR(a.extra_props, '$.client_user_time') AS client_user_time, 
@@ -57,11 +71,11 @@ WITH stg AS (
     `${source.platinum}.monitoring_prd_collector_user_stats` a
     left join `${source.platinum}.monitoring_prd_realtime_user_customer_session_v3`b 
         on a.customer_id= b.customer_id 
-        and a.created_time between b.start_time and end_time and b.created_date >= date( date_trunc( date_sub( current_date('+7'), interval 2 month) , month ) )
+        and a.created_time between b.start_time and end_time and b.created_date >= ${when(incremental(), `current_date("+7")`, `date( date_trunc( date_sub( current_date('+7'), interval 2 month) , month ) )`)}
     where
     -- _TABLE_SUFFIX BETWEEN '20240701'
     -- AND FORMAT_DATE('%Y%m%d', CURRENT_DATE())        
-        a.created_date >= date( date_trunc( date_sub( current_date('+7'), interval 2 month) , month ) )
+        a.created_date >= ${when(incremental(), `current_date("+7")`, `date( date_trunc( date_sub( current_date('+7'), interval 2 month) , month ) )`)}
 --     AND event IN ( "ADD_TO_CART","SKU_DETAIL_VIEW","SKU_IMPRESSION","REMOVE_FROM_CART","SEARCH")
 ),
     region AS (
@@ -111,7 +125,8 @@ WITH stg AS (
             store_name,
             time_counter,
             store_type,
-            store_code
+            store_code,
+            client
         from (
             select *,
             COALESCE(block_code_v1,blockCode) as block_code,

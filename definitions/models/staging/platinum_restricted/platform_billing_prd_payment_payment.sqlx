@@ -1,19 +1,31 @@
 config {
     type: "incremental",
     name: "platform_billing_prd_payment_payment",
-    description: "PIC: minhLuu ; Internal: Accounting/Payment ; danh sách phiếu thanh toán của kế toán",
+    description: `PIC: minhLuu ; 
+    Internal: 
+      - Accounting/Payment ; danh sách phiếu thanh toán của kế toán
+      - accounting.buymed.com/payment/detail
+      - internal-seller/MEDX/PUR_HCM/payment : JSON_EXTRACT_SCALAR(extra_props,"\$.source") ="THUOCSIVN_INTERNAL_SELLER" OR 
+    `,
     schema: "platinum_buymed_vn_restricted",
     columns: {
       payment_code: "Mã phiếu thanh toán",
-      partner_type: "Mục đích",
+      partner_type: "",
+      type:"loại phiếu",
+      payment_method: "hình thức thanh toán",
+
       company_code: "mã tên công ty",
       object_type_codes: "Đơn hàng",
       type: "Loại phiếu",
-      payment_methoed: "Loại thanh toán",
+      payment_method: "Loại thanh toán",
       amount: "Số tiền cần xử lý",
+      balance: "Dư nợ còn lại",
+      paid_time: "Ngày thanh toán",
       created_time: "Ngày tạo theo UTC",
       created_by_account_id: "id của người tạo",
       status: "trạng thái",
+      object_type_codes: "Hóa đơn liên quan",
+      extra_props: "{ reason_code:<Mục đích, join với bảng reason_setting>, extra_data:<JSON, gồm created_by_id và list po_related> }"
     },
     assertions: {
         uniqueKey: 'mg_id',

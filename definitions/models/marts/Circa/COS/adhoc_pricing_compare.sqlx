@@ -1,0 +1,126 @@
+config {
+    type: "table",
+    description: `PIC: huyen.nguyenthu;
+    Source:
+        ${source.ref}.adhoc_pricing_competitor_price
+        ${source.ref}.dim_fc_service_area
+        ${source.ref}.adhoc_pricing_full
+        ${source.ref}.cos_adhoc_pos_product`
+      ,
+    tags: ["custom_1h_past5"],
+    name: "adhoc_pricing_compare",
+    columns: {
+        product_id: "NonNull | The unique identifier for each product"
+        
+    }
+}
+
+WITH
+  market_price AS (
+  SELECT
+    product_id
+    , s.sales_region_code
+    , min(market_price_aft_convert) AS min_price
+    , min(competitor) as min_competitor
+    , max(market_price_aft_convert) AS max_price
+    , max(competitor) as max_competitor
+  FROM ${ref('adhoc_pricing_competitor_price')} m
+  LEFT JOIN ${ref('dim_fc_service_area')} s ON m.province_code = s.service_area_code
+  WHERE qc = "QC" and competitor IN ('LongChau', 'AnKhang', 'Pharmacity')
+  GROUP BY ALL
+  ),
+
+  medx_price AS (
+  SELECT
+      product_id
+       , sales_region_code
+       , MIN(sku_display_price) as sku_display_price
+       , "medx" as source_price
+  FROM ${ref('adhoc_pricing_full')}
+  WHERE customer_level = 'LEVEL_PLATINUM'
+    and sales_region_code = 'MIENNAM'
+    and sku_code like 'MEDX.%'
+  GROUP BY ALL),
+
+  seller_price_vat AS (SELECT
+      f.product_id
+       , f.sales_region_code
+       , MIN(f.sku_display_price) as sku_display_price
+       , "seller" as source_price
+  FROM ${ref('adhoc_pricing_full')} f
+  LEFT JOIN ${ref('dim_sku_sales_region_current')} s on f.sku_key_sales_region_code = s.sku_key_sales_region_code
+  WHERE customer_level = 'LEVEL_PLATINUM'
+    and f.sales_region_code = 'MIENNAM'
+    and f.product_id NOT IN (
+    SELECT
+      distinct product_id
+  FROM ${ref('adhoc_pricing_full')}
+  WHERE customer_level = 'LEVEL_PLATINUM'
+    and sales_region_code = 'MIENNAM'
+    and sku_code like 'MEDX.%'
+      )
+    and s.vat > 0
+  GROUP BY ALL
+  ),
+
+  nonvat AS (
+    SELECT
+        f.product_id
+         , f.sales_region_code
+         , MIN(sku_display_price) as sku_display_price
+         , "nonvat" as source_price
+    FROM ${ref('adhoc_pricing_full')} f
+    LEFT JOIN ${ref('dim_sku_sales_region_current')} s on f.sku_key_sales_region_code = s.sku_key_sales_region_code
+    WHERE customer_level = 'LEVEL_PLATINUM'
+      and f.sales_region_code = 'MIENNAM'
+      and f.product_id NOT IN (SELECT distinct product_id from medx_price UNION ALL SELECT distinct product_id from seller_price_vat)
+      and s.vat <= 0
+    GROUP BY ALL
+  ),
+
+  thuocsi_price AS (
+    SELECT * FROM medx_price
+    UNION ALL
+    SELECT * FROM seller_price_vat
+    UNION ALL
+    SELECT * FROM nonvat
+    ),
+
+  os_price AS (
+    SELECT
+      l.product_id
+      , l.sales_region_code
+      , l.max_convert_rate
+      , SAFE_DIVIDE(l.max_convert_rate, p.convert_rate) AS max_unit
+    FROM (
+      SELECT
+        product_id
+        , sales_region_code
+        , max(convert_rate) AS max_convert_rate
+        FROM ${ref('cos_adhoc_pos_product')}
+        GROUP BY ALL) AS l
+    LEFT JOIN ${ref('cos_adhoc_pos_product')} p
+      ON l.product_id = p.product_id
+      AND l.sales_region_code = p.sales_region_code
+    GROUP BY ALL
+  )
+
+  SELECT
+    o.product_id
+    , o.sales_region_code
+    , SAFE_CAST(SAFE_DIVIDE(o.max_convert_rate, o.max_unit) AS INT64) AS convert_rate
+    , SAFE_DIVIDE(m.min_price, o.max_unit) AS min_market_price
+    , min_competitor
+    , SAFE_DIVIDE(m.max_price, o.max_unit) AS max_market_price
+    , max_competitor
+    , SAFE_DIVIDE(t.sku_display_price, o.max_unit) AS thuocsi_display_price
+    , t.source_price
+  FROM os_price o
+  LEFT JOIN market_price m
+    ON o.product_id = m.product_id
+    AND o.sales_region_code = m.sales_region_code
+  LEFT JOIN thuocsi_price t
+    ON o.product_id = t.product_id
+    AND o.sales_region_code = t.sales_region_code
+  WHERE o.sales_region_code = 'MIENNAM'
+  GROUP BY ALL

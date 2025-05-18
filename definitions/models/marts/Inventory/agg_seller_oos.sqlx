@@ -40,6 +40,9 @@ SELECT
     , ns.content AS last_system_note
     , np.content AS last_pic_note
     , nc.content AS last_cic_note
+    , COALESCE(oos.oos_time, b.last_oos_time) AS product_oos_time
+    , i.po_code
+    , i.created_time AS po_created_time
 FROM ${ref('dim_sku_item')} AS a
     LEFT JOIN (
        SELECT
@@ -109,6 +112,46 @@ FROM ${ref('dim_sku_item')} AS a
         WHERE ib_status <> "COMPLETED"
         GROUP BY sku_fc_key
     ) AS inc ON inc.sku_fc_key = a.sku_fc_key
+    LEFT JOIN (
+        SELECT
+            a.*
+            , b.changed_time AS oos_time
+            , CONCAT(a.product_id, '_', a.sales_region_code) AS product_sales_region_code
+        FROM (
+                SELECT
+                    product_id
+                    , sales_region_code
+                    , status
+                    , date
+                FROM ${ref('agg_product_status_by_date')}
+                QUALIFY status <> LEAD(status) over (PARTITION BY product_id, sales_region_code ORDER BY date DESC )
+            ) AS a
+            LEFT JOIN (
+                SELECT
+                    product_id
+                    , sales_region_code
+                    , DATE(created_time) AS date
+                    , MAX(created_time) AS changed_time
+                FROM ${ref('fact_changed_sku_internal_status')}
+                WHERE SPLIT(sku_code, '.')[OFFSET(0)] NOT IN ('MEDX_E', 'MEDC', 'MED_NT', 'TENDER', 'MEDX-HN', 'DENX', 'MARKETING', '9SUUUUUUUU', 'QMQEM8DN9F', 'UQRRRRRRRR')
+                GROUP BY ALL
+            ) AS b
+                ON a.product_id = b.product_id
+                    AND a.sales_region_code = b.sales_region_code
+                    AND a.date = b.date
+        QUALIFY ROW_NUMBER() over (_window_) = 1 AND FIRST_VALUE(a.status) over (_window_) = 'OUT_OF_STOCK'
+        WINDOW _window_ AS (PARTITION BY a.product_id, a.sales_region_code ORDER BY a.date DESC)
+    ) AS oos ON oos.product_id = a.product_id AND oos.sales_region_code = a.sales_region_code
+    LEFT JOIN (
+        SELECT
+            sku_fc_key
+            , MAX(created_time) AS created_time
+            , MAX_BY(po_code, created_time) AS po_code
+        FROM ${ref('fact_stock_incoming')}
+        WHERE incoming_quantity > 0
+            AND ib_status <> "COMPLETED"
+        GROUP BY 1
+    ) AS i ON i.sku_fc_key = a.sku_fc_key
 WHERE
     (p.is_combo <> TRUE OR p.is_combo IS NULL)
     AND a.item_code IS NOT NULL

@@ -1,0 +1,27 @@
+config {
+    type: "view",
+    description: `PIC:minh.luu
+    Use to Extract necessary field of INFORMATION_SCHEMA JOBS
+    `,
+    tags: ["bq_job"],
+    bigquery: {
+    }
+}
+-- Filter date, Create temporary primary key, Get column
+SELECT
+    job_id,
+    user_email || job_id || CAST(UNIX_SECONDS(creation_time) AS STRING) base_key, -- For temp key
+    user_email ,
+    referenced_tables,
+    destination_table,
+    creation_time as execution_time,
+    query,
+    state,
+    job_type,
+    statement_type,
+    priority,
+    total_bytes_processed,
+    total_bytes_billed,
+    labels -- Dataform label in here
+
+FROM region-asia-southeast1.INFORMATION_SCHEMA.JOBS as a

@@ -2,62 +2,100 @@ config {
     type: "incremental",
     name: "marketplace_prd_order_v2_order_item",
     schema: "platinum_buymed_vn",
-    assertions: {
-         uniqueKey: 'mg_id'
-     },
+    // assertions: {
+    //      uniqueKey: 'mg_id'
+    //  },
     bigquery: {
         partitionBy: "created_date"
     },
-    tags: ["custom_1h_past7","marketplace_prd_order-v2"]
+    tags: ["critical_custom_10min","marketplace_prd_order-v2","Finance/margin"]
 }
-
+js {
+  const last_day = `DATE(CURRENT_DATE() - INTERVAL 1 DAY)`
+}
 pre_operations {
   ${
     when(incremental(),
-      `
-      --
-      DECLARE checkpoint_date ARRAY<date>;
+        `
+        # Incremental
+        DECLARE has_new_data BOOLEAN;
+        DECLARE Ingest_checkpoint TIMESTAMP;
+        DECLARE checkpoint_date ARRAY<date>;
+        DECLARE deleted_records ARRAY<STRING>;
+        
+        SET Ingest_checkpoint = (SELECT max(ingest_time)  - INTERVAL 1 HOUR  FROM ${self()} WHERE created_date >= ${last_day});
 
-      SET checkpoint_date = ARRAY( 
-        SELECT DISTINCT date(created_time,'+7')
-        FROM silver_buymed_vn.marketplace_prd_order_v2_order_item 
-        WHERE ingest_time >= TIMESTAMP_TRUNC((CURRENT_TIMESTAMP() - interval 6 HOUR), HOUR)
-        AND created_time IS NOT NULL
-      );
-
-      DELETE FROM platinum_buymed_vn.marketplace_prd_order_v2_order_item
-      where created_date in UNNEST(checkpoint_date)
-      and mg_id in ( 
-        SELECT DISTINCT mg_id 
-        FROM silver_buymed_vn.marketplace_prd_order_v2_order_item 
-        WHERE ingest_time >= TIMESTAMP_TRUNC((CURRENT_TIMESTAMP() - interval 6 HOUR), HOUR)
+        SET ( has_new_data, checkpoint_date, deleted_records ) = ( 
+            SELECT AS STRUCT 
+                IF ( 
+                    COUNT(*) > 0 , TRUE, FALSE 
+                ) has_new_data,
+                /* 
+                    has_new_data describe the existance of data after the last refresh time of platinum 
+                */
+                ARRAY_AGG(
+                    DISTINCT IF(created_time is NULL, "2099-01-01" , DATE( DATETIME(created_time,'Asia/Ho_Chi_Minh') ) )
+                ) AS checkpoint_date,
+                ARRAY_AGG (
+                    DISTINCT IF(action = 'd',mg_id, NULL) IGNORE NULLS
+                ) AS deleted_records
+            FROM ${source.silver}.marketplace_prd_order_v2_order_item
+            WHERE ingest_time > Ingest_checkpoint 
+            -- AND ingest_time < TEMP_timestamp
         );
 
+        CREATE TEMP TABLE new_records AS (
+          SELECT DISTINCT mg_id
+          FROM ${source.silver}.marketplace_prd_order_v2_order_item
+          WHERE ingest_time > Ingest_checkpoint 
+        );
+
+        IF ( has_new_data = TRUE ) THEN
+            IF (SELECT ARRAY_LENGTH(deleted_records) > 0) THEN 
+              SET checkpoint_date = ARRAY( 
+                SELECT DISTINCT created_date
+                FROM ${self()} 
+                WHERE mg_id IN (SELECT mg_id FROM new_records)
+              );
+            END IF;
+
+            DELETE FROM ${self()}
+            WHERE 
+                created_date IN UNNEST(checkpoint_date)
+                AND mg_id IN (SELECT mg_id FROM new_records)
+            ;
+        ELSE 
+            SET Ingest_checkpoint = TIMESTAMP("2099-01-01T00:00:00");
+        END IF ;
+
+    
       `,
       ``
     )
   }
 }
+
 --
+
 SELECT 
-  *,
-  DATE_TRUNC(
-    CASE 
-    WHEN created_time IS NULL THEN DATETIME("2099-01-01T00:00:00")
-    WHEN MOD(EXTRACT(HOUR FROM created_time), 2) = 1 THEN DATETIME(created_time - interval 1 hour)
-    ELSE DATETIME(created_time)
-  END, HOUR) AS partition_time -- Use for partition each two hour, only apply for table that have high frequency update
+  *
 FROM (
   SELECT
     *,
     CASE 
       WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
       ELSE "2099-01-01"
-    END AS created_date
+    END AS created_date,
+    CURRENT_DATETIME() AS platinum_refresh
 
   FROM
-    ${source.silver}.marketplace_prd_order_v2_order_item o 
-    ${ when(incremental(),  `WHERE ingest_time > TIMESTAMP_TRUNC((CURRENT_TIMESTAMP() - interval 6 HOUR), HOUR)`  )}
+    ${source.silver}.marketplace_prd_order_v2_order_item s
+    ${ when(incremental(), 
+      `WHERE s.ingest_time > Ingest_checkpoint - INTERVAL 2 HOUR
+          -- AND s.ingest_time < TEMP_timestamp
+          AND s.mg_id IN (SELECT mg_id FROM new_records) `, 
+      // `WHERE ingest_time > "2025-01-01" AND ingest_time <= "2025-01-22T13:00:00"` 
+      )}  
   QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'
   WINDOW _window AS ( 
     PARTITION BY mg_id

@@ -17,7 +17,7 @@ WITH
             type,
             IF(value = 'NAN', null, value) as value
         from collector.data_prd
-        where object = 'Product' and submit_id >= 4300 and type  in ('DIVISION_NAME', 'IMAGE_LINK', 'DATA_SHARING')
+        where object = 'Product' and submit_id >= 4300 and type  in ('DIVISION_NAME', 'IMAGE_LINK', 'DATA_SHARING', "DIVISION_GROUP")
           and code not in ('216','217','218','219')
         qualify ROW_NUMBER() over (partition by code, object, type order by submit_at desc) = 1
     ),
@@ -31,15 +31,31 @@ WITH
             , a.division_name
         FROM ${source.platinum}.seller_prd_promotion_division AS a
             , UNNEST(JSON_QUERY_ARRAY(products)) AS b
+    ),
+
+    image AS (
+        SELECT
+            *
+        FROM UNNEST([
+            STRUCT (1246 AS division_id, "https://i.ibb.co/cKhYMyjB/Astrazeneca-02.jpg" AS image_link),
+            STRUCT (1099 AS division_id, "https://i.ibb.co/dw5mhLwP/organon.png" AS image_link),
+            STRUCT (1274 AS division_id, "https://i.ibb.co/ymknkf22/imexpharm.png" AS image_link),
+            STRUCT (208 AS division_id, "https://i.ibb.co/fYsbXXc3/Menarini.png" AS image_link),
+            STRUCT (1133 AS division_id, "https://i.ibb.co/1fX6vtbD/zuellig.png" AS image_link),
+            STRUCT (843 AS division_id, "https://i.ibb.co/n8rjbG9w/novartis.png" AS image_link)
+        ])
     )
 
 select
     a.*,
     b.value as brand_name,
-    lower(c.value) as image_link,
-    d.value AS data_sharing_type
+    COALESCE(lower(c.value), i.image_link) as image_link,
+    d.value AS data_sharing_type,
+    e.value AS brand_group
 from division AS a
     left join client b on b.division_id = a.division_id and b.type = 'DIVISION_NAME'
     left join client c on c.division_id = a.division_id and c.type = 'IMAGE_LINK'
     left join client d on d.division_id = a.division_id and d.type = 'DATA_SHARING'
+    left join client e on e.division_id = a.division_id and e.type = 'DIVISION_GROUP'
+    left join image AS i on i.division_id = a.division_id
 

@@ -1,0 +1,78 @@
+config {
+    type: "table",
+    description: `Last 13 month| PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`
+    /*Source:
+      ${source.silver}.marketplace_prd_order_v2_order_item
+      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
+    tags: ["custom_1h_past5"],
+    name: "cos_pending_purchase",
+    columns: {
+        order_id: "NonNull |" + docs.order_id,
+        customer_id: "NonNull | The unique identifier for each customer"
+        
+    },
+    bigquery: {
+        partitionBy: "date(created_at)"
+    }
+}
+
+
+with t as
+(Select * from ${source.circa_os}.order_purchase_order
+WHERE Status <> 'WAITING_PAYMENT'
+      and status <> 'COMPLETED'
+      and status <> 'CANCELED'
+      and status <> 'SEPERATED'
+      and status <> 'PENDING' 
+
+),Pending_item_external as (
+Select distinct
+        t.created_at 
+       ,t.id 
+       ,t.pos_id
+       ,i.product_id
+       ,i.unit
+       ,i.sku
+       ,t.status
+       ,i.quantity as quantity
+       ,''as base_quantity
+       ,t.fulfillment_method
+       ,t.code
+      
+from t 
+left join ${source.circa_os}.order_purchase_order_item i on t.id = i.purchase_order_id
+where t.fulfillment_method <> 'SO_THUOCSI'
+and date(t.created_at) >=  '2025-04-11')
+,Map_thuocsi as (
+Select distinct
+        t.created_at 
+       ,t.id 
+       ,t.pos_id
+       ,a.product_id
+       ,td.unit
+       ,a.sku_code as sku_code
+       ,t.status
+       ,a.demand_quantity as quantity
+       ,''as base_quantity
+       ,t.fulfillment_method
+       ,t.code
+      
+from ${source.ref}.fact_order o 
+left join `${source.ref}.fact_order_item` a on o.order_id = a.order_id 
+left join  t on t.sale_order_number = SAFE_CAST(o.order_id as string)
+left join ${source.ref}.dim_product td on a.product_id = td.product_id
+where t.sale_order_number is not null
+and o.order_status <> 'CANCEL'
+and t.fulfillment_method = 'SO_THUOCSI'
+and date(created_date) >=  '2025-04-11' 
+group by all
+
+),Pending as (
+Select * from Pending_item_external
+union all
+Select * from Map_thuocsi
+)
+Select p.*
+ from Pending p 
+ where p.id not in 
+(Select distinct purchase_order_id from ${source.circa_os}.order_goods_receipt where status = 'COMPLETED')

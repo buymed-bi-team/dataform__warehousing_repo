@@ -131,7 +131,7 @@ WITH product_retail_unit AS (
       QUALIFY ROW_NUMBER() OVER(PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
   )
 
-    , high_margin_product AS (
+  , high_margin_product AS (
       SELECT 
           SAFE_CAST(code AS INT64) AS product_id
           , NULLIF(value, "NAN") as high_margin
@@ -148,6 +148,37 @@ WITH product_retail_unit AS (
     GROUP BY 1
   )
 
+  , retail_price AS (
+    SELECT
+      product_id
+      , retail_price
+    FROM ${source.platinum}.pim_prd_product_product_retail_price
+    WHERE region_code = "ALL"
+  )
+
+  , brand AS (
+    SELECT
+      product_id
+      , b.name AS brand
+    FROM ${source.platinum}.pim_prd_product_product AS a
+      LEFT JOIN ${source.platinum}.pim_prd_product_brand AS b 
+        ON JSON_VALUE(a.extra_props, "$.brand_code") = b.brand_code
+  )
+
+
+  , ownbrand_portfolio AS (
+        SELECT DISTINCT
+            product_id
+            , "OWNBRAND" AS ownbrand_portfolio
+        FROM ${ref('dim_product_division')}
+        WHERE brand_group = "OWNBRAND"
+        UNION DISTINCT
+        SELECT DISTINCT
+            product_id
+            , "MARGIN >10%"
+        FROM buymed_external.potential_high_margin_product
+  )
+
 SELECT
   ${utils.ToTimezone('current_timestamp()')} as transformed_at,
   ${utils.ToTimezone('product.created_time')} as product_created_at,
@@ -158,8 +189,9 @@ SELECT
   seller_category.name AS product_category,
   product.seller_category_code as product_category_code,
   product.vat,
-  product.brand,
-  product.category_management as brand_type,
+  -- product.brand,
+  br.brand,
+  JSON_VALUE(product.extra_props, "$.product_category_management") as brand_type,
 
   seller.code as owner_code,
   seller.name as owner_name,
@@ -178,11 +210,11 @@ SELECT
 
   CASE
       WHEN product.origin IN ('Vietnam', 'VN') THEN 'Vietnam'
-      ELSE 'International'
-    END AS origin,
+      WHEN product.origin NOT IN ('Vietnam', 'VN') THEN 'International'
+  END AS origin,
   CASE
     WHEN product.origin IN ('Vietnam', 'VN') THEN 'Local'
-    ELSE 'Import'
+    WHEN product.origin NOT IN ('Vietnam', 'VN') THEN 'Import'
   END AS origin_type,
   tb3.name as country_origin,
   product.registration_number,
@@ -210,7 +242,7 @@ SELECT
   product.width,
   product.weight,
 
-  product.usage,
+  IF(product.usage = "Dùng tại chổ","Dùng tại chỗ", product.usage) AS usage,
   JSON_EXTRACT_SCALAR(product.extra_props, '$.is_portable') as is_portable,
   atc2.name AS act_2,
   atc3.name AS act_3,
@@ -267,7 +299,10 @@ SELECT
   cic.cic_name,
   cic.cic_account_id,
 
-  hmp.high_margin
+  hmp.high_margin,
+
+  rp.retail_price,
+  op.ownbrand_portfolio
 
 FROM ${source.platinum}.marketplace_prd_product_v2_product AS product
 LEFT JOIN  ${source.platinum}.seller_prd_core_seller AS seller on product.owner = seller.code
@@ -283,6 +318,9 @@ LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_main_category AS tb4 ON 
 LEFT JOIN product_cic AS cic ON cic.product_id = product.product_id
 LEFT JOIN high_margin_product AS hmp ON hmp.product_id = product.product_id
 LEFT JOIN is_ingredient_special AS iis ON iis.product_id = product.product_id
+LEFT JOIN retail_price AS rp ON rp.product_id = product.product_id
+LEFT JOIN brand AS br ON br.product_id = product.product_id
+LEFT JOIN ownbrand_portfolio AS op ON op.product_id = product.product_id
 
 WHERE
     LOWER(product.name) NOT LIKE '%(bỏ)%'
@@ -291,6 +329,7 @@ WHERE
     AND LOWER(product.name) NOT LIKE '%[tech%'
     AND LOWER(product.name) NOT LIKE '%[oanh%'
     AND LOWER(product.name) NOT LIKE '%sp test%'
+    AND LOWER(product.name) NOT LIKE '%[removed]%'
 QUALIFY ROW_NUMBER() OVER(PARTITION BY product_id) = 1
 
 post_operations {                

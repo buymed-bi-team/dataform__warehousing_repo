@@ -12,9 +12,54 @@ config {
     tags: ["custom_1h_past5","PROMOTION_MKP"]
 }
 
-SELECT
-    gamification_id
-    , customer_id
-    , TIMESTAMP_ADD(TIMESTAMP(join_time), INTERVAL 7 HOUR) AS join_time
-FROM ${source.platinum}.marketplace_prd_promotion_gamification_customer
+WITH
+    active_customer_gamification AS (
+        SELECT
+            a.customer_id
+            , a.gamification_id
+            , g.gamification_code
+        FROM ${source.platinum}.marketplace_prd_promotion_gamification_customer AS a
+            LEFT JOIN ${ref('dim_gamification')} AS g USING(gamification_id)
+        WHERE a.status IN ("ACTIVE", "INACTIVE")
+            AND g.gamification_id IS NOT NULL
+    )
+    
+    , customer_and_gamification AS (
+        SELECT
+            c.customer_id
+            , g.gamification_id
+            , g.gamification_code
+        FROM ${ref('dim_customer')} AS c
+            , ${ref('dim_gamification')} AS g
+        WHERE customer_status = "ACTIVE"
+            AND g.gamification_id NOT IN (SELECT DISTINCT gamification_id FROM active_customer_gamification)
+
+    )
+
+    , excluding_customer AS (
+        SELECT
+            a.customer_id
+            , g.gamification_id
+            , g.gamification_code
+        FROM ${source.platinum}.marketplace_prd_promotion_gamification_customer AS a
+            LEFT JOIN ${ref('dim_gamification')} AS g USING(gamification_id)
+        WHERE a.status = "BLACKLIST"
+            AND g.gamification_id IS NOT NULL
+    )
+
+    , final AS (
+        SELECT
+            *
+        FROM customer_and_gamification
+        EXCEPT DISTINCT
+        SELECT
+            *
+        FROM excluding_customer
+    )
+
+SELECT *
+FROM active_customer_gamification
+UNION DISTINCT
+SELECT *
+FROM final
 

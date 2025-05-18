@@ -15,7 +15,7 @@ config {
     partitionBy: "date(invoice_time)",
     clusterBy: ["order_id"]
   },
-  tags: ["8h30", "10h30", "12h30", "15h30" ,"18h00"]
+  tags: ["custom_1h_past5"]
 }
 
 SELECT

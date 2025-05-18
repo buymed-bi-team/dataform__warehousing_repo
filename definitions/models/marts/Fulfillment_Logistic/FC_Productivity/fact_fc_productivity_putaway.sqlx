@@ -22,5 +22,4 @@ select
     , 'PUT' as stage_code
 FROM ${source.platinum}.warehouse_prd_inbound_put_ticket as p
 where
-    p.created_date >= (select DATE(start_date) from cte_date) 
-    AND p.end_time >= (select start_date from cte_date)
+    p.end_time >= (select start_date from cte_date)

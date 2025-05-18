@@ -1,0 +1,106 @@
+config {
+    type: "view",
+    tags: ["KPI_FULFILLMENT"]
+}
+
+WITH
+  cte_date AS (
+    SELECT date_sub( timestamp( date_trunc( date_sub( current_date('+7'), interval 6 month) , month ) ) , interval 7 hour ) as start_date
+      , date_sub( timestamp( date_trunc( date_sub( current_date('+7'), interval 3 month) , month ) ) , interval 7 hour ) as start_date_2
+  ),
+
+    bin AS (
+        select
+            'BIN_OUT_FC' as stage,
+            p.ticket_id,
+            p.warehouse_code as location_code,
+            wd.delivery_order_code as parent_code,
+            b as basket_code,
+            wh.level as level_bin,
+            timestamp_add(p.start_time, interval 7 hour) as ts_start,
+            timestamp_add(p.end_time, interval 7 hour) as ts_done,
+            IF(json_value(p_b,'$.type') = "DELIVERY",1, 0) AS no_packages,
+            t.num_package AS package_num,
+            json_value(p_b,'$.type') AS type
+        from (
+          SELECT *
+          FROM ${source.platinum}.warehouse_prd_picking_pick_ticket
+          WHERE
+            created_date >= (SELECT date(start_date) FROM cte_date)
+        ) p
+            left join	unnest(json_extract_array(p.baskets)) p_b
+            left join unnest(json_value_array(p_b, '$.codes')) as b
+            left join (
+              SELECT *
+              FROM ${source.platinum}.warehouse_prd_core_delivery_order
+              WHERE
+                created_date >= (SELECT date(start_date) FROM cte_date)
+            ) as wd on p.ticket_id = wd.reference_id
+            left join (
+              SELECT *
+              FROM ${source.platinum}.delivery_prd_transporting_shipping_order
+              WHERE
+                created_date >= (SELECT date(start_date) FROM cte_date)
+            ) as t on t.reference_code = wd.delivery_order_code
+            left join (
+              select *
+              from ${source.platinum}.warehouse_prd_inventory_location
+              -- where
+                -- created_date >= (select date(start_date_2) from cte_date)
+              -- qualify row_number() over (partition by code order by synced_at desc, last_updated_time desc) = 1
+            ) as wh on wh.code = b
+        where
+            p.end_time >= (select start_date from cte_date)
+            -- and json_value(p_b,'$.type') = 'DELIVERY'
+    ),
+
+    carton AS (
+        SELECT
+            stage
+            , ticket_id
+            , location_code
+            , parent_code
+            , "CARTON" as basket_code
+            , NULL
+            , MAX(ts_start) as ts_start
+            , MAX(ts_done) as ts_done
+            , AVG(package_num) - IFNULL(COUNTIF(type = "DELIVERY"),0) AS no_packages1
+        FROM bin
+        GROUP BY ALL
+--         HAVING AVG(package_num) > COUNT(1)
+        HAVING no_packages1 > 0
+    ),
+
+    final AS (
+      SELECT
+          * EXCEPT (package_num, type)
+      FROM bin
+      WHERE type = "DELIVERY"
+      UNION ALL
+      SELECT
+          *
+      FROM carton
+    )
+
+SELECT 
+    stage
+    , ticket_id
+    , "" AS original_status
+    , parent_code
+    , location_code
+    , NULL AS pic_id
+    , ts_start
+    , ts_done
+    , "" AS sku_code
+    , "" AS location_shelf
+    , NULL AS qty_start
+    , NULL AS qty_done
+    , "" AS ticket_code
+    , "" AS ticket_type
+    , "" AS source_location
+    , FALSE AS is_not_increase_inventory
+    , ts_start AS ts_created
+    , basket_code
+    , level_bin
+    , no_packages
+FROM final

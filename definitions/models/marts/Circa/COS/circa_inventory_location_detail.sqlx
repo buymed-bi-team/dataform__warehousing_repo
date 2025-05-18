@@ -1,0 +1,14 @@
+config {
+    type: "table", 
+    description: 
+        `PIC: tu.dang; 
+        Type: Table; 
+        Refresh Schedule: At minute 10 past hour 7, 10, 13, 16 and 19;
+        
+        `,
+    tags: ['0h00'],
+    columns: {
+
+    }}
+
+select * from ${source.circa_os}.inventory_location_detail 

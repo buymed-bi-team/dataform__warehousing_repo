@@ -47,6 +47,8 @@ WITH
         a.department_code,
         CAST(JSON_VALUE(a.extra_props, '$.evaluate_point') AS integer) AS evaluate_point,
         JSON_VALUE(a.extra_props, '$.evaluate_content') AS evaluate_content,
+        SAFE_CAST(JSON_VALUE(a.extra_props, '$.product_id') AS INT64) AS product_id,
+        JSON_VALUE(a.extra_props, '$.sku') AS sku,
         COALESCE(JSON_VALUE(a.extra_props, '$.scope'), "SUPPORT_CUSTOMER") AS ticket_type,
         b.shipping_ward_code,
         b.so_code

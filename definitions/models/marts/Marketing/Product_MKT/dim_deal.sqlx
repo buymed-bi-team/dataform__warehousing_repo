@@ -1,0 +1,67 @@
+config {
+    type: "table", 
+    description: 
+        `
+        PIC: huyen.nguyenthu; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.platinum}.marketplace_prd_product_v2_deal,
+            ${source.ref}.dim_fc_service_area,
+            ${source.platinum}.core_prd_master_data_province
+        `,
+    tags: ["custom_1h_past5"],
+    bigquery: {
+        clusterBy: ["deal_code","deal_id"]
+    }
+}
+
+SELECT
+  a.deal_id 
+  , a.created_date
+  , a.code AS deal_code
+  , a.name
+  , a.status 
+  , a.deal_type as type
+  , JSON_EXTRACT_SCALAR(a.skus, '$.0.sku') AS sku_code
+  , a.sku_status
+  , a.quantity AS sold_quantity
+  , a.max_quantity
+  , a.price
+  , a.pricing_type
+  , DATE(timestamp_add(a.start_time, interval 7 hour)) AS start_date
+  , DATE(timestamp_add(a.end_time, interval 7 hour)) AS end_date
+  , CASE 
+      WHEN a.seller_code IN ('DENX', 'MARKETING', 'MEDC', 'MEDX', 'MEDX-HN', 'MEDX_E', 'MED_NT', 'TAM_GIA', 'TENDER') then 'INTERNAL' 
+      ELSE 'EXTERNAL' 
+    END AS seller_class
+  , a.seller_code
+  , REGEXP_REPLACE(a.charge_deal_fee, r'MARKTEPLACE|MARKETPALCE', 'MARKETPLACE') AS charge_fee
+  , JSON_EXTRACT_SCALAR(a.extra_props, '$.reason') AS reason
+  , a.ticket_code AS ticket
+  , CASE WHEN a.ticket_code IS NOT NULL THEN true ELSE false END AS has_ticket
+  , CASE
+      WHEN to_json_string(a.area_codes) LIKE '%00%' THEN 'ALL'
+      WHEN JSON_EXTRACT_SCALAR(a.area_codes[0]) = 'MB_ADM' THEN 'MIENBAC'
+      WHEN JSON_EXTRACT_SCALAR(a.area_codes[0]) = 'MN_ADM' THEN 'MIENNAM'
+      WHEN JSON_EXTRACT_SCALAR(a.area_codes[0]) = 'MT_ADM' THEN 'MIENTRUNG'
+      WHEN JSON_EXTRACT_SCALAR(a.area_codes[0]) = 'MIENBAC' THEN 'MIENBAC'
+      WHEN JSON_EXTRACT_SCALAR(a.area_codes[0]) = 'MIENNAM' THEN 'MIENNAM'
+      WHEN JSON_EXTRACT_SCALAR(a.area_codes[0]) = 'MIENTRUNG' THEN 'MIENTRUNG'
+      WHEN JSON_EXTRACT_SCALAR(a.area_codes[0]) IN (SELECT service_area_code FROM ${ref('dim_fc_service_area')} WHERE area_type = 'PROVINCE') THEN b.sales_region_code
+      ELSE c.region_name
+    END AS region_code
+  , JSON_EXTRACT_SCALAR(a.extra_props.vendor_promo_info.promo_code) AS vendor_promo_code
+  , IFNULL(JSON_VALUE(a.extra_props, "$.deal_tags.0"), "NORMAL_DEAL") AS deal_tag
+  , ca.username AS deal_created_by
+FROM ${source.platinum}.marketplace_prd_product_v2_deal a
+  LEFT JOIN (SELECT * FROM ${ref('dim_fc_service_area')} WHERE area_type = 'PROVINCE') b
+    ON JSON_EXTRACT_SCALAR(a.area_codes[0]) = b.service_area_code
+  LEFT JOIN (SELECT region_code, region_name FROM ${source.platinum}.core_prd_master_data_province GROUP BY ALL) c
+    ON JSON_EXTRACT_SCALAR(a.area_codes[0]) = c.region_code
+  LEFT JOIN ${source.platinum}.core_prd_account_account AS ca 
+    ON ca.account_id = a.account_id
+WHERE a.action <> 'd'
+  AND a.deal_id NOT IN (50105, 50103, 2, 2101, 50008, 20134)
+  AND a.created_date >= "2025-01-01"
+QUALIFY row_number() OVER(PARTITION BY a.code ORDER BY a.last_updated_time DESC) = 1
