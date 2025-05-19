@@ -9,7 +9,7 @@ config {
         Source: 
             ${source.ref}.adhoc_pricing_v2,
         `,
-    tags: ["13h00","9h00", "PRICING"],
+    tags: ["6h10", "PRICING"],
     
     columns: {
         purchase_price: "The unit price in the latest PO (purchase order)",
