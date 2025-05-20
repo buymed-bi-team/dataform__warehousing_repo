@@ -2,7 +2,6 @@ config {
     type: "table", 
     description: 
         `
-        The last note by System, PIC, CIC of SKU ;
         PIC: nguyen.tran; 
         Type: Table; 
         Refresh Schedule: hourly;
