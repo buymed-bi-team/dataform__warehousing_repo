@@ -67,9 +67,10 @@ WITH
               ) AS oos_report_date
             , n.content AS cic_content
             , n.created_by_name AS created_by_cic
+            , n.note_created_time AS cic_note_created_time
             , np.content AS pic_content
             , np.created_by_name AS created_by_pic
-            , n.note_created_time
+            , np.note_created_time AS pic_note_created_time
             , ns.content AS system_content
             , ns.note_created_time AS system_note_created_time
             , avai.available_at
@@ -95,12 +96,13 @@ WITH
                 AND TIMESTAMP_TRUNC(n.note_created_time, SECOND ) >  TIMESTAMP_TRUNC(b.oos_time, SECOND )
                 AND TIMESTAMP_TRUNC(n.note_created_time, SECOND ) <  COALESCE(TIMESTAMP_TRUNC(b.next_oos_time, SECOND ), TIMESTAMP(CURRENT_DATETIME("+7")))
                 AND n.note_type IN ("CIC", "OTHER")
+                AND REGEXP_CONTAINS(LOWER(n.content), r'từ normal|từ limit') = FALSE
             LEFT JOIN ${ref('dim_sku_note')} AS np
                 ON np.item_code = a.sub_sku_code
                 AND TIMESTAMP_TRUNC(np.note_created_time, SECOND ) >  TIMESTAMP_TRUNC(b.oos_time, SECOND )
                 AND TIMESTAMP_TRUNC(np.note_created_time, SECOND ) <  COALESCE(TIMESTAMP_TRUNC(b.next_oos_time, SECOND ), TIMESTAMP(CURRENT_DATETIME("+7")))
                 AND np.note_type = "PIC"
---                 AND REGEXP_CONTAINS(LOWER(n.content), r'từ normal|từ limit') = FALSE
+                AND REGEXP_CONTAINS(LOWER(np.content), r'từ normal|từ limit') = FALSE
             LEFT JOIN ${ref('dim_sku_note')} AS ns
                 ON ns.item_code = a.sub_sku_code
                 AND TIMESTAMP_TRUNC(ns.note_created_time, SECOND ) >  TIMESTAMP_TRUNC(b.oos_time, SECOND )
