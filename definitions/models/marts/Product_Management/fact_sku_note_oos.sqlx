@@ -96,10 +96,10 @@ WITH
                 AND TIMESTAMP_TRUNC(n.note_created_time, SECOND ) <  COALESCE(TIMESTAMP_TRUNC(b.next_oos_time, SECOND ), TIMESTAMP(CURRENT_DATETIME("+7")))
                 AND n.note_type IN ("CIC", "OTHER")
             LEFT JOIN ${ref('dim_sku_note')} AS np
-                ON n.item_code = a.sub_sku_code
-                AND TIMESTAMP_TRUNC(n.note_created_time, SECOND ) >  TIMESTAMP_TRUNC(b.oos_time, SECOND )
-                AND TIMESTAMP_TRUNC(n.note_created_time, SECOND ) <  COALESCE(TIMESTAMP_TRUNC(b.next_oos_time, SECOND ), TIMESTAMP(CURRENT_DATETIME("+7")))
-                AND n.note_type = "PIC"
+                ON np.item_code = a.sub_sku_code
+                AND TIMESTAMP_TRUNC(np.note_created_time, SECOND ) >  TIMESTAMP_TRUNC(b.oos_time, SECOND )
+                AND TIMESTAMP_TRUNC(np.note_created_time, SECOND ) <  COALESCE(TIMESTAMP_TRUNC(b.next_oos_time, SECOND ), TIMESTAMP(CURRENT_DATETIME("+7")))
+                AND np.note_type = "PIC"
 --                 AND REGEXP_CONTAINS(LOWER(n.content), r'từ normal|từ limit') = FALSE
             LEFT JOIN ${ref('dim_sku_note')} AS ns
                 ON ns.item_code = a.sub_sku_code
