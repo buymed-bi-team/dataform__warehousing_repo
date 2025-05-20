@@ -13,6 +13,7 @@ with thuosi_unit as (
 product_base_unit as
     (select product_id,
             unit as convert_unit,
+            base_unit,
             convert_rate
      from  ${source.circa_os}.product_retail_unit
      where sale_allowed is true 
@@ -62,6 +63,7 @@ has_price as (
         pd.sku_code,
         pd.sale_price,
         pd.unit,
+        bu.base_unit,
         bu.convert_rate,
         pd.product_id || '_' || pd.unit || '_' || ps.pos_id as sku_unit_pos,
         case when t.unit is not null then true else false end as is_thuocsi_unit,
@@ -128,7 +130,7 @@ has_price_non_stock as (
            p.unit,
            p.convert_rate,
            p.is_thuocsi_unit,
-           u.base_unit as is_base_unit,
+           p.base_unit as is_base_unit,
            p.last_updated_at,
            p.sale_price as sale_unit_price,
            p.sku_unit_pos,
