@@ -15,6 +15,8 @@ product_base_unit as
             unit as convert_unit,
             convert_rate
      from  ${source.circa_os}.product_retail_unit
+     where sale_allowed is true 
+           and client_id = 1
      )
 
     , inventory as (
@@ -68,6 +70,9 @@ has_price as (
     left join  ${source.circa_os}.product_price_sheet as ps on pd.price_sheet_id = ps.id
     left join product_base_unit as bu on pd.product_id = bu.product_id and pd.unit = bu.convert_unit
     left join thuosi_unit t on pd.product_id = t.product_id and lower(pd.unit) = lower(t.unit)
+    where bu.convert_unit is not null
+          and ps.client_id = 1
+          and ps.pos_id is not null
     group by all),
 
 count_ord as ( select o.pos_id,
@@ -112,6 +117,7 @@ combine_has_stock as (select i.product_id,
     left join has_price p
         on i.pos_id = p.pos_id and i.product_id = p.product_id and i.seller_code = p.seller_code and i.unit = p.unit
     left join count_ord co on i.pos_id = co.pos_id and i.product_id = co.product_id
+    where p.unit is not null
     group by all),
 
 has_price_non_stock as (
@@ -137,6 +143,7 @@ has_price_non_stock as (
     from has_price p
     left join full_unit u on p.pos_id = u.pos_id and p.product_id = u.product_id
     where concat(p.pos_id, p.product_id, p.seller_code, p.unit) not in (select concat(pos_id, product_id, seller_code, unit) from combine_has_stock)
+    and p.unit is not null
 ),
 
 combine as (
