@@ -5,7 +5,6 @@ config {
     type: "incremental",
     name: "marketplace_prd_product_v2_product_description",
     schema: "platinum_buymed_vn",
-    description: "Internal: https://internal.buymed.vn/cms/high-profit-product",
     assertions: {
         uniqueKey: 'mg_id',
         nonNull: ["created_date"]
