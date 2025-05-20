@@ -11,7 +11,7 @@ config {
 WITH
   dedup_inventory_sku_location AS (
     SELECT 
-      sku, warehouse_code, location_code, stock_quantity
+      sku, warehouse_code, location_code, stock_quantity, available_quantity
     FROM ${source.platinum}.warehouse_prd_inventory_sku_location
   ),
 
@@ -35,6 +35,7 @@ SELECT
   a.warehouse_code as fc_code,
   a.location_code,
   a.stock_quantity,
+  a.available_quantity,
   datetime(current_timestamp(), "Asia/Ho_Chi_Minh") as last_updated_time
 FROM dedup_inventory_sku_location a
 LEFT JOIN ${ref("dim_sku")} b
