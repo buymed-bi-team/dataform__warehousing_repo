@@ -1,0 +1,160 @@
+config {
+    type: "table", 
+    description: 
+        `
+        The last note by System, PIC, CIC of OOS SKU ;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.platinum}.core_prd_note_note,
+            ${source.ref}.dim_supplier_fc_person_in_charge
+        `,
+    tags: ["custom_1h_past5"]
+}
+
+WITH
+    gmv AS (
+        SELECT
+            FORMAT_TIMESTAMP('%Y-%m', oi.created_at) AS month
+            , sku_key_sales_region_code
+            , COUNT(DISTINCT oi.order_id) AS no_order
+        FROM ${ref('fact_order_item')} AS oi
+            LEFT JOIN ${ref('fact_order')} AS o USING(order_id)
+        WHERE
+            DATE(oi.created_at) BETWEEN DATE_SUB(DATE_TRUNC(CURRENT_DATE(), MONTH), INTERVAL 3 MONTH) AND DATE_SUB(DATE_TRUNC(CURRENT_DATE(), MONTH), INTERVAL 1 DAY)
+            AND DATE(o.created_at) BETWEEN DATE_SUB(DATE_TRUNC(CURRENT_DATE(), MONTH), INTERVAL 3 MONTH) AND DATE_SUB(DATE_TRUNC(CURRENT_DATE(), MONTH), INTERVAL 1 DAY)
+            AND o.order_status <> 'CANCEL'
+        GROUP BY 1, 2
+        HAVING no_order >= 4
+        QUALIFY ROW_NUMBER() over (PARTITION BY sku_key_sales_region_code) = 3
+    )
+
+    , gmv_during_oos AS (
+        SELECT
+            oi.sku_key_sales_region_code
+            , oi.created_at
+            , demand_quantity
+            , sales_price
+--             , SUM(demand_quantity * sales_price) AS gmv
+        FROM ${ref('fact_order_item')} AS oi
+            LEFT JOIN ${ref('fact_order')} AS o USING(order_id)
+        WHERE
+            o.order_status <> 'CANCEL'
+            AND DATE(oi.created_at) >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH ), INTERVAL 32 DAY)
+            AND DATE(o.created_at) >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH ), INTERVAL 32 DAY)
+    )
+
+    , final AS (
+        SELECT
+            a.sku_key_fc_code
+            , a.sku_key_sales_region_code
+            , a.sub_sku_code
+            , b.oos_time
+            , b.next_oos_time
+            , IF(
+                    seller_class = "EXTERNAL",
+                    IF(
+                        EXTRACT(HOUR FROM b.oos_time) >= 13,
+                        TIMESTAMP_ADD(TIMESTAMP_TRUNC(b.oos_time, DAY), INTERVAL 1 DAY),
+                        TIMESTAMP_TRUNC(b.oos_time, DAY)
+                    ),
+                    IF(
+                        EXTRACT(HOUR FROM b.oos_time) >= 14,
+                        TIMESTAMP_ADD(TIMESTAMP_TRUNC(b.oos_time, DAY), INTERVAL 1 DAY),
+                        TIMESTAMP_TRUNC(b.oos_time, DAY)
+                    )
+              ) AS oos_report_date
+            , n.content AS cic_content
+            , n.created_by_name AS created_by_cic
+            , n.note_created_time AS cic_note_created_time
+            , np.content AS pic_content
+            , np.created_by_name AS created_by_pic
+            , np.note_created_time AS pic_note_created_time
+            , ns.content AS system_content
+            , ns.note_created_time AS system_note_created_time
+            , avai.available_at
+            , i.po_code
+            , i.created_time AS po_created_time
+        FROM ${ref('adhoc_pm_master_sku')} AS a
+            LEFT JOIN (
+                SELECT
+                   sku_code
+                    , sales_region_code
+                    , status
+                    , created_time AS oos_time
+                    , LEAD(created_time) over (PARTITION BY item_code ORDER BY created_time) AS next_oos_time
+                    , id
+                    , item_code
+                FROM ${ref('fact_changed_sku_internal_status')}
+                WHERE status = "OUT_OF_STOCK"
+                    AND created_time >= TIMESTAMP_SUB(TIMESTAMP(DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH ), INTERVAL 1 MONTH)), INTERVAL 8 HOUR)
+            ) AS b
+                USING(sku_code, sales_region_code)
+            LEFT JOIN ${ref('dim_sku_note')} AS n
+                ON n.item_code = a.sub_sku_code
+                AND TIMESTAMP_TRUNC(n.note_created_time, SECOND ) >  TIMESTAMP_TRUNC(b.oos_time, SECOND )
+                AND TIMESTAMP_TRUNC(n.note_created_time, SECOND ) <  COALESCE(TIMESTAMP_TRUNC(b.next_oos_time, SECOND ), TIMESTAMP(CURRENT_DATETIME("+7")))
+                AND n.note_type IN ("CIC", "OTHER")
+                AND REGEXP_CONTAINS(LOWER(n.content), r'từ normal|từ limit') = FALSE
+            LEFT JOIN ${ref('dim_sku_note')} AS np
+                ON np.item_code = a.sub_sku_code
+                AND TIMESTAMP_TRUNC(np.note_created_time, SECOND ) >  TIMESTAMP_TRUNC(b.oos_time, SECOND )
+                AND TIMESTAMP_TRUNC(np.note_created_time, SECOND ) <  COALESCE(TIMESTAMP_TRUNC(b.next_oos_time, SECOND ), TIMESTAMP(CURRENT_DATETIME("+7")))
+                AND np.note_type = "PIC"
+                AND REGEXP_CONTAINS(LOWER(np.content), r'từ normal|từ limit') = FALSE
+            LEFT JOIN ${ref('dim_sku_note')} AS ns
+                ON ns.item_code = a.sub_sku_code
+                AND TIMESTAMP_TRUNC(ns.note_created_time, SECOND ) >  TIMESTAMP_TRUNC(b.oos_time, SECOND )
+                AND TIMESTAMP_TRUNC(ns.note_created_time, SECOND ) <  COALESCE(TIMESTAMP_TRUNC(b.next_oos_time, SECOND ), TIMESTAMP(CURRENT_DATETIME("+7")))
+                AND ns.note_type = 'SYSTEM'
+                AND REGEXP_CONTAINS(LOWER(ns.content), r'từ out_of_stock')
+            LEFT JOIN (
+                SELECT
+                   sku_code
+                    , sales_region_code
+                    , status
+                    , IF(
+                        LEAD(status) over (PARTITION BY item_code ORDER BY created_time) IN ('NORMAL', 'LIMIT'),
+                        LEAD(created_time) over (PARTITION BY item_code ORDER BY created_time),
+                        NULL
+                      ) AS available_at
+                    , id
+                    , item_code
+                FROM ${ref('fact_changed_sku_internal_status')}
+                WHERE created_time >= TIMESTAMP_SUB(TIMESTAMP(DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH ), INTERVAL 1 MONTH)), INTERVAL 8 HOUR)
+            ) AS avai ON avai.item_code = b.item_code AND avai.id = b.id
+            LEFT JOIN (
+                SELECT
+                    sku_fc_key
+                    , MAX(created_time) AS created_time
+                    , MAX_BY(po_code, created_time) AS po_code
+                FROM ${ref('fact_stock_incoming')}
+                WHERE incoming_quantity > 0
+                    AND ib_status <> "COMPLETED"
+                GROUP BY 1
+            ) AS i ON i.sku_fc_key = a.sku_key_fc_code
+            LEFT JOIN ${ref('agg_product_status_by_date')} AS ps
+                ON ps.product_sales_region_code = a.product_sales_region_code
+                AND DATE(b.oos_time) = ps.date
+        WHERE
+            (
+                (a.seller_code = "MEDX"
+                    AND EXISTS (SELECT 1 FROM gmv WHERE gmv.sku_key_sales_region_code = a.sku_key_sales_region_code)
+                )
+                OR ( a.seller_class = "EXTERNAL"
+                    AND ps.status = "OUT_OF_STOCK"
+                )
+            )
+            AND b.oos_time IS NOT NULL
+        QUALIFY ROW_NUMBER() over (PARTITION BY sub_sku_code, oos_report_date ORDER BY oos_time DESC, COALESCE(n.note_created_time, system_note_created_time) DESC) = 1
+    )
+
+SELECT
+    a.*
+    , SUM(b.demand_quantity * b.sales_price) AS gmv_during_oos
+FROM final AS a
+    LEFT JOIN gmv_during_oos AS b
+        ON a.sku_key_sales_region_code = b.sku_key_sales_region_code
+        AND b.created_at BETWEEN a.oos_time AND COALESCE(a.available_at, TIMESTAMP(CURRENT_DATETIME("+7")))
+GROUP BY ALL
