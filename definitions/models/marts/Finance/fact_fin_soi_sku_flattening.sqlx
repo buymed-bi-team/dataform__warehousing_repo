@@ -10,13 +10,16 @@ config {
             ${source.platinum}.marketplace_prd_order_v2_order_item,
             ${source.platinum}.marketplace_prd_order_v2_order,
             ${source.platinum}.warehouse_prd_core_delivery_order
+            ${source.platinum}.warehouse_prd_core_delivery_order_item
+            ${source.ref}.dim_product
+            ${source.ref}.dim_sku
         `,
+    disabled: true,
     bigquery: {
         partitionBy: "created_date_local",
         clusterBy: ["order_id", "sku_code"]
     },
     tags: ["custom_1h_past5", "MARKETPLACE"],
-
 }
 
 pre_operations {
@@ -60,12 +63,10 @@ select wdoi.mg_id
     , regexp_replace(json_extract_scalar(detail, '$.lot'), r'[^\wd]+', '') as lot
     , regexp_replace(json_extract_scalar(detail, '$.exp_date'), r'[^\wd]+', '') as exp_date
 
--- from platinum_buymed_vn.warehouse_prd_core_delivery_order wdo
+
 from ${source.platinum}.warehouse_prd_core_delivery_order wdo
--- left join platinum_buymed_vn.warehouse_prd_core_delivery_order_item wdoi
 left join ${source.platinum}.warehouse_prd_core_delivery_order_item wdoi
     on wdo.delivery_order_code = wdoi.delivery_order_code
--- left join gold_buymed_vn2.dim_sku p
 left join ${ref('dim_sku')} p
     on p.sku_code = wdoi.sku
 left join unnest(json_extract_array(wdoi.pick_items, '$')) as item
@@ -107,9 +108,7 @@ select date(created_time,'+07') as created_date_local
     , extra_props
     , outbound_infos
     , return_infos
--- from platinum_buymed_vn.marketplace_prd_order_v2_order_item oi
 from ${source.platinum}.marketplace_prd_order_v2_order_item oi
--- left join gold_buymed_vn2.dim_product p
 left join ${ref('dim_product')} p
     on oi.product_id = p.product_id
 where 1=1
@@ -197,7 +196,7 @@ select key
        end as deal_vendor_price
     , deal_sale_price
 from combo_0 as m
-left join gold_buymed_vn2.dim_product p on m.bom_product_id = p.product_id
+left join ${ref(`dim_product`)} p on m.bom_product_id = p.product_id
 where 1=1
 )
 , tender as (
@@ -247,14 +246,12 @@ and m.seller_code in ('TENDER')
         , status
         , date(outbound_date,'+07') as outbound_date
     from ${source.platinum}.marketplace_prd_order_v2_order o
-    -- from platinum_buymed_vn.marketplace_prd_order_v2_order o
     where 1=1
     and created_date >= (select date_sub(start_date, interval 6 month) from params)
 )
 , tdo as (
     select delivery_order_code as do_code
         , date(outbound_time,'+07') as outbound_date_local
-    -- from  platinum_buymed_vn.warehouse_prd_core_delivery_order tdo
     from  ${source.platinum}.warehouse_prd_core_delivery_order tdo
     where 1=1
     and created_date >= (select date_sub(start_date, interval 6 month) from params)
