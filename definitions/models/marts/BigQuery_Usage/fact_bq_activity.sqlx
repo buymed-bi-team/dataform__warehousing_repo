@@ -1,6 +1,6 @@
 config {
     type: "incremental", // view, table , incremental
-    name: "fact_bigquery_activity",
+    name: "fact_bq_activity",
     description: `PIC: <minh.luu> , model_type: incremental ; schedule: every 1h`,
     columns:{
     },
@@ -30,9 +30,9 @@ pre_operations {
     ${when(
         incremental(),
         `
-        SET execution_time_checkpoint = (SELECT max(execution_time) - INTERVAL 2 HOUR FROM ${self()});
+        SET execution_time_checkpoint = (SELECT max(execution_time) - INTERVAL 1 DAY FROM ${self()});
         DELETE FROM ${self()} WHERE execution_time >= execution_time_checkpoint;`,
-        `SET execution_time_checkpoint = CURRENT_TIMESTAMP() - INTERVAL 15 DAY`
+        `SET execution_time_checkpoint = CURRENT_TIMESTAMP() - INTERVAL 7 DAY`
     )}
 }
 
@@ -47,4 +47,15 @@ LEFT JOIN ${ref('int_bq_label_and_table')} label USING ( base_key )
 WHERE 1=1
 AND base.execution_time >= execution_time_checkpoint
 AND label.execution_time >= execution_time_checkpoint
+
+post_operations {
+${when(
+    incremental(),``,
+    `
+    ALTER TABLE ${self()}
+        ADD PRIMARY KEY (base_key) NOT ENFORCED,
+        ADD FOREIGN KEY (user_email) references ${ref(`dim_bq_user`)}(user_email) NOT ENFORCED
+    `
+)}
+}
 
