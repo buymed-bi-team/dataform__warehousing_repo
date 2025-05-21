@@ -4,6 +4,14 @@ config {
         `PIC: van.lethuy; 
         Type: Table; 
         Refresh Schedule: hourly;
+        Source:
+        ${source.platinum}.seller_prd_purchasing_purchase_order_item
+        ${source.platinum}.seller_prd_purchasing_purchase_order
+        ${source.platinum}.seller_prd_purchasing_vendor_bill_item
+        ${source.platinum}.seller_prd_purchasing_vendor_bill                
+        ${source.platinum}.seller_prd_promotion_log_price_after_rebate
+        ${source.ref}.dim_vendor
+        ${source.ref}.fact_order_item_finance
         `,
     disabled: true,
     bigquery: {

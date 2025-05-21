@@ -46,7 +46,7 @@ with params as (
 )
 
 select *
-from gold_buymed_vn2.fact_fin_soi_sku_flattening
+from ${ref(`fact_fin_soi_sku_flattening`)}
 where 1=1
 and outbound_date_local is not null
 and created_date_local >= (select date_sub(start_date, interval 3 month) from params)
