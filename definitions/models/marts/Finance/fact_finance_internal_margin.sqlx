@@ -5,6 +5,7 @@ config {
         Type: Table; 
         Refresh Schedule: hourly;
         `,
+    disabled: true,
     bigquery: {
         partitionBy: "outbound_date_local",
         clusterBy: ["order_id", "sku_code"]
