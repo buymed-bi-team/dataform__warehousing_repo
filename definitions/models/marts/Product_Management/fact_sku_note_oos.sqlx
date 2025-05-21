@@ -7,8 +7,9 @@ config {
         Type: Table; 
         Refresh Schedule: hourly;
         Source: 
-            ${source.platinum}.core_prd_note_note,
-            ${source.ref}.dim_supplier_fc_person_in_charge
+            ${source.ref}.adhoc_pm_master_sku, 
+            ${source.ref}.fact_changed_sku_internal_status, 
+            ${source.ref}.dim_sku_note
         `,
     tags: ["custom_1h_past5"]
 }
@@ -36,7 +37,6 @@ WITH
             , oi.created_at
             , demand_quantity
             , sales_price
---             , SUM(demand_quantity * sales_price) AS gmv
         FROM ${ref('fact_order_item')} AS oi
             LEFT JOIN ${ref('fact_order')} AS o USING(order_id)
         WHERE
