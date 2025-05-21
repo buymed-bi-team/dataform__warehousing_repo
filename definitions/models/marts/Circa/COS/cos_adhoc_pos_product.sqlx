@@ -73,7 +73,7 @@ has_price as (
     left join product_base_unit as bu on pd.product_id = bu.product_id and pd.unit = bu.convert_unit
     left join thuosi_unit t on pd.product_id = t.product_id and lower(pd.unit) = lower(t.unit)
     where bu.convert_unit is not null
-          and ps.client_id = 1
+          --and ps.client_id = 1
           and ps.pos_id is not null
     group by all),
 
