@@ -54,8 +54,8 @@ select
   ct.cart_id,
   ct.current_price,
   ct.quantity as added_quantity,
-  ct.page as added_page
-
+  ct.page as added_page,
+  ct.product_id
 from ${source.platinum}.marketplace_prd_cart_cart_item as ct
 left join cart as c
   on ct.ref_cart = c.ref_cart_item
