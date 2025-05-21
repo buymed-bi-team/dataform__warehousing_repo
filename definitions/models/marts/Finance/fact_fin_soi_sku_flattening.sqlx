@@ -14,12 +14,12 @@ config {
             ${source.ref}.dim_product
             ${source.ref}.dim_sku
         `,
+    disabled: true,
     bigquery: {
         partitionBy: "created_date_local",
         clusterBy: ["order_id", "sku_code"]
     },
     tags: ["custom_1h_past5", "MARKETPLACE"],
-
 }
 
 pre_operations {

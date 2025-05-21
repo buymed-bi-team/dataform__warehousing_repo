@@ -11,6 +11,7 @@ config {
             ${source.platinum}.marketplace_prd_order_v2_order,
             ${source.platinum}.warehouse_prd_core_delivery_order
         `,
+    disabled: true,
     bigquery: {
         partitionBy: "outbound_date_local",
         clusterBy: ["order_id", "sku_code"]
