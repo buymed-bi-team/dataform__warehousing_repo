@@ -42,6 +42,15 @@ with cte_pos_info as (
 		contains_substr(tag.tag_name,'test') = false
     and pp.deleted_at is null
 )
+,reconcile_convert as (
+       Select distinct date(t.Date_convert) as created_date
+                       ,Pos_code as pos_code
+                       ,reconcile_amount as circa_collect
+                       ,'Công nợ chuyển đổi' as type_amount
+       from buymed_external.fs_new_contract t
+        -- công nợ chốt tại ngày chuyển đổi
+)
+,reconcile_except_convert_date as (
       select
        created_date
 	    ,entity_code                                                          as pos_code
@@ -54,27 +63,7 @@ with cte_pos_info as (
         and entity_code in (select pos_code from cte_pos_info)
         and entity_code not in (select Pos_code from buymed_external.fs_new_contract)
      --lấy những FS chưa chuyển đổi
-union all
-       Select distinct date(t.Date_convert) as created_date
-                       ,Pos_code as pos_code
-                       ,reconcile_amount as circa_collect
-                       ,'Công nợ chuyển đổi' as type_amount
-       from buymed_external.fs_new_contract t
-			 -- công nợ chốt tại ngày chuyển đổi
--- union all
---        Select distinct date(date_add(l.created_time, interval 7 hour) )
---            ,entity_code as pos_code
---            ,sum(l.line_amount) as circa_collect
---         from ${source.platinum}.platform_accounting_prd_reconcile_CIRCA_FS_EXTERNAL_reconcile_line l
--- where rec_template_code = 'CIRCAFS_DEBT'
--- --  date(date_add(l.created_time, interval 7 hour) ) > (
--- --                                        Select date(t.Date_convert)
--- --                                        from buymed_external.fs_new_contract t
--- --                                        where Pos_code = l.entity_code)
--- --               and entity_code in (select Pos_code from buymed_external.fs_new_contract)
--- 							and name like '%Phí%' 
---               ---- các loại phí sau chuyển đổi
--- group by all
+
 union all
        Select distinct date(date_add(l.created_time, interval 7 hour) )
            ,entity_code as pos_code
@@ -90,7 +79,6 @@ where rec_template_code = 'CIRCAFS_FEE'
               ---- các loại phí sau chuyển đổi
 group by all
 
-
 union all
 select distinct date(date_add(l.created_time, interval 7 hour) )
                   ,entity_code
@@ -103,7 +91,7 @@ where extra_fees IS NOT NULL
       --           Select date(t.Date_convert)
       --           from buymed_external.fs_new_contract t
       --           where Pos_code = l.entity_code)
-      and ( rec_template_code = 'CIRCAFS_FEE' or  rec_template_code = 'CIRCAFS_DEBT' )
+      and (rec_template_code = 'CIRCAFS_FEE' or  rec_template_code = 'CIRCAFS_DEBT' )
       and entity_code in (select Pos_code from buymed_external.fs_new_contract)
       group by all
       -- extra phí (nhập manual) sau ngày chuyển đổi 
@@ -122,9 +110,9 @@ Select distinct
                 where Pos_code = o.code)
       and o.code in (select Pos_code from buymed_external.fs_new_contract)
       and (o.recon_payment_method = 'PREPAYMENT_DEBT' or o.recon_payment_method = 'PURCHASING_DEBT' )
-      group by all
-      -- SI sau ngày chuyển đổi
+      group by all)
+      -- SI sau ngày chuyển đổi)
 
+  Select * from reconcile_except_convert_date  t
 
-				-- công nợ của các FS sau ngày chuyển đổi 
    
