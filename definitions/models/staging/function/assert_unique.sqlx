@@ -12,6 +12,27 @@ config {
 
 -- }
 
+/*
+E.g:
+
+```
+DECLARE duplicate_mg_id ARRAY < STRING >;
+
+BEGIN 
+    CALL platinum_buymed_vn.unique_assertion(
+        "marketplace_prd_order_v2_order_item",
+        TRUE,
+        CURRENT_DATE() - INTERVAL 2 DAY,
+        duplicate_mg_id 
+    );
+END;
+
+SELECT duplicate_mg_id; 
+
+```
+
+*/
+
 CREATE OR REPLACE PROCEDURE platinum_buymed_vn.unique_assertion(
   table_name STRING,
   has_created_time BOOL,
@@ -38,7 +59,7 @@ BEGIN
 
   -- Step 2: Create created_date_array using dynamic SQL
   SET query = '''
-    SELECT ARRAY_AGG(
+    SELECT ARRAY_AGG( DISTINCT
       IF(''' || created_time_expr || ''' IS NULL, DATE("2099-01-01"),
         DATE(DATETIME(''' || created_time_expr || ''', "Asia/Ho_Chi_Minh"))
       )
