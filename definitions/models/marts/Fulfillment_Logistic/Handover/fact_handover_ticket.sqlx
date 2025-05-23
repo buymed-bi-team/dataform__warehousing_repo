@@ -63,6 +63,8 @@ select
     SAFE_CAST(json_value(a_l,"$.weight") AS FLOAT64) as weight,
     json_value(a_l, "$.status") as original_status,
     array_length(json_extract_array(a_l,"$.baskets")) as num_bin,
+    JSON_VALUE(t.truck, "$.license_plate") AS license_plate
 from ${source.platinum}.delivery_prd_transporting_handover_ticket AS a
    , unnest(json_extract_array(a.so_list)) AS a_l
+   left join ${source.platinum}.delivery_prd_transporting_trip AS t ON t.trip_code = a.trip_code AND t.trip_code IS NOT NULL
 where created_date >= (select DATE(start_date) from cte_date)
