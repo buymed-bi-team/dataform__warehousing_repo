@@ -52,7 +52,7 @@ select
     a.created_by as handover_employee_id,
     a.driver_id,
     a.driver_name,
-    JSON_VALUE(extra_props, '$.carrier_name') AS carrier_name,
+    JSON_VALUE(a.extra_props, '$.carrier_name') AS carrier_name,
     -- case when b.pod is null then 'Updating' else 'With attached image' end as delivery_image,
     -- case when b.pop is null then 'Updating' else 'With attached image' end as pick_up_image,
     null as delivery_image,
@@ -67,4 +67,4 @@ select
 from ${source.platinum}.delivery_prd_transporting_handover_ticket AS a
    , unnest(json_extract_array(a.so_list)) AS a_l
    left join ${source.platinum}.delivery_prd_transporting_trip AS t ON t.trip_code = a.trip_code AND t.trip_code IS NOT NULL
-where created_date >= (select DATE(start_date) from cte_date)
+where a.created_date >= (select DATE(start_date) from cte_date)
