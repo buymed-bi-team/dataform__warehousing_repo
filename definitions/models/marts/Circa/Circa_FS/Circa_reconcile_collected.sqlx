@@ -21,7 +21,8 @@ select
     p.created_time
     ,p.created_date
     ,p.partner_code as pos_code
-	,pi.amount as collected_amount
+	  ,pi.amount as collected_amount
+    ,pi.object_code
 from platinum_buymed_vn_restricted.platform_billing_prd_payment_payment_item pi
 inner join (
            select
