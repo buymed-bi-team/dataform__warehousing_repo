@@ -1,0 +1,48 @@
+config {
+  type: "view",
+  name: "adhoc_stock_incoming_created",
+  tags: ["powerBI_demand_sku_sort"],
+}
+
+WITH dedup_inbound_ticket AS (
+  SELECT 
+    ticket_id,
+    po_code,
+    status,
+    created_time
+  FROM ${source.platinum}.warehouse_prd_inbound_inbound_ticket
+  WHERE created_date >= DATE(timestamp(date_sub(current_date(),interval 45 day)))
+),
+
+dedup_inbound_ticket_item AS (
+  SELECT
+    ticket_id,
+    sku AS sku_code,
+    warehouse_code AS fc_code,
+    demand_quantity,
+    inbound_quantity
+  FROM ${source.platinum}.warehouse_prd_inbound_inbound_ticket_item
+  WHERE created_date >= DATE(timestamp(date_sub(current_date(),interval 45 day)))
+)
+
+SELECT
+    a.po_code
+    , a.status as ib_status
+    , DATE(a.created_time, "Asia/Ho_Chi_Minh") as created_date
+    , DATETIME(a.created_time, "Asia/Ho_Chi_Minh") as created_time
+    , CASE
+        WHEN a.status = "WAITING" THEN "IN-PARTNER"
+        WHEN a.status = "IN_TRANSIT" THEN "IN-HUB"
+        ELSE "IN-FC"
+    END as incoming_type
+    , CONCAT(c.sku_key, "_", b.fc_code) as sku_fc_key
+    , b.sku_code
+    , b.fc_code
+    , b.demand_quantity
+    , b.inbound_quantity
+    , b.demand_quantity - b.inbound_quantity as incoming_quantity
+
+FROM dedup_inbound_ticket_item b
+LEFT JOIN dedup_inbound_ticket a on b.ticket_id = a.ticket_id
+LEFT JOIN ${ref("dim_sku")} c on b.sku_code = c.sku_code
+WHERE a.status NOT IN ("DRAFT", "CANCEL")
