@@ -60,8 +60,8 @@ with cte_pos_info as (
        ,rec_code
 	    from ${source.platinum}.platform_accounting_prd_reconcile_reconcile
       where
-        status <> 'IN_SESSION'
-        and rec_template_code = 'CIRCAFS'
+        --status <> 'IN_SESSION'
+         rec_template_code = 'CIRCAFS'
         and entity_code in (select pos_code from cte_pos_info)
         and entity_code not in (select Pos_code from buymed_external.fs_new_contract)
      --lấy những FS chưa chuyển đổi
