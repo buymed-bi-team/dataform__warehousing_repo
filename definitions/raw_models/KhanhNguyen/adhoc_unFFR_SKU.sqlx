@@ -1,8 +1,13 @@
 config {
-  type: "table",
-  description: "Source: marketplace_prd_order_v2_order, marketplace_prd_order_v2_order_item | Schedule: every day at 12am | PIC: khanh.nguyen",
-  name: "fact_UnFFR",
-  tags: ["custom_1h_past5"],
+  type: "view",
+  description: `
+    PIC: khanh.nguyen
+    Source: 
+        ${source.platinum}.marketplace_prd_order_v2_order
+        ${source.platinum}.marketplace_prd_order_v2_order_item
+    `,
+  name: "adhoc_UnFFR_SKU",
+  tags: ["powerBI_demand_sku_sort"],
   columns: {
     "sale_order_code": "sales order code",
     "created_date": "date the sale order was created",
@@ -23,9 +28,6 @@ config {
     "actual_sort": "= 10% order_quantity / total_qty + 60% order_amount / total_amt + 30% no_reserved_skus / total_sku",
     "potential_sort": "expected_sort - actual_sort for in-progress statuses (DRAFT, CONFIRM, RESERVING, WAIT-TO-CHECK, CHECKING, WAIT-TO-PICK, PICKING)",
     "unFF_sort": "expected_sort - actual_sort for other statuses"
-  },
-  bigquery: {
-    partitionBy: "created_date",
   }
 }
 
@@ -138,7 +140,9 @@ agg_sale_order_item_sort AS (
 )
 
 SELECT
-  *,
+  created_date
+  sku_fc_key,
+  sku_code,
   (0.1 * SAFE_DIVIDE(SUM(reserved_quantity) OVER (PARTITION BY sale_order_code), total_qty))
   + (0.6 * SAFE_DIVIDE(SUM(reserved_amount) OVER (PARTITION BY sale_order_code), total_amt)) 
   + (0.3 * LEAST(SAFE_DIVIDE(SUM(no_reserved_skus) OVER (PARTITION BY sale_order_code), total_sku), 1)) AS actual_sort_percentage_full_order,
