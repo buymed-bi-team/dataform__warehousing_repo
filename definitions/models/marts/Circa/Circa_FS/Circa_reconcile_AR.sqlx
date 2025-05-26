@@ -22,7 +22,7 @@ with reconcile as (
         date(date_add(created_time, interval 7 hour) ) as created_date
        ,entity_code          as pos_code
        ,Sum(final_amount )        as circa_collect
-       ,'FS chưa chuyển đổi' as type_amount
+       ,'FS đã chuyển đổi' as type_amount
        ,rec_template_code
        ,rec_code
        ,date(date_add(pay_due_time, interval 7 hour) ) as pay_due_time
