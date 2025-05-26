@@ -24,7 +24,7 @@ config {
         last_mile_hub_code: 'Hub code nhận phiếu cuối cùng. (Trường hợp ngoài lệ, cho những đơn ban giao gửi về các hub ở khu vực miền tây thì buộc phải qua hub cần thơ. Chúng ta cần field này để xác định nhưng đơn như thế này)',
         carrier_code: 'Mã nhà vận chuyển',
         carrier_name: 'Tên nhà vận chuyển',
-        in_out_type: 'Filed xác định kiểu của in out của bin',
+        in_out_type: 'Field xác định kiểu của in out của bin',
         fc_code: 'FC quản lý phiếu handover'
 	}
 }

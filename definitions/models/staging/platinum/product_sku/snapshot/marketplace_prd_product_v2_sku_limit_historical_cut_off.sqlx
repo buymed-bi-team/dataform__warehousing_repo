@@ -13,23 +13,24 @@ config {
 
   SELECT 
     *, 
-        CASE 
-        WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
-        ELSE "2099-01-01"
-    END AS created_date,
-    FORMAT_TIMESTAMP( "%y%m%d",CURRENT_TIMESTAMP()) date_index
+    --     CASE 
+    --     WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
+    --     ELSE "2099-01-01"
+    -- END AS created_date,
+    FORMAT_DATETIME( "%y%m%d",DATETIME(CURRENT_TIMESTAMP(), "+7")) date_index
   FROM ${ref("platinum_buymed_vn","marketplace_prd_product_v2_sku_limit")}
   
 
-  --  SELECT *, 
+  -- SELECT *, 
   --   CASE 
   --   WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
   --   ELSE "2099-01-01"
   -- END AS created_date,
-  --   FORMAT_TIMESTAMP( "%y%m%d",CURRENT_TIMESTAMP) date_index
+  --   FORMAT_TIMESTAMP( "%y%m%d",TIMESTAMP("2025-05-26T06:07:00")) date_index
   -- FROM silver_buymed_vn.marketplace_prd_product_v2_sku_limit
-  -- WHERE last_updated_time  <= TIMESTAMP("2025-05-19T16:07:00") - INTERVAL 7 HOUR
-  -- OR created_time <= TIMESTAMP("2025-05-19T16:07:00") - INTERVAL 7 HOUR
+  -- WHERE last_updated_time  <= TIMESTAMP("2025-05-26T06:07:00") - INTERVAL 7 HOUR
+  -- OR ( created_time <= TIMESTAMP("2025-05-26T06:07:00") - INTERVAL 7 HOUR
+  -- AND last_updated_time is NULL)
   -- QUALIFY ROW_NUMBER() OVER (_window) = 1
   --      AND FIRST_VALUE(action) OVER (_window) <> 'd'
   -- WINDOW

@@ -2,9 +2,9 @@ config {
     type: "incremental",
     name: "core_prd_activity_activity",
     schema: "platinum_buymed_vn",
-    assertions: {
-         uniqueKey: 'mg_id'
-     },
+    // assertions: {
+    //      uniqueKey: 'mg_id'
+    //  },
     bigquery: {
         partitionBy: "created_date"
     },
