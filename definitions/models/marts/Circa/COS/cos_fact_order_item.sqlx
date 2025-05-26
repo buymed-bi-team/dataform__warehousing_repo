@@ -106,7 +106,8 @@ cte_online AS (
   cost_price_include_tax AS base_unit_cost_price,
   "CIRCA" as owner_name,
   doc_code as po_code,
-  sale_order_number
+  sale_order_number,
+  promotion_event_code
 from (
     SELECT * FROM cte_not_online
     UNION ALL
@@ -140,7 +141,8 @@ SELECT
 --   min_cost_price_include_tax,
   eo.name as owner_name,
   po.code as po_code,
-  po.sale_order_number
+  po.sale_order_number,
+  promotion_event_code
 from ${source.circa_os}.order_order o
 left join ${source.circa_os}.order_order_item oi ON o.id = oi.order_id
 left join ${source.circa_os}.inventory_allocation AS al ON oi.id = al.item_ref_id
