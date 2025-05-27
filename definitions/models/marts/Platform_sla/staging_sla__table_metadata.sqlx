@@ -1,5 +1,6 @@
 config {
-    type: "table",
+    type: "incremental",
+    protected: true,
     description: `
     PIC: minhluu
     `,

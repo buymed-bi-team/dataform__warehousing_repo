@@ -26,11 +26,6 @@ WITH top_silver_layer AS (
   WHERE ingest_time >= CURRENT_TIMESTAMP - INTERVAL 14 DAY
 
   UNION ALL 
-  SELECT "monitoring_prd_collector_user_stats",mg_id ,CURRENT_TIMESTAMP(), synced_at, ingest_time
-  FROM silver_buymed_vn.monitoring_prd_collector_user_stats
-  WHERE ingest_time >= CURRENT_TIMESTAMP - INTERVAL 14 DAY
-
-  UNION ALL 
   SELECT "warehouse_prd_inventory_transfer_sku",mg_id ,last_updated_time, synced_at, ingest_time
   FROM silver_buymed_vn.warehouse_prd_inventory_transfer_sku
   WHERE ingest_time >= CURRENT_TIMESTAMP - INTERVAL 14 DAY

@@ -1,0 +1,18 @@
+config {
+    type: "view",
+    description : "PIC: minh.luu "
+}
+
+SELECT 
+    table_name,
+    AVG(TIMESTAMP_DIFF(ingest_time, last_updated_time, SECOND)) AS latency_sec_avg,
+    COUNT(*) AS total_data,
+    MIN(TIMESTAMP_DIFF(ingest_time, last_updated_time, SECOND)) AS latency_sec_min,
+    MAX(TIMESTAMP_DIFF(ingest_time, last_updated_time, SECOND)) AS latency_sec_max,
+    APPROX_QUANTILES(TIMESTAMP_DIFF(ingest_time, last_updated_time, SECOND), 100)[OFFSET(50)] AS latency_sec_P50,
+    APPROX_QUANTILES(TIMESTAMP_DIFF(ingest_time, last_updated_time, SECOND), 100)[OFFSET(90)] AS latency_sec_P90,
+    APPROX_QUANTILES(TIMESTAMP_DIFF(ingest_time, last_updated_time, SECOND), 100)[OFFSET(95)] AS latency_sec_P95,
+
+FROM ${ref(`staging_sla__silver_record`)}
+GROUP BY table_name
+

@@ -3,13 +3,22 @@ config {
     description : "PIC: minh.luu "
 }
 
+WITH tbl AS (
+    SELECT 
+
+        table_name,
+        APPROX_QUANTILES(TIMESTAMP_DIFF(ingest_time, last_updated_time, SECOND), 100) AS latency_distribution_sec,
+        -- AVG(TIMESTAMP_DIFF(ingest_time, last_updated_time, SECOND)) AS latency_avg_sec,
+        -- COUNT(*) AS total_data
+
+    FROM ${ref(`staging_sla__silver_record`)}
+    GROUP BY table_name
+)
 SELECT 
-
     table_name,
-    APPROX_QUANTILES(TIMESTAMP_DIFF(ingest_time, last_updated_time, SECOND), 100) AS latency_distribution_sec,
-    AVG(TIMESTAMP_DIFF(ingest_time, last_updated_time, SECOND)) AS latency_avg_sec,
-    COUNT(*) AS total_data
+    l latency_distribution_sec,
+    ROW_NUMBER() OVER(PARTITION BY table_name ORDER BY l asc) latency_distribution_sec_index
 
-FROM ${ref(`staging_sla__silver_record`)}
-GROUP BY table_name, ingest_time
+FROM tbl
+, UNNEST(latency_distribution_sec) l
 

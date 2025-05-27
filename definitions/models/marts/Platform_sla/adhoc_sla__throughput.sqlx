@@ -3,6 +3,17 @@ config {
     description : "PIC: minh.luu "
 }
 
+-- WITH partition_cte AS (
+--     SELECT 
+--         table_id,
+--         partition_id,
+--         total_logical_bytes,
+--         total_billable_bytes
+--     FROM ${ref(`staging_sla__silver_partition`)}
+--     WHERE dataset_id = "silver_buymed_vn"
+--     AND table_id in (SELECT DISTINCT table_name FROM ${`staging_sla__silver_record`})
+-- )
+
 SELECT 
     table_name
     , TIMESTAMP_TRUNC(ingest_time, HOUR) ingest_time
