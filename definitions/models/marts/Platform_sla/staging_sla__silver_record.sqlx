@@ -5,7 +5,7 @@ config {
 WITH top_silver_layer AS (
   -- The most event table
   SELECT 
-    "warehouse_prd_picking_pick_ticket_item" name,mg_id, last_updated_time, synced_at, ingest_time
+    "warehouse_prd_picking_pick_ticket_item" table_name,mg_id, last_updated_time, synced_at, ingest_time
   FROM silver_buymed_vn.warehouse_prd_picking_pick_ticket_item 
   WHERE ingest_time >= CURRENT_TIMESTAMP - INTERVAL 14 DAY
 
