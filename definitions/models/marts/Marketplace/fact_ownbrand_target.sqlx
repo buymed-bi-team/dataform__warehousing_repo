@@ -5,7 +5,7 @@ config {
         Ownbrand target by month ;
         PIC: nguyen.tran; 
         Type: Table; 
-        Refresh Schedule: hourly;
+        Refresh Schedule: daily at 8h30;
         `,
     tags: ["8h30"]
 }
