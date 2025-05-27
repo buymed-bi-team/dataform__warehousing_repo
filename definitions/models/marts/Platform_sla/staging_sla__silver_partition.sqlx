@@ -1,0 +1,47 @@
+config {
+    type: "incremental",
+    protected: true,
+    tags : ["custom_1h_past10"],
+    bigquery: {
+      partitionBy: "DATE(index_time)",
+      clusterBy: ["dataset_id","table_id"]
+    }
+}
+
+js {
+  const dataset = [
+    "silver_buymed_vn",
+    "platinum_buymed_vn",
+    "silver_buymed_cam",
+    "platinum_buymed_cam",
+    "silver_buymed_th",
+    "platinum_buymed_th",
+    "gold_buymed_vn2",
+    "gold_buymed_th",
+    "gold_buymed_cam",
+    "buymed_circa",
+    "buymed_circa_v2"
+  ];
+  const last_index = dataset.length - 1
+}
+
+${
+  dataset.map(
+    (_source, i ) => `
+    SELECT
+      table_catalog as project_id,
+      table_schema as dataset_id,
+      table_name as table_id,
+      partition_id,
+      total_rows,
+      total_logical_bytes,
+      total_billable_bytes,
+      last_modified_time,
+      storage_tier,
+
+      CURRENT_TIMESTAMP() index_time
+    FROM lakehouse-prod-394907.${_source}.INFORMATION_SCHEMA.PARTITIONS
+    `
+  ).join("UNION ALL\n")
+}
+

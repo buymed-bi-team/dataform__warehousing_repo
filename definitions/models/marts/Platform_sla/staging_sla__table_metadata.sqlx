@@ -1,15 +1,41 @@
 config {
-    type: "view",
+    type: "table",
     description: `
     PIC: minhluu
     `,
-    tags: ["bigquery"]
+    tags: ["bigquery","custom_1h_past10"],
+    bigquery: {
+        partitionBy: "TIMESTAMP_TRUNC(index_time,MONTH)",
+        clusterBy: ["dataset_id", "table_id"]
+    }
 }
-WITH ti AS (
-  SELECT * FROM platinum_buymed_vn.INFORMATION_SCHEMA.TABLES
-), tm AS (
-  SELECT * FROM platinum_buymed_vn.__TABLES__
-), t AS (
+
+js {
+  const dataset = [
+    "silver_buymed_vn",
+    "platinum_buymed_vn",
+    "silver_buymed_cam",
+    "platinum_buymed_cam",
+    "silver_buymed_th",
+    "platinum_buymed_th",
+    "gold_buymed_vn2",
+    "gold_buymed_th",
+    "gold_buymed_cam",
+    "buymed_circa",
+    "buymed_circa_v2"
+  ];
+  const last_index = dataset.length - 1
+}
+
+WITH ti AS (${
+    dataset.map((_source, i ) => `
+    SELECT * FROM ${_source}.INFORMATION_SCHEMA.TABLES
+    `).join("UNION ALL \n")
+}), tm AS (${
+    dataset.map((_source, i ) => `
+    SELECT * FROM ${_source}.__TABLES__
+    `).join("UNION ALL \n")
+}), t AS (
   SELECT 
     table_catalog cloud_project_id,
     dataset_id ,
@@ -43,4 +69,8 @@ WITH ti AS (
     AND ti.table_schema = tm.dataset_id
 )
 
-SELECT * FROM t
+SELECT 
+    * ,
+    CURRENT_TIMESTAMP() index_time
+
+FROM t
