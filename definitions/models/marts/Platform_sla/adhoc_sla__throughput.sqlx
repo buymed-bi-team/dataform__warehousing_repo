@@ -1,0 +1,13 @@
+config {
+    type: "view",
+    description : "PIC: minh.luu "
+}
+
+SELECT 
+    table_name
+    , TIMESTAMP_TRUNC(ingest_time, HOUR) ingest_time
+    , COUNT( * ) total_data
+
+FROM ${ref(`staging_sla__silver_record`)}
+GROUP BY table_name, ingest_time
+

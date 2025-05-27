@@ -1,0 +1,15 @@
+config {
+    type: "view",
+    description : "PIC: minh.luu "
+}
+
+SELECT 
+
+    table_name,
+    APPROX_QUANTILES(TIMESTAMP_DIFF(ingest_time, last_updated_time, SECOND), 100) AS latency_distribution_sec,
+    AVG(TIMESTAMP_DIFF(ingest_time, last_updated_time, SECOND)) AS latency_avg_sec,
+    COUNT(*) AS total_data
+
+FROM ${ref(`staging_sla__silver_record`)}
+GROUP BY table_name, ingest_time
+
