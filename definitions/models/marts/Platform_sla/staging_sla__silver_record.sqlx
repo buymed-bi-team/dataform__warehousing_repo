@@ -5,53 +5,53 @@ config {
 WITH top_silver_layer AS (
   -- The most event table
   SELECT 
-    "warehouse_prd_picking_pick_ticket_item" table_name,mg_id, last_updated_time, synced_at, ingest_time
+    "warehouse_prd_picking_pick_ticket_item" table_name,mg_id, created_time , last_updated_time, synced_at, ingest_time
   FROM silver_buymed_vn.warehouse_prd_picking_pick_ticket_item 
   WHERE ingest_time >= CURRENT_TIMESTAMP - INTERVAL 14 DAY
 
   UNION ALL 
   SELECT 
-    "marketplace_prd_order_v2_order_item",mg_id ,last_updated_time, synced_at, ingest_time
+    "marketplace_prd_order_v2_order_item",mg_id , created_time ,last_updated_time, synced_at, ingest_time
   FROM silver_buymed_vn.marketplace_prd_order_v2_order_item
   WHERE ingest_time >= CURRENT_TIMESTAMP - INTERVAL 14 DAY
 
   UNION ALL 
-  SELECT "marketplace_prd_order_v2_order_item",mg_id ,last_updated_time, synced_at, ingest_time
+  SELECT "marketplace_prd_order_v2_order_item",mg_id , created_time ,last_updated_time, synced_at, ingest_time
   FROM silver_buymed_vn.marketplace_prd_order_v2_order_item
   WHERE ingest_time >= CURRENT_TIMESTAMP - INTERVAL 14 DAY
 
   UNION ALL 
-  SELECT "warehouse_prd_core_sale_order_item",mg_id ,last_updated_time, synced_at, ingest_time
+  SELECT "warehouse_prd_core_sale_order_item",mg_id , created_time ,last_updated_time, synced_at, ingest_time
   FROM silver_buymed_vn.warehouse_prd_core_sale_order_item
   WHERE ingest_time >= CURRENT_TIMESTAMP - INTERVAL 14 DAY
 
   UNION ALL 
-  SELECT "warehouse_prd_inventory_transfer_sku",mg_id ,last_updated_time, synced_at, ingest_time
+  SELECT "warehouse_prd_inventory_transfer_sku",mg_id , created_time ,last_updated_time, synced_at, ingest_time
   FROM silver_buymed_vn.warehouse_prd_inventory_transfer_sku
   WHERE ingest_time >= CURRENT_TIMESTAMP - INTERVAL 14 DAY
 
   UNION ALL 
-  SELECT "warehouse_prd_inventory_sku",mg_id ,last_updated_time, synced_at, ingest_time
+  SELECT "warehouse_prd_inventory_sku",mg_id , created_time ,last_updated_time, synced_at, ingest_time
   FROM silver_buymed_vn.warehouse_prd_inventory_sku
   WHERE ingest_time >= CURRENT_TIMESTAMP - INTERVAL 14 DAY
 
   UNION ALL 
-  SELECT "warehouse_prd_picking_task_item",mg_id ,last_updated_time, synced_at, ingest_time
+  SELECT "warehouse_prd_picking_task_item",mg_id , created_time ,last_updated_time, synced_at, ingest_time
   FROM silver_buymed_vn.warehouse_prd_picking_task_item
   WHERE ingest_time >= CURRENT_TIMESTAMP - INTERVAL 14 DAY
 
 )
 
-  SELECT 
-    "_All" table_name,
-    mg_id ,
-    COALESCE(last_updated_time, silver_buymed_vn.MONGOID_TIMESTAMP(mg_id) ) last_updated_time, 
-    synced_at, ingest_time 
-  FROM top_silver_layer
-  UNION ALL 
+  -- SELECT 
+  --   "_All" table_name,
+  --   mg_id , created_time ,
+  --   COALESCE(last_updated_time, silver_buymed_vn.MONGOID_TIMESTAMP(mg_id), created_time  ) last_updated_time, 
+  --   synced_at, ingest_time 
+  -- FROM top_silver_layer
+  -- UNION ALL 
   SELECT 
     table_name,
-    mg_id ,
-    COALESCE(last_updated_time, silver_buymed_vn.MONGOID_TIMESTAMP(mg_id) ) last_updated_time, 
+    mg_id  || CAST(UNIX_MICROS(created_time) AS STRING) mg_id,
+    COALESCE(last_updated_time, created_time, silver_buymed_vn.MONGOID_TIMESTAMP(mg_id)  ) last_updated_time, 
     synced_at, ingest_time 
   FROM top_silver_layer

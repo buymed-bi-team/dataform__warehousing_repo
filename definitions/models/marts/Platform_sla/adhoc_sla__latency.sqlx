@@ -8,6 +8,7 @@ WITH tbl AS (
 
         table_name,
         APPROX_QUANTILES(TIMESTAMP_DIFF(ingest_time, last_updated_time, SECOND), 100) AS latency_distribution_sec,
+        APPROX_QUANTILES(TIMESTAMP_DIFF(ingest_time, synced_at, SECOND), 100) AS synced_at_latency_distribution_sec,
         -- AVG(TIMESTAMP_DIFF(ingest_time, last_updated_time, SECOND)) AS latency_avg_sec,
         -- COUNT(*) AS total_data
 
@@ -16,9 +17,12 @@ WITH tbl AS (
 )
 SELECT 
     table_name,
-    l latency_distribution_sec,
-    ROW_NUMBER() OVER(PARTITION BY table_name ORDER BY l asc) latency_distribution_sec_index
+    -- l latency_distribution_sec,
+    s synced_at_latency_distribution_sec,
+    ROW_NUMBER() OVER(PARTITION BY table_name ORDER BY s asc) synced_at_latency_distribution_sec_index
 
 FROM tbl
-, UNNEST(latency_distribution_sec) l
+-- , UNNEST(latency_distribution_sec) l
+, UNNEST(synced_at_latency_distribution_sec) s
+QUALIFY synced_at_latency_distribution_sec_index > 50
 
