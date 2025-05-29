@@ -79,6 +79,7 @@ left join thuosi_unit t on pd.product_id = t.product_id and lower(pd.unit) = low
 where bu.convert_unit is not null
       and ps.client_id = 1 
       and ps.type = 'CLIENT'
+      and pd.seller_code is not null
      -- and pd.product_id = 11463 
 group by all)
 ,combine as (select distinct i.product_id,
@@ -109,6 +110,7 @@ i.seller_code,
     from inventory_full_unit i
     left join has_price p on i.product_id = p.product_id and i.unit = p.unit and p.sku_code = i.sku_code
     left join count_ord co on i.product_id = co.product_id
+    where p.seller_code is not null
     --where  p.product_id is not null
     group by all)
 ,check_unit_pricing as
