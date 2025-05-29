@@ -1,17 +1,19 @@
 config {
     type: "view",
-    description : "PIC: minh.luu "
+    description : "PIC: minh.luu ",
+    tags: ["sla_performance"]
 }
 
 SELECT 
     table_name,
-    AVG(TIMESTAMP_DIFF(ingest_time, last_updated_time, SECOND)) AS latency_sec_avg,
+    
     COUNT(*) AS total_data,
-    MIN(TIMESTAMP_DIFF(ingest_time, last_updated_time, SECOND)) AS latency_sec_min,
-    MAX(TIMESTAMP_DIFF(ingest_time, last_updated_time, SECOND)) AS latency_sec_max,
-    APPROX_QUANTILES(TIMESTAMP_DIFF(ingest_time, last_updated_time, SECOND), 100)[OFFSET(50)] AS latency_sec_P50,
-    APPROX_QUANTILES(TIMESTAMP_DIFF(ingest_time, last_updated_time, SECOND), 100)[OFFSET(90)] AS latency_sec_P90,
-    APPROX_QUANTILES(TIMESTAMP_DIFF(ingest_time, last_updated_time, SECOND), 100)[OFFSET(95)] AS latency_sec_P95,
+    -- AVG(TIMESTAMP_DIFF(ingest_time, last_updated_time, SECOND)) AS latency_sec_avg,
+    -- MIN(TIMESTAMP_DIFF(ingest_time, last_updated_time, SECOND)) AS latency_sec_min,
+    -- MAX(TIMESTAMP_DIFF(ingest_time, last_updated_time, SECOND)) AS latency_sec_max,
+    -- APPROX_QUANTILES(TIMESTAMP_DIFF(ingest_time, last_updated_time, SECOND), 100)[OFFSET(50)] AS latency_sec_P50,
+    -- APPROX_QUANTILES(TIMESTAMP_DIFF(ingest_time, last_updated_time, SECOND), 100)[OFFSET(90)] AS latency_sec_P90,
+    -- APPROX_QUANTILES(TIMESTAMP_DIFF(ingest_time, last_updated_time, SECOND), 100)[OFFSET(95)] AS latency_sec_P95,
 
     AVG(TIMESTAMP_DIFF(ingest_time, synced_at, SECOND)) AS synced_at_latency_sec_avg,
     MIN(TIMESTAMP_DIFF(ingest_time, synced_at, SECOND)) AS synced_at_latency_sec_min,
