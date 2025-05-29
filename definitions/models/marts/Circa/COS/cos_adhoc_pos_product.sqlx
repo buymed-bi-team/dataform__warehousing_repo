@@ -34,12 +34,12 @@ product_base_unit as
 full_unit as (SELECT
     i.pos_id,
     ru.product_id,
-    ru.unit,
+    ru.convert_unit as unit,
     ru.convert_rate,
     ru.base_unit,
     i.seller_code
 FROM  inventory AS i
-JOIN  ${source.circa_os}.product_retail_unit AS ru
+JOIN  product_base_unit AS ru
     ON i.product_id = ru.product_id
 GROUP BY ALL),
 
