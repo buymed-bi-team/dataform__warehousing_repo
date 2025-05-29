@@ -6,7 +6,7 @@ const model = new main.PlatinumModel(
         target_schema : "platinum_buymed_vn", // Use for document
         // customAssertionsSchema : `dataform_playground_assertions`,
         // source_schema = source.silver,
-        // description = ``,
+        description : `Internal Link: internal.thuocsi.vn/crm/license-request`,
 
         has_lastUpdatedTime : true,
         has_createdTime : true,
