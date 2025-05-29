@@ -1,24 +1,68 @@
 config {
     type: "view",
-    description : "PIC: minh.luu "
+    description : "PIC: minh.luu ",
+    tags: ["sla_performance"]
 }
 
--- WITH partition_cte AS (
---     SELECT 
---         table_id,
---         partition_id,
---         total_logical_bytes,
---         total_billable_bytes
---     FROM ${ref(`staging_sla__silver_partition`)}
---     WHERE dataset_id = "silver_buymed_vn"
---     AND table_id in (SELECT DISTINCT table_name FROM ${`staging_sla__silver_record`})
--- )
+WITH throughput_byte AS (
+    SELECT 
+        index_time,
+        dataset_id,
+        table_id,
+        size_bytes,
+        size_bytes - LAG(size_bytes) OVER(w) delta_bytes,
+    FROM ${ref(`staging_sla__table_metadata`)}
+    WHERE dataset_id = "silver_buymed_vn"
+    AND table_id in (SELECT DISTINCT table_name FROM ${ref(`staging_sla__silver_record`)})
+    WINDOW w AS (
+        PARTITION BY dataset_id,table_id 
+        ORDER BY index_time ASC
+    )
+)
+, throughput_row_cnt AS (
+    SELECT 
+        "silver_buymed_vn" dataset_id
+        , table_name table_id
+        , TIMESTAMP_TRUNC(ingest_time, HOUR) ingest_time
+        , COUNT( * ) total_data
+
+    FROM ${ref(`staging_sla__silver_record`)}
+    GROUP BY dataset_id, table_name, ingest_time
+)
+,main AS (
+    SELECT
+        COALESCE(a.dataset_id, b.dataset_id ) dataset_id,
+        COALESCE(a.table_id, b.table_id) table_id,
+        
+        TIMESTAMP_TRUNC (
+            COALESCE(a.index_time, b.ingest_time)
+            , HOUR 
+        ) index_time ,
+
+        ${
+            [
+                "total_data",
+                "size_bytes",
+                "delta_bytes"
+            ].map ( 
+                x => `SUM(COALESCE(${x},0)) ${x} `
+            ).join(",\n\t")
+        }
+
+
+        
+    FROM  throughput_byte a
+    FULL JOIN throughput_row_cnt b 
+        ON a.dataset_id = b.dataset_id AND a.table_id = b.table_id
+        AND a.index_time = b.ingest_time
+    GROUP BY dataset_id, table_id , index_time    
+)
 
 SELECT 
-    table_name
-    , TIMESTAMP_TRUNC(ingest_time, HOUR) ingest_time
-    , COUNT( * ) total_data
-
-FROM ${ref(`staging_sla__silver_record`)}
-GROUP BY table_name, ingest_time
-
+    * , 
+    EXTRACT( HOUR  FROM index_time) index_hour ,
+    ROW_NUMBER() OVER (w) r_number
+FROM main 
+WINDOW w AS (
+    ORDER BY dataset_id, table_id, index_time 
+)

@@ -1,13 +1,14 @@
 config {
     type: "view",
-    description : "PIC: minh.luu "
+    description : "PIC: minh.luu ",
+    tags: ["sla_performance"]
 }
 
 WITH tbl AS (
     SELECT 
 
         table_name,
-        APPROX_QUANTILES(TIMESTAMP_DIFF(ingest_time, last_updated_time, SECOND), 100) AS latency_distribution_sec,
+        -- APPROX_QUANTILES(TIMESTAMP_DIFF(ingest_time, last_updated_time, SECOND), 100) AS latency_distribution_sec,
         APPROX_QUANTILES(TIMESTAMP_DIFF(ingest_time, synced_at, SECOND), 100) AS synced_at_latency_distribution_sec,
         -- AVG(TIMESTAMP_DIFF(ingest_time, last_updated_time, SECOND)) AS latency_avg_sec,
         -- COUNT(*) AS total_data
