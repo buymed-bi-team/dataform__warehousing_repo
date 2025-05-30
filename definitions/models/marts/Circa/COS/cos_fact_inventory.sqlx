@@ -2,6 +2,7 @@ config {
     type: "table", 
     description: 
         `PIC: huyen.ngo; 
+        Current inventory
         Type: Table; 
         Refresh Schedule: At minute 10 past hour 7, 10, 13, 16 and 19;
         Source: 
