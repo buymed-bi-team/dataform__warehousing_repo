@@ -20,6 +20,7 @@ product_base_unit as
      from  ${source.circa_os}.product_retail_unit
      where sale_allowed is true 
            and client_id = 1
+          -- Lấy product cuả Circa
      )
 ,count_ord as ( select 
                     oi.product_id,
@@ -39,7 +40,9 @@ product_base_unit as
     from  ${source.circa_os}.inventory_location_detail as a
     left join  ${source.circa_os}.inventory_location as b on a.location_id = b.id
     where deleted_at is null
-    group by all)
+    group by all
+    --Lấy số lượng tồn kho theo product
+    )
 ,full_unit as
  (Select
     ru.product_id,
@@ -79,7 +82,7 @@ left join product_base_unit as bu on pd.product_id = bu.product_id and pd.unit =
 left join thuosi_unit t on pd.product_id = t.product_id and lower(pd.unit) = lower(t.unit)
 where bu.convert_unit is not null
       and ps.client_id = 1 
-      and ps.type = 'CLIENT'
+      and ps.type = 'CLIENT' -- Loại trừ nhừng sản phẩm đã set giá trên các pos
       and pd.seller_code is not null
      -- and pd.product_id = 11463 
 group by all)

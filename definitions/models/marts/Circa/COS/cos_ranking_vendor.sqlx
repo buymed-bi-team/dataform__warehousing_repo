@@ -1,9 +1,6 @@
 config {
     type: "table",
-    description: `Last 13 month| PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`
-    /*Source:
-      ${source.silver}.marketplace_prd_order_v2_order_item
-      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
+    description: `Last 13 month| PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`,
     tags: ["custom_1h_past5"],
     name: "cos_ranking_vendor",
     columns: {
@@ -25,10 +22,11 @@ with RawTable as (
     from ${source.ref}.cos_purchase_order_item AS poi
     join ${source.ref}.cos_purchase_order AS po ON poi.po_id = po.po_id
     where
-        po.fulfillment_method <> 'IMPORT_STOCK' 
+        po.fulfillment_method <> 'IMPORT_STOCK' -- Loại trừ nhập tồn kho
         and po.po_status NOT IN ('SEPERATED', 'CANCELED', 'PENDING')
         --and product_id = 4980
     group by all
+    -- Lấy số lượng bán hàng từng sản phẩm theo từng Vendor
 ),
 RankedTable as (
     select
