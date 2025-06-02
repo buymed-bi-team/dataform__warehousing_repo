@@ -1,7 +1,7 @@
 config {
     type: "table",
-    description: `Last 13 month| PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`,
-    tags: ["custom_1h_past5"],
+    description: `Last 13 month| PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every 2 hours`,
+    tags: ["custom_2h_past5"],
     name: "cos_ranking_vendor",
     columns: {
         order_id: "NonNull |" + docs.order_id,
@@ -10,7 +10,7 @@ config {
     }
 }
 
-with RawTable as (
+with rawtable as (
     select
         poi.product_id
         ,po.distributor_id
@@ -26,13 +26,13 @@ with RawTable as (
         and po.po_status NOT IN ('SEPERATED', 'CANCELED', 'PENDING')
         --and product_id = 4980
     group by all
-    -- Lấy số lượng bán hàng từng sản phẩm theo từng Vendor
+    -- Lấy số lượng bán hàng từng sản phẩm theo từng Vendor, giá 
 ),
-RankedTable as (
+rankedtable as (
     select
         *
         ,rank() over (partition by product_id order by CompositeScore desc) as Rank
-    from RawTable
+    from rawtable
 ),last_unit_price as (
 Select distinct 
        i.product_id
@@ -48,8 +48,8 @@ from ${source.ref}.cos_purchase_order_item i
 left join ${source.ref}.cos_purchase_order o on i.po_id = o.po_id
 left join ${source.ref}.cos_product_convert_base_unit td on td.product_id = i.product_id and i.unit = convert_unit)
 select distinct 
-    RankedTable.product_id
-    ,RankedTable.distributor_id
+    rankedtable.product_id
+    ,rankedtable.distributor_id
     ,vendor
     ,fulfillment_method as channel
     ,total_base_quantity 
@@ -57,5 +57,5 @@ select distinct
     ,base_unit_price 
     ,tax_rate as latest_tax_rate
     ,Rank as rank
-from RankedTable left join last_unit_price on RankedTable.product_id = last_unit_price.product_id and RankedTable.distributor_id = last_unit_price.distributor_id
+from rankedtable left join last_unit_price on rankedtable.product_id = last_unit_price.product_id and rankedtable.distributor_id = last_unit_price.distributor_id
 where rn= 1
