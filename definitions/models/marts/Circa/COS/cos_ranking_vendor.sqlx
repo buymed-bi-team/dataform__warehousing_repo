@@ -24,6 +24,7 @@ with rawtable as (
     where
         po.fulfillment_method <> 'IMPORT_STOCK' -- Loại trừ nhập tồn kho
         and po.po_status NOT IN ('SEPERATED', 'CANCELED', 'PENDING')
+        and po.owner_name <> 'CIRCA TEST'
         --and product_id = 4980
     group by all
     -- Lấy số lượng bán hàng từng sản phẩm theo từng Vendor, giá 
