@@ -47,7 +47,12 @@ Select distinct
        ,rank() over (partition by i.product_id,i.distributor_id order by o.created_at desc) as rn
 from ${source.ref}.cos_purchase_order_item i
 left join ${source.ref}.cos_purchase_order o on i.po_id = o.po_id
-left join ${source.ref}.cos_product_convert_base_unit td on td.product_id = i.product_id and i.unit = convert_unit)
+left join ${source.ref}.cos_product_convert_base_unit td on td.product_id = i.product_id and i.unit = convert_unit
+where o.fulfillment_method <> 'IMPORT_STOCK' -- Loại trừ nhập tồn kho
+        and o.po_status NOT IN ('SEPERATED', 'CANCELED', 'PENDING')
+        and o.owner_name <> 'CIRCA TEST'
+
+)
 select distinct 
     rankedtable.product_id
     ,rankedtable.distributor_id
