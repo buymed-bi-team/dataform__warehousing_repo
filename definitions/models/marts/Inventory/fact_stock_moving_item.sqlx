@@ -92,8 +92,8 @@ WITH
             END AS moving_type
         FROM cte_Item AS a
             LEFT JOIN ${source.platinum}.warehouse_prd_inventory_transfer AS b on a.transfer_id = b.transfer_id
-        WHERE
-            b.type in ('AUDIT', 'PICK', 'INBOUND', 'INTERNAL', 'CUSTOMER_RETURN', 'MISSING', 'DAMAGE_RETURN')
+        -- WHERE
+        --     b.type in ('AUDIT', 'PICK', 'INBOUND', 'INTERNAL', 'CUSTOMER_RETURN', 'MISSING', 'DAMAGE_RETURN')
     )
 
     , calculated_price AS (
