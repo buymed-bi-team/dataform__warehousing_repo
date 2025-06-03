@@ -9,7 +9,7 @@ config {
         uniqueKey: 'mg_id',
         nonNull: ["created_date"]
     },
-    tags: ["tender_prd_core_tender"],
+    tags: ["platinum_custom_1h_past7","tender_prd_core_tender"],
     bigquery: {
         partitionBy: "created_date"
     }

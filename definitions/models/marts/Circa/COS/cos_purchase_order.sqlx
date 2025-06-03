@@ -1,6 +1,6 @@
 config {
     type: "table",
-    description: `Circa OS Transaction order item detail PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`,
+    description: `Circa OS purchase order PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`,
     /*Source:
       ${source.silver}.marketplace_prd_order_v2_order_item
       ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5,*/
@@ -21,6 +21,7 @@ select
     ,a.status as po_status
     ,a.total_item_amount as po_amount
     ,a.actual_total_amount as actual_po_amount
+    ,sum(a.actual_total_amount - coalesce(rt.actual_total_amount,0)) as actual_po_amount_af_rt
     ,date(datetime_add(a.created_at, interval 7 hour)) as created_date
     ,date(datetime_add(a.completed_at, interval 7 hour)) as completed_date
     ,datetime_add(a.created_at, interval 7 hour) as created_at
@@ -29,16 +30,16 @@ select
     ,a.sale_order_number as order_id
     ,a.created_by
     ,a.note
-    ,source_type
-    ,discount_amount
-    ,delivery_fee_amount
-    ,sub_payment_method
-    ,sub_type
+    ,a.source_type
+    ,a.discount_amount
+    ,a.delivery_fee_amount
+    ,a.sub_payment_method
+    ,a.sub_type
     ,o.order_status
     ,o.so_status
     ,o.payment_method
     ,date(o.created_at) as so_created_date
-    ,tags
+    --,tags
     ,case 
         when to_json_string(o.tags) like '%vip%' then 'vip'
         else 'others'
@@ -51,6 +52,8 @@ from ${source.circa_os}.order_purchase_order as a
 left join ${source.ref}.fact_order as o on a.sale_order_number = safe_cast(o.order_id as string)
 left join ${source.circa_os}.entity_owner as eo on a.owner_id = eo.id
 left join ${source.circa_os}.entity_distributor dis on a.distributor_id = dis.id
+left join ${source.circa_os}.order_return_po rt on a.id = rt.source_id -- Lấy nhừng PO có trả hàng 
 where a.status <> 'CANCELED'
       and a.pos_id not in ('c95a3338-4f5e-4264-958b-0d02e3fea49b','0d4c2e76-c6bf-487d-bf3e-d0b608d9fb5d')
 -- and date(a.created_at) >= date(date_trunc(date_sub(current_date('+7'), interval 11 month), month))
+group by all

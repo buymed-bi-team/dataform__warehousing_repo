@@ -1,0 +1,40 @@
+
+config {
+    type: "table",
+    description: `PIC: huyen.ngo; model_type: Table ;schedule: At 10h30`
+    /*Source:
+      ${source.silver}.marketplace_prd_order_v2_order_item
+      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
+    disabled: true,
+    name: "cos_sku_status",
+    columns: {/*
+        order_id: "NonNull |" + docs.order_id,
+        customer_id: "NonNull | The unique identifier for each customer"*/
+        
+    }
+}
+
+with thuoc_si as (
+select distinct
+    t.sku,
+    t.created_time,
+    t.status
+    ,u.product_id
+    ,sku_code
+
+from  ${source.ref}.staging_sku_status_history t
+join (
+    select
+        sku,
+        max(created_time) as max_created_time
+    from  ${source.ref}.staging_sku_status_history
+    --where created_time >= '2024-01-05'
+    group by sku
+     ) latest on t.sku = latest.sku AND t.created_time = latest.max_created_time
+left join  ${source.ref}.adhoc_pm_master_sku u on u.sku_code = t.sku
+where created_time >= '2024-01-05' 
+     and u.product_id in (Select distinct product_id from ${source.ref}.cos_purchase_order_item)
+     and u.fc_code = 'BD'
+--and t.sku = 'MEDX.8URXHR2A'
+)
+Select * from thuoc_si

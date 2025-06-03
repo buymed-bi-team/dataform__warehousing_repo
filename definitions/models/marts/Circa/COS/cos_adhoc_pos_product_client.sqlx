@@ -1,0 +1,134 @@
+config {
+    type: "table",
+    description: `Tracking price for Circa OS
+             PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 past hour 6, 8, 10, 12, 14, 16, 18, 20 and 22`,
+    tags: ["custom_2h_past5"],
+    name: "cos_adhoc_pos_product_client",
+}
+
+
+with thuosi_unit as (
+    select product_id
+          , unit
+    from ${source.ref}.dim_product
+),
+product_base_unit as
+    (select product_id,
+            unit as convert_unit,
+            base_unit,
+            convert_rate
+     from  ${source.circa_os}.product_retail_unit
+     where sale_allowed is true 
+           and client_id = 1
+          -- Lấy product cuả Circa
+     )
+,count_ord as ( select 
+                    oi.product_id,
+                    max(o.created_date) as latest_ord,
+                    COUNT(distinct o.order_id) as no_ord,
+                    SUM(unit_price * quantity) AS GMV
+             from ${source.ref}.cos_fact_order o
+             left join ${source.ref}.cos_fact_order_item oi
+                        on o.order_id = oi.order_id
+             where status like "%COMPLETE%"
+             group by all)
+, inventory as (
+    select a.product_id,
+           sum(a.on_hand_qty) as on_hand_quantity,
+           seller_code,
+           sku_code,
+    from  ${source.circa_os}.inventory_location_detail as a
+    left join  ${source.circa_os}.inventory_location as b on a.location_id = b.id
+    where deleted_at is null
+    group by all
+    --Lấy số lượng tồn kho theo product
+    )
+,full_unit as
+ (Select
+    ru.product_id,
+    ru.convert_unit as unit,
+    ru.convert_rate,
+    seller_code,
+    ru.base_unit
+from  inventory AS i
+join  product_base_unit AS ru
+    on i.product_id = ru.product_id
+group by all),
+
+inventory_full_unit as (select 
+      i.product_id
+    , u.unit
+    , u.convert_rate
+    , i.on_hand_quantity
+    , i.sku_code
+    , i.seller_code
+    , u.base_unit
+from inventory i
+left join full_unit u on i.product_id = u.product_id)
+,has_price as (
+Select 
+        pd.product_id,
+        pd.seller_code,
+        pd.sku_code,
+        pd.sale_price,
+        pd.unit,
+        bu.base_unit,
+        bu.convert_rate,
+        case when t.unit is not null then true else false end as is_thuocsi_unit,
+        max(datetime(pd.updated_at, "Asia/Ho_Chi_Minh")) as last_updated_at
+from ${source.circa_os}.product_price_sheet_detail as pd
+left join ${source.circa_os}.product_price_sheet as ps on pd.price_sheet_id = ps.id
+left join product_base_unit as bu on pd.product_id = bu.product_id and pd.unit = bu.convert_unit
+left join thuosi_unit t on pd.product_id = t.product_id and lower(pd.unit) = lower(t.unit)
+where bu.convert_unit is not null
+      and ps.client_id = 1 
+      and ps.type = 'CLIENT' -- Loại trừ nhừng sản phẩm đã set giá trên các pos
+      and pd.seller_code is not null
+     -- and pd.product_id = 11463 
+group by all)
+,combine as (select distinct i.product_id,
+i.seller_code,
+           i.sku_code,
+           i.unit,
+           i.convert_rate,
+           p.is_thuocsi_unit,
+           i.base_unit as is_base_unit,
+           p.last_updated_at,
+           p.sale_price as sale_unit_price,
+           case when i.on_hand_quantity > 0 then "Available" else "Unavailable" end as have_stock,
+           case when p.sale_price is null then "Price not set" else "Price set" end as price_set_check,
+            case when DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<16 THEN "15D"
+            WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<31 THEN "30D"
+            WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<46 THEN "45D"
+            WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<61 THEN "60D"
+            WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<90 THEN "90D" else "Others" END AS latest_date_order_range,
+            case when DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<16 and on_hand_quantity >0 THEN "DEAD-1:No-Demand 15D"
+            WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<31 and on_hand_quantity >0 THEN "DEAD-2:No-Demand 30D"
+            WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<46 and on_hand_quantity >0 THEN "DEAD-3:No-Demand 45D"
+            WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<61 and on_hand_quantity >0 THEN "DEAD-4:No-Demand 60D"
+            WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<90 and on_hand_quantity >0 THEN "DEAD-5:No-Demand 90D"
+            else "Others" END AS stock_aging_type,
+            no_ord,GMV,
+            latest_ord,
+            on_hand_quantity
+    from inventory_full_unit i
+    left join has_price p on i.product_id = p.product_id and i.unit = p.unit and p.sku_code = i.sku_code
+    left join count_ord co on i.product_id = co.product_id
+    where p.seller_code is not null
+    --where  p.product_id is not null
+    group by all)
+,check_unit_pricing as
+    (
+        select product_id,
+               max(case when sale_unit_price >= 0 then 0 else 1 end ) as check_price_unit
+        from combine
+        where unit is not null
+        group by all
+    )select i.*,
+       case when (cup.check_price_unit = 1 and i.unit is not null) or price_set_check like "Price not set" then "contain unit not set"
+       else "set full" end as check_unit_price_set
+from combine i
+left join check_unit_pricing cup on i.product_id= cup.product_id 
+--where i.product_id = 11463
+group by all
+

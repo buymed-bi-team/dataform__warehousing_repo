@@ -24,7 +24,7 @@ select
 	ho.tpl_name as carrier_name,
 	ho.tpl_service_id as carrier_id,
 	ho.type as order_type,
-	ho.status,
+	d.status,
 	ho.do_status,
     ho.created_by,
 	ho.hub_code as hub_pickup,

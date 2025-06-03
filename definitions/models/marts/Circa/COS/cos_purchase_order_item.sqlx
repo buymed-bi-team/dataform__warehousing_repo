@@ -1,6 +1,6 @@
 config {
     type: "table",
-    description: `Circa OS Transaction order item detail PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`,
+    description: `Circa OS purchase order item detail PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`,
     /*Source:
       ${source.silver}.marketplace_prd_order_v2_order_item
       ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5,*/
