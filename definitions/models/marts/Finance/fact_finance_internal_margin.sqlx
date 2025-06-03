@@ -1,5 +1,5 @@
 config {
-    type: "incremental",
+    type: "table",
     description: 
         `PIC: van.lethuy; 
         Type: Table; 
@@ -22,29 +22,29 @@ config {
 
 }
 
-pre_operations {
-  ${when(
-    incremental(),
-    `
-      DELETE FROM ${self()}
-      WHERE outbound_date_local >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 6 MONTH);
+-- pre_operations {
+--   ${when(
+--     incremental(),
+--     `
+--       DELETE FROM ${self()}
+--       WHERE outbound_date_local >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 6 MONTH);
 
-      DELETE FROM ${self()}
-      WHERE outbound_date_local < '2024-01-01';
-    `
-  )}
-}
+--       DELETE FROM ${self()}
+--       WHERE outbound_date_local < '2024-01-01';
+--     `
+--   )}
+-- }
 with params as (
     select 
         ${when(
             incremental(),
             "date_trunc(date_sub(current_date('+07'), interval 6 month), month)",
-            "date('2024-01-01')"
+            "date('2025-01-01')"
         )} as start_date
 
     -- date('2025-01-01') as start_date
 
-    , date_trunc(date_sub(current_date('+07'), interval 2 year), month) as target_date
+    , date_trunc(date_sub(current_date('+07'), interval 1 month), month) as target_date
 )
 , poi as (
 select date(po.created_time,'+07') as po_created_date
@@ -189,7 +189,7 @@ SELECT datetime(created_time, '+07') as created_time
 -- FROM platinum_buymed_vn.seller_prd_promotion_log_price_after_rebate as a
 FROM ${source.platinum}.seller_prd_promotion_log_price_after_rebate as a
 WHERE
-    created_date >= '2024-01-01'
+    created_date >= '2025-01-01'
     AND warehouse_code IN ('BD', 'HN', 'DN')
 QUALIFY ROW_NUMBER() OVER (PARTITION BY product_id, warehouse_code,vendor_code, rebate_date ORDER BY last_updated_time DESC) = 1
 )

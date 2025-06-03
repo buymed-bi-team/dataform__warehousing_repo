@@ -1,5 +1,5 @@
 config {
-    type: "incremental",
+    type: "table",
     description: 
         `
         Details of the items in the order, with combos split into normal products and its prices recalculated according to the corresponding combo
@@ -19,35 +19,35 @@ config {
         partitionBy: "created_date_local",
         clusterBy: ["order_id", "sku_code"]
     },
-    tags: ["custom_1h_past5", "MARKETPLACE"],
+    tags: ["custom_1h_past10", "MARKETPLACE"],
 }
 
-pre_operations {
-  ${when(
-    incremental(),
-    `
-      DELETE FROM ${self()}
-      WHERE created_date_local >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 3 MONTH);
+-- pre_operations {
+--   ${when(
+--     incremental(),
+--     `
+--       DELETE FROM ${self()}
+--       WHERE created_date_local >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 3 MONTH);
 
-      DELETE FROM ${self()}
-      WHERE created_date_local < '2024-01-01';
-    `
-  )}
-}
+--       DELETE FROM ${self()}
+--       WHERE created_date_local < '2024-01-01';
+--     `
+--   )}
+-- }
 
-with params as (
-    select
-            -- date('2025-01-01') as start_date
+-- with params as (
+--     select
+--             -- date('2025-01-01') as start_date
 
-        ${when(
-            incremental(),
-            "date_trunc(date_sub(current_date('+07'), interval 3 month), month)",
-            "date('2024-01-01')"
-        )} as start_date
+--         ${when(
+--             incremental(),
+--             "date_trunc(date_sub(current_date('+07'), interval 3 month), month)",
+--             "date('2024-01-01')"
+--         )} as start_date
 
-)
+-- )
 -- Tender info from warehouse
-, tender_0 as (
+with tender_0 as (
 select wdoi.mg_id
     , wdo.admin_id as order_id
     , wdoi.delivery_order_code as do_code
@@ -74,8 +74,8 @@ left join unnest(json_extract_array(wdoi.pick_items, '$')) as item
 left join unnest(json_extract_array(item, '$.scanned_details')) as detail
     on true
 where 1=1
-    and wdo.created_date >= (select date_sub(start_date, interval 3 month) from params)
-    and wdoi.created_date >= (select date_sub(start_date, interval 3 month) from params)
+    and wdo.created_date >= '2025-03-01'
+    and wdoi.created_date >= '2025-03-01'
     -- and date(outbound_time,'+07') >= (select start_date from params)
 )
 , t0 as (
@@ -112,7 +112,7 @@ from ${source.platinum}.marketplace_prd_order_v2_order_item oi
 left join ${ref('dim_product')} p
     on oi.product_id = p.product_id
 where 1=1
-    and created_date >= (select date_sub(start_date, interval 3 month) from params)
+    and created_date >= '2025-03-01'
 )
 , product as (
 select key
@@ -247,14 +247,14 @@ and m.seller_code in ('TENDER')
         , date(outbound_date,'+07') as outbound_date
     from ${source.platinum}.marketplace_prd_order_v2_order o
     where 1=1
-    and created_date >= (select date_sub(start_date, interval 6 month) from params)
+    and created_date >= '2025-03-01'
 )
 , tdo as (
     select delivery_order_code as do_code
         , date(outbound_time,'+07') as outbound_date_local
     from  ${source.platinum}.warehouse_prd_core_delivery_order tdo
     where 1=1
-    and created_date >= (select date_sub(start_date, interval 6 month) from params)
+    and created_date >= '2025-03-01'
     and status not like '%CANCEL%'
 )
 , soi as (
