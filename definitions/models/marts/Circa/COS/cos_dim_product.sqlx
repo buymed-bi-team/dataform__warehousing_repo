@@ -58,6 +58,8 @@ with cte_product as (select p.product_id,
                                       on a.location_id = b.id
                    left join ${source.circa_os}.entity_pos_profile as ep on b.pos_id = ep.id
                    where a.deleted_at is null and lower(ep.name) <> "%test%"
+                         and ep.type = 'CIRCA'
+                         and ep.id not in ('c95a3338-4f5e-4264-958b-0d02e3fea49b','0d4c2e76-c6bf-487d-bf3e-d0b608d9fb5d')
                    group by all),
 -- , ingregients as (
 --     select
