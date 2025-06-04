@@ -316,6 +316,15 @@ SELECT
     cb.bank_name,
     IFNULL(csc.opella_segment, "Bot20") AS opella_segment,
 
+    CASE
+        WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"TOP200\"|\"AMBASSADOR_TOP200\"|\"WHOLESALER\"|\"BANSI\"') THEN 'KAM'
+        WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"ETC\"') THEN 'ETC'
+        WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"CIRCA\"|\"CIRCACOS\"') THEN 'CIRCA'
+        WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"VIP\"|\"AMBASSADOR\"') THEN 'VIP'
+        ELSE "NORMAL"
+    END AS customer_tag_group,
+
+
     flom.ordered_amount,
     flom.no_orders,
     flom.last_purchase,
