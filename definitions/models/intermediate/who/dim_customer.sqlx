@@ -314,7 +314,7 @@ SELECT
     cb.bank_code,
     cb.bank_account_name,
     cb.bank_name,
-    csc.opella_segment,
+    IFNULL(csc.opella_segment, "Bot20") AS opella_segment,
 
     flom.ordered_amount,
     flom.no_orders,
