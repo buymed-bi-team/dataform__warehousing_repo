@@ -160,6 +160,14 @@ stg_customer_note AS(
       ARRAY_AGG(content order by created_time desc)[0] as content
     FROM ${source.platinum}.marketplace_prd_customer_note
     GROUP BY 1
+),
+
+customer_segment_custom AS (
+    SELECT
+        customer_id
+        , opella_segment
+    FROM ${source.external}.customer_segment_custom
+    QUALIFY ROW_NUMBER() OVER(PARTITION BY customer_id) = 1
 )
 
 js {
@@ -306,6 +314,7 @@ SELECT
     cb.bank_code,
     cb.bank_account_name,
     cb.bank_name,
+    csc.opella_segment,
 
     flom.ordered_amount,
     flom.no_orders,
@@ -334,6 +343,7 @@ LEFT JOIN (
     code IS NOT NULL
   QUALIFY ROW_NUMBER() OVER(PARTITION BY thuocsi_id) = 1 
 ) AS pos ON pos.thuocsi_id = customer.customer_id
+LEFT JOIN customer_segment_custom AS csc ON csc.customer_id = customer.customer_id
 
 WHERE customer.name NOT LIKE '%test%'
 AND customer.name NOT LIKE '%TEST%'
