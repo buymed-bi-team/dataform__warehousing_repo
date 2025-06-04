@@ -3,15 +3,16 @@ function createMismatchAssertionView_query({
   ctx,
   intervalCheckpoint,
 }) {
-  const start_timestamp = `current_timestamp() - ${intervalCheckpoint}`
+//   const start_timestamp = `current_timestamp() - ${intervalCheckpoint}`
+const start_timestamp = intervalCheckpoint
 
   const query = `
   WITH
   -- Time Range for validate
   checkpoint_tbl AS (
       SELECT
-          ${start_timestamp} AS _timestamp,
-          DATE( ${start_timestamp} ,"+7") AS _date
+          TIMESTAMP( DATETIME_SUB(CURRENT_DATETIME() , ${start_timestamp} ) ) AS _timestamp,
+          DATE( DATETIME_SUB( CURRENT_DATETIME("+7"),${start_timestamp})  ) AS _date
   )
   -- Prepare Platinum data
   , PLATINUM AS (
