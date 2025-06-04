@@ -37,6 +37,7 @@ class PlatinumModel {
     createIncremental(
         tags,
         {
+            has_src_created_date = false,
             assertions = {},
             ingestCutOffInterval = ``,
             disabled = false,
@@ -44,11 +45,13 @@ class PlatinumModel {
     ) {
         createIncremental({
             config: this.config,
+            has_src_created_date,
             tags,
             assertions,
             ingestCutOffInterval,
             disabled
         });
+        this.config.has_src_created_date = has_src_created_date
     }
 
     assertUnique(
@@ -90,7 +93,7 @@ class PlatinumModel {
             bigquery = {},
             disabled = false,
             dependencies = [],
-            intervalCheckPoint = `current_timestamp() - interval 2 DAY`,
+            intervalCheckpoint = `interval 2 DAY`,
         } = {}
     ) {
         let newConfig = this.config 
@@ -104,7 +107,7 @@ class PlatinumModel {
             bigquery,
             disabled,
             dependencies,
-            intervalCheckPoint,
+            intervalCheckpoint,
         });
         this.dependencies.createMismatchAssertionView = {
             "schema": newConfig.customAssertionsSchema,

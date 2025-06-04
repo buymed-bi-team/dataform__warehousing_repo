@@ -1,7 +1,7 @@
 function createMismatchAssertionView_query({
   config,
   ctx,
-  intervalCheckpoint = `interval 2 DAY`,
+  intervalCheckpoint,
 }) {
   const start_timestamp = `current_timestamp() - ${intervalCheckpoint}`
 
@@ -152,8 +152,9 @@ function createMismatchAssertionView({
   disabled = false,
   bigquery = {},
   dependencies = [],
-  intervalCheckpoint = `interval 2 DAY`,
+  intervalCheckpoint,
 }) {
+  
   assertionName = assertionName || `${config.prefixCustomAssertionsName}${config.tableName}__assert_mismatch_view`
   return publish(assertionName, {
     type: "view",

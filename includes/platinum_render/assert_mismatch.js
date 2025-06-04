@@ -79,7 +79,8 @@ function assertMismatch_query({
               GROUP BY mg_id HAVING action != "d"
           )
           SELECT
-              *,
+              * ${config.has_src_created_date ? "EXCEPT(created_date)": ""},
+              
               CASE
                   WHEN ${config.createdTime} IS NOT NULL THEN DATE(DATETIME(${config.createdTime},'Asia/Ho_Chi_Minh'))
                   ELSE "2099-01-01"
