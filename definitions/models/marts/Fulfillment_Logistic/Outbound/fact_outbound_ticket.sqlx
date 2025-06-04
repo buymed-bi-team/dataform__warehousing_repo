@@ -77,8 +77,8 @@ config {
 
 with cte_date as (
     SELECT
-		  date_sub(timestamp(date_trunc(date_sub( current_date('+7'), interval 9 month), month)) , interval 7 hour) as start_date,
-		  date_sub(timestamp(date_sub(date_trunc(date_sub( current_date('+7'), interval 9 month), month), interval 14 day)) , interval 7 hour) as start_date_2
+		  date_sub(timestamp(date_trunc(date_sub( current_date('+7'), interval 6 month), month)) , interval 7 hour) as start_date,
+		  date_sub(timestamp(date_sub(date_trunc(date_sub( current_date('+7'), interval 6 month), month), interval 14 day)) , interval 7 hour) as start_date_2
 	),
 
 	finish_reserving AS (

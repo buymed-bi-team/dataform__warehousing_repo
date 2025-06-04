@@ -1,6 +1,6 @@
 config {
     type: "table",
-    description: `Circa OS Transaction order item detail PIC: huyen.nguyenthu; model_type: Table ;schedule: At minute 5 every hour`,
+    description: `Circa OS Transaction order item detail PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`,
     /*Source:
       ${source.silver}.marketplace_prd_order_v2_order_item
       ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5,*/
@@ -106,7 +106,8 @@ cte_online AS (
   cost_price_include_tax AS base_unit_cost_price,
   "CIRCA" as owner_name,
   doc_code as po_code,
-  sale_order_number
+  sale_order_number,
+  promotion_event_code
 from (
     SELECT * FROM cte_not_online
     UNION ALL
@@ -140,25 +141,16 @@ SELECT
 --   min_cost_price_include_tax,
   eo.name as owner_name,
   po.code as po_code,
-  po.sale_order_number
-FROM
-  ${source.circa_os}.order_order o
-LEFT JOIN
-  ${source.circa_os}.order_order_item oi
-ON
-  o.id = oi.order_id
-LEFT JOIN
-  ${source.circa_os}.inventory_allocation AS al
-ON
-  oi.id = al.item_ref_id
-LEFT JOIN
-  ${source.circa_os}.inventory_location_detail ld
-ON
-  al.location_detail_id = ld.id --
+  po.sale_order_number,
+  promotion_event_code
+from ${source.circa_os}.order_order o
+left join ${source.circa_os}.order_order_item oi ON o.id = oi.order_id
+left join ${source.circa_os}.inventory_allocation AS al ON oi.id = al.item_ref_id
+left join ${source.circa_os}.inventory_location_detail ld ON al.location_detail_id = ld.id --
 left join ${source.circa_os}.inventory_cost_price as cp on oi.product_id = cp.product_id and o.pos_id=cp.pos_id
 left join ${source.circa_os}.order_purchase_order po on  ld.doc_code = po.code
 left join ${source.circa_os}.entity_owner eo on po.owner_id = eo.id
-WHERE
+where
   o.status LIKE '%COMPLETE%'
   -- group by all
     qualify row_number() over(partition by oi.id order by base_unit_cost_price desc) = 1
@@ -170,6 +162,8 @@ union all
 select * from cte_os)
 
 select i.*
+      ,base_unit_cost_price * convert_rate as unit_cost_price
 from order_items i
 left join ${ref('cos_fact_order')} fo on i.order_id = fo.order_id
+left join  ${source.ref}.cos_product_convert_base_unit  cv on cv.product_id = i.product_id and cv.convert_unit = i.unit
 where fo.order_id is not null

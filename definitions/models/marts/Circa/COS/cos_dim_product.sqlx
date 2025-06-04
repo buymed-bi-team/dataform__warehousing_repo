@@ -1,6 +1,6 @@
 config {
     type: "table",
-    description: `PIC: tu.dang; model_type: Table ;schedule: At 10h30`
+    description: `PIC: huyen.ngo; model_type: Table ;schedule: At 10h30`
     /*Source:
       ${source.silver}.marketplace_prd_order_v2_order_item
       ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
@@ -58,6 +58,8 @@ with cte_product as (select p.product_id,
                                       on a.location_id = b.id
                    left join ${source.circa_os}.entity_pos_profile as ep on b.pos_id = ep.id
                    where a.deleted_at is null and lower(ep.name) <> "%test%"
+                         and ep.type = 'CIRCA'
+                         and ep.id not in ('c95a3338-4f5e-4264-958b-0d02e3fea49b','0d4c2e76-c6bf-487d-bf3e-d0b608d9fb5d')
                    group by all),
 -- , ingregients as (
 --     select
@@ -129,7 +131,8 @@ popular_product AS (
     QUALIFY ROW_NUMBER() OVER(PARTITION BY code, object, type ORDER BY submit_id DESC) = 1  
 )
 
-select pd.*,
+select distinct pd.product_id
+         ,pd.* except (product_id),
     --    a.unit as retail_unit,
        cr.convert_rate,cr.convert_unit,
     --    a.sale_allowed as is_sale_allowed,
@@ -157,6 +160,7 @@ left join convert_unit cr on pd.product_id = cr.product_id
 left join sub_cat on pd.product_id = sub_cat.product_id
 left join brand_type_add ba on pd.product_id = ba.product_id
 left join popular_product pop on pd.product_id = pop.product_id
--- where lower(product_name) like "%test%"
+where product_name not like "%[Removed]%"
+       --and pd.product_id = 16149
 -- WHERE p.product_id>=1
 -- left join efficacy e on p.efficacy_code= e.efficacy_id

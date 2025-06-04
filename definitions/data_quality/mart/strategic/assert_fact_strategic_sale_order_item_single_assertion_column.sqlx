@@ -1,35 +1,36 @@
 config {
     type:"assertion",
+    disabled: true,
     description: "PIC: minhluu "
 }
 
--- SELECT
---   'commercial_amount <> deal_amount + campagin_amount + combo_amount' AS reason,
---   *
--- FROM fact_strategic_sale_order_item_single
--- WHERE commercial_amount <> deal_amount + campaign_amount + combo_amount
+SELECT
+  'commercial_amount <> deal_amount + campagin_amount + combo_amount' AS reason,
+  *
+FROM fact_strategic_sale_order_item_single
+WHERE commercial_amount <> deal_amount + campaign_amount + combo_amount
 
--- UNION ALL 
--- SELECT 
---   'gmv_after_cancellation <> gmv_before_cancellation - cancallation_before_ffm ',
---   *
--- FROM fact_strategic_sale_order_item_single
--- WHERE gmv_after_cancellation <> gmv_before_cancellation - cancellation_before_ffm
+UNION ALL 
+SELECT 
+  'gmv_after_cancellation <> gmv_before_cancellation - cancallation_before_ffm ',
+  *
+FROM fact_strategic_sale_order_item_single
+WHERE gmv_after_cancellation <> gmv_before_cancellation - cancellation_before_ffm
 
--- UNION ALL 
--- SELECT 
---   'unfulfilled_amount <> gmv_after_cancellation - nmv',
---   *
--- FROM fact_strategic_sale_order_item_single
--- WHERE unfulfilled_amount <> gmv_after_cancellation - nmv
+UNION ALL 
+SELECT 
+  'unfulfilled_amount <> gmv_after_cancellation - nmv',
+  *
+FROM fact_strategic_sale_order_item_single
+WHERE unfulfilled_amount <> gmv_after_cancellation - nmv
 
--- UNION ALL 
--- SELECT 
---   'nmv <> fulfilled_amount + backlog_amount + returned_amount + cancellation_after_ffm',
---   *
--- FROM fact_strategic_sale_order_item_single
--- WHERE nmv <> fulfilled_amount + backlog_amount + returned_amount + cancellation_after_ffm
+UNION ALL 
+SELECT 
+  'nmv <> fulfilled_amount + backlog_amount + returned_amount + cancellation_after_ffm',
+  *
+FROM fact_strategic_sale_order_item_single
+WHERE nmv <> fulfilled_amount + backlog_amount + returned_amount + cancellation_after_ffm
 
 
 
--- FROM gold_buymed_vn2.fact_strategic_sale_order_item_single ois
+FROM gold_buymed_vn2.fact_strategic_sale_order_item_single ois

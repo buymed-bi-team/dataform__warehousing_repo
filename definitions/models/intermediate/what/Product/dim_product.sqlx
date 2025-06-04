@@ -165,6 +165,20 @@ WITH product_retail_unit AS (
         ON JSON_VALUE(a.extra_props, "$.brand_code") = b.brand_code
   )
 
+
+  , ownbrand_portfolio AS (
+        SELECT DISTINCT
+            product_id
+            , "OWNBRAND" AS ownbrand_portfolio
+        FROM ${ref('dim_product_division')}
+        WHERE brand_group = "OWNBRAND"
+        UNION DISTINCT
+        SELECT DISTINCT
+            product_id
+            , "MARGIN >10%"
+        FROM buymed_external.potential_high_margin_product
+  )
+
 SELECT
   ${utils.ToTimezone('current_timestamp()')} as transformed_at,
   ${utils.ToTimezone('product.created_time')} as product_created_at,
@@ -267,6 +281,7 @@ SELECT
           r'combo|quà|tặng|khuyến mãi|khuyến mại|hóa đơn|bảo hiểm|thẻ cào|mua|gift 1|gift 2|tờ rơi|áo blouse|poster|ưu đãi|trưng bày'
         ) OR LOWER(product.name ) LIKE '% circa %' OR LOWER(product.name ) LIKE '% thuocsi %' 
         then 'PROMOTION'
+    WHEN UPPER(product.name) LIKE "%[HÀNG THU HỒI]%" THEN "RECALLED"
     ELSE 'NORMAL'
   END product_report_category,
   -- IF(
@@ -287,7 +302,8 @@ SELECT
 
   hmp.high_margin,
 
-  rp.retail_price
+  rp.retail_price,
+  op.ownbrand_portfolio
 
 FROM ${source.platinum}.marketplace_prd_product_v2_product AS product
 LEFT JOIN  ${source.platinum}.seller_prd_core_seller AS seller on product.owner = seller.code
@@ -305,6 +321,7 @@ LEFT JOIN high_margin_product AS hmp ON hmp.product_id = product.product_id
 LEFT JOIN is_ingredient_special AS iis ON iis.product_id = product.product_id
 LEFT JOIN retail_price AS rp ON rp.product_id = product.product_id
 LEFT JOIN brand AS br ON br.product_id = product.product_id
+LEFT JOIN ownbrand_portfolio AS op ON op.product_id = product.product_id
 
 WHERE
     LOWER(product.name) NOT LIKE '%(bỏ)%'

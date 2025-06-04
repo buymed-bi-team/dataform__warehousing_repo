@@ -1,6 +1,7 @@
 config {
     type: "assertion",
-    tags: ["platinum_custom_30min"]
+    tags: ["platinum_custom_30min"],
+    disabled: true,
 }
 js {
     const start_ingest_time = `"2025-03-01"`

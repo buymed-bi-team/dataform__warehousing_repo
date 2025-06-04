@@ -16,7 +16,7 @@ js {
         Trigger time : 2h10am at start of month with vietnam timezone
         It means current_timestamp will be 19h00 at end of previous month with UTC timezone
     */
-    const start_of_VN_month_timestamp_in_UTC = `TIMESTAMP_TRUNC(CURRENT_TIMESTAMP()  + INTERVAL 7 HOUR, DAY)` 
+    const start_of_VN_month_timestamp_in_UTC = `TIMESTAMP_TRUNC(CURRENT_TIMESTAMP() , DAY) + INTERVAL 17 HOUR -- Mean: 05-31T17:00:00` 
     const end_of_VN_month_day = `TIMESTAMP_TRUNC(CURRENT_TIMESTAMP(), DAY)`
 }
 
@@ -32,7 +32,13 @@ SELECT
     -- the date_index alway is the end of month, because we run in 0h15m the som in UTC +7, but timestamp return UTC timezone meaning 0h15m -7 Hour so finaly it return last day in our timezone perspective
 FROM ${source.silver}.accounting_prd_core_bill 
 -- WHERE last_updated_time < TIMESTAMP("2025-03-01") - INTERVAL 7 HOUR
-WHERE last_updated_time < ${start_of_VN_month_timestamp_in_UTC}
+WHERE synced_at < ${start_of_VN_month_timestamp_in_UTC}
+OR (
+    created_time < ${start_of_VN_month_timestamp_in_UTC}
+AND (
+    last_updated_time < ${start_of_VN_month_timestamp_in_UTC}
+    OR last_updated_time is null
+))
 QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER (_window) <> 'd'
 WINDOW _window AS ( 
     PARTITION BY   mg_id 

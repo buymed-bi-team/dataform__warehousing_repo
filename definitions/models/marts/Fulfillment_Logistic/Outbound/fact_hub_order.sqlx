@@ -148,7 +148,8 @@ with cte_date as (
 			ho.reason,
 			d.status as do_status,
 			ho.status,
-			d.note
+			d.note,
+			ho.driver_id AS original_driver_id
 		from (
 			select * 
 			from ${source.platinum}.delivery_prd_transporting_hub_shipping_order
@@ -164,6 +165,8 @@ with cte_date as (
 SELECT 
 	h.*
 	, e.fullname AS driver_name
+	, e1.fullname AS original_driver_name
 	-- , COALESCE(e.fullname, h.driver_name) AS driver_name
 FROM hub_order AS h
 LEFT JOIN ${ref('dim_employee')} AS e ON e.branch_account_id = h.driver_id
+LEFT JOIN ${ref('dim_employee')} AS e1 ON e1.branch_account_id = h.original_driver_id

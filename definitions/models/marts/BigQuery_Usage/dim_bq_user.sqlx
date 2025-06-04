@@ -5,8 +5,13 @@ config {
 }
 
 js {
-    const start_date = `"2025-05-11"`
-    const refresh_interval = `INTERVAL 2 HOUR`
+    const start_date = `CURRENT_TIMESTAMP() - INTERVAL 7 DAY`
+    const refresh_interval = `INTERVAL 1 DAY`
+}
+
+pre_operations {
+    DECLARE checkpoint_time TIMESTAMP ;
+    SET checkpoint_time = CURRENT_TIMESTAMP() - ${refresh_interval};
 }
 
 WITH base AS (
@@ -19,7 +24,7 @@ WITH base AS (
     WHERE 1=1
     ${ when(
         incremental(),
-        `AND execution_time >= CURRENT_TIMESTAMP() - ${refresh_interval}`,
+        `AND execution_time >= checkpoint_time`,
         `AND execution_time >= ${start_date}`
     )}
 )
@@ -72,12 +77,12 @@ WITH base AS (
         STRUCT('phuoc.le',         'AI',                ['phuocle','phuoc.le','phuoc-le']),
         STRUCT('hung.vo',          'AI',                ['hungvo','hung.vo','hung-vo'])
     ]) i
-
 )
 
 SELECT 
     user_email,
     last_execution_time,
+    checkpoint_time AS refresh_time,
     COALESCE(bu.name, SPLIT(LOWER(user_email),"@")[0] ) AS user_name, 
     CASE
         WHEN LOWER(user_email) like "%serviceaccount%" AND LOWER(user_email) like "%dataform%"  THEN "Dataform"
@@ -91,3 +96,18 @@ SELECT
 
 FROM int_distinct m
 LEFT JOIN base_user bu ON  REGEXP_CONTAINS( LOWER(user_email),regexp_pattern  )
+
+post_operations {
+${when(
+    incremental(),
+    `
+    DELETE FROM ${self()}
+    WHERE refresh_time < checkpoint_time;
+    `
+    ,
+    `
+    ALTER TABLE ${self()}
+        ADD PRIMARY KEY (user_email) NOT ENFORCED
+    `
+)}
+}

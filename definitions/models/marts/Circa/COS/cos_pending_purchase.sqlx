@@ -1,6 +1,6 @@
 config {
     type: "table",
-    description: `Last 13 month| PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`
+    description: `Last 13 month| PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour;Table này dùng để tracking những đơn hàng đã được đặt nhưng hàng chưa về, sử dụng cho report Purchase Planner`
     /*Source:
       ${source.silver}.marketplace_prd_order_v2_order_item
       ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
@@ -18,12 +18,17 @@ config {
 
 
 with t as
-(Select * from ${source.circa_os}.order_purchase_order
+(Select 
+        i.* 
+        ,dis.seller_code
+from ${source.circa_os}.order_purchase_order i
+left join ${source.circa_os}.entity_distributor  dis on dis.id = i.distributor_id
 WHERE Status <> 'WAITING_PAYMENT'
       and status <> 'COMPLETED'
       and status <> 'CANCELED'
       and status <> 'SEPERATED'
       and status <> 'PENDING' 
+      --lấy những đơn đã đặt mua nhưng hàng chưa về 
 
 ),Pending_item_external as (
 Select distinct
@@ -42,7 +47,9 @@ Select distinct
 from t 
 left join ${source.circa_os}.order_purchase_order_item i on t.id = i.purchase_order_id
 where t.fulfillment_method <> 'SO_THUOCSI'
-and date(t.created_at) >=  '2025-04-11')
+and date(t.created_at) >=  '2025-04-11'
+--Lấy những đơn hàng mua ngoài hoặc import stock
+)
 ,Map_thuocsi as (
 Select distinct
         t.created_at 
@@ -59,14 +66,14 @@ Select distinct
       
 from ${source.ref}.fact_order o 
 left join `${source.ref}.fact_order_item` a on o.order_id = a.order_id 
-left join  t on t.sale_order_number = SAFE_CAST(o.order_id as string)
+left join  t on t.sale_order_number = SAFE_CAST(o.order_id as string) and t.seller_code = a.seller_code
 left join ${source.ref}.dim_product td on a.product_id = td.product_id
 where t.sale_order_number is not null
 and o.order_status <> 'CANCEL'
 and t.fulfillment_method = 'SO_THUOCSI'
 and date(created_date) >=  '2025-04-11' 
 group by all
-
+--Lấy những đơn hàng đặt mua thuốc sĩ
 ),Pending as (
 Select * from Pending_item_external
 union all
@@ -75,4 +82,4 @@ Select * from Map_thuocsi
 Select p.*
  from Pending p 
  where p.id not in 
-(Select distinct purchase_order_id from ${source.circa_os}.order_goods_receipt where status = 'COMPLETED')
+(Select distinct purchase_order_id from ${source.circa_os}.order_goods_receipt where status = 'COMPLETED') -- điều kiện này dùng để loại trừ những trường hợp cửa hàng đã nhận hàng nhưng ko bấm hoàn thành trên pos

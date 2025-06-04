@@ -1,0 +1,67 @@
+config {
+    type: "table",
+    description: `Last 13 month| PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every 2 hours`,
+    tags: ["custom_2h_past5"],
+    name: "cos_ranking_vendor",
+    columns: {
+        order_id: "NonNull |" + docs.order_id,
+        customer_id: "NonNull | The unique identifier for each customer"
+        
+    }
+}
+
+with rawtable as (
+    select
+        poi.product_id
+        ,po.distributor_id
+        ,poi.vendor
+        ,po.fulfillment_method
+        ,SUM(poi.base_quantity) AS Total_base_Quantity
+        ,AVG(poi.unit_price) AS AvgUnitPrice
+        ,(SUM(poi.base_quantity) * 1000000 - AVG(poi.unit_price)) AS CompositeScore
+    from ${source.ref}.cos_purchase_order_item AS poi
+    join ${source.ref}.cos_purchase_order AS po ON poi.po_id = po.po_id
+    where
+        po.fulfillment_method <> 'IMPORT_STOCK' -- Loại trừ nhập tồn kho
+        and po.po_status NOT IN ('SEPERATED', 'CANCELED', 'PENDING')
+        and po.owner_name <> 'CIRCA TEST'
+        --and product_id = 4980
+    group by all
+    -- Lấy số lượng bán hàng từng sản phẩm theo từng Vendor, giá 
+),
+rankedtable as (
+    select
+        *
+        ,rank() over (partition by product_id order by CompositeScore desc) as Rank
+    from rawtable
+),last_unit_price as (
+Select distinct 
+       i.product_id
+       ,i.distributor_id
+       ,unit_price
+       ,unit
+       ,i.unit_price/td.convert_rate as base_unit_price
+       ,td.base_unit
+       ,o.created_at
+       ,tax_rate
+       ,rank() over (partition by i.product_id,i.distributor_id order by o.created_at desc) as rn
+from ${source.ref}.cos_purchase_order_item i
+left join ${source.ref}.cos_purchase_order o on i.po_id = o.po_id
+left join ${source.ref}.cos_product_convert_base_unit td on td.product_id = i.product_id and i.unit = convert_unit
+where o.fulfillment_method <> 'IMPORT_STOCK' -- Loại trừ nhập tồn kho
+        and o.po_status NOT IN ('SEPERATED', 'CANCELED', 'PENDING')
+        and o.owner_name <> 'CIRCA TEST'
+
+)
+select distinct 
+    rankedtable.product_id
+    ,rankedtable.distributor_id
+    ,vendor
+    ,fulfillment_method as channel
+    ,total_base_quantity 
+    ,base_unit
+    ,base_unit_price 
+    ,tax_rate as latest_tax_rate
+    ,Rank as rank
+from rankedtable left join last_unit_price on rankedtable.product_id = last_unit_price.product_id and rankedtable.distributor_id = last_unit_price.distributor_id
+where rn= 1

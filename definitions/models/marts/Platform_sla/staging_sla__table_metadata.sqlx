@@ -1,0 +1,77 @@
+config {
+    type: "incremental",
+    protected: true,
+    description: `
+    PIC: minhluu
+    `,
+    tags: ["bigquery","custom_1h_past10"],
+    bigquery: {
+        partitionBy: "TIMESTAMP_TRUNC(index_time,MONTH)",
+        clusterBy: ["dataset_id", "table_id"]
+    }
+}
+
+js {
+  const dataset = [
+    "silver_buymed_vn",
+    "platinum_buymed_vn",
+    "silver_buymed_cam",
+    "platinum_buymed_cam",
+    "silver_buymed_th",
+    "platinum_buymed_th",
+    "gold_buymed_vn2",
+    "gold_buymed_th",
+    "gold_buymed_cam",
+    "buymed_circa",
+    "buymed_circa_v2"
+  ];
+  const last_index = dataset.length - 1
+}
+
+WITH ti AS (${
+    dataset.map((_source, i ) => `
+    SELECT * FROM ${_source}.INFORMATION_SCHEMA.TABLES
+    `).join("UNION ALL \n")
+}), tm AS (${
+    dataset.map((_source, i ) => `
+    SELECT * FROM ${_source}.__TABLES__
+    `).join("UNION ALL \n")
+}), t AS (
+  SELECT 
+    table_catalog cloud_project_id,
+    dataset_id ,
+    table_id ,
+    table_type, -- Is one of ( BASE TABLE, CLONE, EXTERNAL, VIEW, SNAPSHOT)
+    is_insertable_into, -- Unknown
+    is_typed, -- Unknown
+    ti.creation_time,  -- table created_time in UTC
+    TIMESTAMP_MILLIS(tm.last_modified_time) last_updated_time, -- table last_updated_time in UTC
+    base_table_catalog , -- unknown
+    base_table_schema , -- unknown
+    snapshot_time_ms , -- unknown
+    ddl table_creation_script,
+    default_collation_name,
+    upsert_stream_apply_watermark , -- unknown
+    replica_source_catalog, -- unknown
+    replica_source_schema, -- unknown
+    replication_status, -- unknown
+    replication_error, -- unknown
+    is_change_history_enabled, -- unknown
+    sync_status, -- unknown
+    row_count,
+    size_bytes,
+    size_bytes * 1/(1e+9) size_GB,
+    type, -- unknown
+ 
+
+  FROM ti 
+  LEFT JOIN tm 
+    ON ti.table_name = tm.table_id
+    AND ti.table_schema = tm.dataset_id
+)
+
+SELECT 
+    * ,
+    CURRENT_TIMESTAMP() index_time
+
+FROM t

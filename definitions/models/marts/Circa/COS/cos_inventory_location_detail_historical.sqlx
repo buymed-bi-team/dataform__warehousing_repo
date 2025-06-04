@@ -1,0 +1,63 @@
+config {
+    type: "table",
+    description: 
+        `PIC: huyen.ngo; 
+         model_type: table ;
+         schedule: At minute 10 every hour;
+    Source:
+      ${source.circa_os}.inventory_allocation,
+      ${source.circa_os}.inventory_location,
+      ${source.circa_os}.inventory_location_detail`,
+    tags: ["custom_1h_past5"],
+    name: "cos_inventory_location_detail_historical",
+    columns: {
+        
+    },
+    bigquery: {
+        partitionBy: "created_date"
+    }
+}
+
+with cte as (select
+    date_add(a.created_at, interval 7 hour)  AS created_time
+    ,date(date_add(a.created_at, interval 7 hour) ) AS created_date
+    ,l.pos_id
+    ,a.product_id
+    ,a.sku_code
+    ,a.ref_number
+    ,ld.doc_code
+    ,ld.doc_type
+    ,a.type
+    ,l.location_type
+    ,a.lot_date
+    ,ld.tax_rate
+    ,a.location_id
+   ,sum(
+      case
+         when a.type = 'SALE_ORDERED' then -1
+         when a.type = 'RETURN_PURCHASE_ORDER' then -1
+         when a.type = 'TRANSFER_OUT' then -1
+         when a.type = 'TRANSFER_LOCATION_OUT' then -1
+         when a.type = 'CHANGE_QUANTITY_DECREASE' then -1
+         when a.type = 'ADD_DETAIL_TRANSFER_IN' then -1
+         when a.type = 'GOODS_RETURN_RECEIPT' then -1
+         when a.type= 'COMPLETED_PURCHASE_ORDER' then -1
+         when a.type = 'COMPLETED_RETURN_ORDER' then -1
+         else 1
+      end * base_quantity
+   ) as ending_stock
+   ,ld.cost_price_include_tax
+   ,ld.cost_price_without_tax
+   ,concat(a.product_id, "_", a.lot_date, "_", ld.tax_rate) as product_lotdate_vat
+from ${source.circa_os}.inventory_allocation a
+left join ${source.circa_os}.inventory_location_detail ld ON a.location_detail_id = ld.id
+left join ${source.circa_os}.inventory_location l on ld.location_id = l.id
+left join ${source.circa_os}.entity_pos_profile p on l.pos_id = p.id 
+where  p.type = 'CIRCA'
+      and p.id not in ('c95a3338-4f5e-4264-958b-0d02e3fea49b','0d4c2e76-c6bf-487d-bf3e-d0b608d9fb5d')
+group by all)
+
+SELECT *
+    , SUM(ending_stock) OVER (PARTITION BY pos_id, product_id, sku_code, location_id, lot_date, tax_rate ORDER BY created_time ASC) AS cumulative_ending_stock
+from cte
+group by all

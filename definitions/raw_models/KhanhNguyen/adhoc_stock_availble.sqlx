@@ -1,0 +1,67 @@
+config {
+    // Model ( dbt concept ) hay Action (dataform concept)
+
+    // base - stg - int - marts 
+    type: "view",
+    description: "stock_availble",
+    columns: {
+        created_date: "",
+        warehouse_code: "",
+        sku: "",
+        sku_fc_key: "",
+        available_quantity: "",
+    },
+    name: "adhoc_stock_avaible",
+    tags: ["powerBI_demand_sku_sort"]
+}
+/*
+    Để em tìm kiếm 1 bảng nào đó có chưa, có thông tin chưa
+
+    SELECT 
+        table_name, STRING_AGG( column_name , "\n" ) column_lst
+    FROM gold_buymed_vn2.INFORMATION_SCHEMA.COLUMNS
+    GROUP BY table_name
+    HAVING 1=1 
+    AND REGEXP_CONTAINS( table_name , "stock|warehouse|...")
+    AND (
+        REGEXP_CONTAINS( column_lst , "stock|quantity" ) -- Số em cần
+        AND REGEXP_CONTAINS( column_lst , "sku|warehouse" ) -- Của cái gì
+    )
+
+    Step 2:
+        Em xác định lại thông tin em cần
+        - Primarykey của bảng e cần là gì -> GROUP BY primary_key, composite_key HAVING COUNT(*) > 1
+        - Số Em cần nó đúng với trên interval -> Check -> Sai -> Logic | GAP time | Sai thật
+
+        -> Xác nhận thông tin từ PIC
+            - em thấy Primiry key này .... , Số này .... tương tự như ..., Hỏi mấy dùng số này đúng không?
+    Bước 3:
+        Tính toán của em
+        - Nếu mà em cần, thì em dùng View để em note lại table này
+
+*/
+
+SELECT 
+    created_date,
+    warehouse_code,
+    sku,
+    CONCAT(
+        JSON_VALUE(extra_props,'$.product_id'),'_',SPLIT(sku, '.')[SAFE_OFFSET(0)],
+        '_',
+        warehouse_code
+    ) as sku_fc_key,
+    available_quantity
+FROM ${source.platinum}.warehouse_prd_inventory_inventory_historical
+WHERE created_date >= DATE(CURRENT_TIMESTAMP() - interval 45 day)
+
+/*
+    dim
+        Primary_key is id that present Object ,  property of Object
+
+    fact
+        -
+    base  - là lớp đại diện cho những thông tin mà em lấy từ <1> source duy nhất
+        - 
+    int   - ~ Dim 
+
+*/

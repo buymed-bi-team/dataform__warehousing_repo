@@ -56,13 +56,16 @@ cte_vendor_bill_item as (
 )
 
 -- select vendor_bill_id, format("%'d",cast(total_amount as int64)) as total_amount from cte_vendor_bill_item
-
+, main as (
 select 
   cvb.vendor_bill_id
   ,vbm.status
-  ,format("%'d",cast(cvb.total_amount as int64)) as total_amount_cvb
-  ,format("%'d",cast(cvbi.total_amount as int64)) as total_amount_cvbi
-  , format("%'d",cast(abs( cvbi.total_amount - cvb.total_amount) as int64)) as delta
+  , cast(cvb.total_amount as int64) as total_amount_cvb
+  , cast(cvbi.total_amount as int64) as total_amount_cvbi
+  , cast(abs( cvbi.total_amount - cvb.total_amount) as int64) as delta
+  -- ,format("%'d",cast(cvb.total_amount as int64)) as total_amount_cvb
+  -- ,format("%'d",cast(cvbi.total_amount as int64)) as total_amount_cvbi
+  -- , format("%'d",cast(abs( cvbi.total_amount - cvb.total_amount) as int64)) as delta
 from 
   cte_vendor_bill cvb
   left join cte_vendor_bill_item cvbi
@@ -72,3 +75,10 @@ from
 where
   ((cvb.total_amount - cvbi.total_amount >= 100) or  (cvb.total_amount - cvbi.total_amount <= -100))
   and vbm.status not in ('CANCEL','DRAFT')
+)
+
+SELECT 
+  1
+FROM  main
+WHERE SAFE_DIVIDE(delta * 100, total_amount_cvb ) > 10
+OR delta >= 1000000

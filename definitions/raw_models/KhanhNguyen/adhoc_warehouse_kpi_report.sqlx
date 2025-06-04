@@ -1,0 +1,20 @@
+config {
+    type: "view",
+    description: "Daily_KPI_WH",
+    name: "warehouse_kpi_report_daily"
+}
+--
+SELECT 
+    warehouse_code as location,
+    job_type as job_type,
+    total_item,
+    total_line,
+    total_sku,
+    total_ticket,
+    total_amount,
+    total_avg_sort,
+    created_date,
+    last_updated_time
+FROM ${source.platinum}.warehouse_prd_core_warehouse_kpi_report
+WHERE created_date >= '2024-01-01'
+ORDER BY created_date DESC

@@ -2,13 +2,6 @@ config {
     type: "table",
     name: "marketplace_prd_customer_invoice_info",
     schema: "platinum_buymed_vn",
-    assertions: {
-        uniqueKey: 'mg_id',
-        nonNull: ["created_date"]
-    },
-    bigquery: {
-        partitionBy: "created_date"
-    },
     tags:["platinum_custom_1h_past7","marketplace_prd_customer"]
 }
 

@@ -36,8 +36,8 @@ SELECT
       ELSE 'EXTERNAL' 
     END AS seller_class
   , a.seller_code
-  , a.charge_deal_fee AS charge_fee
-  , JSON_EXTRACT_SCALAR(extra_props, '$.reason') AS reason
+  , REGEXP_REPLACE(a.charge_deal_fee, r'MARKTEPLACE|MARKETPALCE', 'MARKETPLACE') AS charge_fee
+  , JSON_EXTRACT_SCALAR(a.extra_props, '$.reason') AS reason
   , a.ticket_code AS ticket
   , CASE WHEN a.ticket_code IS NOT NULL THEN true ELSE false END AS has_ticket
   , CASE
@@ -48,15 +48,20 @@ SELECT
       WHEN JSON_EXTRACT_SCALAR(a.area_codes[0]) = 'MIENBAC' THEN 'MIENBAC'
       WHEN JSON_EXTRACT_SCALAR(a.area_codes[0]) = 'MIENNAM' THEN 'MIENNAM'
       WHEN JSON_EXTRACT_SCALAR(a.area_codes[0]) = 'MIENTRUNG' THEN 'MIENTRUNG'
-      WHEN JSON_EXTRACT_SCALAR(a.area_codes[0]) IN (SELECT service_area_code FROM `gold_buymed_vn2.dim_fc_service_area` WHERE area_type = 'PROVINCE') THEN b.sales_region_code
+      WHEN JSON_EXTRACT_SCALAR(a.area_codes[0]) IN (SELECT service_area_code FROM ${ref('dim_fc_service_area')} WHERE area_type = 'PROVINCE') THEN b.sales_region_code
       ELSE c.region_name
     END AS region_code
   , JSON_EXTRACT_SCALAR(a.extra_props.vendor_promo_info.promo_code) AS vendor_promo_code
+  , IFNULL(JSON_VALUE(a.extra_props, "$.deal_tags.0"), "NORMAL_DEAL") AS deal_tag
+  , ca.username AS deal_created_by
 FROM ${source.platinum}.marketplace_prd_product_v2_deal a
-LEFT JOIN (SELECT * FROM ${ref('dim_fc_service_area')} WHERE area_type = 'PROVINCE') b
-  ON JSON_EXTRACT_SCALAR(a.area_codes[0]) = b.service_area_code
-LEFT JOIN (SELECT region_code, region_name FROM ${source.platinum}.core_prd_master_data_province GROUP BY ALL) c
-  ON JSON_EXTRACT_SCALAR(a.area_codes[0]) = c.region_code
+  LEFT JOIN (SELECT * FROM ${ref('dim_fc_service_area')} WHERE area_type = 'PROVINCE') b
+    ON JSON_EXTRACT_SCALAR(a.area_codes[0]) = b.service_area_code
+  LEFT JOIN (SELECT region_code, region_name FROM ${source.platinum}.core_prd_master_data_province GROUP BY ALL) c
+    ON JSON_EXTRACT_SCALAR(a.area_codes[0]) = c.region_code
+  LEFT JOIN ${source.platinum}.core_prd_account_account AS ca 
+    ON ca.account_id = a.account_id
 WHERE a.action <> 'd'
   AND a.deal_id NOT IN (50105, 50103, 2, 2101, 50008, 20134)
+  AND a.created_date >= "2025-01-01"
 QUALIFY row_number() OVER(PARTITION BY a.code ORDER BY a.last_updated_time DESC) = 1
