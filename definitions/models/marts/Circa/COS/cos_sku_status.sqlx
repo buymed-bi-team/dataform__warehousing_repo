@@ -5,7 +5,6 @@ config {
     /*Source:
       ${source.silver}.marketplace_prd_order_v2_order_item
       ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
-    disabled: true,
     name: "cos_sku_status",
     columns: {/*
         order_id: "NonNull |" + docs.order_id,
