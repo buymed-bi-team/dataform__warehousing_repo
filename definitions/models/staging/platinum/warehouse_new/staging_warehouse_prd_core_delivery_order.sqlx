@@ -15,7 +15,7 @@ config {
     bigquery: {
         partitionBy: "created_date"
     },
-    tags: ["custom_1h_past7","warehouse_prd_core", "11h30"]
+    tags: ["custom_1h_past7","warehouse_prd_core"]
 }
 
 pre_operations {
