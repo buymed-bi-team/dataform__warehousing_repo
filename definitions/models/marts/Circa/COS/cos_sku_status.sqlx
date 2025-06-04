@@ -45,10 +45,12 @@ where (sku is not null or sku <> '')
 Select distinct product_id
                 ,sku_code
                 ,sum(on_hand_quantity) as current_stock_by_sku
+                ,sum(cost_price_include_tax) as current_stock_value_by_sku
 from ${source.ref}.cos_fact_inventory v
 left join ${source.circa_os}.entity_pos_profile p on v.pos_id = p.id 
 where p.type = 'CIRCA'
       and p.id not in ('c95a3338-4f5e-4264-958b-0d02e3fea49b','0d4c2e76-c6bf-487d-bf3e-d0b608d9fb5d')
+      and v.location_type <> 'CANCELLED'
 group by all
 ) 
  -- tổng tồn kho hiện tại theo sku 
@@ -58,10 +60,12 @@ Select distinct product_id
                 ,sku_code
                 ,pos_id
                 ,sum(on_hand_quantity) as current_stock_by_pos
+                ,sum(cost_price_include_tax) as current_stock_value_by_pos
 from ${source.ref}.cos_fact_inventory v
 left join ${source.circa_os}.entity_pos_profile p on v.pos_id = p.id 
 where p.type = 'CIRCA'
       and p.id not in ('c95a3338-4f5e-4264-958b-0d02e3fea49b','0d4c2e76-c6bf-487d-bf3e-d0b608d9fb5d')
+      and v.location_type <> 'CANCELLED'
 group by all
 ---- tổng tồn kho hiện tại theo sku , pos
 )
@@ -85,6 +89,7 @@ Select distinct o.product_id
                     when  thuocsi_sku_status.sku_system_status = 'SUSPENDED' then 'SUSPENDED'
                     else 'OOS' END AS sku_status_by_pos
               ,by_sku.current_stock_by_sku
+              ,current_stock_value_by_sku
               ,by_sku.sku_status
 from inventory_by_pos o
 left join by_sku on o.product_id = by_sku.product_id and o.sku_code = by_sku.sku_code
