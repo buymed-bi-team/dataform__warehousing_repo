@@ -19,7 +19,7 @@ E.g:
 DECLARE duplicate_mg_id ARRAY < STRING >;
 
 BEGIN 
-    CALL platinum_buymed_vn.unique_assertion(
+    CALL platinum_buymed_vn__stg.unique_assertion(
         "marketplace_prd_order_v2_order_item",
         TRUE,
         CURRENT_DATE() - INTERVAL 2 DAY,
@@ -33,7 +33,7 @@ SELECT duplicate_mg_id;
 
 */
 
-CREATE OR REPLACE PROCEDURE platinum_buymed_vn.unique_assertion(
+CREATE OR REPLACE PROCEDURE platinum_buymed_vn__stg.unique_assertion(
   table_name STRING,
   has_created_time BOOL,
   default_guarantee_time_start_point DATE,
@@ -93,7 +93,7 @@ BEGIN
   DECLARE example_array ARRAY<STRING>;
 
   -- Call the procedure and pass the variable directly
-  CALL platinum_buymed_vn.unique_assertion(
+  CALL platinum_buymed_vn__stg.unique_assertion(
     'marketplace_prd_order_v2_order_item',
     TRUE,
     DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH),
