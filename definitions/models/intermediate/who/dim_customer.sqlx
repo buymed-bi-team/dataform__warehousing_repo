@@ -9,7 +9,7 @@ config {
         uniqueKey: ["customer_id"]
     },
     name: "dim_customer",
-    tags: ["custom_1h_past5", "11h30"],
+    tags: ["custom_1h_past5"],
     columns: {
         customer_id: "NonNull",
         customer_name: "NonNull",
