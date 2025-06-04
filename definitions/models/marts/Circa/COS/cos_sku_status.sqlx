@@ -14,27 +14,81 @@ config {
     }
 }
 
-with thuoc_si as (
-select distinct
-    t.sku,
-    t.created_time,
-    t.status
-    ,u.product_id
-    ,sku_code
+with base_data as (
+Select distinct product_id
+               , sku
+from ${source.circa_os}.order_purchase_order_item
+where (sku is not null or sku <> '')
+     and received_quantity <> 0
+) --lấy danh sách sản phẩm đã mua trong quá khứ
 
-from  ${source.ref}.staging_sku_status_history t
-join (
-    select
-        sku,
-        max(created_time) as max_created_time
-    from  ${source.ref}.staging_sku_status_history
-    --where created_time >= '2024-01-05'
-    group by sku
-     ) latest on t.sku = latest.sku AND t.created_time = latest.max_created_time
-left join  ${source.ref}.adhoc_pm_master_sku u on u.sku_code = t.sku
-where created_time >= '2024-01-05' 
-     and u.product_id in (Select distinct product_id from ${source.ref}.cos_purchase_order_item)
-     and u.fc_code = 'BD'
---and t.sku = 'MEDX.8URXHR2A'
+, thuocsi_sku_status as 
+( select distinct
+    a.product_id
+    ,sku_system_status
+    ,row_number() over (partition by a.product_id
+      order by 
+        case a.sku_system_status
+          when 'NORMAL' then 1
+          when 'LIMIT' then 2
+          when 'OUT_OF_STOCK' then 3
+          when 'SUSPENDED' then 4
+          else 5
+        end
+    ) as row_num
+  from ${source.ref}.adhoc_pm_master_sku a
+  where product_id in (Select distinct product_id from base_data)
+        and a.fc_code = 'BD')
+        
+        --lấy trạng thái sau cùng của thuốc sĩ ở khu vực miền Nam
+
+,inventory_by_sku  as (
+Select distinct product_id
+                ,sku_code
+                ,sum(on_hand_quantity) as current_stock_by_sku
+from ${source.ref}.cos_fact_inventory v
+left join ${source.circa_os}.entity_pos_profile p on v.pos_id = p.id 
+where p.type = 'CIRCA'
+      and p.id not in ('c95a3338-4f5e-4264-958b-0d02e3fea49b','0d4c2e76-c6bf-487d-bf3e-d0b608d9fb5d')
+group by all
+) 
+ -- tổng tồn kho hiện tại theo sku 
+
+,inventory_by_pos as (
+Select distinct product_id
+                ,sku_code
+                ,pos_id
+                ,sum(on_hand_quantity) as current_stock_by_pos
+from ${source.ref}.cos_fact_inventory v
+left join ${source.circa_os}.entity_pos_profile p on v.pos_id = p.id 
+where p.type = 'CIRCA'
+      and p.id not in ('c95a3338-4f5e-4264-958b-0d02e3fea49b','0d4c2e76-c6bf-487d-bf3e-d0b608d9fb5d')
+group by all
+---- tổng tồn kho hiện tại theo sku , pos
 )
-Select * from thuoc_si
+
+, by_sku as (
+Select distinct o.product_id
+            , o.* except (product_id)
+            ,case when o.current_stock_by_sku > 0 then 'NORMAL'
+                    when  thuocsi_sku_status.sku_system_status = 'SUSPENDED' then 'SUSPENDED'
+                    else 'OOS' END AS sku_status
+from inventory_by_sku o
+left join base_data on o.product_id = base_data.product_id and o.sku_code = base_data.sku
+left join thuocsi_sku_status on base_data.product_id = thuocsi_sku_status.product_id
+where row_num = 1
+-- lấy trạng thái hiện tại của sản phẩm theo tồn kho, detail by sku
+)
+
+Select distinct o.product_id
+              , o.* except (product_id)
+              ,case when o.current_stock_by_pos > 0 then 'NORMAL'
+                    when  thuocsi_sku_status.sku_system_status = 'SUSPENDED' then 'SUSPENDED'
+                    else 'OOS' END AS sku_status_by_pos
+              ,by_sku.current_stock_by_sku
+              ,by_sku.sku_status
+from inventory_by_pos o
+left join by_sku on o.product_id = by_sku.product_id and o.sku_code = by_sku.sku_code
+left join thuocsi_sku_status on by_sku.product_id = thuocsi_sku_status.product_id
+where row_num = 1
+--lấy trạng thái hiện tại của sản phẩm theo tồn kho, detail by sku, pos
