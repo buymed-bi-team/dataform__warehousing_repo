@@ -1,12 +1,14 @@
 function createIncremental_preOps({
     config,
     ctx,
+    has_src_created_date = false,
     ingestCutOffInterval = ``,
 }) {
     let preOperation = ``;
     if (ingestCutOffInterval != ``) {
         ingestCutOffInterval = `WHERE created_date >= CURRENT_DATE() - ${ingestCutOffInterval}`
     }
+
     if (ctx.incremental()) {
         preOperation = `
         # Incremental
@@ -67,6 +69,7 @@ function createIncremental_preOps({
 function createIncremental_query({
     config,
     ctx,
+    has_src_created_date = false,
     ingestCutOffInterval = ``,
 }) {
     const selectQuery = `
@@ -97,7 +100,7 @@ function createIncremental_query({
         GROUP BY mg_id HAVING action != "d"
     )
     SELECT
-        *,
+        * ${has_src_created_date ? `EXCEPT (created_date)` : `` },
         CASE
             WHEN ${config.createdTime} IS NOT NULL THEN DATE(DATETIME(${config.createdTime}, 'Asia/Ho_Chi_Minh'))
             ELSE DATE( '2099-01-01' )
@@ -114,6 +117,7 @@ function createIncremental({
     config, // read index
     tags,
     assertions = {},
+    has_src_created_date = false,
     disabled = false,
     ingestCutOffInterval = ``,
 }) {
@@ -130,12 +134,14 @@ function createIncremental({
         ctx => createIncremental_preOps({
             config,
             ctx,
+            has_src_created_date,
             ingestCutOffInterval,
         })
     ).query (
         ctx => createIncremental_query({
             config,
             ctx,
+            has_src_created_date,
             ingestCutOffInterval,
         })
     )
