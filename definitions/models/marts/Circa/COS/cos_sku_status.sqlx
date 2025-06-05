@@ -89,7 +89,6 @@ Select distinct o.product_id
                     when  thuocsi_sku_status.sku_system_status = 'SUSPENDED' then 'SUSPENDED'
                     else 'OOS' END AS sku_status_by_pos
               ,by_sku.current_stock_by_sku
-              ,current_stock_value_by_sku
               ,by_sku.sku_status
 from inventory_by_pos o
 left join by_sku on o.product_id = by_sku.product_id and o.sku_code = by_sku.sku_code
