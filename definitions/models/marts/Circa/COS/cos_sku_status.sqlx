@@ -81,7 +81,16 @@ left join base_data on o.product_id = base_data.product_id and o.sku_code = base
 left join thuocsi_sku_status on base_data.product_id = thuocsi_sku_status.product_id
 where row_num = 1
 -- lấy trạng thái hiện tại của sản phẩm theo tồn kho, detail by sku
-),sku_thuocsi as (
+), by_sku_not_thuocsi as (
+Select distinct o.product_id
+            , o.* except (product_id)
+            ,case when o.current_stock_by_sku > 0 then 'NORMAL'
+                    else 'OOS' END AS sku_status
+from inventory_by_sku o
+left join base_data on o.product_id = base_data.product_id and o.sku_code = base_data.sku
+where o.sku_code not in (Select distinct sku_code from by_sku)
+)
+,sku_thuocsi as (
 
 Select distinct o.product_id
               , o.* except (product_id)
@@ -100,11 +109,10 @@ Select distinct o.product_id
               , o.* except (product_id)
               ,case when o.current_stock_by_pos > 0 then 'NORMAL'
                     else 'OOS' END AS sku_status_by_pos
-              ,by_sku.current_stock_by_sku
-              ,by_sku.sku_status
+              ,by_sku_not_thuocsi.current_stock_by_sku
+              ,by_sku_not_thuocsi.sku_status
 from inventory_by_pos o
-left join by_sku on o.product_id = by_sku.product_id and o.sku_code = by_sku.sku_code
+left join by_sku_not_thuocsi on o.product_id = by_sku_not_thuocsi.product_id and o.sku_code = by_sku_not_thuocsi.sku_code
 where o.sku_code not in (Select distinct sku_code from sku_thuocsi)
-
-
+   
 --lấy trạng thái hiện tại của sản phẩm theo tồn kho, detail by sku, pos
