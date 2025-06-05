@@ -229,7 +229,13 @@ WITH
       JSON_QUERY(a.extra_props, '$.customer_tags') AS customer_tags,
       IF(a.status = 'CANCEL', "CANCELLED", "NORMAL") AS cancellation,
 
-      redeem_apply_result
+      redeem_apply_result,
+
+      IF(
+        a.status = "WAIT_TO_CONFIRM" AND a.payment_method = "PAYMENT_METHOD_BANK" AND JSON_VALUE(a.extra_props, "$.wait_for_transfer") = "true"
+        , true
+        , false
+      ) AS is_on_hold
 
     FROM ${source.platinum}.marketplace_prd_order_v2_order AS a
       LEFT JOIN customer_rating r 
