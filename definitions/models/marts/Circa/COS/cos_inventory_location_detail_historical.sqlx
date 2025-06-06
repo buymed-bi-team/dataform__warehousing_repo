@@ -33,6 +33,7 @@ with cte as (select
     ,a.lot_date
     ,ld.tax_rate
     ,a.location_id
+    ,l.name as kho
    ,sum(
       case
          when a.type = 'SALE_ORDERED' then -1
