@@ -39,12 +39,10 @@ inner join (
            ) p on pi.payment_code = p.payment_code
 )
 Select * except(created_time) from base_payment
-where base_payment.pos_code not in (select Pos_code from buymed_external.fs_new_contract)
+where base_payment.pos_code not in (select Pos_code from  ${source.external}.fs_new_contract)
 --lấy những FS chưa chuyển đổi
 union all
-Select * except(created_time) from base_payment
-where base_payment.pos_code in (select Pos_code from buymed_external.fs_new_contract)
-      and date(date_add(base_payment.created_time, interval 7 hour)) > (
-                                       Select date(t.Date_convert)
-                                       from buymed_external.fs_new_contract t
-                                       where t.Pos_code = base_payment.pos_code)
+Select base_payment.* except(created_time) from base_payment
+left join ${source.ref}.circa_reconcile_AR ar on ar.pos_code = base_payment.pos_code and base_payment.object_code = ar.object_code
+where base_payment.pos_code in (select Pos_code from ${source.external}.fs_new_contract)
+           and  ar.rec_template_code is not null
