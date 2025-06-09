@@ -21,6 +21,7 @@ config {
 with cte as (select
     date_add(a.created_at, interval 7 hour)  AS created_time
     ,date(date_add(a.created_at, interval 7 hour) ) AS created_date
+    ,date_add(a.updated_at, interval 7 hour)  AS updated_time
     ,date(date_add(a.updated_at, interval 7 hour) ) AS updated_date
     ,l.pos_id
     ,a.product_id
