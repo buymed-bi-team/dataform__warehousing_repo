@@ -31,7 +31,7 @@ with reconcile as (
        and rec_template_code in('CIRCAFS_DEBT','CIRCAFS_FEE')
        group by all
 )
-Select t.*
+Select distinct t.*
        ,d.created_date as Date_collected
        ,d.collected_amount 
        ,d.object_code

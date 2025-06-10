@@ -38,7 +38,7 @@ inner join (
              and contains_substr(coalesce(note,'null'),'test') = false
            ) p on pi.payment_code = p.payment_code
 )
-Select * except(created_time) from base_payment
+Select distinct * except(created_time) from base_payment
 where base_payment.pos_code not in (select Pos_code from  ${source.external}.fs_new_contract)
 --lấy những FS chưa chuyển đổi
 union all
