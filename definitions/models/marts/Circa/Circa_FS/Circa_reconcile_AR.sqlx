@@ -49,7 +49,7 @@ where circa_collect <> 0
 --group by all
 --having pay_due_time <= current_date()
 union all
-Select t.*
+Select distinct t.*
        ,d.created_date as Date_collected
        ,d.collected_amount 
        ,d.object_code
