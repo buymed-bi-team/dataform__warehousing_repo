@@ -37,16 +37,16 @@ with
             , DENSE_RANK() over (ORDER BY a.fee_value) as delivery_level
         FROM (
             SELECT
-                code as province_code
+                code as district_code
                 , fee_value
             FROM ${source.platinum}.marketplace_prd_pricing_v2_setting
             WHERE
                 type = 'DELIVERY_REGION' OR type is null
-            QUALIFY ROW_NUMBER() over (_window) = 1 AND FIRST_VALUE(action) over (_window) <> 'd'
-            WINDOW _window AS (PARTITION BY type, code ORDER BY synced_at DESC, last_updated_time DESC)
+                AND LENGTH(code) = 3
+            QUALIFY ROW_NUMBER() over (PARTITION BY type, code ORDER BY synced_at DESC, last_updated_time DESC) = 1
         ) as a
-            LEFT JOIN ${ref('dim_fc_service_area')} as b 
-                ON a.province_code = b.service_area_code
+            LEFT JOIN ${ref('dim_geo_location')} as b 
+                ON a.district_code = b.district_code
         WHERE
             b.sales_region_code is not null
     )
