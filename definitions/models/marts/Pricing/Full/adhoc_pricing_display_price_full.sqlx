@@ -112,8 +112,10 @@ with
             cross join get_customer_level_fee AS d
             left join get_delivery_fee AS e on a.sales_region_code = e.sales_region_code
         where 
-            (a.retail_price_value >= coalesce(c.from_price,0) and a.retail_price_value <= c.to_price)
-            or ((a.retail_price_value is null or a.retail_price_value > 100000000) and c.flag = true)
+            ((a.retail_price_value >= coalesce(c.from_price,0) and a.retail_price_value <= c.to_price)
+            or ((a.retail_price_value is null or a.retail_price_value > 100000000) and c.flag = true))
+            AND sku_system_status IN ("NORMAL", "LIMIT", "OUT_OF_STOCK")
+            AND (seller_code = "MEDX" OR seller_class = "EXTERNAL")
     ),
 
     normal_product AS (
