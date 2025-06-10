@@ -55,7 +55,7 @@ from ${source.circa}.order_delivery_info)
 
 select A.*
       ,di.customer_name
-      ,case when A.entity_phone like "000000000" then di.customer_phone  else A.entity_phone end as customer_phone    
+      ,case when A.entity_phone like "%000000000%" then di.customer_phone  else A.entity_phone end as customer_phone    
 from A
 left join delivery_infor di on a.order_id = di.order_id
 where filter = 'True'
