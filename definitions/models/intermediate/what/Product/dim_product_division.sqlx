@@ -43,7 +43,8 @@ WITH
             STRUCT (208 AS division_id, "https://i.ibb.co/fYsbXXc3/Menarini.png" AS image_link),
             STRUCT (1133 AS division_id, "https://i.ibb.co/1fX6vtbD/zuellig.png" AS image_link),
             STRUCT (843 AS division_id, "https://i.ibb.co/n8rjbG9w/novartis.png" AS image_link),
-            STRUCT (1261 AS division_id, "https://i.ibb.co/FPHv43w/BBT.png" AS image_link)
+            STRUCT (1261 AS division_id, "https://i.ibb.co/FPHv43w/BBT.png" AS image_link),
+            STRUCT (1364 AS division_id, "https://gcs.buymed.com/thuocsi-live/images/2025f41443f21f585d2d274890f5a514?quality=100" AS image_link)
         ])
     )
 
