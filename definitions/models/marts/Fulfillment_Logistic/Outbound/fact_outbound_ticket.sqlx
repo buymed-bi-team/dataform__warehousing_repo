@@ -101,7 +101,7 @@ with cte_date as (
 			timestamp_add(so.sale_order_time, interval 7 hour) as so_confirmed_at,
 			timestamp_add(p.scheduled_date, interval 7 hour) as start_to_reserve_at,
 			timestamp_add(p.ready_for_pick_time, interval 7 hour) as ready_for_pick_at,
-			timestamp_add(coalesce(fr.finish_full_reserving_time, p.activation_time, p.ready_for_pick_time,p.start_time), interval 7 hour) as reserve_done_at,
+			timestamp_add(coalesce(fr.finish_full_reserving_time, p.ready_for_pick_time, p.activation_time, p.start_time), interval 7 hour) as reserve_done_at,
 			timestamp_add(p.activation_time, interval 7 hour) as active_at,
 			timestamp_add(p.start_time, interval 7 hour) as start_to_pick_at,
 			timestamp_add(p.end_pick_time, interval 7 hour) as pick_done_at,

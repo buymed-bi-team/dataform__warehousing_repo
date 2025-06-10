@@ -1,0 +1,150 @@
+config {
+    type: "table", 
+    description: 
+        `
+        PIC: huyen.nguyenthu; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.platinum}.marketplace_prd_promotion_gamification_detail,
+            ${source.ref}.fact_order,
+            ${source.ref}.fact_order_item,
+            ${source.platinum}.marketplace_prd_promotion_gamification_result,
+            ${source.platinum}.marketplace_prd_promotion_lucky_wheel
+        `,
+    tags: ["custom_1h_past5"]
+}
+
+with mission as (
+  select
+    gamification_detail_id,
+    index_mission,
+    mission_name,
+    lucky_wheel_code,
+    cast(json_value(rewards, "$.0.turns_rotation") as integer) AS turn_received
+  from ${source.platinum}.marketplace_prd_promotion_gamification_detail d
+      left join ${source.platinum}.marketplace_prd_promotion_lucky_wheel w on d.lucky_wheel_code = w.code
+  where date(timestamp_add(w.start_time, interval 7 hour)) >= '2025-04-01'
+    and lucky_wheel_code is not null
+    and w.is_active IS TRUE
+),
+dup_time as (select
+    concat(r.customer_id, "_", r.lucky_wheel_code) as campaign_key,
+    r.gamification_detail_id,
+    case
+      when r.status = "COMPLETED" then timestamp_add(min(r.last_updated_time), interval 7 hour)
+      else null
+    end as received_turn_time
+from ${source.platinum}.marketplace_prd_promotion_gamification_result as r
+group by
+    r.customer_id,
+    r.lucky_wheel_code,
+    r.gamification_detail_id,
+    r.status),
+
+dedup_time AS (
+    SELECT *,
+           COUNT(received_turn_time) OVER (PARTITION BY campaign_key, gamification_detail_id) AS time_count,
+           COUNT(*) OVER (PARTITION BY campaign_key, gamification_detail_id) AS total_count
+    FROM dup_time),
+
+
+time_received_turn as (SELECT * EXCEPT(time_count, total_count)
+FROM dedup_time
+WHERE (time_count = 1 AND received_turn_time IS NOT NULL)
+   OR (time_count = 0 AND total_count = 1)),
+
+mission_process as (
+    select
+        r.customer_id,
+        r.order_ids,
+        concat(r.customer_id, "_", r.lucky_wheel_code) as campaign_key,
+        m.lucky_wheel_code,
+        date(timestamp_add(w.end_time, interval 7 hour)) as end_time,
+        t.received_turn_time,
+        r.gamification_detail_id,
+        r.status,
+        case
+            when r.status = "COMPLETED" then m.turn_received
+        else 0
+        end as turn_received
+    from ${source.platinum}.marketplace_prd_promotion_gamification_result as r
+    left join mission as m
+    on r.gamification_detail_id = m.gamification_detail_id
+    left join ${source.platinum}.marketplace_prd_promotion_lucky_wheel as w
+    on r.lucky_wheel_code = w.code
+    left join time_received_turn as t
+    on concat(r.customer_id, "_", r.lucky_wheel_code) = t.campaign_key
+    and r.gamification_detail_id = t.gamification_detail_id
+    where m.turn_received is not null
+    QUALIFY ROW_NUMBER() OVER (PARTITION BY r.lucky_wheel_code, r.gamification_detail_id, r.customer_id ORDER BY r.synced_at DESC) = 1
+),
+
+customer_type as (
+      SELECT
+        customer_id,
+        customer_type,
+        SAFE_CAST(CONCAT(FORMAT_DATE('%m-%Y', created_at), '_', CAST(customer_id AS STRING)) as STRING) AS month_id,
+      FROM
+        `gold_buymed_vn2.fact_order`
+      where date(created_at) >= "2025-04-01"
+      group by all
+),
+
+extract_order as (select
+  m.* except (order_ids),
+  safe_cast(json_value(order_id) as int64) as order_id,
+  SAFE_CAST(CONCAT(FORMAT_DATE('%m-%Y', m.end_time), '_', CAST(m.customer_id AS STRING)) as STRING) AS month_id
+from mission_process as m
+    , UNNEST(JSON_EXTRACT_ARRAY(m.order_ids)) AS order_id
+
+union all
+
+select
+    m.* except (order_ids),
+    null as order_id,
+    SAFE_CAST(CONCAT(FORMAT_DATE('%m-%Y', m.end_time), '_', CAST(m.customer_id AS STRING)) as STRING) AS month_id
+from mission_process as m
+where order_ids is null
+
+),
+
+orders as (
+      SELECT
+        customer_id,
+        order_id,
+        total_discount,
+        ordered_amount_aft_discount as gmv_actual,
+        ordered_amount as gmv,
+        SAFE_CAST(CONCAT(FORMAT_DATE('%m-%Y', created_at), '_', CAST(customer_id AS STRING)) as STRING) AS month_id
+      FROM
+        ${source.ref}.fact_order
+      where date(created_at) >= "2025-04-01"
+      and order_status <> 'CANCEL'
+      group by all
+),
+
+onbr as (
+    SELECT distinct i.order_id
+FROM ${source.ref}.fact_order_item as i
+LEFT JOIN UNNEST(SPLIT(REGEXP_REPLACE(i.tag_code, r"[\[\]'\"\s]", ''), ',')) AS code
+LEFT JOIN ${source.ref}.fact_order o ON i.order_id = o.order_id
+WHERE code = 'ONBR' and date(created_date) between '2025-06-02' and '2025-06-30'
+)
+
+SELECT
+  m.* except(end_time),
+  date(m.received_turn_time) as received_date,
+  c.customer_type,
+  o.gmv_actual,
+  o.gmv,
+  o.total_discount,
+  IF(m.order_id is not null and ob.order_id is not null, 'ONBR', 'NOT_ONBR') as onbr_order
+FROM extract_order as m
+LEFT JOIN customer_type as c
+  ON m.customer_id = c.customer_id
+  AND m.month_id = c.month_id
+LEFT JOIN orders as o
+  ON m.order_id = o.order_id
+LEFT JOIN onbr ob on m.order_id = ob.order_id
+GROUP BY ALL

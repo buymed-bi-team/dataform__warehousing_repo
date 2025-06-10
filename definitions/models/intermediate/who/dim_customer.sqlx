@@ -141,8 +141,8 @@ WITH
         , bank_name
         , bank_account_name
       FROM ${source.platinum}.marketplace_prd_customer_bank
-      WHERE bank_branch_code IS NOT NULL
-      QUALIFY ROW_NUMBER() OVER(PARTITION BY customer_id ORDER BY created_time DESC) = 1
+    --   WHERE bank_branch_code IS NOT NULL
+      QUALIFY ROW_NUMBER() OVER(PARTITION BY customer_id ORDER BY last_updated_time DESC) = 1
   ),
 
 stg_province AS (
