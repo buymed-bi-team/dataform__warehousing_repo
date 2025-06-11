@@ -6,7 +6,8 @@ config {
     //      uniqueKey: 'mg_id'
     //  },
     bigquery: {
-        partitionBy: "created_date"
+        partitionBy: "created_date",
+        clusterBy: ["target","primary_key"]
     },
     tags: ["platinum_custom_30min","core_prd_activity"]
 }
