@@ -15,14 +15,14 @@ const model = new main.PlatinumModel(
     }
 );
 model.createIncremental(
-    ["0h00", "warehouse_prd_inventory"],
+    ["0h00","12h00", "warehouse_prd_inventory"],
     {
         has_src_created_date : false,
         ingestCutOffInterval : "INTERVAL 1 MONTH"
     }
 );
 model.assertUnique(
-    ["0h00", "warehouse_prd_inventory"],
+    ["0h00","12h00", "warehouse_prd_inventory"],
     {
         intervalCheckpoint : `INTERVAL 1 YEAR`,
         maxRetry: 2
@@ -37,7 +37,7 @@ model.createMismatchAssertionView(
     }
 )
 model.assertMismatch(
-    ["0h00", "warehouse_prd_inventory"],
+    ["0h00","12h00", "warehouse_prd_inventory"],
     {
         intervalCheckpoint: `INTERVAL 2 DAY`,
         maxRetry: 2,
