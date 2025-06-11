@@ -6,3 +6,4 @@ config {
 }
 
 select * from buymed_external.dim_employee_pos
+where year_month not in ('2025-06')
