@@ -9,7 +9,7 @@ config {
         partitionBy: "created_date",
         clusterBy: ["target","primary_key"]
     },
-    tags: ["platinum_custom_30min","core_prd_activity"]
+    tags: ["platinum_custom_30min","core_prd_activity", "11h30"]
 }
 pre_operations {
   ${
