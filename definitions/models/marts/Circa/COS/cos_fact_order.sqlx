@@ -32,28 +32,29 @@ with return_cancel as (
 ),
 
 cte_fs as
-    (select o.id as order_id,
-       pos_id, p.code as pos_code,
-       entity_id,
-       o.code as order_code,
-       o.total_amount,
-       o.total_item_amount,  
-       discount_amount, 
-       o.created_by,
-       o.updated_by,
-       en.name,
-       o.status,
-       o.note, o.type,
-       o.source_type,
-       delivery_type,
-       channel,
-       date(DATETIME_ADD(o.created_at, INTERVAL 7 HOUR)) as created_date,
-       DATETIME_ADD(o.created_at, INTERVAL 7 HOUR) as created_at,
-       fulfillment_status,
-       '' as reference_order_in_platform,
-       date(DATETIME_ADD(completed_at, INTERVAL 7 HOUR))  as completed_date,
-       medicine_cutting_fee,
-       STRING_AGG(CAST(return_id as string)) as return_codes
+    (select o.id as order_id
+       ,pos_id, p.code as pos_code
+       ,entity_id
+       ,o.code as order_code
+       ,o.total_amount
+       ,actual_total_item_amount
+       ,o.total_item_amount
+       ,discount_amount
+       ,o.created_by
+       ,o.updated_by
+       ,en.name
+       ,o.status
+       ,o.note, o.type
+       ,o.source_type
+       ,delivery_type
+       ,channel
+       ,date(DATETIME_ADD(o.created_at, INTERVAL 7 HOUR)) as created_date
+       ,DATETIME_ADD(o.created_at, INTERVAL 7 HOUR) as created_at
+       ,fulfillment_status
+       ,'' as reference_order_in_platform
+       ,date(DATETIME_ADD(completed_at, INTERVAL 7 HOUR))  as completed_date
+       ,medicine_cutting_fee
+       ,STRING_AGG(CAST(return_id as string)) as return_codes
 from ${source.circa}.order_order o
 left join UNNEST(JSON_VALUE_ARRAY(order_return_codes)) AS return_id
 left join ${source.circa}.entity_pos_profile p on o.pos_id = p.id
@@ -63,28 +64,30 @@ where pos_id in ("b6c40920-af79-4fb0-bdc4-9965ddb885d2", "e737c882-e90c-4fd2-8a4
 group by all),
 
 cte_os as
-    (select o.id as order_id,
-       pos_id, p.code as pos_code,
-       entity_id,
-       o.code as order_code,
-       o.total_amount,
-       o.total_item_amount,
-       discount_amount,
-       o.created_by,
-       o.updated_by,
-       en.name,
-       o.status,
-       o.note, o.type,
-       o.source_type,
-       delivery_type,
-       channel,
-       date(DATETIME_ADD(o.created_at, INTERVAL 7 HOUR)) as created_date,
-       DATETIME_ADD(o.created_at, INTERVAL 7 HOUR) as created_at,
-       fulfillment_status,
-       reference_order_in_platform,
-       date(DATETIME_ADD(completed_at, INTERVAL 7 HOUR))  as completed_date,
-       medicine_cutting_fee,
-       STRING_AGG(CAST(return_id as string)) as return_codes
+    (select o.id as order_id
+       ,pos_id, p.code as pos_code
+       ,entity_id
+       ,o.code as order_code
+       ,o.total_amount -- Tiền hàng + phí cắt liều - giảm giá
+       ,actual_total_item_amount --hình như giống o.total_item_amount
+       ,o.total_item_amount -- tiền hàng
+       ,discount_amount -- khuyến mãi 
+       ,o.created_by
+       ,o.updated_by
+       ,en.name
+       ,o.status
+       ,o.note
+       ,o.type
+       ,o.source_type
+       ,delivery_type
+       ,channel
+       ,date(DATETIME_ADD(o.created_at, INTERVAL 7 HOUR)) as created_date
+       ,DATETIME_ADD(o.created_at, INTERVAL 7 HOUR) as created_at
+       ,fulfillment_status
+       ,reference_order_in_platform
+       ,date(DATETIME_ADD(completed_at, INTERVAL 7 HOUR))  as completed_date
+       ,medicine_cutting_fee -- tiền cắt liều
+       ,STRING_AGG(CAST(return_id as string)) as return_codes
 from ${source.circa_os}.order_order o
 left join UNNEST(JSON_VALUE_ARRAY(order_return_codes)) AS return_id
 left join ${source.circa_os}.entity_pos_profile p on o.pos_id = p.id
@@ -94,18 +97,20 @@ group by all)
 
 select
     *
-    , CASE
-        WHEN return_codes IS NULL OR return_codes in (select * from return_cancel) THEN "NORMAL"
-        ELSE "RETURN"
-    END AS order_type
+    , case
+        when return_codes is null or return_codes in (select * from return_cancel) THEN "NORMAL"
+        else "RETURN"
+    end as order_type
 from cte_fs
 
 union all
 
 select
     *
-    , CASE
-        WHEN return_codes IS NULL OR return_codes in (select * from return_cancel) THEN "NORMAL"
-        ELSE "RETURN"
-    END AS order_type
+    , case
+        when return_codes is null or return_codes in (select * from return_cancel) then "NORMAL"
+        else "RETURN"
+    end as order_type
 from cte_os
+
+--gmv = Giá bán * sản phẩm + bất kì phí nào khác (hiện tại có phí cắt liều) - những đơn return hoặc return 1 phần  = total_item_amount + medicine_cutting_fee - return
