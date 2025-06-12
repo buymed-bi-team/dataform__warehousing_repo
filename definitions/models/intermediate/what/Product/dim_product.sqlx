@@ -234,7 +234,7 @@ SELECT
   product.is_fragile,
   product.is_frozen,
   -- product.is_ingredient_special,
-  IF(iis.product_id IS NOT NULL, TRUE, FALSE) AS is_ingredient_special,
+  IF(iis.product_id IS NOT NULL AND product.seller_category_code = "AQFV2U", TRUE, FALSE) AS is_ingredient_special,
   product.is_herb,
 
   product.height,
