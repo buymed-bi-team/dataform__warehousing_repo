@@ -6,7 +6,7 @@ config {
       ${source.platinum}.seller_prd_core_seller
     `,
     name: "dim_product",
-    tags: ["custom_1h_past5"],
+    tags: ["custom_1h_past5", "11h30"],
     assertions: {
         uniqueKey: "product_id",
         nonNull: ["product_id","owner_code"]
@@ -234,7 +234,7 @@ SELECT
   product.is_fragile,
   product.is_frozen,
   -- product.is_ingredient_special,
-  IF(iis.product_id IS NOT NULL AND product.seller_category_code = "AQFV2U", TRUE, FALSE) AS is_ingredient_special,
+  IF(iis.product_id IS NOT NULL AND product.seller_category_code = "AQFV2U", TRUE, FALSE) AS is_ingredient_special, -- product must have special ingredients and be a medicine to be classified as a special controlled medicine
   product.is_herb,
 
   product.height,
