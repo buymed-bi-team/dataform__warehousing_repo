@@ -58,10 +58,10 @@ select requester_code,
        root_ticket_instance_code,
        DATETIME(PARSE_TIMESTAMP('%Y-%m-%dT%H:%M:%E*S%Ez',JSON_EXTRACT_SCALAR(extra_props,'$.completed_time')), "Asia/Ho_Chi_Minh") as completed_time,
        message_notes
-from `${source.platinum}.platform_organization_prd_ticket_ticket_instance` ti,
+from `${source.platinum}.platform_organization_prd_ticket_ticket_instance` ti
 
-     unnest(JSON_EXTRACT_ARRAY(assign_roles,'$')) a,
-     unnest(JSON_EXTRACT_ARRAY(decision_selecteds,'$')) b
+    left join unnest(JSON_EXTRACT_ARRAY(assign_roles,'$')) a
+    left join unnest(JSON_EXTRACT_ARRAY(decision_selecteds,'$')) b
 left join ticket_note as tn on ti.ticket_instance_code = tn.ref_code
 -- where key like 'a0110ebd-0265-4bcb-832a-78322d27c34f'
 -- requester_type like "CIRCA_FS" or
