@@ -59,7 +59,7 @@ from ${source.circa_os}.order_order o
 left join UNNEST(JSON_VALUE_ARRAY(order_return_codes)) AS return_id
 left join ${source.circa_os}.entity_pos_profile p on o.pos_id = p.id
 where o.type <> 'RETURN'
-group by all)
+group by all), _all as (
 
 select f.* except(return_codes),
        COALESCE(SUM(f.total_amount), 0) as total_return_amount,
@@ -78,3 +78,6 @@ from cte_os o
 left join return_completed c on o.return_codes = c.code
 --where o.total_amount > c.total_amount
 group by all
+)
+Select * from _all 
+where total_return_amount <> 0
