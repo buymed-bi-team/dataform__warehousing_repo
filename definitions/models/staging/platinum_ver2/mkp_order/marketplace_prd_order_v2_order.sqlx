@@ -1,0 +1,52 @@
+config {
+    type: "view",
+    schema: "platinum_buymed_vn",
+    name: "marketplace_prd_order_v2_order",
+    description : `
+    PIC: minh.luu
+    Partition by: created date
+    `,
+    tags:["platinum","marketplace_prd_order-v2"]
+}
+
+  WITH silver AS (
+    SELECT
+      key,mg_id,total_price,total_item,customer_code,customer_province_code,customer_region_code,customer_level,province_code,payment_method_fee,invoice,system_display,customer_shipping_address,customer_district_code,redeem_code,has_campaign,total_discount,has_deal,tags,customer_email,customer_scope,district_code,payment_method,delivery_method_fee,order_id,region_code,delivery_method,wait_for_transfer_time,source,created_time,customer_order_index,payment_method_percentage,status,total_quantity,order_code,customer_id,customer_ward_code,source_detail,customer_phone,ward_code,flatten_location,extra_fee,price,total_fee,account_id,customer_name,delivery_date,redeem_apply_result,created_by_account_id,auto_confirm_note,last_updated_time,warehouse_code,warehouse_name,confirmation_date,private_note,transfer_amount,sale_order_code,sale_order_created_time,action_time,is_split_delivery_order,sale_order_status,process_start_time,cod,notional_price,notional_price_time,total_notional_price,delivery_order_codes,delivery_order_statuses,payment_discount,voucher_discount,delivery_carrier,delivery_carrier_code,delivery_tracking_number,outbound_date,delivered_time,synced_at,extra_props,action,ingest_time,
+      
+        CASE
+            WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time, 'Asia/Ho_Chi_Minh'))
+            ELSE DATE( '2099-01-01' )
+        END
+     created_date,
+      CAST(null as datetime) 
+    FROM silver_buymed_vn.marketplace_prd_order_v2_order
+    WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 1 DAY
+    QUALIFY ROW_NUMBER() OVER (_window) = 1 
+          AND FIRST_VALUE(action) OVER(_window) != "d"
+          AND ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 16 HOUR
+          WINDOW _window AS (
+          PARTITION BY mg_id
+          ORDER BY synced_at DESC,
+          IF
+              (action='d',3,
+              IF
+              (action='u',2,1)) DESC
+          ,last_updated_time DESC)
+  ), platinum AS (
+    SELECT 
+      key,mg_id,total_price,total_item,customer_code,customer_province_code,customer_region_code,customer_level,province_code,payment_method_fee,invoice,system_display,customer_shipping_address,customer_district_code,redeem_code,has_campaign,total_discount,has_deal,tags,customer_email,customer_scope,district_code,payment_method,delivery_method_fee,order_id,region_code,delivery_method,wait_for_transfer_time,source,created_time,customer_order_index,payment_method_percentage,status,total_quantity,order_code,customer_id,customer_ward_code,source_detail,customer_phone,ward_code,flatten_location,extra_fee,price,total_fee,account_id,customer_name,delivery_date,redeem_apply_result,created_by_account_id,auto_confirm_note,last_updated_time,warehouse_code,warehouse_name,confirmation_date,private_note,transfer_amount,sale_order_code,sale_order_created_time,action_time,is_split_delivery_order,sale_order_status,process_start_time,cod,notional_price,notional_price_time,total_notional_price,delivery_order_codes,delivery_order_statuses,payment_discount,voucher_discount,delivery_carrier,delivery_carrier_code,delivery_tracking_number,outbound_date,delivered_time,synced_at,extra_props,action,ingest_time,
+      created_date,
+      platinum_refresh
+    FROM ${ref(`platinum_buymed_vn__stg`, `marketplace_prd_order_v2_order`)}
+  )
+  SELECT p.*
+  FROM platinum p
+  LEFT JOIN silver s 
+      ON p.mg_id = s.mg_id 
+  WHERE s.mg_id is null 
+
+  UNION ALL 
+
+  SELECT s.*
+  FROM silver s
+  
