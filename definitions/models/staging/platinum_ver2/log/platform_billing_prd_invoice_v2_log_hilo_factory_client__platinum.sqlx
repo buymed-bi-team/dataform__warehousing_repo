@@ -5,7 +5,8 @@ config {
     description : `
     PIC: minh.luu
     Partition by: created date
-    `
+    `,
+    tags:["platinum","platform_billing_prd_invoice-v2"]
 }
 
 WITH silver AS (

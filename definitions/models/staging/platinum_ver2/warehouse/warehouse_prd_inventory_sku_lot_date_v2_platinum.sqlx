@@ -5,7 +5,8 @@ config {
     description : `
     PIC: minh.luu
     Partition by: created date
-    `
+    `,
+    tags:["platinum","warehouse_prd_inventory"]
 }
 
 WITH silver AS (
