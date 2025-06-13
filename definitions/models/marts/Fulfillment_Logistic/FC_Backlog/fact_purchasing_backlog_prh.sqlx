@@ -4,7 +4,9 @@ config {
 }
 
 SELECT
-    wt.code as ticket_code
+    wt.created_date
+    , wt.created_time + INTERVAL 7 HOUR AS created_time
+    , wt.code as ticket_code
     , wt.warehouse_code as fc_code
     , wt.status as ticket_status
     , wt.delivery_method
