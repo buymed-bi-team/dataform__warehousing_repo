@@ -9,6 +9,7 @@ config {
       ${source.circa_os}.inventory_location,
       ${source.circa_os}.inventory_location_detail`,
     tags: ["custom_1h_past5"],
+    disable: true,
     name: "cos_inventory_location_detail_historical_cutoff",
     columns: {
         
