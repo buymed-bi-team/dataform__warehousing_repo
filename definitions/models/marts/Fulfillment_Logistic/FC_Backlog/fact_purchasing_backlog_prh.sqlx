@@ -12,8 +12,6 @@ SELECT
     , wt.delivery_method
     , JSON_VALUE(wt.delivery_info, "$.hub_code") AS hub_code
     , wt.seller_code
-    , s.supplier_id as seller_id
-    , s.supplier_name as seller_name
     , DATE_DIFF(wt.overdue_date, current_timestamp(), DAY) + 2 as day_left
     , wt.note as ticket_note
     , wi.sku_code
@@ -22,7 +20,6 @@ SELECT
     , timestamp_add( current_timestamp(), interval 7 hour ) as transformed_at
 FROM ${source.platinum}.seller_prd_wis_withdraw_ticket AS wt
     LEFT JOIN ${source.platinum}.seller_prd_wis_withdraw_item AS wi on wt.code = wi.withdraw_code
-    LEFT JOIN ${ref('dim_seller')} AS s ON wt.seller_code = s.supplier_code
 WHERE 1=1
     AND wt.created_date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 6 MONTH)
     AND wi.created_date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 6 MONTH)
