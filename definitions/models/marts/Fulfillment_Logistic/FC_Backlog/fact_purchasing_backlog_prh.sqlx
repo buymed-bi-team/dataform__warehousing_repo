@@ -6,6 +6,10 @@ config {
 SELECT
     wt.created_date
     , wt.created_time + INTERVAL 7 HOUR AS created_time
+    , wt.status
+    , wt.return_order_code
+    , wt.source_location
+    , wt.last_updated_time + INTERVAL 7 HOUR AS last_updated_time
     , wt.code as ticket_code
     , wt.warehouse_code as fc_code
     , wt.status as ticket_status
@@ -18,8 +22,22 @@ SELECT
     , wi.quantity
     , wi.reason as sku_note
     , timestamp_add( current_timestamp(), interval 7 hour ) as transformed_at
+    , c.sale_order_time + INTERVAL 7 HOUR AS sale_order_time
 FROM ${source.platinum}.seller_prd_wis_withdraw_ticket AS wt
     LEFT JOIN ${source.platinum}.seller_prd_wis_withdraw_item AS wi on wt.code = wi.withdraw_code
+    LEFT JOIN (
+            SELECT
+                sale_order_code
+                , sale_order_time
+            FROM ${source.platinum}.warehouse_prd_core_sale_order
+            WHERE created_date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 6 MONTH)
+            UNION ALL
+            SELECT
+                order_code
+                , created_time
+            FROM ${source.platinum}.warehouse_prd_inbound_pre_inbound_return_order
+            WHERE created_date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 6 MONTH)
+    ) AS c ON wt.return_order_code = c.sale_order_code
 WHERE 1=1
     AND wt.created_date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 6 MONTH)
     AND wi.created_date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 6 MONTH)
