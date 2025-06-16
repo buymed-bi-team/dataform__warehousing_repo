@@ -183,7 +183,7 @@ SELECT
     fv_vendor_fc.commitment_leadtime as fv_vendor_leadtime,
 
     s.use_skus_price,
-    SAFE_CAST(JSON_VALUE(s.extra_props, "$.auto_update_status") AS BOOLEAN) AS auto_update_status,
+    IFNULL(SAFE_CAST(JSON_VALUE(s.extra_props, "$.auto_update_status") AS BOOLEAN), FALSE) AS auto_update_status,
 
 FROM cte_full AS cte
     LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_sku AS s
