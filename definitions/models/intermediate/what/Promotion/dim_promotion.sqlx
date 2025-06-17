@@ -44,9 +44,9 @@ SELECT
     , a.max_usage_per_customer AS usage_per_customer
     , REGEXP_REPLACE(JSON_VALUE(a.condition_description), r'\\n|\\', '') AS condition_description
     , JSON_VALUE(a.rewards, '$[0].type') AS discount_type
-	, JSON_VALUE(a.rewards, '$[0].absolute_discount') AS absolute_discount
-	, JSON_VALUE(a.rewards, '$[0].max_discount') AS max_discount
-	, JSON_VALUE(a.rewards, '$[0].percentage_discount') AS percentage_discount
+	, SAFE_CAST(JSON_VALUE(a.rewards, '$[0].absolute_discount') AS FLOAT64) AS absolute_discount
+	, SAFE_CAST(JSON_VALUE(a.rewards, '$[0].max_discount') AS FLOAT64) AS max_discount
+	, SAFE_CAST(JSON_VALUE(a.rewards, '$[0].percentage_discount') AS FLOAT64) AS percentage_discount
     , b.campaign_brand
     , e.fullname
     , JSON_VALUE(a.extra_props, '$.charge_fee') as charge_fee
