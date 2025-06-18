@@ -18,6 +18,7 @@ WITH cte_efficacy AS (
     product_id,
     efficacy_code
   FROM ${source.circa_os}.product_product p,  UNNEST(JSON_VALUE_ARRAY(efficacy_codes)) as efficacy_code
+  where client_id = 1
 
 )
 SELECT 
@@ -26,3 +27,4 @@ SELECT
 FROM cte_efficacy p
 LEFT JOIN ${source.circa_os}.product_efficacy e 
   ON p.efficacy_code = e.code
+  where e.client_id = 1
