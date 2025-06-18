@@ -122,7 +122,7 @@ WITH product_retail_unit AS (
   --         SAFE_CAST(code AS INT64) AS product_id
   --         , LOWER(IF(value <> "NAN", value, NULL)) AS cic_name
   --         , b.branch_account_id AS cic_account_id
-  --     FROM collector.data_prd AS a
+  --     FROM ${source.collector}.data_prd AS a
   --         LEFT JOIN ${ref('dim_employee')} AS b ON a.value = UPPER(b.user_name)
   --     WHERE
   --         object = 'Product'
@@ -135,7 +135,7 @@ WITH product_retail_unit AS (
       SELECT 
           SAFE_CAST(code AS INT64) AS product_id
           , NULLIF(value, "NAN") as high_margin
-      FROM collector.data_prd
+      FROM ${source.collector}.data_prd
       WHERE object = 'Product' and type = 'HIGH_MARGIN'
       QUALIFY ROW_NUMBER() OVER(PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
   )
@@ -177,6 +177,30 @@ WITH product_retail_unit AS (
             product_id
             , "MARGIN >10%"
         FROM buymed_external.potential_high_margin_product
+  )
+
+  , chronic AS (
+      SELECT
+          SAFE_CAST(code AS INT64) AS product_id
+          , NULLIF(value, "NAN") AS chronic
+      FROM ${source.collector}.data_prd
+      WHERE DATE(submit_at) >= "2025-06-18"
+          AND submit_id >= 5539
+          AND object = "Product"
+          AND type = "CHRONIC"
+      QUALIFY ROW_NUMBER() over (PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
+  )
+  
+  , essential AS (
+      SELECT
+          SAFE_CAST(code AS INT64) AS product_id
+          , NULLIF(value, "NAN") AS essential
+      FROM collector.data_prd
+      WHERE DATE(submit_at) >= "2025-06-18"
+          AND submit_id >= 5539
+          AND object = "Product"
+          AND type = "ESSENTIAL"
+      QUALIFY ROW_NUMBER() over (PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
   )
 
 SELECT
@@ -284,26 +308,14 @@ SELECT
     WHEN UPPER(product.name) LIKE "%[HÀNG THU HỒI]%" THEN "RECALLED"
     ELSE 'NORMAL'
   END product_report_category,
-  -- IF(
-  --       REGEXP_CONTAINS(
-  --           LOWER(product.name),
-  --           r'combo|quà|tặng|khuyến mãi|khuyến mại|hóa đơn|bảo hiểm|thẻ cào|mua|gift 1|gift 2|tờ rơi|áo blouse|poster|ưu đãi|trưng bày'
-  --       ) OR product.owner = 'MARKETING' OR product.owner = '%[Tech]%' OR LOWER(product.name) LIKE '% circa %' OR LOWER(product.name) LIKE '% thuocsi %',
-  --       'Promotion Product',
-  --       'Normal Product'
-  --   ) AS product_classification,
-
   tb4.name as main_category_name,
-
   product.is_combo,
-
-  -- cic.cic_name,
-  -- cic.cic_account_id,
-
   hmp.high_margin,
-
   rp.retail_price,
-  op.ownbrand_portfolio
+  op.ownbrand_portfolio,
+  chronic.chronic,
+  essential.essential
+
 
 FROM ${source.platinum}.marketplace_prd_product_v2_product AS product
 LEFT JOIN  ${source.platinum}.seller_prd_core_seller AS seller on product.owner = seller.code
@@ -322,6 +334,8 @@ LEFT JOIN is_ingredient_special AS iis ON iis.product_id = product.product_id
 LEFT JOIN retail_price AS rp ON rp.product_id = product.product_id
 LEFT JOIN brand AS br ON br.product_id = product.product_id
 LEFT JOIN ownbrand_portfolio AS op ON op.product_id = product.product_id
+LEFT JOIN chronic AS chronic ON chronic.product_id = product.product_id
+LEFT JOIN essential AS essential ON essential.product_id = product.product_id
 
 WHERE
     LOWER(product.name) NOT LIKE '%(bỏ)%'
