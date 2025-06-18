@@ -125,7 +125,7 @@ SELECT
     pic.pic_purchase_id AS pic_account_id,
     pic.pic_purchase_name AS pic_name,
     psr.cic_account_id,
-    psr.cic_name_import,
+    -- psr.cic_name_import,
     psr.cic_name,
     psr.cic_full_name_internal,
     psr.brand_type,
