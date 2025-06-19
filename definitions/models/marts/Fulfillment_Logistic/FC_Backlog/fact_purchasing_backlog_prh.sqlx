@@ -31,6 +31,7 @@ SELECT
     , wt.seller_code
     , DATE_DIFF(wt.overdue_date, current_timestamp(), DAY) + 2 as day_left
     , wt.note as ticket_note
+    , wi.product_id
     , wi.sku_code
     , wi.quantity
     , wi.reason as sku_note
