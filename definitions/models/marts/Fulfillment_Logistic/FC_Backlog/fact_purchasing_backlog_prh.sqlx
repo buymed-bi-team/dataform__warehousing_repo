@@ -7,6 +7,17 @@ SELECT
     wt.created_date
     , wt.created_time + INTERVAL 7 HOUR AS created_time
     , wt.status
+    , CASE wt.status
+        WHEN "WAIT_TO_PROCESS" THEN "Chờ xử lý"
+        WHEN "WAIT_TO_UPDATE" THEN "Chờ cập nhật"
+        WHEN "WAIT_TO_CONFIRM" THEN "Chờ xác nhận"
+        WHEN "WAIT_TO_DELIVER" THEN "Đang chờ giao"
+        WHEN "DELIVERED" THEN "Đã giao hàng"
+        WHEN "DELIVERING" THEN "Đang giao hàng"
+        WHEN "PROCESSING" THEN "Đang xử lý"
+        WHEN "OUTDATED" THEN "Đã quá hạn"
+        WHEN "WAIT_TO_RECEIVE" THEN "Chờ nhận hàng"
+      END AS seller_status
     , wt.return_order_code
     , wt.source_location
     , wt.last_updated_time + INTERVAL 7 HOUR AS last_updated_time
