@@ -41,4 +41,4 @@ FROM ${source.platinum}.seller_prd_wis_withdraw_ticket AS wt
 WHERE 1=1
     AND wt.created_date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 6 MONTH)
     AND wi.created_date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 6 MONTH)
-    AND wt.status NOT IN ("COMPLETED", "CANCELLED")
+    AND wt.status NOT IN ( "CANCELLED")
