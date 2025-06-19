@@ -45,7 +45,7 @@ where (sku is not null or sku <> '')
 Select distinct product_id
                 ,sku_code
                 ,sum(on_hand_quantity) as current_stock_by_sku
-                ,sum(cost_price_include_tax) as current_stock_value_by_sku
+                ,sum(cost_price_include_tax * on_hand_quantity) as current_stock_value_by_sku
 from ${source.ref}.cos_fact_inventory v
 left join ${source.circa_os}.entity_pos_profile p on v.pos_id = p.id 
 where p.type = 'CIRCA'
@@ -60,7 +60,7 @@ Select distinct product_id
                 ,sku_code
                 ,pos_id
                 ,sum(on_hand_quantity) as current_stock_by_pos
-                ,sum(cost_price_include_tax) as current_stock_value_by_pos
+                ,sum(cost_price_include_tax * on_hand_quantity) as current_stock_value_by_pos
 from ${source.ref}.cos_fact_inventory v
 left join ${source.circa_os}.entity_pos_profile p on v.pos_id = p.id 
 where p.type = 'CIRCA'
