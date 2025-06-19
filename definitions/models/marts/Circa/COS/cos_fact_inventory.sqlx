@@ -29,6 +29,7 @@ with inventory as (
     where 
         doc_code is not null
         and deleted_at is null
+        and client_id = 1
 )
 
 select 
