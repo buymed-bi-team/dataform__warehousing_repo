@@ -1,0 +1,52 @@
+
+config {
+    type: "table",
+    description: `PIC: huyen.ngo; model_type: Table ;schedule: At 10h30`
+    /*Source:
+      ${source.silver}.marketplace_prd_order_v2_order_item
+      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
+    name: "cos_sku_oos_sup",
+    columns: {/*
+        order_id: "NonNull |" + docs.order_id,
+        customer_id: "NonNull | The unique identifier for each customer"*/
+        
+    }
+}
+ 
+
+ with sum_qty_by_day as (
+  select distinct
+    product_id
+    ,sku_code
+    ,cutoff_date_index
+    ,sum(on_hand_qty) as total_quantity
+  from  ${source.circa_os}.inventory_location_detail_historical_cut_off
+  where client_id = 1 
+  group by all
+), zero_and_stable_inventory as (
+  select distinct
+     a.product_id
+    ,a.sku_code
+    ,a.cutoff_date_index as zero_start_date
+  from sum_qty_by_day a
+  where a.total_quantity = 0
+       and not exists (
+           select 1
+           from sum_qty_by_day b
+           where b.product_id = a.product_id
+             and b.sku_code = a.sku_code
+             and b.cutoff_date_index > a.cutoff_date_index
+             and b.total_quantity > 0
+    )
+)
+select distinct
+  a.product_id
+  ,a.sku_code
+  ,min(zero_start_date) as last_zero_date
+  ,st.sku_status
+from zero_and_stable_inventory a
+left join  ${source.ref}.cos_sku_status st on a.sku_code = st.sku_code
+where sku_status <> 'NORMAL'
+     ---and a.product_id = 80814
+group by all
+ 
