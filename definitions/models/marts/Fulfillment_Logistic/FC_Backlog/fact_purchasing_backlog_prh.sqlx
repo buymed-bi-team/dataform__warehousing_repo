@@ -38,6 +38,7 @@ SELECT
     , wi.reason as sku_note
     , timestamp_add( current_timestamp(), interval 7 hour ) as transformed_at
     , c.sale_order_time + INTERVAL 7 HOUR AS sale_order_time
+    , DATE(TIMESTAMP(JSON_VALUE(wt.delivery_info, "$.receive_date")) + INTERVAL 7 HOUR) AS expected_receive_date
 FROM ${source.platinum}.seller_prd_wis_withdraw_ticket AS wt
     LEFT JOIN ${source.platinum}.seller_prd_wis_withdraw_item AS wi on wt.code = wi.withdraw_code
     LEFT JOIN (
