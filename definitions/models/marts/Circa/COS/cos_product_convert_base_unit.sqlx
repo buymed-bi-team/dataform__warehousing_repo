@@ -18,7 +18,8 @@ with cte_product as (select p.product_id,
                             p.name as product_name,
                             p.volumes,
 --                             p.unit,
-                     from ${source.circa_os}.product_product p)
+                     from ${source.circa_os}.product_product p
+                     where client_id =1)
 ,
     product_base_unit as
 (
