@@ -87,6 +87,7 @@ cte_online as (
     left join ${source.circa}.inventory_location_detail ld ON ia.location_detail_id = ld.id
     left join UNNEST(JSON_VALUE_ARRAY(ld.sale_order_numbers)) as so
     WHERE a.type = 'ONLINE'
+
 )
 ,cte_fs as
 (select
@@ -115,7 +116,9 @@ from (
     qualify row_number() over(partition by id) = 1) a
 where item_id  is not null or item_id <> ""
 -- and date(created_at) >= "2024-11-01" --date( date_trunc( date_sub( current_date('+7'), interval 12 month) , month ) )
-and pos_id in ("b6c40920-af79-4fb0-bdc4-9965ddb885d2", "e737c882-e90c-4fd2-8a4f-ac6afd248a33")),
+and pos_id in ("b6c40920-af79-4fb0-bdc4-9965ddb885d2", "e737c882-e90c-4fd2-8a4f-ac6afd248a33")
+)
+,
  cte_os as (
 select
   order_id
@@ -152,6 +155,12 @@ left join ${source.circa_os}.order_purchase_order po on  ld.doc_code = po.code
 left join ${source.circa_os}.entity_owner eo on po.owner_id = eo.id
 where
   o.status LIKE '%COMPLETE%'
+  and o.client_id = 1
+  and al.client_id = 1
+  and ld.client_id = 1
+   and po.client_id = 1
+  and eo.client_id = 1
+
   -- group by all
     qualify row_number() over(partition by oi.id order by base_unit_cost_price desc) = 1
     ),
