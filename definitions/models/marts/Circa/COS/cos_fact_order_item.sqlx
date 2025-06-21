@@ -158,7 +158,7 @@ where
   and o.client_id = 1
   and al.client_id = 1
   and ld.client_id = 1
-   and po.client_id = 1
+  and po.client_id = 1
   and eo.client_id = 1
 
   -- group by all
@@ -170,8 +170,10 @@ union all
 select * from cte_os)
 
 select i.*
-      ,base_unit_cost_price * convert_rate as unit_cost_price
+      ,case when i.unit = cv.convert_unit then  base_unit_cost_price 
+      else base_unit_cost_price * convert_rate end as unit_cost_price
 from order_items i
 left join ${ref('cos_fact_order')} fo on i.order_id = fo.order_id
 left join  ${source.ref}.cos_product_convert_base_unit  cv on cv.product_id = i.product_id and cv.convert_unit = i.unit
 where fo.order_id is not null
+
