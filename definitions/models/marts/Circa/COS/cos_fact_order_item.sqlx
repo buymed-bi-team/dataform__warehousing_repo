@@ -104,7 +104,7 @@ cte_online as (
       ,tax_rate
       ,product_id || '_' || lot_date || '_' || tax_rate as product_lot_date_vat
       ,sku_code || '_' || lot_date || '_' || tax_rate as sku_lotdate_vat
-      ,cost_price_include_tax  as unit_cost_price
+      ,cost_price_include_tax  as base_unit_cost_price
       ,"CIRCA" as owner_name
       ,doc_code as po_code
       ,sale_order_number
@@ -136,7 +136,7 @@ select distinct
   ,oi.tax_rate
   ,oi.product_id || '_' || oi.lot_date || '_' || oi.tax_rate as product_lot_date_vat
   ,oi.sku_code || '_' || oi.lot_date || '_' || oi.tax_rate as sku_lotdate_vat
-  ,al.cost_price_include_tax as unit_cost_price
+  ,al.cost_price_include_tax as base_unit_cost_price
   --   item_ref_id,
   --   oi.product_id || '_' || oi.unit|| '_' || o.pos_id as sku_unit_pos,
   --   latest_cost_price,
@@ -162,7 +162,7 @@ where
   and eo.client_id = 1
 
   -- group by all
-    qualify row_number() over(partition by oi.id order by unit_cost_price desc) = 1
+    qualify row_number() over(partition by oi.id order by base_unit_cost_price desc) = 1
     ),
 order_items as (select *
 from cte_fs
@@ -170,7 +170,7 @@ union all
 select * from cte_os)
 
 select distinct i.*
-      ,unit_cost_price/ convert_rate  as  base_unit_cost_price
+      ,base_unit_cost_price * convert_rate  as  unit_cost_price
 from order_items i
 left join ${ref('cos_fact_order')} fo on i.order_id = fo.order_id
 left join  ${source.ref}.cos_product_convert_base_unit  cv on cv.product_id = i.product_id and cv.convert_unit = i.unit
