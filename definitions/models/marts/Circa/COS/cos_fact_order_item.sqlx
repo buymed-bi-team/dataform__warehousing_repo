@@ -136,7 +136,7 @@ select
   ,oi.tax_rate
   ,oi.product_id || '_' || oi.lot_date || '_' || oi.tax_rate as product_lot_date_vat
   ,oi.sku_code || '_' || oi.lot_date || '_' || oi.tax_rate as sku_lotdate_vat
-  ,al.cost_price_include_tax/al.base_quantity as base_unit_cost_price
+  ,al.cost_price_include_tax as base_unit_cost_price
   --   item_ref_id,
   --   oi.product_id || '_' || oi.unit|| '_' || o.pos_id as sku_unit_pos,
   --   latest_cost_price,
