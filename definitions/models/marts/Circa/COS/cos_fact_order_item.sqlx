@@ -120,7 +120,7 @@ and pos_id in ("b6c40920-af79-4fb0-bdc4-9965ddb885d2", "e737c882-e90c-4fd2-8a4f-
 )
 ,
  cte_os as (
-select
+select distinct
   order_id
   --   o.code as order_code,
   ,oi.product_id
@@ -169,7 +169,7 @@ from cte_fs
 union all
 select * from cte_os)
 
-select i.*
+select distinct i.*
       ,base_unit_cost_price * convert_rate  as unit_cost_price
 from order_items i
 left join ${ref('cos_fact_order')} fo on i.order_id = fo.order_id
