@@ -33,3 +33,4 @@ FROM ${source.platinum}.marketplace_prd_promotion_gamification AS a
     LEFT JOIN ${source.platinum}.marketplace_prd_promotion_gamification_detail AS b
         ON a.gamification_code = b.gamification_code
 WHERE NOT EXISTS (SELECT 1 FROM ${ref('dim_gamification')} c WHERE a.gamification_id =  c.gamification_id)
+AND NOT REGEXP_CONTAINS(LOWER(a.name), r'tech|test')
