@@ -29,8 +29,10 @@ SELECT
     END AS order_status_seq
     , JSON_VALUE(b.condition.kind_of_value) AS kind_of_value
     , SAFE_CAST(JSON_VALUE(b.condition.min_total_value) AS INT64) AS min_total_value
+    ,  ARRAY_TO_STRING(JSON_VALUE_ARRAY(b.condition, '$.tags'), ', ') AS product_tags
 FROM ${source.platinum}.marketplace_prd_promotion_gamification AS a
     LEFT JOIN ${source.platinum}.marketplace_prd_promotion_gamification_detail AS b
         ON a.gamification_code = b.gamification_code
 WHERE NOT EXISTS (SELECT 1 FROM ${ref('dim_gamification')} c WHERE a.gamification_id =  c.gamification_id)
 AND NOT REGEXP_CONTAINS(LOWER(a.name), r'tech|test')
+QUALIFY ROW_NUMBER() over (PARTITION BY a.gamification_id ORDER BY a.synced_at DESC) = 1
