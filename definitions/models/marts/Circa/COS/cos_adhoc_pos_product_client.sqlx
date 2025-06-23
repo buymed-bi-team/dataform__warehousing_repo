@@ -132,6 +132,6 @@ i.seller_code,
        else "set full" end as check_unit_price_set
 from combine i
 left join check_unit_pricing cup on i.product_id= cup.product_id 
---where i.product_id = 11463
+--where i.product_id = 1019289
 group by all
 
