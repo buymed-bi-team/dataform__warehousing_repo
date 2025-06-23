@@ -1,10 +1,10 @@
 config {
     type: "table",
-    description: `Last 13 month| PIC: huyen.nguyenthu; model_type: Table ;schedule: At minute 5 every hour`
+    description: `Last 13 month| PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every 2 hours`
     /*Source:
       ${source.silver}.marketplace_prd_order_v2_order_item
       ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
-    tags: ["custom_1h_past5"],
+    tags: ["custom_2h_past5"],
     name: "cos_return_completed",
     columns: {
         order_id: "NonNull |" + docs.order_id,
