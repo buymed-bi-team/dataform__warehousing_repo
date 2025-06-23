@@ -146,11 +146,13 @@ BEGIN
   SET query = FORMAT("""
   ALTER TABLE %s
   SET OPTIONS ( expiration_timestamp = CURRENT_TIMESTAMP() + INTERVAL 14 DAY );
+  """, silver_dataset || "." || migrate_table_name);
+  EXECUTE IMMEDIATE query;
 
+  SET query = FORMAT("""
   ALTER TABLE %s
   RENAME TO %s
   """
-  , silver_dataset || "." || migrate_table_name
   , silver_dataset || "." || migrate_table_name
   , migrate_table_name || "_drop_" || FORMAT_TIMESTAMP("%y%m%dT%H%M%S", CURRENT_TIMESTAMP()));
 
