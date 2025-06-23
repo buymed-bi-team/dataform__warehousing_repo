@@ -1,0 +1,35 @@
+config {
+    type: "table", 
+    description: 
+        `
+        PIC: huyen.nguyenthu; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.platinum}.marketplace_prd_promotion_gamification,
+            ${source.platinum}.marketplace_prd_promotion_gamification_detail,
+            ${source.ref}.dim_gamification
+        `,
+    tags: ["custom_1h_past5"]
+}
+
+SELECT
+    a.gamification_id
+    , a.gamification_code
+    , a.name AS gamification_name
+    , TIMESTAMP_ADD(COALESCE(TIMESTAMP(JSON_VALUE(b.condition, '$.start_time')), a.start_time), INTERVAL 7 HOUR) AS start_time
+    , TIMESTAMP_ADD(COALESCE(TIMESTAMP(JSON_VALUE(b.condition, '$.end_time')), a.end_time), INTERVAL 7 HOUR) AS end_time
+    , REGEXP_REPLACE(a.description, r'\\n|\\', '') AS description
+    , a.scope
+    , b.condition
+    , JSON_VALUE(b.condition.order_status) AS order_status_condition
+    , CASE
+        WHEN JSON_VALUE(b.condition.order_status) = 'DELIVERED' THEN 6
+        WHEN JSON_VALUE(b.condition.order_status) = 'COMPLETED' THEN 7
+    END AS order_status_seq
+    , JSON_VALUE(b.condition.kind_of_value) AS kind_of_value
+    , SAFE_CAST(JSON_VALUE(b.condition.min_total_value) AS INT64) AS min_total_value
+FROM ${source.platinum}.marketplace_prd_promotion_gamification AS a
+    LEFT JOIN ${source.platinum}.marketplace_prd_promotion_gamification_detail AS b
+        ON a.gamification_code = b.gamification_code
+WHERE NOT EXISTS (SELECT 1 FROM ${ref('dim_gamification')} c WHERE a.gamification_id =  c.gamification_id)
