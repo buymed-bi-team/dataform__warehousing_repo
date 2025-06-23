@@ -4,7 +4,7 @@ config {
     /*Source:
       ${source.silver}.marketplace_prd_order_v2_order_item
       ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5,*/
-    tags: ["custom_1h_past5"],
+    tags: ["custom_2h_past5"],
     name: "cos_fact_order_item",
     columns: {
 
@@ -87,6 +87,7 @@ cte_online as (
     left join ${source.circa}.inventory_location_detail ld ON ia.location_detail_id = ld.id
     left join UNNEST(JSON_VALUE_ARRAY(ld.sale_order_numbers)) as so
     WHERE a.type = 'ONLINE'
+
 )
 ,cte_fs as
 (select
@@ -103,7 +104,7 @@ cte_online as (
       ,tax_rate
       ,product_id || '_' || lot_date || '_' || tax_rate as product_lot_date_vat
       ,sku_code || '_' || lot_date || '_' || tax_rate as sku_lotdate_vat
-      ,cost_price_include_tax as base_unit_cost_price
+      ,cost_price_include_tax  as base_unit_cost_price
       ,"CIRCA" as owner_name
       ,doc_code as po_code
       ,sale_order_number
@@ -115,9 +116,11 @@ from (
     qualify row_number() over(partition by id) = 1) a
 where item_id  is not null or item_id <> ""
 -- and date(created_at) >= "2024-11-01" --date( date_trunc( date_sub( current_date('+7'), interval 12 month) , month ) )
-and pos_id in ("b6c40920-af79-4fb0-bdc4-9965ddb885d2", "e737c882-e90c-4fd2-8a4f-ac6afd248a33")),
+and pos_id in ("b6c40920-af79-4fb0-bdc4-9965ddb885d2", "e737c882-e90c-4fd2-8a4f-ac6afd248a33")
+)
+,
  cte_os as (
-select
+select distinct
   order_id
   --   o.code as order_code,
   ,oi.product_id
@@ -152,6 +155,12 @@ left join ${source.circa_os}.order_purchase_order po on  ld.doc_code = po.code
 left join ${source.circa_os}.entity_owner eo on po.owner_id = eo.id
 where
   o.status LIKE '%COMPLETE%'
+  and o.client_id = 1
+  and al.client_id = 1
+  and ld.client_id = 1
+  and po.client_id = 1
+  and eo.client_id = 1
+
   -- group by all
     qualify row_number() over(partition by oi.id order by base_unit_cost_price desc) = 1
     ),
@@ -160,9 +169,10 @@ from cte_fs
 union all
 select * from cte_os)
 
-select i.*
-      ,base_unit_cost_price * convert_rate as unit_cost_price
+select distinct i.*
+      ,base_unit_cost_price * convert_rate  as  unit_cost_price
 from order_items i
 left join ${ref('cos_fact_order')} fo on i.order_id = fo.order_id
 left join  ${source.ref}.cos_product_convert_base_unit  cv on cv.product_id = i.product_id and cv.convert_unit = i.unit
 where fo.order_id is not null
+
