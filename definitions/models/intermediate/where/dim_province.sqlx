@@ -85,11 +85,12 @@ SELECT
     , p.province_without_accent
     , g.region_code AS area
     , CASE
-    WHEN g.province_code = "01" THEN "HN"
-    WHEN g.province_code = "79" THEN "HCM"
-    WHEN g.province_code = "48" THEN "DN"
-    ELSE "OTHER"
-END picking_rule_location_code
+        WHEN g.province_code = "01" THEN "HN"
+        WHEN g.province_code = "79" THEN "HCM"
+        WHEN g.province_code = "48" THEN "DN"
+        ELSE "OTHER"
+    END picking_rule_location_code
+    , sales_region_code
 FROM ${ref('dim_geo_location')} AS g
     LEFT JOIN cte_province_without_accent AS p
         ON g.location_code = p.province_code
