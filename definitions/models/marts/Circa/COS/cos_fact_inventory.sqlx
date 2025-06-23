@@ -32,12 +32,13 @@ with inventory as (
         and client_id = 1
 )
 
-select 
-    a.product_id
+select distinct
+     a.product_id
     ,a.sku_code
     ,a.lot_date
     ,a.tax_rate
-    ,doc_code,a.cost_price_include_tax
+    ,doc_code
+    ,a.cost_price_include_tax
     ,a.location_id
     ,product_lot_date
     ,a.product_lot_date_vat
