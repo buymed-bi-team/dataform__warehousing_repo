@@ -63,7 +63,7 @@ select distinct
   ,date_diff(current_date(), min(zero_start_date), day) as days_since_zero
 from zero_and_stable_inventory a
 left join ${source.ref}.cos_sku_status st on a.product_id = st.product_id and  a.pos_id = st.pos_id
-where product_status ='OOS'
+where st.sku_status_by_pos ='OOS'
 group by all
 union all
 Select distinct 
