@@ -15,7 +15,6 @@ config {
 
 with base_data as (
 Select distinct product_id
-               , sku
 from ${source.circa_os}.order_purchase_order_item
 where (sku is not null or sku <> '')
      and received_quantity <> 0
@@ -43,9 +42,8 @@ where (sku is not null or sku <> '')
 
 ,inventory_by_sku  as (
 Select distinct product_id
-                ,sku_code
-                ,sum(on_hand_quantity) as current_stock_by_sku
-                ,sum(cost_price_include_tax * on_hand_quantity) as current_stock_value_by_sku
+                ,sum(on_hand_quantity) as current_stock_by_product
+                ,sum(cost_price_include_tax * on_hand_quantity) as current_stock_value_by_product
 from ${source.ref}.cos_fact_inventory v
 left join ${source.circa_os}.entity_pos_profile p on v.pos_id = p.id 
 where p.type = 'CIRCA'
@@ -57,7 +55,6 @@ group by all
 
 ,inventory_by_pos as (
 Select distinct product_id
-                ,sku_code
                 ,pos_id
                 ,sum(on_hand_quantity) as current_stock_by_pos
                 ,sum(cost_price_include_tax * on_hand_quantity) as current_stock_value_by_pos
@@ -67,28 +64,28 @@ where p.type = 'CIRCA'
       and p.id not in ('c95a3338-4f5e-4264-958b-0d02e3fea49b','0d4c2e76-c6bf-487d-bf3e-d0b608d9fb5d')
       and v.location_type <> 'CANCELLED'
 group by all
----- tổng tồn kho hiện tại theo sku , pos
+---- tổng tồn kho hiện tại theo product , pos
 )
 
 , by_sku as (
 Select distinct o.product_id
             , o.* except (product_id)
-            ,case when o.current_stock_by_sku > 0 then 'NORMAL'
+            ,case when o.current_stock_by_product > 0 then 'NORMAL'
                     when  thuocsi_sku_status.sku_system_status = 'SUSPENDED' then 'SUSPENDED'
-                    else 'OOS' END AS sku_status
+                    else 'OOS' END AS product_status
 from inventory_by_sku o
-left join base_data on o.product_id = base_data.product_id and o.sku_code = base_data.sku
+left join base_data on o.product_id = base_data.product_id 
 left join thuocsi_sku_status on base_data.product_id = thuocsi_sku_status.product_id
 where row_num = 1
 -- lấy trạng thái hiện tại của sản phẩm theo tồn kho, detail by sku
 ), by_sku_not_thuocsi as (
 Select distinct o.product_id
             , o.* except (product_id)
-            ,case when o.current_stock_by_sku > 0 then 'NORMAL'
-                    else 'OOS' END AS sku_status
+            ,case when o.current_stock_by_product > 0 then 'NORMAL'
+                    else 'OOS' END AS product_status
 from inventory_by_sku o
-left join base_data on o.product_id = base_data.product_id and o.sku_code = base_data.sku
-where o.sku_code not in (Select distinct sku_code from by_sku)
+left join base_data on o.product_id = base_data.product_id 
+where o.product_id not in (Select distinct product_id from by_sku)
 )
 ,sku_thuocsi as (
 
@@ -97,10 +94,10 @@ Select distinct o.product_id
               ,case when o.current_stock_by_pos > 0 then 'NORMAL'
                     when  thuocsi_sku_status.sku_system_status = 'SUSPENDED' then 'SUSPENDED'
                     else 'OOS' END AS sku_status_by_pos
-              ,by_sku.current_stock_by_sku
-              ,by_sku.sku_status
+              ,by_sku.current_stock_by_product
+              ,by_sku.product_status
 from inventory_by_pos o
-left join by_sku on o.product_id = by_sku.product_id and o.sku_code = by_sku.sku_code
+left join by_sku on o.product_id = by_sku.product_id 
 left join thuocsi_sku_status on by_sku.product_id = thuocsi_sku_status.product_id
 where row_num = 1)
 Select * from sku_thuocsi
@@ -109,10 +106,10 @@ Select distinct o.product_id
               , o.* except (product_id)
               ,case when o.current_stock_by_pos > 0 then 'NORMAL'
                     else 'OOS' END AS sku_status_by_pos
-              ,by_sku_not_thuocsi.current_stock_by_sku
-              ,by_sku_not_thuocsi.sku_status
+              ,by_sku_not_thuocsi.current_stock_by_product
+              ,by_sku_not_thuocsi.product_status
 from inventory_by_pos o
-left join by_sku_not_thuocsi on o.product_id = by_sku_not_thuocsi.product_id and o.sku_code = by_sku_not_thuocsi.sku_code
-where o.sku_code not in (Select distinct sku_code from sku_thuocsi)
+left join by_sku_not_thuocsi on o.product_id = by_sku_not_thuocsi.product_id 
+where o.product_id not in (Select distinct product_id from sku_thuocsi)
    
 --lấy trạng thái hiện tại của sản phẩm theo tồn kho, detail by sku, pos
