@@ -13,55 +13,72 @@ config {
     }
 }
  
-
- with sum_qty_by_day as (
+with sum_qty_current as (
   select distinct
     product_id
-    ,sku_code
-    ,cutoff_date_index
-    ,sum(on_hand_qty) as total_quantity
-  from  ${source.circa_os}.inventory_location_detail_historical_cut_off
-  where client_id = 1 
+    ,pos_id
+    ,sum(on_hand_quantity) as total_quantity
+  from `${source.ref}.cos_fact_inventory`
   group by all
-), zero_and_stable_inventory as (
-  select distinct
+  having total_quantity = 0
+), zero_inventory_dates as (
+  select distinct 
      a.product_id
-    ,a.sku_code
-    ,a.cutoff_date_index as zero_start_date
-  from sum_qty_by_day a
-  where a.total_quantity = 0
-       and not exists (
-           select 1
-           from sum_qty_by_day b
-           where b.product_id = a.product_id
-             and b.sku_code = a.sku_code
-             and b.cutoff_date_index > a.cutoff_date_index
-             and b.total_quantity > 0
+    ,pos_id
+    ,a.cutoff_date_index 
+    ,sum(on_hand_qty) as total_qty
+  from ${source.circa_os}.inventory_location_detail_historical_cut_off a
+  left join ${source.circa_os}.inventory_location as b on a.location_id = b.id
+  where a.product_id in (select distinct product_id from sum_qty_current)
+        and b.pos_id in (select distinct pos_id from sum_qty_current)
+        and a.client_id = 1 
+        and b.client_id = 1
+  group by all
+), ranked_zero_dates as (
+  select *
+        ,row_number() over (partition by product_id, pos_id order by cutoff_date_index) as rn
+  from zero_inventory_dates
+  where total_qty = 0
+)
+, zero_and_stable_inventory as (
+  select z.product_id
+        ,z.pos_id
+        ,z.cutoff_date_index as zero_start_date
+  from ranked_zero_dates z
+  where z.rn = 1
+    and not exists (
+      select 1
+      from zero_inventory_dates z2
+      where z2.product_id = z.product_id
+        and z2.pos_id = z.pos_id
+        and z2.cutoff_date_index > z.cutoff_date_index
+        and z2.total_qty > 0
     )
 )
 select distinct
   a.product_id
-  ,a.sku_code
+  ,a.pos_id
   ,min(zero_start_date) as last_zero_date
-  ,st.sku_status
+  ,st.sku_status_by_pos
   ,date_diff(current_date(), min(zero_start_date), day) as days_since_zero
 from zero_and_stable_inventory a
-left join  ${source.ref}.cos_sku_status st on a.sku_code = st.sku_code
+left join ${source.ref}.cos_sku_status st on a.product_id = st.product_id and  a.pos_id = st.pos_id
 where sku_status ='OOS'
-     ---and a.product_id = 80814
 group by all
 union all
 Select distinct 
  s.product_id
- ,s.sku_code
-, DATE(th.created_time)
- ,s.sku_status
+ ,pos_id
+ ,DATE(th.created_time)
+ ,s.sku_status_by_pos
 ,date_diff(current_date(), date(th.created_time), day) as days_since_zero
 from ${source.ref}.cos_sku_status s
 left join (Select distinct product_id,created_time
                         , row_number() over (partition by product_id order by created_time desc) as rn
                           from ${source.ref}.adhoc_pm_master_sku p
-                         left join  ${source.ref}.staging_sku_status_history t on p.sku_code = t.sku) th on s.product_id = th.product_id
-where s.sku_code not in (Select distinct sku_code from ${source.ref}.cos_sku_status  where sku_status = 'OOS' or sku_status = 'NORMAL'   )
-and created_time >= '2024-01-01'
+                         left join ${source.ref}.staging_sku_status_history t on p.sku_code = t.sku) th on s.product_id = th.product_id
+where s.sku_status_by_pos not in (Select distinct sku_status_by_pos from ${source.ref}.cos_sku_status  where sku_status_by_pos = 'OOS' or sku_status_by_pos = 'NORMAL'   )
+and created_time >= '2024-05-01'
 and rn = 1
+
+
