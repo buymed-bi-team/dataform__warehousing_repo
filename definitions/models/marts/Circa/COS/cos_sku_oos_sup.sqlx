@@ -13,54 +13,52 @@ config {
     }
 }
  
-with sum_qty_current as (
-  select distinct
-    product_id
-    ,pos_id
-    ,sum(on_hand_quantity) as total_quantity
-  from `${source.ref}.cos_fact_inventory`
-  group by all
-  having total_quantity = 0
-), zero_inventory_dates as (
-  select distinct 
-     a.product_id
-    ,pos_id
-    ,a.cutoff_date_index 
-    ,sum(on_hand_qty) as total_qty
-  from ${source.circa_os}.inventory_location_detail_historical_cut_off a
-  left join ${source.circa_os}.inventory_location as b on a.location_id = b.id
-  where a.product_id in (select distinct product_id from sum_qty_current)
-        and b.pos_id in (select distinct pos_id from sum_qty_current)
-        and a.client_id = 1 
-        and b.client_id = 1
-  group by all
-), ranked_zero_dates as (
-  select *
-        ,row_number() over (partition by product_id, pos_id order by cutoff_date_index) as rn
-  from zero_inventory_dates
-  where total_qty = 0
-)
-, zero_and_stable_inventory as (
-  select z.product_id
-        ,z.pos_id
-        ,z.cutoff_date_index as zero_start_date
-  from ranked_zero_dates z
-  where z.rn = 1
-    and not exists (
-      select 1
-      from zero_inventory_dates z2
-      where z2.product_id = z.product_id
-        and z2.pos_id = z.pos_id
-        and z2.cutoff_date_index > z.cutoff_date_index
-        and z2.total_qty > 0
-    )
+with stock_status as (
+    Select distinct
+         product_id
+        ,pos_id
+        ,cutoff_date_index
+        ,sum(on_hand_qty) as total_quantity
+    from buymed_circa_v2.inventory_location_detail_historical_cut_off a 
+    left join buymed_circa_v2.inventory_location as b on a.location_id = b.id
+    where a.client_id = 1 
+          and b.client_id = 1
+    group by all
+),
+zero_stock_candidates AS (
+    Select
+        s.product_id
+        ,s.pos_id
+        ,min(s.cutoff_date_index) as first_zero_date
+    from stock_status s
+    where s.total_quantity = 0
+      and not exists (
+          Select 1
+          from stock_status ss
+          where ss.product_id = s.product_id
+                and ss.pos_id = s.pos_id
+                and ss.cutoff_date_index > s.cutoff_date_index
+                and ss.total_quantity > 0
+      )
+    group by s.product_id, s.pos_id
+),zero_and_stable_inventory as (
+Select distinct
+    z.product_id
+    ,z.pos_id
+    ,z.first_zero_date
+    ,p.name as pos_name
+from zero_stock_candidates z
+left join `buymed_circa_v2.entity_pos_profile` p on z.pos_id = p.id
+where p.type = 'CIRCA'
+      and pos_id not in ('c95a3338-4f5e-4264-958b-0d02e3fea49b','0d4c2e76-c6bf-487d-bf3e-d0b608d9fb5d')
+order by product_id
 )
 select distinct
   a.product_id
   ,a.pos_id
-  ,min(zero_start_date) as last_zero_date
+  ,min(first_zero_date) as last_zero_date
   ,st.sku_status_by_pos
-  ,date_diff(current_date(), min(zero_start_date), day) as days_since_zero
+  ,date_diff(current_date(), min(first_zero_date), day) as days_since_zero
 from zero_and_stable_inventory a
 left join ${source.ref}.cos_sku_status st on a.product_id = st.product_id and  a.pos_id = st.pos_id
 where st.sku_status_by_pos ='OOS'
