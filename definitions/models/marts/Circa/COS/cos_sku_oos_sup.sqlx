@@ -67,6 +67,7 @@ union all
 Select distinct 
  s.product_id
  ,pos_id
+ ,pos_name
  ,DATE(th.created_time)
  ,s.sku_status_by_pos
 ,date_diff(current_date(), date(th.created_time), day) as days_since_zero
