@@ -21,6 +21,11 @@ function createIncremental_preOps({
             SELECT max(ingest_time)  - INTERVAL 1 HOUR  FROM ${ctx.self()}
             ${ingestCutOffInterval}
         );
+        IF Ingest_checkpoint IS NULL THEN 
+            SET Ingest_checkpoint = (
+                SELECT max(ingest_time)  - INTERVAL 1 HOUR  FROM ${ctx.self()}
+            );
+        END IF;
 
         SET ( has_new_data, checkpoint_date, deleted_records ) = (
             SELECT AS STRUCT
