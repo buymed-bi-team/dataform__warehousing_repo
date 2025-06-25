@@ -1,7 +1,7 @@
 config {
     type: 'incremental',
     name: "fact_user_event_tracking",
-    description: `Last 2 month | PIC: tu.dang; schedule: 8h30 daily; model type: table
+    description: `Last 2 month | PIC: nguyen.tran; schedule: hourly; model type: table
     Source:
         ${source.platinum}.monitoring_prd_collector_user_stats`,
     columns: { 
@@ -66,17 +66,16 @@ WITH stg AS (
         JSON_VALUE(a.extra_props, '$.metadata.storeType') AS store_type,
         COALESCE(NULLIF(JSON_VALUE(a.extra_props, '$.metadata.storeCode'), ""), NULLIF(JSON_VALUE(a.extra_props, '$.metadata.sellerCode'), "")) AS store_code,
         SAFE_CAST(JSON_VALUE(a.extra_props, '$.metadata.timeCounter') AS INT64) AS time_counter,
+        result_status,
+        result_error_code
 ----------------------------------------------------------------
     FROM
     `${source.platinum}.monitoring_prd_collector_user_stats` a
     left join `${source.platinum}.monitoring_prd_realtime_user_customer_session_v3`b 
         on a.customer_id= b.customer_id 
         and a.created_time between b.start_time and end_time and b.created_date >= ${when(incremental(), `current_date("+7")`, `date( date_trunc( date_sub( current_date('+7'), interval 2 month) , month ) )`)}
-    where
-    -- _TABLE_SUFFIX BETWEEN '20240701'
-    -- AND FORMAT_DATE('%Y%m%d', CURRENT_DATE())        
+    where   
         a.created_date >= ${when(incremental(), `current_date("+7")`, `date( date_trunc( date_sub( current_date('+7'), interval 2 month) , month ) )`)}
---     AND event IN ( "ADD_TO_CART","SKU_DETAIL_VIEW","SKU_IMPRESSION","REMOVE_FROM_CART","SEARCH")
 ),
     region AS (
         select
@@ -101,7 +100,6 @@ WITH stg AS (
             search_status,page,
             session,
             SOURCE,
-        --     CONCAT(sku_key, "_", r.area) AS sku_fc_code,
             case
                 when LENGTH(block_code) - LENGTH(REGEXP_REPLACE(block_code, r'_', '')) > 1 and LEFT(block_code, 12) like "product-list"
                     then REGEXP_REPLACE(block_code, r'^([^_]+)_[^_]+_(.*)', r'\1_\2')
@@ -114,7 +112,6 @@ WITH stg AS (
             seller_id,
             product_id,
             sku_code,
-            -- seller_code,
             CASE
                 WHEN STRPOS(sku_code, ".") > 0
                 THEN LEFT(sku_code, STRPOS(sku_code, ".") - 1)
@@ -139,7 +136,5 @@ WITH stg AS (
     )
 select cte_all.* except (area),
        CONCAT(product_id, "_", seller_code, "_", area) as sku_fc_code,
-    --    session,
        product_id ||"_"||seller_code ||"_"|| province_code ||"_"|| customer_level as high_profit_key
 from cte_all
--- left join session on cte_all.customer_id= session.customer_id and cte_all.created_time between session.start_time and end_time
