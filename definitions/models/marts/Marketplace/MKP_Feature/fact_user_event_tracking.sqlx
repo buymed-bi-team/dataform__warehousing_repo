@@ -123,7 +123,9 @@ WITH stg AS (
             time_counter,
             store_type,
             store_code,
-            client
+            client,
+            result_status,
+            result_error_code
         from (
             select *,
             COALESCE(block_code_v1,blockCode) as block_code,
