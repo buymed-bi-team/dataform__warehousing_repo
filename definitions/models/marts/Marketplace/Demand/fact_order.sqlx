@@ -129,12 +129,7 @@ WITH
         END
       )
         AS fc_code,
-      CASE
-        WHEN (a.warehouse_code IS NULL) OR (a.warehouse_code ="") OR a.warehouse_code = "BD" THEN "MIENNAM" 
-        WHEN a.warehouse_code = "HN" THEN "MIENBAC"
-        WHEN a.warehouse_code = "DN" THEN "MIENTRUNG"
-      END
-        AS sales_region_code,
+      
       a.sale_order_status AS so_status,
       JSON_VALUE(a.extra_props, '$.note') AS note,
       JSON_VALUE(a.extra_props, '$.auto_cancel_overdue_transfer') AS auto_cancel_overdue_transfer,
@@ -264,6 +259,12 @@ WITH
   fact_order_v2 AS (
     SELECT
       a.*,
+      CASE fc_code
+        WHEN "BD" THEN "MIENNAM" 
+        WHEN "HN" THEN "MIENBAC"
+        WHEN "DN" THEN "MIENTRUNG"
+      END
+        AS sales_region_code,
       CONCAT(CAST(FORMAT_DATE('%m-%Y', date(created_at)) AS STRING), "_", customer_id) as month_id,
       CASE
         WHEN sales_status IN ("CANCEL", "REVERTING") THEN 0
