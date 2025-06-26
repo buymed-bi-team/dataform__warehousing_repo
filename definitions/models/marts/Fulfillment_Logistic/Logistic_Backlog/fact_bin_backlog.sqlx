@@ -47,6 +47,7 @@ select
     a.from_ward_name as cust_ward,
     a.from_district_name as cust_district,
     a.from_province_name as cust_province,
+    a.from_region_name as cust_region,
     a.reason,
 from (
   select 

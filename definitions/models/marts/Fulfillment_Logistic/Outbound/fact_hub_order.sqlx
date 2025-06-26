@@ -166,7 +166,9 @@ SELECT
 	h.*
 	, e.fullname AS driver_name
 	, e1.fullname AS original_driver_name
+	, p.region_name AS from_region_name
 	-- , COALESCE(e.fullname, h.driver_name) AS driver_name
 FROM hub_order AS h
+LEFT JOIN ${ref('dim_province')} AS p ON p.province_code = h.from_province_code
 LEFT JOIN ${ref('dim_employee')} AS e ON e.branch_account_id = h.driver_id
 LEFT JOIN ${ref('dim_employee')} AS e1 ON e1.branch_account_id = h.original_driver_id
