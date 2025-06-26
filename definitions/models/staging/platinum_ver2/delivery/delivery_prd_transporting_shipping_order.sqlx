@@ -23,7 +23,6 @@ config {
     FROM silver_buymed_vn.delivery_prd_transporting_shipping_order
     WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 1 DAY
     QUALIFY ROW_NUMBER() OVER (_window) = 1 
-          AND FIRST_VALUE(action) OVER(_window) != "d"
           AND ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 16 HOUR
           WINDOW _window AS (
           PARTITION BY mg_id
@@ -50,3 +49,4 @@ config {
 
   SELECT s.*
   FROM silver s
+  WHERE action != "d"

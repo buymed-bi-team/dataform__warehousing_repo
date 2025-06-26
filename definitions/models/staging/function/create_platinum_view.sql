@@ -16,7 +16,6 @@ SELECT
     FROM %s
     WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 1 DAY
     QUALIFY ROW_NUMBER() OVER (_window) = 1 
-          AND FIRST_VALUE(action) OVER(_window) != "d"
           AND ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 16 HOUR
           WINDOW _window AS (
           PARTITION BY mg_id
@@ -43,6 +42,7 @@ SELECT
 
   SELECT s.*
   FROM silver s
+  WHERE action <> "d"
   """
   , STRING_AGG(column_name)
   , IF( 
