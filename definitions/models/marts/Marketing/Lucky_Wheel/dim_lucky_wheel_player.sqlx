@@ -1,0 +1,22 @@
+config {
+    type: "table", 
+    description: 
+        `
+        PIC: huyen.nguyenthu; 
+        Type: Table; 
+        Refresh Schedule: daily;
+        Source: 
+            ${source.platinum}.marketplace_prd_promotion_gamification_leaderboard
+        `,
+    tags: ["custom_2h_past5"]
+}
+
+SELECT
+    lucky_wheel_code
+    , gamification_id
+    , account_id
+    , customer_id
+    , CONCAT(customer_id, "_", lucky_wheel_code) AS luckywheel_id
+    , number_of_mission_completed
+FROM ${source.platinum}.marketplace_prd_promotion_gamification_leaderboard
+WHERE lucky_wheel_code IS NOT NULL AND lucky_wheel_code NOT IN ("AH61C6AX", "UWL4LKFK", "JJ4A7BVJ")
