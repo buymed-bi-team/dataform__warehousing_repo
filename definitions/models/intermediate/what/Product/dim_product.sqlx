@@ -117,20 +117,6 @@ WITH product_retail_unit AS (
   GROUP BY product_id
 )
 
-  -- , product_cic AS (
-  --     SELECT
-  --         SAFE_CAST(code AS INT64) AS product_id
-  --         , LOWER(IF(value <> "NAN", value, NULL)) AS cic_name
-  --         , b.branch_account_id AS cic_account_id
-  --     FROM ${source.collector}.data_prd AS a
-  --         LEFT JOIN ${ref('dim_employee')} AS b ON a.value = UPPER(b.user_name)
-  --     WHERE
-  --         object = 'Product'
-  --         AND type = 'CIC'
-  --         AND submit_id >= 5046
-  --     QUALIFY ROW_NUMBER() OVER(PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
-  -- )
-
   , high_margin_product AS (
       SELECT 
           SAFE_CAST(code AS INT64) AS product_id
@@ -141,11 +127,12 @@ WITH product_retail_unit AS (
   )
 
   , is_ingredient_special AS (
-    SELECT
+    SELECT DISTINCT
       product_id
+      , usages
     FROM ${ref('dim_product_ingredient')}
     WHERE is_ingredient_special
-    GROUP BY 1
+    -- GROUP BY 1
   )
 
   , retail_price AS (
@@ -258,7 +245,13 @@ SELECT
   product.is_fragile,
   product.is_frozen,
   -- product.is_ingredient_special,
-  IF(iis.product_id IS NOT NULL AND product.seller_category_code = "AQFV2U", TRUE, FALSE) AS is_ingredient_special, -- product must have special ingredients and be a medicine to be classified as a special controlled medicine
+  IF(
+    iis.product_id IS NOT NULL 
+    AND product.seller_category_code = "AQFV2U"
+    AND REGEXP_CONTAINS(LOWER(iis.usages), LOWER(product.usage))
+    , TRUE
+    , FALSE
+  ) AS is_ingredient_special, -- product must have special ingredients and be a medicine to be classified as a special controlled medicine
   product.is_herb,
 
   product.height,
