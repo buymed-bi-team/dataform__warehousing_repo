@@ -1,0 +1,22 @@
+config {
+    type: "table", 
+    description: 
+        `
+        PIC: huyen.nguyenthu; 
+        Type: Table; 
+        Refresh Schedule: daily;
+        Source: 
+            ${source.platinum}.marketplace_prd_promotion_gamification_detail,
+            ${source.ref}.dim_lucky_wheel
+        `,
+    tags: ["custom_2h_past5"]
+}
+
+SELECT
+    d.lucky_wheel_code,
+    d.gamification_detail_id,
+    d.index_mission,
+    d.mission_name,
+    CAST(JSON_VALUE(d.rewards, "$.0.turns_rotation") AS INTEGER) AS turn_received
+FROM ${source.platinum}.marketplace_prd_promotion_gamification_detail d
+    JOIN ${ref('dim_lucky_wheel')} w ON d.lucky_wheel_code = w.lucky_wheel_code
