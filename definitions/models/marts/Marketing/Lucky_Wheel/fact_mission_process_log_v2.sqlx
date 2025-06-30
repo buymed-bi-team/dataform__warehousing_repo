@@ -1,0 +1,34 @@
+config {
+    type: "table", 
+    description: 
+        `
+        PIC: huyen.nguyenthu; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.platinum}.marketplace_prd_promotion_gamification_result,
+            ${source.ref}.dim_lucky_wheel
+        `,
+    tags: ["custom_1h_past5"]
+}
+
+WITH raw_data as (
+    SELECT
+      r.*
+    FROM ${ref('dim_lucky_wheel')} w
+    JOIN ${source.platinum}.marketplace_prd_promotion_gamification_result AS r 
+        ON w.lucky_wheel_code = r.lucky_wheel_code
+    QUALIFY ROW_NUMBER() OVER (PARTITION BY r.lucky_wheel_code, r.gamification_detail_id, r.customer_id ORDER BY r.synced_at DESC) = 1)
+
+SELECT
+  r.account_id,
+  r.customer_id,
+  r.lucky_wheel_code,
+  CONCAT(customer_id, "_", lucky_wheel_code) AS luckywheel_id,
+  r.gamification_detail_id,
+  r.status,
+  safe_cast(json_value(order_id) AS INT64) AS order_id,
+  timestamp_add(r.last_updated_time, interval 7 HOUR) AS completed_time,
+  DATE(timestamp_add(r.last_updated_time, interval 7 HOUR)) AS completed_date
+FROM raw_data AS r
+LEFT JOIN UNNEST(JSON_EXTRACT_ARRAY(r.order_ids)) AS order_id
