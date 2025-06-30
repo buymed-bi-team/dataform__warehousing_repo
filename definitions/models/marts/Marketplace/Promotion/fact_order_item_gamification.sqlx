@@ -6,7 +6,7 @@ config {
         Type: Table; 
         Refresh Schedule: hourly;
         `,
-    //tags: ["custom_1h_past5","PROMOTION_MKP"]
+    tags: ["custom_1h_past5","PROMOTION_MKP"]
 }
 
 SELECT
@@ -15,14 +15,15 @@ SELECT
     , g.min_total_value
     , o.order_id
     , o.created_at as order_created_at
-    , SUM(demand_quantity * sales_price) AS ordered_amount
-    , SUM(
-        IF(
+    , sku_orignal_key
+    , SUM(COALESCE(combo_quantity, demand_quantity)) AS demand_quantity
+    , COALESCE(combo_price, sales_price) AS sales_price
+    , SUM(COALESCE(oi.combo_outbound_quantity, oi.outbound_quantity)) AS outbound_quantity
+    , IF(
             o.order_status_seq >= g.order_status_seq
-            , IF(g.kind_of_value = 'ACTUAL', outbound_quantity * sales_price, demand_quantity * sales_price)
+            , IF(g.kind_of_value = 'ACTUAL', "OUTBOUND", "ORDERED")
             , null
-        )
-      ) AS value_by_condition
+      ) AS calculation_type
 FROM ${ref('fact_order_item')} AS oi
     LEFT JOIN ${ref('fact_order')} AS o ON oi.order_id = o.order_id
     JOIN ${ref('dim_gamification_sku')} AS gs ON oi.sku_orignal_key = gs.sku_key
