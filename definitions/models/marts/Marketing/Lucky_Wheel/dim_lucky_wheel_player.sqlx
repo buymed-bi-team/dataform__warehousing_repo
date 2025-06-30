@@ -11,12 +11,18 @@ config {
     tags: ["custom_2h_past5"]
 }
 
+WITH cte AS (
+    SELECT DISTINCT luckywheel_id
+    FROM ${ref('fact_mission_process_log_v2')}
+)
 SELECT
-    lucky_wheel_code
-    , gamification_id
-    , account_id
-    , customer_id
-    , CONCAT(customer_id, "_", lucky_wheel_code) AS luckywheel_id
-    , number_of_mission_completed
-FROM ${source.platinum}.marketplace_prd_promotion_gamification_leaderboard
+    l.lucky_wheel_code
+    , l.gamification_id
+    , l.account_id
+    , l.customer_id
+    , CONCAT(l.customer_id, "_", l.lucky_wheel_code) AS luckywheel_id
+    , l.number_of_mission_completed
+    , IF(cte.luckywheel_id IS NULL, "Chưa chơi game", "Đã chơi game") AS status
+FROM ${source.platinum}.marketplace_prd_promotion_gamification_leaderboard l 
+LEFT JOIN cte ON CONCAT(l.customer_id, "_", l.lucky_wheel_code) = cte.luckywheel_id
 WHERE lucky_wheel_code IS NOT NULL AND lucky_wheel_code NOT IN ("AH61C6AX", "UWL4LKFK", "JJ4A7BVJ")
