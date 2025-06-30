@@ -24,6 +24,7 @@ SELECT
   r.account_id,
   r.customer_id,
   r.lucky_wheel_code,
+  CONCAT(customer_id, "_", lucky_wheel_code) AS luckywheel_id,
   r.gamification_detail_id,
   r.status,
   safe_cast(json_value(order_id) AS INT64) AS order_id,
