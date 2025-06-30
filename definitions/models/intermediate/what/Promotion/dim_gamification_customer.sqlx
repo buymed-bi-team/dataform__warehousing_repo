@@ -47,7 +47,7 @@ WITH
             AND g.gamification_id IS NOT NULL
     )
 
-    , final AS (
+    , customer_gamification_exclude_blacklist AS (
         SELECT
             *
         FROM customer_and_gamification
@@ -57,9 +57,19 @@ WITH
         FROM excluding_customer
     )
 
-SELECT *
-FROM active_customer_gamification
-UNION DISTINCT
-SELECT *
-FROM final
+    , final AS (
+        SELECT *
+        FROM active_customer_gamification
+        UNION DISTINCT
+        SELECT *
+        FROM customer_gamification_exclude_blacklist
+    )
+
+SELECT
+    a.*
+    , b.province_code AS customer_province_code
+FROM final AS a
+    LEFT JOIN ${ref('dim_customer')} AS b USING(customer_id)
+
+
 
