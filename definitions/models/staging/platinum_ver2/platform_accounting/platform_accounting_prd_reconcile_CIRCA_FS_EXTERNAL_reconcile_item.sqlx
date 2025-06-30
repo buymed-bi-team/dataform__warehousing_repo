@@ -1,4 +1,13 @@
-
+config {
+    type: "view",
+    schema: "platinum_buymed_vn",
+    name: "platform_accounting_prd_reconcile_CIRCA_FS_EXTERNAL_reconcile_item",
+    description : `
+    PIC: minh.luu
+    Partition by: created date
+    `,
+    tags:["platinum","platform_accounting_prd_reconcile"]
+}
   WITH silver AS (
     SELECT
       key,mg_id,rec_item_code,amount,branch_code,col_name,created_time,data,entity_code,entity_type,formula_result,last_updated_time,object_code,object_type,org_id,rec_code,rec_line_code,synced_at,extra_props,action,ingest_time,
