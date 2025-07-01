@@ -15,9 +15,10 @@ config {
 WITH raw_data as (
     SELECT
       r.*
-    FROM ${ref('dim_lucky_wheel')} w
-    JOIN ${source.platinum}.marketplace_prd_promotion_gamification_result AS r 
-        ON w.lucky_wheel_code = r.lucky_wheel_code
+    FROM ${source.platinum}.marketplace_prd_promotion_gamification_result r
+    LEFT JOIN ${ref('dim_lucky_wheel')} w 
+        ON r.lucky_wheel_code = w.lucky_wheel_code
+    WHERE w.lucky_wheel_code IS NOT NULL
     QUALIFY ROW_NUMBER() OVER (PARTITION BY r.lucky_wheel_code, r.gamification_detail_id, r.customer_id ORDER BY r.synced_at DESC) = 1)
 
 SELECT
