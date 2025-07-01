@@ -93,6 +93,9 @@ left join UNNEST(JSON_VALUE_ARRAY(order_return_codes)) AS return_id
 left join ${source.circa_os}.entity_pos_profile p on o.pos_id = p.id
 left join ${source.circa_os}.entity_entity en on o.updated_by = en.id
 where o.type <> 'RETURN'
+      and o.client_id  = 1
+      and p.type = 'CIRCA'
+      and o.pos_id not in ('c95a3338-4f5e-4264-958b-0d02e3fea49b','0d4c2e76-c6bf-487d-bf3e-d0b608d9fb5d')
 group by all)
 
 select
