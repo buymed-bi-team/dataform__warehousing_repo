@@ -14,7 +14,33 @@ config {
 WITH cte AS (
     SELECT DISTINCT luckywheel_id
     FROM ${ref('fact_mission_process_log_v2')}
+),
+
+customer_type AS (
+SELECT
+    customer_id
+    , SAFE_CAST(CONCAT(FORMAT_DATE('%m-%Y', som), '_', CAST(customer_id AS STRING)) as STRING) AS month_id
+    , COALESCE(customer_active_type, customer_business_status) AS customer_type
+FROM ${ref('agg_customer_and_som')}
+),
+
+customer_luckywheel AS (
+SELECT
+    CONCAT(l.customer_id, "_", w.lucky_wheel_code) AS luckywheel_id,
+    SAFE_CAST(CONCAT(FORMAT_DATE('%m-%Y', w.start_time), '_', CAST(l.customer_id AS STRING)) as STRING) AS month_id
+FROM ${source.platinum}.marketplace_prd_promotion_gamification_leaderboard l  
+JOIN ${ref('dim_lucky_wheel')} w
+    ON l.lucky_wheel_code = w.lucky_wheel_code
+),
+
+agg_cus_type AS (
+    SELECT 
+        cw.luckywheel_id
+        , ct.customer_type
+    FROM customer_luckywheel cw
+    LEFT JOIN customer_type ct ON cw.month_id = ct.month_id
 )
+
 SELECT
     l.lucky_wheel_code
     , l.gamification_id
@@ -23,6 +49,7 @@ SELECT
     , CONCAT(l.customer_id, "_", l.lucky_wheel_code) AS luckywheel_id
     , l.number_of_mission_completed
     , IF(cte.luckywheel_id IS NULL, "Chưa chơi game", "Đã chơi game") AS status
+    , c.customer_type
 FROM ${source.platinum}.marketplace_prd_promotion_gamification_leaderboard l 
+JOIN agg_cus_type c ON CONCAT(l.customer_id, "_", l.lucky_wheel_code) = c.luckywheel_id
 LEFT JOIN cte ON CONCAT(l.customer_id, "_", l.lucky_wheel_code) = cte.luckywheel_id
-WHERE lucky_wheel_code IS NOT NULL AND lucky_wheel_code NOT IN ("AH61C6AX", "UWL4LKFK", "JJ4A7BVJ")
