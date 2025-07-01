@@ -20,3 +20,4 @@ SELECT
 FROM ${source.platinum}.marketplace_prd_promotion_lucky_wheel
 WHERE NOT REGEXP_CONTAINS(LOWER(name), r'tech|test')
 AND code NOT IN ("AH61C6AX", "UWL4LKFK", "JJ4A7BVJ")
+AND EXTRACT(YEAR FROM TIMESTAMP_ADD(start_time, INTERVAL 7 HOUR)) = 2025
