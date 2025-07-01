@@ -1,0 +1,38 @@
+config {
+    type: "table", 
+    description: 
+        `
+        PIC: huyen.nguyenthu; 
+        Type: Table; 
+        Refresh Schedule: daily;
+        Source: 
+            ${source.platinum}.marketplace_prd_promotion_lucky_wheel_log,
+            ${source.ref}.dim_lucky_wheel
+        `,
+    tags: ["custom_1h_past5"]
+}
+
+WITH log_data AS (
+SELECT 
+  DATE(TIMESTAMP_ADD(p.created_time, INTERVAL 7 HOUR)) AS created_date,
+  TIMESTAMP_ADD(p.created_time, INTERVAL 7 HOUR) AS created_time,
+  CONCAT(c.customer_id, "_", p.lucky_wheel_code) AS luckywheel_id,
+  p.account_id,
+  p.item_code,
+  c.customer_id,
+  c.first_order_at,
+  CONCAT(p.item_code, "_", p.lucky_wheel_code) as item_id,
+  p.lucky_wheel_code
+FROM ${source.platinum}.marketplace_prd_promotion_lucky_wheel_log AS p
+JOIN ${ref('dim_lucky_wheel')} l ON p.lucky_wheel_code = l.lucky_wheel_code
+LEFT JOIN ${ref('dim_customer')} AS c
+  ON p.account_id = c.account_id)
+
+SELECT 
+  created_time
+  , created_date
+  , luckywheel_id
+  , customer_id
+  , item_code
+  , item_id
+FROM log_data
