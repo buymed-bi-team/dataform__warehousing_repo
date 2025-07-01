@@ -18,7 +18,7 @@ SELECT
     , max_quantity_per_customer
     , max_quantity_per_day
     , max_quantity
-    , concat(item_code, "_", lucky_wheel_code) as item_id
+    , concat(item_code, "_", i.lucky_wheel_code) as item_id
 FROM ${source.platinum}.marketplace_prd_promotion_lucky_wheel_item i
 LEFT JOIN ${ref('dim_lucky_wheel')} l ON i.lucky_wheel_code = l.lucky_wheel_code
 WHERE l.lucky_wheel_code IS NOT NULL
