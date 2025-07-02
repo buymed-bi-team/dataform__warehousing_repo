@@ -32,17 +32,19 @@ WHERE Status <> 'WAITING_PAYMENT'
 
 ),Pending_item_external as (
 Select distinct
-        t.created_at 
+        datetime(t.created_at) as created_at
        ,t.id 
        ,t.pos_id
        ,i.product_id
        ,i.unit
        ,i.sku
-       ,t.status
+       ,t.status as po_status
+       ,'' as so_status
        ,i.quantity as quantity
        ,''as base_quantity
        ,t.fulfillment_method
        ,t.code
+       ,'' as so_code
       
 from t 
 left join ${source.circa_os}.order_purchase_order_item i on t.id = i.purchase_order_id
@@ -52,26 +54,31 @@ and date(t.created_at) >=  '2025-04-11'
 )
 ,Map_thuocsi as (
 Select distinct
-        t.created_at 
+        coalesce(datetime(t.created_at),o.created_at) as created_at
        ,t.id 
-       ,t.pos_id
+       ,coalesce(t.pos_id,p.id) as pos_id
        ,a.product_id
        ,td.unit
        ,a.sku_code as sku_code
-       ,t.status
+       ,t.status as po_status
+       ,o.order_status as so_status
        ,a.demand_quantity as quantity
        ,''as base_quantity
        ,t.fulfillment_method
        ,t.code
+       ,SAFE_CAST(o.order_id as string) as so_code
       
 from ${source.ref}.fact_order o 
-left join `${source.ref}.fact_order_item` a on o.order_id = a.order_id 
+left join ${source.ref}.fact_order_item a on o.order_id = a.order_id 
 left join  t on t.sale_order_number = SAFE_CAST(o.order_id as string) and t.seller_code = a.seller_code
 left join ${source.ref}.dim_product td on a.product_id = td.product_id
-where t.sale_order_number is not null
+left join ${source.circa_os}.entity_pos_profile p on o.customer_id = p.thuocsi_id
+where  TO_JSON_STRING(customer_tags) LIKE "%CIRCACOS%"
 and o.order_status <> 'CANCEL'
-and t.fulfillment_method = 'SO_THUOCSI'
-and date(created_date) >=  '2025-04-11' 
+--and t.fulfillment_method = 'SO_THUOCSI'
+--t.sale_order_number is not null
+--and o.order_id = 36371247
+and date(created_date) >=  '2025-05-11' 
 group by all
 --Lấy những đơn hàng đặt mua thuốc sĩ
 ),Pending as (
@@ -83,3 +90,7 @@ Select p.*
  from Pending p 
  where p.id not in 
 (Select distinct purchase_order_id from ${source.circa_os}.order_goods_receipt where status = 'COMPLETED') -- điều kiện này dùng để loại trừ những trường hợp cửa hàng đã nhận hàng nhưng ko bấm hoàn thành trên pos
+union all
+ Select p.*
+ from Pending p 
+ where p.id is null
