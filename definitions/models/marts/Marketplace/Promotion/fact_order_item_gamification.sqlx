@@ -24,6 +24,7 @@ SELECT
             , IF(g.kind_of_value = 'ACTUAL', "OUTBOUND", "ORDERED")
             , null
       ) AS calculation_type
+    , gc.segment
 FROM ${ref('fact_order_item')} AS oi
     LEFT JOIN ${ref('fact_order')} AS o ON oi.order_id = o.order_id
     JOIN ${ref('dim_gamification_sku')} AS gs ON oi.sku_orignal_key = gs.sku_key
