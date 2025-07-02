@@ -18,6 +18,7 @@ WITH
             a.customer_id
             , a.gamification_id
             , g.gamification_code
+            , g.gamification_brand
         FROM ${source.platinum}.marketplace_prd_promotion_gamification_customer AS a
             LEFT JOIN ${ref('dim_gamification')} AS g USING(gamification_id)
         WHERE a.status IN ("ACTIVE", "INACTIVE")
@@ -29,6 +30,7 @@ WITH
             c.customer_id
             , g.gamification_id
             , g.gamification_code
+            , g.gamification_brand
         FROM ${ref('dim_customer')} AS c
             , ${ref('dim_gamification')} AS g
         WHERE customer_status = "ACTIVE"
@@ -41,6 +43,7 @@ WITH
             a.customer_id
             , g.gamification_id
             , g.gamification_code
+            , g.gamification_brand
         FROM ${source.platinum}.marketplace_prd_promotion_gamification_customer AS a
             LEFT JOIN ${ref('dim_gamification')} AS g USING(gamification_id)
         WHERE a.status = "BLACKLIST"
@@ -68,8 +71,10 @@ WITH
 SELECT
     a.*
     , b.province_code AS customer_province_code
+    , l.segment
 FROM final AS a
     LEFT JOIN ${ref('dim_customer')} AS b USING(customer_id)
+    LEFT JOIN ${source.external}.loyalty_segment AS l ON l.customer_id = a.customer_id AND l.brand = a.gamification_brand
 
 
 
