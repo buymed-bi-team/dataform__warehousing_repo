@@ -28,6 +28,7 @@ SELECT
     , wt.status as ticket_status
     , wt.delivery_method
     , JSON_VALUE(wt.delivery_info, "$.hub_code") AS hub_code
+    , JSON_VALUE(wt.delivery_info, "$.shipping_order_code") AS shipping_order_code
     , wt.seller_code
     , DATE_DIFF(wt.overdue_date, current_timestamp(), DAY) + 2 as day_left
     , wt.note as ticket_note
@@ -38,6 +39,7 @@ SELECT
     , wi.reason as sku_note
     , timestamp_add( current_timestamp(), interval 7 hour ) as transformed_at
     , c.sale_order_time + INTERVAL 7 HOUR AS sale_order_time
+    , t.created_time + INTERVAL 7 HOUR AS do_booking_time
     , DATE(TIMESTAMP(JSON_VALUE(wt.delivery_info, "$.receive_date")) + INTERVAL 7 HOUR) AS expected_receive_date
 FROM ${source.platinum}.seller_prd_wis_withdraw_ticket AS wt
     LEFT JOIN ${source.platinum}.seller_prd_wis_withdraw_item AS wi on wt.code = wi.withdraw_code
@@ -55,7 +57,9 @@ FROM ${source.platinum}.seller_prd_wis_withdraw_ticket AS wt
             WHERE created_date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 6 MONTH)
     ) AS c ON wt.return_order_code = c.sale_order_code
     LEFT JOIN ${ref('dim_product')} AS p ON wi.product_id = p.product_id
+    LEFT JOIN ${source.platinum}.delivery_prd_transporting_shipping_order AS t ON t.reference_code = JSON_VALUE(wt.delivery_info, "$.shipping_order_code")
 WHERE 1=1
     AND wt.created_date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 6 MONTH)
     AND wi.created_date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 6 MONTH)
+    AND t.created_date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 6 MONTH)
     AND wt.status NOT IN ( "CANCELLED")
