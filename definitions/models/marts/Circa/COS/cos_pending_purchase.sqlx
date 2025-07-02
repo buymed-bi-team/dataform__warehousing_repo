@@ -32,7 +32,7 @@ WHERE Status <> 'WAITING_PAYMENT'
 
 ),Pending_item_external as (
 Select distinct
-        datetime(t.created_at)
+        datetime(t.created_at) as created_at
        ,t.id 
        ,t.pos_id
        ,i.product_id
@@ -44,7 +44,7 @@ Select distinct
        ,''as base_quantity
        ,t.fulfillment_method
        ,t.code
-       ,'' so_code
+       ,'' as so_code
       
 from t 
 left join ${source.circa_os}.order_purchase_order_item i on t.id = i.purchase_order_id
