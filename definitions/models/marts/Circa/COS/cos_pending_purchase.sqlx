@@ -77,7 +77,7 @@ where  TO_JSON_STRING(customer_tags) LIKE "%CIRCACOS%"
 and o.order_status <> 'CANCEL'
 --and t.fulfillment_method = 'SO_THUOCSI'
 --t.sale_order_number is not null
-and o.order_id = 36371247
+--and o.order_id = 36371247
 and date(created_date) >=  '2025-05-11' 
 group by all
 --Lấy những đơn hàng đặt mua thuốc sĩ
@@ -90,3 +90,7 @@ Select p.*
  from Pending p 
  where p.id not in 
 (Select distinct purchase_order_id from ${source.circa_os}.order_goods_receipt where status = 'COMPLETED') -- điều kiện này dùng để loại trừ những trường hợp cửa hàng đã nhận hàng nhưng ko bấm hoàn thành trên pos
+union all
+ Select p.*
+ from Pending p 
+ where p.id is null
