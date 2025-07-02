@@ -17,6 +17,7 @@ SELECT
     d.gamification_detail_id,
     d.index_mission,
     d.mission_name,
-    CAST(JSON_VALUE(d.rewards, "$.0.turns_rotation") AS INTEGER) AS turn_received
+    CAST(JSON_VALUE(d.rewards, "$.0.turns_rotation") AS INTEGER) AS turn_received,
+    CONCAT(d.lucky_wheel_code, "_", d.gamification_detail_id) AS lw_mission_id
 FROM ${source.platinum}.marketplace_prd_promotion_gamification_detail d
     JOIN ${ref('dim_lucky_wheel')} w ON d.lucky_wheel_code = w.lucky_wheel_code
