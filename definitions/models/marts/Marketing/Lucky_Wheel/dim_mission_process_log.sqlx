@@ -20,5 +20,6 @@ SELECT
   , status
   , completed_date
   , completed_time
+  , CONCAT(lucky_wheel_code, "_", gamification_detail_id) AS lw_mission_id
 FROM ${ref('fact_mission_process_log_v2')} 
 
