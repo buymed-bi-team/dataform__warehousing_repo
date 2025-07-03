@@ -157,7 +157,7 @@ where
   and po.client_id = 1
   and eo.client_id = 1
 
-qualify row_number() over(partition by oi.id order by base_unit_cost_price desc) = 1
+--qualify row_number() over(partition by oi.id order by base_unit_cost_price desc) = 1
     
     ),
 order_items as (select *
