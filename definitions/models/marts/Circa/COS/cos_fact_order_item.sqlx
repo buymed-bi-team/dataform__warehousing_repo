@@ -161,25 +161,25 @@ where
   and ld.client_id = 1
   and po.client_id = 1
   and eo.client_id = 1
-group by 
-      order_id
-      ,product_id
-      ,sku_code
-      ,unit
-      ,unit_price
-      ,discount_amount
-      ,unit_price_before_discount
-      ,lot_date
-      ,base_quantity
-      ,tax_rate
-      ,al.cost_price_include_tax
-      ,doc_code
-      ,sale_order_number
-      ,promotion_event_code
-      ,po.code
-      ,eo.name
-      ,oi.id
-    qualify row_number() over(partition by oi.id order by base_unit_cost_price desc) = 1
+ group by all
+--       order_id
+--       ,product_id
+--       ,sku_code
+--       ,unit
+--       ,unit_price
+--       ,discount_amount
+--       ,unit_price_before_discount
+--       ,lot_date
+--       ,base_quantity
+--       ,tax_rate
+--       ,al.cost_price_include_tax
+--       ,doc_code
+--       ,sale_order_number
+--       ,promotion_event_code
+--       ,po.code
+--       ,eo.name
+--       ,oi.id
+    --qualify row_number() over(partition by oi.id order by base_unit_cost_price desc) = 1
     
     ),
 order_items as (select *
