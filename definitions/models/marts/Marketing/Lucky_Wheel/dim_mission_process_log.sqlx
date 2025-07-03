@@ -11,7 +11,7 @@ config {
     tags: ["custom_1h_past7"]
 }
 
-
+WITH process_log AS (
 SELECT
   DISTINCT luckywheel_id
   , lucky_wheel_code
@@ -21,5 +21,11 @@ SELECT
   , completed_date
   , completed_time
   , CONCAT(lucky_wheel_code, "_", gamification_detail_id) AS lw_mission_id
-FROM ${ref('fact_mission_process_log_v2')} 
+FROM ${ref('fact_mission_process_log_v2')})
+
+SELECT
+    l.*
+    , IF(l.status = "COMPLETED", m.turn_received, 0) AS turn_received
+FROM process_log l 
+LEFT JOIN ${ref('dim_lucky_wheel_mission')} m ON l.lw_mission_id = m.lw_mission_id
 
