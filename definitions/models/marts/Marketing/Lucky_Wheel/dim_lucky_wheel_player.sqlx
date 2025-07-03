@@ -8,7 +8,7 @@ config {
         Source: 
             ${source.platinum}.marketplace_prd_promotion_gamification_leaderboard
         `,
-    tags: ["custom_2h_past5"]
+    tags: ["custom_1h_past7"]
 }
 
 WITH cus_status AS (
