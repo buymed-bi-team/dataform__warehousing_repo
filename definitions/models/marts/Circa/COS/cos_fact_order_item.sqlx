@@ -92,9 +92,9 @@ cte_online as (
 ,cte_fs as
 (select
        order_id
-      ,product_id
+      ,a.product_id
       ,sku_code
-      ,sum(quantity) as quantity
+      ,quantity 
       ,unit
       ,unit_price
       ,discount_amount
@@ -102,7 +102,7 @@ cte_online as (
       ,lot_date
       ,base_quantity
       ,tax_rate
-      ,product_id || '_' || lot_date || '_' || tax_rate as product_lot_date_vat
+      ,a.product_id || '_' || lot_date || '_' || tax_rate as product_lot_date_vat
       ,sku_code || '_' || lot_date || '_' || tax_rate as sku_lotdate_vat
       ,cost_price_include_tax  as base_unit_cost_price
       ,"CIRCA" as owner_name
@@ -113,11 +113,11 @@ from (
     select * from cte_not_online
     UNION ALL
     select * from cte_online
-    qualify row_number() over(partition by id) = 1) a
+) a
+left join  ${source.ref}.cos_product_convert_base_unit  cv on cv.product_id = a.product_id and cv.convert_unit = a.unit
 where item_id  is not null or item_id <> ""
--- and date(created_at) >= "2024-11-01" --date( date_trunc( date_sub( current_date('+7'), interval 12 month) , month ) )
 and pos_id in ("b6c40920-af79-4fb0-bdc4-9965ddb885d2", "e737c882-e90c-4fd2-8a4f-ac6afd248a33")
-group by all
+
 )
 ,
  cte_os as (
@@ -126,23 +126,17 @@ select distinct
   --   o.code as order_code,
   ,oi.product_id
   ,oi.sku_code
-  ,oi.quantity as quantity
+  ,al.base_quantity / convert_rate as quantity
   ,unit
   ,unit_price
   ,oi.discount_amount
   ,(oi.discount_amount + oi.unit_price) as unit_price_before_discount
   ,oi.lot_date
-  ,oi.base_quantity
-  --   amount
+  ,al.base_quantity
   ,oi.tax_rate
   ,oi.product_id || '_' || oi.lot_date || '_' || oi.tax_rate as product_lot_date_vat
   ,oi.sku_code || '_' || oi.lot_date || '_' || oi.tax_rate as sku_lotdate_vat
   ,al.cost_price_include_tax as base_unit_cost_price
-  --   item_ref_id,
-  --   oi.product_id || '_' || oi.unit|| '_' || o.pos_id as sku_unit_pos,
-  --   latest_cost_price,
-  --   max_cost_price_include_tax,
-  --   min_cost_price_include_tax,
   ,eo.name as owner_name
   ,po.code as po_code
   ,po.sale_order_number
@@ -154,6 +148,7 @@ left join ${source.circa_os}.inventory_location_detail ld ON al.location_detail_
 left join ${source.circa_os}.inventory_cost_price as cp on oi.product_id = cp.product_id and o.pos_id=cp.pos_id
 left join ${source.circa_os}.order_purchase_order po on  ld.doc_code = po.code
 left join ${source.circa_os}.entity_owner eo on po.owner_id = eo.id
+left join  ${source.ref}.cos_product_convert_base_unit  cv on cv.product_id = oi.product_id and cv.convert_unit = oi.unit
 where
   o.status LIKE '%COMPLETE%'
   and o.client_id = 1
