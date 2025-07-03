@@ -94,7 +94,7 @@ cte_online as (
        order_id
       ,product_id
       ,sku_code
-      ,quantity
+      ,sum(quantity) as quantity
       ,unit
       ,unit_price
       ,discount_amount
@@ -117,6 +117,7 @@ from (
 where item_id  is not null or item_id <> ""
 -- and date(created_at) >= "2024-11-01" --date( date_trunc( date_sub( current_date('+7'), interval 12 month) , month ) )
 and pos_id in ("b6c40920-af79-4fb0-bdc4-9965ddb885d2", "e737c882-e90c-4fd2-8a4f-ac6afd248a33")
+group by all
 )
 ,
  cte_os as (
@@ -125,7 +126,7 @@ select distinct
   --   o.code as order_code,
   ,oi.product_id
   ,oi.sku_code
-  ,quantity
+  ,sum(quantity) as quantity
   ,unit
   ,unit_price
   ,oi.discount_amount
@@ -160,9 +161,26 @@ where
   and ld.client_id = 1
   and po.client_id = 1
   and eo.client_id = 1
-
-  -- group by all
+group by 
+      order_id
+      ,product_id
+      ,sku_code
+      ,unit
+      ,unit_price
+      ,discount_amount
+      ,unit_price_before_discount
+      ,lot_date
+      ,base_quantity
+      ,tax_rate
+      ,al.cost_price_include_tax
+      ,doc_code
+      ,sale_order_number
+      ,promotion_event_code
+      ,po.code
+      ,eo.name
+      ,oi.id
     qualify row_number() over(partition by oi.id order by base_unit_cost_price desc) = 1
+    
     ),
 order_items as (select *
 from cte_fs
