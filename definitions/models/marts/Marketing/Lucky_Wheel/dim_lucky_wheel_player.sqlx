@@ -11,9 +11,17 @@ config {
     tags: ["custom_2h_past5"]
 }
 
-WITH cte AS (
-    SELECT DISTINCT luckywheel_id
+WITH cus_status AS (
+    SELECT 
+        DISTINCT luckywheel_id
     FROM ${ref('fact_mission_process_log_v2')}
+),
+
+order_status AS (
+    SELECT 
+        DISTINCT luckywheel_id
+    FROM ${ref('fact_mission_process_log_v2')}
+    WHERE order_id IS NOT NULL
 ),
 
 customer_type AS (
@@ -48,8 +56,10 @@ SELECT
     , l.customer_id
     , CONCAT(l.customer_id, "_", l.lucky_wheel_code) AS luckywheel_id
     , l.number_of_mission_completed
-    , IF(cte.luckywheel_id IS NULL, "Chưa chơi game", "Đã chơi game") AS status
+    , IF(cus_status.luckywheel_id IS NULL, "Chưa chơi game", "Đã chơi game") AS status
+    , IF(order_status.luckywheel_id IS NULL, "Chưa mua hàng", "Đã mua hàng") AS have_order
     , c.customer_type
 FROM ${source.platinum}.marketplace_prd_promotion_gamification_leaderboard l 
 JOIN agg_cus_type c ON CONCAT(l.customer_id, "_", l.lucky_wheel_code) = c.luckywheel_id
-LEFT JOIN cte ON CONCAT(l.customer_id, "_", l.lucky_wheel_code) = cte.luckywheel_id
+LEFT JOIN cus_status ON CONCAT(l.customer_id, "_", l.lucky_wheel_code) = cus_status.luckywheel_id
+LEFT JOIN order_status ON CONCAT(l.customer_id, "_", l.lucky_wheel_code) = order_status.luckywheel_id
