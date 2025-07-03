@@ -24,6 +24,17 @@ order_status AS (
     WHERE order_id IS NOT NULL
 ),
 
+onbr_order AS (
+    SELECT DISTINCT 
+        p.luckywheel_id
+    FROM ${ref('fact_mission_process_log_v2')} p
+    JOIN gold_buymed_vn2.fact_order_item i 
+        ON p.order_id = i.order_id
+    WHERE p.order_id IS NOT NULL
+      AND CONTAINS_SUBSTR(i.tag_code, 'ONBR') 
+      AND date(created_date) >= '2025-06-02' 
+),
+
 customer_type AS (
 SELECT
     customer_id
@@ -58,8 +69,10 @@ SELECT
     , l.number_of_mission_completed
     , IF(cus_status.luckywheel_id IS NULL, "Chưa chơi game", "Đã chơi game") AS status
     , IF(order_status.luckywheel_id IS NULL, "Chưa mua hàng", "Đã mua hàng") AS have_order
+    , IF(onbr_order.luckywheel_id IS NULL, "Chưa mua hàng điểm", "Đã mua hàng điểm") AS onbr_order
     , c.customer_type
 FROM ${source.platinum}.marketplace_prd_promotion_gamification_leaderboard l 
 JOIN agg_cus_type c ON CONCAT(l.customer_id, "_", l.lucky_wheel_code) = c.luckywheel_id
 LEFT JOIN cus_status ON CONCAT(l.customer_id, "_", l.lucky_wheel_code) = cus_status.luckywheel_id
 LEFT JOIN order_status ON CONCAT(l.customer_id, "_", l.lucky_wheel_code) = order_status.luckywheel_id
+LEFT JOIN onbr_order ON CONCAT(l.customer_id, "_", l.lucky_wheel_code) = onbr_order.luckywheel_id
