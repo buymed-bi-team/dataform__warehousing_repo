@@ -60,23 +60,23 @@ left join full_unit u on i.pos_id = u.pos_id and i.product_id = u.product_id),
 has_price as (
     select
         ps.pos_id,
-        pd.product_id,
-        pd.seller_code,
-        pd.sku_code,
+        s.product_id,
+        s.seller_code,
+        s.sku_code,
         pd.sale_price,
         pd.unit,
         bu.base_unit,
         bu.convert_rate,
-        pd.product_id || '_' || pd.unit || '_' || ps.pos_id as sku_unit_pos,
+        s.product_id || '_' || pd.unit || '_' || ps.pos_id as sku_unit_pos,
         case when t.unit is not null then true else false end as is_thuocsi_unit,
         max(datetime(pd.updated_at, "Asia/Ho_Chi_Minh")) as last_updated_at
-    from  ${source.circa_os}.product_price_sheet_detail as pd
-    left join  ${source.circa_os}.product_price_sheet as ps on pd.price_sheet_id = ps.id
-    left join product_base_unit as bu on pd.product_id = bu.product_id and pd.unit = bu.convert_unit
-    left join thuosi_unit t on pd.product_id = t.product_id and lower(pd.unit) = lower(t.unit)
+    from  ${source.circa_os}.product_price_sheet_sku_detail as pd
+    left join ${source.circa_os}.product_price_sheet_sku as s on pd.price_sheet_sku_id = s.id
+    left join  ${source.circa_os}.product_price_sheet as ps on s.price_sheet_id = ps.id
+    left join product_base_unit as bu on s.product_id = bu.product_id and pd.unit = bu.convert_unit
+    left join thuosi_unit t on s.product_id = t.product_id and lower(pd.unit) = lower(t.unit)
     where bu.convert_unit is not null
           and ps.client_id = 1 
-          and pd.client_id = 1
           --and ps.pos_id is not null
     group by all),
 
@@ -172,7 +172,11 @@ check_unit_pricing as
             province,
             s.sales_region_code
         from  ${source.circa_os}.entity_pos_profile m
-        left join ${ref('dim_fc_service_area')} s on m.province = s.service_area_code),
+        left join ${ref('dim_fc_service_area')} s on m.province = s.service_area_code
+        where m.type = 'CIRCA'
+        and m.id not in ('c95a3338-4f5e-4264-958b-0d02e3fea49b','0d4c2e76-c6bf-487d-bf3e-d0b608d9fb5d')
+        and m.client_id = 1
+        ),
 
     cte_fs as (
         select
