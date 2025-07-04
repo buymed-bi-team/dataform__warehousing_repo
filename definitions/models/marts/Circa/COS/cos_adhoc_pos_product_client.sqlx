@@ -87,6 +87,7 @@ where bu.convert_unit is not null
       and ps.client_id = 1 
       and ps.type = 'CLIENT' -- Loại trừ nhừng sản phẩm đã set giá trên các pos
       and s.seller_code is not null
+      and ps.channel = 'OFFLINE'
      -- and pd.product_id = 11463 
 group by all)
 ,combine as (select distinct i.product_id,

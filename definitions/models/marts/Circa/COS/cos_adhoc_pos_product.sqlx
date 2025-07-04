@@ -77,6 +77,7 @@ has_price as (
     left join thuosi_unit t on s.product_id = t.product_id and lower(pd.unit) = lower(t.unit)
     where bu.convert_unit is not null
           and ps.client_id = 1 
+          and ps.channel = 'OFFLINE'
           --and ps.pos_id is not null
     group by all),
 
