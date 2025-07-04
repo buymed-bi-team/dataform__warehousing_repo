@@ -69,24 +69,24 @@ from inventory i
 left join full_unit u on i.product_id = u.product_id)
 ,has_price as (
 Select distinct
-        pd.product_id,
-        pd.seller_code,
-        pd.sku_code,
+        s.product_id,
+        s.seller_code,
+        s.sku_code,
         pd.sale_price,
         pd.unit,
         bu.base_unit,
         bu.convert_rate,
         case when t.unit is not null then true else false end as is_thuocsi_unit,
         max(datetime(pd.updated_at, "Asia/Ho_Chi_Minh")) as last_updated_at
-from ${source.circa_os}.product_price_sheet_detail as pd
-left join ${source.circa_os}.product_price_sheet as ps on pd.price_sheet_id = ps.id
-left join product_base_unit as bu on pd.product_id = bu.product_id and pd.unit = bu.convert_unit
-left join thuosi_unit t on pd.product_id = t.product_id and lower(pd.unit) = lower(t.unit)
+from ${source.circa_os}.product_price_sheet_sku_detail as pd
+left join ${source.circa_os}.product_price_sheet_sku as s on pd.price_sheet_sku_id = s.id
+left join ${source.circa_os}.product_price_sheet as ps on s.price_sheet_id = ps.id
+left join product_base_unit as bu on s.product_id = bu.product_id and pd.unit = bu.convert_unit
+left join thuosi_unit t on s.product_id = t.product_id and lower(pd.unit) = lower(t.unit)
 where bu.convert_unit is not null
       and ps.client_id = 1 
-      and pd.client_id = 1
       and ps.type = 'CLIENT' -- Loại trừ nhừng sản phẩm đã set giá trên các pos
-      and pd.seller_code is not null
+      and s.seller_code is not null
      -- and pd.product_id = 11463 
 group by all)
 ,combine as (select distinct i.product_id,
