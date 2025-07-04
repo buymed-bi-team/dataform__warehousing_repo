@@ -15,56 +15,57 @@ config {
 }
 
 WITH
-    gmv AS (
-        SELECT
-            FORMAT_TIMESTAMP('%Y-%m', oi.created_at) AS month
-            , sku_key_sales_region_code
-            , COUNT(DISTINCT oi.order_id) AS no_order
-        FROM ${ref('fact_order_item')} AS oi
-            LEFT JOIN ${ref('fact_order')} AS o USING(order_id)
-        WHERE
-            DATE(oi.created_at) BETWEEN DATE_SUB(DATE_TRUNC(CURRENT_DATE(), MONTH), INTERVAL 3 MONTH) AND DATE_SUB(DATE_TRUNC(CURRENT_DATE(), MONTH), INTERVAL 1 DAY)
-            AND DATE(o.created_at) BETWEEN DATE_SUB(DATE_TRUNC(CURRENT_DATE(), MONTH), INTERVAL 3 MONTH) AND DATE_SUB(DATE_TRUNC(CURRENT_DATE(), MONTH), INTERVAL 1 DAY)
-            AND o.order_status <> 'CANCEL'
-        GROUP BY 1, 2
-        HAVING no_order >= 4
-        QUALIFY ROW_NUMBER() over (PARTITION BY sku_key_sales_region_code) = 3
-    )
+    -- gmv AS (
+    --     SELECT
+    --         FORMAT_TIMESTAMP('%Y-%m', oi.created_at) AS month
+    --         , sku_key_sales_region_code
+    --         , COUNT(DISTINCT oi.order_id) AS no_order
+    --     FROM ${ref('fact_order_item')} AS oi
+    --         LEFT JOIN ${ref('fact_order')} AS o USING(order_id)
+    --     WHERE
+    --         DATE(oi.created_at) BETWEEN DATE_SUB(DATE_TRUNC(CURRENT_DATE(), MONTH), INTERVAL 3 MONTH) AND DATE_SUB(DATE_TRUNC(CURRENT_DATE(), MONTH), INTERVAL 1 DAY)
+    --         AND DATE(o.created_at) BETWEEN DATE_SUB(DATE_TRUNC(CURRENT_DATE(), MONTH), INTERVAL 3 MONTH) AND DATE_SUB(DATE_TRUNC(CURRENT_DATE(), MONTH), INTERVAL 1 DAY)
+    --         AND o.order_status <> 'CANCEL'
+    --     GROUP BY 1, 2
+    --     HAVING no_order >= 4
+    --     QUALIFY ROW_NUMBER() over (PARTITION BY sku_key_sales_region_code) = 3
+    -- )
 
-    , gmv_during_oos AS (
-        SELECT
-            oi.sku_key_sales_region_code
-            , oi.created_at
-            , demand_quantity
-            , sales_price
-        FROM ${ref('fact_order_item')} AS oi
-            LEFT JOIN ${ref('fact_order')} AS o USING(order_id)
-        WHERE
-            o.order_status <> 'CANCEL'
-            AND DATE(oi.created_at) >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH ), INTERVAL 32 DAY)
-            AND DATE(o.created_at) >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH ), INTERVAL 32 DAY)
-    )
+    -- , gmv_during_oos AS (
+    --     SELECT
+    --         oi.sku_key_sales_region_code
+    --         , oi.created_at
+    --         , demand_quantity
+    --         , sales_price
+    --     FROM ${ref('fact_order_item')} AS oi
+    --         LEFT JOIN ${ref('fact_order')} AS o USING(order_id)
+    --     WHERE
+    --         o.order_status <> 'CANCEL'
+    --         AND DATE(oi.created_at) >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH ), INTERVAL 32 DAY)
+    --         AND DATE(o.created_at) >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH ), INTERVAL 32 DAY)
+    -- )
 
-    , final AS (
+    final AS (
         SELECT
             a.sku_key_fc_code
             , a.sku_key_sales_region_code
             , a.sub_sku_code
             , b.oos_time
             , b.next_oos_time
-            , IF(
-                    seller_class = "EXTERNAL",
-                    IF(
-                        EXTRACT(HOUR FROM b.oos_time) >= 13,
-                        TIMESTAMP_ADD(TIMESTAMP_TRUNC(b.oos_time, DAY), INTERVAL 1 DAY),
-                        TIMESTAMP_TRUNC(b.oos_time, DAY)
-                    ),
-                    IF(
-                        EXTRACT(HOUR FROM b.oos_time) >= 14,
-                        TIMESTAMP_ADD(TIMESTAMP_TRUNC(b.oos_time, DAY), INTERVAL 1 DAY),
-                        TIMESTAMP_TRUNC(b.oos_time, DAY)
-                    )
-              ) AS oos_report_date
+            , DATE(b.oos_time) AS oos_report_date
+            -- , IF(
+            --         seller_class = "EXTERNAL",
+            --         IF(
+            --             EXTRACT(HOUR FROM b.oos_time) >= 13,
+            --             TIMESTAMP_ADD(TIMESTAMP_TRUNC(b.oos_time, DAY), INTERVAL 1 DAY),
+            --             TIMESTAMP_TRUNC(b.oos_time, DAY)
+            --         ),
+            --         IF(
+            --             EXTRACT(HOUR FROM b.oos_time) >= 14,
+            --             TIMESTAMP_ADD(TIMESTAMP_TRUNC(b.oos_time, DAY), INTERVAL 1 DAY),
+            --             TIMESTAMP_TRUNC(b.oos_time, DAY)
+            --         )
+            --   ) AS oos_report_date
             , n.content AS cic_content
             , n.created_by_name AS created_by_cic
             , n.note_created_time AS cic_note_created_time
@@ -140,7 +141,7 @@ WITH
         WHERE
             (
                 (a.seller_code = "MEDX"
-                    AND EXISTS (SELECT 1 FROM gmv WHERE gmv.sku_key_sales_region_code = a.sku_key_sales_region_code)
+                    -- AND EXISTS (SELECT 1 FROM gmv WHERE gmv.sku_key_sales_region_code = a.sku_key_sales_region_code)
                 )
                 OR ( a.seller_class = "EXTERNAL"
                     AND ps.status = "OUT_OF_STOCK"
@@ -152,9 +153,9 @@ WITH
 
 SELECT
     a.*
-    , SUM(b.demand_quantity * b.sales_price) AS gmv_during_oos
+    -- , SUM(b.demand_quantity * b.sales_price) AS gmv_during_oos
 FROM final AS a
-    LEFT JOIN gmv_during_oos AS b
-        ON a.sku_key_sales_region_code = b.sku_key_sales_region_code
-        AND b.created_at BETWEEN a.oos_time AND COALESCE(a.available_at, TIMESTAMP(CURRENT_DATETIME("+7")))
-GROUP BY ALL
+    -- LEFT JOIN gmv_during_oos AS b
+    --     ON a.sku_key_sales_region_code = b.sku_key_sales_region_code
+    --     AND b.created_at BETWEEN a.oos_time AND COALESCE(a.available_at, TIMESTAMP(CURRENT_DATETIME("+7")))
+-- GROUP BY ALL
