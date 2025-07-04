@@ -75,12 +75,12 @@ left join ${source.ref}.dim_product td on a.product_id = td.product_id
 left join ${source.circa_os}.entity_pos_profile p on o.customer_id = p.thuocsi_id
 where  TO_JSON_STRING(customer_tags) LIKE "%CIRCACOS%"
 and o.order_status <> 'CANCEL'
---and t.fulfillment_method = 'SO_THUOCSI'
---t.sale_order_number is not null
---and o.order_id = 36371247
+and t.code is not null
+and p.type = 'CIRCA'
+and p.id not in ('c95a3338-4f5e-4264-958b-0d02e3fea49b','0d4c2e76-c6bf-487d-bf3e-d0b608d9fb5d')
 and date(created_date) >=  '2025-05-11' 
 group by all
---Lấy những đơn hàng đặt mua thuốc sĩ
+--Lấy những đơn hàng đặt mua thuốc sir
 ),Pending as (
 Select * from Pending_item_external
 union all
