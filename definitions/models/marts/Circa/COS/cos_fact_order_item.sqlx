@@ -63,10 +63,12 @@ WITH base_data as (
         ,il.location_type
         ,ld.doc_code
         ,so as sale_order_number
+        ,po.distributor_id
     from base_data as a
     left join ${source.circa}.inventory_allocation as ia ON a.item_id = ia.item_ref_id
     left join ${source.circa}.inventory_location as il ON ia.location_id = il.id
     left join ${source.circa}.inventory_location_detail ld ON ia.location_detail_id = ld.id
+    left join ${source.circa}.order_purchase_order po on  ld.doc_code = po.code
     left join UNNEST(JSON_VALUE_ARRAY(ld.sale_order_numbers)) as so
     WHERE a.type <> 'ONLINE'
 ),
@@ -81,11 +83,13 @@ cte_online as (
         ,il.location_type
         ,ld.doc_code
         ,so as sale_order_number
+        ,po.distributor_id
     from base_data as a
     left join ${source.circa}.inventory_allocation as ia ON a.item_id = ia.item_ref_id
     left join ${source.circa}.inventory_location as il ON ia.location_id = il.id
     left join ${source.circa}.inventory_location_detail ld ON ia.location_detail_id = ld.id
     left join UNNEST(JSON_VALUE_ARRAY(ld.sale_order_numbers)) as so
+    left join ${source.circa}.order_purchase_order po on  ld.doc_code = po.code
     WHERE a.type = 'ONLINE'
 
 )
@@ -109,6 +113,7 @@ cte_online as (
       ,doc_code as po_code
       ,sale_order_number
       ,promotion_event_code
+      ,distributor_id
 from (
     select * from cte_not_online
     UNION ALL
@@ -141,6 +146,7 @@ select distinct
   ,po.code as po_code
   ,po.sale_order_number
   ,promotion_event_code
+  ,po.distributor_id
 from ${source.circa_os}.order_order o
 left join ${source.circa_os}.order_order_item oi ON o.id = oi.order_id
 left join ${source.circa_os}.inventory_allocation as al ON oi.id = al.item_ref_id
