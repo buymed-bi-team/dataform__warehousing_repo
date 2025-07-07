@@ -197,7 +197,7 @@ SELECT
   CAST(product.product_id AS STRING) AS filter_product_id,
   product.code as product_code, 
   product.name as product_name,
-  seller_category.name AS product_category,
+  -- seller_category.name AS product_category,
   product.seller_category_code as product_category_code,
   product.vat,
   -- product.brand,
@@ -234,6 +234,15 @@ SELECT
   -- IF(product.is_ingredient_special = TRUE, "SPECIAL","NORMAL") is_ingredient_special,
   -- IF(product.is_fragile = TRUE,"FRAGILE","NORMAL") is_fragile,
   -- IF(product.is_frozen = TRUE, "FROZEN","NORMAL") is_frozen,
+  -- seller_category.name AS product_category,
+  CASE
+      WHEN product.seller_category_code = "AQFV2U" THEN 
+        CASE
+          WHEN seller_sub_category.code IN ('XT2U1Y','LALT0T') THEN seller_sub_category.name
+          ELSE "Thuốc không kê đơn"
+        END
+      ELSE seller_category.name
+  END AS product_category,
   CASE
       WHEN product.seller_category_code = 'AQFV2U' THEN
         CASE
@@ -241,7 +250,7 @@ SELECT
           ELSE "Thuốc không kê đơn"
         END
       ELSE 'Không phải Thuốc'
-    END AS is_prescription,
+  END AS is_prescription,
   product.is_fragile,
   product.is_frozen,
   -- product.is_ingredient_special,
