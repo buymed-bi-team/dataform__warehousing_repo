@@ -251,8 +251,11 @@ SELECT
         END
       ELSE 'Không phải Thuốc'
   END AS is_prescription,
-  product.is_fragile,
-  product.is_frozen,
+  IFNULL(product.is_fragile, FALSE) AS is_fragile,
+  IFNULL(product.is_frozen, FALSE) AS is_frozen,
+  IFNULL(product.is_liquid, FALSE) AS is_liquid,
+  IFNULL(product.is_herb,FALSE) AS is_herb,
+  IFNULL(SAFE_CAST(JSON_VALUE(product.extra_props, '$.is_portable') AS BOOLEAN), FALSE) as is_portable,
   -- product.is_ingredient_special,
   IF(
     iis.product_id IS NOT NULL 
@@ -269,7 +272,6 @@ SELECT
   product.weight,
 
   IF(product.usage = "Dùng tại chổ","Dùng tại chỗ", product.usage) AS usage,
-  JSON_EXTRACT_SCALAR(product.extra_props, '$.is_portable') as is_portable,
   atc2.name AS act_2,
   atc3.name AS act_3,
   JSON_EXTRACT_SCALAR(product.retail_info, '$.retail_name') as retail_name,
