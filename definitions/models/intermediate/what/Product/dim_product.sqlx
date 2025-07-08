@@ -264,7 +264,6 @@ SELECT
     , TRUE
     , FALSE
   ) AS is_ingredient_special, -- product must have special ingredients and be a medicine to be classified as a special controlled medicine
-  product.is_herb,
 
   product.height,
   product.length,
