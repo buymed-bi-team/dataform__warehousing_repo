@@ -81,9 +81,13 @@ SELECT
     , ${utils.ToTimezone('s.approved_time')} as approved_at
     , ${utils.ToTimezone('coalesce(s.confirmed_time, s.approved_time)')} as confirmed_at
     , JSON_VALUE(s.extra_props, '$.accountant_email') AS accountant_email
-FROM    ${source.platinum}.seller_prd_core_seller s
-LEFT JOIN  ${source.platinum}.seller_prd_core_seller AS cmv on s.line_manager = cmv.code
-LEFT JOIN ${ref('dim_employee')} as acc on s.pic_account_id = acc.employee_id
+    , JSON_VALUE(s.business_certificate, "$.date_of_issue") AS ddkkdd_date_of_issue
+    , REGEX_REPLACE(JSON_VALUE(s.business_certificate, "$.file_url"), r'storage.googleapis.com', "cdn-gcs.thuocsi.vn") AS ddkkdd_file_url
+    , JSON_VALUE(s.gdp_certificate, "$.date_of_issue") AS gdp_date_of_issue
+    , REGEX_REPLACE(JSON_VALUE(s.gdp_certificate, "$.file_url"), r'storage.googleapis.com', "cdn-gcs.thuocsi.vn") AS gdp_file_url
+FROM        ${source.platinum}.seller_prd_core_seller s
+LEFT JOIN   ${source.platinum}.seller_prd_core_seller AS cmv on s.line_manager = cmv.code
+LEFT JOIN   ${ref('dim_employee')} as acc on s.pic_account_id = acc.employee_id
 LEFT JOIN (
     SELECT 
       DISTINCT

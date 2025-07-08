@@ -227,7 +227,7 @@ SELECT
     WHEN product.origin IN ('Vietnam', 'VN') THEN 'Local'
     WHEN product.origin NOT IN ('Vietnam', 'VN') THEN 'Import'
   END AS origin_type,
-  tb3.name as country_origin,
+  COALESCE(tb3.name, product.origin) as country_origin,
   product.registration_number,
 
   -- IF(product.is_prescription = TRUE, "DRUG","NON-DRUG") is_prescription,
