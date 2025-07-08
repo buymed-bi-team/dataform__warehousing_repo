@@ -21,7 +21,7 @@ select
     ,a.status as po_status
     ,a.total_item_amount as po_amount
     ,a.actual_total_amount as actual_po_amount
-    ,sum(a.actual_total_amount - coalesce(rt.actual_total_amount,0)) as actual_po_amount_af_rt
+    ,sum(a.total_amount - coalesce(rt.actual_total_amount,0)) as actual_po_amount_af_rt
     ,date(datetime_add(a.created_at, interval 7 hour)) as created_date
     ,date(datetime_add(a.completed_at, interval 7 hour)) as completed_date
     ,datetime_add(a.created_at, interval 7 hour) as created_at
