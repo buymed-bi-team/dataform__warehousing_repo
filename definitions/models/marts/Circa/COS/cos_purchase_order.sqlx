@@ -53,7 +53,10 @@ left join ${source.ref}.fact_order as o on a.sale_order_number = safe_cast(o.ord
 left join ${source.circa_os}.entity_owner as eo on a.owner_id = eo.id
 left join ${source.circa_os}.entity_distributor dis on a.distributor_id = dis.id
 left join ${source.circa_os}.order_return_po rt on a.id = rt.source_id -- Lấy nhừng PO có trả hàng 
+left join ${source.circa_os}.entity_pos_profile p on a.pos_id = p.id
 where a.status <> 'CANCELED'
       and a.pos_id not in ('c95a3338-4f5e-4264-958b-0d02e3fea49b','0d4c2e76-c6bf-487d-bf3e-d0b608d9fb5d')
+      and p.type = 'CIRCA'
+      and a.client_id = 1
 -- and date(a.created_at) >= date(date_trunc(date_sub(current_date('+7'), interval 11 month), month))
 group by all
