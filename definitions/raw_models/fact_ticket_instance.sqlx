@@ -52,7 +52,7 @@ select requester_code,
        else "Pharmacy" end as creator_type , partner_code,
        case when picked_time is null then DATETIME(created_time, "Asia/Ho_Chi_Minh") 
        else
-       DATETIME(picked_time, "Asia/Ho_Chi_Minh") end AS picked_time,
+       DATETIME(NULLIF(picked_time, created_time), "Asia/Ho_Chi_Minh") end AS picked_time,
        DATETIME(created_time, "Asia/Ho_Chi_Minh") AS created_time,
        DATETIME(deadline_time, "Asia/Ho_Chi_Minh") AS deadline_time,
        root_ticket_instance_code,
