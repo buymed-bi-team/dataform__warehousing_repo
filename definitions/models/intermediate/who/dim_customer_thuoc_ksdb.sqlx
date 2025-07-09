@@ -1,0 +1,8 @@
+config {
+    type: "table",
+    tags: "customer_1h_past10"
+}
+
+SELECT 
+    *
+FROM ${source.external}.customer_thuoc_ksdb
