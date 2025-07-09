@@ -21,17 +21,19 @@ Select b.*
       ,c.product_id
       ,c.sku_code
       ,c.lot_date
-      ,c.quantity
+      ,sum(c.quantity) as quantity
 from ${source.ref}.cos_return_completed b
 left join  buymed_circa_v2.order_return_order_item c on b.id = c.return_order_id
 where pos_code not in ('POS0140','POS0184')
+group by all
 union all 
 Select b.*
       ,c.product_id
       ,'' as sku_code
       ,c.lot_date
-      ,c.quantity
+      ,sum(c.quantity) as quantity
 from ${source.ref}.cos_return_completed b
 left join ${source.circa}.order_order_item c on b.id = c.order_id
 where pos_code in ('POS0140','POS0184')
+group by all
 
