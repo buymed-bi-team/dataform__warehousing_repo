@@ -4,6 +4,5 @@ config {
 }
 
 SELECT 
-    * EXCEPT(gdp_gpp_expired_date)
-    , SAFE.PARSE_DATE("%d-%m-%Y", SAFE_CAST(gdp_gpp_expired_date AS STRING)) AS gdp_gpp_expired_date
+    *
 FROM ${source.external}.customer_thuoc_ksdb
