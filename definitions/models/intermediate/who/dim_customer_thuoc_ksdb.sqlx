@@ -1,0 +1,8 @@
+config {
+    type: "table",
+    tags: "8h30"
+}
+
+SELECT 
+    *
+FROM ${source.external}.customer_thuoc_ksdb
