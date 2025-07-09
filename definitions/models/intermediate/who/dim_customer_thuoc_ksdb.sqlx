@@ -1,6 +1,6 @@
 config {
     type: "table",
-    tags: "customer_1h_past10"
+    tags: "8h30"
 }
 
 SELECT 
