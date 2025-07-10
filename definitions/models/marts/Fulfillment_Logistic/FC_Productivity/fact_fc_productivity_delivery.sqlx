@@ -18,8 +18,9 @@ select
   , timestamp_add( timestamp_seconds(cast(sh.picked_time as int64)), interval 7 hour ) as done_at
   , SAFE_CAST(created_by AS INT64) as employee_id
   , array_length(json_extract_array(products)) as total_sku
-  , (SELECT SUM(cast(json_value(x,'$.quantity') as int64))
-      FROM UNNEST(json_extract_array(products)) AS x) AS total_item
+  , num_package AS total_item
+  -- , (SELECT SUM(cast(json_value(x,'$.quantity') as int64))
+  --     FROM UNNEST(json_extract_array(products)) AS x) AS total_item
   , timestamp_add( current_timestamp, interval 7 hour ) as transformed_at
   , 'DELIVERY' as stage_code
 from (
