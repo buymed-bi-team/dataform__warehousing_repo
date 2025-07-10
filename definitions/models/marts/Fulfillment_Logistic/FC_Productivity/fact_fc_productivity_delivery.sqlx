@@ -15,7 +15,7 @@ select
   , sh.reference_code as ticket_code
   , sh.from_customer_code as fc_code
   , timestamp_add( sh.created_time, interval 7 hour ) as start_at
-  , timestamp_add( timestamp_seconds(cast(sh.picked_time as int64)), interval 7 hour ) as done_at
+  , timestamp_add( timestamp_seconds(cast(sh.booking_time as int64)), interval 7 hour ) as done_at
   , SAFE_CAST(created_by AS INT64) as employee_id
   , array_length(json_extract_array(products)) as total_sku
   , num_package AS total_item
