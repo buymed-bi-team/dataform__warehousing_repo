@@ -47,9 +47,11 @@ WITH base_data as (
             else ROUND((a.unit_price / c.total_item_amount) * c.discount_amount, 4)
         end as discount_voucher_on_item
         ,DATETIME(a.created_at, "asia/Ho_Chi_Minh") as created_at, pos_id
+        ,e.name as employee_name
     from ${source.circa}.order_order_item as a
     left join ${source.circa}.order_so_item_detail as b ON a.id = b.item_id
     left join ${source.circa}.order_order as c ON c.id = a.order_id
+    left join ${source.circa}.entity_entity e on c.updated_by = e.id
     WHERE date(c.created_at) >= "2024-11-01"
 )
 ,cte_not_online as (
@@ -114,6 +116,7 @@ cte_online as (
       ,sale_order_number
       ,promotion_event_code
       ,distributor_id
+      ,employee_name
 from (
     select * from cte_not_online
     UNION ALL
@@ -147,6 +150,7 @@ select distinct
   ,po.sale_order_number
   ,promotion_event_code
   ,po.distributor_id
+  ,e.name as employee_name
 from ${source.circa_os}.order_order o
 left join ${source.circa_os}.order_order_item oi ON o.id = oi.order_id
 left join ${source.circa_os}.inventory_allocation as al ON oi.id = al.item_ref_id
@@ -155,6 +159,7 @@ left join ${source.circa_os}.inventory_cost_price as cp on oi.product_id = cp.pr
 left join ${source.circa_os}.order_purchase_order po on  ld.doc_code = po.code
 left join ${source.circa_os}.entity_owner eo on po.owner_id = eo.id
 left join  ${source.ref}.cos_product_convert_base_unit  cv on cv.product_id = oi.product_id and cv.convert_unit = oi.unit
+left join ${source.circa}.entity_entity e on o.updated_by = e.id
 where
   o.status LIKE '%COMPLETE%'
   and o.client_id = 1
