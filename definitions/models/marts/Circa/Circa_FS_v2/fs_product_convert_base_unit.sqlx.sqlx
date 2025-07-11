@@ -1,0 +1,51 @@
+config {
+    type: "table",
+    description: `Full convert unit. PIC: huyen.ngo; model_type: Table ;schedule: At 10h30`
+    /*Source:
+      ${source.silver}.marketplace_prd_order_v2_order_item
+      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
+    tags: ["10h30"],
+    name: "fs_product_convert_base_unit",
+    columns: {/*
+        order_id: "NonNull |" + docs.order_id,
+        customer_id: "NonNull | The unique identifier for each customer"*/
+        
+    }
+}
+
+with cte_product as (select p.product_id
+                            ,p.name as product_name
+                            ,p.volumes
+                            ,client_id
+                     from buymed_circa_v2.product_product p
+                     where client_id <> 1
+),  product_base_unit as
+(
+      select a.product_id
+            ,a.unit as base_unit
+            ,client_id
+      from buymed_circa_v2.product_retail_unit as a
+      where a.base_unit is true and (unit is not null or unit <> "")
+            and client_id <> 1
+      ),
+    convert_unit as
+(
+      select a.product_id
+            ,convert_rate
+            ,unit as convert_unit
+            ,client_id
+      from buymed_circa_v2.product_retail_unit as a
+      where (unit is not null or unit <> "") and convert_rate <> 0
+      and client_id <> 1
+    
+      )
+select distinct pd.product_id
+       ,cr.convert_rate
+       ,cr.convert_unit
+       ,bu.base_unit
+       ,pd.client_id
+from cte_product pd
+left join product_base_unit bu on pd.product_id = bu.product_id and pd.client_id = bu.client_id
+left join convert_unit cr on pd.product_id = cr.product_id and cr.client_id = pd.client_id
+--where pd.product_id = 1107
+order by  1
