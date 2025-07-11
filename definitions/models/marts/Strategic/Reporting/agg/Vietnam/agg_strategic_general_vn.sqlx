@@ -156,7 +156,7 @@ JOIN base_calendar c ON c.date = a.date
 UNION ALL
 SELECT
   refresh_time,
-  date,
+  a.date,
   location,
   channel,
   CONCAT(measure, "_ENTERPRISE") AS measure,
