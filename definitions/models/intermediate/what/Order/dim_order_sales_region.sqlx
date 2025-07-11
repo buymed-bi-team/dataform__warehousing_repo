@@ -125,7 +125,8 @@ js {
             ${utils.ToTimezone(`max(created_time)`)} AS created_time,
             ${choose_new(`location_code`)},
             ${choose_new(`shipping_location_code`)},
-            ${choose_new(`sales_region_code`)}
+            ${choose_new(`sales_region_code`)},
+            ${choose_new(`fc_code`)}
         FROM 
             order_sales_region_code
         GROUP BY 1
@@ -135,7 +136,8 @@ SELECT
     location_code,
     shipping_location_code,
     sales_region_code,
-    created_time
+    created_time,
+    fc_code
 FROM order_tbl
 ${when(incremental(),
    `WHERE created_time > (SELECT max(created_time) FROM ${self()})`,
