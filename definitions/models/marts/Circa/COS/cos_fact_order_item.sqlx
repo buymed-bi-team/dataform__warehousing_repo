@@ -159,7 +159,7 @@ left join ${source.circa_os}.inventory_cost_price as cp on oi.product_id = cp.pr
 left join ${source.circa_os}.order_purchase_order po on  ld.doc_code = po.code
 left join ${source.circa_os}.entity_owner eo on po.owner_id = eo.id
 left join  ${source.ref}.cos_product_convert_base_unit  cv on cv.product_id = oi.product_id and cv.convert_unit = oi.unit
-left join ${source.circa}.entity_entity e on o.updated_by = e.id
+left join ${source.circa_os}.entity_entity e on o.updated_by = e.id
 where
   o.status LIKE '%COMPLETE%'
   and o.client_id = 1
