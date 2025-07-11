@@ -11,7 +11,7 @@ config {
 --- 1. CUTOFF STOCK QUANTITY MONTHLY
 SELECT 
     CURRENT_DATETIME("+7") AS refresh_time,
-    snapshot_date as date,
+    cast(snapshot_date as date) as date,
     fc_code AS location,
     CAST(NULL AS STRING) AS channel,
     'STOCK_QUANTITY_CUTOFF_MONTHLY' AS measure,
@@ -25,7 +25,7 @@ UNION ALL
 --- 2. CUTOFF STOCK NO.SKUS MONTHLY
 SELECT 
     CURRENT_DATETIME("+7") AS refresh_time,
-    snapshot_date as date,
+    cast(snapshot_date as date) as date,
     fc_code AS location,
     CAST(NULL AS STRING) AS channel,
     'NO_SKUS_CUTOFF_MONTHLY' AS measure,
@@ -39,7 +39,7 @@ UNION ALL
 --- 3. CUTOFF STOCK QUANTITY 30 NEAREST DAYS
 SELECT 
     CURRENT_DATETIME("+7") AS refresh_time,
-    snapshot_date as date,
+    cast(snapshot_date as date) as date,
     fc_code AS location,
     CAST(NULL AS STRING) AS channel,
     'STOCK_QUANTITY_CUTOFF_30D' AS measure,
@@ -53,7 +53,7 @@ UNION ALL
 --- 4. CUTOFF STOCK NO.SKUS 30 NEAREST DAYS
 SELECT 
     CURRENT_DATETIME("+7") AS refresh_time,
-    snapshot_date as date,
+    cast(snapshot_date as date) as date,
     fc_code AS location,
     CAST(NULL AS STRING) AS channel,
     'NO_SKUS_CUTOFF_30D' AS measure,
