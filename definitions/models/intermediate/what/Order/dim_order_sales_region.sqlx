@@ -144,16 +144,16 @@ ${when(incremental(),
    ``)}
 
 
-post_operations {                
-  ${
-    when(incremental(),
-      "",
-      `
-      ALTER TABLE ${self()} 
-        ADD PRIMARY KEY (order_id) NOT ENFORCED,
-        ADD FOREIGN KEY (location_code) references ${ref(`dim_geo_location`)}(location_code) NOT ENFORCED,
-        ADD FOREIGN KEY (shipping_location_code) references ${ref(`dim_geo_location`)}(location_code) NOT ENFORCED;
-      `
-    )
-  }
-}
+-- post_operations {                
+--   ${
+--     when(incremental(),
+--       "",
+--       `
+--       ALTER TABLE ${self()} 
+--         ADD PRIMARY KEY (order_id) NOT ENFORCED,
+--         ADD FOREIGN KEY (location_code) references ${ref(`dim_geo_location`)}(location_code) NOT ENFORCED,
+--         ADD FOREIGN KEY (shipping_location_code) references ${ref(`dim_geo_location`)}(location_code) NOT ENFORCED;
+--       `
+--     )
+--   }
+-- }
