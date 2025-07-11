@@ -46,6 +46,7 @@ left join ${source.ref}.fs_product_convert_base_unit  cv on cv.product_id = oi.p
 left join ${source.circa_os}.entity_entity e on o.updated_by = e.id
 where
   o.status LIKE '%COMPLETE%'
+  and o.client_id <> 1
 group by all
 )
 
