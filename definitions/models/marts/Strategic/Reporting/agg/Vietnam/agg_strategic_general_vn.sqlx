@@ -166,7 +166,15 @@ FROM ${ref(`agg_strategic_customer`)} a
 JOIN base_calendar c ON c.date = a.date
 
 UNION ALL
-SELECT * FROM ${ref(`agg_inventory_cutoff`)}
+SELECT 
+refresh_time,
+date,
+location,
+channel,
+supplier_class,
+measure,
+value
+FROM ${ref(`agg_inventory_cutoff`)}
 
 UNION ALL
 SELECT
