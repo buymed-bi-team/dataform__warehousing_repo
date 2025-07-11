@@ -359,7 +359,8 @@ SELECT
         WHEN dosr.sales_region_code LIKE "MIENTRUNG" THEN "CENTRAL"
         WHEN dosr.sales_region_code LIKE "MIENBAC" THEN "NORTHERN"
         ELSE "GMV_VN_REGION_UNKNOWN" 
-        END AS location
+        END AS location,
+    dosr.fc_code
 
 
 FROM fact_strategic_2 ois
