@@ -17,7 +17,9 @@ config {
 }
 
 with return_completed as (
-    select o.id, o.code, total_amount
+    select o.id
+           ,o.code
+           ,total_amount
     from ${source.circa}.order_order o
     left join ${source.circa}.entity_pos_profile p on o.pos_id = p.id
     where pos_id in ("b6c40920-af79-4fb0-bdc4-9965ddb885d2", "e737c882-e90c-4fd2-8a4f-ac6afd248a33")
@@ -25,20 +27,22 @@ with return_completed as (
 
     union all
 
-    select c.id, c.code, total_amount
+    select c.id
+          ,c.code
+          ,total_amount
     from ${source.circa_os}.order_return_order c
     left join ${source.circa_os}.entity_pos_profile p on c.pos_id = p.id
     where c.status = 'COMPLETED'
 ),
 
 cte_fs as
-    (select o.id as order_id,
-       o.created_at,
-       pos_id,
-       p.code as pos_code,
-       o.code as order_code,
-       o.total_amount,
-       CAST(return_id as string) as return_codes
+    (select o.id as order_id
+       ,o.created_at
+       ,pos_id
+       ,p.code as pos_code
+       ,o.code as order_code
+       ,o.total_amount
+       ,CAST(return_id as string) as return_codes
 from ${source.circa}.order_order o
 left join UNNEST(JSON_VALUE_ARRAY(order_return_codes)) AS return_id
 left join ${source.circa}.entity_pos_profile p on o.pos_id = p.id
@@ -48,23 +52,24 @@ group by all),
 
 cte_os as
     (select
-       o.id as order_id,
-       o.created_at,
-       pos_id,
-       p.code as pos_code,
-       o.code as order_code,
-       o.total_amount,
-       CAST(return_id as string) as return_codes
+        o.id as order_id
+       ,o.created_at
+       ,pos_id
+       ,p.code as pos_code
+       ,o.code as order_code
+       ,o.total_amount
+       ,CAST(return_id as string) as return_codes
 from ${source.circa_os}.order_order o
 left join UNNEST(JSON_VALUE_ARRAY(order_return_codes)) AS return_id
 left join ${source.circa_os}.entity_pos_profile p on o.pos_id = p.id
 where o.type <> 'RETURN'
-group by all), _all as (
-
-select f.* except(return_codes),
-       c.id,
-       COALESCE(SUM(f.total_amount), 0) as total_return_amount,
-       f.total_amount - COALESCE(SUM(c.total_amount), 0) AS exclude_return
+group by all)
+, _all as
+(
+select f.* except(return_codes)
+       ,c.id
+       ,COALESCE(SUM(f.total_amount), 0) as total_return_amount
+       ,f.total_amount - COALESCE(SUM(c.total_amount), 0) AS exclude_return
 from cte_fs f
 left join return_completed c on f.return_codes = c.code
 where f.return_codes is not null
@@ -73,10 +78,10 @@ group by all
 
 union all
 
-select o.* except(return_codes),
-       c.id,
-       COALESCE(SUM(c.total_amount), 0) as total_return_amount,
-       o.total_amount - COALESCE(SUM(c.total_amount), 0) AS exclude_return
+select o.* except(return_codes)
+       ,c.id
+       ,COALESCE(SUM(c.total_amount), 0) as total_return_amount
+       ,o.total_amount - COALESCE(SUM(c.total_amount), 0) AS exclude_return
 from cte_os o
 left join return_completed c on o.return_codes = c.code
 --where o.total_amount > c.total_amount
