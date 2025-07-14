@@ -149,7 +149,6 @@ select distinct pd.product_id
                ,COALESCE(bt.brand_type, ba.brand_type) as brand_type
                ,seller_sub_category_name
                ,pop.popular as is_popular
-               ,pd.client_id
 from cte_product pd
 -- left join ${source.circa_os}.product_retail_unit as a on a.product_id = pd.product_id and a.unit = pd.unit
 left join ${source.platinum}.circa_online_prd_product_product as op on pd.product_id = op.product_id
