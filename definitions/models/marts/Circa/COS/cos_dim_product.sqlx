@@ -5,6 +5,7 @@ config {
       ${source.silver}.marketplace_prd_order_v2_order_item
       ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
     tags: ["10h30"],
+    disabled: true,
     name: "cos_dim_product",
     columns: {/*
         order_id: "NonNull |" + docs.order_id,
