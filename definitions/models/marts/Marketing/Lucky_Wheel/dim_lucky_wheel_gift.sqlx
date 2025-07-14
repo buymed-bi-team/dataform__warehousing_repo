@@ -1,0 +1,24 @@
+config {
+    type: "table", 
+    description: 
+        `
+        PIC: huyen.nguyenthu; 
+        Type: Table; 
+        Refresh Schedule: daily;
+        Source: 
+            ${source.platinum}.marketplace_prd_promotion_lucky_wheel_item,
+            ${source.ref}.dim_lucky_wheel
+        `,
+    tags: ["custom_1h_past5"]
+}
+
+SELECT
+    item_code
+    , item_name
+    , max_quantity_per_customer
+    , max_quantity_per_day
+    , max_quantity
+    , concat(item_code, "_", i.lucky_wheel_code) as item_id
+FROM ${source.platinum}.marketplace_prd_promotion_lucky_wheel_item i
+LEFT JOIN ${ref('dim_lucky_wheel')} l ON i.lucky_wheel_code = l.lucky_wheel_code
+WHERE l.lucky_wheel_code IS NOT NULL

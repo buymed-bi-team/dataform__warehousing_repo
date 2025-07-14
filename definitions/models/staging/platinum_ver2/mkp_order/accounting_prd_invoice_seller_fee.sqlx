@@ -1,0 +1,51 @@
+config {
+    type: "view",
+    schema: "platinum_buymed_vn",
+    name: "accounting_prd_invoice_seller_fee",
+    description : `
+    PIC: minh.luu
+    Partition by: created date
+    `,
+    tags:["platinum","accounting_prd_invoice"]
+}
+ 
+  WITH silver AS (
+    SELECT
+      key,mg_id,seller_fee_id,created_time,is_required_by_customer,last_updated_time,reconcile_schedule_time_index,reconcile_time,seller_code,seller_fee_code,seller_id,seller_invoice_info,seller_name,status,sync_token,synced_at,extra_props,action,ingest_time,
+      
+        CASE
+            WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time, 'Asia/Ho_Chi_Minh'))
+            ELSE DATE( '2099-01-01' )
+        END
+     created_date,
+      CAST(null as datetime) 
+    FROM silver_buymed_vn.accounting_prd_invoice_seller_fee
+    WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 1 DAY
+    QUALIFY ROW_NUMBER() OVER (_window) = 1 
+          AND ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 16 HOUR
+          WINDOW _window AS (
+          PARTITION BY mg_id
+          ORDER BY synced_at DESC,
+          IF
+              (action='d',3,
+              IF
+              (action='u',2,1)) DESC
+          ,last_updated_time DESC)
+  ), platinum AS (
+    SELECT 
+      key,mg_id,seller_fee_id,created_time,is_required_by_customer,last_updated_time,reconcile_schedule_time_index,reconcile_time,seller_code,seller_fee_code,seller_id,seller_invoice_info,seller_name,status,sync_token,synced_at,extra_props,action,ingest_time,
+      created_date,
+      platinum_refresh
+    FROM ${ref(`platinum_buymed_vn__stg`, `accounting_prd_invoice_seller_fee`)}
+  )
+  SELECT p.*
+  FROM platinum p
+  LEFT JOIN silver s 
+      ON p.mg_id = s.mg_id 
+  WHERE s.mg_id is null 
+
+  UNION ALL 
+
+  SELECT s.*
+  FROM silver s
+  WHERE action <> "d"

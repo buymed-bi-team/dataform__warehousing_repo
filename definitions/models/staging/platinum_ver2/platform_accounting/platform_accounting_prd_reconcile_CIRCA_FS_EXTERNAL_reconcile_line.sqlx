@@ -1,0 +1,51 @@
+config {
+    type: "view",
+    schema: "platinum_buymed_vn",
+    name: "platform_accounting_prd_reconcile_CIRCA_FS_EXTERNAL_reconcile_line",
+    description : `
+    PIC: minh.luu
+    Partition by: created date
+    `,
+    tags:["platinum","platform_accounting_prd_reconcile"]
+}
+  WITH silver AS (
+    SELECT
+      key,mg_id,rec_line_code,branch_code,created_time,entity_code,entity_type,last_updated_time,line_amount,name,org_id,rec_code,rec_line_template_code,rec_template_code,use_calc_amount,synced_at,extra_props,action,ingest_time,
+      
+        CASE
+            WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time, 'Asia/Ho_Chi_Minh'))
+            ELSE DATE( '2099-01-01' )
+        END
+     created_date,
+      CAST(null as datetime) 
+    FROM silver_buymed_vn.platform_accounting_prd_reconcile_CIRCA_FS_EXTERNAL_reconcile_line
+    WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 1 DAY
+    QUALIFY ROW_NUMBER() OVER (_window) = 1 
+          AND ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 16 HOUR
+          WINDOW _window AS (
+          PARTITION BY mg_id
+          ORDER BY synced_at DESC,
+          IF
+              (action='d',3,
+              IF
+              (action='u',2,1)) DESC
+          ,last_updated_time DESC)
+  ), platinum AS (
+    SELECT 
+      key,mg_id,rec_line_code,branch_code,created_time,entity_code,entity_type,last_updated_time,line_amount,name,org_id,rec_code,rec_line_template_code,rec_template_code,use_calc_amount,synced_at,extra_props,action,ingest_time,
+      created_date,
+      platinum_refresh
+    FROM ${ref(`platinum_buymed_vn__stg`, `platform_accounting_prd_reconcile_CIRCA_FS_EXTERNAL_reconcile_line`)}
+  )
+  SELECT p.*
+  FROM platinum p
+  LEFT JOIN silver s 
+      ON p.mg_id = s.mg_id 
+  WHERE s.mg_id is null 
+
+  UNION ALL 
+
+  SELECT s.*
+  FROM silver s
+  WHERE action <> "d"
+  

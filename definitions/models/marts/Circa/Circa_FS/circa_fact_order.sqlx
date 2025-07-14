@@ -17,56 +17,46 @@ config {
 }
 
 
-With A as (select date(datetime(o.created_at, 'Asia/Ho_Chi_Minh'))    as created_date,
-                  datetime(o.created_at, 'Asia/Ho_Chi_Minh') as created_at ,
-                  datetime(completed_at, 'Asia/Ho_Chi_Minh')  as completed_date,
-                  o.id                  as order_id,
-                  code                as so_code,
-                  pos_id,
-                  o.entity_id,
-                  code                as order_code,
-                  o.status              as order_status,
-                  o.type                as order_type,
-                  -- total_amount        as order_amount,
-                  channel,
-                  is_rotated,
-                  total_amount,
-                  total_item_amount,
-                  medicine_cutting_fee,
-                  delivery_amount,
-                  discount_amount,
-                  reference_order_in_platform,
-                  internal_source_type,
-                  case
+with A as (select date(datetime(o.created_at, 'Asia/Ho_Chi_Minh'))    as created_date
+                  ,datetime(o.created_at, 'Asia/Ho_Chi_Minh')         as created_at 
+                  ,datetime(completed_at, 'Asia/Ho_Chi_Minh')         as completed_date
+                  ,o.id                                               as order_id
+                  ,code                                               as so_code
+                  ,pos_id                             
+                  ,o.entity_id                             
+                  ,code                                               as order_code
+                  ,o.status                                           as order_status
+                  ,o.type                                             as order_type
+                  -- total_amount                                     as order_amount,
+                  ,channel
+                  ,is_rotated
+                  ,total_amount
+                  ,total_item_amount
+                  ,medicine_cutting_fee
+                  ,delivery_amount
+                  ,discount_amount
+                  ,reference_order_in_platform
+                  ,internal_source_type
+                  ,case
                       when o.type = 'RETURN' and o.status = 'PENDING' then 'False'
                       when o.type = 'RETURN' and o.status = 'CANCELED' then 'False'
-                      else 'True' end as filter,
-               et.phone_number as entity_phone
+                      else 'True' end                                 as filter
+                 ,et.phone_number                                    as entity_phone
            from ${source.circa}.order_order o
            left join ${source.circa}.entity_entity et on o.entity_id = et.id
            left join ${source.circa}.entity_entity_address ed on et.id = ed.entity_id)
-    , delivery_infor as 
+,delivery_infor as 
     (
-        select
---         date (created_at) as date_created,
-order_id,
-case
-    when left(customer_phone,1) = "0" then RIGHT(customer_phone, LENGTH(customer_phone)-1)
-    else customer_phone end as customer_phone,
-customer_name
--- customer_ward, customer_full_address,
--- customer_district,
--- customer_province
-from ${source.circa}.order_delivery_info
--- order by 1
-    )
+        select distinct order_id
+                       ,case when left(customer_phone,1) = "0" then RIGHT(customer_phone, LENGTH(customer_phone)-1)
+                             else customer_phone end as customer_phone
+                       ,customer_name
+from ${source.circa}.order_delivery_info)
 
-select A.*,di.customer_name,
--- customer_phone,
-case
-    when A.entity_phone like "000000000" then di.customer_phone  else A.entity_phone end as customer_phone
---  customer_full_address
-From A
+select A.*
+      ,di.customer_name
+      ,case when A.entity_phone like "%000000000%" then di.customer_phone  else A.entity_phone end as customer_phone    
+from A
 left join delivery_infor di on a.order_id = di.order_id
 where filter = 'True'
   and created_at >= date(timestamp( date_trunc( date_sub( current_date('+7'), interval 13 month) , month ) ))

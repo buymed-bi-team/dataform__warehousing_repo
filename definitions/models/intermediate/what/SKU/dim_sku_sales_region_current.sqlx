@@ -125,7 +125,7 @@ SELECT
     pic.pic_purchase_id AS pic_account_id,
     pic.pic_purchase_name AS pic_name,
     psr.cic_account_id,
-    psr.cic_name_import,
+    -- psr.cic_name_import,
     psr.cic_name,
     psr.cic_full_name_internal,
     psr.brand_type,
@@ -182,7 +182,8 @@ SELECT
     JSON_VALUE(s.extra_props, '$.demand_classification_code') as sku_demand_class,
     fv_vendor_fc.commitment_leadtime as fv_vendor_leadtime,
 
-    s.use_skus_price
+    s.use_skus_price,
+    IFNULL(SAFE_CAST(JSON_VALUE(s.extra_props, "$.auto_update_status") AS BOOLEAN), FALSE) AS auto_update_status,
 
 FROM cte_full AS cte
     LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_sku AS s

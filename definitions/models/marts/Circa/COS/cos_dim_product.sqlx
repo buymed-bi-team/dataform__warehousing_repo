@@ -5,6 +5,7 @@ config {
       ${source.silver}.marketplace_prd_order_v2_order_item
       ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
     tags: ["10h30"],
+    disabled: true,
     name: "cos_dim_product",
     columns: {/*
         order_id: "NonNull |" + docs.order_id,
@@ -46,7 +47,8 @@ with cte_product as (select p.product_id,
                                         on p.manufacturer_code = m.code
                               left join ${source.circa_os}.product_seller_category sc
                                         on p.seller_category_code = sc.seller_category_code
-                              left join ${ref('dim_product')} as tp on p.product_id = tp.product_id)
+                              left join ${ref('dim_product')} as tp on p.product_id = tp.product_id
+                              where p.client_id = 1)
 ,inventory as (select a.product_id,
 --                           a.cost_price_include_tax,
                           sum(a.on_hand_qty) as on_hand_quantity,
@@ -58,6 +60,8 @@ with cte_product as (select p.product_id,
                                       on a.location_id = b.id
                    left join ${source.circa_os}.entity_pos_profile as ep on b.pos_id = ep.id
                    where a.deleted_at is null and lower(ep.name) <> "%test%"
+                         and ep.type = 'CIRCA'
+                         and ep.id not in ('c95a3338-4f5e-4264-958b-0d02e3fea49b','0d4c2e76-c6bf-487d-bf3e-d0b608d9fb5d')
                    group by all),
 -- , ingregients as (
 --     select
@@ -93,7 +97,7 @@ ingregients as (
             convert_rate, unit as convert_unit
       from ${source.circa_os}.product_retail_unit as a
       -- right join ${source.circa_os}.product_product as b on a.product_id = b.product_id
-      where unit is not null or unit <> ""
+      where unit is not null or unit <> "" and client_id = 1
       qualify row_number() over(partition by product_id  order by convert_rate desc ) =1
       ),
     

@@ -29,10 +29,13 @@ WITH
 
 
 SELECT
-    IF(
-        EXTRACT(HOUR FROM created_time) >= 11,
-        DATE_ADD(created_date, INTERVAL 1 DAY),
-        created_date
+    COALESCE(
+        SAFE.PARSE_DATE("%Y%m%%d", version),
+        IF(
+            EXTRACT(HOUR FROM created_time) >= 11,
+            DATE_ADD(created_date, INTERVAL 1 DAY),
+            created_date
+        )
     ) AS rebate_date,
     TIMESTAMP_ADD(created_time, interval 7 HOUR) AS created_time,
     TIMESTAMP_ADD(last_updated_time, INTERVAL 7 HOUR) AS last_updated_at,

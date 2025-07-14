@@ -1,0 +1,28 @@
+config {
+    type: "table",
+    description: `Last 13 month| PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 past hour 6, 8, 10, 12, 14, 16, 18, 20 and 22`
+    /*Source:
+      ${source.silver}.marketplace_prd_order_v2_order_item
+      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
+    tags: ["custom_2h_past5"],
+    name: "Circa_reconcile_collect_convert",
+    columns: {
+        order_id: "NonNull |" + docs.order_id,
+        customer_id: "NonNull | The unique identifier for each customer"
+        
+    },
+    bigquery: {
+    partitionBy: "created_date"
+}
+}
+
+Select distinct date(t.Date_convert) as created_date
+                       ,Pos_code as pos_code
+                       ,reconcile_amount as circa_collect_convert_date
+       from ${source.external}.fs_new_contract t
+
+
+
+
+
+

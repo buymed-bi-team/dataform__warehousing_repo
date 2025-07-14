@@ -51,18 +51,18 @@ with
 -- Get delivery fee. Depending on sale_region_code to get this fee. If MIENBAC then get fee following Ha Noi city, MIENTRUNG - Da Nang City and MIENNAM - HCM 
     , get_delivery_fee as (
         select
-            b.province_name as province_level,
+            b.district_name as district_level,
             a.fee_value,
             case
-                when b.province_code = "01" then "MIENBAC"
-                when b.province_code = "79" then "MIENNAM"
-                when b.province_code = "48" then "MIENTRUNG"
+                when b.district_code = "019" then "MIENBAC"
+                when b.district_code = "760" then "MIENNAM"
+                when b.district_code = "495" then "MIENTRUNG"
             end as sales_region_code
         from ${source.platinum}.marketplace_prd_pricing_v2_setting as a
-            left join ${ref('dim_province')} as b on a.code = b.province_code
+            left join ${ref('dim_district')} as b on a.code = b.district_code
         where
             a.type = 'DELIVERY_REGION'
-            and b.province_code IN ("01","79","48")
+            and b.district_code IN ("019","760","495")
         QUALIFY
             ROW_NUMBER() OVER (PARTITION BY a.type, a.code ORDER BY a.ingest_time DESC) = 1
     )

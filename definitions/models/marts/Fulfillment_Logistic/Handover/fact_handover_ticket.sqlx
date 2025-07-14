@@ -24,7 +24,7 @@ config {
         last_mile_hub_code: 'Hub code nhận phiếu cuối cùng. (Trường hợp ngoài lệ, cho những đơn ban giao gửi về các hub ở khu vực miền tây thì buộc phải qua hub cần thơ. Chúng ta cần field này để xác định nhưng đơn như thế này)',
         carrier_code: 'Mã nhà vận chuyển',
         carrier_name: 'Tên nhà vận chuyển',
-        in_out_type: 'Filed xác định kiểu của in out của bin',
+        in_out_type: 'Field xác định kiểu của in out của bin',
         fc_code: 'FC quản lý phiếu handover'
 	}
 }
@@ -52,7 +52,7 @@ select
     a.created_by as handover_employee_id,
     a.driver_id,
     a.driver_name,
-    JSON_VALUE(extra_props, '$.carrier_name') AS carrier_name,
+    JSON_VALUE(a.extra_props, '$.carrier_name') AS carrier_name,
     -- case when b.pod is null then 'Updating' else 'With attached image' end as delivery_image,
     -- case when b.pop is null then 'Updating' else 'With attached image' end as pick_up_image,
     null as delivery_image,
@@ -63,6 +63,8 @@ select
     SAFE_CAST(json_value(a_l,"$.weight") AS FLOAT64) as weight,
     json_value(a_l, "$.status") as original_status,
     array_length(json_extract_array(a_l,"$.baskets")) as num_bin,
+    JSON_VALUE(t.truck, "$.license_plate") AS license_plate
 from ${source.platinum}.delivery_prd_transporting_handover_ticket AS a
    , unnest(json_extract_array(a.so_list)) AS a_l
-where created_date >= (select DATE(start_date) from cte_date)
+   left join ${source.platinum}.delivery_prd_transporting_trip AS t ON t.trip_code = a.trip_code AND t.trip_code IS NOT NULL
+where a.created_date >= (select DATE(start_date) from cte_date)

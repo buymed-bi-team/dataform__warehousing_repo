@@ -74,6 +74,7 @@ WITH
             , b.area_code
         FROM voucher AS a
             LEFT JOIN area AS b USING(voucher_code)
+        WHERE b.area_code IS NOT NULL
     ),
 
     final_price AS (

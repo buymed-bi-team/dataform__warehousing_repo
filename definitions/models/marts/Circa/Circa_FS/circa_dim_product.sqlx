@@ -31,7 +31,7 @@ config {
 
 with rlv_price  as 
 (select product_id,tag_code
-from `${source.gold}.dim_sku_tag`
+from `${source.ref}.dim_sku_tag`
 where tag_code = 'QWER'
 qualify row_number() over (partition by product_id) = 1)
 ,

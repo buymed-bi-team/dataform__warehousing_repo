@@ -1,0 +1,69 @@
+config {
+    type: "table", 
+    description: 
+        `
+        PIC: nguyen.tran; 
+        `,
+    //tags: ["23h30"]
+}
+
+WITH
+    stock AS (
+        SELECT
+            a.sku_code
+            , b.product_name
+            , p.manufacturer_short_name AS manufacturer
+            , p.origin
+            , p.country_origin
+            , p.unit
+            , p.volumes AS package
+            , a.fc_code
+            , location_code
+            , stock_quantity
+            , s.retail_price_value
+        FROM gold_buymed_vn2.fact_stock_sku_item AS a
+            LEFT JOIN gold_buymed_vn2.dim_sku AS b ON a.sku_code = b.sku_code
+            LEFT JOIN gold_buymed_vn2.dim_product AS p ON p.product_id = b.product_id
+            LEFT JOIN gold_buymed_vn2.dim_sku_sales_region_current AS s ON a.sku_fc_key = s.sku_key_fc_code
+        WHERE 1=1
+            AND CONCAT(a.fc_code, location_code) IN ("BDDAMAGE-OF-LOGISTIC","BDDAMAGE-100","BDDAMAGE-60","BDDAMAGE-30","BDDAMAGE-10","BDDAMAGE-5","BDCOMMERCIAL-DAMAGE","BDQC-TEST","BDMEDX-DAMAGE","BDMAIN-DAMAGE","BDFM-DAMAGE","BDDA01B01","BDDA01C01","BDWH-DEMOLISHED","BDWH-LIQUIDATE","BDWH-NEAR-EXPIRE","BDCIRCA-NEAR-EXP","BDCIRCA-DAMAGE", "HNWH-NEAR-EXPIRE","HNWH-DEMOLISHED","HNWH-LIQUIDATE","HNDAMAGE-TO","HNDAMAGE-OF-LOGISTIC","HNDAMAGE-OF-EMP","HNDAMAGE-100","HNDAMAGE-60","HNDAMAGE-30","HNDAMAGE-10","HNDAMAGE-5","HNDMEDX","HNDSELLER","HNDMAIN","HNDLOG","HNDCST","HNDNHV","HND01D004","HND01D003","HND01D002","HND01D001","HNQC-TEST","HNCIRCA-DAMAGE-LOCK","HNCIRCA-CONSIGNMENT-DAMAGE","HNCIRCA-NEAR-EXP","HNCIRCA DAMAGED")
+            AND a.fc_code IN ("BD","HN")
+    )
+
+    , _in AS (
+        SELECT
+            a.sku_code
+            , a.fc_code
+            , a.location_to AS location_code
+            , SUM(done_quantity) AS total_in
+        FROM gold_buymed_vn2.fact_stock_moving_item AS a
+            LEFT JOIN gold_buymed_vn2.dim_sku AS b ON a.sku_code = b.sku_code
+        WHERE 1=1
+            AND CONCAT(a.fc_code, location_to) IN ("BDDAMAGE-OF-LOGISTIC","BDDAMAGE-100","BDDAMAGE-60","BDDAMAGE-30","BDDAMAGE-10","BDDAMAGE-5","BDCOMMERCIAL-DAMAGE","BDQC-TEST","BDMEDX-DAMAGE","BDMAIN-DAMAGE","BDFM-DAMAGE","BDDA01B01","BDDA01C01","BDWH-DEMOLISHED","BDWH-LIQUIDATE","BDWH-NEAR-EXPIRE","BDCIRCA-NEAR-EXP","BDCIRCA-DAMAGE", "HNWH-NEAR-EXPIRE","HNWH-DEMOLISHED","HNWH-LIQUIDATE","HNDAMAGE-TO","HNDAMAGE-OF-LOGISTIC","HNDAMAGE-OF-EMP","HNDAMAGE-100","HNDAMAGE-60","HNDAMAGE-30","HNDAMAGE-10","HNDAMAGE-5","HNDMEDX","HNDSELLER","HNDMAIN","HNDLOG","HNDCST","HNDNHV","HND01D004","HND01D003","HND01D002","HND01D001","HNQC-TEST","HNCIRCA-DAMAGE-LOCK","HNCIRCA-CONSIGNMENT-DAMAGE","HNCIRCA-NEAR-EXP","HNCIRCA DAMAGED")
+            AND a.fc_code IN ("BD","HN")
+            AND ts_moving_done >= '2025-01-01'
+        GROUP BY ALL
+    )
+
+    , _out AS (
+        SELECT
+            a.sku_code
+            , a.fc_code
+            , a.location_from AS location_code
+            , SUM(done_quantity) AS total_out
+        FROM gold_buymed_vn2.fact_stock_moving_item AS a
+            LEFT JOIN gold_buymed_vn2.dim_sku AS b ON a.sku_code = b.sku_code
+        WHERE 1=1
+            AND CONCAT(a.fc_code, location_from) IN ("BDDAMAGE-OF-LOGISTIC","BDDAMAGE-100","BDDAMAGE-60","BDDAMAGE-30","BDDAMAGE-10","BDDAMAGE-5","BDCOMMERCIAL-DAMAGE","BDQC-TEST","BDMEDX-DAMAGE","BDMAIN-DAMAGE","BDFM-DAMAGE","BDDA01B01","BDDA01C01","BDWH-DEMOLISHED","BDWH-LIQUIDATE","BDWH-NEAR-EXPIRE","BDCIRCA-NEAR-EXP","BDCIRCA-DAMAGE", "HNWH-NEAR-EXPIRE","HNWH-DEMOLISHED","HNWH-LIQUIDATE","HNDAMAGE-TO","HNDAMAGE-OF-LOGISTIC","HNDAMAGE-OF-EMP","HNDAMAGE-100","HNDAMAGE-60","HNDAMAGE-30","HNDAMAGE-10","HNDAMAGE-5","HNDMEDX","HNDSELLER","HNDMAIN","HNDLOG","HNDCST","HNDNHV","HND01D004","HND01D003","HND01D002","HND01D001","HNQC-TEST","HNCIRCA-DAMAGE-LOCK","HNCIRCA-CONSIGNMENT-DAMAGE","HNCIRCA-NEAR-EXP","HNCIRCA DAMAGED")
+            AND a.fc_code IN ("BD","HN")
+            AND ts_moving_done >= '2025-01-01'
+        GROUP BY ALL
+    )
+
+SELECT
+    stock.*
+    , _in.total_in
+    , _out.total_out
+FROM stock
+    LEFT JOIN _in USING(sku_code, fc_code, location_code)
+    LEFT JOIN _out USING(sku_code, fc_code, location_code)

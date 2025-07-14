@@ -1,0 +1,49 @@
+config {
+    type: "view",
+    schema: "platinum_buymed_vn",
+    name: "marketplace_prd_order_v2_order_item",
+    description : `
+    PIC: minh.luu
+    Partition by: created date
+    `,
+    tags:["platinum","marketplace_prd_order-v2"]
+}
+WITH silver AS (
+    SELECT
+        key,mg_id,product_id,vat,quantity,deal_owner,sku_version,order_code,deal_pricing_type,product_code,sku_price_type,charge_deal_fee_value,page,sku_contract_detail_code,event_source,created_time,order_id,seller_class,sku_level,fee,total_price,total_seller_price,none_vat,event_screen,type,deal_code,sku_status,seller_price,total_seller_revenue,source,tags,sku,charge_deal_fee,customer_id,is_sku_limit_existed,cart_item_created_time,item_code,price,seller_revenue,last_updated_time,seller_code,max_quantity,sku_contract_code,lot_dates,reserved_quantity,reserve_infos,notional_price,notional_quantity,outbound_infos,outbound_quantity,delivered_quantity,actual_price,actual_seller_price,completed_quantity,total_point,return_infos,returned_quantity,synced_at,extra_props,action,ingest_time,
+        CASE
+            WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time, 'Asia/Ho_Chi_Minh'))
+            ELSE DATE( '2099-01-01' )
+        END
+        created_date,
+        CAST(null as datetime) 
+    FROM silver_buymed_vn.marketplace_prd_order_v2_order_item
+    WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 1 DAY
+    QUALIFY ROW_NUMBER() OVER (_window) = 1 
+        AND ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 16 HOUR
+        WINDOW _window AS (
+        PARTITION BY mg_id
+        ORDER BY synced_at DESC,
+        IF
+            (action='d',3,
+            IF
+            (action='u',2,1)) DESC
+        ,last_updated_time DESC)
+), platinum AS (
+    SELECT 
+        key,mg_id,product_id,vat,quantity,deal_owner,sku_version,order_code,deal_pricing_type,product_code,sku_price_type,charge_deal_fee_value,page,sku_contract_detail_code,event_source,created_time,order_id,seller_class,sku_level,fee,total_price,total_seller_price,none_vat,event_screen,type,deal_code,sku_status,seller_price,total_seller_revenue,source,tags,sku,charge_deal_fee,customer_id,is_sku_limit_existed,cart_item_created_time,item_code,price,seller_revenue,last_updated_time,seller_code,max_quantity,sku_contract_code,lot_dates,reserved_quantity,reserve_infos,notional_price,notional_quantity,outbound_infos,outbound_quantity,delivered_quantity,actual_price,actual_seller_price,completed_quantity,total_point,return_infos,returned_quantity,synced_at,extra_props,action,ingest_time,
+        created_date,
+        platinum_refresh
+    FROM ${ref(`platinum_buymed_vn__stg`, `marketplace_prd_order_v2_order_item`)}
+)
+SELECT p.*
+FROM platinum p
+LEFT JOIN silver s 
+    ON p.mg_id = s.mg_id 
+WHERE s.mg_id is null 
+
+UNION ALL 
+
+SELECT s.*
+FROM silver s
+WHERE action != "d"

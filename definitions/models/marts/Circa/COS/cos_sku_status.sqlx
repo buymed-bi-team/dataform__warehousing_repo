@@ -1,0 +1,77 @@
+
+config {
+    type: "table",
+    description: `PIC: huyen.ngo; model_type: Table ;schedule: At 10h30`
+    /*Source:
+      ${source.silver}.marketplace_prd_order_v2_order_item
+      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
+    name: "cos_sku_status",
+    columns: {/*
+        order_id: "NonNull |" + docs.order_id,
+        customer_id: "NonNull | The unique identifier for each customer"*/
+        
+    }
+}
+with base_data as (
+Select distinct product_id
+from ${source.circa_os}.order_purchase_order_item
+where (sku is not null or sku <> '')
+     and received_quantity <> 0
+
+) --lấy danh sách sản phẩm đã mua trong quá khứ
+
+, thuocsi_sku_status as 
+( select distinct
+    a.product_id
+    ,sku_system_status
+    ,row_number() over (partition by a.product_id
+      order by 
+        case a.sku_system_status
+          when 'NORMAL' then 1
+          when 'LIMIT' then 2
+          when 'OUT_OF_STOCK' then 3
+          when 'SUSPENDED' then 4
+          else 5
+        end
+    ) as row_num
+  from ${source.ref}.adhoc_pm_master_sku a
+  where product_id in (Select distinct product_id from base_data)
+        and a.fc_code = 'BD')
+        
+        --lấy trạng thái sau cùng của thuốc sĩ ở khu vực miền Nam
+
+,inventory_by_product as (
+Select distinct product_id
+                ,pos_id
+                ,sum(on_hand_quantity) as current_stock_by_product
+                ,sum(cost_price_include_tax * on_hand_quantity) as current_stock_value
+from ${source.ref}.cos_fact_inventory v
+left join ${source.circa_os}.entity_pos_profile p on v.pos_id = p.id 
+where p.type = 'CIRCA'
+      and p.id not in ('c95a3338-4f5e-4264-958b-0d02e3fea49b','0d4c2e76-c6bf-487d-bf3e-d0b608d9fb5d')
+      and v.location_type <> 'CANCELLED'
+group by all
+---- tổng tồn kho hiện tại theo product , pos
+), by_product as (
+Select distinct o.product_id
+            , o.* except (product_id)
+            ,case when o.current_stock_by_product > 0 then 'NORMAL'
+                    when  thuocsi_sku_status.sku_system_status = 'SUSPENDED' then 'SUSPENDED'
+                    else 'OOS' END AS product_status
+from inventory_by_product o
+left join base_data on o.product_id = base_data.product_id 
+left join thuocsi_sku_status on base_data.product_id = thuocsi_sku_status.product_id
+where row_num = 1
+-- lấy trạng thái hiện tại của sản phẩm theo tồn kho, detail by sku
+),by_sku_not_thuocsi as (
+Select distinct o.product_id
+            , o.* except (product_id)
+            ,case when o.current_stock_by_product > 0 then 'NORMAL'
+                    else 'OOS' END AS product_status
+from inventory_by_product o
+left join base_data on o.product_id = base_data.product_id 
+where o.product_id not in (Select distinct product_id from by_product)
+)
+Select * from by_product
+union all 
+Select * from by_sku_not_thuocsi

@@ -1,0 +1,11 @@
+config {
+    type: "table",
+    //disabled: true,
+    description: `Last 13 month| PIC: huyen.nguyenthu; model_type: Table ;schedule: At minute 5 past hour 6, 8, 10, 12, 14, 16, 18, 20 and 22`,
+    tags: ["custom_2h_past5"],
+    name: "circa_pos_profile"
+}
+
+select * from ${source.circa_os}.entity_pos_profile
+where type in ('CIRCA', 'FS')
+    and code not in ('POS0006','POS0024','POS0030','POS0001','POS0047','POS0020','POS0020')

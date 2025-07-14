@@ -2,6 +2,7 @@ config {
     type: "table", 
     description: 
         `PIC: huyen.ngo; 
+        Current inventory
         Type: Table; 
         Refresh Schedule: At minute 10 past hour 7, 10, 13, 16 and 19;
         Source: 
@@ -10,38 +11,44 @@ config {
     columns: {
 
     }}
-WITH inventory AS (
-    SELECT 
-        a.product_id,
-        a.sku_code,
-        a.lot_date,
-        CASE
-            WHEN tax_rate <= 0 THEN 0
-            ELSE tax_rate
-        END AS tax_rate,
-        a.on_hand_qty AS on_hand_quantity,
-        a.location_id,
-        doc_code,a.cost_price_include_tax,
-        product_id || "_" || lot_date || "_" || tax_rate AS product_lot_date_vat
-    FROM ${source.circa_os}.inventory_location_detail AS a
-    WHERE 
-        doc_code IS NOT NULL 
-        AND deleted_at IS NULL
+with inventory as (
+    Select 
+        a.product_id
+        ,a.sku_code
+        ,a.lot_date
+        ,case
+            when tax_rate <= 0 then 0
+            else tax_rate
+        end as tax_rate
+        ,a.on_hand_qty AS on_hand_quantity
+        ,a.location_id
+        ,doc_code,a.cost_price_include_tax
+        ,product_id || "_" || lot_date as product_lot_date
+        ,product_id || "_" || lot_date || "_" || tax_rate as product_lot_date_vat
+    from ${source.circa_os}.inventory_location_detail as a
+    where 
+        doc_code is not null
+        and deleted_at is null
+        and client_id = 1
 )
 
-SELECT 
-    a.product_id,
-    a.sku_code,
-    a.lot_date,
-    a.tax_rate,
-    doc_code,a.cost_price_include_tax,
-    a.location_id,
-    a.product_lot_date_vat,
-    SUM(a.on_hand_quantity) AS on_hand_quantity,
-    b.pos_id,
-    location_type,
-    b.name AS location_name
-FROM inventory AS a
-LEFT JOIN ${source.circa_os}.inventory_location AS b ON a.location_id = b.id
-GROUP BY 
-    all
+select distinct
+     a.product_id
+    ,a.sku_code
+    ,a.lot_date
+    ,a.tax_rate
+    ,doc_code
+    ,a.cost_price_include_tax
+    ,a.location_id
+    ,product_lot_date
+    ,a.product_lot_date_vat
+    ,SUM(a.on_hand_quantity) AS on_hand_quantity
+    ,b.pos_id
+    ,location_type
+    ,b.name as location_name
+from inventory as a
+left join ${source.circa_os}.inventory_location as b on a.location_id = b.id
+left join ${source.circa_os}.entity_pos_profile p on b.pos_id = p.id 
+where p.type = 'CIRCA'
+      and p.id not in ('c95a3338-4f5e-4264-958b-0d02e3fea49b','0d4c2e76-c6bf-487d-bf3e-d0b608d9fb5d')
+group by all

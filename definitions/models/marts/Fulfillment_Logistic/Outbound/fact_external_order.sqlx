@@ -24,12 +24,13 @@ select
 	ho.tpl_name as carrier_name,
 	ho.tpl_service_id as carrier_id,
 	ho.type as order_type,
-	ho.status,
+	d.status,
+	ho.do_status,
     ho.created_by,
 	ho.hub_code as hub_pickup,
 	d.hub_code as hub_delivery,
-	ho.driver_id as pickup_driver_id,
-	ho.driver_name as pickup_driver_name,
+	ho.original_driver_id as pickup_driver_id,
+	ho.original_driver_name as pickup_driver_name,
 	ho.from_customer_name as order_placer_name,
 	coalesce(ho.from_customer_phone,d.from_customer_phone) as order_placer_phone,
 	coalesce(ho.from_customer_address,d.from_customer_address) as order_placer_address,
@@ -63,7 +64,7 @@ select
 from (
 	select *
 	from ${ref('fact_hub_order')}
-	qualify row_number() over (partition by reference_code order by created_at desc) = 1
+	qualify row_number() over (partition by reference_code order by created_at) = 1
 ) ho
 left join (
     select * 

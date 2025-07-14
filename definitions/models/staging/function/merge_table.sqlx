@@ -1,0 +1,175 @@
+
+
+DECLARE silver_dataset STRING;
+DECLARE main_table_name STRING;
+DECLARE migrate_table_name STRING;
+DECLARE has_last_updated_time BOOL;
+DECLARE has_created_time BOOL;
+DECLARE has_created_date BOOL;
+DECLARE column_list ARRAY< STRING >;
+
+DECLARE query STRING;
+
+BEGIN
+  BEGIN TRANSACTION;
+    SET silver_dataset = "silver_buymed_th";
+    SET main_table_name = "marketplace_prd_promotion_campaign";
+
+    SET migrate_table_name = main_table_name || "_migrate";
+
+    SET (
+      has_last_updated_time,
+      has_created_time,
+      has_created_date,
+      column_list
+    ) = (
+      SELECT AS STRUCT
+        MAX(column_name like 'last_updated_time') has_last_updated_time,
+        MAX(column_name like 'created_time') has_created_time,
+        MAX(column_name like 'created_date') has_created_date,
+        ARRAY_AGG( column_name ) column_list
+      FROM `region-asia-southeast1`.INFORMATION_SCHEMA.COLUMNS
+      WHERE table_schema = silver_dataset
+        AND table_name = main_table_name
+    );
+
+    SET query = FORMAT("""
+    CREATE TEMP TABLE silver 
+    AS (
+        SELECT
+            mg_id,
+            ARRAY_AGG(
+                key 
+                ORDER BY
+                    synced_at DESC,
+                    IF (action='d',3, IF (action='u',2,1)) DESC
+                    %s
+                LIMIT 1
+            )[0] key ,
+            ARRAY_AGG(
+                %s 
+                ORDER BY
+                    synced_at DESC,
+                    IF (action='d',3, IF (action='u',2,1)) DESC
+                    %s
+                LIMIT 1
+            )[0] created_time ,
+            ARRAY_AGG(
+                %s 
+                ORDER BY
+                    synced_at DESC,
+                    IF (action='d',3, IF (action='u',2,1)) DESC
+                    %s
+                LIMIT 1
+            )[0] last_updated_time ,
+            ARRAY_AGG(
+                action 
+                ORDER BY
+                    synced_at DESC,
+                    IF (action='d',3, IF (action='u',2,1)) DESC
+                    %s
+                LIMIT 1
+            )[0] action
+        FROM %s
+        GROUP BY mg_id HAVING action != "d"
+    )
+    """
+    , IF(has_last_updated_time, ", last_updated_time DESC", "")
+    , IF(has_created_time, "created_time", "CURRENT_TIMESTAMP()")
+    , IF(has_last_updated_time, ", last_updated_time DESC", "")
+    , IF(has_last_updated_time, "last_updated_time", "CURRENT_TIMESTAMP()")
+    , IF(has_last_updated_time, ", last_updated_time DESC", "")
+    , IF(has_last_updated_time, ", last_updated_time DESC", "")
+    , silver_dataset || "." || main_table_name
+    );
+    EXECUTE IMMEDIATE query;
+
+
+    SET query = FORMAT("""
+    INSERT INTO %s 
+    ( %s )
+    (
+        SELECT %s
+        FROM %s m
+        LEFT JOIN silver s 
+            ON m.mg_id = s.mg_id
+        WHERE s.mg_id IS NULL 
+        %s
+    );
+    """
+    , silver_dataset || "." || main_table_name
+    , ARRAY_TO_STRING( column_list, ",\n ")
+    , ARRAY_TO_STRING( ARRAY(SELECT  "m." || c FROM UNNEST(column_list) c ), ", \n ")
+    , silver_dataset || "." || migrate_table_name
+    , IF(
+          has_last_updated_time, 
+          "OR m.last_updated_time > s.last_updated_time", 
+          ""
+        ) 
+    );
+    EXECUTE IMMEDIATE query;
+
+
+    SET query = FORMAT("""
+    INSERT INTO %s
+    ( key ,mg_id, synced_at, ingest_time, action %s )
+    (
+        SELECT 
+            GENERATE_UUID() key,
+            s.mg_id,
+            CURRENT_TIMESTAMP() synced_at,
+            CURRENT_TIMESTAMP() ingest_time,
+            "d" action
+            %s
+        FROM %s m
+        RIGHT JOIN silver s 
+            ON m.mg_id = s.mg_id
+        WHERE m.mg_id is null
+        AND s.mg_id BETWEEN 
+          (SELECT min(mg_id) FROM %s) 
+          AND (SELECT max(mg_id) FROM %s)
+    );
+    """
+    , silver_dataset || "." || main_table_name
+    , IF(has_created_date , ", created_date", "")
+    , IF( has_created_date , IF(has_created_time, 
+        ", DATE(s.created_time) created_date", 
+        ", DATE(silver_buymed_vn.MONGOID_TIMESTAMP(s.mg_id)) created_date"),
+        "")
+    , silver_dataset || "." || migrate_table_name
+    , silver_dataset || "." || migrate_table_name
+    , silver_dataset || "." || migrate_table_name
+    );
+    EXECUTE IMMEDIATE query;
+  COMMIT TRANSACTION;
+
+  SET query = FORMAT("""
+  ALTER TABLE %s
+  SET OPTIONS ( expiration_timestamp = CURRENT_TIMESTAMP() + INTERVAL 14 DAY );
+  """, silver_dataset || "." || migrate_table_name);
+  EXECUTE IMMEDIATE query;
+
+  SET query = FORMAT("""
+  ALTER TABLE %s
+  RENAME TO %s
+  """
+  , silver_dataset || "." || migrate_table_name
+  , migrate_table_name || "_drop_" || FORMAT_TIMESTAMP("%y%m%dT%H%M%S", CURRENT_TIMESTAMP()));
+
+  EXECUTE IMMEDIATE query;
+
+EXCEPTION WHEN ERROR THEN
+  -- If ANY error occurs in the block above (between BEGIN TRANSACTION and COMMIT),
+  -- the code jumps here automatically.
+  -- This is the crucial step: undo all changes made since BEGIN TRANSACTION.
+  ROLLBACK TRANSACTION;
+
+  -- (Optional but recommended) You can re-raise the error to notify the caller
+  -- that the procedure failed.
+  RAISE USING MESSAGE = CONCAT("Procedure failed. Transaction was rolled back. Original error: ", @@error.message);
+
+END;
+
+
+
+

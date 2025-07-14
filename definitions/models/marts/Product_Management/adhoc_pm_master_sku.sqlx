@@ -112,7 +112,7 @@ select
     CURRENT_DATETIME("+7") AS last_refreshed_at
     , sku.*
     , vcpic.commitment_leadtime
-    , uns.value as unstable
+    , IF(uns.value IS NOT NULL, "UNSTABLE", NULL) as unstable
     , it.type as internal_transfer
     , reason.reason_turnoff
     , vcpic.cic_category_username as vendor_cic_name

@@ -117,35 +117,22 @@ WITH product_retail_unit AS (
   GROUP BY product_id
 )
 
-  , product_cic AS (
-      SELECT
-          SAFE_CAST(code AS INT64) AS product_id
-          , LOWER(IF(value <> "NAN", value, NULL)) AS cic_name
-          , b.branch_account_id AS cic_account_id
-      FROM collector.data_prd AS a
-          LEFT JOIN ${ref('dim_employee')} AS b ON a.value = UPPER(b.user_name)
-      WHERE
-          object = 'Product'
-          AND type = 'CIC'
-          AND submit_id >= 5046
-      QUALIFY ROW_NUMBER() OVER(PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
-  )
-
   , high_margin_product AS (
       SELECT 
           SAFE_CAST(code AS INT64) AS product_id
           , NULLIF(value, "NAN") as high_margin
-      FROM collector.data_prd
+      FROM ${source.collector}.data_prd
       WHERE object = 'Product' and type = 'HIGH_MARGIN'
       QUALIFY ROW_NUMBER() OVER(PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
   )
 
   , is_ingredient_special AS (
-    SELECT
+    SELECT DISTINCT
       product_id
+      , usages
     FROM ${ref('dim_product_ingredient')}
     WHERE is_ingredient_special
-    GROUP BY 1
+    -- GROUP BY 1
   )
 
   , retail_price AS (
@@ -179,6 +166,30 @@ WITH product_retail_unit AS (
         FROM buymed_external.potential_high_margin_product
   )
 
+  , chronic AS (
+      SELECT
+          SAFE_CAST(code AS INT64) AS product_id
+          , NULLIF(value, "NAN") AS chronic
+      FROM ${source.collector}.data_prd
+      WHERE DATE(submit_at) >= "2025-06-18"
+          AND submit_id >= 5539
+          AND object = "Product"
+          AND type = "CHRONIC"
+      QUALIFY ROW_NUMBER() over (PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
+  )
+  
+  , essential AS (
+      SELECT
+          SAFE_CAST(code AS INT64) AS product_id
+          , NULLIF(value, "NAN") AS essential
+      FROM collector.data_prd
+      WHERE DATE(submit_at) >= "2025-06-18"
+          AND submit_id >= 5539
+          AND object = "Product"
+          AND type = "ESSENTIAL"
+      QUALIFY ROW_NUMBER() over (PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
+  )
+
 SELECT
   ${utils.ToTimezone('current_timestamp()')} as transformed_at,
   ${utils.ToTimezone('product.created_time')} as product_created_at,
@@ -186,7 +197,7 @@ SELECT
   CAST(product.product_id AS STRING) AS filter_product_id,
   product.code as product_code, 
   product.name as product_name,
-  seller_category.name AS product_category,
+  -- seller_category.name AS product_category,
   product.seller_category_code as product_category_code,
   product.vat,
   -- product.brand,
@@ -216,26 +227,43 @@ SELECT
     WHEN product.origin IN ('Vietnam', 'VN') THEN 'Local'
     WHEN product.origin NOT IN ('Vietnam', 'VN') THEN 'Import'
   END AS origin_type,
-  tb3.name as country_origin,
+  COALESCE(tb3.name, product.origin) as country_origin,
   product.registration_number,
 
   -- IF(product.is_prescription = TRUE, "DRUG","NON-DRUG") is_prescription,
   -- IF(product.is_ingredient_special = TRUE, "SPECIAL","NORMAL") is_ingredient_special,
   -- IF(product.is_fragile = TRUE,"FRAGILE","NORMAL") is_fragile,
   -- IF(product.is_frozen = TRUE, "FROZEN","NORMAL") is_frozen,
+  -- seller_category.name AS product_category,
+  CASE
+      WHEN product.seller_category_code = "AQFV2U" THEN 
+        CASE
+          WHEN seller_sub_category.code IN ('XT2U1Y','LALT0T') THEN seller_sub_category.name
+          ELSE "Thuốc không kê đơn"
+        END
+      ELSE seller_category.name
+  END AS product_category,
   CASE
       WHEN product.seller_category_code = 'AQFV2U' THEN
         CASE
           WHEN seller_sub_category.code IN ('XT2U1Y','LALT0T') THEN seller_sub_category.name
-          ELSE NULL
+          ELSE "Thuốc không kê đơn"
         END
       ELSE 'Không phải Thuốc'
-    END AS is_prescription,
-  product.is_fragile,
-  product.is_frozen,
+  END AS is_prescription,
+  IFNULL(product.is_fragile, FALSE) AS is_fragile,
+  IFNULL(product.is_frozen, FALSE) AS is_frozen,
+  IFNULL(product.is_liquid, FALSE) AS is_liquid,
+  IFNULL(product.is_herb,FALSE) AS is_herb,
+  IFNULL(SAFE_CAST(JSON_VALUE(product.extra_props, '$.is_portable') AS BOOLEAN), FALSE) as is_portable,
   -- product.is_ingredient_special,
-  IF(iis.product_id IS NOT NULL, TRUE, FALSE) AS is_ingredient_special,
-  product.is_herb,
+  IF(
+    iis.product_id IS NOT NULL 
+    AND product.seller_category_code = "AQFV2U"
+    AND REGEXP_CONTAINS(LOWER(iis.usages), LOWER(product.usage))
+    , TRUE
+    , FALSE
+  ) AS is_ingredient_special, -- product must have special ingredients and be a medicine to be classified as a special controlled medicine
 
   product.height,
   product.length,
@@ -243,7 +271,6 @@ SELECT
   product.weight,
 
   IF(product.usage = "Dùng tại chổ","Dùng tại chỗ", product.usage) AS usage,
-  JSON_EXTRACT_SCALAR(product.extra_props, '$.is_portable') as is_portable,
   atc2.name AS act_2,
   atc3.name AS act_3,
   JSON_EXTRACT_SCALAR(product.retail_info, '$.retail_name') as retail_name,
@@ -281,28 +308,17 @@ SELECT
           r'combo|quà|tặng|khuyến mãi|khuyến mại|hóa đơn|bảo hiểm|thẻ cào|mua|gift 1|gift 2|tờ rơi|áo blouse|poster|ưu đãi|trưng bày'
         ) OR LOWER(product.name ) LIKE '% circa %' OR LOWER(product.name ) LIKE '% thuocsi %' 
         then 'PROMOTION'
+    WHEN UPPER(product.name) LIKE "%[HÀNG THU HỒI]%" THEN "RECALLED"
     ELSE 'NORMAL'
   END product_report_category,
-  -- IF(
-  --       REGEXP_CONTAINS(
-  --           LOWER(product.name),
-  --           r'combo|quà|tặng|khuyến mãi|khuyến mại|hóa đơn|bảo hiểm|thẻ cào|mua|gift 1|gift 2|tờ rơi|áo blouse|poster|ưu đãi|trưng bày'
-  --       ) OR product.owner = 'MARKETING' OR product.owner = '%[Tech]%' OR LOWER(product.name) LIKE '% circa %' OR LOWER(product.name) LIKE '% thuocsi %',
-  --       'Promotion Product',
-  --       'Normal Product'
-  --   ) AS product_classification,
-
   tb4.name as main_category_name,
-
   product.is_combo,
-
-  cic.cic_name,
-  cic.cic_account_id,
-
   hmp.high_margin,
-
   rp.retail_price,
-  op.ownbrand_portfolio
+  op.ownbrand_portfolio,
+  chronic.chronic,
+  essential.essential
+
 
 FROM ${source.platinum}.marketplace_prd_product_v2_product AS product
 LEFT JOIN  ${source.platinum}.seller_prd_core_seller AS seller on product.owner = seller.code
@@ -315,12 +331,14 @@ LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_product AS tb1 ON tb1.co
 LEFT JOIN product_retail_unit AS tb2 ON tb2.product_id = product.product_id
 LEFT JOIN ${source.platinum}.core_prd_master_data_country AS tb3 ON tb3.code = product.origin
 LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_main_category AS tb4 ON tb4.code = product.main_category_code
-LEFT JOIN product_cic AS cic ON cic.product_id = product.product_id
+-- LEFT JOIN product_cic AS cic ON cic.product_id = product.product_id
 LEFT JOIN high_margin_product AS hmp ON hmp.product_id = product.product_id
 LEFT JOIN is_ingredient_special AS iis ON iis.product_id = product.product_id
 LEFT JOIN retail_price AS rp ON rp.product_id = product.product_id
 LEFT JOIN brand AS br ON br.product_id = product.product_id
 LEFT JOIN ownbrand_portfolio AS op ON op.product_id = product.product_id
+LEFT JOIN chronic AS chronic ON chronic.product_id = product.product_id
+LEFT JOIN essential AS essential ON essential.product_id = product.product_id
 
 WHERE
     LOWER(product.name) NOT LIKE '%(bỏ)%'

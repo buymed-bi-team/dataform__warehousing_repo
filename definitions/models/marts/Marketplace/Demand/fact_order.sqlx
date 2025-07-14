@@ -121,17 +121,15 @@ WITH
       a.customer_ward_code AS original_shipping_ward_code,
       a.customer_province_code AS shipping_province_code,
       a.customer_order_index,
-      CASE
-        WHEN (a.warehouse_code IS NULL) OR (a.warehouse_code ="") THEN "BD" -- huong.dang add
-        ELSE a.warehouse_code
-      END
+      COALESCE(
+        SUBSTR(a.sale_order_code, 3, 2)
+        ,CASE
+          WHEN (a.warehouse_code IS NULL) OR (a.warehouse_code ="") THEN "BD" -- huong.dang add
+          ELSE a.warehouse_code
+        END
+      )
         AS fc_code,
-      CASE
-        WHEN (a.warehouse_code IS NULL) OR (a.warehouse_code ="") OR a.warehouse_code = "BD" THEN "MIENNAM" 
-        WHEN a.warehouse_code = "HN" THEN "MIENBAC"
-        WHEN a.warehouse_code = "DN" THEN "MIENTRUNG"
-      END
-        AS sales_region_code,
+      
       a.sale_order_status AS so_status,
       JSON_VALUE(a.extra_props, '$.note') AS note,
       JSON_VALUE(a.extra_props, '$.auto_cancel_overdue_transfer') AS auto_cancel_overdue_transfer,
@@ -229,7 +227,13 @@ WITH
       JSON_QUERY(a.extra_props, '$.customer_tags') AS customer_tags,
       IF(a.status = 'CANCEL', "CANCELLED", "NORMAL") AS cancellation,
 
-      redeem_apply_result
+      redeem_apply_result,
+
+      IF(
+        a.status = "WAIT_TO_CONFIRM" AND a.payment_method = "PAYMENT_METHOD_BANK" AND JSON_VALUE(a.extra_props, "$.wait_for_transfer") = "true"
+        , true
+        , false
+      ) AS is_on_hold
 
     FROM ${source.platinum}.marketplace_prd_order_v2_order AS a
       LEFT JOIN customer_rating r 
@@ -255,6 +259,12 @@ WITH
   fact_order_v2 AS (
     SELECT
       a.*,
+      CASE fc_code
+        WHEN "BD" THEN "MIENNAM" 
+        WHEN "HN" THEN "MIENBAC"
+        WHEN "DN" THEN "MIENTRUNG"
+      END
+        AS sales_region_code,
       CONCAT(CAST(FORMAT_DATE('%m-%Y', date(created_at)) AS STRING), "_", customer_id) as month_id,
       CASE
         WHEN sales_status IN ("CANCEL", "REVERTING") THEN 0

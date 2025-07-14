@@ -1,0 +1,69 @@
+config {
+  type: "table",
+  tags: ["custom_1h_past10", "FC_BACKLOG"]
+}
+
+SELECT
+    wt.created_date
+    , wt.created_time + INTERVAL 7 HOUR AS created_time
+    , wt.status
+    , CASE wt.status
+        WHEN "WAIT_TO_PROCESS" THEN "Chờ xử lý"
+        WHEN "WAIT_TO_UPDATE" THEN "Chờ cập nhật"
+        WHEN "WAIT_TO_CONFIRM" THEN "Chờ xác nhận"
+        WHEN "WAIT_TO_DELIVER" THEN "Đang chờ giao"
+        WHEN "DELIVERED" THEN "Đã giao hàng"
+        WHEN "DELIVERING" THEN "Đang giao hàng"
+        WHEN "PROCESSING" THEN "Đang xử lý"
+        WHEN "OUTDATED" THEN "Đã quá hạn"
+        WHEN "WAIT_TO_RECEIVE" THEN "Chờ nhận hàng"
+        WHEN "COMPLETED" THEN "Đã hoàn tất"
+        WHEN "DRAFT" THEN "Nháp"
+      END AS seller_status
+    , wt.return_order_code
+    , wt.source_location
+    , wt.last_updated_time + INTERVAL 7 HOUR AS last_updated_time
+    , wt.code as ticket_code
+    , wt.warehouse_code as fc_code
+    , wt.status as ticket_status
+    , wt.delivery_method
+    , JSON_VALUE(wt.delivery_info, "$.hub_code") AS hub_code
+    , JSON_VALUE(wt.delivery_info, "$.shipping_order_code") AS shipping_order_code
+    , wt.seller_code
+    , DATE_DIFF(wt.overdue_date, current_timestamp(), DAY) + 2 as day_left
+    , wt.note as ticket_note
+    , wi.product_id
+    , p.product_name
+    , wi.sku_code
+    , wi.quantity
+    , wi.reason as sku_note
+    , timestamp_add( current_timestamp(), interval 7 hour ) as transformed_at
+    , c.sale_order_time + INTERVAL 7 HOUR AS sale_order_time
+    , t.created_time + INTERVAL 7 HOUR AS do_booking_time
+    , DATE(TIMESTAMP(JSON_VALUE(wt.delivery_info, "$.receive_date")) + INTERVAL 7 HOUR) AS expected_receive_date
+FROM ${source.platinum}.seller_prd_wis_withdraw_ticket AS wt
+    LEFT JOIN ${source.platinum}.seller_prd_wis_withdraw_item AS wi on wt.code = wi.withdraw_code
+    LEFT JOIN (
+            SELECT
+                sale_order_code
+                , sale_order_time
+            FROM ${source.platinum}.warehouse_prd_core_sale_order
+            WHERE created_date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 6 MONTH)
+            UNION ALL
+            SELECT
+                order_code
+                , created_time
+            FROM ${source.platinum}.warehouse_prd_inbound_pre_inbound_return_order
+            WHERE created_date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 6 MONTH)
+    ) AS c ON wt.return_order_code = c.sale_order_code
+    LEFT JOIN ${ref('dim_product')} AS p ON wi.product_id = p.product_id
+    LEFT JOIN (
+        SELECT *
+        FROM ${source.platinum}.delivery_prd_transporting_shipping_order
+        WHERE created_date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 6 MONTH)
+    ) AS t ON t.reference_code = JSON_VALUE(wt.delivery_info, "$.shipping_order_code")
+WHERE 1=1
+    AND wt.created_date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 6 MONTH)
+    AND wi.created_date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 6 MONTH)
+    
+    AND wt.status NOT IN ( "CANCELLED")

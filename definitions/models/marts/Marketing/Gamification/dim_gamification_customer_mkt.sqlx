@@ -1,0 +1,65 @@
+config {
+    type: "table", 
+    description: 
+        `
+        PIC: huyen.nguyenthu; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.platinum}.marketplace_prd_promotion_gamification,
+            ${source.ref}.dim_customer,
+            ${source.ref}.dim_gamification_mkt
+        `,
+    tags: ["custom_1h_past5"]
+}
+
+WITH
+    active_customer_gamification AS (
+        SELECT
+            a.customer_id
+            , a.gamification_id
+            , g.gamification_code
+        FROM ${source.platinum}.marketplace_prd_promotion_gamification_customer AS a
+            LEFT JOIN  ${source.ref}.dim_gamification_mkt AS g USING(gamification_id)
+        WHERE a.status IN ("ACTIVE", "INACTIVE")
+            AND g.gamification_id IS NOT NULL
+    )
+
+    , customer_and_gamification AS (
+        SELECT
+            c.customer_id
+            , g.gamification_id
+            , g.gamification_code
+        FROM  ${source.ref}.dim_customer AS c
+            ,  ${source.ref}.dim_gamification_mkt AS g
+        WHERE customer_status = "ACTIVE"
+            AND g.gamification_id NOT IN (SELECT DISTINCT gamification_id FROM active_customer_gamification)
+
+    )
+
+    , excluding_customer AS (
+        SELECT
+            a.customer_id
+            , g.gamification_id
+            , g.gamification_code
+        FROM ${source.platinum}.marketplace_prd_promotion_gamification_customer AS a
+            LEFT JOIN  ${source.ref}.dim_gamification_mkt AS g USING(gamification_id)
+        WHERE a.status = "BLACKLIST"
+            AND g.gamification_id IS NOT NULL
+    )
+
+    , final AS (
+        SELECT
+            *
+        FROM customer_and_gamification
+        EXCEPT DISTINCT
+        SELECT
+            *
+        FROM excluding_customer
+    )
+
+SELECT *
+FROM active_customer_gamification
+UNION DISTINCT
+SELECT *
+FROM final

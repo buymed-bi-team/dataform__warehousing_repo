@@ -1,6 +1,6 @@
 config {
     type: "table",
-    description: `PIC: huyen.ngo; model_type: Table ;schedule: At 10h30`
+    description: `Full convert unit. PIC: huyen.ngo; model_type: Table ;schedule: At 10h30`
     /*Source:
       ${source.silver}.marketplace_prd_order_v2_order_item
       ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
@@ -18,7 +18,8 @@ with cte_product as (select p.product_id,
                             p.name as product_name,
                             p.volumes,
 --                             p.unit,
-                     from ${source.circa_os}.product_product p)
+                     from ${source.circa_os}.product_product p
+                     where client_id =1)
 ,
     product_base_unit as
 (
@@ -27,6 +28,7 @@ with cte_product as (select p.product_id,
       from ${source.circa_os}.product_retail_unit as a
       -- right join ${source.circa_os}.product_product as b on a.product_id = b.product_id
       where a.base_unit is true and (unit is not null or unit <> "")
+            and client_id = 1
       qualify row_number() over(partition by product_id order by created_at desc ) =1
       ),
     convert_unit as

@@ -1,0 +1,23 @@
+config {
+    type: "table", 
+    description: 
+        `
+        PIC: huyen.nguyenthu; 
+        Type: Table; 
+        Refresh Schedule: daily;
+        Source: 
+            ${source.platinum}.marketplace_prd_promotion_lucky_wheel
+        `,
+    tags: ["custom_2h_past5"]
+}
+
+
+SELECT
+    code AS lucky_wheel_code
+    , name AS lucky_wheel_name
+    , TIMESTAMP_ADD(start_time, INTERVAL 7 HOUR) AS start_time
+    , TIMESTAMP_ADD(end_time, INTERVAL 7 HOUR) AS end_time
+FROM ${source.platinum}.marketplace_prd_promotion_lucky_wheel
+WHERE NOT REGEXP_CONTAINS(LOWER(name), r'tech|test')
+AND code NOT IN ("AH61C6AX", "UWL4LKFK", "JJ4A7BVJ")
+AND EXTRACT(YEAR FROM TIMESTAMP_ADD(start_time, INTERVAL 7 HOUR)) = 2025

@@ -1,6 +1,6 @@
 config {
     type: "table",
-    description: `Circa OS Transaction order item detail PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`,
+    description: `Circa OS purchase order item detail PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`,
     /*Source:
       ${source.silver}.marketplace_prd_order_v2_order_item
       ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5,*/
@@ -13,7 +13,7 @@ config {
 }
 
 select
-       a.created_at,
+       datetime_add(c.created_at, interval 7 hour) as created_at,
        a.purchase_order_id as po_id,
        a.product_id,
        a.sku as sku_code,

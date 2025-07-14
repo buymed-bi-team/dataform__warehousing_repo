@@ -1,0 +1,34 @@
+config {
+    type: "view",
+    disabled: true,
+    tags: ["sla_performance"]
+}
+
+WITH _silver_buymed_vn AS (
+  SELECT 
+    
+    table_id, 
+    COUNTIF( column_name like "created_time" )  has_created_time,
+    COUNTIF( column_name like "last_updated_time") has_last_updated_time
+  FROM gold_buymed_vn2.staging_sla__table_metadata a
+  LEFT JOIN silver_buymed_vn.INFORMATION_SCHEMA.COLUMNS b
+    ON a.table_id = b.table_name
+    
+  WHERE index_time >= CURRENT_TIMESTAMP() - INTERVAL 1 HOUR
+  AND dataset_id = "silver_buymed_vn"
+  AND last_updated_time >= CURRENT_TIMESTAMP() - INTERVAL 30 DAY
+  AND table_type like "BASE TABLE"
+  AND table_id not like "monitoring_prd_collector%"
+  AND NOT REGEXP_CONTAINS(table_id, "backup|migrate|dev|tech|_merge|log|innovation")
+
+  GROUP BY 1
+)
+
+
+SELECT 
+  "silver_buymed_vn" dataset_id ,
+  STRING_AGG (
+    FORMAT( """  [ "%s", "%d", "%d" ]  """ ,table_id , has_created_time, has_last_updated_time ) , ", \n"
+  )  content 
+FROM _silver_buymed_vn
+
