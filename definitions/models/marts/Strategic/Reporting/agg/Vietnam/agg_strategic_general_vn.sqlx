@@ -151,7 +151,7 @@ JOIN base_calendar c ON DATE(d.delivery_date) = c.date
 UNION ALL
 SELECT a.* 
 FROM ${ref(`agg_strategic_customer`)} a
-JOIN base_calendar c ON c.date = a.date
+JOIN base_calendar c ON c.eom = a.date
 
 UNION ALL
 SELECT
@@ -163,7 +163,7 @@ SELECT
   supplier_class,
   value
 FROM ${ref(`agg_strategic_customer`)} a
-JOIN base_calendar c ON c.date = a.date
+JOIN base_calendar c ON c.eom = a.date
 
 UNION ALL
 SELECT 
