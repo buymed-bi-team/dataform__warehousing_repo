@@ -1,7 +1,7 @@
 config {
     type: "table", 
     description: 
-        `PIC: tu.dang; 
+        `PIC: huyen.ngo; 
         Type: Table; 
         Refresh Schedule: every 2 hour;
         Source: 
@@ -18,16 +18,17 @@ config {
 }
 
 
-SELECT
+Select
     p.product_id
-    , i.name AS ingredient_name
-    , REPLACE(JSON_EXTRACT_SCALAR(pi.volume), ' ', '') AS volume
-    , ROW_NUMBER() over (PARTITION BY p.product_id) AS ingredient_level
-    , i.description
-    , COALESCE(i.is_medicine, FALSE) AS is_medicine
-    , p.usage
+    ,i.name AS ingredient_name
+    ,replace(JSON_EXTRACT_SCALAR(pi.volume), ' ', '') AS volume
+    ,ROW_NUMBER() over (PARTITION BY p.product_id) AS ingredient_level
+    ,i.description
+    ,COALESCE(i.is_medicine, FALSE) AS is_medicine
+    ,p.usage
+    ,p.client_id
 --     , IFNULL(i.is_ingredient_special, FALSE) AS is_ingredient_special
-FROM ${source.circa_os}.product_product AS p
-    , UNNEST(JSON_EXTRACT_ARRAY(PARSE_JSON(p.ingredients))) AS pi
-LEFT JOIN ${source.circa_os}.product_ingredient AS i ON i.code = REPLACE(JSON_EXTRACT_SCALAR(pi.ingredient_code), ' ', '')
+from ${source.circa_os}.product_product as p
+    , unnest(JSON_EXTRACT_ARRAY(PARSE_JSON(p.ingredients))) as pi
+left join ${source.circa_os}.product_ingredient as i on i.code = replace(JSON_EXTRACT_SCALAR(pi.ingredient_code), ' ', '') and p.client_id = i.client_id
 where p.client_id = 1
