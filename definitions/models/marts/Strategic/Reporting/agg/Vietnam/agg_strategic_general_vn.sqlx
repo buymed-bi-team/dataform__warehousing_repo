@@ -99,43 +99,10 @@ order_metrics_flattened AS (
   ]) AS metric
 )
 
--- fc_code-level version
--- order_metrics_fc_flattened AS (
---   SELECT
---     CURRENT_DATETIME("+7") AS refresh_time,
---     c.eom AS date,
---     m.fc_code AS location,
---     m.channel,
---     m.supplier_class,
---     metric.measure,
---     metric.value
---   FROM order_metrics m
---   JOIN base_calendar c ON DATE(m.order_date) = c.date
---   CROSS JOIN UNNEST([
---     STRUCT("GMV_BEFORE_CANCEL" AS measure, m.gmv_before_cancel AS value),
---     STRUCT("GMV_AFTER_CANCEL", (m.gmv_before_cancel - m.cancel_before_ffm)),
---     STRUCT("CANCEL", m.cancel),
---     STRUCT("CANCEL_AFTER_FFM", m.cancel_after_ffm),
---     STRUCT("CANCEL_BEFORE_FFM", m.cancel_before_ffm),
---     STRUCT("GMV_FULFILLED", m.fulfilled_amount),
---     STRUCT("NMV", m.cancel_after_ffm + m.fulfilled_amount + m.gmv_backlog + m.returned_amount),
---     STRUCT("COMMERCIAL_AMOUNT", m.commercial_amount),
---     STRUCT("COMMERCIAL_DEAL_AMOUNT", m.commercial_deal_amount),
---     STRUCT("COMMERCIAL_CAMPAIGN_AMOUNT", m.commercial_campaign_amount),
---     STRUCT("COMMERCIAL_COMBO_AMOUNT", m.commercial_combo_amount),
---     STRUCT("GMV_UNFF", m.gmv_unff),
---     STRUCT("GMV_WITH_LISTED_PRICE", m.gmv_with_listed_price),
---     STRUCT("ITEM_SOLD", m.item_sold),
---     STRUCT("GMV_BACKLOG", m.gmv_backlog),
---     STRUCT("GMV_RETURN", m.gmv_return)
---   ]) AS metric
--- )
-
--- Final SELECT combining all metrics
 SELECT * FROM order_metrics_flattened
+
 UNION ALL
--- SELECT * FROM order_metrics_fc_flattened
--- UNION ALL
+
 
 SELECT 
   CURRENT_DATETIME("+7") AS refresh_time,
