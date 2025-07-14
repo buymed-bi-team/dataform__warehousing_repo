@@ -15,22 +15,18 @@ config {
         partitionBy: "date(created_at)"
     }
 }
-
 with return_cancel as (
     select o.code
     from ${source.circa}.order_order o
     left join ${source.circa}.entity_pos_profile p on o.pos_id = p.id
     where pos_id in ("b6c40920-af79-4fb0-bdc4-9965ddb885d2", "e737c882-e90c-4fd2-8a4f-ac6afd248a33")
     AND o.type = 'RETURN' and o.status = 'CANCELED'
-
     union all
-
     select c.code
     from ${source.circa_os}.order_return_order c
-    left join ${source.circa_os}.entity_pos_profile p on c.pos_id = p.id
+    left join ${source.ref}.circa_pos_profile p on c.pos_id = p.id
     where c.status = 'CANCELED'
 ),
-
 cte_fs as
     (select o.id as order_id
        ,pos_id, p.code as pos_code
@@ -55,6 +51,7 @@ cte_fs as
        ,date(DATETIME_ADD(completed_at, INTERVAL 7 HOUR))  as completed_date
        ,medicine_cutting_fee
        ,STRING_AGG(CAST(return_id as string)) as return_codes
+       ,1 as client_id
 from ${source.circa}.order_order o
 left join UNNEST(JSON_VALUE_ARRAY(order_return_codes)) AS return_id
 left join ${source.circa}.entity_pos_profile p on o.pos_id = p.id
@@ -62,7 +59,6 @@ left join ${source.circa}.entity_entity en on o.updated_by = en.id
 where pos_id in ("b6c40920-af79-4fb0-bdc4-9965ddb885d2", "e737c882-e90c-4fd2-8a4f-ac6afd248a33")
     AND o.type <> 'RETURN'
 group by all),
-
 cte_os as
     (select o.id as order_id
        ,pos_id, p.code as pos_code
@@ -88,16 +84,15 @@ cte_os as
        ,date(DATETIME_ADD(completed_at, INTERVAL 7 HOUR))  as completed_date
        ,medicine_cutting_fee -- tiền cắt liều
        ,STRING_AGG(CAST(return_id as string)) as return_codes
+       ,o.client_id
 from ${source.circa_os}.order_order o
 left join UNNEST(JSON_VALUE_ARRAY(order_return_codes)) AS return_id
-left join ${source.circa_os}.entity_pos_profile p on o.pos_id = p.id
+left join ${source.ref}.circa_pos_profile p on o.pos_id = p.id and o.client_id = p.client_id
 left join ${source.circa_os}.entity_entity en on o.updated_by = en.id
 where o.type <> 'RETURN'
-      and o.client_id  = 1
-      and p.type = 'CIRCA'
-      and o.pos_id not in ('c95a3338-4f5e-4264-958b-0d02e3fea49b','0d4c2e76-c6bf-487d-bf3e-d0b608d9fb5d')
+      and o.status <> 'PENDING'
+      and p.id is not null
 group by all)
-
 select
     *
     , case
@@ -105,9 +100,7 @@ select
         else "RETURN"
     end as order_type
 from cte_fs
-
 union all
-
 select
     *
     , case
@@ -115,5 +108,4 @@ select
         else "RETURN"
     end as order_type
 from cte_os
-
 --gmv = Giá bán * sản phẩm + bất kì phí nào khác (hiện tại có phí cắt liều) - những đơn return hoặc return 1 phần  = total_item_amount + medicine_cutting_fee - return
