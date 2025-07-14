@@ -19,12 +19,6 @@ config {
 }
 
 js {
-    // if ( `${datetime.isDaysOfWeek(0,6)}` == 'true') {
-    //     delete_interval = "INTERVAL 7 HOUR"
-    // }
-    // else {
-    //     delete_interval = "INTERVAL 3 HOUR"
-    // }
     const checkpoint_datetime = `"${datetime.getPastDatetime({ intervalHours: 7 })}"`
 
 }
@@ -104,7 +98,8 @@ WITH
                 ${case_then(`a.customer_province_code`)}
                 ELSE NULL
             END AS shipping_location_code,
-            COALESCE(dim_fc.sales_region_code, dim_fc2.sales_region_code) sales_region_code
+            COALESCE(dim_fc.sales_region_code, dim_fc2.sales_region_code) sales_region_code,
+            dim_fc2.fc_code
         FROM union_order a
         LEFT JOIN ${ref(`dim_fc_service_area`)} dim_fc_service_area
                 ON a.province_code = dim_fc_service_area.service_area_code
@@ -130,7 +125,8 @@ js {
             ${utils.ToTimezone(`max(created_time)`)} AS created_time,
             ${choose_new(`location_code`)},
             ${choose_new(`shipping_location_code`)},
-            ${choose_new(`sales_region_code`)}
+            ${choose_new(`sales_region_code`)},
+            ${choose_new(`fc_code`)}
         FROM 
             order_sales_region_code
         GROUP BY 1
@@ -140,23 +136,24 @@ SELECT
     location_code,
     shipping_location_code,
     sales_region_code,
-    created_time
+    created_time,
+    fc_code
 FROM order_tbl
 ${when(incremental(),
    `WHERE created_time > (SELECT max(created_time) FROM ${self()})`,
    ``)}
 
 
-post_operations {                
-  ${
-    when(incremental(),
-      "",
-      `
-      ALTER TABLE ${self()} 
-        ADD PRIMARY KEY (order_id) NOT ENFORCED,
-        ADD FOREIGN KEY (location_code) references ${ref(`dim_geo_location`)}(location_code) NOT ENFORCED,
-        ADD FOREIGN KEY (shipping_location_code) references ${ref(`dim_geo_location`)}(location_code) NOT ENFORCED;
-      `
-    )
-  }
-}
+-- post_operations {                
+--   ${
+--     when(incremental(),
+--       "",
+--       `
+--       ALTER TABLE ${self()} 
+--         ADD PRIMARY KEY (order_id) NOT ENFORCED,
+--         ADD FOREIGN KEY (location_code) references ${ref(`dim_geo_location`)}(location_code) NOT ENFORCED,
+--         ADD FOREIGN KEY (shipping_location_code) references ${ref(`dim_geo_location`)}(location_code) NOT ENFORCED;
+--       `
+--     )
+--   }
+-- }

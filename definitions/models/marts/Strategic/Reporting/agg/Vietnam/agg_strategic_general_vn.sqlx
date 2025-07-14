@@ -18,142 +18,145 @@ config {
     tags: ["0h00", 'STRATEGIC-REPORTING']
 }
 
--- Optimized base calendar with date filtering
+-- Base calendar with date filter
 WITH base_calendar AS (
-  SELECT 
-    eom,
-    date
+  SELECT eom, date
   FROM ${ref(`dim_calendar`)}
-  WHERE date >= "2023-01-01"),
-
+  WHERE date >= "2023-01-01"
+),
 
 -- Order_item metrics
 order_metrics AS (
   SELECT
-    DATE(created_time) as order_date,
+    DATE(created_time) AS order_date,
     location,
+    fc_code,
     channel,
     supplier_class,
-    -- shipping_ward_code,
-    SUM(sales_price * demand_quantity) as gmv_before_cancel,
-    SUM(IF(order_status LIKE "CANCEL" AND sale_order_code is null, (sales_price * demand_quantity ),0 )) as cancel_before_ffm,
-    SUM(IF(order_status LIKE "CANCEL", (sales_price * demand_quantity), 0)) as cancel,
-    SUM(IF(order_status LIKE "CANCEL" AND sale_order_code is not null, (sales_price * demand_quantity ),0 )) as cancel_after_ffm,
-    SUM(IF(order_status NOT LIKE "CANCEL",(outbound_quantity - returned_quantity) * sales_price, 0)) as fulfilled_amount,
-    SUM(IF(order_status NOT LIKE "CANCEL" , returned_quantity, 0) * sales_price) as returned_amount,
-    SUM(IF(order_status NOT LIKE "CANCEL" AND order_status not in ("DELIVERING","DELIVERED","COMPLETED"),  (demand_quantity - outbound_quantity ) ,0 ) * sales_price) as gmv_backlog,
-    SUM((listed_price - sales_price) * demand_quantity) as commercial_amount,
-    SUM(IF(commercial_type = "DEAL", (listed_price - sales_price) * demand_quantity, 0)) as commercial_deal_amount,
-    SUM(IF(commercial_type = "CAMPAIGN", (listed_price - sales_price) * demand_quantity, 0)) as commercial_campaign_amount,
-    SUM(IF(commercial_type = "COMBO",(listed_price - sales_price) * demand_quantity, 0)) as commercial_combo_amount,
-    SUM(IF(order_status NOT LIKE "CANCEL" AND order_status in ("DELIVERING","DELIVERED","COMPLETED"),(demand_quantity - outbound_quantity ) ,0 ) * sales_price) as gmv_unff,
-    SUM(listed_price * demand_quantity) as gmv_with_listed_price,
-    SUM(IF(order_status NOT LIKE "CANCEL" , returned_quantity, 0) * sales_price) as gmv_return,
-    SUM(demand_quantity) as item_sold
+    SUM(sales_price * demand_quantity) AS gmv_before_cancel,
+    SUM(IF(order_status LIKE "CANCEL" AND sale_order_code IS NULL, sales_price * demand_quantity, 0)) AS cancel_before_ffm,
+    SUM(IF(order_status LIKE "CANCEL", sales_price * demand_quantity, 0)) AS cancel,
+    SUM(IF(order_status LIKE "CANCEL" AND sale_order_code IS NOT NULL, sales_price * demand_quantity, 0)) AS cancel_after_ffm,
+    SUM(IF(order_status NOT LIKE "CANCEL", (outbound_quantity - returned_quantity) * sales_price, 0)) AS fulfilled_amount,
+    SUM(IF(order_status NOT LIKE "CANCEL", returned_quantity * sales_price, 0)) AS returned_amount,
+    SUM(IF(order_status NOT LIKE "CANCEL" AND order_status NOT IN ("DELIVERING", "DELIVERED", "COMPLETED"), (demand_quantity - outbound_quantity) * sales_price, 0)) AS gmv_backlog,
+    SUM((listed_price - sales_price) * demand_quantity) AS commercial_amount,
+    SUM(IF(commercial_type = "DEAL", (listed_price - sales_price) * demand_quantity, 0)) AS commercial_deal_amount,
+    SUM(IF(commercial_type = "CAMPAIGN", (listed_price - sales_price) * demand_quantity, 0)) AS commercial_campaign_amount,
+    SUM(IF(commercial_type = "COMBO", (listed_price - sales_price) * demand_quantity, 0)) AS commercial_combo_amount,
+    SUM(IF(order_status NOT LIKE "CANCEL" AND order_status IN ("DELIVERING", "DELIVERED", "COMPLETED"), (demand_quantity - outbound_quantity) * sales_price, 0)) AS gmv_unff,
+    SUM(listed_price * demand_quantity) AS gmv_with_listed_price,
+    SUM(IF(order_status NOT LIKE "CANCEL", returned_quantity * sales_price, 0)) AS gmv_return,
+    SUM(demand_quantity) AS item_sold
   FROM ${ref(`fact_strategic_sale_order_item_single`)}
-  GROUP BY 1, 2, 3, 4),
-
+  GROUP BY 1, 2, 3, 4, 5
+),
 
 -- Delivery metrics
 delivery_metrics AS (
   SELECT 
-    DATE(do.created_time) as delivery_date,
+    DATE(do.created_time) AS delivery_date,
     do.location,
     do.channel,
     CAST(NULL AS STRING) AS supplier_class,
-    -- shipping_ward_code,
-    COUNT(DISTINCT 
-        CASE 
-            WHEN DATE(do.created_time) <= '2023-05-31' 
-            THEN sale_order_code
-            ELSE delivery_order_code 
-        END
-    ) as do_count
-  FROM ${ref(`fact_strategic_delivery_order`)} do 
-  GROUP BY ALL)
+    COUNT(DISTINCT CASE 
+      WHEN DATE(do.created_time) <= '2023-05-31' THEN sale_order_code 
+      ELSE delivery_order_code 
+    END) AS do_count
+  FROM ${ref(`fact_strategic_delivery_order`)} do
+  GROUP BY 1, 2, 3, 4
+),
 
+-- Flattened order metric measures for reuse
+order_metrics_flattened AS (
+  SELECT
+    CURRENT_DATETIME("+7") AS refresh_time,
+    c.eom AS date,
+    m.location,
+    m.channel,
+    m.supplier_class,
+    metric.measure,
+    metric.value
+  FROM order_metrics m
+  JOIN base_calendar c ON DATE(m.order_date) = c.date
+  CROSS JOIN UNNEST([
+    STRUCT("GMV_BEFORE_CANCEL" AS measure, m.gmv_before_cancel AS value),
+    STRUCT("GMV_AFTER_CANCEL", (m.gmv_before_cancel - m.cancel_before_ffm)),
+    STRUCT("CANCEL", m.cancel),
+    STRUCT("CANCEL_AFTER_FFM", m.cancel_after_ffm),
+    STRUCT("CANCEL_BEFORE_FFM", m.cancel_before_ffm),
+    STRUCT("GMV_FULFILLED", m.fulfilled_amount),
+    STRUCT("NMV", m.cancel_after_ffm + m.fulfilled_amount + m.gmv_backlog + m.returned_amount),
+    STRUCT("COMMERCIAL_AMOUNT", m.commercial_amount),
+    STRUCT("COMMERCIAL_DEAL_AMOUNT", m.commercial_deal_amount),
+    STRUCT("COMMERCIAL_CAMPAIGN_AMOUNT", m.commercial_campaign_amount),
+    STRUCT("COMMERCIAL_COMBO_AMOUNT", m.commercial_combo_amount),
+    STRUCT("GMV_UNFF", m.gmv_unff),
+    STRUCT("GMV_WITH_LISTED_PRICE", m.gmv_with_listed_price),
+    STRUCT("ITEM_SOLD", m.item_sold),
+    STRUCT("GMV_BACKLOG", m.gmv_backlog),
+    STRUCT("GMV_RETURN", m.gmv_return)
+  ]) AS metric
+)
 
-SELECT 
-  CURRENT_DATETIME("+7") AS refresh_time,
-  c.eom as date,
-  m.location,
-  m.channel,
-  measure,
-  supplier_class,
---   shipping_ward_code,
-  value
-  
-FROM order_metrics m
-CROSS JOIN UNNEST([
-  STRUCT("GMV_BEFORE_CANCEL" as measure, gmv_before_cancel as value),
-  STRUCT("GMV_AFTER_CANCEL" as measure, (gmv_before_cancel - cancel_before_ffm) as value),
-  STRUCT("CANCEL" as measure, cancel as value ),
-  STRUCT("CANCEL_AFTER_FFM" as measure, cancel_after_ffm as value),
-  STRUCT("CANCEL_BEFORE_FFM" as measure, cancel_before_ffm as value),
-  STRUCT("GMV_FULFILLED" as measure, fulfilled_amount as value),
-  STRUCT("NMV" as measure, (cancel_after_ffm + fulfilled_amount +  gmv_backlog + returned_amount) as value),
-  STRUCT("COMMERCIAL_AMOUNT" as measure, commercial_amount as value),
-  STRUCT("COMMERCIAL_DEAL_AMOUNT" as measure, commercial_deal_amount as value),
-  STRUCT("COMMERCIAL_CAMPAIGN_AMOUNT" as measure, commercial_campaign_amount as value),
-  STRUCT("COMMERCIAL_COMBO_AMOUNT" as measure, commercial_combo_amount as value),
-  STRUCT("GMV_UNFF" as measure, gmv_unff as value),
-  STRUCT("GMV_WITH_LISTED_PRICE" as measure, gmv_with_listed_price as value),
-  STRUCT("GMV_GENERAL" as measure, (gmv_before_cancel - cancel_before_ffm) as value), --Just duplicated GMV_AFTER_CANCEL
-  STRUCT("ITEM_SOLD" as measure, item_sold as value),
-  STRUCT("GMV_BACKLOG" as measure, gmv_backlog as value),
-  STRUCT("GMV_RETURN" as measure, gmv_return as value)
-]) metrics
-JOIN base_calendar c 
-  ON DATE(m.order_date) = c.date
+SELECT * FROM order_metrics_flattened
 
 UNION ALL
 
+
 SELECT 
   CURRENT_DATETIME("+7") AS refresh_time,
-  c.eom as date,
+  c.eom AS date,
   d.location,
   d.channel,
-  'DO' as measure,
+  "DO" AS measure,
   d.supplier_class,
---   shipping_ward_code,
-  d.do_count as value
+  d.do_count AS value
 FROM delivery_metrics d
-INNER JOIN base_calendar c ON DATE(d.delivery_date) = c.date
+JOIN base_calendar c ON DATE(d.delivery_date) = c.date
 
-UNION ALL 
-
-SELECT a.* 
-FROM ${ref(`agg_strategic_customer`)} as a
-INNER JOIN base_calendar c ON DATE(c.date) = a.date
-
-
-UNION ALL -- Duplicated customer count for Enterprise
-
-SELECT
-refresh_time,
+UNION ALL
+SELECT 
+a.refresh_time,
 a.date,
+a.location,
+a.channel,
+a.supplier_class,
+a.measure,
+a.value
+FROM ${ref(`agg_strategic_customer`)} a
+JOIN base_calendar c ON c.eom = a.date
+
+UNION ALL
+SELECT
+  refresh_time,
+  a.date,
+  location,
+  channel,
+  CONCAT(measure, "_ENTERPRISE") AS measure,
+  supplier_class,
+  value
+FROM ${ref(`agg_strategic_customer`)} a
+JOIN base_calendar c ON c.eom = a.date
+
+UNION ALL
+SELECT 
+refresh_time,
+date,
 location,
 channel,
-CONCAT(measure,"_ENTERPRISE") as measure,
 supplier_class,
+measure,
 value
-FROM ${ref(`agg_strategic_customer`)} as a
-INNER JOIN base_calendar c ON DATE(c.date) = a.date
-
-
-UNION ALL -- Inventory cut off by last day of month
-
-SELECT *
 FROM ${ref(`agg_inventory_cutoff`)}
 
-UNION ALL 
-
+UNION ALL
 SELECT
-CURRENT_DATETIME("+7") AS refresh_time,
-eom as date,
-location,
-channel,
-'SO' as measure,
-supplier_class,
-SO_count as value
+  CURRENT_DATETIME("+7") AS refresh_time,
+  eom AS date,
+  location,
+  channel,
+  "SO" AS measure,
+  supplier_class,
+  SO_count AS value
 FROM ${ref(`fact_strategic_sale_order`)}

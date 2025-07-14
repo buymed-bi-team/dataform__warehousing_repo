@@ -7,4 +7,8 @@ definitions/temp.sqlx
 definitions/models/intermediate/what/dim_order_temp.sqlx
 definitions/local/*
 
+<<<<<<< HEAD
 .df-credentials.json
+=======
+.df-credentials.json
+>>>>>>> refs/heads/main
