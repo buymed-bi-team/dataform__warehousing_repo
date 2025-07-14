@@ -97,7 +97,7 @@ order_metrics_flattened AS (
     STRUCT("GMV_BACKLOG", m.gmv_backlog),
     STRUCT("GMV_RETURN", m.gmv_return)
   ]) AS metric
-),
+)
 
 -- fc_code-level version
 -- order_metrics_fc_flattened AS (
