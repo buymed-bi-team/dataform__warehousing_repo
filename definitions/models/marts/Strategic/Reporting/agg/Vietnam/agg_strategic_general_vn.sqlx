@@ -149,7 +149,14 @@ FROM delivery_metrics d
 JOIN base_calendar c ON DATE(d.delivery_date) = c.date
 
 UNION ALL
-SELECT a.* 
+SELECT 
+a.refresh_time,
+a.date,
+a.location,
+a.channel,
+a.supplier_class,
+a.measure,
+a.value
 FROM ${ref(`agg_strategic_customer`)} a
 JOIN base_calendar c ON c.eom = a.date
 
