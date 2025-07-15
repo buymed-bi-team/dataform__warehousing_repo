@@ -1,0 +1,65 @@
+config {
+    type: "table",
+    description: `Request purchase order PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`,
+    /*Source:
+      ${source.silver}.marketplace_prd_order_v2_order_item
+      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5,*/
+    tags: ["custom_1h_past5"],
+    name: "transfer_request",
+    columns: {
+        
+    }
+}
+
+
+with trf  as (
+Select distinct r.id
+               ,r.code
+              ,p.name as pos_tranfer
+              ,r.type
+              ,datetime_add(r.created_at, interval 7 hour) as created_at
+              ,datetime_add(r.completed_at, interval 7 hour) as completed_at
+              ,dest_pos_id
+              ,r.status
+              ,actual_total_amount
+              ,product_id
+              ,unit
+              ,sum(rid.quantity) as quantity
+              ,rid.unit_price
+              ,sum(rid.quantity) as qty_received
+              ,sum(rid.quantity * rid.unit_price) as total_amount_item
+              ,r.client_id
+              ,concat(ri.product_id, "_", r.client_id) as product_client_id
+ from ${source.circa_os}.inventory_transfer_request r 
+ left join ${source.circa_os}.inventory_transfer_item ri on r.id = ri.transfer_request_id 
+ left join ${source.circa_os}.inventory_transfer_item_detail rid on ri.id = rid.transfer_item_id 
+left join ${source.ref}.circa_pos_profile p on r.src_pos_id = p.id and r.client_id = p.client_id
+where p.id is not null
+      and r.type = 'TRANSFER_OUT'
+      --  and r.code = 'TRF00002258'
+      --  and product_id = 65050
+group by all
+), rcv as 
+(
+Select distinct rcv.id
+               ,rcv.status as rcv_status
+              ,rcv.related_transfer_request_id
+              ,rcv.dest_pos_id
+              ,rcv.code as rcv_code
+              ,rcv.client_id
+              --,product_id
+ from ${source.circa_os}.inventory_transfer_request  rcv 
+  left join ${source.circa_os}.inventory_transfer_item ri on rcv.id = ri.transfer_request_id
+ left join ${source.circa_os}.inventory_transfer_item_detail rid on ri.id = rid.transfer_item_id 
+ left join ${source.ref}.circa_pos_profile p on rcv.src_pos_id = p.id
+ where p.id is not null
+      and rcv.type = 'TRANSFER_IN'
+
+)
+Select trf.* 
+      ,p.name as pos_received
+      ,rcv.* except(id,dest_pos_id)
+from trf 
+left join rcv on trf.id = rcv.related_transfer_request_id  and trf.dest_pos_id = rcv.dest_pos_id
+left join ${source.ref}.circa_pos_profile p on trf.dest_pos_id = p.id
+where  rcv_status <> 'CANCELED'
