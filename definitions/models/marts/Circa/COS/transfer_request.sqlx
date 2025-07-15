@@ -58,8 +58,8 @@ Select distinct rcv.id
 )
 Select trf.* 
       ,p.name as pos_received
-      ,rcv.* except(id,dest_pos_id)
+      ,rcv.* except(id,dest_pos_id,client_id)
 from trf 
-left join rcv on trf.id = rcv.related_transfer_request_id  and trf.dest_pos_id = rcv.dest_pos_id
+left join rcv on trf.id = rcv.related_transfer_request_id  and trf.dest_pos_id = rcv.dest_pos_id and trf.client_id = rcv.client_id
 left join ${source.ref}.circa_pos_profile p on trf.dest_pos_id = p.id
 where  rcv_status <> 'CANCELED'
