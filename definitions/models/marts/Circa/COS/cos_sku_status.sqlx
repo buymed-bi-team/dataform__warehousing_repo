@@ -56,6 +56,7 @@ group by all
 ), by_product as (
 Select distinct o.product_id
             , o.* except (product_id)
+            ,concat(o.product_id, "_", o.client_id) as product_client_id
             ,case when o.current_stock_by_product > 0 then 'NORMAL'
                     when  thuocsi_sku_status.sku_system_status = 'SUSPENDED' then 'SUSPENDED'
                     else 'OOS' END AS product_status
@@ -67,7 +68,7 @@ where row_num = 1
 ),by_sku_not_thuocsi as (
 Select distinct o.product_id
             , o.* except (product_id)
-            ,concat(o..product_id, "_", o.client_id) as product_client_id
+            ,concat(o.product_id, "_", o.client_id) as product_client_id
             ,case when o.current_stock_by_product > 0 then 'NORMAL'
                     else 'OOS' END AS product_status
 from inventory_by_product o
