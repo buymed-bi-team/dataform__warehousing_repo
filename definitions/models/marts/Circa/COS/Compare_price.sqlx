@@ -67,4 +67,5 @@ Select  i.product_id
            ,fm.market_current_price
            ,fm.competitor
            ,i.client_id
+           ,concat(i.product_id, "_", i.client_id) as product_client_id
 from internal_price i left join final_market fm  on i.product_id = fm.product_id and i.convert_rate = fm.convert_rate and i.client_id = fm.client_id
