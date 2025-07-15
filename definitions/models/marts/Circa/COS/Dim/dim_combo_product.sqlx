@@ -1,0 +1,41 @@
+config {
+    type: "table",
+    description: `PIC: huyen.ngo; model_type: Table ;schedule: At 10h30`
+    /*Source:
+      ${source.silver}.marketplace_prd_order_v2_order_item
+      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
+    tags: ["10h30"],
+    name: "dim_combo_product",
+    columns: {/*
+        order_id: "NonNull |" + docs.order_id,
+        customer_id: "NonNull | The unique identifier for each customer"*/
+        
+    }
+}
+with t as (Select distinct p.code
+                         ,name
+                         ,s.sub_product_id
+                         ,quantity
+                         ,s.unit
+                        ,p.status
+                        ,p.client_id
+           from ${source.circa_os}.product_product p
+          left join ${source.circa_os}.product_sub_product s on SAFE_CAST(p.code as INT) = s.product_id
+           )
+Select distinct           t.code as combo_code
+                         ,t.name as combo_name
+                         ,t.status
+                         ,t.sub_product_id  as product_id
+                         ,pr.name as product_name
+                         ,t.quantity
+                         ,t.unit
+                         ,t.client_id
+                         ,concat(pr.product_id, "_", pr.client_id) as product_client_id
+from t
+left join ${source.circa_os}.product_product pr on pr.product_id= t.sub_product_id and t.client_id = pr.client_id
+where t.sub_product_id is not null
+      and t.name not like ('%[Tech test]%')
+      and lower(t.name) not like ('%combo tech test%')
+      and t.name not like ('%Combo Test%')
+      and t.name not like ('%Combo TechTest 2%')
+      --and t.client_id = 1
