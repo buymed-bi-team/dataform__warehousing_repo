@@ -52,5 +52,5 @@ select distinct pd.product_id
 from cte_product pd
 left join product_base_unit bu on pd.product_id = bu.product_id and pd.client_id = bu.client_id
 left join convert_unit cr on pd.product_id = cr.product_id and cr.client_id = pd.client_id
---where pd.product_id = 1107
+--where pd.product_id = 4011
 order by  1
