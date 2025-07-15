@@ -85,6 +85,7 @@ union all
 Select * from Map_thuocsi
 )
 Select p.*
+       ,concat(p.product_id, "_", 1) as product_client_id
  from Pending p 
  where p.id not in 
 (Select distinct purchase_order_id from ${source.circa_os}.order_goods_receipt where status = 'COMPLETED' and client_id = 1) -- điều kiện này dùng để loại trừ những trường hợp cửa hàng đã nhận hàng nhưng ko bấm hoàn thành trên pos
