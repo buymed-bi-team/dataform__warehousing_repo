@@ -177,6 +177,6 @@ select distinct i.*
       ,base_unit_cost_price * convert_rate  as  unit_cost_price
 from order_items i
 left join ${ref('cos_fact_order')} fo on i.order_id = fo.order_id
-left join  ${source.ref}.cos_product_convert_base_unit  cv on cv.product_id = i.product_id and cv.convert_unit = i.unit
+left join  ${source.ref}.cos_product_convert_base_unit  cv on cv.product_id = i.product_id and cv.convert_unit = i.unit and i.client_id = cv.client_id
 where fo.order_id is not null
 
