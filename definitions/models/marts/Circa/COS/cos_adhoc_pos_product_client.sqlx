@@ -142,7 +142,6 @@ group by all
 Select 
   a.*
   ,concat(a.product_id,"_", convert_rate) as key_compare
-  ,client_id
   ,concat(a.product_id, "_", client_id) as product_client_id
   ,min(p.min_cost_price_include_tax * a.convert_rate) as min_cost_price_include_tax
   ,max(p.max_cost_price_include_tax * a.convert_rate) as max_cost_price_include_tax
