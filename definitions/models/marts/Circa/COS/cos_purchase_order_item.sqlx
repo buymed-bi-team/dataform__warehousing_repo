@@ -41,6 +41,7 @@ select
        ,c.distributor_id
        ,dis.name as Vendor
        ,c.client_id
+       ,concat(a.product_id, "_", c.client_id) as product_client_id
        
 from ${source.circa_os}.order_purchase_order_item as a
 left join ${source.circa_os}.order_purchase_order as c on a.purchase_order_id = c.id
