@@ -1,0 +1,38 @@
+config {
+    type: "table",
+    description: `Request purchase order PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`,
+    /*Source:
+      ${source.silver}.marketplace_prd_order_v2_order_item
+      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5,*/
+    tags: ["custom_1h_past5"],
+    name: "request_purchase_order",
+    columns: {
+        
+    }
+}
+
+
+Select o.id
+       ,o.code
+       ,o.pos_id
+       ,o.status
+       ,o.note
+       ,o.request_reason
+       ,date_add(o.waiting_process_at, interval 7 hour) as submit_at
+       ,date(date_add(o.waiting_process_at, interval 7 hour) ) as submit_date
+       ,date_add(o.accepted_at, interval 7 hour) as accepted_at
+       ,date_add(o.denied_at, interval 7 hour) as denied_at
+       ,o.cancel_note
+       ,date_add(o.expected_time, interval 7 hour) as request_at
+       ,i.product_id
+       ,i.unit
+       ,i.amount
+       ,i.quantity
+       ,i.tax_rate
+       ,i.unit_price
+       ,o.client_id
+       ,concat(i.product_id, "_", o.client_id) as product_client_id
+from ${source.circa_os}.order_request_purchase_order o
+left join ${source.circa_os}.order_request_purchase_order_item i on o.id = i.request_purchase_order_id
+left join ${source.ref}.circa_pos_profile p on o.pos_id = p.id
+where p.id is not null
