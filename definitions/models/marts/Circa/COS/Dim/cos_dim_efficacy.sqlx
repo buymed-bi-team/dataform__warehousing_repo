@@ -23,9 +23,9 @@ WITH cte_efficacy AS (
 
 )
 SELECT 
-  p.*,
+  p.*
   ,concat(p.product_id, "_", p.client_id) as product_client_id
-  e.name
+  ,e.name
 FROM cte_efficacy p
 LEFT JOIN ${source.circa_os}.product_efficacy e ON p.efficacy_code = e.code and p.client_id = e.client_id
  -- where e.client_id = 1
