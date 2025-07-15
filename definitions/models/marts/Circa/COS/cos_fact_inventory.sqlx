@@ -29,6 +29,7 @@ with inventory as (
     where doc_code is not null
           and deleted_at is null
 )
+,_all as (
 select distinct
      a.product_id
     ,a.sku_code
@@ -49,3 +50,11 @@ left join ${source.ref}.circa_pos_profile p on a.client_id = p.client_id  and a.
 left join ${source.circa_os}.inventory_location as b on a.location_id = b.id  and b.pos_id = p.id and p.client_id = b.client_id
 where p.id is not null
 group by all
+)
+Select i.*
+       ,concat(i.product_id, "_", i.client_id) as product_client_id
+       ,eo.name as owner_name
+       ,o.sale_order_number as SO_code
+from  _all i 
+left join ${source.circa_os}.order_purchase_order o on i.doc_code = o.code and i.client_id = o.client_id
+left join ${source.circa_os}.entity_owner eo on o.owner_id = eo.id and i.client_id = eo.client_id
