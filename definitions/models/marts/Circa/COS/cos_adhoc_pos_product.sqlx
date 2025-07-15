@@ -193,11 +193,27 @@ check_unit_pricing as
     select * from cte_fs
     union all
     select * from cte_os)
-select i.*,
-       case when (cup.check_price_unit = 1 and i.unit is not null) or price_set_check like "Price not set" then "contain unit not set"
-       else "set full" end as check_unit_price_set,
-       pr.sales_region_code
-from combine i
-left join check_unit_pricing cup on i.product_id= cup.product_id and i.pos_id = cup.pos_id
-left join pos_region pr on i.pos_id = pr.pos_id
-group by all
+    ,_all as (
+        select i.*,
+               case when (cup.check_price_unit = 1 and i.unit is not null) or price_set_check like "Price not set" then "contain unit not set"
+               else "set full" end as check_unit_price_set,
+               pr.sales_region_code
+        from combine i
+        left join check_unit_pricing cup on i.product_id= cup.product_id and i.pos_id = cup.pos_id
+        left join pos_region pr on i.pos_id = pr.pos_id
+        group by all
+    )
+  Select 
+    a.*
+    ,concat(a.product_id, "_", "1") as product_client_id
+    ,concat(a.product_id, "_", sales_region_code, "_", convert_rate) as key_compare
+    ,p.min_cost_price_include_tax * a.convert_rate AS min_cost_price_include_tax
+    ,p.max_cost_price_include_tax * a.convert_rate AS max_cost_price_include_tax
+from _all a 
+left join ${source.circa_os}.inventory_cost_price p on a.pos_id = p.pos_id 
+                                                    and a.seller_code = p.seller_code 
+                                                    and a.product_id = p.product_id
+         
+
+
+
