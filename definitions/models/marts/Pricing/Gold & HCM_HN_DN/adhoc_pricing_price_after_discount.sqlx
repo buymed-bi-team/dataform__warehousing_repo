@@ -122,4 +122,6 @@ FROM final_price AS a
     LEFT JOIN discount_value AS c 
         ON (c.product_id = a.product_id AND c.seller_code = a.seller_code )
             AND  (c.area_code IS NULL OR c.area_code = a.sales_region_code)
+QUALIFY ROW_NUMBER() OVER(PARTITION BY sku_key_sales_region_code) = 1
+
 
