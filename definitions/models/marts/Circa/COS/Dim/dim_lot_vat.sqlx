@@ -20,7 +20,7 @@ Select distinct
    ,client_id
    ,lot_date
    ,product_id || "_" || lot_date as product_lot_date
-   ,product_id || "_" || lot_date || "_" || tax_rate as product_lot_date_vat_client_id
+   ,product_id || "_" || lot_date || "_" || tax_rate || "_" || client_id as product_lot_date_vat_client_id
    ,type as vat_type
    ,tax_rate
    ,DATE(TIMESTAMP_ADD(expired_date, interval 7 hour)) AS expired_date
