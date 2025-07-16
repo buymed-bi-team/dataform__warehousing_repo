@@ -1,5 +1,6 @@
 config {
     type: "table", 
+    disabled: true,
     description: 
         `PIC: tu.dang; 
         Type: Table; 

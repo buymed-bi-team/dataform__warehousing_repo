@@ -5,6 +5,7 @@ config {
       ${source.silver}.marketplace_prd_order_v2_order_item
       ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
     tags: ["custom_2h_past5"],
+    disabled: true,
     name: "circa_purchase_order",
     columns: {
         order_id: "NonNull |" + docs.order_id,
