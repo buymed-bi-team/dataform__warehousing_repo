@@ -1,0 +1,71 @@
+config {
+    type: "table",
+    description: `/fact_stock_historical PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`,
+    /*Source:
+      ${source.silver}.marketplace_prd_order_v2_order_item
+      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5,*/
+    tags: ["custom_1h_past5"],
+    name: "/fact_stock_historical",
+    columns: {
+        
+    }
+}
+
+
+with inventory as (
+  Select
+    date(CURRENT_DATE('+7')) as snap_date,
+    a.product_id,
+    a.lot_date,
+    case
+      when tax_rate <= 0 THEN 0
+      else tax_rate
+    end AS tax_rate,
+    a.cost_price_include_tax,
+    a.on_hand_qty AS on_hand_quantity,
+    a.location_id,
+    -- a.doc_code,
+    CAST(product_id AS STRING) || '_' || CAST(lot_date AS STRING) || '_' || CAST(
+      case
+        when tax_rate <= 0 THEN 0
+        else tax_rate
+      end 
+    AS STRING) || '_' || client_id AS product_lot_date_vat_client_id
+    ,client_id
+  from `buymed_circa_v2.inventory_location_detail` AS a
+  where deleted_at IS NULL
+),
+cte_ld AS (
+  Select
+    PARSE_DATE('%Y%m%d', _TABLE_SUFFIX) AS snap_date,
+    a.product_id,
+    a.lot_date,
+    case
+      when tax_rate <= 0 THEN 0
+      else tax_rate
+    end AS tax_rate,
+    a.cost_price_include_tax,
+    a.on_hand_qty AS on_hand_quantity,
+    a.location_id,
+    CAST(product_id AS STRING) || '_' || CAST(lot_date AS STRING) || '_' || CAST(
+      case
+        when tax_rate <= 0 THEN 0
+        else tax_rate
+      end 
+    AS STRING) || '_' || client_id AS product_lot_date_vat_client_id
+    ,client_id
+  from `gold_buymed_vn2.inventory_location_detail_*` AS a
+  where deleted_at is null
+  
+  union all
+  
+  Select * from inventory 
+)
+
+Select
+  a.*,
+  b.pos_id,
+  b.location_type,
+from cte_ld as a
+left join `buymed_circa_v2.inventory_location` AS b
+  on a.location_id = b.id and a.client_id = b.client_id
