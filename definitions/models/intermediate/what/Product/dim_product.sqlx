@@ -316,7 +316,11 @@ SELECT
   hmp.high_margin,
   rp.retail_price,
   op.ownbrand_portfolio,
-  chronic.chronic,
+  IF(
+    chronic.chronic = "CHRONIC"
+    , "CHRONIC"
+    , IF(product.seller_category_code = "AQFV2U" AND product.seller_sub_category_code = "LALT0T", "ACUTE", NULL)
+  ) AS chronic,
   essential.essential
 
 
