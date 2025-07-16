@@ -30,7 +30,7 @@ select
       --   end as PO_item_amount,
        ,b.quantity * a.unit_price as PO_item_amount
        ,b.lot_date
-       ,product_id || "_" || lot_date || "_" || b.tax_rate as product_lot_date_vat
+       ,product_id || "_" || lot_date || "_" || b.tax_rate || "_" || c.client_id as product_lot_date_vat_client_id
        ,a.sku || "_" || lot_date || "_" || b.tax_rate as sku_lotdate_vat
        ,il.location_type
        --,a.discount_amount
