@@ -86,7 +86,7 @@ with cte_product as (
       from ${source.circa_os}.product_retail_unit as a
       -- right join ${source.circa_os}.product_product as b on a.product_id = b.product_id
       where a.base_unit is true and (unit is not null or unit <> "")
-      qualify row_number() over(partition by product_id order by created_at desc ) =1
+      qualify row_number() over(partition by product_id,client_id order by created_at desc ) =1
       )
 ,convert_unit as (
       select a.product_id
@@ -161,6 +161,7 @@ left join sub_cat on pd.product_id = sub_cat.product_id
 left join brand_type_add ba on pd.product_id = ba.product_id
 left join popular_product pop on pd.product_id = pop.product_id
 where product_name not like "%[Removed]%"
+        --and pd.product_id = 1112
        --and pd.product_id = 16149
 -- WHERE p.product_id>=1
 -- left join efficacy e on p.efficacy_code= e.efficacy_id
