@@ -79,10 +79,42 @@ where  TO_JSON_STRING(customer_tags) LIKE "%CIRCACOS%"
        and date(created_date) >=  '2025-06-01' 
 group by all
 --Lấy những đơn hàng đặt mua thuốc sỉ
-),Pending as (
+)
+,not_seperated as (
+Select distinct
+        coalesce(datetime(t.created_at),o.created_at) as created_at
+       ,t.id 
+       ,coalesce(t.pos_id,p.id) as pos_id
+       ,a.product_id
+       ,td.unit
+       ,a.sku_code as sku_code
+       ,t.status as po_status
+       ,o.order_status as so_status
+       ,a.demand_quantity as quantity
+       ,''as base_quantity
+       ,t.fulfillment_method
+       ,t.code
+       ,SAFE_CAST(o.order_id as string) as so_code
+      
+from ${source.ref}.fact_order o 
+left join ${source.ref}.fact_order_item a on o.order_id = a.order_id 
+left join t on t.sale_order_number = SAFE_CAST(o.order_id as string) 
+left join ${source.ref}.dim_product td on a.product_id = td.product_id
+left join ${source.circa_os}.entity_pos_profile p on o.customer_id = p.thuocsi_id
+where  TO_JSON_STRING(customer_tags) LIKE "%CIRCACOS%"
+       and o.order_status <> 'CANCEL'
+       and t.code is not null
+       and t.seller_code is null
+       and p.id is not null
+       and date(created_date) >=  '2025-06-01' 
+group by all
+)
+,Pending as (
 Select * from Pending_item_external
 union all
 Select * from Map_thuocsi
+union all 
+Select * from not_seperated
 )
 Select p.*
        ,concat(p.product_id, "_", 1) as product_client_id
