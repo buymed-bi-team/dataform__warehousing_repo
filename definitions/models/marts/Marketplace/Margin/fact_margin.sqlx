@@ -15,7 +15,7 @@ config {
         `,
     columns: {
     },
-    tags: ["custom_1h_past5", "MARKETPLACE"],
+    tags: ["custom_2h_past10", "MARKETPLACE"],
     bigquery: {
         partitionBy: "DATE(created_at)",
         clusterBy: ["sku_code", "product_id"]
@@ -92,11 +92,23 @@ WITH
         FROM ${ref('fact_order_item')} AS oi
             LEFT JOIN ${ref('dim_product')} AS p 
                 ON oi.product_id = p.product_id
-            LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_seller_category_level AS c
-                ON oi.sku_level = c.level 
-                AND p.product_category_code = JSON_VALUE(c.extra_props, '$.category_code')
+            -- LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_seller_category_level AS c
+            --     ON oi.sku_level = c.level 
+            --     AND p.product_category_code = JSON_VALUE(c.extra_props, '$.category_code')
             LEFT JOIN ${ref('dim_supplier')} AS s
                 ON s.supplier_code = oi.seller_code
+            LEFT JOIN (
+                SELECT
+                    mg_id
+                    , SAFE_CAST(JSON_VALUE(p, "$.product_id") AS INT64) AS product_id
+                    , SAFE_CAST(JSON_VALUE(p, "$.fulfillment_fee_percent") AS FLOAT64) AS fulfillment_fee_percent
+                    , SAFE_CAST(JSON_VALUE(p, "$.sale_fee_percent") AS FLOAT64) AS sale_fee_percent
+                FROM ${source.platinum}.marketplace_prd_order_v2_order_item
+                    , UNNEST(JSON_QUERY_ARRAY(extra_props, "$.product_fees")) AS p
+                WHERE 1=1
+                    AND created_date >= (SELECT target_date FROM cte_date)
+                    AND created_date >= "2025-04-01"
+            ) AS c ON oi.mg_id = c.mg_id AND oi.product_id = c.product_id
         WHERE DATE(oi.created_at) >= (SELECT target_date FROM cte_date)
     )
 

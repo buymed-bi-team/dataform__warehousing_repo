@@ -13,7 +13,7 @@ config {
     partitionBy: "date(created_at)",
     clusterBy: ["order_id", "sku_bom_code"]
   },
-  tags: ["custom_1h_past5", "MARKETPLACE"]
+  tags: ["custom_2h_past10", "MARKETPLACE"]
 }
 
 pre_operations {
