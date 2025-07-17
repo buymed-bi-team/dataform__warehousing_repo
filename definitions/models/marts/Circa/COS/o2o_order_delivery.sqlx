@@ -1,0 +1,73 @@
+
+config {
+    type: "table",
+    description: `Last 13 month| PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 past hour 6, 8, 10, 12, 14, 16, 18, 20 and 22`,
+    tags:["10h30"],
+    name: "o2o_order_delivery"
+}
+
+
+with del as (
+Select 
+       o.pos_code
+       ,o.order_code 
+       ,o.reference_order_in_platform
+       ,i.order_code as order_code_platform
+       ,i.sender_name
+       ,o.type
+       ,i.status as deliver_status
+        ,DATETIME_ADD(i.created_time, INTERVAL 7 HOUR) as Created_order_time
+        ,DATETIME_ADD(i.last_updated_time, INTERVAL 7 HOUR) as Last_order_time
+       ,delivery_type
+       ,delivery_carrier
+       ,delivery_carrier_code
+from ${source.platinum}.circa_online_prd_order_sale_order i 
+left join ${source.ref}.cos_fact_order o on o.reference_order_in_platform = i.order_code
+where sender_name not like '%FC Circa%'
+        and sender_name not like '%Tech Test%'
+        and sender_name not like '%[TECH]%'
+        and sender_name <> 'Tech - Cao Lăm Miền Nam'
+        --and reference_order_in_platform = 'DH000458'
+       qualify row_number () over (PARTITION BY i.order_code order by expired_time desc) = 1
+       --and row_number () over (PARTITION BY o.reference_order_in_platform order by o.created_at desc) = 1
+      -- and o.order_code is not null
+
+
+), t as (
+Select 
+       del.pos_code
+       ,del.order_code 
+       ,del.sender_name
+       ,DATETIME_ADD(o2o.created_time, INTERVAL 7 HOUR) as created_time_plaform
+       ,DATETIME_ADD(o2o.synced_at, INTERVAL 7 HOUR) as deliver_time_plaform
+       ,o2o.receiver_name as Customer_name
+       ,o2o.customer_phone
+       ,del.type
+       ,delivery_type
+       ,o2o.order_code as order_code_platform
+       ,o2o.status as order_status
+       ,o2o.canceled_by_user_type
+       ,o2o.cancellation_type
+       ,o2o.cancellation_note
+       ,deliver_status
+       ,Last_order_time
+       ,o2o.deliver_method
+       ,o2o.payment_method
+       ,delivery_carrier
+       ,delivery_carrier_code
+from ${source.platinum}.circa_online_prd_order_order o2o 
+left join del on o2o.order_code = del.order_code_platform
+where  extract (year from o2o.created_date) >= 2024
+
+)Select t.*
+       ,e.note as detail_note
+       ,event_name as event_name_detail_system
+       ,case when SPLIT(event_name, '/')[OFFSET(0)] = 'OPS_CANCEL_ORDER' then 'CANCEL'
+             when  SPLIT(event_name, '/')[OFFSET(0)] = '3PL_ORDER_CANCEL' then 'CANCEL'
+             when SPLIT(event_name, '/')[OFFSET(0)] like '%DELIVERED%' then 'DELIVERED' 
+              else SPLIT(event_name, '/')[OFFSET(0)] end as event_name_detail
+        ,DATETIME_ADD(e.created_time, INTERVAL 7 HOUR)as event_name_detail_time
+        ,e.action_status_code
+
+from t
+left join ${source.platinum}.circa_online_prd_order_order_event e on t.order_code_platform = e.order_code
