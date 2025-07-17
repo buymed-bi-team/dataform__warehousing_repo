@@ -247,7 +247,7 @@ SELECT
       WHEN product.seller_category_code = 'AQFV2U' THEN
         CASE
           WHEN seller_sub_category.code IN ('XT2U1Y','LALT0T') THEN seller_sub_category.name
-          ELSE "Thuốc không kê đơn"
+          -- ELSE "Thuốc không kê đơn"
         END
       ELSE 'Không phải Thuốc'
   END AS is_prescription,
