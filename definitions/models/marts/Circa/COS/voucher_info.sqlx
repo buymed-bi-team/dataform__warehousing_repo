@@ -22,7 +22,7 @@ with t as (
 Select distinct
         gift_id
         ,gift_code
-        ,created_at
+        ,DATETIME_ADD(v.created_at, INTERVAL 7 HOUR) as created_at
         ,voucher_id
         ,voucher_code
         ,JSON_EXTRACT_SCALAR(order_code) as order_code_created
@@ -32,15 +32,15 @@ where gift_code not like '%TEST%'
 )
 Select distinct 
                us.code
-              ,us.created_at
-              ,us.start_date
-              ,us.end_date
+              ,DATETIME_ADD(us.created_at, INTERVAL 7 HOUR) as created_at
+              ,DATETIME_ADD(us.start_date, INTERVAL 7 HOUR) as start_date
+              ,DATETIME_ADD(us.end_date, INTERVAL 7 HOUR) as end_date
               ,us.discount_value
               ,us.percent
               ,us.promotion_voucher_type
               ,e.name
               ,COALESCE(i.customer_phone, e.phone_number) AS customer_phone
-              ,ov.created_at as Date_used
+              ,DATETIME_ADD(ov.created_at, INTERVAL 7 HOUR) as Date_used
               ,case when ov.created_at is not null then "Yes"
                      else "No"
                      end as Is_used
