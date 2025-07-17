@@ -48,7 +48,6 @@ where row_num = 1
       ,sku_system_status
       ,sku_system_active
       ,dis.seller_code
-      ,rn.client_id
       ,concat(rn.product_id, "_", rn.client_id) as product_client_id
 from ${source.ref}.cos_ranking_vendor rn
 left join ${source.circa_os}.entity_distributor dis on dis.id = rn.distributor_id and rn.client_id = dis.client_id
