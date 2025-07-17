@@ -71,3 +71,4 @@ where  extract (year from o2o.created_date) >= 2024
 
 from t
 left join ${source.platinum}.circa_online_prd_order_order_event e on t.order_code_platform = e.order_code
+where pos_code is not null
