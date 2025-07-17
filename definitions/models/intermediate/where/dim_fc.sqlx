@@ -1,5 +1,5 @@
 config {
-    type: "table",
+    type: "view",
     description: "Fulfillment Center (FC)",
     columns: {
         fc_code: docs.fc_code,
