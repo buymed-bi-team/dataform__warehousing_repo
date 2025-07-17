@@ -28,7 +28,7 @@ pre_operations {
         incremental(),
         `     
             DELETE FROM ${self()}
-            WHERE DATE(created_at) >=  DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 3 MONTH);
+            WHERE DATE(created_at) >=  DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 2 MONTH);
             DELETE FROM ${self()}
             WHERE DATE(created_at) <  DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 12 MONTH);
             
@@ -39,7 +39,7 @@ pre_operations {
 
 WITH
     cte_date AS (
-        SELECT DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), ${when(incremental(),'INTERVAL 3 MONTH','INTERVAL 12 MONTH')}) AS target_date    
+        SELECT DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), ${when(incremental(),'INTERVAL 2 MONTH','INTERVAL 12 MONTH')}) AS target_date    
     )
     
     , outbound_item AS (
