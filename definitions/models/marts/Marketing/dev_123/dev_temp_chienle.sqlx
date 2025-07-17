@@ -8,7 +8,7 @@ config {
         col_1 : "NonNull | ",
         col_timestamp : "Timezone in vietname",
     },
-    tags: ["1h00", "custom_1h_past10", "custom_2h_past10"],
+    tags: ["1h00", "custom_1h_past10"],
     bigquery: {
         partitionBy: `DATE(col_timestamp)`
     }
