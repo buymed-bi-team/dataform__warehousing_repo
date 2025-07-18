@@ -7,27 +7,32 @@ config {
         Type: Table; 
         Refresh Schedule: hourly
     `,
-    tags: ["custom_1h_past5", "KPI_FULFILLMENT"],
+    tags: ["custom_2h_past10", "KPI_FULFILLMENT"],
     bigquery: {
         partitionBy: "DATE(ts_done)",
         clusterBy: ["stage", "ticket_id"]
     }
 }
 
-SELECT * FROM ${ref('fact_stage_app_check')}
-UNION ALL
-SELECT * FROM ${ref('fact_stage_bin_out')}
-UNION ALL
-SELECT * FROM ${ref('fact_stage_book')}
-UNION ALL
-SELECT * FROM ${ref('fact_stage_conveyor_check')}
-UNION ALL
-SELECT * FROM ${ref('fact_stage_cycle_count')}
-UNION ALL
-SELECT * FROM ${ref('fact_stage_handover')}
-UNION ALL
-SELECT * FROM ${ref('fact_stage_pick_zone')}
-UNION ALL
-SELECT * FROM ${ref('fact_stage_put')}
-UNION ALL
-SELECT * FROM ${ref('fact_stage_reserve_qc_pack')}
+SELECT
+    *
+FROM (
+    SELECT * FROM ${ref('fact_stage_app_check')}
+    UNION ALL
+    SELECT * FROM ${ref('fact_stage_bin_out')}
+    UNION ALL
+    SELECT * FROM ${ref('fact_stage_book')}
+    UNION ALL
+    SELECT * FROM ${ref('fact_stage_conveyor_check')}
+    UNION ALL
+    SELECT * FROM ${ref('fact_stage_cycle_count')}
+    UNION ALL
+    SELECT * FROM ${ref('fact_stage_handover')}
+    UNION ALL
+    SELECT * FROM ${ref('fact_stage_pick_zone')}
+    UNION ALL
+    SELECT * FROM ${ref('fact_stage_put')}
+    UNION ALL
+    SELECT * FROM ${ref('fact_stage_reserve_qc_pack')}
+)
+WHERE DATE(ts_done) >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 2 MONTH)
