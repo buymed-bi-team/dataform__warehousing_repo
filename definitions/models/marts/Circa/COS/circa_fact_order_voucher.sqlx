@@ -15,9 +15,9 @@ select distinct order_code
                 , discount_amount
                 ,cp.code as Campaign_code
                 ,cp.name as Compaign_name
-from${source.circa_os}.order_order_voucher ov
+from ${source.circa_os}.order_order_voucher ov
 left join ${source.circa_os}.promotion_promotion_voucher us  on ov.voucher_code = us.code
-left join${source.circa_os}.promotion_promotion_campaign cp on us.promotion_campaign_id = cp.id
+left join ${source.circa_os}.promotion_promotion_campaign cp on us.promotion_campaign_id = cp.id
 where voucher_code not like "%TECHTEST%"
       and cp.name not like '%Tech Test%'
 
