@@ -1,0 +1,52 @@
+config {
+    type: "view",
+    schema: "platinum_buymed_vn",
+    name: "circa_online_prd_order_order",
+    description : `
+    PIC: minh.luu
+    Partition by: created date
+    `,
+    tags:["platinum","circa-online_prd_order"]
+}
+ 
+  WITH silver AS (
+    SELECT
+      key,mg_id,receiver_phone_number,location,customer_phone,payment_method_fee,ward_code,deliver_method,total_price,total_product,first_item,last_updated_time,order_code,province_code,district_code,payment_term_time,type,order_id,receiver_shipping_address,payment_status,payment_method,currency,total_discount,hash_tag,receiver_id,receiver_full_address,account_id,customer_name,status,created_time,receiver_code,receiver_name,delivery_method_fee,price,tags,receiver_address_type,delivery_date,paid_amount,paid_time,sale_order_code,sale_order_status,canceled_by_user_type,cancellation_note,cancellation_type,synced_at,extra_props,action,ingest_time,
+      
+        CASE
+            WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time, 'Asia/Ho_Chi_Minh'))
+            ELSE DATE( '2099-01-01' )
+        END
+     created_date,
+      CAST(null as datetime) 
+    FROM silver_buymed_vn.circa_online_prd_order_order
+    WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 1 DAY
+    QUALIFY ROW_NUMBER() OVER (_window) = 1 
+          AND ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 16 HOUR
+          WINDOW _window AS (
+          PARTITION BY mg_id
+          ORDER BY synced_at DESC,
+          IF
+              (action='d',3,
+              IF
+              (action='u',2,1)) DESC
+          ,last_updated_time DESC)
+  ), platinum AS (
+    SELECT 
+      key,mg_id,receiver_phone_number,location,customer_phone,payment_method_fee,ward_code,deliver_method,total_price,total_product,first_item,last_updated_time,order_code,province_code,district_code,payment_term_time,type,order_id,receiver_shipping_address,payment_status,payment_method,currency,total_discount,hash_tag,receiver_id,receiver_full_address,account_id,customer_name,status,created_time,receiver_code,receiver_name,delivery_method_fee,price,tags,receiver_address_type,delivery_date,paid_amount,paid_time,sale_order_code,sale_order_status,canceled_by_user_type,cancellation_note,cancellation_type,synced_at,extra_props,action,ingest_time,
+      created_date,
+      platinum_refresh
+    FROM ${ref(`platinum_buymed_vn__stg`, `circa_online_prd_order_order`)}
+  )
+  SELECT p.*
+  FROM platinum p
+  LEFT JOIN silver s 
+      ON p.mg_id = s.mg_id 
+  WHERE s.mg_id is null 
+
+  UNION ALL 
+
+  SELECT s.*
+  FROM silver s
+  WHERE action <> "d"
+  
