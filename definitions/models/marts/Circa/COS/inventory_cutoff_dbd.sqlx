@@ -5,7 +5,6 @@ config {
       ${source.silver}.marketplace_prd_order_v2_order_item
       ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5,*/
     tags: ["8h30"],
-    disabled: true,
     name: "inventory_cutoff_dbd",
     columns: {
         
