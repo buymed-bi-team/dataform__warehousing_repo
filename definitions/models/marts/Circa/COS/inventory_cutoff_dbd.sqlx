@@ -18,7 +18,7 @@ select distinct
       ,b.pos_id
       ,sum(on_hand_qty) as on_hand_qty
       ,sum(on_hand_qty * cost_price_include_tax) as stock_value
-      ,client_id
+      ,a.client_id
 from buymed_circa_v2.inventory_location_detail_historical_cut_off as a
 left join `buymed_circa_v2.inventory_location` as b on a.location_id = b.id
 --where a.client_id = 1 
