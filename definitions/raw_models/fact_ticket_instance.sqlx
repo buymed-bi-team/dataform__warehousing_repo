@@ -19,6 +19,22 @@ where ref_type like "TICKET_INSTANCE"
 --   and ref_code = "25GGV-17036"
 group by ref_code
 
+),
+
+cause AS (
+    SELECT
+--     JSON_VALUE(e, "$.key") AS key
+--     , JSON_QUERY(e, "$.value") AS value
+        JSON_VALUE(v, "$.label") AS cause_name
+        , JSON_VALUE(v, "$.value") AS cause_code
+        , reason_code
+        , reason_name
+    FROM ${source.platinum}.platform_billing_prd_payment_reason_setting
+        , UNNEST(JSON_QUERY_ARRAY(extra_data)) AS e
+        , UNNEST(JSON_QUERY_ARRAY(e, "$.value")) AS v
+    WHERE
+        JSON_VALUE(e, "$.key") = "CAUSE"
+    GROUP BY ALL
 )
 
 select 
@@ -26,13 +42,13 @@ select
     requester_name,
     clasify,
     JSON_EXTRACT_SCALAR(a,'$.department_code') as department_code,
-    reason_code,
+    ti.reason_code,
     priority,
     template_topic_code,
     ticket_instance_code,
     name as ticket_name,
     JSON_EXTRACT_SCALAR(input_data,'$.userDescription') as user_description,
-    cause_code,
+    ti.cause_code,
     assignee_account_id,
     DATETIME(PARSE_TIMESTAMP('%Y-%m-%dT%H:%M:%E*S%Ez',JSON_EXTRACT_SCALAR(JSON_EXTRACT(decision_selecteds,'$[0]'),'$.decision_time')), "Asia/Ho_Chi_Minh") as first_decision_time,
     DATETIME(PARSE_TIMESTAMP('%Y-%m-%dT%H:%M:%E*S%Ez',JSON_EXTRACT_SCALAR(JSON_EXTRACT(decision_selecteds,'$[1]'),'$.decision_time')), "Asia/Ho_Chi_Minh") as second_decision_time,
@@ -64,11 +80,14 @@ select
     DATETIME(deadline_time, "Asia/Ho_Chi_Minh") AS deadline_time,
     root_ticket_instance_code,
     DATETIME(PARSE_TIMESTAMP('%Y-%m-%dT%H:%M:%E*S%Ez',JSON_EXTRACT_SCALAR(extra_props,'$.completed_time')), "Asia/Ho_Chi_Minh") as completed_time,
-    message_notes
+    message_notes,
+    c.cause_name AS cause_name,
+    c.reason_name
 from `${source.platinum}.platform_organization_prd_ticket_ticket_instance` ti
 
     left join unnest(JSON_EXTRACT_ARRAY(assign_roles,'$')) a
     left join unnest(JSON_EXTRACT_ARRAY(decision_selecteds,'$')) b
+    left join cause AS c ON c.cause_code = ti.cause_code AND c.reason_code = ti.reason_code
 left join ticket_note as tn on ti.ticket_instance_code = tn.ref_code
 -- where key like 'a0110ebd-0265-4bcb-832a-78322d27c34f'
 -- requester_type like "CIRCA_FS" or
