@@ -124,7 +124,7 @@ a.supplier_class,
 a.measure,
 a.value
 FROM ${ref(`agg_strategic_customer`)} a
-LEFT JOIN base_calendar c ON c.eom = a.date
+LEFT JOIN base_calendar c ON c.date = a.date and c.date is not null
 
 UNION ALL
 SELECT
@@ -136,7 +136,7 @@ SELECT
   CONCAT(measure, "_ENTERPRISE") AS measure,
   value
 FROM ${ref(`agg_strategic_customer`)} a
-LEFT JOIN base_calendar c ON c.eom = a.date
+LEFT JOIN base_calendar c ON c.date = a.date and c.date is not null
 
 UNION ALL
 SELECT 
