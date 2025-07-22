@@ -29,9 +29,9 @@ WITH
 SELECT
   a.customer_id,
   case
-  when b.sales_region_code = "MIENTRUNG" then "CENTRAL"
-  when b.sales_region_code = "MIENBAC" then "NORTHERN"
-  when b.sales_region_code = "MIENNAM" then "SOUTHERN"
+  when g.sales_region_code = "MIENTRUNG" then "CENTRAL"
+  when g.sales_region_code = "MIENBAC" then "NORTHERN"
+  when g.sales_region_code = "MIENNAM" then "SOUTHERN"
   end as location,
   a.year_month,
   a.som,
