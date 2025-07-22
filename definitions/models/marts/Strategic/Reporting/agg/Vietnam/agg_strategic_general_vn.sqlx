@@ -77,7 +77,7 @@ order_metrics_flattened AS (
     metric.measure,
     metric.value
   FROM order_metrics m
-  JOIN base_calendar c ON DATE(m.order_date) = c.date
+  LEFT JOIN base_calendar c ON DATE(m.order_date) = c.date
   CROSS JOIN UNNEST([
     STRUCT("GMV_BEFORE_CANCEL" AS measure, m.gmv_before_cancel AS value),
     STRUCT("GMV_AFTER_CANCEL", (m.gmv_before_cancel - m.cancel_before_ffm)),
@@ -112,7 +112,7 @@ SELECT
   "DO" AS measure,
   d.do_count AS value
 FROM delivery_metrics d
-JOIN base_calendar c ON DATE(d.delivery_date) = c.date
+LEFT JOIN base_calendar c ON DATE(d.delivery_date) = c.date
 
 UNION ALL
 SELECT 
@@ -124,7 +124,7 @@ a.supplier_class,
 a.measure,
 a.value
 FROM ${ref(`agg_strategic_customer`)} a
-JOIN base_calendar c ON c.eom = a.date
+LEFT JOIN base_calendar c ON c.eom = a.date
 
 UNION ALL
 SELECT
@@ -136,7 +136,7 @@ SELECT
   CONCAT(measure, "_ENTERPRISE") AS measure,
   value
 FROM ${ref(`agg_strategic_customer`)} a
-JOIN base_calendar c ON c.eom = a.date
+LEFT JOIN base_calendar c ON c.eom = a.date
 
 UNION ALL
 SELECT 
