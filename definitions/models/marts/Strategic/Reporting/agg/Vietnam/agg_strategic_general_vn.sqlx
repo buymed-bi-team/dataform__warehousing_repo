@@ -30,7 +30,6 @@ order_metrics AS (
   SELECT
     DATE(created_time) AS order_date,
     location,
-    fc_code,
     channel,
     supplier_class,
     SUM(sales_price * demand_quantity) AS gmv_before_cancel,
@@ -49,7 +48,7 @@ order_metrics AS (
     SUM(IF(order_status NOT LIKE "CANCEL", returned_quantity * sales_price, 0)) AS gmv_return,
     SUM(demand_quantity) AS item_sold
   FROM ${ref(`fact_strategic_sale_order_item_single`)}
-  GROUP BY 1, 2, 3, 4, 5
+  GROUP BY 1, 2, 3, 4
 ),
 
 -- Delivery metrics
