@@ -109,8 +109,8 @@ SELECT
   c.eom AS date,
   d.location,
   d.channel,
-  "DO" AS measure,
   d.supplier_class,
+  "DO" AS measure,
   d.do_count AS value
 FROM delivery_metrics d
 JOIN base_calendar c ON DATE(d.delivery_date) = c.date
@@ -133,8 +133,8 @@ SELECT
   a.date,
   location,
   channel,
-  CONCAT(measure, "_ENTERPRISE") AS measure,
   supplier_class,
+  CONCAT(measure, "_ENTERPRISE") AS measure,
   value
 FROM ${ref(`agg_strategic_customer`)} a
 JOIN base_calendar c ON c.eom = a.date
@@ -156,7 +156,7 @@ SELECT
   eom AS date,
   location,
   channel,
-  "SO" AS measure,
   supplier_class,
+  "SO" AS measure,
   SO_count AS value
 FROM ${ref(`fact_strategic_sale_order`)}
