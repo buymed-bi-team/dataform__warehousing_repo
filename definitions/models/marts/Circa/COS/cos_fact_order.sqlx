@@ -53,7 +53,7 @@ cte_fs as
        ,'' as reference_order_in_platform
        ,date(datetime_add(completed_at, interval 7 hour))  as completed_date
        ,medicine_cutting_fee
-       ,string_add(CAST(return_id as string)) as return_codes
+       ,string_agg(CAST(return_id as string)) as return_codes
        ,1 as client_id
 from ${source.circa}.order_order o
 left join UNNEST(JSON_VALUE_ARRAY(order_return_codes)) AS return_id
@@ -84,9 +84,9 @@ group by all)
        ,datetime_add(o.created_at, interval 7 hour) as created_at
        ,fulfillment_status
        ,reference_order_in_platform
-       ,date(DATETIME_ADD(completed_at, interval 7 hour))  as completed_date
+       ,date(datetime_add(completed_at, interval 7 hour))  as completed_date
        ,medicine_cutting_fee -- tiền cắt liều
-       ,STRING_AGG(CAST(return_id as string)) as return_codes
+       ,string_agg(CAST(return_id as string)) as return_codes
        ,o.client_id
 from ${source.circa_os}.order_order o
 left join UNNEST(JSON_VALUE_ARRAY(order_return_codes)) AS return_id
@@ -99,7 +99,7 @@ group by all)
 select
     *
     , case
-        when return_codes is null or return_codes in (select * from return_cancel) THEN "NORMAL"
+        when return_codes is null or return_codes in (select * from return_cancel) then "NORMAL"
         else "RETURN"
     end as order_type
 from cte_fs
