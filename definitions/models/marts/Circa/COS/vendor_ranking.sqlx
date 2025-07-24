@@ -23,8 +23,8 @@ with ranked_status as (
       when 'OUT_OF_STOCK' then 3
       when 'SUSPENDED' then 4
       else 5
-    end as status_priority, 
-    row_number() over (partition by a.product_id, a.seller_code
+    end as status_priority
+    ,row_number() over (partition by a.product_id, a.seller_code
       order by 
         case a.sku_system_status
           when 'NORMAL' then 1
