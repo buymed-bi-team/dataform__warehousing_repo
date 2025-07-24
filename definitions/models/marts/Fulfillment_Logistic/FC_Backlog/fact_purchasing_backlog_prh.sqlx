@@ -19,6 +19,7 @@ SELECT
         WHEN "WAIT_TO_RECEIVE" THEN "Chờ nhận hàng"
         WHEN "COMPLETED" THEN "Đã hoàn tất"
         WHEN "DRAFT" THEN "Nháp"
+        WHEN "LIQUIDATED" THEN "Đã thanh lý"
       END AS seller_status
     , wt.return_order_code
     , wt.source_location
