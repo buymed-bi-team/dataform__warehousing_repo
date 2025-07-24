@@ -382,7 +382,7 @@ WITH
       WHEN ois.warehouse_code LIKE "BD" THEN "SOUTHERN"
       WHEN ois.warehouse_code LIKE "DN" THEN "CENTRAL"
       WHEN ois.warehouse_code LIKE "HN" THEN "NORTHERN"
-      ELSE "GMV_VN_REGION_UNKNOWN"
+      ELSE "SOUTHERN"
   END
     AS location
   FROM fact_strategic_2 ois
