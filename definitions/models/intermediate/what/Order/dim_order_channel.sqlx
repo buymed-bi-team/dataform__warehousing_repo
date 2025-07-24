@@ -17,141 +17,87 @@ config {
     }
 }
 
-js {
-    // if ( `${datetime.isDaysOfWeek(0,6)}` == 'true') {
-    //     delete_interval = "INTERVAL 7 HOUR"
-    // }
-    // else {
-    //     delete_interval = "INTERVAL 3 HOUR"
-    // }
-    const checkpoint_datetime = `"${datetime.getPastDatetime({ intervalHours: 7 })}"`
-}
-
-
-pre_operations {
-  ${
-    when(
-      incremental(),
-      `
-      DELETE ${self()}
-      WHERE created_time > ${checkpoint_datetime}
-      `,
-      ``
-    )
-  }
-}
-
 WITH 
     order_mkp AS (
         SELECT 
-            * EXCEPT ( mg_id, synced_at, last_updated_time)
-        FROM ${dedup.dedup(
-        source.silver + `.marketplace_prd_order_v2_order`,
-        `
-            order_id, 
+            order_id,
+            order_code, 
             source, 
             TO_JSON_STRING(JSON_VALUE_ARRAY(extra_props, '$.customer_tags')) as customer_tags,
             TO_JSON_STRING(tags) as tags,
             customer_id,
-            JSON_VALUE(extra_props, "\$.brand_code") AS brand_code,
+            JSON_VALUE(extra_props, "$.brand_code") AS brand_code,
             created_time,
             'MKP' AS crm_system
-        `,
-        start_timestamp= when(incremental(),
-            ` TIMESTAMP(current_datetime() - INTERVAL 2 DAY )`, 
-            ` TIMESTAMP_SECONDS(0)`)                           
-    )}
-)
-,
+        FROM ${source.platinum}.marketplace_prd_order_v2_order
+    ),
+
     order_tender AS (
         SELECT 
             order_id,
-            CAST( null AS STRING ) as source, -- don't need, so fake it
-            CAST( null AS STRING ) as customer_tags, -- don't need, so fake it
-            CAST( null AS STRING ) as tags, -- don't need, so fake it
-            CAST( null AS INTEGER ) as customer_id, -- don't need, so fake it
-            CAST( null AS STRING ) as brand_code, -- don't need, so fake it
+            order_code,
+            CAST(NULL AS STRING) AS source,
+            CAST(NULL AS STRING) AS customer_tags,
+            CAST(NULL AS STRING) AS tags,
+            CAST(NULL AS INTEGER) AS customer_id,
+            CAST(NULL AS STRING) AS brand_code,
             created_time,
             'TENDER' AS crm_system
-        FROM ${source.platinum}.tender_prd_core_tender_orders 
-        WHERE created_time >= ${ when(incremental(),
-            ` TIMESTAMP(current_datetime() - INTERVAL 2 DAY )`, 
-            ` TIMESTAMP_SECONDS(0)`)                           
-        }
-)
-,   
+        FROM ${source.platinum}.tender_prd_core_tender_orders
+    ),
+
     union_order AS (
         SELECT * FROM order_mkp
-        UNION ALL 
+        UNION ALL
         SELECT * FROM order_tender
-)
-,
+    ),
+
     order_channel_tbl AS (
         SELECT
-            * EXCEPT ( crm_system ),
-            CASE
-                WHEN crm_system like 'TENDER' THEN 'TENDER'
+            * EXCEPT (crm_system),
+            CASE 
+                WHEN order_code LIKE 'SOTA%' THEN 'TAYAU'
+                WHEN crm_system LIKE 'TENDER' THEN 'TENDER'
                 WHEN customer_tags LIKE '%TENDER%' THEN 'TENDER'
                 WHEN source = 'brand-portal' AND brand_code IN ('Q8HDUVQX', '2E84FW961P', 'PG961P') THEN 'TENDER'
-                WHEN source in ('brand-portal', 'clinic-portal') THEN 'DISTRIBUTION'
-                WHEN REGEXP_CONTAINS(tags,'SO_INTERNAL')  THEN 'CONSIGNMENT-RECOGNITION' -- replace consignment
-                WHEN created_time >= "2023-10-01" AND source = 'internal-portal' THEN 'CONSIGNMENT'  
+                WHEN source IN ('brand-portal', 'clinic-portal') THEN 'DISTRIBUTION'
+                WHEN REGEXP_CONTAINS(tags, 'SO_INTERNAL') THEN 'CONSIGNMENT-RECOGNITION'
+                WHEN created_time >= "2023-10-01" AND source = 'internal-portal' THEN 'CONSIGNMENT'
                 WHEN created_time >= "2023-10-01" AND customer_id = 241098 THEN 'CONSIGNMENT'
                 WHEN customer_tags LIKE "%TERMINATE_CIRCA%" THEN "MARKETPLACE"
-                WHEN customer_tags LIKE '%CIRCA%'  THEN 'CIRCA'
+                WHEN customer_tags LIKE '%CIRCA%' THEN 'CIRCA'
                 ELSE 'MARKETPLACE'
             END AS order_channel,
-            CASE -- same with above
-                WHEN crm_system like 'TENDER' THEN 'TENDER'
+            CASE
+                WHEN order_code LIKE 'SOTA%' THEN 'TAYAU'
+                WHEN crm_system LIKE 'TENDER' THEN 'TENDER'
                 WHEN customer_tags LIKE '%TENDER%' THEN 'TENDER'
+                WHEN order_code LIKE 'SOTA%' THEN 'TAYAU'
                 WHEN source = 'brand-portal' AND brand_code IN ('Q8HDUVQX', '2E84FW961P', 'PG961P') THEN 'TENDER'
-                WHEN source in ('brand-portal', 'clinic-portal') THEN 'SO'
-                WHEN created_time >= "2023-10-01" AND source = 'internal-portal' THEN 'CO'  -- Dự án CONSIGNMENT đã bể
+                WHEN source IN ('brand-portal', 'clinic-portal') THEN 'SO'
+                WHEN created_time >= "2023-10-01" AND source = 'internal-portal' THEN 'CO'
                 WHEN created_time >= "2023-10-01" AND customer_id = 241098 THEN 'CO'
                 WHEN customer_tags LIKE "%TERMINATE_CIRCA%" THEN "SO"
-                WHEN customer_tags LIKE '%"CIRCA"%'  THEN 'SO'
+                WHEN customer_tags LIKE '%"CIRCA"%' THEN 'SO'
                 ELSE 'SO'
             END AS order_type
-        FROM union_order 
-), 
-js {
-  function choose_new(column_name){
-    /*
-      Because in real time, we allow user to fix order, this make order_id have 2 created time
-      So that to ensure order_id is unique, we will group by it and get all new data along with new created_time
-    */
-    return `ARRAY_AGG( ${column_name} ORDER BY created_time DESC)[0] AS ${column_name}`
-  }
-}
+        FROM union_order
+    ),
+
     order_tbl AS (
         SELECT 
             order_id,
-            ${utils.ToTimezone(`max(created_time)`)} AS created_time,
-            ${choose_new(`order_channel`)},
-            ${choose_new(`order_type`)}
-        FROM 
-            order_channel_tbl
-        GROUP BY 1
-)
+            DATETIME(TIMESTAMP(MAX(created_time)), "Asia/Ho_Chi_Minh") AS created_time,
+            ARRAY_AGG(order_channel ORDER BY created_time DESC)[OFFSET(0)] AS order_channel,
+            ARRAY_AGG(order_type ORDER BY created_time DESC)[OFFSET(0)] AS order_type
+        FROM order_channel_tbl
+        GROUP BY order_id
+    )
+
 SELECT 
     order_id,
     created_time,
     order_channel,
     order_type
 FROM order_tbl
-${when(incremental(),
-   `WHERE created_time > (SELECT max(created_time) FROM ${self()})`,
-   ``)}
 
-
-post_operations {                
-  ${
-    when(incremental(),
-      "",
-      `
-      ALTER TABLE ${self()} 
-        ADD PRIMARY KEY (order_id) NOT ENFORCED;
-      `
-    )
-  }
-}
