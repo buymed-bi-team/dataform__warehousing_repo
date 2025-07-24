@@ -72,7 +72,6 @@ WITH
                 WHEN sale_order_code LIKE 'SOTA%' THEN 'TAYAU'
                 WHEN crm_system LIKE 'TENDER' THEN 'TENDER'
                 WHEN customer_tags LIKE '%TENDER%' THEN 'TENDER'
-                WHEN order_code LIKE 'SOTA%' THEN 'TAYAU'
                 WHEN source = 'brand-portal' AND brand_code IN ('Q8HDUVQX', '2E84FW961P', 'PG961P') THEN 'TENDER'
                 WHEN source IN ('brand-portal', 'clinic-portal') THEN 'SO'
                 WHEN created_time >= "2023-10-01" AND source = 'internal-portal' THEN 'CO'
