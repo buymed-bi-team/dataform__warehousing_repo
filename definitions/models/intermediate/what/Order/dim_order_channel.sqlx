@@ -21,7 +21,7 @@ WITH
     order_mkp AS (
         SELECT 
             order_id,
-            order_code, 
+            sale_order_code, 
             source, 
             TO_JSON_STRING(JSON_VALUE_ARRAY(extra_props, '$.customer_tags')) as customer_tags,
             TO_JSON_STRING(tags) as tags,
@@ -35,7 +35,7 @@ WITH
     order_tender AS (
         SELECT 
             order_id,
-            order_code,
+            sale_order_code,
             CAST(NULL AS STRING) AS source,
             CAST(NULL AS STRING) AS customer_tags,
             CAST(NULL AS STRING) AS tags,
@@ -56,7 +56,7 @@ WITH
         SELECT
             * EXCEPT (crm_system),
             CASE 
-                WHEN order_code LIKE 'SOTA%' THEN 'TAYAU'
+                WHEN sale_order_code LIKE 'SOTA%' THEN 'TAYAU'
                 WHEN crm_system LIKE 'TENDER' THEN 'TENDER'
                 WHEN customer_tags LIKE '%TENDER%' THEN 'TENDER'
                 WHEN source = 'brand-portal' AND brand_code IN ('Q8HDUVQX', '2E84FW961P', 'PG961P') THEN 'TENDER'
@@ -69,7 +69,7 @@ WITH
                 ELSE 'MARKETPLACE'
             END AS order_channel,
             CASE
-                WHEN order_code LIKE 'SOTA%' THEN 'TAYAU'
+                WHEN sale_order_code LIKE 'SOTA%' THEN 'TAYAU'
                 WHEN crm_system LIKE 'TENDER' THEN 'TENDER'
                 WHEN customer_tags LIKE '%TENDER%' THEN 'TENDER'
                 WHEN order_code LIKE 'SOTA%' THEN 'TAYAU'
