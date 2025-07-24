@@ -51,13 +51,14 @@ with cte as (select
    ) as ending_stock
    ,ld.cost_price_include_tax
    ,ld.cost_price_without_tax
-   ,concat(a.product_id, "_", a.lot_date, "_", ld.tax_rate) as product_lotdate_vat
+   ,concat(a.product_id, "_", a.lot_date, "_", ld.tax_rate, "_", ld.tax_rate) as product_lotdate_vat_client_id
+   ,a.client_id
+   ,concat(a.product_id, "_", a.client_id) as product_client_id
 from ${source.circa_os}.inventory_allocation a
-left join ${source.circa_os}.inventory_location_detail ld ON a.location_detail_id = ld.id
-left join ${source.circa_os}.inventory_location l on ld.location_id = l.id
-left join ${source.circa_os}.entity_pos_profile p on l.pos_id = p.id 
-where  p.type = 'CIRCA'
-      and p.id not in ('c95a3338-4f5e-4264-958b-0d02e3fea49b','0d4c2e76-c6bf-487d-bf3e-d0b608d9fb5d')
+left join ${source.circa_os}.inventory_location_detail ld ON a.location_detail_id = ld.id and a.client_id = ld.client_id
+left join ${source.circa_os}.inventory_location l on ld.location_id = l.id and a.client_id = l.client_id
+left join ${source.ref}.circa_pos_profile p on l.pos_id = p.id  and a.client_id = p.client_id
+where  p.id is not null
 group by all)
 
 SELECT *

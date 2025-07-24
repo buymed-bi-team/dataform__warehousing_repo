@@ -1,0 +1,37 @@
+
+config {
+    type: "table",
+    description: `dim_sku_stock  item detail PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`,
+    /*Source:
+      ${source.silver}.marketplace_prd_order_v2_order_item
+      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5,*/
+    tags: ["custom_1h_past5"],
+    name: "dim_sku_stock",
+    columns: {
+        
+    }
+}
+
+with inventory as (
+    select a.product_id
+           ,sum(a.on_hand_qty) as on_hand_quantity
+           ,b.pos_id
+           ,a.seller_code
+           ,sku_code
+           ,b.client_id
+    from  ${source.circa_os}.inventory_location_detail as a
+    left join ${source.circa_os}.inventory_location as b on a.location_id = b.id and a.client_id = b.client_id
+    where deleted_at is null
+    group by all)
+
+select
+    s.pos_id
+    , s.product_id
+    , s.sku_code
+    , i.on_hand_quantity
+    , if(i.on_hand_quantity > 0, "Available", "Unavailable") as status
+    ,concat(s.product_id, "_", s.client_id) as product_client_id
+    ,s.client_id
+from ${source.circa_os}.product_sku_in_pos s 
+left join inventory i on s.pos_id = i.pos_id and s.sku_code = i.sku_code and s.client_id = i.client_id
+group by all

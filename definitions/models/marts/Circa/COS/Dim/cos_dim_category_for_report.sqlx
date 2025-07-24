@@ -1,0 +1,33 @@
+config {
+    type: "table",
+    description: `PIC: huyen.ngo; model_type: Table ;schedule: At 10h30`
+    /*Source:
+      ${source.silver}.marketplace_prd_order_v2_order_item
+      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
+    tags: ["10h30"],
+    name: "cos_dim_category_for_report",
+    columns: {/*
+        order_id: "NonNull |" + docs.order_id,
+        customer_id: "NonNull | The unique identifier for each customer"*/
+        
+    }
+}
+
+with cte_efficacy as (Select distinct product_id
+                             ,category_code
+                             ,client_id
+                      from buymed_circa_v2.product_product p
+                      ,unnest(JSON_VALUE_ARRAY(category_codes)) as category_code
+                      )
+
+Select distinct p.product_id
+       ,p.category_code
+       ,p.client_id
+       ,concat(p.product_id, "_", p.client_id) as product_client_id
+       ,case when  lower(trim(e.name)) like "mắt, tai, mũi , họng" then "mắt, tai, mũi, họng"
+           else lower(trim(e.name)) end as category_name
+from cte_efficacy p
+left join buymed_circa_v2.product_category e on p.category_code = e.code and p.client_id = e.client_id
+                  --  where product_id = 2619
+                  -- --  where e.client_id = 1
+                  -- --qualify row_number() over(partition by product_id, category_code) = 1

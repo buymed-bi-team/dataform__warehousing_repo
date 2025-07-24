@@ -33,3 +33,4 @@ SELECT
 FROM ${source.platinum}.seller_prd_promotion_rebate_result_item AS a
     LEFT JOIN ${source.platinum}.seller_prd_promotion_division AS b ON a.division_code = b.division_code
     LEFT JOIN ${source.platinum}.seller_prd_promotion_division AS c ON a.reward_division_code = c.division_code
+QUALIFY ROW_NUMBER() OVER(PARTITION BY rebate_item_id) = 1

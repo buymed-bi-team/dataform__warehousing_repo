@@ -239,7 +239,7 @@ SELECT
       WHEN product.seller_category_code = "AQFV2U" THEN 
         CASE
           WHEN seller_sub_category.code IN ('XT2U1Y','LALT0T') THEN seller_sub_category.name
-          ELSE "Thuốc không kê đơn"
+          ELSE "Thuốc (Chưa phân loại)"
         END
       ELSE seller_category.name
   END AS product_category,
@@ -247,7 +247,7 @@ SELECT
       WHEN product.seller_category_code = 'AQFV2U' THEN
         CASE
           WHEN seller_sub_category.code IN ('XT2U1Y','LALT0T') THEN seller_sub_category.name
-          ELSE "Thuốc không kê đơn"
+          -- ELSE "Thuốc không kê đơn"
         END
       ELSE 'Không phải Thuốc'
   END AS is_prescription,
@@ -316,7 +316,11 @@ SELECT
   hmp.high_margin,
   rp.retail_price,
   op.ownbrand_portfolio,
-  chronic.chronic,
+  IF(
+    chronic.chronic = "CHRONIC"
+    , "CHRONIC"
+    , IF(product.seller_category_code = "AQFV2U" AND product.seller_sub_category_code = "LALT0T", "ACUTE", NULL)
+  ) AS chronic,
   essential.essential
 
 

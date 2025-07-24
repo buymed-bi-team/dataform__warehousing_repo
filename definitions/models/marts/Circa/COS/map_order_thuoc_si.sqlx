@@ -1,0 +1,28 @@
+
+config {
+    type: "table",
+    description: `map_order_thuoc_si  item detail PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`,
+    /*Source:
+      ${source.silver}.marketplace_prd_order_v2_order_item
+      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5,*/
+    tags: ["custom_1h_past5"],
+    name: "map_order_thuoc_si",
+    columns: {
+        
+    }
+}
+
+
+select o.order_id,
+       c.customer_name,
+       customer_id,
+       o.tags as order_tag,
+       date(created_at) as created_date,
+       order_status,
+       order_type,
+       so_status,o.gmv,
+       actual_sales_amount,
+       invoice_amount,so_code
+from ${source.ref}.fact_order o
+left join ${source.ref}.dim_customer c using (customer_id)
+where c.tags like "%CIRCACOS%" and date(o.created_at)>"2024-10-01"

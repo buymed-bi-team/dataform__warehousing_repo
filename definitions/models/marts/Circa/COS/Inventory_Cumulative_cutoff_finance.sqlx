@@ -1,0 +1,45 @@
+
+config {
+    type: "table",
+    description: `PIC: huyen.ngo; model_type: Table ;schedule: At 10h30`
+    /*Source:
+      ${source.silver}.marketplace_prd_order_v2_order_item
+      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
+    name: "Inventory_Cumulative_cutoff_finance",
+    columns: {/*
+        order_id: "NonNull |" + docs.order_id,
+        customer_id: "NonNull | The unique identifier for each customer"*/
+        
+    }
+}
+ 
+ Select a.cutoff_date_index
+     ,date_add(a.created_at, interval 7 hour)  AS created_time
+    ,date(date_add(a.created_at, interval 7 hour) ) AS created_date
+    ,date_add(a.updated_at, interval 7 hour)  AS updated_time
+    ,date(date_add(a.updated_at, interval 7 hour) ) AS updated_date
+    ,l.pos_id
+    ,a.product_id
+    ,a.sku_code
+    --,a.ref_number
+    ,ld.doc_code
+    ,ld.doc_type
+    --,a.type
+    ,l.location_type
+    ,a.lot_date
+    ,ld.tax_rate
+    ,a.location_id
+    ,l.name as kho
+    ,a.available_qty
+   ,a.cost_price_include_tax
+   ,a.cost_price_without_tax
+   ,a.available_qty * a.cost_price_include_tax as stock_value
+   ,concat(a.product_id, "_", a.lot_date, "_", a.tax_rate) as product_lotdate_vat
+   ,a.client_id
+   ,concat(a.product_id, "_", a.client_id) as product_client_id
+from `buymed_circa_v2.inventory_location_detail_historical_cut_off` a
+left join lakehouse-prod-394907.buymed_circa_v2.inventory_location_detail ld ON a.id = ld.id and a.client_id = ld.client_id
+left join lakehouse-prod-394907.buymed_circa_v2.inventory_location l on ld.location_id = l.id and a.client_id = l.client_id
+left join lakehouse-prod-394907.buymed_circa_v2.entity_pos_profile p on l.pos_id = p.id and a.client_id = p.client_id
+where cutoff_date_index in( '2025-06-30','2025-05-31','2025-04-30')
+order by created_time, pos_id desc

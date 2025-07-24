@@ -45,6 +45,7 @@ Select distinct product_id
                 ,pos_id
                 ,sum(on_hand_quantity) as current_stock_by_product
                 ,sum(cost_price_include_tax * on_hand_quantity) as current_stock_value
+                ,p.client_id
 from ${source.ref}.cos_fact_inventory v
 left join ${source.circa_os}.entity_pos_profile p on v.pos_id = p.id 
 where p.type = 'CIRCA'
@@ -55,6 +56,7 @@ group by all
 ), by_product as (
 Select distinct o.product_id
             , o.* except (product_id)
+            ,concat(o.product_id, "_", o.client_id) as product_client_id
             ,case when o.current_stock_by_product > 0 then 'NORMAL'
                     when  thuocsi_sku_status.sku_system_status = 'SUSPENDED' then 'SUSPENDED'
                     else 'OOS' END AS product_status
@@ -66,6 +68,7 @@ where row_num = 1
 ),by_sku_not_thuocsi as (
 Select distinct o.product_id
             , o.* except (product_id)
+            ,concat(o.product_id, "_", o.client_id) as product_client_id
             ,case when o.current_stock_by_product > 0 then 'NORMAL'
                     else 'OOS' END AS product_status
 from inventory_by_product o

@@ -4,7 +4,7 @@ config {
     /*Source:
       ${source.silver}.marketplace_prd_order_v2_order_item
       ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5,*/
-    tags: ["custom_2h_past5"],
+    tags: ["custom_1h_past5"],
     name: "cos_fact_order_item",
     columns: {
 
@@ -24,8 +24,6 @@ WITH base_data as (
         ,a.product_id
         ,"NULL" as sku_code
         ,a.unit
-        --         a.unit_id,
-        --         a.location_id,
         ,case when c.type = 'ONLINE' then b.base_quantity else a.base_quantity end as base_quantity_original
         ,case
             when a.product_id = 1 then 1
@@ -48,6 +46,7 @@ WITH base_data as (
         end as discount_voucher_on_item
         ,DATETIME(a.created_at, "asia/Ho_Chi_Minh") as created_at, pos_id
         ,e.name as employee_name
+        ,1 as client_id
     from ${source.circa}.order_order_item as a
     left join ${source.circa}.order_so_item_detail as b ON a.id = b.item_id
     left join ${source.circa}.order_order as c ON c.id = a.order_id
@@ -108,7 +107,7 @@ cte_online as (
       ,lot_date
       ,base_quantity
       ,tax_rate
-      ,a.product_id || '_' || lot_date || '_' || tax_rate as product_lot_date_vat
+      ,a.product_id || '_' || lot_date || '_' || tax_rate || '_' || a.client_id  as product_lot_date_vat_client_id
       ,sku_code || '_' || lot_date || '_' || tax_rate as sku_lotdate_vat
       ,cost_price_include_tax  as base_unit_cost_price
       ,"CIRCA" as owner_name
@@ -117,12 +116,13 @@ cte_online as (
       ,promotion_event_code
       ,distributor_id
       ,employee_name
+      ,a.client_id
 from (
     select * from cte_not_online
     UNION ALL
     select * from cte_online
 ) a
-left join  ${source.ref}.cos_product_convert_base_unit  cv on cv.product_id = a.product_id and cv.convert_unit = a.unit
+left join  ${source.ref}.cos_product_convert_base_unit  cv on cv.product_id = a.product_id and cv.convert_unit = a.unit and a.client_id = cv.client_id
 where item_id  is not null or item_id <> ""
 and pos_id in ("b6c40920-af79-4fb0-bdc4-9965ddb885d2", "e737c882-e90c-4fd2-8a4f-ac6afd248a33")
 
@@ -142,7 +142,7 @@ select distinct
   ,oi.lot_date
   ,sum(al.base_quantity) as base_quantity
   ,oi.tax_rate
-  ,oi.product_id || '_' || oi.lot_date || '_' || oi.tax_rate as product_lot_date_vat
+  ,oi.product_id || '_' || oi.lot_date || '_' || oi.tax_rate || '_' || o.client_id  as product_lot_date_vat_client_id
   ,oi.sku_code || '_' || oi.lot_date || '_' || oi.tax_rate as sku_lotdate_vat
   ,al.cost_price_include_tax as base_unit_cost_price
   ,eo.name as owner_name
@@ -151,22 +151,19 @@ select distinct
   ,promotion_event_code
   ,po.distributor_id
   ,e.name as employee_name
+  ,o.client_id
 from ${source.circa_os}.order_order o
 left join ${source.circa_os}.order_order_item oi ON o.id = oi.order_id
-left join ${source.circa_os}.inventory_allocation as al ON oi.id = al.item_ref_id
-left join ${source.circa_os}.inventory_location_detail ld ON al.location_detail_id = ld.id 
-left join ${source.circa_os}.inventory_cost_price as cp on oi.product_id = cp.product_id and o.pos_id=cp.pos_id and oi.sku_code = cp.sku_code
-left join ${source.circa_os}.order_purchase_order po on  ld.doc_code = po.code
-left join ${source.circa_os}.entity_owner eo on po.owner_id = eo.id
-left join  ${source.ref}.cos_product_convert_base_unit  cv on cv.product_id = oi.product_id and cv.convert_unit = oi.unit
-left join ${source.circa_os}.entity_entity e on o.updated_by = e.id
-where
-  o.status LIKE '%COMPLETE%'
-  and o.client_id = 1
-  and al.client_id = 1
-  and ld.client_id = 1
-  and po.client_id = 1
-  and eo.client_id = 1
+left join ${source.circa_os}.inventory_allocation as al ON oi.id = al.item_ref_id and o.client_id = al.client_id
+left join ${source.circa_os}.inventory_location_detail ld ON al.location_detail_id = ld.id  and o.client_id = ld.client_id
+left join ${source.circa_os}.inventory_cost_price as cp on oi.product_id = cp.product_id and o.pos_id=cp.pos_id and oi.sku_code = cp.sku_code 
+left join ${source.circa_os}.order_purchase_order po on  ld.doc_code = po.code and o.client_id = po.client_id
+left join ${source.circa_os}.entity_owner eo on po.owner_id = eo.id and eo.client_id = o.client_id
+left join  ${source.ref}.cos_product_convert_base_unit cv on cv.product_id = oi.product_id and cv.convert_unit = oi.unit and o.client_id = cv.client_id
+left join ${source.circa_os}.entity_entity e on o.updated_by = e.id and o.client_id = e.client_id
+where o.status <> 'PENDING'
+      --and p.id is not null
+--o.status LIKE '%COMPLETE%'
 group by all
 --qualify row_number() over(partition by oi.id order by base_unit_cost_price desc) = 1
     
@@ -180,6 +177,6 @@ select distinct i.*
       ,base_unit_cost_price * convert_rate  as  unit_cost_price
 from order_items i
 left join ${ref('cos_fact_order')} fo on i.order_id = fo.order_id
-left join  ${source.ref}.cos_product_convert_base_unit  cv on cv.product_id = i.product_id and cv.convert_unit = i.unit
+left join  ${source.ref}.cos_product_convert_base_unit  cv on cv.product_id = i.product_id and cv.convert_unit = i.unit and i.client_id = cv.client_id
 where fo.order_id is not null
 

@@ -1,0 +1,70 @@
+config {
+    type: "table",
+    description: ` PIC: huyen.nguyenthu; model_type: Table ;schedule: At minute 5 past hour 6, 8, 10, 12, 14, 16, 18, 20 and 22`,
+    tags: ["custom_2h_past5"]
+   , name: "cos_dim_category"
+}
+
+WITH RECURSIVE input AS (
+
+  SELECT
+    product_id
+    , JSON_EXTRACT_STRING_ARRAY(category_codes,"$.") as category_codes
+  FROM ${source.platinum}.pim_prd_product_product
+),
+recursive_cte AS (
+
+  SELECT
+    0 AS idx,
+    product_id,
+    category_codes[OFFSET(0)] AS category_code,
+    category_codes
+  FROM input
+  WHERE ARRAY_LENGTH(category_codes) > 0
+ 
+  UNION ALL
+ 
+  SELECT
+    idx + 1,
+    product_id,
+    category_codes[OFFSET(idx + 1)],
+    category_codes
+  FROM recursive_cte
+  WHERE idx < ARRAY_LENGTH(category_codes) - 1
+), cte_name AS (
+  SELECT ct.*, c.name
+  FROM recursive_cte ct
+  left join ${source.platinum}.pim_prd_product_category c on ct.category_code = c.code
+),
+
+cat_name_1_add AS (
+    SELECT 
+        SAFE_CAST(code as int64) AS product_id
+        , NULLIF(value, "NAN") as cat_name_1
+    FROM collector.data_prd
+    WHERE object = 'Product' and type = 'NGANH_HANG'
+    QUALIFY ROW_NUMBER() OVER(PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
+),
+
+cte AS  (SELECT
+  product_id,
+  MAX(IF(idx = 0, category_code, NULL)) AS cat1,
+  MAX(IF(idx = 1, category_code, NULL)) AS cat2,
+  MAX(IF(idx = 2, category_code, NULL)) AS cat3,
+  MAX(IF(idx = 3, category_code, NULL)) AS cat4,
+  MAX(IF(idx = 4, category_code, NULL)) AS cat5,
+ 
+  MAX(IF(idx = 0, name, NULL)) AS cat_name_1,
+  MAX(IF(idx = 1, name, NULL)) AS cat_name_2,
+  MAX(IF(idx = 2, name, NULL)) AS cat_name_3,
+  MAX(IF(idx = 3, name, NULL)) AS cat_name_4,
+  MAX(IF(idx = 4, name, NULL)) AS cat_name_5
+FROM cte_name
+GROUP BY 1)
+--HAVING cat3 IS not null
+
+SELECT 
+    c.* EXCEPT(cat_name_1)
+    , COALESCE(c.cat_name_1, cn.cat_name_1) as cat_name_1
+FROM cte c 
+LEFT JOIN cat_name_1_add cn ON c.product_id = cn.product_id

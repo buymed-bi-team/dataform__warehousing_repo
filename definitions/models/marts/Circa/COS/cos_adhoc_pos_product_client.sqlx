@@ -128,11 +128,30 @@ i.seller_code,
         from combine
         where unit is not null
         group by all
-    )select i.*,
+    )
+,_all as (
+select i.*,
        case when (cup.check_price_unit = 1 and i.unit is not null) or price_set_check like "Price not set" then "contain unit not set"
        else "set full" end as check_unit_price_set
+       ,1 as client_id
 from combine i
 left join check_unit_pricing cup on i.product_id= cup.product_id 
 --where i.product_id = 1019289
 group by all
+)
+Select 
+  a.*
+  ,concat(a.product_id,"_", convert_rate) as key_compare
+  ,concat(a.product_id, "_", client_id) as product_client_id
+  ,min(p.min_cost_price_include_tax * a.convert_rate) as min_cost_price_include_tax
+  ,max(p.max_cost_price_include_tax * a.convert_rate) as max_cost_price_include_tax
+from _all a 
+left join ${source.circa_os}.inventory_cost_price p on a.seller_code = p.seller_code 
+                                                    and a.product_id = p.product_id
+                                                    and a.sku_code = p.sku_code
+group by all
+
+
+
+
 

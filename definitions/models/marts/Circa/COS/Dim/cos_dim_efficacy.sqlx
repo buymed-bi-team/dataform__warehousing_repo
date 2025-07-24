@@ -1,0 +1,31 @@
+config {
+    type: "table",
+    description: `Last 13 month| PIC: tu.dang; model_type: Table ;schedule: At minute 5 past hour 6, 8, 10, 12, 14, 16, 18, 20 and 22`
+    /*Source:
+      ${source.silver}.marketplace_prd_order_v2_order_item
+      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
+    tags: ["10h30"],
+    name: "cos_dim_efficacy",
+    columns: {/*
+        order_id: "NonNull |" + docs.order_id,
+        customer_id: "NonNull | The unique identifier for each customer"*/
+        
+    }
+}
+
+WITH cte_efficacy AS (
+  SELECT 
+    product_id,
+    efficacy_code,
+    client_id
+  FROM ${source.circa_os}.product_product p,  UNNEST(JSON_VALUE_ARRAY(efficacy_codes)) as efficacy_code
+  --where client_id = 1
+
+)
+SELECT 
+  p.*
+  ,concat(p.product_id, "_", p.client_id) as product_client_id
+  ,e.name
+FROM cte_efficacy p
+LEFT JOIN ${source.circa_os}.product_efficacy e ON p.efficacy_code = e.code and p.client_id = e.client_id
+ -- where e.client_id = 1

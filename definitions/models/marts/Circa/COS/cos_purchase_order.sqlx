@@ -7,12 +7,10 @@ config {
     tags: ["custom_1h_past5"],
     name: "cos_purchase_order",
     columns: {
-
         
     }
 }
-
-select
+select distinct
      a.id as po_id
     ,a.pos_id
     ,a.distributor_id
@@ -47,16 +45,13 @@ select
     ,so_code
     ,eo.name as owner_name
     ,dis.name as Vendor
-
-from ${source.circa_os}.order_purchase_order as a
+    ,a.client_id
+from ${source.circa_os}.order_purchase_order as a 
 left join ${source.ref}.fact_order as o on a.sale_order_number = safe_cast(o.order_id as string)
-left join ${source.circa_os}.entity_owner as eo on a.owner_id = eo.id
-left join ${source.circa_os}.entity_distributor dis on a.distributor_id = dis.id
-left join ${source.circa_os}.order_return_po rt on a.id = rt.source_id -- Lấy nhừng PO có trả hàng 
-left join ${source.circa_os}.entity_pos_profile p on a.pos_id = p.id
+left join ${source.circa_os}.entity_owner as eo on a.owner_id = eo.id and a.client_id = eo.client_id
+left join ${source.circa_os}.entity_distributor dis on a.distributor_id = dis.id and a.client_id = dis.client_id
+left join ${source.circa_os}.order_return_po rt on a.id = rt.source_id and a.client_id = rt.client_id-- Lấy nhừng PO có trả hàng 
+left join ${source.ref}.circa_pos_profile p on a.pos_id = p.id and a.client_id = p.client_id
 where a.status <> 'CANCELED'
-      and a.pos_id not in ('c95a3338-4f5e-4264-958b-0d02e3fea49b','0d4c2e76-c6bf-487d-bf3e-d0b608d9fb5d')
-      and p.type = 'CIRCA'
-      and a.client_id = 1
--- and date(a.created_at) >= date(date_trunc(date_sub(current_date('+7'), interval 11 month), month))
+      and p.id is not null
 group by all

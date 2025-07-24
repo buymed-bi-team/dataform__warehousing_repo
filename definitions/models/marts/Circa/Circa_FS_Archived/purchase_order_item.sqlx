@@ -1,0 +1,86 @@
+config {
+    type: "table",
+    description: `Circa FS purchase order item PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`,
+    /*Source:
+      ${source.silver}.marketplace_prd_order_v2_order_item
+      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5,*/
+    tags: ["custom_1h_past5"],
+    disabled: true,
+    name: "purchase_order_item",
+    columns: {
+
+        
+    }
+}
+
+
+select distinct
+        date(DATETIME_ADD(a.created_at, INTERVAL 7 HOUR))        as created_date
+       ,datetime(DATETIME_ADD(a.created_at, INTERVAL 7 HOUR))    as created_at
+       ,b.id as po_item_id
+       ,a.purchase_order_id as PO_id
+       ,a.product_id
+       ,b.quantity
+       ,b.base_quantity
+       ,case
+            when tax_rate <= 0 then 0
+            else tax_rate end as tax_rate
+       ,a.unit_price
+       ,a.unit
+       ,a.unit_id
+       ,case
+           when a.amount <> 0 then a.amount
+           when a.amount = 0 then b.quantity * a.unit_price
+           end as PO_item_amount
+       ,b.lot_date
+       ,il.location_type
+       ,a.discount_amount
+       ,b.discount_amount as item_discount_amt
+
+from  ${source.circa}.order_purchase_order as c
+left join  ${source.circa}.order_purchase_order_item as a on a.purchase_order_id = c.id
+left join  ${source.circa}.order_po_item_detail as b on a.id = b.po_item_id
+        --  left join ` ${source.circa}.inventory_allocation` as ia on b.id = ia.item_ref_id
+left join  ${source.circa}.inventory_location as il on b.location_id = il.id
+where c.status <> 'CANCEL' and c.code not in ('PO00000080','PO00000369','PO00000939') 
+      and (a.id is not null or a.id <> "") 
+-- and date(c.created_at) >= date( date_trunc( date_sub( current_date('+7'), interval 12 month) , month ) )
+
+union all 
+
+select distinct
+        date(DATETIME_ADD(a.created_at, INTERVAL 7 HOUR))        as created_date
+       ,datetime(DATETIME_ADD(a.created_at, INTERVAL 7 HOUR))    as created_at
+       ,b.id as po_item_id
+       ,a.purchase_order_id as PO_id
+       ,a.product_id
+       ,b.quantity
+       ,b.base_quantity
+       ,case
+            when a.tax_rate <= 0 then 0
+            else a.tax_rate end as tax_rate
+       ,a.unit_price
+       ,a.unit
+       ,a.unit_id
+       ,case
+           when a.amount <> 0 then a.amount
+           when a.amount = 0 then b.quantity * a.unit_price
+           end as PO_item_amount
+       ,b.lot_date
+       ,il.location_type
+       ,a.discount_amount
+       ,b.discount_amount as item_discount_amt
+
+from  ${source.circa_os}.order_purchase_order as c
+left join ${source.circa_os}.order_purchase_order_item as a on a.purchase_order_id = c.id
+left join   ${source.circa_os}.order_po_item_detail as b on a.id = b.po_item_id
+        --  left join ` ${source.circa}.inventory_allocation` as ia on b.id = ia.item_ref_id
+left join  ${source.circa_os}.inventory_location as il on b.location_id = il.id
+left join ${source.circa_os}.entity_pos_profile p on c.pos_id = p.id 
+where c.status <> 'CANCEL'
+      and (a.id is not null or a.id <> "") 
+      and p.type = 'FS'
+      and p.code not in ('POS0030')
+
+
+

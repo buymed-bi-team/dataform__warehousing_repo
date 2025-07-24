@@ -7,50 +7,51 @@ config {
     tags: ["custom_1h_past5"],
     name: "cos_purchase_order_item",
     columns: {
-
         
     }
 }
-
 select
-       datetime_add(c.created_at, interval 7 hour) as created_at,
-       a.purchase_order_id as po_id,
-       a.product_id,
-       a.sku as sku_code,
-       c.status,
-       case when b.quantity <> 0 then b.quantity
-        else b.received_quantity end as quantity,
-       b.received_quantity,
-       b.base_quantity,
-       case when b.tax_rate <= 0 then 0 else b.tax_rate end as tax_rate,
-       a.unit_price,
-       a.unit,
-       a.unit_id,
+        datetime_add(c.created_at, interval 7 hour) as created_at
+       ,a.purchase_order_id as po_id
+       ,a.product_id
+       ,a.sku as sku_code
+       ,c.status
+       ,case when b.quantity <> 0 then b.quantity
+             else b.received_quantity end as quantity
+       ,b.received_quantity
+       ,b.base_quantity
+       ,case when b.tax_rate <= 0 then 0 else b.tax_rate end as tax_rate
+       ,a.unit_price
+       ,a.unit
+       ,a.unit_id
       --  case
       --      when a.amount <> 0 then a.amount
       --      when a.amount = 0 then b.quantity * a.unit_price
       --   end as PO_item_amount,
-      b.quantity * a.unit_price as PO_item_amount,
-       b.lot_date,
-       product_id || "_" || lot_date || "_" || b.tax_rate as product_lot_date_vat,
-       a.sku || "_" || lot_date || "_" || b.tax_rate as sku_lotdate_vat,
-       il.location_type,
-       --a.discount_amount,
-       b.discount_amount as item_discount_amt,
-       c.code || "_" || a.sku || "_" || lot_date || "_" || b.tax_rate as item_src_po_code,
-       a.seller_code,
-       eo.name,
-       c.distributor_id,
-       dis.name as Vendor
+       ,b.quantity * a.unit_price as PO_item_amount
+       ,b.lot_date
+       ,product_id || "_" || lot_date || "_" || b.tax_rate || "_" || c.client_id as product_lot_date_vat_client_id
+       ,a.sku || "_" || lot_date || "_" || b.tax_rate as sku_lotdate_vat
+       ,il.location_type
+       --,a.discount_amount
+       ,b.discount_amount as item_discount_amt
+       ,c.code || "_" || a.sku || "_" || lot_date || "_" || b.tax_rate as item_src_po_code
+       ,a.seller_code
+       ,eo.name
+       ,c.distributor_id
+       ,dis.name as Vendor
+       ,c.client_id
+       ,concat(a.product_id, "_", c.client_id) as product_client_id
        
 from ${source.circa_os}.order_purchase_order_item as a
 left join ${source.circa_os}.order_purchase_order as c on a.purchase_order_id = c.id
 left join ${source.circa_os}.order_po_item_detail as b on a.id = b.po_item_id
-left join ${source.circa_os}.inventory_location as il on b.location_id = il.id
-left join ${source.circa_os}.entity_owner eo on a.seller_code = eo.seller_code
-left join ${source.circa_os}.entity_distributor dis on c.distributor_id = dis.id
+left join ${source.circa_os}.inventory_location as il on b.location_id = il.id and c.client_id = il.client_id
+left join ${source.circa_os}.entity_owner eo on a.seller_code = eo.seller_code and c.client_id = eo.client_id 
+left join ${source.circa_os}.entity_distributor dis on c.distributor_id = dis.id and c.client_id = dis.client_id 
+left join ${source.ref}.circa_pos_profile  p on c.pos_id = p.id and c.client_id = p.client_id 
 where c.status <> 'CANCELED'
      and eo.name NOT LIKE '%TEST%'
-     and c.pos_id not in ('c95a3338-4f5e-4264-958b-0d02e3fea49b','0d4c2e76-c6bf-487d-bf3e-d0b608d9fb5d')
+     and p.id is not null
 group by all
-
+ 

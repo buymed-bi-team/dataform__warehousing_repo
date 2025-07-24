@@ -1,0 +1,71 @@
+config {
+    type: "table",
+    description: `PIC: huyen.ngo;
+    Source:
+        ${source.ref}.adhoc_pricing_competitor_price
+        ${source.ref}.dim_fc_service_area
+        ${source.ref}.adhoc_pricing_full
+        ${source.ref}.cos_adhoc_pos_product`
+      ,
+    tags: ["custom_1h_past5"],
+    name: "compare_price",
+    columns: {
+        product_id: "NonNull | The unique identifier for each product"
+        
+    }
+}
+
+with internal_price as (
+Select distinct product_id
+           ,convert_rate
+           ,unit
+           ,sale_unit_price as current_price
+           ,1 as client_id
+from gold_buymed_vn2.cos_adhoc_pos_product
+qualify ROW_NUMBER() over (partition by product_id,convert_rate order by last_updated_at desc) = 1
+)
+,os_price as (
+    Select
+      l.product_id
+      ,l.sales_region_code
+      ,l.max_convert_rate
+      ,SAFE_DIVIDE(l.max_convert_rate, p.convert_rate) AS max_unit
+      ,client_id
+    from  (
+      Select distinct
+        product_id
+        ,sales_region_code
+        ,max(convert_rate) as max_convert_rate
+        ,1 as client_id
+        from gold_buymed_vn2.cos_adhoc_pos_product
+        group by all) as l
+    left join gold_buymed_vn2.cos_adhoc_pos_product p
+      on l.product_id = p.product_id
+   group by all
+),market_price as (
+Select distinct product_id
+               ,competitor
+               ,market_price_aft_convert as market_current_price
+from gold_buymed_vn2.adhoc_pricing_competitor_price
+where qc = "QC" and competitor IN ('LongChau', 'AnKhang', 'Pharmacity')
+QUALIFY ROW_NUMBER() OVER (PARTITION BY product_id,competitor ORDER BY last_updated_time DESC) = 1
+), final_market as(
+  SELECT
+    o.product_id
+    , SAFE_CAST(SAFE_DIVIDE(o.max_convert_rate, o.max_unit) AS INT64) AS convert_rate
+    , SAFE_DIVIDE(m.market_current_price, o.max_unit) AS market_current_price
+    , competitor
+    ,1 as client_id
+  FROM os_price o LEFT JOIN market_price m ON o.product_id = m.product_id
+  WHERE o.sales_region_code = 'MIENNAM' 
+  GROUP BY ALL
+)
+Select  i.product_id
+           ,i.convert_rate
+           ,i.unit
+           ,i.current_price
+           ,fm.market_current_price
+           ,fm.competitor
+           ,i.client_id
+           ,concat(i.product_id, "_", i.client_id) as product_client_id
+from internal_price i left join final_market fm  on i.product_id = fm.product_id and i.convert_rate = fm.convert_rate and i.client_id = fm.client_id

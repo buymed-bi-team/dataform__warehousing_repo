@@ -1,0 +1,47 @@
+config {
+    type: "table", 
+    disabled: true,
+    description: 
+        `PIC: tu.dang; 
+        Type: Table; 
+        Refresh Schedule: At minute 10 past hour 7, 10, 13, 16 and 19;
+        Source: 
+            buymed_circa.product_retail_unit,
+            buymed_circa.inventory_location,
+            buymed_circa.inventory_cost_price
+        `,
+    //tags: ["adhoc-office"],
+    columns: {
+
+    }
+/*    ,
+
+    assertions: {
+      uniqueKey: ["product_id"],
+      nonNull: ["product_id"]
+    }*/
+}
+With inventory as (select a.product_id,
+                          a.lot_date,
+                          case
+            when tax_rate <= 0 then 0
+                else tax_rate end as tax_rate,
+                          a.cost_price_include_tax,
+                          a.on_hand_qty as on_hand_quantity,
+                          a.location_id,
+                          a.doc_code
+                   from lakehouse-prod-394907.buymed_circa.inventory_location_detail as a
+where doc_code <> 'N/A' and deleted_at is null  )
+
+SELECT a.*,
+       b.pos_id,
+       ru.unit as base_unit,
+       b.location_type, 
+       ru.sale_allowed,
+       c.min_cost_price_include_tax,
+       c.max_cost_price_include_tax
+FROM inventory as a
+         left join lakehouse-prod-394907.buymed_circa.inventory_location as b on a.location_id = b.id
+         left join lakehouse-prod-394907.buymed_circa.product_retail_unit as ru on a.product_id = ru.product_id and ru.base_unit = true
+         left join `lakehouse-prod-394907.buymed_circa.inventory_cost_price` as c on c.product_id = a.product_id and c.pos_id =b.pos_id
+WHERE deleted_at is null

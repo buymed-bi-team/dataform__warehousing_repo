@@ -9,7 +9,6 @@ config {
         
     }
 }
-
 with rawtable as (
     select
         poi.product_id
@@ -19,12 +18,14 @@ with rawtable as (
         ,SUM(poi.base_quantity) AS Total_base_Quantity
         ,AVG(poi.unit_price) AS AvgUnitPrice
         ,(SUM(poi.base_quantity) * 1000000 - AVG(poi.unit_price)) AS CompositeScore
+        ,poi.client_id
     from ${source.ref}.cos_purchase_order_item AS poi
-    join ${source.ref}.cos_purchase_order AS po ON poi.po_id = po.po_id
+    join ${source.ref}.cos_purchase_order AS po ON poi.po_id = po.po_id and poi.client_id = po.client_id
     where
         po.fulfillment_method <> 'IMPORT_STOCK' -- Loại trừ nhập tồn kho
         and po.po_status NOT IN ('SEPERATED', 'CANCELED', 'PENDING')
         and po.owner_name <> 'CIRCA TEST'
+        and po.client_id = 1
         --and product_id = 4980
     group by all
     -- Lấy số lượng bán hàng từng sản phẩm theo từng Vendor, giá 
@@ -45,13 +46,14 @@ Select distinct
        ,o.created_at
        ,tax_rate
        ,rank() over (partition by i.product_id,i.distributor_id order by o.created_at desc) as rn
+       ,i.client_id
 from ${source.ref}.cos_purchase_order_item i
-left join ${source.ref}.cos_purchase_order o on i.po_id = o.po_id
-left join ${source.ref}.cos_product_convert_base_unit td on td.product_id = i.product_id and i.unit = convert_unit
+left join ${source.ref}.cos_purchase_order o on i.po_id = o.po_id and i.client_id = o.client_id
+left join ${source.ref}.cos_product_convert_base_unit td on td.product_id = i.product_id and i.unit = convert_unit and td.client_id = i.client_id
 where o.fulfillment_method <> 'IMPORT_STOCK' -- Loại trừ nhập tồn kho
         and o.po_status NOT IN ('SEPERATED', 'CANCELED', 'PENDING')
         and o.owner_name <> 'CIRCA TEST'
-
+        and i.client_id = 1
 )
 select distinct 
     rankedtable.product_id
@@ -63,5 +65,6 @@ select distinct
     ,base_unit_price 
     ,tax_rate as latest_tax_rate
     ,Rank as rank
-from rankedtable left join last_unit_price on rankedtable.product_id = last_unit_price.product_id and rankedtable.distributor_id = last_unit_price.distributor_id
+    ,rankedtable.client_id
+from rankedtable left join last_unit_price on rankedtable.product_id = last_unit_price.product_id and rankedtable.distributor_id = last_unit_price.distributor_id and rankedtable.client_id = last_unit_price.client_id
 where rn= 1

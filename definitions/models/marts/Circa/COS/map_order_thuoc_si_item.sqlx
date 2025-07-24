@@ -1,0 +1,37 @@
+
+config {
+    type: "table",
+    description: `map_order_thuoc_si  item detail PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`,
+    /*Source:
+      ${source.silver}.marketplace_prd_order_v2_order_item
+      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5,*/
+    tags: ["custom_1h_past5"],
+    name: "map_order_thuoc_si_item",
+    columns: {
+        
+    }
+}
+
+
+Select 
+  a.order_id
+  ,a.product_id
+  ,sum(a.outbound_quantity) AS qty_ordered
+  ,a.sales_price
+  ,a.sku_code
+  ,s.supplier_name as seller_name,price_after_discount
+--,   lot, fact_outbound_item.exp_date
+--,   STRING_AGG(lot||"_"||exp_date, ", ") as lots_dates,
+  ,sum(sales_price * outbound_quantity) as gmv_outbound
+  ,sum(sales_price * demand_quantity) as gmv_demand
+  ,sum(price_after_discount * outbound_quantity) as gmv_actual
+--   STRING_AGG(dat)
+from ${source.ref}.fact_order_item as a
+left join ${source.ref}.dim_customer as  c on a.customer_id = c.customer_id
+left join ${source.ref}.dim_supplier as s on a.seller_code = s.supplier_code
+-- left join gold_buymed_vn2.fact_outbound_item ob on a.order_id= ob.order_id and a.sku_code= ob.sku_code
+where c.tags like "%CIRCACOS%"
+and date(a.created_at)>"2024-10-01"
+-- AND TIMESTAMP_TRUNC(a.created_at, Month) >=timestamp(date_trunc(date_sub(current_date(),interval 3 month), month),"Asia/Ho_Chi_Minh")
+group by all
+-- order by 7 desc

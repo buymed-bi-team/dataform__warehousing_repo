@@ -19,6 +19,7 @@ with stock_status as (
         ,pos_id
         ,cutoff_date_index
         ,sum(on_hand_qty) as total_quantity
+        ,a.client_id
     from buymed_circa_v2.inventory_location_detail_historical_cut_off a 
     left join buymed_circa_v2.inventory_location as b on a.location_id = b.id
     where a.client_id = 1 
@@ -30,6 +31,7 @@ zero_stock_candidates AS (
         s.product_id
         ,s.pos_id
         ,min(s.cutoff_date_index) as first_zero_date
+        ,client_id
     from stock_status s
     where s.total_quantity = 0
       and not exists (
@@ -40,13 +42,15 @@ zero_stock_candidates AS (
                 and ss.cutoff_date_index > s.cutoff_date_index
                 and ss.total_quantity > 0
       )
-    group by s.product_id, s.pos_id
-),zero_and_stable_inventory as (
+    group by all
+)
+,zero_and_stable_inventory as (
 Select distinct
     z.product_id
     ,z.pos_id
     ,z.first_zero_date
     ,p.name as pos_name
+    ,z.client_id
 from zero_stock_candidates z
 left join `buymed_circa_v2.entity_pos_profile` p on z.pos_id = p.id
 where p.type = 'CIRCA'
@@ -59,6 +63,8 @@ select distinct
   ,min(first_zero_date) as last_zero_date
   ,st.product_status
   ,date_diff(current_date(), min(first_zero_date), day) as days_since_zero
+  ,a.client_id
+  ,concat(a.product_id, "_", a.client_id) as product_client_id
 from zero_and_stable_inventory a
 left join ${source.ref}.cos_sku_status st on a.product_id = st.product_id and  a.pos_id = st.pos_id
 where st.product_status ='OOS'
@@ -70,6 +76,8 @@ Select distinct
  ,DATE(th.created_time)
  ,s.product_status
 ,date_diff(current_date(), date(th.created_time), day) as days_since_zero
+,s.client_id
+,concat(s.product_id, "_", s.client_id) as product_client_id
 from ${source.ref}.cos_sku_status s
 left join (Select distinct product_id,created_time
                         , row_number() over (partition by product_id order by created_time desc) as rn

@@ -1,0 +1,95 @@
+config {
+    type: "table",
+    description: `Circa FS purchase order PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`,
+    /*Source:
+      ${source.silver}.marketplace_prd_order_v2_order_item
+      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5,*/
+    tags: ["custom_1h_past5"],
+    disabled: true,
+    name: "purchase_order",
+    columns: {
+
+        
+    }
+}
+
+
+select a.id                 as po_id
+       ,a.pos_id
+       ,a.distributor_id
+       ,a.code              as PO_code
+       ,a.status            as PO_status
+       ,a.total_item_amount as PO_amount
+       ,date(DATETIME_ADD(a.created_at, INTERVAL 7 HOUR))  as created_date
+       ,date(DATETIME_ADD(a.completed_at, INTERVAL 7 HOUR)) as completed_date
+       ,DATETIME_ADD(a.created_at, INTERVAL 7 HOUR) as created_at
+       ,a.location_type
+       ,a.sale_order_number as order_id
+       ,a.created_by
+       ,a.note
+       ,a.type
+       --,a.is_non_payment
+       ,prv.code as payment_code
+       ,case
+           when a.is_non_payment then 'FS tự trả tiền'
+           else 'Thanh toán tạm ứng' end
+           as payment_bbc_status
+       ,source_type
+       ,discount_amount
+       ,delivery_fee_amount
+       ,sub_payment_method
+       ,sub_type
+       ,o.order_status
+       ,o.so_status
+       ,o.payment_method
+       ,date(o.created_at) as so_created_date
+       ,tags
+       ,case when TO_JSON_STRING(o.tags) LIKE '%VIP%' Then "VIP"
+            else "OTHERS" end as VIP_tag
+        , so_code
+from  ${source.circa}.order_purchase_order as a
+left join  ${source.circa}.order_payment_receipt_voucher prv on a.code = prv.ref_number
+left join ${source.ref}.fact_order o on a.sale_order_number = SAFE_CAST(o.order_id as string)
+where a.status <>'CANCELED'
+
+union all 
+
+select a.id                 as po_id
+       ,a.pos_id
+       ,a.distributor_id
+       ,a.code              as PO_code
+       ,a.status            as PO_status
+       ,a.total_item_amount as PO_amount
+       ,date(DATETIME_ADD(a.created_at, INTERVAL 7 HOUR))  as created_date
+       ,date(DATETIME_ADD(a.completed_at, INTERVAL 7 HOUR)) as completed_date
+       ,DATETIME_ADD(a.created_at, INTERVAL 7 HOUR) as created_at
+       ,a.location_type
+       ,a.sale_order_number as order_id
+       ,a.created_by
+       ,a.note
+       ,a.type
+       --, '' as is_non_payment
+       ,prv.code as payment_code
+       ,'' as payment_bbc_status
+       ,source_type
+       ,discount_amount
+       ,delivery_fee_amount
+       ,sub_payment_method
+       ,sub_type
+       ,o.order_status
+       ,o.so_status
+       ,o.payment_method
+       ,date(o.created_at) as so_created_date
+       ,tags
+       ,case when TO_JSON_STRING(o.tags) LIKE '%VIP%' Then "VIP"
+            else "OTHERS" end as VIP_tag
+        , so_code
+from   ${source.circa_os}.order_purchase_order as a
+left join  ${source.circa_os}.order_payment_receipt_voucher prv on a.code = prv.ref_number
+left join ${source.ref}.fact_order o on a.sale_order_number = SAFE_CAST(o.order_id as string)
+left join ${source.circa_os}.entity_pos_profile p on a.pos_id = p.id 
+where a.status <>'CANCELED'
+      and p.type = 'FS'
+      and p.code not in ('POS0030')
+
+

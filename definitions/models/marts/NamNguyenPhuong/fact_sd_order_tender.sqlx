@@ -83,7 +83,7 @@ dedup_credit_note AS (
       a.province_code AS shipping_province_code,
       -- 1 as customer_order_index, /* Chưa được ghi nhận */ -- not need
       CASE
-        WHEN (fc_code IS NULL) OR (fc_code ="") THEN "BD" -- huong.dang add
+        WHEN (dfc.fc_code IS NULL) OR (fc_code ="") THEN "BD" -- huong.dang add
         ELSE fc_code
       END
         AS fc_code,

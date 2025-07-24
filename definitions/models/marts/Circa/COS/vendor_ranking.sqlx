@@ -1,0 +1,54 @@
+config {
+    type: "table",
+    description: `vendor_ranking PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`,
+    /*Source:
+      ${source.silver}.marketplace_prd_order_v2_order_item
+      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5,*/
+    tags: ["custom_1h_past5"],
+    name: "vendor_ranking",
+    columns: {
+        
+    }
+}
+with ranked_status as (
+  select
+    a.product_id
+    ,a.seller_code
+    ,a.sku_code
+    ,a.sku_system_status
+    ,a.sku_system_active
+    ,case a.sku_system_status
+      when 'NORMAL' then 1
+      when 'LIMIT' then 2
+      when 'OUT_OF_STOCK' then 3
+      when 'SUSPENDED' then 4
+      else 5
+    end as status_priority
+    ,row_number() over (partition by a.product_id, a.seller_code
+      order by 
+        case a.sku_system_status
+          when 'NORMAL' then 1
+          when 'LIMIT' then 2
+          when 'OUT_OF_STOCK' then 3
+          when 'SUSPENDED' then 4
+          else 5
+        end
+    ) as row_num
+  from `lakehouse-prod-394907.gold_buymed_vn2.adhoc_pm_master_sku` a
+),s as (
+select distinct
+  product_id
+  ,seller_code
+  ,sku_code
+  ,sku_system_status
+  ,sku_system_active
+from ranked_status
+where row_num = 1
+)Select distinct rn.*
+      ,sku_system_status
+      ,sku_system_active
+      ,dis.seller_code
+      ,concat(rn.product_id, "_", rn.client_id) as product_client_id
+from ${source.ref}.cos_ranking_vendor rn
+left join ${source.circa_os}.entity_distributor dis on dis.id = rn.distributor_id and rn.client_id = dis.client_id
+left join s on rn.product_id = s.product_id and s.seller_code = dis.seller_code
