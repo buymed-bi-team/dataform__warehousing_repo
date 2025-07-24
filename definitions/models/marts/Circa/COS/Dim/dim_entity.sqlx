@@ -17,19 +17,22 @@ select distinct
     ,entity2.phone_number
     ,entity2.id
     ,status
-    ,date(DATETIME_ADD(created_at, INTERVAL 7 HOUR)) as created_date
+    ,date(DATETIME_ADD(created_at, interval 7 hour)) as created_date
     ,type
-from buymed_circa_v2.entity_entity entity2
+    ,title
+from buymed_circa_v2.entity_entity as entity2
 
 union all 
+
 select distinct
     entity1.name as customer_name
     ,entity1.phone_number
     ,entity1.id
     ,status
-    ,date(DATETIME_ADD(created_at, INTERVAL 7 HOUR)) as created_date
+    ,date(DATETIME_ADD(created_at, interval 7 hour)) as created_date
     ,type
-from buymed_circa_v2.entity_entity entity1
+    ,title
+from buymed_circa_v2.entity_entity as entity1
 where entity1.id in (Select distinct entity_id from buymed_circa.order_order
 where pos_id in ("b6c40920-af79-4fb0-bdc4-9965ddb885d2", "e737c882-e90c-4fd2-8a4f-ac6afd248a33")
 )
