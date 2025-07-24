@@ -1,5 +1,6 @@
 config {
     type: "incremental",
+    protected:true,
     tags: ["bq_job"],
     description: "PIC: minh.luu "
 }
