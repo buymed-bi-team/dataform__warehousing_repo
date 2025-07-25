@@ -35,7 +35,7 @@ select distinct
     ,a.sub_type
     ,o.order_status
     ,o.so_status
-    ,o.payment_method
+    ,a.payment_method
     ,date(o.created_at) as so_created_date
     --,tags
     ,case 
