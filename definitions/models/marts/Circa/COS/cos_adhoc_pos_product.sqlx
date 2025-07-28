@@ -11,39 +11,42 @@ with thuosi_unit as (
 ),
 
 product_base_unit as
-    (select product_id,
-            unit as convert_unit,
-            base_unit,
-            convert_rate
+    (select product_id
+            ,unit as convert_unit
+            ,base_unit
+            ,convert_rate
+            ,client_id
      from  ${source.circa_os}.product_retail_unit
      where sale_allowed is true 
-           and client_id = 1
+           --and client_id = 1
      )
 
     , inventory as (
-    select a.product_id,
-           sum(a.on_hand_qty) as on_hand_quantity,
-           b.pos_id,
-           a.seller_code,
-           sku_code
-    from  ${source.circa_os}.inventory_location_detail as a
-    left join  ${source.circa_os}.inventory_location as b on a.location_id = b.id
+    select a.product_id
+           ,sum(a.on_hand_qty) as on_hand_quantity
+           ,b.pos_id
+           ,a.seller_code
+           ,sku_code
+           ,a.client_id
+    from  ${source.circa_os}.inventory_location_detail as a 
+    left join  ${source.circa_os}.inventory_location as b on a.location_id = b.id and a.client_id = b.client_id
     where deleted_at is null
-    and b.client_id = 1
-           and a.client_id = 1
-    group by all),
-
-full_unit as (SELECT
-    i.pos_id,
-    ru.product_id,
-    ru.convert_unit as unit,
-    ru.convert_rate,
-    ru.base_unit,
-    i.seller_code
-FROM  inventory AS i
-JOIN  product_base_unit AS ru
-    ON i.product_id = ru.product_id
-GROUP BY ALL),
+    -- and b.client_id = 1
+    --        and a.client_id = 1
+    group by all)
+    
+,full_unit as (
+    Select
+     i.pos_id
+    ,ru.product_id
+    ,ru.convert_unit as unit
+    ,ru.convert_rate
+    ,ru.base_unit
+    ,i.seller_code
+    ,i.client_id
+from  inventory as i
+join  product_base_unit as ru on i.product_id = ru.product_id
+group by all),
 
 inventory_full_unit as (select i.pos_id
     , i.product_id
@@ -54,58 +57,65 @@ inventory_full_unit as (select i.pos_id
     , i.sku_code
     , u.base_unit
     , i.product_id || '_' || u.unit || '_' || i.pos_id          as sku_unit_pos
+    , i.client_id
 from inventory i
-left join full_unit u on i.pos_id = u.pos_id and i.product_id = u.product_id),
+left join full_unit u on i.pos_id = u.pos_id 
+                      and i.product_id = u.product_id
+                      and i.client_id = u.client_id
+)
 
-has_price as (
+,has_price as (
     select
-        ps.pos_id,
-        s.product_id,
-        s.seller_code,
-        s.sku_code,
-        pd.sale_price,
-        pd.unit,
-        bu.base_unit,
-        bu.convert_rate,
-        s.product_id || '_' || pd.unit || '_' || ps.pos_id as sku_unit_pos,
-        case when t.unit is not null then true else false end as is_thuocsi_unit,
-        max(datetime(pd.updated_at, "Asia/Ho_Chi_Minh")) as last_updated_at
+         ps.pos_id
+        ,s.product_id
+        ,s.seller_code
+        ,s.sku_code
+        ,pd.sale_price
+        ,pd.unit
+        ,bu.base_unit
+        ,bu.convert_rate
+        ,s.product_id || '_' || pd.unit || '_' || ps.pos_id as sku_unit_pos
+        ,case when t.unit is not null then true else false end as is_thuocsi_unit
+        ,max(datetime(pd.updated_at, "Asia/Ho_Chi_Minh")) as last_updated_at
+        ,ps.client_id
     from  ${source.circa_os}.product_price_sheet_sku_detail as pd
     left join ${source.circa_os}.product_price_sheet_sku as s on pd.price_sheet_sku_id = s.id
-    left join  ${source.circa_os}.product_price_sheet as ps on s.price_sheet_id = ps.id
-    left join product_base_unit as bu on s.product_id = bu.product_id and pd.unit = bu.convert_unit
+    left join ${source.circa_os}.product_price_sheet as ps on s.price_sheet_id = ps.id
+    left join product_base_unit as bu on s.product_id = bu.product_id and pd.unit = bu.convert_unit and bu.client_id = ps.client_id
     left join thuosi_unit t on s.product_id = t.product_id and lower(pd.unit) = lower(t.unit)
     where bu.convert_unit is not null
-          and ps.client_id = 1 
+        --   and ps.client_id = 1 
           and ps.channel = 'OFFLINE'
           --and ps.pos_id is not null
     group by all),
 
-count_ord as ( select o.pos_id,
-                    oi.product_id,
-                    max(o.created_date) as latest_ord,
-                    COUNT(distinct o.order_id) as no_ord,
-                    SUM(unit_price * quantity) AS GMV
+count_ord as ( select o.pos_id
+                    ,oi.product_id
+                    ,max(o.created_date) as latest_ord
+                    ,COUNT(distinct o.order_id) as no_ord
+                    ,SUM(unit_price * quantity) AS GMV
+                    ,o.client_id
              from ${ref('cos_fact_order')} o
              left join ${ref('cos_fact_order_item')} oi
                         on o.order_id = oi.order_id
              where status like "%COMPLETE%"
-             group by 1,2),
-
-combine_has_stock as (select i.product_id,
-           i.pos_id,
-           i.seller_code,
-           i.sku_code,
-           i.unit,
-           i.convert_rate,
-           p.is_thuocsi_unit,
-           i.base_unit as is_base_unit,
-           p.last_updated_at,
-           p.sale_price as sale_unit_price,
-           i.sku_unit_pos,
-           case when i.on_hand_quantity > 0 then "Available" else "Unavailable" end as have_stock,
-           case when p.sale_price is null then "Price not set" else "Price set" end as price_set_check,
-            case when DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<16 THEN "15D"
+             group by all)
+             
+,combine_has_stock as (
+    select i.product_id
+           ,i.pos_id
+           ,i.seller_code
+           ,i.sku_code
+           ,i.unit
+           ,i.convert_rate
+           ,p.is_thuocsi_unit
+           ,i.base_unit as is_base_unit
+           ,p.last_updated_at
+           ,p.sale_price as sale_unit_price
+           ,i.sku_unit_pos
+           ,case when i.on_hand_quantity > 0 then "Available" else "Unavailable" end as have_stock
+           ,case when p.sale_price is null then "Price not set" else "Price set" end as price_set_check
+           ,case when DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<16 THEN "15D"
             WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<31 THEN "30D"
             WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<46 THEN "45D"
             WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<61 THEN "60D"
@@ -115,39 +125,47 @@ combine_has_stock as (select i.product_id,
             WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<46 and on_hand_quantity >0 THEN "DEAD-3:No-Demand 45D"
             WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<61 and on_hand_quantity >0 THEN "DEAD-4:No-Demand 60D"
             WHEN DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<90 and on_hand_quantity >0 THEN "DEAD-5:No-Demand 90D"
-            else "Others" END AS stock_aging_type,
-            no_ord,GMV,
-            latest_ord,
-            on_hand_quantity
+            else "Others" END AS stock_aging_type
+            ,no_ord
+            ,GMV
+            ,latest_ord
+            ,on_hand_quantity
+            ,i.client_id
     from inventory_full_unit i
-    left join has_price p
-        on i.pos_id = p.pos_id and i.product_id = p.product_id and i.seller_code = p.seller_code and i.unit = p.unit
+    left join has_price p on i.pos_id = p.pos_id 
+                          and i.product_id = p.product_id 
+                          and i.seller_code = p.seller_code 
+                          and i.unit = p.unit
+                          and i.client_id = p.client_id
     left join count_ord co on i.pos_id = co.pos_id and i.product_id = co.product_id
     --where p.unit is not null
-    group by all),
-
-has_price_non_stock as (
-        select p.product_id,
-           p.pos_id,
-           p.seller_code,
-           p.sku_code,
-           p.unit,
-           p.convert_rate,
-           p.is_thuocsi_unit,
-           p.base_unit as is_base_unit,
-           p.last_updated_at,
-           p.sale_price as sale_unit_price,
-           p.sku_unit_pos,
-           "Unavailable" as have_stock,
-           case when p.sale_price is null then "Price not set" else "Price set" end as price_set_check,
-           "Others" as latest_date_order_range,
-            "Others" AS stock_aging_type,
-            0 as no_ord,
-            0 as GMV,
-            CAST(NULL AS DATE) as latest_ord,
-            0 as on_hand_quantity
+    group by all)
+    
+,has_price_non_stock as (
+        select p.product_id
+           ,p.pos_id
+           ,p.seller_code
+           ,p.sku_code
+           ,p.unit
+           ,p.convert_rate
+           ,p.is_thuocsi_unit
+           ,p.base_unit as is_base_unit
+           ,p.last_updated_at
+           ,p.sale_price as sale_unit_price
+           ,p.sku_unit_pos
+           ,"Unavailable" as have_stock
+           ,case when p.sale_price is null then "Price not set" else "Price set" end as price_set_check
+           ,"Others" as latest_date_order_range
+           , "Others" AS stock_aging_type
+           ,0 as no_ord
+           ,0 as GMV
+           ,CAST(NULL AS DATE) as latest_ord
+           ,0 as on_hand_quantity
+           ,p.client_id
     from has_price p
-    left join full_unit u on p.pos_id = u.pos_id and p.product_id = u.product_id
+    left join full_unit u on p.pos_id = u.pos_id 
+                          and p.product_id = u.product_id
+                          and p.client_id = u.client_id
     where concat(p.pos_id, p.product_id, p.seller_code, p.unit) not in (select concat(pos_id, product_id, seller_code, unit) from combine_has_stock)
 --and p.unit is not null
 ),
@@ -160,30 +178,33 @@ combine as (
 
 check_unit_pricing as
     (
-        select product_id,
-               pos_id,
-               max(case when sale_unit_price >= 0 then 0 else 1 end ) as check_price_unit
+        select product_id
+               ,pos_id
+               ,max(case when sale_unit_price >= 0 then 0 else 1 end ) as check_price_unit
+               ,combine.client_id
         from combine
         where unit is not null
         group by all
     ),
     cte_os as (
         select
-            id as pos_id,
-            province,
-            s.sales_region_code
-        from  ${source.circa_os}.entity_pos_profile m
+            id as pos_id
+            ,province
+            ,s.sales_region_code
+            ,m.client_id
+        from  ${source.ref}.circa_pos_profile m
         left join ${ref('dim_fc_service_area')} s on m.province = s.service_area_code
-        where m.type = 'CIRCA'
-        and m.id not in ('c95a3338-4f5e-4264-958b-0d02e3fea49b','0d4c2e76-c6bf-487d-bf3e-d0b608d9fb5d')
-        and m.client_id = 1
+        where m.id is not null
+        --and m.id not in ('c95a3338-4f5e-4264-958b-0d02e3fea49b','0d4c2e76-c6bf-487d-bf3e-d0b608d9fb5d')
+        --and m.client_id = 1
         ),
 
     cte_fs as (
         select
-            id as pos_id,
-            province,
-            s.sales_region_code
+            id as pos_id
+            ,province
+            ,s.sales_region_code
+            ,1 as client_id
         from buymed_circa.entity_pos_profile m
         left join ${ref('dim_fc_service_area')} s on m.province = s.service_area_code
         where id in ("b6c40920-af79-4fb0-bdc4-9965ddb885d2", "e737c882-e90c-4fd2-8a4f-ac6afd248a33")
@@ -194,25 +215,32 @@ check_unit_pricing as
     union all
     select * from cte_os)
     ,_all as (
-        select i.*,
-               case when (cup.check_price_unit = 1 and i.unit is not null) or price_set_check like "Price not set" then "contain unit not set"
-               else "set full" end as check_unit_price_set,
-               pr.sales_region_code
+        select i.*
+               ,case when (cup.check_price_unit = 1 and i.unit is not null) or price_set_check like "Price not set" then "contain unit not set"
+                     else "set full" end as check_unit_price_set
+               ,pr.sales_region_code
         from combine i
-        left join check_unit_pricing cup on i.product_id= cup.product_id and i.pos_id = cup.pos_id
+        left join check_unit_pricing cup on i.product_id= cup.product_id 
+                                         and i.pos_id = cup.pos_id
+                                         and i.client_id = cup.client_id
         left join pos_region pr on i.pos_id = pr.pos_id
         group by all
     )
   Select 
     a.*
-    ,concat(a.product_id, "_", "1") as product_client_id
+    ,concat(a.product_id, "_", a.client_id) as product_client_id
     ,concat(a.product_id, "_", sales_region_code, "_", convert_rate) as key_compare
     ,p.min_cost_price_include_tax * a.convert_rate AS min_cost_price_include_tax
     ,p.max_cost_price_include_tax * a.convert_rate AS max_cost_price_include_tax
 from _all a 
-left join ${source.circa_os}.inventory_cost_price p on a.pos_id = p.pos_id 
+left join
+    ( Select * from  ${source.circa_os}.inventory_cost_price  
+    qualify row_number() over (partition by product_id,pos_id,seller_code,sku_code order by updated_at desc) = 1
+     )
+p on a.pos_id = p.pos_id 
                                                     and a.seller_code = p.seller_code 
                                                     and a.product_id = p.product_id
+                                                    and a.sku_code = p.sku_code
          
 
 
