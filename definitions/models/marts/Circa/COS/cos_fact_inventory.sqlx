@@ -56,6 +56,7 @@ Select i.*
        ,eo.name as owner_name
        ,o.sale_order_number as SO_code
        ,o.distributor_id
+       ,o.fulfillment_method
 from  _all i 
 left join ${source.circa_os}.order_purchase_order o on i.doc_code = o.code and i.client_id = o.client_id
 left join ${source.circa_os}.entity_owner eo on o.owner_id = eo.id and i.client_id = eo.client_id
