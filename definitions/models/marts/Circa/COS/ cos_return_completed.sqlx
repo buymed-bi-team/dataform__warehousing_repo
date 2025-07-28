@@ -31,8 +31,9 @@ with return_completed as (
           ,c.code
           ,total_amount
     from ${source.circa_os}.order_return_order c
-    left join ${source.circa_os}.entity_pos_profile p on c.pos_id = p.id
+    left join ${source.ref}.circa_pos_profile p on c.pos_id = p.id
     where c.status = 'COMPLETED'
+          and p.id is not null
 ),
 
 cte_fs as
@@ -43,6 +44,7 @@ cte_fs as
        ,o.code as order_code
        ,o.total_amount
        ,CAST(return_id as string) as return_codes
+       ,1 as client_id
 from ${source.circa}.order_order o
 left join UNNEST(JSON_VALUE_ARRAY(order_return_codes)) AS return_id
 left join ${source.circa}.entity_pos_profile p on o.pos_id = p.id
@@ -59,10 +61,12 @@ cte_os as
        ,o.code as order_code
        ,o.total_amount
        ,CAST(return_id as string) as return_codes
+       ,o.client_id
 from ${source.circa_os}.order_order o
 left join UNNEST(JSON_VALUE_ARRAY(order_return_codes)) AS return_id
-left join ${source.circa_os}.entity_pos_profile p on o.pos_id = p.id
+left join ${source.ref}.circa_pos_profile p on o.pos_id = p.id and o.client_id = p.client_id
 where o.type <> 'RETURN'
+      and p.id is not null
 group by all)
 , _all as
 (
