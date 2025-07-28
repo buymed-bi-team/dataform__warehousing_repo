@@ -33,6 +33,7 @@ with return_completed as (
     from ${source.circa_os}.order_return_order c
     left join ${source.ref}.circa_pos_profile p on c.pos_id = p.id
     where c.status = 'COMPLETED'
+          and p.id is not null
 ),
 
 cte_fs as
@@ -65,6 +66,7 @@ from ${source.circa_os}.order_order o
 left join UNNEST(JSON_VALUE_ARRAY(order_return_codes)) AS return_id
 left join ${source.ref}.circa_pos_profile p on o.pos_id = p.id and o.client_id = p.client_id
 where o.type <> 'RETURN'
+      and p.id is not null
 group by all)
 , _all as
 (
