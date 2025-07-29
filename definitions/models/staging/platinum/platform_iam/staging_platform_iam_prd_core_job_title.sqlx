@@ -9,7 +9,7 @@ config {
     bigquery: {
         partitionBy: "created_date"
     },
-    tags:["0h","platinum_platform_iam"]
+    tags:["platinum_custom_2h_past7","platinum_platform_iam"]
 }
 
 SELECT
@@ -18,7 +18,7 @@ SELECT
     WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
     ELSE "2099-01-01"
   END AS created_date
-FROM lakehouse-prod-394907.silver_buymed_vn.platform_iam_prd_core_job_title o 
+FROM ${source.silver}.platform_iam_prd_core_job_title o 
  QUALIFY ROW_NUMBER() OVER (_window) = 1
        AND FIRST_VALUE(action) OVER (_window) <> 'd'
 WINDOW
