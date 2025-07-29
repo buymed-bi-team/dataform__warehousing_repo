@@ -66,7 +66,7 @@ left join full_unit u on i.pos_id = u.pos_id
 
 ,has_price as (
     select
-         ps.pos_id
+         coalesce(ps.pos_id,p.id) as pos_id
         ,s.product_id
         ,s.seller_code
         ,s.sku_code
@@ -83,7 +83,9 @@ left join full_unit u on i.pos_id = u.pos_id
     left join ${source.circa_os}.product_price_sheet as ps on s.price_sheet_id = ps.id
     left join product_base_unit as bu on s.product_id = bu.product_id and pd.unit = bu.convert_unit and bu.client_id = ps.client_id
     left join thuosi_unit t on s.product_id = t.product_id and lower(pd.unit) = lower(t.unit)
+    left join ${source.ref}.circa_pos_profile p on ps.client_id = p.client_id
     where bu.convert_unit is not null
+          and p.client_id is not null
         --   and ps.client_id = 1 
           and ps.channel = 'OFFLINE'
           --and ps.pos_id is not null
