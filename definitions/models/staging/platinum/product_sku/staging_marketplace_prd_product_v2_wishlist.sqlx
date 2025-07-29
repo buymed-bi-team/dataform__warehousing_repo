@@ -2,10 +2,10 @@ config {
     type: "table",
     name: "marketplace_prd_product_v2_wishlist",
     schema: "platinum_buymed_vn",
-    assertions: {
-        uniqueKey: 'mg_id',
-        nonNull: ["created_date"]
-    },
+    // assertions: {
+    //     uniqueKey: 'mg_id',
+    //     nonNull: ["created_date"]
+    // },
     bigquery: {
         partitionBy: "created_date"
     },
