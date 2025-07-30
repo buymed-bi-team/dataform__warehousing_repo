@@ -41,6 +41,8 @@ product_base_unit as
     ,ru.product_id
     ,ru.convert_unit as unit
     ,ru.convert_rate
+    ,case when base_unit is true then on_hand_quantity
+     else 0 end as on_hand_quantity
     ,ru.base_unit
     ,i.seller_code
     ,i.client_id
@@ -52,7 +54,7 @@ inventory_full_unit as (select i.pos_id
     , i.product_id
     , u.unit
     , u.convert_rate
-    , i.on_hand_quantity
+    , u.on_hand_quantity
     , i.seller_code
     , i.sku_code
     , u.base_unit
