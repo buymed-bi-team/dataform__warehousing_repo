@@ -54,67 +54,69 @@ config {
     }
 }
 
-WITH cte_sku AS (
+WITH 
+cte_sku AS (
   SELECT
     product_id,
     seller_code,
-    item_code,
-    sku,
-    status,
-    is_active,
-    JSON_EXTRACT_SCALAR(extra_props, "$.demand_classification_code") as demand_classification_code,
-    STRING(codes) AS location_code
-  FROM ${source.platinum}.marketplace_prd_product_v2_sku s,
-  UNNEST(JSON_EXTRACT_ARRAY(s.location_codes)) codes
+    sub_sku_code AS item_code,
+    sku_code AS sku,
+    sku_system_status AS status,
+    sku_system_active AS is_active,
+    sku_demand_class AS demand_classification_code,
+    sales_region_code,
+    fc_code
+  FROM ${ref('dim_sku_sales_region_current')}
+  -- UNNEST(JSON_EXTRACT_ARRAY(s.location_codes)) codes
 ),
 
-cte_sku_sr_code AS (
-  SELECT
-    a.*,
-    CASE
-      WHEN LENGTH(a.location_code) = 2 THEN b.sales_region_code
-      WHEN a.location_code IN ("MIENBAC", "MIENTRUNG", "MIENNAM") THEN a.location_code
-    END AS sales_region_code
-  FROM cte_sku a
-  LEFT JOIN ${ref("dim_fc_service_area")} b
-  ON a.location_code = b.service_area_code
-  WHERE a.location_code NOT IN ("MN_ADM", "MB_ADM")
+-- cte_sku_sr_code AS (
+--   SELECT
+--     a.*,
+--     CASE
+--       WHEN LENGTH(a.location_code) = 2 THEN b.sales_region_code
+--       WHEN a.location_code IN ("MIENBAC", "MIENTRUNG", "MIENNAM") THEN a.location_code
+--     END AS sales_region_code
+--   FROM cte_sku a
+--   LEFT JOIN ${ref("dim_fc_service_area")} b
+--   ON a.location_code = b.service_area_code
+--   WHERE a.location_code NOT IN ("MN_ADM", "MB_ADM")
 
-  UNION ALL
+--   UNION ALL
 
-  SELECT
-    a.*,
-    "MIENTRUNG" AS sales_region_code
-  FROM cte_sku a
-  WHERE a.location_code IN ("MN_ADM", "MB_ADM")
+--   SELECT
+--     a.*,
+--     "MIENTRUNG" AS sales_region_code
+--   FROM cte_sku a
+--   WHERE a.location_code IN ("MN_ADM", "MB_ADM")
 
-  UNION ALL
+--   UNION ALL
 
-  SELECT
-    a.*,
-    CASE
-      WHEN a.location_code = "MN_ADM" THEN "MIENNAM"
-      WHEN a.location_code = "MB_ADM" THEN "MIENBAC"
-    END AS sales_region_code
-  FROM cte_sku a
-  WHERE a.location_code IN ("MN_ADM", "MB_ADM")
-),
+--   SELECT
+--     a.*,
+--     CASE
+--       WHEN a.location_code = "MN_ADM" THEN "MIENNAM"
+--       WHEN a.location_code = "MB_ADM" THEN "MIENBAC"
+--     END AS sales_region_code
+--   FROM cte_sku a
+--   WHERE a.location_code IN ("MN_ADM", "MB_ADM")
+-- ),
 
-cte_sku_ranked AS (
-  SELECT DISTINCT
-    s.sku,
-    s.sales_region_code,
-    f.fc_code,
-    s.product_id,
-    s.item_code,
-    s.status,
-    s.is_active,
-    s.demand_classification_code,
-    ROW_NUMBER() OVER (PARTITION BY s.sku, s.sales_region_code ORDER BY s.product_id) AS row_num
-  FROM cte_sku_sr_code s
-  LEFT JOIN ${ref("dim_fc")} f on s.sales_region_code = f.sales_region_code
-  WHERE s.sales_region_code IS NOT NULL
-),
+-- cte_sku_ranked AS (
+--   SELECT DISTINCT
+--     s.sku,
+--     s.sales_region_code,
+--     f.fc_code,
+--     s.product_id,
+--     s.item_code,
+--     s.status,
+--     s.is_active,
+--     s.demand_classification_code,
+--     ROW_NUMBER() OVER (PARTITION BY s.sku, s.sales_region_code ORDER BY s.product_id) AS row_num
+--   FROM cte_sku_sr_code s
+--   LEFT JOIN ${ref("dim_fc")} f on s.sales_region_code = f.sales_region_code
+--   WHERE s.sales_region_code IS NOT NULL
+-- ),
 
 cte_sku_fc AS (
   SELECT
@@ -149,8 +151,9 @@ cte_sku_item AS (
     ) AS item_system_active,
     sr.demand_classification_code
   FROM cte_sku_fc sf
-  LEFT JOIN cte_sku_ranked sr
-  ON sf.sku_code = sr.sku AND sf.fc_code = sr.fc_code AND sr.row_num = 1
+  LEFT JOIN cte_sku sr
+  ON sf.sku_code = sr.sku AND sf.fc_code = sr.fc_code 
+  -- AND sr.row_num = 1
 ),
 
 cte_sku_fc_location AS (
