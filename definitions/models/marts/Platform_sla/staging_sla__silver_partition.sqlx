@@ -1,6 +1,7 @@
 config {
     type: "incremental",
     protected: true,
+    disabled: true,
     tags : ["custom_1h_past10"],
     bigquery: {
       partitionBy: "DATE(index_time)",
