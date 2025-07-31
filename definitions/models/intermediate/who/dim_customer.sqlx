@@ -323,8 +323,7 @@ SELECT
         WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"VIP\"|\"AMBASSADOR\"') THEN 'VIP'
         ELSE "NORMAL"
     END AS customer_tag_group,
-
-
+    SAFE_CAST(JSON_VALUE(customer.extra_props, "$.is_skip_sync_level") AS BOOLEAN) AS is_skip_sync_level,
     flom.ordered_amount,
     flom.no_orders,
     flom.last_purchase,
