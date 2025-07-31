@@ -84,7 +84,7 @@ group by all)
        ,datetime_add(o.created_at, interval 7 hour) as created_at
        ,fulfillment_status
        ,reference_order_in_platform
-       ,date(datetime_add(completed_at, interval 7 hour))  as completed_date
+       ,coalesce(date(datetime_add(o.completed_at, interval 7 hour)),date(datetime_add(o.updated_at, interval 7 hour)))  as completed_date
        ,medicine_cutting_fee -- tiền cắt liều
        ,string_agg(CAST(return_id as string)) as return_codes
        ,o.client_id
