@@ -74,8 +74,9 @@ with
     cte_full as (
       select
         a.*
+        , IF(REGEXP_CONTAINS(service_area_code, r'[0-9]') AND service_area_code <> "00",1,0) AS rank_location
       from  ${ref('dim_sku_location')} as a
-      QUALIFY ROW_NUMBER() over (PARTITION BY a.sku_code, sales_region_code) = 1
+      QUALIFY ROW_NUMBER() over (PARTITION BY a.sku_code, sales_region_code ORDER BY rank_location ) = 1
     )
 
 SELECT
