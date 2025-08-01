@@ -77,7 +77,7 @@ order_metrics_flattened AS (
     metric.measure,
     metric.value
   FROM order_metrics m
-  LEFT JOIN base_calendar c ON DATE(m.order_date) = c.date
+  LEFT JOIN base_calendar c ON DATE(m.order_date) = c.date 
   CROSS JOIN UNNEST([
     STRUCT("GMV_BEFORE_CANCEL" AS measure, m.gmv_before_cancel AS value),
     STRUCT("GMV_AFTER_CANCEL", (m.gmv_before_cancel - m.cancel_before_ffm)),
@@ -98,7 +98,7 @@ order_metrics_flattened AS (
   ]) AS metric
 )
 
-SELECT * FROM order_metrics_flattened
+SELECT * FROM order_metrics_flattened as a
 
 UNION ALL
 
