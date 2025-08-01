@@ -54,7 +54,7 @@ select
 	ho.payment_method,
 	ho.total_amount,
 	ho.cod_amount as total_cod_amount,
-	ho.num_package as total_packages,
+	d.num_package as total_packages,
 	ho.weight as total_weights,
 	ho.delivery_amount,
 	ho.fee_amount,
