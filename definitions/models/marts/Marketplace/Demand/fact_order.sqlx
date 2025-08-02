@@ -151,6 +151,9 @@ WITH
       JSON_VALUE(a.invoice, '$.invoice_request') AS invoice_request,-- tung.vu added
       JSON_VALUE(a.invoice, '$.company_address') AS company_invoice_address,
       JSON_VALUE(a.invoice, '$.company_name') AS company_invoice_name,-- nguyen.tran added
+      JSON_VALUE(a.invoice, '$.email') AS invoice_email,-- nguyen.tran added
+      JSON_VALUE(a.invoice, '$.tax_code') AS invoice_tax_code,-- nguyen.tran added
+      JSON_VALUE(a.invoice, '$.is_incident_tax_code') AS invoice_is_incident_tax_code,-- nguyen.tran added
       r.point,
       r.feedback,
       DATETIME(TIMESTAMP(JSON_VALUE(a.extra_props, '$.cancel_time')),'Asia/Ho_Chi_Minh') AS cancel_time,
