@@ -27,8 +27,8 @@ SELECT
   c.eom as date,
   location,
   channel,
-  measure,
   supplier_class,
+  measure,
   value
 FROM order_metrics m
 CROSS JOIN UNNEST([
@@ -42,3 +42,4 @@ UNION ALL
 SELECT a.* 
 FROM ${ref(`agg_strategic_customer_thailand`)} as a
 INNER JOIN base_calendar c ON DATE(c.date) = a.date
+
