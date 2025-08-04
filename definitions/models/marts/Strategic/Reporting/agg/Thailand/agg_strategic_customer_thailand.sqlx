@@ -9,8 +9,8 @@ SELECT
     dc.eom as date,
     "THAILAND" AS location,
     CAST(NULL AS STRING) AS channel,
-    'CUSTOMER_ACTIVE_ENTERPRISE' AS measure,
     CAST(NULL AS STRING) AS supplier_class,
+    'CUSTOMER_ACTIVE_ENTERPRISE' AS measure,
     COUNT(distinct IF(active_customer <> 0, customer_id,NULL)) value
 
 FROM lakehouse-prod-394907.gold_buymed_th.dim_customer_profiling dcp 
@@ -24,8 +24,8 @@ SELECT
     dc.eom as date,
     "THAILAND" AS location,
     CAST(NULL AS STRING) AS channel,
-    'CUSTOMER_NEW_ENTERPRISE' AS measure,
     CAST(NULL AS STRING) AS supplier_class,
+    'CUSTOMER_NEW_ENTERPRISE' AS measure,
     COUNT(distinct IF(new_customer <> 0, customer_id,NULL)) value
 
 FROM lakehouse-prod-394907.gold_buymed_th.dim_customer_profiling dcp 
@@ -39,8 +39,8 @@ SELECT
     dc.eom as date,
     "THAILAND" AS location,
     CAST(NULL AS STRING) AS channel,
-    'CUSTOMER_REACQUIRED_ENTERPRISE' AS measure,
     CAST(NULL AS STRING) AS supplier_class,
+    'CUSTOMER_REACQUIRED_ENTERPRISE' AS measure,
     COUNT(distinct IF(reacquire_customer <> 0, customer_id,NULL)) value
 
 FROM lakehouse-prod-394907.gold_buymed_th.dim_customer_profiling dcp 

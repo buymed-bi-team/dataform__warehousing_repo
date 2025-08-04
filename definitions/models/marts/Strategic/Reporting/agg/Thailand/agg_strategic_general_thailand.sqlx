@@ -4,7 +4,6 @@ config {
     tags: ["0h00", 'STRATEGIC-REPORTING']
 }
 
-
 WITH base_calendar AS (
   SELECT 
     eom,
