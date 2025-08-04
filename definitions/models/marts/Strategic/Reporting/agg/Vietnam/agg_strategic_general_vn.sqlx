@@ -92,7 +92,7 @@ delivery_metrics AS (
     STRUCT("GMV_BACKLOG", m.gmv_backlog),
     STRUCT("GMV_RETURN", m.gmv_return)
   ]) AS metric
-JOIN base_calendar c ON DATE(m.order_date) = c.date
+INNER JOIN base_calendar c ON DATE(m.order_date) = c.date
 
 
 UNION ALL
