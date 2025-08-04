@@ -25,7 +25,7 @@ mkp_o1 AS (
         o.customer_id, 
         o.status,
         CASE
-        WHEN order_channel IN ("MARKETPLACE","CONSIGNMENT") THEN "MARKETPLACE"
+        WHEN doc.order_channel IN ("MARKETPLACE","CONSIGNMENT") THEN "MARKETPLACE"
         ELSE order_channel
         END AS channel,
         b.eom,
@@ -56,7 +56,7 @@ tender_o1 AS(
         o.customer_id, 
         o.status,
         CASE
-        WHEN order_channel IN ("MARKETPLACE","CONSIGNMENT") THEN "MARKETPLACE"
+        WHEN doc.order_channel IN ("MARKETPLACE","CONSIGNMENT") THEN "MARKETPLACE"
         ELSE order_channel
         END AS channel,
         b.eom,
@@ -88,7 +88,10 @@ tender_o1 AS(
         o.sale_order_code, 
         o.receiver_id * (10000) AS customer_id,
         o.status,
-        "TENDER" AS channel,
+        CASE
+        WHEN doc.order_channel IN ("MARKETPLACE","CONSIGNMENT") THEN "MARKETPLACE"
+        ELSE order_channel 
+        END AS channel,
         a.eom,
         CAST(NULL AS STRING) AS supplier_class,
         CASE
@@ -100,7 +103,9 @@ tender_o1 AS(
     FROM ${source.platinum}.tender_prd_core_tender_orders o
     LEFT JOIN ${source.ref}.dim_calendar as a on a.date = date(o.confirmation_date)
     LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON o.order_id = dosr.order_id
+    LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = o.order_id
     WHERE o.created_date >= ${start_date} 
+    AND order_channel in ("TENDER", "TAYAU")
     AND o.confirmation_date is not null
     GROUP BY ALL
 )
