@@ -24,11 +24,10 @@ WITH base_calendar AS (
   FROM ${ref(`dim_calendar`)}
   WHERE date >= "2023-01-01"
 ),
-
 -- Order_item metrics
 order_metrics AS (
   SELECT
-    DATE(created_time) AS order_date,
+    c.eom as date,
     location,
     channel,
     supplier_class,
@@ -47,14 +46,15 @@ order_metrics AS (
     SUM(listed_price * demand_quantity) AS gmv_with_listed_price,
     SUM(IF(order_status NOT LIKE "CANCEL", returned_quantity * sales_price, 0)) AS gmv_return,
     SUM(demand_quantity) AS item_sold
-  FROM ${ref(`fact_strategic_sale_order_item_single`)}
+  FROM ${ref(`fact_strategic_sale_order_item_single`)} as f
+  LEFT JOIN base_calendar c ON date(f.created_time) = c.date 
   GROUP BY 1, 2, 3, 4
 ),
 
 -- Delivery metrics
 delivery_metrics AS (
   SELECT 
-    DATE(do.created_time) AS delivery_date,
+    c.eom as date,
     do.location,
     do.channel,
     CAST(NULL AS STRING) AS supplier_class,
@@ -63,6 +63,7 @@ delivery_metrics AS (
       ELSE delivery_order_code 
     END) AS do_count
   FROM ${ref(`fact_strategic_delivery_order`)} do
+  LEFT JOIN base_calendar c ON DATE(do.created_time) = c.date
   GROUP BY 1, 2, 3, 4
 ),
 
@@ -70,14 +71,13 @@ delivery_metrics AS (
 order_metrics_flattened AS (
   SELECT
     CURRENT_DATETIME("+7") AS refresh_time,
-    c.eom AS date,
+    date,
     m.location,
     m.channel,
     m.supplier_class,
     metric.measure,
     metric.value
   FROM order_metrics m
-  LEFT JOIN base_calendar c ON DATE(m.order_date) = c.date
   CROSS JOIN UNNEST([
     STRUCT("GMV_BEFORE_CANCEL" AS measure, m.gmv_before_cancel AS value),
     STRUCT("GMV_AFTER_CANCEL", (m.gmv_before_cancel - m.cancel_before_ffm)),
@@ -98,21 +98,21 @@ order_metrics_flattened AS (
   ]) AS metric
 )
 
-SELECT * FROM order_metrics_flattened
+SELECT * FROM order_metrics_flattened as a
 
 UNION ALL
 
 
 SELECT 
   CURRENT_DATETIME("+7") AS refresh_time,
-  c.eom AS date,
+  date,
   d.location,
   d.channel,
   d.supplier_class,
   "DO" AS measure,
   d.do_count AS value
 FROM delivery_metrics d
-LEFT JOIN base_calendar c ON DATE(d.delivery_date) = c.date
+
 
 UNION ALL
 SELECT 
@@ -124,7 +124,9 @@ a.supplier_class,
 a.measure,
 a.value
 FROM ${ref(`agg_strategic_customer`)} a
-LEFT JOIN base_calendar c ON c.date = a.date and c.date is not null
+WHERE EXISTS (
+  SELECT 1 FROM base_calendar c WHERE c.date = a.date
+)
 
 UNION ALL
 SELECT
@@ -136,7 +138,9 @@ SELECT
   CONCAT(measure, "_ENTERPRISE") AS measure,
   value
 FROM ${ref(`agg_strategic_customer`)} a
-LEFT JOIN base_calendar c ON c.date = a.date and c.date is not null
+WHERE EXISTS (
+  SELECT 1 FROM base_calendar c WHERE c.date = a.date
+)
 
 UNION ALL
 SELECT 
