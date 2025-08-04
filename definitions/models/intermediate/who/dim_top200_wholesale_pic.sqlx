@@ -1,0 +1,11 @@
+config {
+    type: "table",
+    tags: "8h30"
+}
+
+SELECT 
+  LPAD(SAFE_CAST(province_code AS STRING), 2, '0') AS province_code
+  , province
+  , pic_top200
+  , pic_wholesale
+FROM ${source.external}.pic_top200_wholesale
