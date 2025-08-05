@@ -107,6 +107,7 @@ WITH
       a.total_price AS ordered_amount_aft_discount,
       a.total_notional_price AS total_notional_amount,
       a.notional_price AS notional_amount,
+      a.extra_fee,
       a.has_deal,
       a.payment_method,
       a.payment_method_percentage,
