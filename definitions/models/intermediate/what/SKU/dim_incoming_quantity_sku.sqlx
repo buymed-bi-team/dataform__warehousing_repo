@@ -27,8 +27,7 @@ WITH
             demand_quantity - inbound_quantity AS quantity
         FROM ${source.platinum}.warehouse_prd_inbound_inbound_ticket_item
         WHERE
-            SPLIT(sku, ".")[SAFE_OFFSET(0)] IN ('MEDX', 'MEDX_E')
-            AND created_date >= DATE_SUB(CURRENT_DATE, interval 1 month)
+            created_date >= DATE_SUB(CURRENT_DATE, interval 1 month)
     ),
 
     ticket as (
