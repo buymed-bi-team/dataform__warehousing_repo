@@ -50,4 +50,4 @@ SELECT
     , status
 FROM item
     LEFT JOIN ticket ON item.ticket_id = ticket.ticket_id
-WHERE status NOT IN ("DRAFT", "CANCEL", "COMPLETED")
+WHERE status NOT IN ("DRAFT", "CANCEL", "COMPLETED", "INBOUND_COMPLETED")
