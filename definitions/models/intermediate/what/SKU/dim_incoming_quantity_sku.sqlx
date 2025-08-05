@@ -28,6 +28,7 @@ WITH
         FROM ${source.platinum}.warehouse_prd_inbound_inbound_ticket_item
         WHERE
             SPLIT(sku, ".")[SAFE_OFFSET(0)] IN ('MEDX', 'MEDX_E')
+            AND created_date >= DATE_SUB(CURRENT_DATE, interval 1 month)
     ),
 
     ticket as (
@@ -38,7 +39,7 @@ WITH
             , status
         FROM ${source.platinum}.warehouse_prd_inbound_inbound_ticket
         WHERE
-            DATE( DATE_TRUNC(created_time, DAY)) >= DATE_SUB(CURRENT_DATE, interval 1 month)
+            created_date >= DATE_SUB(CURRENT_DATE, interval 1 month)
             AND warehouse_code in ('BD', 'HN','DN')
     )
 
