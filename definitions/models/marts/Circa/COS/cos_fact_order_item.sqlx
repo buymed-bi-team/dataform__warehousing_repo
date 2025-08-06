@@ -15,7 +15,8 @@ config {
 
 WITH base_data as (
     select
-        a.id
+         date(datetime_add(c.completed_at, interval 7 hour)) as completed_date
+        ,a.id
         ,case when c.type = 'ONLINE' then b.id else a.id end as item_id--=llocation.item_ref_id
         ,a.order_id
         ,c.code
@@ -95,8 +96,9 @@ cte_online as (
 
 )
 ,cte_fs as
-(select
-       order_id
+(select 
+       completed_date
+      ,order_id
       ,a.product_id
       ,sku_code
       ,quantity 
@@ -130,7 +132,8 @@ and pos_id in ("b6c40920-af79-4fb0-bdc4-9965ddb885d2", "e737c882-e90c-4fd2-8a4f-
 ,
  cte_os as (
 select distinct
-  order_id
+  coalesce(date(datetime_add(o.completed_at, interval 7 hour)),date(datetime_add(o.updated_at, interval 7 hour)))  as completed_date
+  ,order_id
   --   o.code as order_code,
   ,oi.product_id
   ,oi.sku_code
