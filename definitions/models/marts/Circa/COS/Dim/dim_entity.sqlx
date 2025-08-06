@@ -29,7 +29,7 @@ select distinct
                or title = 'Bác Trai'
                or title = 'Chú'
                or title = 'Ông' then 'Male'
-          when title = 'Bạn' then 'Others' 
+          when title = 'Bạn' or title is null or title = '' then 'Others' 
           end as gender
 from buymed_circa_v2.entity_entity as entity2
 
@@ -52,7 +52,7 @@ select distinct
                or title = 'Bác Trai'
                or title = 'Chú'
                or title = 'Ông' then 'Male'
-          when title = 'Bạn' then 'Others' 
+          when title = 'Bạn' or title is null or title = '' then 'Others' 
           end as gender
 from buymed_circa_v2.entity_entity as entity1
 where entity1.id in (Select distinct entity_id from buymed_circa.order_order
