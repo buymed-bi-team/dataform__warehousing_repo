@@ -5,6 +5,26 @@ config {
     name: "cos_dim_employee_v2"
 }
 
+with base_data_employee as (
 select * from buymed_external.dim_employee_pos
 where year_month is not null
       and year_month <> ''
+)
+
+Select distinct
+        e.*
+       ,c.name
+       ,coalesce(c.id, concat(year_month, "_", employee_mail)) as id
+       ,concat(pos_code, "_", year_month) as target_id
+       ,coalesce(concat(pos_code,"_", id), concat(year_month, "_", employee_mail)) as emp_pos_id
+       ,coalesce(concat(year_month, "_", id), concat(year_month, "_", employee_mail)) as commission_id
+       ,coalesce(concat(year_month, "_", pos_code,"_", id), concat(year_month, "_", employee_mail)) as ym_emp_pos
+       ,coalesce(concat(year_month, "_", id),concat(year_month, "_", employee_mail)) as ym_emp
+       ,coalesce(concat(year_month, "_", employee_mail)
+       ,concat(year_month, "_", employee_mail)) as extra_hour_id
+from base_data_employee e
+left join ${source.circa_os}.entity_entity c on e.employee_mail = c.email
+where c.deleted_at is null and c.type = 'CONSUMER'
+      and client_id = 1
+order by year_month desc
+--qualify row_number () over (partition by email, client_id order by updated_at desc) = 1
