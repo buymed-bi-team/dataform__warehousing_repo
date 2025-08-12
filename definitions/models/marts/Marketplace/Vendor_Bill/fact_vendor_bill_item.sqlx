@@ -61,7 +61,7 @@ with
             left join bill_dedup vb on vb.vendor_bill_id = vi.vendor_bill_id
         where
             vi.sku_code is not null
-            AND vb.status NOT IN ('DRAFT', 'CANCEL')
+            AND vb.status NOT IN ( 'CANCEL')
         ORDER BY raw_amount
     ),
 
