@@ -189,6 +189,30 @@ WITH product_retail_unit AS (
           AND type = "ESSENTIAL"
       QUALIFY ROW_NUMBER() over (PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
   )
+  
+  , atc4 AS (
+      SELECT
+          SAFE_CAST(code AS INT64) AS product_id
+          , NULLIF(value, "NAN") AS atc_4
+      FROM collector.data_prd
+      WHERE DATE(submit_at) >= "2025-08-13"
+          AND submit_id >= 5623
+          AND object = "Product"
+          AND type = "ATC4"
+      QUALIFY ROW_NUMBER() over (PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
+  )
+  
+  , atc3 AS (
+      SELECT
+          SAFE_CAST(code AS INT64) AS product_id
+          , NULLIF(value, "NAN") AS atc_3
+      FROM collector.data_prd
+      WHERE DATE(submit_at) >= "2025-08-13"
+          AND submit_id >= 5624
+          AND object = "Product"
+          AND type = "ATC3"
+      QUALIFY ROW_NUMBER() over (PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
+  )
 
 SELECT
   ${utils.ToTimezone('current_timestamp()')} as transformed_at,
@@ -272,7 +296,8 @@ SELECT
 
   IF(product.usage = "Dùng tại chổ","Dùng tại chỗ", product.usage) AS usage,
   atc2.name AS act_2,
-  atc3.name AS act_3,
+  COALESCE(a3.atc_3, atc3.name) AS act_3,
+  a4.atc_4,
   JSON_EXTRACT_SCALAR(product.retail_info, '$.retail_name') as retail_name,
   tb1.name as retail_categogy_name,
 
@@ -343,6 +368,8 @@ LEFT JOIN brand AS br ON br.product_id = product.product_id
 LEFT JOIN ownbrand_portfolio AS op ON op.product_id = product.product_id
 LEFT JOIN chronic AS chronic ON chronic.product_id = product.product_id
 LEFT JOIN essential AS essential ON essential.product_id = product.product_id
+LEFT JOIN atc3 AS a3 ON a3.product_id = product.product_id
+LEFT JOIN atc4 AS a4 ON a4.product_id = product.product_id
 
 WHERE
     LOWER(product.name) NOT LIKE '%(bỏ)%'
