@@ -193,7 +193,7 @@ WITH product_retail_unit AS (
   , atc4 AS (
       SELECT
           SAFE_CAST(code AS INT64) AS product_id
-          , NULLIF(value, "NAN") AS atc_4
+          , LOWER(NULLIF(value, "NAN")) AS atc_4
       FROM collector.data_prd
       WHERE DATE(submit_at) >= "2025-08-13"
           AND submit_id >= 5623
@@ -205,7 +205,7 @@ WITH product_retail_unit AS (
   , atc3 AS (
       SELECT
           SAFE_CAST(code AS INT64) AS product_id
-          , NULLIF(value, "NAN") AS atc_3
+          , LOWER(NULLIF(value, "NAN")) AS atc_3
       FROM collector.data_prd
       WHERE DATE(submit_at) >= "2025-08-13"
           AND submit_id >= 5624
