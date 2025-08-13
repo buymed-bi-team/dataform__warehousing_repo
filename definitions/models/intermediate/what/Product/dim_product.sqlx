@@ -296,7 +296,8 @@ SELECT
 
   IF(product.usage = "Dùng tại chổ","Dùng tại chỗ", product.usage) AS usage,
   atc2.name AS act_2,
-  COALESCE(a3.atc_3, atc3.name) AS act_3,
+  -- COALESCE(a3.atc_3, atc3.name) AS act_3,
+  a3.atc_3 AS act_3,
   a4.atc_4,
   JSON_EXTRACT_SCALAR(product.retail_info, '$.retail_name') as retail_name,
   tb1.name as retail_categogy_name,
