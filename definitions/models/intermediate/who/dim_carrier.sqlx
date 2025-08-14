@@ -28,37 +28,51 @@ with cte_dedup_carrier as (
     select * 
     from ${source.platinum}.delivery_prd_transporting_carrier
     qualify row_number() over (partition by carrier_code) = 1
-)
+),
+    final AS (
+        select
+            a.mg_id
+            , a.carrier_id
+            , a.carrier_code
+            , a.carrier_name
+            , a.carrier_internal_name
+            , timestamp_add(a.created_time, interval 7 hour) as carrier_created_at
+            , timestamp_add(a.last_updated_time, interval 7 hour) as last_updated_at
+            , a.active as carrier_system_active
+            , a.is_internal as carrier_internal
+        --     , case
+        --         when a.is_internal is true then 'Internal-HUB'
+        --         else '3PL'
+        --     end as carrier_type
+            , case
+                when a.carrier_code in ('LANGSON') then '1PL'
+                when a.carrier_code like 'HUB%' then '1PL'
+                when a.carrier_code like 'NVCT%' then '1PL'
+                when a.carrier_code like 'KTLS%' 	then '2PL'
+                else '3PL'
+            end	as logistics_type
+            , CASE
+                WHEN STRPOS(a.carrier_code, "HUB") > 0 AND a.carrier_name NOT IN ("Onwheel", "Viettel Post Miền Nam")
+                    OR a.carrier_name = "NVCT Hub VSIP II"
+                    OR a.carrier_code = "LANGSON"
+                    THEN "HUB"
+                WHEN (STRPOS(a.carrier_code, "NVCT") > 0 OR STRPOS(a.carrier_code, "NVTC") > 0)
+                    AND a.carrier_name NOT IN ("VTP Miền Bắc - PHS", "Viettel Post Miền Bắc")
+                    AND a.carrier_code <> "NVCTHUBVINHBAO"
+                    THEN "NVCT"
+                WHEN STRPOS(a.carrier_name, "KTLS") > 0 THEN "KTLS"
+            END AS carrier_group
+            , a.parent_code
+            , b.carrier_name as parent_carrier_name
+        from cte_dedup_carrier as a
+        left join cte_dedup_carrier as b on a.parent_code = b.carrier_code
+    )
 
-select 
-    a.mg_id
-    , a.carrier_id
-    , a.carrier_code
-    , a.carrier_name
-    , a.carrier_internal_name
-    , timestamp_add(a.created_time, interval 7 hour) as carrier_created_at
-    , timestamp_add(a.last_updated_time, interval 7 hour) as last_updated_at
-    , a.active as carrier_system_active
-    , a.is_internal as carrier_internal
-    , case
-        when a.is_internal is true then 'Internal-HUB'
-        else '3PL'
-    end as carrier_type
-    , case
-        when a.carrier_code in ('LANGSON') then '1PL'
-        when a.carrier_code like 'HUB%' then '1PL'
-        when a.carrier_code like 'NVCT%' then '1PL'
-        when a.carrier_code like 'KTLS%' 	then '2PL'
-        else '3PL'
-    end	as logistics_type
-    -- , case
-    --     when a.carrier_code in ('LANGSON') then '1P-HUB'
-    --     when a.carrier_code like 'HUB%' then '1P-HUB'
-    --     when a.carrier_code like 'NVCT%' then '1P-NVCT'
-    --     when a.carrier_code like 'KTLS%' 	then '2P'
-    --     else '3P'
-    -- end	as logistics_type
-    , a.parent_code
-    , b.carrier_name as parent_carrier_name
-from cte_dedup_carrier as a
-left join cte_dedup_carrier as b on a.parent_code = b.carrier_code
+SELECT
+    *
+    , CASE
+        WHEN carrier_group IN ('HUB', 'NVCT') THEN "1PL"
+        WHEN carrier_group = "KTLS" THEN "2PL"
+        ELSE "3PL"
+    END AS carrier_type
+FROM final
