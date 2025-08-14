@@ -5,4 +5,5 @@ config {
     name: "target_sales"
 }
 
-select * from buymed_external.Target_Sales
+select * from buymed_external.target_sales_v2
+where pos_code is not null
