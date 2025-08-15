@@ -55,5 +55,6 @@ left join ${source.circa_os}.entity_distributor dis on a.distributor_id = dis.id
 left join (select * from ${source.circa_os}.order_return_po where status not in ('PENDING','CANCELED')) as rt on a.id = rt.source_id and a.client_id = rt.client_id-- Lấy nhừng PO có trả hàng 
 left join ${source.ref}.circa_pos_profile p on a.pos_id = p.id and a.client_id = p.client_id
 where a.status <> 'CANCELED'
+      and a.status <> 'PENDING'
       and p.id is not null
 group by all
