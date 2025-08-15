@@ -33,6 +33,7 @@ WITH
     ticket as (
         SELECT
             po_code
+            , created_date
             , ticket_id
             , warehouse_code
             , status
@@ -44,6 +45,7 @@ WITH
 
 SELECT
     item.po_code
+    , created_date
     , quantity
     , warehouse_code as fc_code
     , sku_code as sku
