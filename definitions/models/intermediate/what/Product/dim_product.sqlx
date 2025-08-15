@@ -338,7 +338,7 @@ SELECT
     ELSE 'NORMAL'
   END product_report_category,
   tb4.name as main_category_name,
-  product.is_combo,
+  IFNULL(product.is_combo,FALSE) AS is_combo,
   hmp.high_margin,
   rp.retail_price,
   op.ownbrand_portfolio,
