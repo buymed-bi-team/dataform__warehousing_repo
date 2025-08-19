@@ -162,7 +162,7 @@ WITH product_retail_unit AS (
         UNION DISTINCT
         SELECT DISTINCT
             product_id
-            , "MARGIN >10%"
+            , "CIRCA"
         FROM buymed_external.potential_high_margin_product
   )
 
