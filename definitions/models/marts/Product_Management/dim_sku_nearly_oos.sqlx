@@ -1,0 +1,57 @@
+config {
+    type: "table",
+    description: 
+        `
+        PIC: nguyen.tran; 
+        Type: Table;
+        Schedule Refresh: hourly;
+        `,
+    tags:["custom_1h_past5"]
+}
+
+-- WITH
+--     demand AS (
+--         SELECT
+--             oi.sku_key_sales_region_code
+--             , SUM(demand_quantity) / 18 AS avg_demand
+--         FROM ${ref('fact_order_item')} AS oi
+--             LEFT JOIN ${ref('fact_order')} AS o ON oi.order_id = o.order_id
+--         WHERE 1=1
+--             AND oi.seller_code = "MEDX"
+--             AND DATE(oi.created_at) BETWEEN CURRENT_DATE("+7") - 18 AND CURRENT_DATE("+7") - 1
+--             AND DATE(o.created_at) BETWEEN CURRENT_DATE("+7") - 18 AND CURRENT_DATE("+7") - 1
+--             AND o.order_status <> "CANCEL"
+--         GROUP BY 1
+-- 
+--     )
+
+SELECT
+    a.sales_region_code
+    , a.fc_code
+    , a.product_id
+    , a.sku_code
+    , b.avg_demand
+    , a.available_qty
+    , a.sku_key_sales_region_code
+    , n.content AS note
+    , n.note_created_time
+    , n.created_by_name
+FROM ${ref('dim_sku_sales_region_current')} AS a
+    LEFT JOIN ${source.platinum}.seller_prd_purchasing_initial_stock_draft AS b ON a.sku_code = b.sku AND a.fc_code = b.warehouse_code
+--     LEFT JOIN demand AS b ON a.sku_key_sales_region_code = b.sku_key_sales_region_code
+    LEFT JOIN (
+        SELECT
+            item_code
+            , content
+            , note_created_time
+            , created_by_name
+        FROM ${ref('dim_sku_note')}
+        WHERE note_type NOT IN ("SYSTEM", "PIC")
+            AND REGEXP_CONTAINS(LOWER(content), r'thành out_of_stock') = FALSE
+        QUALIFY ROW_NUMBER() over (PARTITION BY item_code ORDER BY note_created_time DESC) = 1
+    ) AS n ON n.item_code = a.sub_sku_code
+    LEFT JOIN ${source.external}.nearly_oos_transfer_seller AS ts ON ts.product_id = a.product_id AND ts.sales_region_code = a.sales_region_code
+WHERE a.seller_code = "MEDX"
+    AND a.available_qty < b.avg_demand
+    AND a.sku_system_status = "LIMIT"
+    AND ts.product_id IS NULL
