@@ -295,11 +295,11 @@ SELECT
         WHEN REGEXP_CONTAINS( UPPER(name), r'TECH SELLER|TEST|TECH-QC|TS-TECH|\[TECH\]|\(TECH\)|DEMO|QC|TECH MONITOR|TECH 2') THEN "TECH"
         WHEN INITCAP(name) LIKE '%Tech%' THEN "TECH"
         -- WHEN TO_JSON_STRING( customer.tags ) LIKE '%\"TERMINATE_CIRCA\"%'  THEN 'MARKETPLACE'
-        WHEN TO_JSON_STRING( customer.tags ) LIKE '%\"CIRCA\"%'  THEN 'CIRCA' -- Một số terminate circa vẫn được gán nhãn là circa ví dụ customer_id in (252404,358259,369079)
-        WHEN TO_JSON_STRING( customer.tags ) LIKE '%\"NHANVIEN\"%' OR REGEXP_CONTAINS( customer.email, "@buymed|@thuocsi") THEN "EMPLOYEE"
+        WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"CIRCA\"|\"CIRCACOS\"')  THEN 'CIRCA' -- Một số terminate circa vẫn được gán nhãn là circa ví dụ customer_id in (252404,358259,369079)
+        WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"NHANVIEN\"') /*OR REGEXP_CONTAINS( customer.email, "@buymed|@thuocsi")*/ THEN "EMPLOYEE"
         WHEN customer.customer_id = 241098 THEN "CONSIGNMENT"
         WHEN customer.customer_id = 360299 THEN "OPV"
-        WHEN TO_JSON_STRING( customer.tags ) LIKE '%TENDER%' THEN 'TENDER'
+        WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'TENDER') THEN 'TENDER'
         ELSE 'MARKETPLACE' -- Một số order trong dim_order bị xếp loại vào Marketplace trong khi vốn tên có là FC-CIRCA
     END AS customer_report_category,
 
@@ -307,7 +307,7 @@ SELECT
         WHEN STRPOS(list_channel, "MARKETPLACE") > 0 THEN "MARKETPLACE"
         WHEN STRPOS(list_channel, "CIRCA") > 0 THEN "CIRCA"
         WHEN STRPOS(list_channel, "DISTRIBUTION") > 0  THEN "DISTRIBUTION"
-        WHEN TO_JSON_STRING( customer.tags ) LIKE '%\"NHANVIEN\"%' OR REGEXP_CONTAINS( customer.email, "@buymed|@thuocsi") THEN "EMPLOYEE"
+        WHEN TO_JSON_STRING( customer.tags ) LIKE '%\"NHANVIEN\"%' /*OR REGEXP_CONTAINS( customer.email, "@buymed|@thuocsi") */ THEN "EMPLOYEE"
         WHEN STRPOS(list_channel, "TENDER") > 0 THEN "TENDER"
         WHEN STRPOS(list_channel, "CONSIGNMENT") > 0 THEN "CONSIGNMENT"
     END AS customer_channel,
