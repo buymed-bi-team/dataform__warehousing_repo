@@ -162,7 +162,7 @@ WITH product_retail_unit AS (
         UNION DISTINCT
         SELECT DISTINCT
             product_id
-            , "MARGIN >10%"
+            , "CIRCA"
         FROM buymed_external.potential_high_margin_product
   )
 
@@ -344,8 +344,8 @@ SELECT
   op.ownbrand_portfolio,
   IF(
     chronic.chronic = "CHRONIC"
-    , "CHRONIC"
-    , IF(product.seller_category_code = "AQFV2U" AND product.seller_sub_category_code = "LALT0T", "ACUTE", NULL)
+    , "Chronic"
+    , IF(product.seller_category_code = "AQFV2U" AND product.seller_sub_category_code = "LALT0T", "Acute", NULL)
   ) AS chronic,
   essential.essential
 
