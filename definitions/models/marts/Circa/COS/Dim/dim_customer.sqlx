@@ -1,21 +1,21 @@
 
 config {
     type: "table",
-    description: `dim_sku_stock  item detail PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`,
+    description: `dim_customer item detail PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`,
     /*Source:
       ${source.silver}.marketplace_prd_order_v2_order_item
       ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5,*/
     tags: ["custom_1h_past5"],
-    name: "dim_entity",
+    name: "dim_customer_v2",
     columns: {
         
     }
 }
 
 select distinct
-    entity2.name as customer_name
-    ,entity2.phone_number
-    ,entity2.id
+     customer_v2.name as customer_name
+    ,customer_v2.phone_number
+    ,customer_v2.id
     ,status
     ,date(DATETIME_ADD(created_at, interval 7 hour)) as created_date
     ,type
@@ -31,13 +31,12 @@ select distinct
                or title = 'Ông' then 'Male'
           when title = 'Bạn' or title is null or title = '' then 'Others' 
           end as gender
-      ,client_id
-from buymed_circa_v2.entity_entity as entity2
+from buymed_circa_v2.entity_customer as customer_v2
 
 union all 
 
 select distinct
-    entity1.name as customer_name
+     entity1.name as customer_name
     ,entity1.phone_number
     ,entity1.id
     ,status
@@ -55,7 +54,6 @@ select distinct
                or title = 'Ông' then 'Male'
           when title = 'Bạn' or title is null or title = '' then 'Others' 
           end as gender
-      ,1 as client_id
 from buymed_circa_v2.entity_entity as entity1
 where entity1.id in (Select distinct entity_id from buymed_circa.order_order
 where pos_id in ("b6c40920-af79-4fb0-bdc4-9965ddb885d2", "e737c882-e90c-4fd2-8a4f-ac6afd248a33")
