@@ -61,7 +61,7 @@ cte_order_item as (
     FROM ${source.platinum}.marketplace_prd_order_v2_order_item as oi
     where
         created_date BETWEEN '2022-01-01' AND DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), YEAR ), INTERVAL 1 DAY)
-        AND (seller_code IN ("MEDX", "MEDX-HN") OR seller_class = "EXTERNAL")
+        AND (seller_code IN ("MEDX", "MEDX-HN", "MEDX_E") OR seller_class = "EXTERNAL")
 ),
 
 cte_combo_item as (
