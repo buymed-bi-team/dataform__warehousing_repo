@@ -5,6 +5,13 @@ function assertMismatch_query({
   dependencyViewName,
   maxRetry,
 }) {
+  let partition_column =  config.bigquery.partitionBy;
+
+  let cluster_defination = ``
+  if (config.bigquery && Array.isArray(config.bigquery.clusterBy) && config.bigquery.clusterBy.length > 0) {
+    cluster_defination = `Cluster By ${config.bigquery.clusterBy.join(",")}`;
+  }
+
   const query = `
   DECLARE is_assert BOOL;
   DECLARE _loop_index INT64;
@@ -54,7 +61,7 @@ function assertMismatch_query({
       END IF;
 
       CREATE OR REPLACE TABLE ${ctx.ref(config.target_schema,config.tableName)}
-      PARTITION BY created_date
+      PARTITION BY ${partition_column} ${cluster_defination}
       AS (
           WITH over_tbl AS (
               SELECT
