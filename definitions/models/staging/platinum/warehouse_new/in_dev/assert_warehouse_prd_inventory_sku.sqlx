@@ -1,6 +1,7 @@
 
 config {
     type: "operations",
+    disabled: "true",
     tags: ["platinum_custom_30min","warehouse_prd_inventory"]
 }
 
