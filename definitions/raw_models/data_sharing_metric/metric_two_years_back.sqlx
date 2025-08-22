@@ -1,0 +1,45 @@
+config {
+    type: "table", 
+    description: 
+        `
+        Data Sharing for Metric.vn;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: Weekly on Monday;
+        `,
+    tags: ["METRIC_MONDAY"],
+}
+
+SELECT
+    a.*
+    , IF(p.created_date >= CURRENT_DATE - 7, TRUE, FALSE) AS flag_new_item_7d
+    , IF(p.created_date >= CURRENT_DATE - 30, TRUE, FALSE) AS flag_new_item_30d
+    , n.* EXCEPT (sku)
+FROM ${ref('metric_weekly_product')} AS a
+    LEFT JOIN (
+        SELECT *
+        FROM (
+            SELECT
+                sku
+                , SUM(quantity) AS sales_unit
+                , SUM(total_price) AS sales_value
+                , FORMAT_DATE("%Y_%m", a.created_date) AS year_month
+            FROM ${source.platinum}.marketplace_prd_order_v2_order_item AS a
+                LEFT JOIN ${ref('fact_order')} AS b ON a.order_id = b.order_id
+            WHERE created_date BETWEEN "2024-01-01" AND "2025-07-31"
+                AND DATE(b.created_at) BETWEEN "2024-01-01" AND "2025-07-31"
+                AND b.order_status <> "CANCEL"
+                AND b.channel IN ("MARKETPLACE", "CIRCA")
+            GROUP BY ALL
+        )
+        PIVOT (
+            MIN(sales_unit) AS sales_unit, MIN(sales_value) AS sales_value
+            FOR year_month IN (
+                "2024_01", "2024_02", "2024_03", "2024_04", "2024_05", "2024_06",
+                "2024_07", "2024_08", "2024_09", "2024_10", "2024_11", "2024_12",
+                "2025_01", "2025_02", "2025_03", "2025_04", "2025_05", "2025_06", "2025_07"
+            )
+        )
+    ) AS n ON a.sku_id = n.sku
+    LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_product AS p ON a.product_id = p.product_id
+

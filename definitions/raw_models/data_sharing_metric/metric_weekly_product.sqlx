@@ -7,7 +7,7 @@ config {
         Type: Table; 
         Refresh Schedule: Weekly on Monday;
         `,
-    tags: ["METRIC_DATA_SHARING"]
+    tags: ["METRIC_DATA_SHARING", "METRIC_MONDAY"]
 }
 
 SELECT
