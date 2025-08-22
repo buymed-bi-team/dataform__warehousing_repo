@@ -19,7 +19,7 @@ SELECT
     , a.product_code
     , a.product_name
     , product_link AS product_url
-    , JSON_VALUE(b.image_urls, "$[0]") AS product_image_url
+    , REGEXP_REPLACE(JSON_VALUE(b.image_urls, "$[0]"), r'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS product_image_url
     , REGEXP_REPLACE(c.description,  r'<[^>]+>', '') AS product_specs
     , CASE
         WHEN d.product_category = "Thuốc kê đơn" THEN "Rx"
@@ -31,7 +31,7 @@ SELECT
     , a.sku_code AS sku_id
     , a.product_name AS sku_name
     , a.product_link AS sku_url
-    , JSON_VALUE(b.image_urls, "$[0]") AS sku_image_url
+    , REGEXP_REPLACE(JSON_VALUE(b.image_urls, "$[0]"), r'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS sku_image_url
     , TO_JSON_STRING(b.sub_products) AS bundle_ids
     , b.registration_number
     , b.dosage_form

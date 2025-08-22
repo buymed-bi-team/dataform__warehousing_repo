@@ -1,0 +1,64 @@
+config {
+    type: "table", 
+    description: 
+        `
+        Data Sharing for Metric.vn;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: Weekly on Monday;
+        `,
+    tags: ["METRIC_DATA_SHARING"],
+    //bigquery: {
+    //    partitionBy: "created_date",
+    //    clusterBy: ["order_id"]
+    //},
+
+}
+
+SELECT
+    -- a.created_date,
+    FORMAT_DATETIME('%Y-%m-%dT%H:%M:%S', b.completed_time) AS order_date
+    , SAFE_CAST(a.order_id AS STRING) AS order_id
+    , FORMAT_DATETIME('%Y-%m-%dT%H:%M:%S', b.created_at) AS order_created_date
+    , FORMAT_DATETIME('%Y-%m-%dT%H:%M:%S', b.delivered_time) AS order_shipping_date
+    , b.order_status
+    , b.ordered_amount AS order_value
+    , b.ordered_quantity AS order_units
+    , "THUOCSI" AS platform
+    , a.customer_id
+    , g.province_name AS buyer_city
+    , shipping_address AS buyer_address
+    , c.business_scope AS buyer_type
+    , "MARKETPLACE" AS channel
+    , a.quantity AS item_order_units
+    , a.total_price AS item_order_value
+    , d.registration_number AS item_registration_number
+    , "VIETNAM" AS item_country
+    , a.product_id AS item_product_id
+    , d.code AS item_product_code
+    , d.name AS item_product_name
+    , e.product_link AS item_product_url
+    , a.sku AS item_sku_id
+    , d.name AS item_sku_name
+    , e.product_link AS item_sku_url
+    , k.skus AS item_bundle_ids
+--     , TO_JSON_STRING(JSON_QUERY(a.extra_props, '$.skus')) AS item_bundle_ids
+    , a.seller_code AS item_shop_id
+    , f.supplier_name AS item_shop_name
+    , a.price+ IFNULL(a.charge_deal_fee_value , 0) AS item_price_before_discount
+    , a.price AS item_price
+    , 1 - SAFE_DIVIDE(a.price, a.price + IFNULL(a.charge_deal_fee_value , 0)) AS item_price_discount_percent
+    , a.type AS item_tags
+    , IF(a.type = "GIFT", TRUE, FALSE) AS item_flag_gwp
+FROM ${source.platinum}.marketplace_prd_order_v2_order_item AS a
+    LEFT JOIN ${ref('fact_order')} AS b ON a.order_id = b.order_id
+    LEFT JOIN ${ref('dim_geo_location')} AS g ON g.location_code = b.shipping_ward_code
+    LEFT JOIN ${ref('dim_customer')} AS c ON c.customer_id = b.customer_id
+    LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_product AS d ON a.product_id = d.product_id
+    LEFT JOIN ${ref('dim_sku_sales_region_current')} AS e ON a.item_code = e.sub_sku_code
+    LEFT JOIN ${ref('dim_seller')} AS f ON a.seller_code = f.supplier_code
+    LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_sku AS k ON a.item_code = k.item_code
+WHERE a.created_date BETWEEN "2024-01-01" AND CURRENT_DATE - 1
+    AND DATE(b.created_at) BETWEEN "2024-01-01" AND CURRENT_DATE - 1
+    AND b.order_status <> "CANCEL"
+    AND b.channel IN ("MARKETPLACE", "CIRCA")
