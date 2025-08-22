@@ -8,16 +8,16 @@ config {
         Refresh Schedule: Weekly on Monday;
         `,
     tags: ["METRIC_DATA_SHARING"],
-    bigquery: {
-        partitionBy: "created_date",
-        clusterBy: ["order_id"]
-    },
+    //bigquery: {
+    //    partitionBy: "created_date",
+    //    clusterBy: ["order_id"]
+    //},
 
 }
 
 SELECT
-    a.created_date
-    , FORMAT_DATETIME('%Y-%m-%dT%H:%M:%S', b.completed_time) AS order_date
+    -- a.created_date,
+    FORMAT_DATETIME('%Y-%m-%dT%H:%M:%S', b.completed_time) AS order_date
     , SAFE_CAST(a.order_id AS STRING) AS order_id
     , FORMAT_DATETIME('%Y-%m-%dT%H:%M:%S', b.created_at) AS order_created_date
     , FORMAT_DATETIME('%Y-%m-%dT%H:%M:%S', b.delivered_time) AS order_shipping_date
