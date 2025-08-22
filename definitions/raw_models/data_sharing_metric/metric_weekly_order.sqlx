@@ -1,5 +1,5 @@
 config {
-    type: "table", 
+    type: "view", 
     description: 
         `
         Data Sharing for Metric.vn;
@@ -7,7 +7,7 @@ config {
         Type: Table; 
         Refresh Schedule: Weekly on Monday;
         `,
-    tags: ["METRIC_DATA_SHARING", "METRIC_MONDAY"],
+    tags: ["METRIC_DATA_SHARING"],
     //bigquery: {
     //    partitionBy: "created_date",
     //    clusterBy: ["order_id"]
