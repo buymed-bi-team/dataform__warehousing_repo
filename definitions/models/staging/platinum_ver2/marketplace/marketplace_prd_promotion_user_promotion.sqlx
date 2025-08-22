@@ -1,0 +1,14 @@
+config {
+    type: "view",
+    schema: "platinum_buymed_vn",
+    name: "marketplace_prd_promotion_user_promotion",
+    description : `
+    PIC: minh.luu
+    Partition by: created date
+    Cluster by: status
+    `,
+    tags:["platinum","marketplace_prd_promotion"]
+}
+ 
+SELECT *
+FROM platinum_buymed_vn__stg.marketplace_prd_promotion_user_promotion

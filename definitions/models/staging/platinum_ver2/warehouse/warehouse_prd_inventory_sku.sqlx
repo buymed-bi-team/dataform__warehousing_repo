@@ -1,8 +1,13 @@
 config {
     type: "view",
-    name: "warehouse_prd_inventory_sku",
     schema: "platinum_buymed_vn",
-    tags: ["platinum_daily_AM_9_00","warehouse_prd_inventory"]
+    name: "warehouse_prd_inventory_sku",
+    description : `
+    PIC: minh.luu
+    Partition by: created date
+    Cluster by: status
+    `,
+    tags:["platinum","warehouse_prd_inventory"]
 }
 
 
