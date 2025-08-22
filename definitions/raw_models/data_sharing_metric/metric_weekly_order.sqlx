@@ -9,13 +9,15 @@ config {
         `,
     tags: ["METRIC_DATA_SHARING"],
     bigquery: {
-        partitionBy: "DATE(PARSE_DATETIME('%Y-%m-%dT%H:%M:%S', order_created_date))",
+        partitionBy: "created_date",
         clusterBy: ["order_id"]
     },
+
 }
 
 SELECT
-    FORMAT_DATETIME('%Y-%m-%dT%H:%M:%S', b.completed_time) AS order_date
+    a.created_date
+    , FORMAT_DATETIME('%Y-%m-%dT%H:%M:%S', b.completed_time) AS order_date
     , SAFE_CAST(a.order_id AS STRING) AS order_id
     , FORMAT_DATETIME('%Y-%m-%dT%H:%M:%S', b.created_at) AS order_created_date
     , FORMAT_DATETIME('%Y-%m-%dT%H:%M:%S', b.delivered_time) AS order_shipping_date
@@ -29,7 +31,7 @@ SELECT
     , c.business_scope AS buyer_type
     , "MARKETPLACE" AS channel
     , a.quantity AS item_order_units
-    , a.price AS item_order_value
+    , a.total_price AS item_order_value
     , d.registration_number AS item_registration_number
     , "VIETNAM" AS item_country
     , a.product_id AS item_product_id
