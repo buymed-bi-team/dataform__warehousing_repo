@@ -40,11 +40,11 @@ Select distinct
        ,o.customer_name
        ,1 as client_id
     ,concat(a.product_id, "_", 1) as product_client_id
-from lakehouse-prod-394907.gold_buymed_vn2.fact_order o 
-left join lakehouse-prod-394907.gold_buymed_vn2.fact_order_item a on o.order_id = a.order_id 
-left join lakehouse-prod-394907.gold_buymed_vn2.dim_product td on a.product_id = td.product_id
-left join gold_buymed_vn2.os_map_idthuocsi map on o.customer_id = map.id_thuocisi
-left join `gold_buymed_vn2.circa_pos_profile` p on map.pos_code = p.code
+from ${source.ref}.fact_order o 
+left join ${source.ref}.fact_order_item a on o.order_id = a.order_id 
+left join ${source.ref}.dim_product td on a.product_id = td.product_id
+left join ${source.ref}.os_map_idthuocsi map on o.customer_id = map.id_thuocisi
+left join ${source.ref}.circa_pos_profile p on map.pos_code = p.code
 where TO_JSON_STRING(customer_tags) LIKE "%CIRCACOS%"
        and o.order_status <> 'CANCEL'
        and date(created_date) >=  '2025-07-01' 
