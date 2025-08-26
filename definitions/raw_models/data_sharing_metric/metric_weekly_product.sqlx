@@ -163,20 +163,20 @@ FROM ${ref('dim_sku_sales_region_current')} AS a
             , MAX(created_date) AS order_updated_at
             , SUM(quantity) AS sales_unit_total
             , SUM(total_price) AS sales_value_total
-            , SUM(IF(created_date BETWEEN CURRENT_DATE - 7 AND CURRENT_DATE - 1, quantity, 0)) AS sales_unit_7d
-            , SUM(IF(created_date BETWEEN CURRENT_DATE - 7 AND CURRENT_DATE - 1, total_price, 0)) AS sales_value_7d
-            , SUM(IF(created_date BETWEEN CURRENT_DATE - 30 AND CURRENT_DATE - 1, quantity, 0)) AS sales_unit_30d
-            , SUM(IF(created_date BETWEEN CURRENT_DATE - 30 AND CURRENT_DATE - 1, total_price, 0)) AS sales_value_30d
-            , SUM(IF(created_date BETWEEN DATE_TRUNC(CURRENT_DATE, WEEK(MONDAY ) ) - 7 AND DATE_TRUNC(CURRENT_DATE, WEEK(MONDAY ) ) - 1, quantity, 0)) AS sales_unit_last_week
-            , SUM(IF(created_date BETWEEN DATE_TRUNC(CURRENT_DATE, WEEK(MONDAY ) ) - 7 AND DATE_TRUNC(CURRENT_DATE, WEEK(MONDAY ) ) - 1, total_price, 0)) AS sales_value_last_week
-            , SUM(IF(created_date BETWEEN DATE_SUB(DATE_TRUNC(CURRENT_DATE, MONTH ), INTERVAL 1 MONTH) AND DATE_TRUNC(CURRENT_DATE, MONTH )  - 1, quantity, 0)) AS sales_unit_last_month
-            , SUM(IF(created_date BETWEEN DATE_SUB(DATE_TRUNC(CURRENT_DATE, MONTH ), INTERVAL 1 MONTH) AND DATE_TRUNC(CURRENT_DATE, MONTH )  - 1, total_price, 0)) AS sales_value_last_month
-            , SUM(IF(created_date BETWEEN DATE_TRUNC(CURRENT_DATE, MONTH ) AND CURRENT_DATE  - 1, quantity, 0)) AS sales_unit_this_month
-            , SUM(IF(created_date BETWEEN DATE_TRUNC(CURRENT_DATE, MONTH ) AND CURRENT_DATE  - 1, total_price, 0)) AS sales_value_this_month
+            , SUM(IF(created_date BETWEEN CURRENT_DATE("+7") - 7 AND CURRENT_DATE("+7") - 1, quantity, 0)) AS sales_unit_7d
+            , SUM(IF(created_date BETWEEN CURRENT_DATE("+7") - 7 AND CURRENT_DATE("+7") - 1, total_price, 0)) AS sales_value_7d
+            , SUM(IF(created_date BETWEEN CURRENT_DATE("+7") - 30 AND CURRENT_DATE("+7") - 1, quantity, 0)) AS sales_unit_30d
+            , SUM(IF(created_date BETWEEN CURRENT_DATE("+7") - 30 AND CURRENT_DATE("+7") - 1, total_price, 0)) AS sales_value_30d
+            , SUM(IF(created_date BETWEEN DATE_TRUNC(CURRENT_DATE("+7"), WEEK(MONDAY ) ) - 7 AND DATE_TRUNC(CURRENT_DATE("+7"), WEEK(MONDAY ) ) - 1, quantity, 0)) AS sales_unit_last_week
+            , SUM(IF(created_date BETWEEN DATE_TRUNC(CURRENT_DATE("+7"), WEEK(MONDAY ) ) - 7 AND DATE_TRUNC(CURRENT_DATE("+7"), WEEK(MONDAY ) ) - 1, total_price, 0)) AS sales_value_last_week
+            , SUM(IF(created_date BETWEEN DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH ), INTERVAL 1 MONTH) AND DATE_TRUNC(CURRENT_DATE("+7"), MONTH )  - 1, quantity, 0)) AS sales_unit_last_month
+            , SUM(IF(created_date BETWEEN DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH ), INTERVAL 1 MONTH) AND DATE_TRUNC(CURRENT_DATE("+7"), MONTH )  - 1, total_price, 0)) AS sales_value_last_month
+            , SUM(IF(created_date BETWEEN DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) AND CURRENT_DATE("+7")  - 1, quantity, 0)) AS sales_unit_this_month
+            , SUM(IF(created_date BETWEEN DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) AND CURRENT_DATE("+7")  - 1, total_price, 0)) AS sales_value_this_month
         FROM ${source.platinum}.marketplace_prd_order_v2_order_item AS a
             LEFT JOIN ${ref('fact_order')} AS b ON a.order_id = b.order_id
-        WHERE created_date BETWEEN "2024-01-01" AND CURRENT_DATE - 1
-            AND DATE(b.created_at) BETWEEN "2024-01-01" AND CURRENT_DATE - 1
+        WHERE created_date BETWEEN DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH ), INTERVAL 1 MONTH) AND CURRENT_DATE("+7") - 1
+            AND DATE(b.created_at) BETWEEN DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH ), INTERVAL 1 MONTH) AND CURRENT_DATE("+7") - 1
             AND b.order_status <> "CANCEL"
             AND b.channel IN ("MARKETPLACE", "CIRCA")
         GROUP BY 1
