@@ -114,6 +114,15 @@ function createIncremental_query({
     FROM ${config.source_schema}.${config.tableName}
     WHERE key IN (SELECT o.key FROM over_tbl o)
     ${ctx.incremental() ? `AND ingest_time > Ingest_checkpoint - INTERVAL 2 HOUR` : ""}
+
+    QUALIFY ROW_NUMBER() OVER(w) = 1
+    WINDOW w AS (
+        PARTITION BY mg_id
+        ORDER BY synced_at desc,
+            synced_at DESC,
+        IF (action='d',3, IF (action='u',2,1)) DESC,
+        ${config.lastUpdatedTime} DESC
+    )
     `
     return selectQuery;
 }
