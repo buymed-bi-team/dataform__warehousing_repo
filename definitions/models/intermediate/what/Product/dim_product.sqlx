@@ -347,7 +347,22 @@ SELECT
     , "Chronic"
     , IF(product.seller_category_code = "AQFV2U" AND product.seller_sub_category_code = "LALT0T", "Acute", NULL)
   ) AS chronic,
-  essential.essential
+  essential.essential,
+
+  CASE
+      WHEN product.seller_category_code = "AQFV2U" THEN 
+        CASE
+          WHEN seller_sub_category.code ='LALT0T' THEN "Rx"
+          WHEN seller_sub_category.code ='XT2U1Y' THEN "OTC"
+        END
+      WHEN product.seller_category_code IS NOT NULL THEN "Non-Drug"
+  END AS product_category_commercial,
+  --  , CASE
+  --       WHEN product.product_category = "Thuốc kê đơn" THEN "Rx"
+  --       WHEN d.product_category = "Thuốc không kê đơn" THEN "OTC"
+  --       WHEN d.product_category = "Thuốc (Chưa phân loại)" OR d.product_category IS NULL THEN NULL
+  --       ELSE "Non-Drug"
+  --   END AS product_category_commercial
 
 
 FROM ${source.platinum}.marketplace_prd_product_v2_product AS product
