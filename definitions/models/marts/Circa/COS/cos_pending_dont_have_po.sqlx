@@ -38,7 +38,8 @@ Select distinct
        ,SAFE_CAST(o.order_id as string) as so_code
        ,o.customer_id
        ,o.customer_name
-      
+       ,1 as client_id
+    ,concat(a.product_id, "_", 1) as product_client_id
 from lakehouse-prod-394907.gold_buymed_vn2.fact_order o 
 left join lakehouse-prod-394907.gold_buymed_vn2.fact_order_item a on o.order_id = a.order_id 
 left join lakehouse-prod-394907.gold_buymed_vn2.dim_product td on a.product_id = td.product_id
