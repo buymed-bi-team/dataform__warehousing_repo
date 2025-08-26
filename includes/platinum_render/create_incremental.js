@@ -115,6 +115,7 @@ function createIncremental_query({
     WHERE key IN (SELECT o.key FROM over_tbl o)
     ${ctx.incremental() ? `AND ingest_time > Ingest_checkpoint - INTERVAL 2 HOUR` : ""}
 
+    -- For stituation that key is dedup because of manual import
     QUALIFY ROW_NUMBER() OVER(w) = 1
     WINDOW w AS (
         PARTITION BY mg_id
