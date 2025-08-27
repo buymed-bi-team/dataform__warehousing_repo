@@ -13,16 +13,22 @@ config {
 }
 
 
-select o.order_id,
-       c.customer_name,
-       customer_id,
-       o.tags as order_tag,
-       date(created_at) as created_date,
-       order_status,
-       order_type,
-       so_status,o.gmv,
-       actual_sales_amount,
-       invoice_amount,so_code
+select o.order_id
+       ,o.customer_name
+       ,customer_id
+       ,o.tags as order_tag
+       ,date(o.created_at) as created_date
+       ,o.order_status 
+       ,order_type
+       ,o.so_code
+       ,o.so_status
+       ,o.gmv
+       ,actual_sales_amount
+       ,invoice_amount
+       ,po.po_code
+       ,po.po_status
 from ${source.ref}.fact_order o
 left join ${source.ref}.dim_customer c using (customer_id)
-where c.tags like "%CIRCACOS%" and date(o.created_at)>"2024-10-01"
+left join ${source.ref}.cos_purchase_order po on SAFE_CAST(o.order_id as string) = po.order_id
+where REGEXP_CONTAINS(TO_JSON_STRING(customer_tags), r'\"CIRCACOS\"')
+       and date(o.created_at)>"2024-10-01"
