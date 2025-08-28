@@ -29,9 +29,9 @@ left join ( select distinct a.product_id
                      ,concat(product_id, "_",client_id) as product_client_id
       from ${source.circa_os}.product_retail_unit as a
       where a.base_unit is true 
-            and purchase_allowed is true
             and (unit is not null or unit <> "")
             and client_id = 1
+            qualify row_number() over(partition by product_id, client_id order by updated_at desc ) =1
       ) cv on base_data.product_client_id = cv.product_client_id
         where  base_data.purchase_unit = 'unit'
               -- and base_data.product_id = 185548 
