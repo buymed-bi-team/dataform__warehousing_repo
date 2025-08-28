@@ -22,11 +22,13 @@ where created_date is not null
 Select base_data.* 
        ,case when base_data.purchase_unit = 'unit' then cv.base_unit
         else base_data.purchase_unit end as purchase_unit_convert
+       ,cv.convert_rate
 from base_data 
 left join ( select distinct a.product_id
                      ,a.unit as base_unit
                      ,client_id
                      ,concat(product_id, "_",client_id) as product_client_id
+                     ,convert_rate
       from ${source.circa_os}.product_retail_unit as a
       where a.base_unit is true 
             and (unit is not null or unit <> "")
@@ -37,9 +39,27 @@ left join ( select distinct a.product_id
               -- and base_data.product_id = 185548 
               -- and cv.client_id = 1
 union all
-
-Select * 
+--có unit trong bán lẻ
+Select base_data.* 
        , base_data.purchase_unit as purchase_unit_convert
+       ,r.convert_rate
+from base_data 
+left join ${source.circa_os}.product_retail_unit r on base_data.product_id = r.product_id
+                                                    and base_data.purchase_unit = r.unit
+where base_data.purchase_unit <> 'unit'
+      and r.client_id = 1
+
+union all
+--ko có unit trong bán lẻ
+
+Select base_data.* 
+       , base_data.purchase_unit as purchase_unit_convert
+       ,1 as convert_rate
 from base_data 
 where base_data.purchase_unit <> 'unit'
+      and concat(product_id, "_",purchase_unit) not in 
+                (Select distinct concat(product_id, "_",unit) as product_client_id
+                from ${source.circa_os}.product_retail_unit
+                where client_id = 1
+                )
 
