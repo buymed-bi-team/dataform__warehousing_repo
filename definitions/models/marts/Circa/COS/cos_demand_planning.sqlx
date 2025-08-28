@@ -12,6 +12,8 @@ config {
     }
 }
 
-Select * from buymed_external.cos_demand_planning
+Select * 
+       ,concat(product_id, "_",1) as product_client_id
+from buymed_external.cos_demand_planning
 where created_date is not null
 
