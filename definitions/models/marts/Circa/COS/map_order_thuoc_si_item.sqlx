@@ -16,7 +16,8 @@ config {
 Select 
   a.order_id
   ,a.product_id
-  ,sum(a.outbound_quantity) AS qty_ordered
+  ,sum(a.demand_quantity) AS qty_ordered
+  ,sum(a.outbound_quantity) AS qty_received
   ,a.sales_price
   ,a.sku_code
   ,s.supplier_name as seller_name,price_after_discount
