@@ -16,8 +16,8 @@ select
        ,a.product_id
        ,a.sku as sku_code
        ,c.status
-       ,case when b.quantity <> 0 then b.quantity
-             else b.received_quantity end as quantity
+       ,coalesce(case when b.quantity <> 0 then b.quantity
+             else b.received_quantity end, a.quantity) as quantity
        ,b.received_quantity
        ,b.base_quantity
        ,case when b.tax_rate <= 0 then 0 else b.tax_rate end as tax_rate
