@@ -38,6 +38,8 @@ Select distinct
        ,o.customer_id
        ,o.customer_name
        ,1 as client_id
+       ,sum(sales_price * demand_quantity) as gmv_demand
+       ,sum(price_after_discount * outbound_quantity) as gmv_actual
     ,concat(a.product_id, "_", 1) as product_client_id
 from ${source.ref}.fact_order o 
 left join ${source.ref}.fact_order_item a on o.order_id = a.order_id 
