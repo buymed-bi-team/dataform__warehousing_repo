@@ -32,6 +32,7 @@ Select distinct
        ,a.sku_code as sku_code
        ,o.order_status as so_status
        ,a.demand_quantity as quantity
+       ,a.outbound_quantity as quantity_received
        ,'SO_THUOCSI' as fulfillment_method
        ,SAFE_CAST(o.order_id as string) as so_code
        ,o.customer_id
