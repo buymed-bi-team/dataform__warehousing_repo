@@ -29,8 +29,12 @@ Select date(o.created_at) as created_date
              else ''
             end as pos_id
   ,a.product_id
+  ,td.unit
   ,sum(a.demand_quantity) AS qty_ordered
+  ,sum(a.demand_quantity * coalesce(td.level_4_quantity,level_3_quantity,level_2_quantity,level_1_quantity)) AS base_qty_ordered
+  ,lower(coalesce(level_1_unit,level_2_unit,level_3_unit,level_4_unit) ) as base_unit
   ,sum(a.outbound_quantity) AS qty_received
+  ,sum(a.outbound_quantity * coalesce(td.level_4_quantity,level_3_quantity,level_2_quantity,level_1_quantity) ) AS base_qty_received
   ,a.sales_price
   ,a.sku_code
   ,s.supplier_name as seller_name,price_after_discount
@@ -39,9 +43,12 @@ Select date(o.created_at) as created_date
   ,sum(sales_price * outbound_quantity) as gmv_outbound
   ,sum(sales_price * demand_quantity) as gmv_demand
   ,sum(price_after_discount * outbound_quantity) as gmv_actual
+  ,concat(a.product_id, "_", 1) as product_client_id
+  --,concat(a.product_id, "_", client_id,lower(case when td.unit = 'Tube' then 'tuýp' else td.unit end)) as product_client_id_unit
 --   STRING_AGG(dat)
 from ${source.ref}.fact_order_item as a
 left join ${source.ref}.fact_order o on o.order_id = a.order_id 
+left join ${source.ref}.dim_product td on a.product_id = td.product_id
 left join ${source.ref}.dim_customer as  c on a.customer_id = c.customer_id
 left join ${source.ref}.dim_supplier as s on a.seller_code = s.supplier_code
 left join gold_buymed_vn2.os_map_idthuocsi map on o.customer_id = map.id_thuocisi
