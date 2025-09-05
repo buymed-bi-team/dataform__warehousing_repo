@@ -1,0 +1,15 @@
+config {
+    type: "table", 
+    description: 
+        `
+        Ownbrand target by month ;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: daily at 8h30;
+        `,
+    tags: ["8h30"]
+}
+
+SELECT
+    *
+FROM ${source.external}.import_clinic_target
