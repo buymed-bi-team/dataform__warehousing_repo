@@ -121,6 +121,7 @@ Select p.*
  from Pending p 
  where p.id not in 
 (Select distinct purchase_order_id from ${source.circa_os}.order_goods_receipt where status = 'COMPLETED' and client_id = 1) -- điều kiện này dùng để loại trừ những trường hợp cửa hàng đã nhận hàng nhưng ko bấm hoàn thành trên pos
+     and p.pos_id not in ('3faa7e69-a4ef-4cf7-aa5b-97f935f498b1','a2e662c3-56e5-4b63-a608-40fed955c83c','86dc7409-1f85-4d53-b398-8048ea932f30')
 -- union all
 --  Select p.*
 --  from Pending p 
