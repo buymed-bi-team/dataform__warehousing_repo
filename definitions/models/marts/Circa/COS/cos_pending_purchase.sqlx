@@ -48,7 +48,7 @@ Select distinct
 from t 
 left join ${source.circa_os}.order_purchase_order_item i on t.id = i.purchase_order_id
 where t.fulfillment_method <> 'SO_THUOCSI'
-and date(t.created_at) >=  '2025-04-11'
+and date(t.created_at) >=  '2025-08-01'
 --Lấy những đơn hàng mua ngoài hoặc import stock
 )
 ,Map_thuocsi as (
@@ -76,7 +76,7 @@ where  TO_JSON_STRING(customer_tags) LIKE "%CIRCACOS%"
        and o.order_status <> 'CANCEL'
        and t.code is not null
        and p.id is not null
-       and date(created_date) >=  '2025-06-01' 
+       and date(created_date) >=  '2025-08-01' 
 group by all
 --Lấy những đơn hàng đặt mua thuốc sỉ
 )
@@ -106,7 +106,7 @@ where  TO_JSON_STRING(customer_tags) LIKE "%CIRCACOS%"
        and t.code is not null
        and t.seller_code is null
        and p.id is not null
-       and date(created_date) >=  '2025-06-01' 
+       and date(created_date) >=  '2025-08-01' 
 group by all
 )
 ,Pending as (

@@ -50,7 +50,7 @@ left join ${source.ref}.os_map_idthuocsi map on o.customer_id = map.id_thuocisi
 left join ${source.ref}.circa_pos_profile p on map.pos_code = p.code
 where REGEXP_CONTAINS(TO_JSON_STRING(customer_tags), r'\"CIRCACOS\"')
        and o.order_status <> 'CANCEL'
-       and date(created_date) >=  '2025-07-01' 
+       and date(created_date) >=  '2025-08-01' 
        and SAFE_CAST(o.order_id as string) not in ( Select distinct sale_order_number from `buymed_circa_v2.order_purchase_order` where sale_order_number is not null)
 group by all
 order by pos_id
