@@ -52,6 +52,6 @@ where REGEXP_CONTAINS(TO_JSON_STRING(customer_tags), r'\"CIRCACOS\"')
        and o.order_status <> 'CANCEL'
        and date(created_date) >=  '2025-07-01' 
        and SAFE_CAST(o.order_id as string) not in ( Select distinct sale_order_number from `buymed_circa_v2.order_purchase_order` where sale_order_number is not null)
-       and o.order_id = 36646246
+       --and o.order_id = 36646246
 group by all
 order by pos_id
