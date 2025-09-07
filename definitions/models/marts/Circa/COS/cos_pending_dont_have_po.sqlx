@@ -33,15 +33,15 @@ Select distinct
        ,td.unit
        ,a.sku_code as sku_code
        ,o.order_status as so_status
-       ,a.demand_quantity as quantity
-       ,a.outbound_quantity as quantity_received
+       ,sum(a.demand_quantity) as quantity
+       ,sum(a.outbound_quantity) as quantity_received
        ,'SO_THUOCSI' as fulfillment_method
        ,SAFE_CAST(o.order_id as string) as so_code
        ,o.customer_id
        ,o.customer_name
        ,1 as client_id
        ,sum(sales_price * demand_quantity) as gmv_demand
-       ,sum(price_after_discount * outbound_quantity) as gmv_actual
+       ,sum(sales_price * outbound_quantity) as gmv_actual
     ,concat(a.product_id, "_", 1) as product_client_id
 from ${source.ref}.fact_order o 
 left join ${source.ref}.fact_order_item a on o.order_id = a.order_id 
@@ -50,7 +50,8 @@ left join ${source.ref}.os_map_idthuocsi map on o.customer_id = map.id_thuocisi
 left join ${source.ref}.circa_pos_profile p on map.pos_code = p.code
 where REGEXP_CONTAINS(TO_JSON_STRING(customer_tags), r'\"CIRCACOS\"')
        and o.order_status <> 'CANCEL'
-       and date(created_date) >=  '2025-08-01' 
+       and date(created_date) >=  '2025-07-01' 
        and SAFE_CAST(o.order_id as string) not in ( Select distinct sale_order_number from `buymed_circa_v2.order_purchase_order` where sale_order_number is not null)
+       and o.order_id = 36646246
 group by all
 order by pos_id

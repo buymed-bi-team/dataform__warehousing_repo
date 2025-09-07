@@ -42,7 +42,7 @@ Select date(o.created_at) as created_date
 --,   STRING_AGG(lot||"_"||exp_date, ", ") as lots_dates,
   ,sum(sales_price * outbound_quantity) as gmv_outbound
   ,sum(sales_price * demand_quantity) as gmv_demand
-  ,sum(price_after_discount * outbound_quantity) as gmv_actual
+  ,sum(sales_price * outbound_quantity) as gmv_actual
   ,concat(a.product_id, "_", 1) as product_client_id
   --,concat(a.product_id, "_", client_id,lower(case when td.unit = 'Tube' then 'tuýp' else td.unit end)) as product_client_id_unit
 --   STRING_AGG(dat)
