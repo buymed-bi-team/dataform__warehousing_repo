@@ -227,6 +227,7 @@ SELECT
   -- product.brand,
   br.brand,
   JSON_VALUE(product.extra_props, "$.product_category_management") as brand_type,
+  JSON_VALUE(product.extra_props, "$.product_status") as product_status,
 
   seller.code as owner_code,
   seller.name as owner_name,
