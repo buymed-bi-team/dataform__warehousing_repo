@@ -110,5 +110,5 @@ LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON o.order_id = dosr.order_id
 WHERE 
 (${utils.ToTimezone(`o.created_time`)} >= ${start_date} 
 AND doc.order_channel IS NOT NULL
-AND doc.order_channel <> "CONSIGNMENT-RECOGNITION"
-AND ois.supplier_class NOT LIKE "TECH")
+AND doc.order_channel <> "CONSIGNMENT-RECOGNITION")
+-- AND doc.supplier_class NOT LIKE "TECH")
