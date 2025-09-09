@@ -52,7 +52,7 @@ WITH mkp_o AS (
         ${source.platinum}.marketplace_prd_order_v2_order
     WHERE created_date >= ${start_date}
     AND created_time is not null
-    AND status <>"CANCEL"
+    -- AND status <>"CANCEL"
 )
 , tender_o AS (
     SELECT 
