@@ -13,6 +13,7 @@ config {
 select
         datetime_add(c.created_at, interval 7 hour) as created_at
        ,a.purchase_order_id as po_id
+       ,c.code as po_code
        ,a.product_id
        ,a.sku as sku_code
        ,c.status
