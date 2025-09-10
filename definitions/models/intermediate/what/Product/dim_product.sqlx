@@ -228,6 +228,8 @@ SELECT
   br.brand,
   JSON_VALUE(product.extra_props, "$.product_category_management") as brand_type,
   JSON_VALUE(product.extra_props, "$.product_status") as product_status,
+  SAFE_CAST(JSON_VALUE(product.extra_props, "$.related_product_id") AS INT64) as related_product_id,
+  JSON_VALUE(product.extra_props, "$.status_reason") as status_reason,
 
   seller.code as owner_code,
   seller.name as owner_name,
