@@ -1,15 +1,15 @@
 config {
-    type: "table",
+    type: "view",
     name: "marketplace_prd_product_v2_wishlist",
     schema: "platinum_buymed_vn",
     // assertions: {
     //     uniqueKey: 'mg_id',
     //     nonNull: ["created_date"]
     // },
-    bigquery: {
-        partitionBy: "created_date"
-    },
-    tags:["platinum_custom_2h_past5","marketplace_prd_product-v2","VN_product"]
+    // bigquery: {
+    //     partitionBy: "created_date"
+    // },
+    tags:["platinum","marketplace_prd_product-v2","VN_product"]
 }
 
 SELECT *,
