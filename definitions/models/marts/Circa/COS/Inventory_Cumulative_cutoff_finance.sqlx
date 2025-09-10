@@ -1,6 +1,7 @@
 
 config {
     type: "table",
+    disabled: true,
     description: `PIC: huyen.ngo; model_type: Table ;schedule: At 10h30`
     /*Source:
       ${source.silver}.marketplace_prd_order_v2_order_item
