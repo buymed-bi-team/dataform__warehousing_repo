@@ -68,8 +68,8 @@ dedup_sale_order_item AS (
   LEFT JOIN ${ref("fact_order_item")} AS i
     ON a.admin_id = i.order_id
     AND JSON_VALUE(b.sku) = i.sku_code
-    AND CAST(JSON_VALUE(b.order_quantity) AS INT64) = i.demand_quantity
-    AND CAST(JSON_VALUE(b.reserved_quantity) AS INT64) = i.reserved_quantity
+    AND IFNULL(SAFE_CAST(JSON_VALUE(b.order_quantity) AS INT64), 0) = i.demand_quantity
+    AND IFNULL(SAFE_CAST(JSON_VALUE(b.reserved_quantity) AS INT64), 0) = i.reserved_quantity
   LEFT JOIN ${ref("fact_order")} AS o 
     ON a.admin_id = o.order_id
   WHERE a.created_date >= DATE(timestamp(date_sub(current_date(),interval 45 day)))
