@@ -18,7 +18,7 @@ Select *
 from ${source.external}.cos_demand_planning
 where created_date is not null
 
-)
+), _all as (
 Select base_data.* 
        ,case when base_data.purchase_unit = 'unit' then cv.base_unit
         else base_data.purchase_unit end as purchase_unit_convert
@@ -62,4 +62,13 @@ where base_data.purchase_unit <> 'unit'
                 from ${source.circa_os}.product_retail_unit
                 where client_id = 1
                 )
+
+)
+Select * except (line_amount)
+       ,case when line_amount is null then purchase_price_after_vat * qty_to_order 
+       else line_amount end as line_amount
+ from _all 
+where channel = 'EXTERNAL'
+       and _all.created_date = '2025-09-05'
+
 
