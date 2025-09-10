@@ -68,7 +68,7 @@ Select * except (line_amount)
        ,case when line_amount is null then purchase_price_after_vat * qty_to_order 
        else line_amount end as line_amount
  from _all 
-where channel = 'EXTERNAL'
-       and _all.created_date = '2025-09-05'
+-- where channel = 'EXTERNAL'
+--        and _all.created_date = '2025-09-05'
 
 
