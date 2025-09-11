@@ -1,5 +1,5 @@
 config {
-    type: "view",
+    type: "table",
     description: "Fulfillment Center (FC)",
     columns: {
         fc_code: docs.fc_code,
@@ -8,7 +8,8 @@ config {
         sales_region_code: "Identifies the sales region code for each warehouse, translated from warehouse code. (MIENBAC, MIENNAM, MIENTRUNG)",
         purchaser_code: `Identifies the purchaser code for each warehouse, derived from warehouse code. (PUR_HN, PUR_HCM, PUR_DN)`
         
-    }
+    },
+    tags: ["0h00"]
 }
 
 select 
@@ -27,7 +28,10 @@ select
         when wh.code = 'DN' THEN 'PUR_DN'
     end as purchaser_code
     , extra_props as fc_extra_props
-FROM ${dedup.dedup(`${source.silver}.warehouse_prd_core_warehouse`,`code, name, status, areas, extra_props`)} as wh
+FROM (
+    SELECT code, name, status, areas, extra_props
+    FROM ${ref(`platinum_buymed_vn`, `warehouse_prd_core_warehouse` )}
+) as wh
 WHERE json_value(wh.extra_props, "$.group_code") = "BUYMED" and wh.status = "ACTIVE"
 
 post_operations {                
