@@ -38,7 +38,7 @@ function createIncremental_preOps({
                 ARRAY_AGG(
                     DISTINCT IF(${config.createdTime} is NULL, "2099-01-01" , DATE( DATETIME(${config.createdTime},'Asia/Ho_Chi_Minh') ) )
                 ) AS checkpoint_date,
-                COUNTIF( action = 'd' ) AS has_delete_data
+                COUNTIF( action = 'd' ) > 0 AS has_delete_data
             FROM ${config.source_schema}.${config.tableName}
             WHERE ingest_time > Ingest_checkpoint
         );
