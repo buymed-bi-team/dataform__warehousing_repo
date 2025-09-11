@@ -5,7 +5,15 @@ config {
     //     uniqueKey: ["employee_id"],
     //     nonNull: ["employee_status","fullname"]
     // },
-    description:"PIC: minh.luu; model type: table; schedule: 0h00\nSource: dim_supplier, dim_fc, dim_supplier_fc_person_in_charge ",
+    description:`
+        PIC: minh.luu; 
+        model type: table; 
+        schedule: 0h00
+        Source: 
+            - dim_supplier
+            - dim_fc
+            - dim_supplier_fc_person_in_charge
+        `,
     dependencies:["dim_supplier","dim_fc","dim_supplier_fc_person_in_charge"],
     columns: {
         supplier_fc_code: docs.supplier_fc_code,
