@@ -6,6 +6,12 @@ config {
     name: "circa_pos_profile"
 }
 
-select * from ${source.circa_os}.entity_pos_profile
+select p.*
+       ,s.* except (status)
+       ,case when p.code = 'POS0010' then 'Active'
+       else s.status end as actual_status
+from ${source.circa_os}.entity_pos_profile p 
+left join ( Select * from  ${source.external}.circa_store_status where store_format like '%Circa%') s on p.code = s.pos_code
 where type in ('CIRCA', 'FS')
     and code not in ('POS0006','POS0024','POS0030','POS0001','POS0047','POS0020','POS0020')
+   
