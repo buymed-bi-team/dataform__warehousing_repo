@@ -12,7 +12,7 @@ config {
 }
 
 select distinct
-       a.cutoff_date_index
+       date_add(a.cutoff_date_index, interval 1 day) as cutoff_date_index
       ,b.pos_id
       ,product_id
       ,sum(on_hand_qty) as on_hand_qty
@@ -29,3 +29,4 @@ where a.client_id = 1
       and product_id in (Select distinct product_id from `gold_buymed_vn2.cos_demand_planning`)
       and cutoff_date_index in (Select distinct date_add(created_date, interval -1 day) from `gold_buymed_vn2.cos_demand_planning`)
 group by all
+order by cutoff_date_index 
