@@ -1,0 +1,31 @@
+config {
+    type: "table",
+    description: `inventory_cutoff_demand_planning PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`,
+    /*Source:
+      ${source.silver}.marketplace_prd_order_v2_order_item
+      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5,*/
+    tags: ["8h30"],
+    name: "inventory_cutoff_demand_planning",
+    columns: {
+        
+    }
+}
+
+select distinct
+       a.cutoff_date_index
+      ,b.pos_id
+      ,product_id
+      ,sum(on_hand_qty) as on_hand_qty
+      ,sum(on_hand_qty * cost_price_include_tax) as stock_value
+      ,a.client_id
+      ,case 
+          when date(datetime_add(a.updated_at, interval 7 hour)) > date(cutoff_date_index) then 0 else 1
+          end as is_same_day
+      ,concat(a.product_id, "_", a.client_id) as product_client_id
+from ${source.circa_os}.inventory_location_detail_historical_cut_off as a
+left join ${source.circa_os}.inventory_location as b on a.location_id = b.id and a.client_id = b.client_id
+where a.client_id = 1   
+      and cutoff_date_index >= '2025-08-24'
+      and product_id in (Select distinct product_id from `gold_buymed_vn2.cos_demand_planning`)
+      and cutoff_date_index in (Select distinct date_add(created_date, interval -1 day) from `gold_buymed_vn2.cos_demand_planning`)
+group by all
