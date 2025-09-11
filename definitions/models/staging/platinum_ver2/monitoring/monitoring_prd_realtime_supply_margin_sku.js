@@ -11,7 +11,7 @@ const model = new main.PlatinumModel(
         has_createdTime : true,
         bigquery: {
             partitionBy: "created_date",
-            clusterBy: ["customer_id, day_version, mg_id"]
+            // clusterBy: [""]
         }
     }
 );
