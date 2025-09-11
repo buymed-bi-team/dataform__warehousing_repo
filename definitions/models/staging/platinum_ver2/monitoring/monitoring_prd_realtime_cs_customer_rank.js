@@ -1,6 +1,6 @@
 
 const model = new main.PlatinumModel(
-    "monitoring_prd_realtime_user_customer_session_v3",
+    "monitoring_prd_realtime_cs_customer_rank",
     {
         target_schema : "platinum_buymed_vn__stg", // Use for document
         // customAssertionsSchema : `dataform_playground_assertions`,
@@ -11,26 +11,26 @@ const model = new main.PlatinumModel(
         has_createdTime : true,
         bigquery: {
             partitionBy: "created_date",
-            clusterBy: ["customer_id, day_version, mg_id"]
+            // clusterBy: [""]
         }
     }
 );
 model.createIncremental(
-    ["0h00","12h00", "platinum_staging", "monitoring_prd_realtime-user"],
+    ["0h00","12h00", "platinum_staging", "monitoring_prd_realtime_cs"],
     {
         has_src_created_date : false,
         ingestCutOffInterval : "INTERVAL 1 MONTH"
     }
 );
 model.assertUnique(
-    ["0h00","12h00", "platinum_unique_assertion", "monitoring_prd_realtime-user"],
+    ["0h00","12h00", "platinum_unique_assertion", "monitoring_prd_realtime_cs"],
     {
         intervalCheckpoint : `INTERVAL 1 YEAR`,
         maxRetry: 2
     }
 )
 model.createMismatchAssertionView(
-    ["platinum_staging_assertion_view", "monitoring_prd_realtime-user"],
+    ["platinum_staging_assertion_view", "monitoring_prd_realtime_cs"],
     {
         intervalCheckpoint: `INTERVAL 2 DAY`,
         maxRetry: 2,
@@ -38,7 +38,7 @@ model.createMismatchAssertionView(
     }
 )
 model.assertMismatch(
-    ["0h00","12h00", "platinum_staging_assertion", "monitoring_prd_realtime-user"],
+    ["0h00","12h00", "platinum_staging_assertion", "monitoring_prd_realtime_cs"],
     {
         intervalCheckpoint: `INTERVAL 2 DAY`,
         maxRetry: 2,

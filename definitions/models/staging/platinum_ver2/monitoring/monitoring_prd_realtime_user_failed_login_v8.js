@@ -1,6 +1,6 @@
 
 const model = new main.PlatinumModel(
-    "monitoring_prd_realtime_user_customer_session_v3",
+    "monitoring_prd_realtime_user_failed_login_v8",
     {
         target_schema : "platinum_buymed_vn__stg", // Use for document
         // customAssertionsSchema : `dataform_playground_assertions`,
@@ -11,7 +11,6 @@ const model = new main.PlatinumModel(
         has_createdTime : true,
         bigquery: {
             partitionBy: "created_date",
-            clusterBy: ["customer_id, day_version, mg_id"]
         }
     }
 );
