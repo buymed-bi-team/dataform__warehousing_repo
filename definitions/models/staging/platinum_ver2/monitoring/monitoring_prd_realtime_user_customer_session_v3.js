@@ -16,21 +16,21 @@ const model = new main.PlatinumModel(
     }
 );
 model.createIncremental(
-    ["0h00","12h00", "platinum_staging", "monitoring_prd_collector"],
+    ["0h00","12h00", "platinum_staging", "monitoring_prd_realtime-user"],
     {
         has_src_created_date : false,
         ingestCutOffInterval : "INTERVAL 1 MONTH"
     }
 );
 model.assertUnique(
-    ["0h00","12h00", "platinum_unique_assertion", "monitoring_prd_collector"],
+    ["0h00","12h00", "platinum_unique_assertion", "monitoring_prd_realtime-user"],
     {
         intervalCheckpoint : `INTERVAL 1 YEAR`,
         maxRetry: 2
     }
 )
 model.createMismatchAssertionView(
-    ["platinum_staging_assertion_view", "monitoring_prd_collector"],
+    ["platinum_staging_assertion_view", "monitoring_prd_realtime-user"],
     {
         intervalCheckpoint: `INTERVAL 2 DAY`,
         maxRetry: 2,
@@ -38,7 +38,7 @@ model.createMismatchAssertionView(
     }
 )
 model.assertMismatch(
-    ["0h00","12h00", "platinum_staging_assertion", "monitoring_prd_collector"],
+    ["0h00","12h00", "platinum_staging_assertion", "monitoring_prd_realtime-user"],
     {
         intervalCheckpoint: `INTERVAL 2 DAY`,
         maxRetry: 2,
