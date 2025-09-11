@@ -1,6 +1,7 @@
--- config {
---     type: "assertion"
--- }
+config {
+    type: "assertion",
+    disabled: true
+}
 -- -- SELECT *
 -- -- FROM ${ref(`monitoring_prd_realtime_supply_margin_sku`)}
 -- -- WHERE 1=1
@@ -25,8 +26,8 @@
 
 -- -- UNION ALL 
 
--- SELECT * 
--- FROM ${ref(`monitoring_prd_realtime_supply_margin_sku`)}
--- WHERE 1=1
--- AND created_time >= TIMESTAMP(CURRENT_DATE() )
--- AND created_date = CURRENT_DATE()
+SELECT * 
+FROM ${ref(`updated_monitoring_prd_realtime_supply_margin_sku`)}
+WHERE 1=1
+AND created_time >= TIMESTAMP(CURRENT_DATE() )
+AND created_date = CURRENT_DATE()
