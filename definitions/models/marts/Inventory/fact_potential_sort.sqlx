@@ -93,7 +93,9 @@ WITH
             a.order_quantity as order_quantity,
             a.reserved_quantity as reserved_quantity,
             a.first_reserved_quantity as first_reserved_quantity,
-            o.customer_id
+            o.customer_id,
+            o.channel,
+            o.shipping_ward_code AS location_code
         FROM pick_item AS a
             LEFT JOIN ${ref('fact_order_item')} AS i
                 ON a.admin_id = i.order_id
@@ -108,15 +110,15 @@ WITH
             AND DATE(o.created_at) >= DATE_SUB(CURRENT_DATE, INTERVAL 60 DAY)
     ),
 
-    dedup_dim_order AS (
-        SELECT
-            order_id,
-            order_type,
-            order_channel,
-            location_code
-        FROM ${ref('dim_order')}
-        QUALIFY ROW_NUMBER() OVER (PARTITION BY order_id) = 1
-    ),
+    -- dedup_dim_order AS (
+    --     SELECT
+    --         order_id,
+    --         order_type,
+    --         order_channel,
+    --         location_code
+    --     FROM ${ref('dim_order')}
+    --     QUALIFY ROW_NUMBER() OVER (PARTITION BY order_id) = 1
+    -- ),
 
     agg_sale_order_item AS (
         SELECT DISTINCT
@@ -125,7 +127,8 @@ WITH
             TIMESTAMP(DATETIME(a.created_time, "Asia/Ho_Chi_Minh")) AS created_time,
             b.status,
             do.status AS delivery_status,
-            d.order_channel,
+            -- d.order_channel,
+            a.channel AS order_channel,
             CONCAT(c.sku_key, "_", b.fc_code) AS sku_fc_key,
             a.sku_code,
             a.unit_price,
@@ -141,7 +144,8 @@ WITH
             SUM(a.order_quantity) OVER (PARTITION BY a.sale_order_code) AS total_qty,
             SUM(a.order_quantity * a.unit_price) OVER (PARTITION BY a.sale_order_code) AS total_amt,
             COUNT(DISTINCT a.sku_code) OVER (PARTITION BY a.sale_order_code) AS total_sku,
-            d.location_code,
+            -- d.location_code,
+            a.location_code,
             TIMESTAMP_ADD(a.pack_done_at, INTERVAL 7 HOUR) AS pack_done_at,
             a.customer_id
         FROM dedup_sale_order_item a
@@ -149,12 +153,13 @@ WITH
                 ON a.sale_order_code = b.sale_order_code
             LEFT JOIN ${ref('dim_sku')} c
                 ON a.sku_code = c.sku_code
-            LEFT JOIN dedup_dim_order d
-                ON b.admin_id = d.order_id
+            -- LEFT JOIN dedup_dim_order d
+            --     ON b.admin_id = d.order_id
             LEFT JOIN delivery_order AS do
                 ON do.reference_id = a.ticket_id
         WHERE 1=1
-            AND d.order_type = "SO"
+            -- AND d.order_type = "SO"
+            AND LOWER(b.type) = "normal"
             AND b.status <> "CANCEL"
     ),
 
