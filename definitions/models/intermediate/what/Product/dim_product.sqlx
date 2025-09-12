@@ -360,6 +360,8 @@ SELECT
         END
       WHEN product.seller_category_code IS NOT NULL THEN "Non-Drug"
   END AS product_category_commercial,
+
+  REGEXP_REPLACE(JSON_VALUE(product.image_urls, "$[0]"), r'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS product_image_url
   --  , CASE
   --       WHEN product.product_category = "Thuốc kê đơn" THEN "Rx"
   --       WHEN d.product_category = "Thuốc không kê đơn" THEN "OTC"
