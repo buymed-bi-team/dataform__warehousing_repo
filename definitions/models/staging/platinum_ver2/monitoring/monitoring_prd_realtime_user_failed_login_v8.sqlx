@@ -19,7 +19,7 @@ config {
 }
   WITH silver AS (
     SELECT
-      key,mg_id,account_id,day_version,start_time,total_time_seconds,sync_version,created_time,customer_id,end_time,last_updated_time,province_code,synced_at,extra_props,action,ingest_time,
+      key, mg_id, ip, result_error, status, last_login, error_code_list, source, ua_metadata, user_metadata, user_agent, account_type, account_id, metadata, result_status, first_login, total, customer_id, created_time, last_updated_time, synced_at, extra_props, action, ingest_time,
       
         CASE
             WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time, 'Asia/Ho_Chi_Minh'))
@@ -27,7 +27,7 @@ config {
         END
      created_date,
       CAST(null as datetime) 
-    FROM silver_buymed_vn.monitoring_prd_realtime_user_customer_session_v3
+    FROM silver_buymed_vn.monitoring_prd_realtime_user_failed_login_v8
     WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 1 DAY
     QUALIFY ROW_NUMBER() OVER (_window) = 1 
           AND ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 16 HOUR
@@ -41,10 +41,10 @@ config {
           ,last_updated_time DESC)
   ), platinum AS (
     SELECT 
-      key,mg_id,account_id,day_version,start_time,total_time_seconds,sync_version,created_time,customer_id,end_time,last_updated_time,province_code,synced_at,extra_props,action,ingest_time,
+      key, mg_id, ip, result_error, status, last_login, error_code_list, source, ua_metadata, user_metadata, user_agent, account_type, account_id, metadata, result_status, first_login, total, customer_id, created_time, last_updated_time, synced_at, extra_props, action, ingest_time,
       created_date,
       platinum_refresh
-    FROM ${ref(`platinum_buymed_vn__stg`, `monitoring_prd_realtime_user_customer_session_v3`)}
+    FROM ${ref(`platinum_buymed_vn__stg`, `monitoring_prd_realtime_user_failed_login_v8`)}
   )
   SELECT p.*
   FROM platinum p
