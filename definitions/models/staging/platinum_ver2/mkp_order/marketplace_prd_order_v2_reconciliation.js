@@ -11,26 +11,26 @@ const model = new main.PlatinumModel(
         has_createdTime : true,
         bigquery: {
             partitionBy: "created_date",
-            clusterBy: ["start_date","reconciliation_status","from_time","reconcile_schedule_time_index"]
+            clusterBy: ["reconciliation_status","from_time","reconcile_schedule_time_index"]
         }
     }
 );
 model.createIncremental(
-    ["0h00","12h00", "platinum_staging", "marketplace_prd_order-v2","Finance/margin"],
+    ["0h00","12h00", "platinum_staging", "marketplace_prd_order-v2"],
     {
         has_src_created_date : false,
         ingestCutOffInterval : "INTERVAL 1 MONTH"
     }
 );
 model.assertUnique(
-    ["0h00","12h00", "platinum_unique_assertion", "marketplace_prd_order-v2","Finance/margin"],
+    ["0h00","12h00", "platinum_unique_assertion", "marketplace_prd_order-v2"],
     {
         intervalCheckpoint : `INTERVAL 1 YEAR`,
         maxRetry: 2
     }
 )
 model.createMismatchAssertionView(
-    ["platinum_staging_assertion_view", "marketplace_prd_order-v2","Finance/margin"],
+    ["platinum_staging_assertion_view", "marketplace_prd_order-v2"],
     {
         intervalCheckpoint: `INTERVAL 2 DAY`,
         maxRetry: 2,
@@ -38,7 +38,7 @@ model.createMismatchAssertionView(
     }
 )
 model.assertMismatch(
-    ["0h00","12h00", "platinum_staging_assertion", "marketplace_prd_order-v2","Finance/margin"],
+    ["0h00","12h00", "platinum_staging_assertion", "marketplace_prd_order-v2"],
     {
         intervalCheckpoint: `INTERVAL 2 DAY`,
         maxRetry: 2,
