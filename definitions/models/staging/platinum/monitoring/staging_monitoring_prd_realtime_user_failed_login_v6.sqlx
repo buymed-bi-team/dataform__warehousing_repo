@@ -1,6 +1,7 @@
 config {
     // mongodb: 'VN_monitoring.monitoring_prd_realtime-user.user_failed_login_v6'
     type: "table",
+    disabled: true,
     name: "monitoring_prd_realtime_user_failed_login_v6",
     schema: "platinum_buymed_vn",
     description: `PIC: MinhLuu, Internal: https://internal.thuocsi.vn/crm/customer/realtime?status=FAILED

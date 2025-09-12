@@ -20,7 +20,7 @@ Select distinct product_id
            ,convert_rate
            ,unit
            ,sale_unit_price as current_price
-           ,1 as client_id
+           ,client_id
 from gold_buymed_vn2.cos_adhoc_pos_product
 qualify ROW_NUMBER() over (partition by product_id,convert_rate order by last_updated_at desc) = 1
 )
@@ -30,17 +30,17 @@ qualify ROW_NUMBER() over (partition by product_id,convert_rate order by last_up
       ,l.sales_region_code
       ,l.max_convert_rate
       ,SAFE_DIVIDE(l.max_convert_rate, p.convert_rate) AS max_unit
-      ,client_id
+      ,l.client_id
     from  (
       Select distinct
         product_id
         ,sales_region_code
         ,max(convert_rate) as max_convert_rate
-        ,1 as client_id
+        ,client_id
         from gold_buymed_vn2.cos_adhoc_pos_product
         group by all) as l
     left join gold_buymed_vn2.cos_adhoc_pos_product p
-      on l.product_id = p.product_id
+      on l.product_id = p.product_id and l.client_id = p.client_id
    group by all
 ),market_price as (
 Select distinct product_id
