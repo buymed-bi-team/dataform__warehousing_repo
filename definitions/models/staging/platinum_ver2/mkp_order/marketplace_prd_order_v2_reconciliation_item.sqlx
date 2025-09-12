@@ -1,0 +1,55 @@
+config {
+    type: "view",
+    schema: "platinum_buymed_vn",
+    name: "marketplace_prd_order_v2_reconciliation_item",
+    description : `
+    PIC: minh.luu
+    Partition by: created date
+    cluster by: "fee_type","sku_price_type", "reconcile_schedule_time_index","completed_debt_time"
+    `,
+    tags:["platinum","marketplace_prd_order-v2"]
+}
+
+  WITH silver AS (
+    SELECT
+      key,mg_id,fee_type,order_code,order_id,sku,booking_date,campaign,completed_debt_time,completed_quantity,completed_time,created_time,customer_province_code,damage_quantity,deal,delivery_quantity,fees,fulfillment_fee,fulfillment_rate,has_charged_buyer_fee,last_updated_time,level,listing_fee,listing_rate,main_quantity,missing_quantity,ordered_price,outbound_infos,outbound_quantity,price,price_in_order,product_id,quantity,reconcile_schedule_time_index,return_quantity,sale_order_code,seller_code,seller_price,sku_price_type,total_buyer_fee,total_payment,total_revenue,type,has_sent_invoice,synced_at,extra_props,action,ingest_time,
+      
+        CASE
+            WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time, 'Asia/Ho_Chi_Minh'))
+            ELSE DATE( '2099-01-01' )
+        END
+     created_date,
+      CAST(null as datetime) 
+    FROM silver_buymed_vn.marketplace_prd_order_v2_reconciliation_item
+    WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 1 DAY
+    QUALIFY ROW_NUMBER() OVER (_window) = 1 
+          AND ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 16 HOUR
+          WINDOW _window AS (
+          PARTITION BY mg_id
+          ORDER BY synced_at DESC,
+          IF
+              (action='d',3,
+              IF
+              (action='u',2,1)) DESC
+          ,last_updated_time DESC)
+  ), platinum AS (
+    SELECT 
+      key,mg_id,fee_type,order_code,order_id,sku,booking_date,campaign,completed_debt_time,completed_quantity,completed_time,created_time,customer_province_code,damage_quantity,deal,delivery_quantity,fees,fulfillment_fee,fulfillment_rate,has_charged_buyer_fee,last_updated_time,level,listing_fee,listing_rate,main_quantity,missing_quantity,ordered_price,outbound_infos,outbound_quantity,price,price_in_order,product_id,quantity,reconcile_schedule_time_index,return_quantity,sale_order_code,seller_code,seller_price,sku_price_type,total_buyer_fee,total_payment,total_revenue,type,has_sent_invoice,synced_at,extra_props,action,ingest_time,
+      created_date,
+      platinum_refresh
+    FROM ${ref(`platinum_buymed_vn__stg`, `marketplace_prd_order_v2_reconciliation_item`)}
+  )
+SELECT * FROM (
+  SELECT p.*
+  FROM platinum p
+  LEFT JOIN silver s 
+      ON p.mg_id = s.mg_id 
+  WHERE s.mg_id is null 
+
+  UNION ALL 
+
+  SELECT s.*
+  FROM silver s
+  WHERE action <> "d"
+)
+WHERE created_time is not null and last_updated_time is not null 
