@@ -7,7 +7,7 @@ const model = new main.PlatinumModel(
         // source_schema = source.silver,
         // description = ``,
 
-        has_lastUpdatedTime : false,
+        has_lastUpdatedTime : true,
         has_createdTime : true,
         bigquery: {
             partitionBy: "created_date",
