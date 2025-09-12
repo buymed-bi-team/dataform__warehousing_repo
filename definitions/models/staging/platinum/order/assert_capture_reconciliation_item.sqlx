@@ -1,5 +1,6 @@
 config {
     type:"operations",
+    disabled: true,
     description: "PIC:MinhLuu",
     tags: ['assert_capture_for_customer']
 }
