@@ -66,6 +66,13 @@ class PlatinumModel {
             maxRetry = 2,
         } = {}
     ) {
+        /*
+        Limitation if Platinum layer was view of union of platinum__stg and silver
+         - The view Platinum layer can be created later
+         - But we cannot know if the logical model is exists or not in Dataform
+         - So we must add it to dependencies manual from definitions
+         
+        */
         let newConfig = this.config 
         newConfig.customAssertionsSchema = customAssertionsSchema || newConfig.customAssertionsSchema
         assertionName = assertionName || `${newConfig.prefixCustomAssertionsName}${newConfig.tableName}__assert_unique`
