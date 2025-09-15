@@ -132,13 +132,24 @@ class PlatinumModel {
         newConfig.customAssertionsSchema = customAssertionsSchema || newConfig.customAssertionsSchema
         assertionName = assertionName || `${newConfig.prefixCustomAssertionsName}${newConfig.tableName}__assert_mismatch_operations`
         dependencyViewName = dependencyViewName || `${newConfig.prefixCustomAssertionsName}${newConfig.tableName}__assert_mismatch_view`
-        const exists = dependencies.some(
+        
+        // Push MismatchAssertionView into Dependencies if Dependencies doesn't contain
+        let exists = dependencies.some(
             dep => dep.schema === newConfig.customAssertionsSchema && dep.name === dependencyViewName
         )
-
         if (!exists) {
             dependencies.push({ "schema": newConfig.customAssertionsSchema, "name": dependencyViewName });
         }
+        // Push AssertUnique into Dependencies if exists
+        if ("assertUnique" in this.dependencies) { 
+            let exists = dependencies.some(
+                dep => dep.schema === this.dependencies.assertUnique["schema"] && dep.name === this.dependencies.assertUnique["name"]
+            )
+            if (!exists) {
+                dependencies.push({ "schema": this.dependencies.assertUnique["schema"], "name": this.dependencies.assertUnique["name"] });
+            }
+        }
+
         assertMismatch({
             config : newConfig,
             tags,

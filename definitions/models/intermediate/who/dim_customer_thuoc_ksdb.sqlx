@@ -23,5 +23,19 @@ FROM (
         , DATE_ADD(DATE(SAFE.TIMESTAMP(JSON_VALUE(gpp_info, "$.date"))),  INTERVAL 3 YEAR) AS gdp_gpp_expired_date
     FROM ${source.platinum}.marketplace_prd_customer_customer
         , UNNEST(JSON_VALUE_ARRAY(gpp_info, "$.scope_of_business")) AS ksdb
+    UNION DISTINCT
+    SELECT
+        customer_id
+        , CASE ksdb
+            WHEN "COMPOUND_DRUG" THEN "thuoc_dang_phoi_hop"
+            WHEN "BANNED_DRUG" THEN "thuoc_danh_muc_cam"
+            WHEN "TOXIC_DRUG" THEN "thuoc_doc"
+            WHEN "COLD_STORAGE_DRUG" THEN "thuoc_bao_quan_lanh"
+          END AS ksdb
+        , true AS has_ksdb
+        , DATE_ADD(DATE(SAFE.TIMESTAMP(JSON_VALUE(gpp_info, "$.date"))),  INTERVAL 3 YEAR) AS gdp_gpp_expired_date
+    FROM ${source.platinum}.marketplace_prd_customer_customer
+        , UNNEST(JSON_VALUE_ARRAY(gdp_info, "$.scope_of_business")) AS ksdb
+    WHERE JSON_QUERY(gpp_info, "$.scope_of_business") IS NULL
 )
 PIVOT ( MAX(has_ksdb) FOR ksdb IN ("thuoc_dang_phoi_hop" AS thuoc_dang_phoi_hop, "thuoc_danh_muc_cam" AS thuoc_danh_muc_cam, "thuoc_doc" AS thuoc_doc, "thuoc_bao_quan_lanh" AS thuoc_bao_quan_lanh) )
