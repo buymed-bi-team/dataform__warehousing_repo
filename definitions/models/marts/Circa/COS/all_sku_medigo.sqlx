@@ -14,9 +14,10 @@ config {
 
 
 
-Select *
+Select * except (id_mgd)
+      , id_mgd as id_mdg
 from buymed_external.all_skus_medigo
-where id_mdg is not null
+where id_mgd is not null
 
 
 
