@@ -1,6 +1,6 @@
 
 const model = new main.PlatinumModel(
-    "platform_accounting_prd_reconcile_CIRCA_FS_V2_reconcile_item_detail",
+    "platform_accounting_prd_reconcile_CIRCA_FS_EXTERNAL_reconcile_line",
     {
         target_schema : "platinum_buymed_vn__stg", // Use for document
         // customAssertionsSchema : `dataform_playground_assertions`,
@@ -15,14 +15,14 @@ const model = new main.PlatinumModel(
     }
 );
 model.createIncremental(
-    ["0h00","12h00", "platinum_staging", "platform_accounting_prd_reconcile"],
+    ["platinum_0h00","platinum_12h00", "platinum_staging", "platform_accounting_prd_reconcile"],
     {
         has_src_created_date : false,
         ingestCutOffInterval : "INTERVAL 1 MONTH"
     }
 );
 model.assertUnique(
-    ["0h00","12h00", "platinum_unique_assertion", "platform_accounting_prd_reconcile"],
+    ["platinum_0h00","platinum_12h00", "platinum_unique_assertion", "platform_accounting_prd_reconcile"],
     {
         intervalCheckpoint : `INTERVAL 1 YEAR`,
         maxRetry: 2
@@ -37,7 +37,7 @@ model.createMismatchAssertionView(
     }
 )
 model.assertMismatch(
-    ["0h00","12h00", "platinum_staging_assertion", "platform_accounting_prd_reconcile"],
+    ["platinum_0h00","platinum_12h00", "platinum_staging_assertion", "platform_accounting_prd_reconcile"],
     {
         intervalCheckpoint: `INTERVAL 2 DAY`,
         maxRetry: 2,
