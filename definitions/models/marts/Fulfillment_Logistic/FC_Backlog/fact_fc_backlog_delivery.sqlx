@@ -1,0 +1,31 @@
+config {
+  type: "table",
+  name: "fact_fc_backlog_delivery",
+  tags: ["custom_1h_past_10", "FC_BACKLOG"]
+}
+
+SELECT
+    a.order_code
+    , a.fc_code
+    , a.reference_code
+    , a.pack_done_at
+    , a.do_created_at
+    , a.carrier_picked_at
+    , b.created_at AS handover_ticket_created_at
+FROM ${ref('fact_outbound_ticket')} AS a
+    LEFT JOIN (
+        SELECT
+            *
+        FROM ${ref('fact_handover_ticket')}
+        QUALIFY ROW_NUMBER() over (PARTITION BY so_code ORDER BY created_at) = 1
+    ) AS b ON a.reference_code = b.so_code
+WHERE order_status NOT IN ("CANCEL", "DELIVERING", "DELIVERED", "COMPLETED", "RETURNING", "RETURNED")
+    AND pack_done_at IS NOT NULL
+    AND b.completed_at IS NULL
+    AND order_type = "SO"
+    AND order_code NOT IN ("SOTA50001448", "SOBD36437206")
+
+
+
+
+

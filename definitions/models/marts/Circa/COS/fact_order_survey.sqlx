@@ -29,3 +29,4 @@ Select distinct
            ,feedback
 from ${source.circa_os}.order_order_survey s
 left join ${source.circa_os}.entity_entity e on s.created_by = e.id
+where rating not in (4,5)
