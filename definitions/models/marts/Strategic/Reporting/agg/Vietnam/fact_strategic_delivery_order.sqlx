@@ -1,9 +1,7 @@
-
--- Tạo 1 bảng lấy delivery order là chính, có thể làm thành view nếu không có logic phức tạp
 config {
     type: "view",
     description: `PIC: Minhluu, HuongDang
-    Source: 
+    Source:
         ${source.platinum}.warehouse_prd_core_delivery_order
         ${source.platinum}.marketplace_prd_order_v2_order
         ${source.platinum}.tender_prd_core_tender_orders
@@ -11,103 +9,113 @@ config {
         ${source.gold}.dim_order_channel
         ${source.gold}.dim_order_sales_region
     `,
-    columns : {
+    columns: {
         sale_order_code: "Nullable",
         delivery_order_code: "Nullable",
         qc_done_time: "Nullable"
     },
-    tags : ['STRATEGIC-REPORTING'],
+    tags: ['STRATEGIC-REPORTING'],
 }
 
-/*
-    Chú ý khi lấy distinct cho deliver_order_code, Khi đó sẽ có trường hợp delivery_order_code bị duplicate thành 2 rows riêng biệt với 2 mg_id khác nhau,
-    Cách lấy đúng là lây rows có đầy đủ action_time và một số tracking field
-    May mắn là chỉ có 2 delivery_order_code bị điều này:
-        - delivery_order_code in ("SOHN33752896-F","SOHN33760323-F") AND created_date = "2023-08-29"
-
-    Nhiều Mã RO trong delivery_order table Không có trong marketplace_order
-    - Sale_order_code có chứa Mã RO không?
-        - Nếu có thì 1 mã order_id sẽ có thời gian đầu là SO sau đó là RO đúng không?
-        - Vậy order_id có tổng đơn delivery = đơn delivery đi SO  + đơn delivery về không?
-    - RO kiểm tra trên hệ thống internal thế nào?
-        - Vì Một số đơn RO chỉ có trong hệ thống warehouse mà không có trong CRM nên chưa map được
-    - RO có được tính trong delivery_order không?
-    
-*/
 js {
     const start_date = `"2023-01-01"`
 }
 
+  -- Tạo 1 bảng lấy delivery order là chính, có thể làm thành view nếu không có logic phức tạp
+  /*
+  Chú ý khi lấy distinct cho deliver_order_code, Khi đó sẽ có trường hợp delivery_order_code bị duplicate thành 2 rows riêng biệt với 2 mg_id khác nhau,
+  Cách lấy đúng là lây rows có đầy đủ action_time và một số tracking field
+  May mắn là chỉ có 2 delivery_order_code bị điều này:
+  - delivery_order_code in ("SOHN33752896-F","SOHN33760323-F") AND created_date = "2023-08-29"
 
-WITH mkp_o AS (
-    SELECT 
-        order_id,
-        status,
-        sale_order_code,
-        created_time,
-        CASE 
-        WHEN SAFE_CAST(customer_ward_code AS integer) > 0 THEN customer_ward_code
-        ELSE customer_district_code END AS shipping_ward_code
-    FROM 
-        ${source.platinum}.marketplace_prd_order_v2_order
-    WHERE created_date >= ${start_date}
-    AND created_time is not null
-)
-, tender_o AS (
-    SELECT 
-        order_id,
-        status,
-        sale_order_code,
-        confirmation_date as created_time,-- IN TENDER, CONFIRMATION_DATE IS CONSIDERED SAME AS CREATED_DATE IN ORDER
-        CASE
-        WHEN SAFE_CAST(ward_code AS integer) > 0 THEN ward_code
-        ELSE district_code END AS shipping_ward_code
-    FROM
-        ${source.platinum}.tender_prd_core_tender_orders
-    WHERE confirmation_date >= ${start_date}
-    AND confirmation_date is not null
-)
-, o AS (
-    SELECT * FROM mkp_o 
-    UNION ALL 
-    SELECT * FROM tender_o
-)
+  Nhiều Mã RO trong delivery_order table Không có trong marketplace_order
+  - Sale_order_code có chứa Mã RO không?
+  - Nếu có thì 1 mã order_id sẽ có thời gian đầu là SO sau đó là RO đúng không?
+  - Vậy order_id có tổng đơn delivery = đơn delivery đi SO  + đơn delivery về không?
+  - RO kiểm tra trên hệ thống internal thế nào?
+  - Vì Một số đơn RO chỉ có trong hệ thống warehouse mà không có trong CRM nên chưa map được
+  - RO có được tính trong delivery_order không?
 
--- ,ois AS ( -- FOR DO
---     -- actually, it just exclude 36 order, so if you query raw, don't need this, the error is very small, but in agg_general, dataform take all fact_strategic, so I will include it
---     -- I just exclude the orders that is contains all test item
---     SELECT 
---         order_id,
---         STRING_AGG(DISTINCT supplier_class) supplier_class
---     FROM ${ref(`fact_strategic_sale_order_item_single`)} ois 
---     GROUP BY 1
--- )
-
-SELECT 
-    DISTINCT 
-    o.order_id,
-    o.sale_order_code,
-    do.delivery_order_code,
-    ${utils.ToTimezone(`do.created_time`)} as qc_done_time,
-    ${utils.ToTimezone(`o.created_time`)} as created_time,
-    shipping_ward_code,
+  */
+WITH
+  mkp_o AS (
+  SELECT
+    order_id,
+    status,
+    sale_order_code,
+    created_time,
     CASE
-      WHEN doc.order_channel IN ("MARKETPLACE","CONSIGNMENT") THEN "MARKETPLACE"
-      ELSE doc.order_channel
-    END AS channel,
-    CASE
-        WHEN dosr.sales_region_code LIKE "MIENNAM" THEN "SOUTHERN"
-        WHEN dosr.sales_region_code LIKE "MIENTRUNG" THEN "CENTRAL"
-        WHEN dosr.sales_region_code LIKE "MIENBAC" THEN "NORTHERN"
-        ELSE "GMV_VN_REGION_UNKNOWN" 
-        END AS location
+      WHEN SAFE_CAST(customer_ward_code AS integer) > 0 THEN customer_ward_code
+      ELSE customer_district_code
+  END
+    AS shipping_ward_code,
+    warehouse_code
+  FROM  ${source.platinum}.marketplace_prd_order_v2_order
+  WHERE
+    created_date >= ${start_date}
+    AND created_time IS NOT NULL ),
 
-FROM  o 
-LEFT JOIN ${source.platinum}.warehouse_prd_core_delivery_order do ON o.sale_order_code = do.sale_order_code 
-LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = o.order_id 
-LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON o.order_id = dosr.order_id
-WHERE 
-(${utils.ToTimezone(`o.created_time`)} >= ${start_date} 
-AND doc.order_channel IS NOT NULL
-AND doc.order_channel <> "CONSIGNMENT-RECOGNITION")
--- AND doc.supplier_class NOT LIKE "TECH")
+  tender_o AS (
+  SELECT
+    order_id,
+    status,
+    sale_order_code,
+    created_time,
+    CASE
+      WHEN SAFE_CAST(ward_code AS integer) > 0 THEN ward_code
+      ELSE district_code
+  END
+    AS shipping_ward_code,
+    CASE
+      WHEN (dfc.fc_code IS NULL) OR (fc_code ="") THEN "BD"
+      ELSE fc_code
+  END
+    AS warehouse_code
+  FROM ${source.platinum}.tender_prd_core_tender_orders AS o
+  LEFT JOIN  ${ref('dim_fc_service_area')} dfc ON o.province_code = dfc.service_area_code
+  WHERE
+    (o.created_date >= ${start_date}
+      AND o.created_time IS NOT NULL
+      AND status NOT LIKE "WAIT_TO_CONFIRM") ),
+
+  o AS (
+  SELECT *
+  FROM mkp_o
+  UNION ALL
+  SELECT *
+  FROM tender_o )
+    
+SELECT
+  DISTINCT o.order_id,
+  o.sale_order_code,
+  do.delivery_order_code,
+  ${utils.ToTimezone(`do.created_time`)} AS qc_done_time,
+  ${utils.ToTimezone(`o.created_time`)} AS created_time,
+  shipping_ward_code,
+  CASE
+    WHEN doc.order_channel IN ("MARKETPLACE", "CONSIGNMENT") THEN "MARKETPLACE"
+    ELSE doc.order_channel
+END
+  AS channel,
+  -- CASE
+  --     WHEN dosr.sales_region_code LIKE "MIENNAM" THEN "SOUTHERN"
+  --     WHEN dosr.sales_region_code LIKE "MIENTRUNG" THEN "CENTRAL"
+  --     WHEN dosr.sales_region_code LIKE "MIENBAC" THEN "NORTHERN"
+  --     ELSE "GMV_VN_REGION_UNKNOWN"
+  --     END AS location
+  CASE
+    WHEN o.warehouse_code LIKE "BD" THEN "SOUTHERN"
+    WHEN o.warehouse_code LIKE "DN" THEN "CENTRAL"
+    WHEN o.warehouse_code LIKE "HN" THEN "NORTHERN"
+    ELSE "SOUTHERN"
+END
+  AS location
+FROM o
+LEFT JOIN ${source.platinum}.warehouse_prd_core_delivery_order DO ON o.sale_order_code = do.sale_order_code
+LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = o.order_id
+  -- LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON o.order_id = dosr.order_id
+WHERE
+  (${utils.ToTimezone(`o.created_time`)} >= ${start_date}
+    AND doc.order_channel IS NOT NULL
+    AND doc.order_channel <> "CONSIGNMENT-RECOGNITION")
+    -- AND doc.supplier_class NOT LIKE "TECH")
