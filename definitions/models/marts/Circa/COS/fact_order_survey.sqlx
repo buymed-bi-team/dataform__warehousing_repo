@@ -1,0 +1,31 @@
+config {
+    type: "table",
+    description: `Last 13 month| PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every 2 hours. `
+    /*Source:
+      ${source.silver}.marketplace_prd_order_v2_order_item
+      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
+    tags: ["custom_1h_past5"],
+    name: "fact_order_survey",
+    columns: {
+        order_id: "NonNull |" + docs.order_id,
+        customer_id: "NonNull | The unique identifier for each customer"
+        
+    },
+    bigquery: {
+        partitionBy: "date(created_at)"
+    }
+}
+
+
+Select distinct 
+            s.id as survey_id
+           ,order_id
+           ,datetime_add(s.created_at, INTERVAL 7 hour ) as created_at
+           ,date (datetime_add(s.created_at, INTERVAL 7 hour )) as created_date
+           ,s.created_by
+           ,e.email as employee_email
+           ,e.name as employee_name
+           ,rating
+           ,feedback
+from ${source.circa_os}.order_order_survey s
+left join ${source.circa_os}.entity_entity e on s.created_by = e.id
