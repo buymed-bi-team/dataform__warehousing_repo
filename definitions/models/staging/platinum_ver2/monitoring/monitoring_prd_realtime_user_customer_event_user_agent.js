@@ -26,7 +26,13 @@ model.assertUnique(
     ["0h00","12h00", "platinum_unique_assertion", "monitoring_prd_realtime-user"],
     {
         intervalCheckpoint : `INTERVAL 1 YEAR`,
-        maxRetry: 2
+        maxRetry: 2,
+        dependencies: [
+            {
+                "schema": "platinum_buymed_vn",
+                "name":"monitoring_prd_realtime_user_customer_event_user_agent"
+            }
+        ]
     }
 )
 model.createMismatchAssertionView(
