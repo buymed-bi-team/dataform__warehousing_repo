@@ -63,6 +63,18 @@ delivery_metrics AS (
     END) AS do_count
   FROM ${ref(`fact_strategic_delivery_order`)} do
   GROUP BY 1, 2, 3, 4
+),
+
+-- Sale order metrics
+sales_order_metrics AS (
+  SELECT 
+    order_date,
+    so.location,
+    so.channel,
+    CAST(NULL AS STRING) AS supplier_class,
+    COUNT(DISTINCT order_id ) AS so_count
+  FROM ${ref(`fact_strategic_sale_order`)} so
+  GROUP BY 1, 2, 3, 4
 )
 
   SELECT
@@ -96,8 +108,6 @@ INNER JOIN base_calendar c ON DATE(m.order_date) = c.date
 
 
 UNION ALL
-
-
 SELECT 
   CURRENT_DATETIME("+7") AS refresh_time,
   c.eom as date,
@@ -108,6 +118,19 @@ SELECT
   d.do_count AS value
 FROM delivery_metrics d
 INNER JOIN base_calendar c ON DATE(d.delivery_date) = c.date
+
+
+UNION ALL
+SELECT 
+  CURRENT_DATETIME("+7") AS refresh_time,
+  c.eom as date,
+  so.location,
+  so.channel,
+  so.supplier_class,
+  "SO" AS measure,
+  so.so_count AS value
+FROM sales_order_metrics so
+INNER JOIN base_calendar c ON DATE(so.order_date) = c.date
 
 
 UNION ALL
@@ -149,13 +172,13 @@ measure,
 value
 FROM ${ref(`agg_inventory_cutoff`)}
 
-UNION ALL
-SELECT
-  CURRENT_DATETIME("+7") AS refresh_time,
-  eom AS date,
-  location,
-  channel,
-  supplier_class,
-  "SO" AS measure,
-  SO_count AS value
-FROM ${ref(`fact_strategic_sale_order`)}
+-- UNION ALL
+-- SELECT
+--   CURRENT_DATETIME("+7") AS refresh_time,
+--   eom AS date,
+--   location,
+--   channel,
+--   supplier_class,
+--   "SO" AS measure,
+--   SO_count AS value
+-- FROM ${ref(`fact_strategic_sale_order`)}
