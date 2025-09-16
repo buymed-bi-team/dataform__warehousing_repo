@@ -104,7 +104,7 @@ sales_order_metrics AS (
     STRUCT("GMV_BACKLOG", m.gmv_backlog),
     STRUCT("GMV_RETURN", m.gmv_return)
   ]) AS metric
-INNER JOIN base_calendar c ON DATE(m.order_date) = c.date
+INNER JOIN base_calendar c ON m.order_date = c.date
 
 
 UNION ALL
@@ -117,7 +117,7 @@ SELECT
   "DO" AS measure,
   d.do_count AS value
 FROM delivery_metrics d
-INNER JOIN base_calendar c ON DATE(d.delivery_date) = c.date
+INNER JOIN base_calendar c ON d.delivery_date = c.date
 
 
 UNION ALL
@@ -130,7 +130,7 @@ SELECT
   "SO" AS measure,
   so.so_count AS value
 FROM sales_order_metrics so
-INNER JOIN base_calendar c ON DATE(so.order_date) = c.date
+INNER JOIN base_calendar c ON so.order_date = c.date
 
 
 UNION ALL
@@ -171,14 +171,3 @@ supplier_class,
 measure,
 value
 FROM ${ref(`agg_inventory_cutoff`)}
-
--- UNION ALL
--- SELECT
---   CURRENT_DATETIME("+7") AS refresh_time,
---   eom AS date,
---   location,
---   channel,
---   supplier_class,
---   "SO" AS measure,
---   SO_count AS value
--- FROM ${ref(`fact_strategic_sale_order`)}
