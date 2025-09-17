@@ -9,9 +9,9 @@ WITH
         SELECT
             CURRENT_TIMESTAMP + INTERVAL 7 HOUR AS transformed_at
             , CASE
-                WHEN timestamp_diff(current_timestamp(), COALESCE(b.created_at, a.carrier_picked_at, a.do_created_at, a.pack_done_at), minute) < 60
-                    THEN round( safe_divide(timestamp_diff(current_timestamp(), COALESCE(b.created_at, a.carrier_picked_at, a.do_created_at, a.pack_done_at), minute), 60), 1 )
-                ELSE least( ceil( safe_divide(timestamp_diff(current_timestamp(), COALESCE(b.created_at, a.carrier_picked_at, a.do_created_at, a.pack_done_at), minute), 60) ) , 121 )
+                WHEN timestamp_diff(current_timestamp()+INTERVAL 7 HOUR, COALESCE(b.created_at, a.carrier_picked_at, a.do_created_at, a.pack_done_at), minute) < 60
+                    THEN round( safe_divide(timestamp_diff(current_timestamp()+INTERVAL 7 HOUR, COALESCE(b.created_at, a.carrier_picked_at, a.do_created_at, a.pack_done_at), minute), 60), 1 )
+                ELSE least( ceil( safe_divide(timestamp_diff(current_timestamp()+INTERVAL 7 HOUR, COALESCE(b.created_at, a.carrier_picked_at, a.do_created_at, a.pack_done_at), minute), 60) ) , 121 )
             END AS aging_hour
             , a.order_code
             , a.fc_code
