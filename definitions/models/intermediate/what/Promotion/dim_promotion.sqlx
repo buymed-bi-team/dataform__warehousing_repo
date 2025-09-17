@@ -62,7 +62,7 @@ LEFT JOIN (
     SELECT
         SAFE_CAST(TRIM(code) AS INT64) AS promotion_id
         , type
-        , NULLIF(value,"NAN") as campaign_brand
+        , UPPER(NULLIF(value,"NAN")) as campaign_brand
     FROM ${source.collector}.data_prd
     WHERE
         object = 'Product'
