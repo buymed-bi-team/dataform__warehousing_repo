@@ -70,7 +70,7 @@ where o.type <> 'RETURN'
 group by all)
 , _all as
 (
-select f.* except(return_codes)
+select f.*
        ,c.id
        ,COALESCE(SUM(f.total_amount), 0) as total_return_amount
        ,f.total_amount - COALESCE(SUM(c.total_amount), 0) AS exclude_return
@@ -82,7 +82,7 @@ group by all
 
 union all
 
-select o.* except(return_codes)
+select o.*
        ,c.id
        ,COALESCE(SUM(c.total_amount), 0) as total_return_amount
        ,o.total_amount - COALESCE(SUM(c.total_amount), 0) AS exclude_return
