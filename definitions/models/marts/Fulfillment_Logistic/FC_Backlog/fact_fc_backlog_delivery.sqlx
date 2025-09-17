@@ -21,6 +21,7 @@ WITH
             , a.do_created_at
             , a.carrier_picked_at
             , b.created_at AS handover_ticket_created_at
+            , a.ticket_id
         FROM ${ref('fact_outbound_ticket')} AS a
             LEFT JOIN (
                 SELECT
