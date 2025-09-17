@@ -8,6 +8,7 @@ SELECT
     CURRENT_TIMESTAMP + INTERVAL 7 HOUR AS transformed_at
     , a.order_code
     , a.fc_code
+    , a.do_status
     , a.reference_code
     , a.pack_done_at
     , a.do_created_at
