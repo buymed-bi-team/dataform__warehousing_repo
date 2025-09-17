@@ -4,28 +4,41 @@ config {
   tags: ["custom_1h_past10", "FC_BACKLOG"]
 }
 
-SELECT
-    CURRENT_TIMESTAMP + INTERVAL 7 HOUR AS transformed_at
-    , a.order_code
-    , a.fc_code
-    , IFNULL(a.do_status, "") AS do_status
-    , a.reference_code
-    , a.pack_done_at
-    , a.do_created_at
-    , a.carrier_picked_at
-    , b.created_at AS handover_ticket_created_at
-FROM ${ref('fact_outbound_ticket')} AS a
-    LEFT JOIN (
+WITH 
+    delivery AS (
         SELECT
-            *
-        FROM ${ref('fact_handover_ticket')}
-        QUALIFY ROW_NUMBER() over (PARTITION BY so_code ORDER BY created_at) = 1
-    ) AS b ON a.reference_code = b.so_code
-WHERE order_status NOT IN ("CANCEL", "DELIVERING", "DELIVERED", "COMPLETED", "RETURNING", "RETURNED")
-    AND pack_done_at IS NOT NULL
-    AND b.completed_at IS NULL
-    AND order_type = "SO"
-    AND order_code NOT IN ("SOTA50001448", "SOBD36437206")
+            CURRENT_TIMESTAMP + INTERVAL 7 HOUR AS transformed_at
+            , CASE
+                WHEN timestamp_diff(current_timestamp(), COALESCE(b.created_at, a.carrier_picked_at, a.do_created_at, a.pack_done_at), minute) < 60
+                    THEN round( safe_divide(timestamp_diff(current_timestamp(), COALESCE(b.created_at, a.carrier_picked_at, a.do_created_at, a.pack_done_at), minute), 60), 1 )
+                ELSE least( ceil( safe_divide(timestamp_diff(current_timestamp(), COALESCE(b.created_at, a.carrier_picked_at, a.do_created_at, a.pack_done_at), minute), 60) ) , 121 )
+            END AS aging_hour
+            , a.order_code
+            , a.fc_code
+            , IFNULL(a.do_status, "") AS do_status
+            , a.reference_code
+            , a.pack_done_at
+            , a.do_created_at
+            , a.carrier_picked_at
+            , b.created_at AS handover_ticket_created_at
+        FROM ${ref('fact_outbound_ticket')} AS a
+            LEFT JOIN (
+                SELECT
+                    *
+                FROM ${ref('fact_handover_ticket')}
+                QUALIFY ROW_NUMBER() over (PARTITION BY so_code ORDER BY created_at) = 1
+            ) AS b ON a.reference_code = b.so_code
+        WHERE order_status NOT IN ("CANCEL", "DELIVERING", "DELIVERED", "COMPLETED", "RETURNING", "RETURNED")
+            AND pack_done_at IS NOT NULL
+            AND b.completed_at IS NULL
+            AND order_type = "SO"
+            AND order_code NOT IN ("SOTA50001448", "SOBD36437206")
+    )
+
+SELECT
+    *
+    , concat(fc_code, "_", cast( aging_hour as string ) ) as fc_aging_code
+FROM delivery
 
 
 
