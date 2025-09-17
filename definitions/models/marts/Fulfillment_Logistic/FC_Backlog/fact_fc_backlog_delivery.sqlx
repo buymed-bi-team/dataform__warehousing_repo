@@ -1,11 +1,12 @@
 config {
   type: "table",
   name: "fact_fc_backlog_delivery",
-  tags: ["custom_1h_past_10", "FC_BACKLOG"]
+  tags: ["custom_1h_past10", "FC_BACKLOG"]
 }
 
 SELECT
-    a.order_code
+    CURRENT_TIMESTAMP + INTERVAL 7 HOUR AS transformed_at
+    , a.order_code
     , a.fc_code
     , a.reference_code
     , a.pack_done_at
