@@ -5,11 +5,11 @@ config {
         Detailed information of the handover tickets;
         PIC: nguyen.tran; 
         Type: Table; 
-		Refresh Schedule: each 2h from 6 to 22;
+		Refresh Schedule: hourly;
         Source: 
             ${source.platinum}.delivery_prd_transporting_handover_ticket
         `,
-    tags: ["custom_2h_past5"],
+    tags: ["custom_1h_past5"],
     columns: {
 		created_at: "Thời gian tạo phiếu bàn giao (handover)",
         done_handover_at: "Thời gian bàn giao xong cho đơn vị vận chuyển",
