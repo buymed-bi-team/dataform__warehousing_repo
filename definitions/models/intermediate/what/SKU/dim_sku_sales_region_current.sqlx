@@ -189,6 +189,7 @@ FROM cte_full AS cte
     LEFT JOIN (
         SELECT * 
         FROM ${source.platinum}.marketplace_prd_product_v2_sku_limit
+        WHERE JSON_VALUE(extra_props, "$.segment_code") IS NULL
         QUALIFY ROW_NUMBER() OVER(PARTITION BY item_code ORDER BY ingest_time DESC) = 1
     ) AS sl
         ON sl.item_code = s.item_code
