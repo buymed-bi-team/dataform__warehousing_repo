@@ -53,5 +53,5 @@ FROM ${ref('dim_sku_sales_region_current')} AS a
     LEFT JOIN ${source.external}.nearly_oos_transfer_seller AS ts ON ts.product_id = a.product_id AND ts.sales_region_code = a.sales_region_code
 WHERE a.seller_code = "MEDX"
     AND a.available_qty < b.avg_demand
-    AND a.sku_system_status = "LIMIT"
+    AND a.sku_system_status IN ("LIMIT", "NORMAL")
     AND ts.product_id IS NULL
