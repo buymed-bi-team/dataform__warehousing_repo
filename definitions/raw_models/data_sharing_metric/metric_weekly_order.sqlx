@@ -43,8 +43,11 @@ SELECT
     , e.product_link AS item_sku_url
     , k.skus AS item_bundle_ids
 --     , TO_JSON_STRING(JSON_QUERY(a.extra_props, '$.skus')) AS item_bundle_ids
-    , a.seller_code AS item_shop_id
-    , f.supplier_name AS item_shop_name
+    -- , a.seller_code AS item_shop_id
+    -- , f.supplier_name AS item_shop_name
+    , m.shop_id AS item_shop_id
+    , m.shop_name AS item_shop_name
+    , m.shop_url AS item_shop_url
     , a.price+ IFNULL(a.charge_deal_fee_value , 0) AS item_price_before_discount
     , a.price AS item_price
     , 1 - SAFE_DIVIDE(a.price, a.price + IFNULL(a.charge_deal_fee_value , 0)) AS item_price_discount_percent
@@ -58,6 +61,7 @@ FROM ${source.platinum}.marketplace_prd_order_v2_order_item AS a
     LEFT JOIN ${ref('dim_sku_sales_region_current')} AS e ON a.item_code = e.sub_sku_code
     LEFT JOIN ${ref('dim_seller')} AS f ON a.seller_code = f.supplier_code
     LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_sku AS k ON a.item_code = k.item_code
+    LEFT JOIN ${ref('metric_weekly_product')} AS m ON m.sku_id = a.sku
 WHERE a.created_date BETWEEN "2024-01-01" AND CURRENT_DATE - 1
     AND DATE(b.created_at) BETWEEN "2024-01-01" AND CURRENT_DATE - 1
     AND b.order_status <> "CANCEL"

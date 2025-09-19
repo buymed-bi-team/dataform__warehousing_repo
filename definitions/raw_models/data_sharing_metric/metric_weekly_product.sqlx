@@ -57,9 +57,13 @@ SELECT
     , d.product_category AS bm_category_1
     , i.category_name AS bm_category_2
     , g.efficacy_name AS bm_category_3
-    , a.seller_code AS shop_id
-    , j.supplier_name AS shop_name
-    , a.seller_id AS shop_platform_id
+    -- , a.seller_code AS shop_id
+    -- , j.supplier_name AS shop_name
+    -- , a.seller_id AS shop_platform_id
+    , COALESCE(o.shop_id, p.shop_id, a.seller_code) AS shop_id
+    , COALESCE(o.shop_name, p.shop_name, j.supplier_name) AS shop_name
+    , COALESCE(o.shop_platform_id, p.shop_platform_id, a.seller_id) AS shop_platform_id
+    , COALESCE(o.shop_url, p.shop_url, IF(a.seller_code = "MEDX", "https://thuocsi.vn/seller-products/MEDX/cong-ty-tnhh-duoc-pham-medx", NULL)) AS shop_url
     , k.display_price AS price_before_discount
     , k.sku_display_price AS price
     , l.min_price AS price_min
@@ -92,7 +96,7 @@ FROM ${ref('dim_sku_sales_region_current')} AS a
             product_id
             , COUNT(sku_code) AS no_of_skus
         FROM ${ref('dim_sku')}
-        WHERE seller_code NOT IN ('I1I4OQEM8D','MEDX_E', 'MEDC', 'MED_NT', 'TENDER', 'MEDX-HN', 'DENX', 'MARKETING', '9SUUUUUUUU', 'QMQEM8DN9F', 'UQRRRRRRRR', 'TAM_GIA')
+        WHERE seller_code NOT IN ('I1I4OQEM8D','MEDX_E', 'MEDC', 'MED_NT', 'TENDER', 'MEDX-HN', 'DENX', 'MARKETING', '9SUUUUUUUU', 'QMQEM8DN9F', 'UQRRRRRRRR', 'TAM_GIA', 'BML_E')
             AND (seller_code = "MEDX" OR seller_class = "EXTERNAL")
         GROUP BY 1
     ) AS e ON a.product_id = e.product_id
@@ -125,7 +129,7 @@ FROM ${ref('dim_sku_sales_region_current')} AS a
             , MIN(sku_display_price) AS sku_display_price
             , MIN(display_price) AS display_price
         FROM ${ref('adhoc_pricing_v2')}
-        WHERE SPLIT(sku_code, ".")[OFFSET(0)] NOT IN ('I1I4OQEM8D','MEDX_E', 'MEDC', 'MED_NT', 'TENDER', 'MEDX-HN', 'DENX', 'MARKETING', '9SUUUUUUUU', 'QMQEM8DN9F', 'UQRRRRRRRR', 'TAM_GIA')
+        WHERE SPLIT(sku_code, ".")[OFFSET(0)] NOT IN ('I1I4OQEM8D','MEDX_E', 'MEDC', 'MED_NT', 'TENDER', 'MEDX-HN', 'DENX', 'MARKETING', '9SUUUUUUUU', 'QMQEM8DN9F', 'UQRRRRRRRR', 'TAM_GIA', 'BML_E')
         GROUP BY 1
     ) AS k ON k.sku_code = a.sku_code
     LEFT JOIN (
@@ -134,7 +138,7 @@ FROM ${ref('dim_sku_sales_region_current')} AS a
             , MIN(sku_display_price) AS min_price
             , MAX(sku_display_price) AS max_price
         FROM ${ref('adhoc_pricing_v2')}
-        WHERE SPLIT(sku_code, ".")[OFFSET(0)] NOT IN ('I1I4OQEM8D','MEDX_E', 'MEDC', 'MED_NT', 'TENDER', 'MEDX-HN', 'DENX', 'MARKETING', '9SUUUUUUUU', 'QMQEM8DN9F', 'UQRRRRRRRR', 'TAM_GIA')
+        WHERE SPLIT(sku_code, ".")[OFFSET(0)] NOT IN ('I1I4OQEM8D','MEDX_E', 'MEDC', 'MED_NT', 'TENDER', 'MEDX-HN', 'DENX', 'MARKETING', '9SUUUUUUUU', 'QMQEM8DN9F', 'UQRRRRRRRR', 'TAM_GIA', 'BML_E')
         GROUP BY 1
     ) AS l ON a.product_id = l.product_id
     LEFT JOIN (
@@ -154,7 +158,7 @@ FROM ${ref('dim_sku_sales_region_current')} AS a
             , NOT(MAX(sku_system_active)) AS is_hidden
         FROM ${ref('dim_sku_sales_region_current')}
         WHERE (seller_code = "MEDX" OR seller_class = "EXTERNAL")
-            AND seller_code NOT IN ('I1I4OQEM8D','MEDX_E', 'MEDC', 'MED_NT', 'TENDER', 'MEDX-HN', 'DENX', 'MARKETING', '9SUUUUUUUU', 'QMQEM8DN9F', 'UQRRRRRRRR', 'TAM_GIA')
+            AND seller_code NOT IN ('I1I4OQEM8D','MEDX_E', 'MEDC', 'MED_NT', 'TENDER', 'MEDX-HN', 'DENX', 'MARKETING', '9SUUUUUUUU', 'QMQEM8DN9F', 'UQRRRRRRRR', 'TAM_GIA', 'BML_E')
         GROUP BY 1
     ) AS m ON a.sku_code = m.sku_code
     LEFT JOIN (
@@ -181,7 +185,33 @@ FROM ${ref('dim_sku_sales_region_current')} AS a
             AND b.channel IN ("MARKETPLACE", "CIRCA")
         GROUP BY 1
     ) AS n ON a.sku_code= n.sku
+    LEFT JOIN (
+        SELECT
+            seller_code
+            , a.code AS shop_id
+            , a.name AS shop_name
+            , seller_store_id AS shop_platform_id
+            , IF(
+                JSON_VALUE(a.extra_props, "$.slug") IS NOT NULL,
+                CONCAT("https://thuocsi.vn/seller/", JSON_VALUE(a.extra_props, "$.slug")),
+                CONCAT("https://thuocsi.vn/seller-products/", a.seller_code ,"/", b.slug)
+            ) AS shop_url
+        FROM ${source.platinum}.seller_prd_core_seller_store AS a
+            LEFT JOIN ${source.platinum}.seller_prd_core_seller AS b ON a.seller_code = b.code
+    ) AS o ON a.seller_code = o.seller_code
+    LEFT JOIN (
+        SELECT
+            a.code AS shop_id
+            , a.name AS shop_name
+            , a.store_id AS shop_platform_id
+            , url AS shop_url
+            , b.sku_code
+        FROM ${source.platinum}.seller_prd_core_vendor_store AS a
+            LEFT JOIN ${ref('dim_sku_tag')} AS b ON a.all_product_tag = b.tag_code
+        WHERE status = "ACTIVE"
+        QUALIFY ROW_NUMBER() OVER(PARTITION BY sku_code) = 1
+    ) AS p ON a.sku_code = p.sku_code
 WHERE 1=1
     AND (a.seller_code = "MEDX" OR a.seller_class = "EXTERNAL")
-    AND a.seller_code NOT IN ('I1I4OQEM8D','MEDX_E', 'MEDC', 'MED_NT', 'TENDER', 'MEDX-HN', 'DENX', 'MARKETING', '9SUUUUUUUU', 'QMQEM8DN9F', 'UQRRRRRRRR', 'TAM_GIA')
+    AND a.seller_code NOT IN ('I1I4OQEM8D','MEDX_E', 'MEDC', 'MED_NT', 'TENDER', 'MEDX-HN', 'DENX', 'MARKETING', '9SUUUUUUUU', 'QMQEM8DN9F', 'UQRRRRRRRR', 'TAM_GIA', 'BML_E')
 QUALIFY ROW_NUMBER() over (PARTITION BY a.sku_code) = 1
