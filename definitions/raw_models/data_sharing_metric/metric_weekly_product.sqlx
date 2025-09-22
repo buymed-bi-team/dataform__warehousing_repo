@@ -63,7 +63,7 @@ SELECT
     , COALESCE(o.shop_id, p.shop_id, a.seller_code) AS shop_id
     , COALESCE(o.shop_name, p.shop_name, j.supplier_name) AS shop_name
     , COALESCE(o.shop_platform_id, p.shop_platform_id, a.seller_id) AS shop_platform_id
-    , COALESCE(o.shop_url, p.shop_url, IF(a.seller_code = "MEDX", "https://thuocsi.vn/seller-products/MEDX/cong-ty-tnhh-duoc-pham-medx", NULL)) AS shop_url
+    , COALESCE(o.shop_url, p.shop_url, q.shop_url) AS shop_url
     , k.display_price AS price_before_discount
     , k.sku_display_price AS price
     , l.min_price AS price_min
@@ -211,7 +211,17 @@ FROM ${ref('dim_sku_sales_region_current')} AS a
         WHERE status = "ACTIVE"
         QUALIFY ROW_NUMBER() OVER(PARTITION BY sku_code) = 1
     ) AS p ON a.sku_code = p.sku_code
+    LEFT JOIN (
+        SELECT
+            code AS seller_code
+            , code AS shop_id
+            , name AS shop_name
+            , seller_id AS shop_platform_id
+            , CONCAT("https://thuocsi.vn/seller-products/", code ,"/", slug) AS shop_url
+        FROM ${source.platinum}.seller_prd_core_seller
+        WHERE code IN ('MEDX', 'BML_INT')
+    ) AS q ON a.seller_code = q.seller_code
 WHERE 1=1
-    AND (a.seller_code = "MEDX" OR a.seller_class = "EXTERNAL")
+    AND (a.seller_code IN ("MEDX", "BML_INT") OR a.seller_class = "EXTERNAL")
     AND a.seller_code NOT IN ('I1I4OQEM8D','MEDX_E', 'MEDC', 'MED_NT', 'TENDER', 'MEDX-HN', 'DENX', 'MARKETING', '9SUUUUUUUU', 'QMQEM8DN9F', 'UQRRRRRRRR', 'TAM_GIA', 'BML_E')
 QUALIFY ROW_NUMBER() over (PARTITION BY a.sku_code) = 1
