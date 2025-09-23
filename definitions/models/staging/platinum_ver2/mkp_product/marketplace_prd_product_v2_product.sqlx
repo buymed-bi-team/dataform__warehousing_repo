@@ -1,0 +1,47 @@
+config {
+    type: "view",
+    schema: "platinum_buymed_vn",
+    name: "marketplace_prd_product_v2_product",
+    tags:["platinum","marketplace_prd_product-v2","VN_product"]
+}
+
+  WITH silver AS (
+    SELECT
+      key,mg_id,code,category_codes,manufacturer_code,search_keyword,image_urls,slug,volumes,product_id,created_time,hash_tag,name,height,last_updated_time,length,weight,width,ingredients,dosage_form,is_combo,origin,registration_number,retail_unit,retail_unit_quantity_per_unit,sub_products,unit,is_ingredient_special,is_prescription,main_category_code,atc2_code,atc3_code,usage,owner,seller_category_code,category_in_charge,category_management,efficacy_codes,seller_sub_category_code,retail_units,vat,retail_info,note,brand,is_liquid,is_frozen,is_fragile,is_herb,similar_product_codes,video_urls,synced_at,extra_props,action,ingest_time,
+      
+        CASE
+            WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time, 'Asia/Ho_Chi_Minh'))
+            ELSE DATE( '2099-01-01' )
+        END
+     created_date,
+      CAST(null as datetime) 
+    FROM silver_buymed_vn.marketplace_prd_product_v2_product
+    WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 1 DAY
+    QUALIFY ROW_NUMBER() OVER (_window) = 1 
+          AND ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 16 HOUR
+          WINDOW _window AS (
+          PARTITION BY mg_id
+          ORDER BY synced_at DESC,
+          IF
+              (action='d',3,
+              IF
+              (action='u',2,1)) DESC
+          ,last_updated_time DESC)
+  ), platinum AS (
+    SELECT 
+      key,mg_id,code,category_codes,manufacturer_code,search_keyword,image_urls,slug,volumes,product_id,created_time,hash_tag,name,height,last_updated_time,length,weight,width,ingredients,dosage_form,is_combo,origin,registration_number,retail_unit,retail_unit_quantity_per_unit,sub_products,unit,is_ingredient_special,is_prescription,main_category_code,atc2_code,atc3_code,usage,owner,seller_category_code,category_in_charge,category_management,efficacy_codes,seller_sub_category_code,retail_units,vat,retail_info,note,brand,is_liquid,is_frozen,is_fragile,is_herb,similar_product_codes,video_urls,synced_at,extra_props,action,ingest_time,
+      created_date,
+      platinum_refresh
+    FROM ${ref(`platinum_buymed_vn__stg`, `marketplace_prd_product_v2_product`)}
+  )
+  SELECT p.*
+  FROM platinum p
+  LEFT JOIN silver s 
+      ON p.mg_id = s.mg_id 
+  WHERE s.mg_id is null 
+
+  UNION ALL 
+
+  SELECT s.*
+  FROM silver s
+  WHERE action <> "d"
