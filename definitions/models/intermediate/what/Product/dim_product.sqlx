@@ -164,6 +164,10 @@ WITH product_retail_unit AS (
             product_id
             , "CIRCA"
         FROM buymed_external.potential_high_margin_product
+        WHERE product_id NOT IN (SELECT DISTINCT
+            product_id
+        FROM ${ref('dim_product_division')}
+        WHERE brand_group = "OWNBRAND") 
   )
 
   , chronic AS (
