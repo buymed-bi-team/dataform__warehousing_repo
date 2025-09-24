@@ -10,218 +10,270 @@ config {
     tags: ["METRIC_DATA_SHARING"]
 }
 
-SELECT
-    FORMAT_DATE("%Y-%m-%d", CURRENT_DATE("+7")) AS data_delivery_date
-    , FORMAT_DATE("%Y-%m-%d", DATE(a.sku_last_updated_at)) AS data_update_date
-    , "THUOCSI" AS platform
-    , "VIETNAM" AS country
-    , a.product_id
-    , a.product_code
-    , a.product_name
-    , product_link AS product_url
-    , REGEXP_REPLACE(JSON_VALUE(b.image_urls, "$[0]"), r'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS product_image_url
-    , REGEXP_REPLACE(c.description,  r'<[^>]+>', '') AS product_specs
-    , CASE
-        WHEN d.product_category = "Thuốc kê đơn" THEN "Rx"
-        WHEN d.product_category = "Thuốc không kê đơn" THEN "OTC"
-        WHEN d.product_category = "Thuốc (Chưa phân loại)" OR d.product_category IS NULL THEN NULL
-        ELSE "Non-Drug"
-    END AS product_category
-    , no_of_skus AS product_variant_count
-    , a.sku_code AS sku_id
-    , a.product_name AS sku_name
-    , a.product_link AS sku_url
-    , REGEXP_REPLACE(JSON_VALUE(b.image_urls, "$[0]"), r'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS sku_image_url
-    , TO_JSON_STRING(b.sub_products) AS bundle_ids
-    , b.registration_number
-    , b.dosage_form
-    , g.efficacy_name AS therapeutic_desc
-    , REGEXP_REPLACE(c.indication ,  r'<[^>]+>', '') AS indications
-    , REGEXP_REPLACE(c.contraindication ,  r'<[^>]+>', '') AS contraindications
-    , d.country_origin AS country_manufacturer
-    , d.country_origin AS brand_origin
-    , h.ingredients AS molocule
-    , b.unit AS pack_type
-    , COALESCE(level_4_quantity, level_3_quantity, level_2_quantity, level_1_quantity) AS pack_value
-    , COALESCE(level_1_unit, level_2_unit, level_3_unit, level_4_unit) AS pack_unit
-    , b.volumes AS pack_desc
-    , d.brand
-    , d.manufacturer_short_name AS manufacturer
-    , d.is_prescription AS prescription_status
-    , CASE
-        WHEN d.product_category = "Thuốc kê đơn" THEN "Rx"
-        WHEN d.product_category = "Thuốc không kê đơn" THEN "OTC"
-        WHEN d.product_category = "Thuốc (Chưa phân loại)" OR d.product_category IS NULL THEN NULL
-        ELSE "Non-Drug"
-    END AS bm_big_cat
-    , d.product_category AS bm_category_1
-    , i.category_name AS bm_category_2
-    , g.efficacy_name AS bm_category_3
-    -- , a.seller_code AS shop_id
-    -- , j.supplier_name AS shop_name
-    -- , a.seller_id AS shop_platform_id
-    , COALESCE(o.shop_id, p.shop_id, a.seller_code) AS shop_id
-    , COALESCE(o.shop_name, p.shop_name, j.supplier_name) AS shop_name
-    , COALESCE(o.shop_platform_id, p.shop_platform_id, a.seller_id) AS shop_platform_id
-    , COALESCE(o.shop_url, p.shop_url, q.shop_url) AS shop_url
-    , k.display_price AS price_before_discount
-    , k.sku_display_price AS price
-    , l.min_price AS price_min
-    , l.max_price AS price_max
-    , 1 - SAFE_DIVIDE(k.sku_display_price, k.display_price) AS price_discount_percent
-    , m.available_qty AS stock
-    , FORMAT_DATE("%Y-%m-%d", b.created_date) AS platform_created_at
-    , FORMAT_DATE("%Y-%m-%d", n.order_updated_at) AS order_updated_at
-    , m.available_status
-    , m.is_hidden
-    , n.sales_unit_total
-    , n.sales_value_total
-    , n.sales_unit_7d
-    , n.sales_value_7d
-    , n.sales_unit_30d
-    , n.sales_value_30d
-    , n.sales_unit_last_week
-    , n.sales_value_last_week
-    , n.sales_unit_last_month
-    , n.sales_value_last_month
-    , n.sales_unit_this_month
-    , n.sales_value_this_month
-    , IF(sku_system_status = "GIFT", TRUE, FALSE) AS flag_gwp
-FROM ${ref('dim_sku_sales_region_current')} AS a
-    LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_product AS b ON a.product_id = b.product_id
-    LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_product_description AS c ON a.product_id = c.product_id
-    LEFT JOIN ${ref('dim_product')} AS d ON a.product_id = d.product_id
-    LEFT JOIN (
+WITH
+    cate AS (
+        SELECT DISTINCT
+        --     a.category_id
+            IF(a.code = "AQFV2U", b.sub_category_id, a.category_id) AS category_id
+            , IF(a.code = "AQFV2U", b.code, a.code) AS category_code
+            , IF(a.code = "AQFV2U", b.name, a.name) AS category_name
+            , 1 AS level
+            , "" AS parent_id
+        FROM platinum_buymed_vn.marketplace_prd_product_v2_seller_category AS a
+            LEFT JOIN platinum_buymed_vn.marketplace_prd_product_v2_seller_sub_category b ON a.category_id = b.category_id
+        UNION ALL
         SELECT
-            product_id
-            , COUNT(sku_code) AS no_of_skus
-        FROM ${ref('dim_sku')}
-        WHERE seller_code NOT IN ('I1I4OQEM8D','MEDX_E', 'MEDC', 'MED_NT', 'TENDER', 'MEDX-HN', 'DENX', 'MARKETING', '9SUUUUUUUU', 'QMQEM8DN9F', 'UQRRRRRRRR', 'TAM_GIA', 'BML_E')
-            AND (seller_code = "MEDX" OR seller_class = "EXTERNAL")
-        GROUP BY 1
-    ) AS e ON a.product_id = e.product_id
-    LEFT JOIN ${ref('dim_sku')} AS f ON a.sku_code = f.sku_code
-    LEFT JOIN (
+            category_id
+            , code
+            , name AS category_name
+            , 2 AS level
+            , ""
+        FROM platinum_buymed_vn.marketplace_prd_product_v2_category
+        WHERE category_id IS NOT NULL
+            AND REGEXP_CONTAINS(LOWER(name),r'bỏ|tech|test') = FALSE
+            AND system_display = "BUYMED"
+        UNION ALL
         SELECT
-            product_id
-            , efficacy_name
-        FROM ${ref('dim_product_efficacy')}
-        WHERE efficacy_level= 1
-    ) AS g ON a.product_id = g.product_id
-    LEFT JOIN (
+            efficacy_id
+            , code
+            , name AS category_name
+            , 3 AS level
+            , category_code
+        FROM platinum_buymed_vn.marketplace_prd_product_v2_efficacy
+        WHERE efficacy_id IS NOT NULL
+            AND REGEXP_CONTAINS(LOWER(name),r'bỏ|tech|test') = FALSE
+        QUALIFY ROW_NUMBER() over (PARTITION BY name ORDER BY IF(category_id IS NOT NULL ,1,0) DESC, created_time DESC ) = 1
+    ),
+
+    final AS (
         SELECT
-            product_id
-            , STRING_AGG( ingredient_name, ', ' ORDER BY ingredient_name) AS ingredients
-        FROM ${ref('dim_product_ingredient')}
-        GROUP BY 1
-    ) AS h ON a.product_id = h.product_id
-    LEFT JOIN (
-        SELECT
-            product_id
-            , category_name
-        FROM ${ref('dim_product_category')}
-        WHERE level = 1
-    ) AS i ON a.product_id = i.product_id
-    LEFT JOIN ${ref('dim_seller')} AS j ON a.seller_id = j.supplier_id
-    LEFT JOIN (
-        SELECT
-            sku_code
-            , MIN(sku_display_price) AS sku_display_price
-            , MIN(display_price) AS display_price
-        FROM ${ref('adhoc_pricing_v2')}
-        WHERE SPLIT(sku_code, ".")[OFFSET(0)] NOT IN ('I1I4OQEM8D','MEDX_E', 'MEDC', 'MED_NT', 'TENDER', 'MEDX-HN', 'DENX', 'MARKETING', '9SUUUUUUUU', 'QMQEM8DN9F', 'UQRRRRRRRR', 'TAM_GIA', 'BML_E')
-        GROUP BY 1
-    ) AS k ON k.sku_code = a.sku_code
-    LEFT JOIN (
-        SELECT
-            product_id
-            , MIN(sku_display_price) AS min_price
-            , MAX(sku_display_price) AS max_price
-        FROM ${ref('adhoc_pricing_v2')}
-        WHERE SPLIT(sku_code, ".")[OFFSET(0)] NOT IN ('I1I4OQEM8D','MEDX_E', 'MEDC', 'MED_NT', 'TENDER', 'MEDX-HN', 'DENX', 'MARKETING', '9SUUUUUUUU', 'QMQEM8DN9F', 'UQRRRRRRRR', 'TAM_GIA', 'BML_E')
-        GROUP BY 1
-    ) AS l ON a.product_id = l.product_id
-    LEFT JOIN (
-        SELECT
-            sku_code
-            , SUM(available_qty) AS available_qty
-            , MAX_BY(
-                sku_system_status,
-                CASE sku_system_status
-                    WHEN "NORMAL" THEN 3
-                    WHEN "LIMIT" THEN 2
-                    WHEN "OUT_OF_STOCK" THEN 1
-                    WHEN "SUSPENDED" THEN 0
-                    ELSE 0
-                END
-            ) AS available_status
-            , NOT(MAX(sku_system_active)) AS is_hidden
-        FROM ${ref('dim_sku_sales_region_current')}
-        WHERE (seller_code = "MEDX" OR seller_class = "EXTERNAL")
-            AND seller_code NOT IN ('I1I4OQEM8D','MEDX_E', 'MEDC', 'MED_NT', 'TENDER', 'MEDX-HN', 'DENX', 'MARKETING', '9SUUUUUUUU', 'QMQEM8DN9F', 'UQRRRRRRRR', 'TAM_GIA', 'BML_E')
-        GROUP BY 1
-    ) AS m ON a.sku_code = m.sku_code
-    LEFT JOIN (
-        SELECT
-            sku
-            , MAX(created_date) AS order_updated_at
-            , SUM(quantity) AS sales_unit_total
-            , SUM(total_price) AS sales_value_total
-            , SUM(IF(created_date BETWEEN CURRENT_DATE("+7") - 7 AND CURRENT_DATE("+7") - 1, quantity, 0)) AS sales_unit_7d
-            , SUM(IF(created_date BETWEEN CURRENT_DATE("+7") - 7 AND CURRENT_DATE("+7") - 1, total_price, 0)) AS sales_value_7d
-            , SUM(IF(created_date BETWEEN CURRENT_DATE("+7") - 30 AND CURRENT_DATE("+7") - 1, quantity, 0)) AS sales_unit_30d
-            , SUM(IF(created_date BETWEEN CURRENT_DATE("+7") - 30 AND CURRENT_DATE("+7") - 1, total_price, 0)) AS sales_value_30d
-            , SUM(IF(created_date BETWEEN DATE_TRUNC(CURRENT_DATE("+7"), WEEK(MONDAY ) ) - 7 AND DATE_TRUNC(CURRENT_DATE("+7"), WEEK(MONDAY ) ) - 1, quantity, 0)) AS sales_unit_last_week
-            , SUM(IF(created_date BETWEEN DATE_TRUNC(CURRENT_DATE("+7"), WEEK(MONDAY ) ) - 7 AND DATE_TRUNC(CURRENT_DATE("+7"), WEEK(MONDAY ) ) - 1, total_price, 0)) AS sales_value_last_week
-            , SUM(IF(created_date BETWEEN DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH ), INTERVAL 1 MONTH) AND DATE_TRUNC(CURRENT_DATE("+7"), MONTH )  - 1, quantity, 0)) AS sales_unit_last_month
-            , SUM(IF(created_date BETWEEN DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH ), INTERVAL 1 MONTH) AND DATE_TRUNC(CURRENT_DATE("+7"), MONTH )  - 1, total_price, 0)) AS sales_value_last_month
-            , SUM(IF(created_date BETWEEN DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) AND CURRENT_DATE("+7")  - 1, quantity, 0)) AS sales_unit_this_month
-            , SUM(IF(created_date BETWEEN DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) AND CURRENT_DATE("+7")  - 1, total_price, 0)) AS sales_value_this_month
-        FROM ${source.platinum}.marketplace_prd_order_v2_order_item AS a
-            LEFT JOIN ${ref('fact_order')} AS b ON a.order_id = b.order_id
-        WHERE created_date BETWEEN DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH ), INTERVAL 1 MONTH) AND CURRENT_DATE("+7") - 1
-            AND DATE(b.created_at) BETWEEN DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH ), INTERVAL 1 MONTH) AND CURRENT_DATE("+7") - 1
-            AND b.order_status <> "CANCEL"
-            AND b.channel IN ("MARKETPLACE", "CIRCA")
-        GROUP BY 1
-    ) AS n ON a.sku_code= n.sku
-    LEFT JOIN (
-        SELECT
-            seller_code
-            , a.code AS shop_id
-            , a.name AS shop_name
-            , seller_store_id AS shop_platform_id
-            , IF(
-                JSON_VALUE(a.extra_props, "$.slug") IS NOT NULL,
-                CONCAT("https://thuocsi.vn/seller/", JSON_VALUE(a.extra_props, "$.slug")),
-                CONCAT("https://thuocsi.vn/seller-products/", a.seller_code ,"/", b.slug)
-            ) AS shop_url
-        FROM ${source.platinum}.seller_prd_core_seller_store AS a
-            LEFT JOIN ${source.platinum}.seller_prd_core_seller AS b ON a.seller_code = b.code
-    ) AS o ON a.seller_code = o.seller_code
-    LEFT JOIN (
-        SELECT
-            a.code AS shop_id
-            , a.name AS shop_name
-            , a.store_id AS shop_platform_id
-            , url AS shop_url
-            , b.sku_code
-        FROM ${source.platinum}.seller_prd_core_vendor_store AS a
-            LEFT JOIN ${ref('dim_sku_tag')} AS b ON a.all_product_tag = b.tag_code
-        WHERE status = "ACTIVE"
-        QUALIFY ROW_NUMBER() OVER(PARTITION BY sku_code) = 1
-    ) AS p ON a.sku_code = p.sku_code
-    LEFT JOIN (
-        SELECT
-            code AS seller_code
-            , code AS shop_id
-            , name AS shop_name
-            , seller_id AS shop_platform_id
-            , CONCAT("https://thuocsi.vn/seller-products/", code ,"/", slug) AS shop_url
-        FROM ${source.platinum}.seller_prd_core_seller
-        WHERE code IN ('MEDX', 'BML_INT')
-    ) AS q ON a.seller_code = q.seller_code
-WHERE 1=1
-    AND (a.seller_code IN ("MEDX", "BML_INT") OR a.seller_class = "EXTERNAL")
-    AND a.seller_code NOT IN ('I1I4OQEM8D','MEDX_E', 'MEDC', 'MED_NT', 'TENDER', 'MEDX-HN', 'DENX', 'MARKETING', '9SUUUUUUUU', 'QMQEM8DN9F', 'UQRRRRRRRR', 'TAM_GIA', 'BML_E')
-QUALIFY ROW_NUMBER() over (PARTITION BY a.sku_code) = 1
+            FORMAT_DATE("%Y-%m-%d", CURRENT_DATE("+7")) AS data_delivery_date
+            , FORMAT_DATE("%Y-%m-%d", DATE(a.sku_last_updated_at)) AS data_update_date
+            , "THUOCSI" AS platform
+            , "VIETNAM" AS country
+            , a.product_id
+            , a.product_code
+            , a.product_name
+            , product_link AS product_url
+            , REGEXP_REPLACE(JSON_VALUE(b.image_urls, "$[0]"), r'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS product_image_url
+            , REGEXP_REPLACE(c.description,  r'<[^>]+>', '') AS product_specs
+            , CASE
+                WHEN d.product_category = "Thuốc kê đơn" THEN "Rx"
+                WHEN d.product_category = "Thuốc không kê đơn" THEN "OTC"
+                WHEN d.product_category = "Thuốc (Chưa phân loại)" OR d.product_category IS NULL THEN NULL
+                ELSE "Non-Drug"
+            END AS product_category
+            , no_of_skus AS product_variant_count
+            , a.sku_code AS sku_id
+            , a.product_name AS sku_name
+            , a.product_link AS sku_url
+            , REGEXP_REPLACE(JSON_VALUE(b.image_urls, "$[0]"), r'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS sku_image_url
+            , TO_JSON_STRING(b.sub_products) AS bundle_ids
+            , b.registration_number
+            , b.dosage_form
+            , g.efficacy_name AS therapeutic_desc
+            , REGEXP_REPLACE(c.indication ,  r'<[^>]+>', '') AS indications
+            , REGEXP_REPLACE(c.contraindication ,  r'<[^>]+>', '') AS contraindications
+            , d.country_origin AS country_manufacturer
+            , d.country_origin AS brand_origin
+            , h.ingredients AS molocule
+            , b.unit AS pack_type
+            , COALESCE(level_4_quantity, level_3_quantity, level_2_quantity, level_1_quantity) AS pack_value
+            , COALESCE(level_1_unit, level_2_unit, level_3_unit, level_4_unit) AS pack_unit
+            , b.volumes AS pack_desc
+            , d.brand
+            , d.manufacturer_short_name AS manufacturer
+            , d.is_prescription AS prescription_status
+            , CASE
+                WHEN d.product_category = "Thuốc kê đơn" THEN "Rx"
+                WHEN d.product_category = "Thuốc không kê đơn" THEN "OTC"
+                WHEN d.product_category = "Thuốc (Chưa phân loại)" OR d.product_category IS NULL THEN NULL
+                ELSE "Non-Drug"
+            END AS bm_big_cat
+            , NULLIF(d.product_category, "Thuốc (Chưa phân loại)") AS bm_category_1
+            , i.category_name AS bm_category_2
+            , g.efficacy_name AS bm_category_3
+            -- , a.seller_code AS shop_id
+            -- , j.supplier_name AS shop_name
+            -- , a.seller_id AS shop_platform_id
+            , COALESCE(o.shop_id, p.shop_id, a.seller_code) AS shop_id
+            , COALESCE(o.shop_name, p.shop_name, j.supplier_name) AS shop_name
+            , COALESCE(o.shop_platform_id, p.shop_platform_id, a.seller_id) AS shop_platform_id
+            , COALESCE(o.shop_url, p.shop_url, q.shop_url) AS shop_url
+            , k.display_price AS price_before_discount
+            , k.sku_display_price AS price
+            , l.min_price AS price_min
+            , l.max_price AS price_max
+            , 1 - SAFE_DIVIDE(k.sku_display_price, k.display_price) AS price_discount_percent
+            , m.available_qty AS stock
+            , FORMAT_DATE("%Y-%m-%d", b.created_date) AS platform_created_at
+            , FORMAT_DATE("%Y-%m-%d", n.order_updated_at) AS order_updated_at
+            , m.available_status
+            , m.is_hidden
+            , n.sales_unit_total
+            , n.sales_value_total
+            , n.sales_unit_7d
+            , n.sales_value_7d
+            , n.sales_unit_30d
+            , n.sales_value_30d
+            , n.sales_unit_last_week
+            , n.sales_value_last_week
+            , n.sales_unit_last_month
+            , n.sales_value_last_month
+            , n.sales_unit_this_month
+            , n.sales_value_this_month
+            , IF(sku_system_status = "GIFT", TRUE, FALSE) AS flag_gwp
+        FROM ${ref('dim_sku_sales_region_current')} AS a
+            LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_product AS b ON a.product_id = b.product_id
+            LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_product_description AS c ON a.product_id = c.product_id
+            LEFT JOIN ${ref('dim_product')} AS d ON a.product_id = d.product_id
+            LEFT JOIN (
+                SELECT
+                    product_id
+                    , COUNT(sku_code) AS no_of_skus
+                FROM ${ref('dim_sku')}
+                WHERE seller_code NOT IN ('I1I4OQEM8D','MEDX_E', 'MEDC', 'MED_NT', 'TENDER', 'MEDX-HN', 'DENX', 'MARKETING', '9SUUUUUUUU', 'QMQEM8DN9F', 'UQRRRRRRRR', 'TAM_GIA', 'BML_E')
+                    AND (seller_code = "MEDX" OR seller_class = "EXTERNAL")
+                GROUP BY 1
+            ) AS e ON a.product_id = e.product_id
+            LEFT JOIN ${ref('dim_sku')} AS f ON a.sku_code = f.sku_code
+            LEFT JOIN (
+                SELECT
+                    product_id
+                    , efficacy_name
+                FROM ${ref('dim_product_efficacy')}
+                WHERE efficacy_level= 1
+            ) AS g ON a.product_id = g.product_id
+            LEFT JOIN (
+                SELECT
+                    product_id
+                    , STRING_AGG( ingredient_name, ', ' ORDER BY ingredient_name) AS ingredients
+                FROM ${ref('dim_product_ingredient')}
+                GROUP BY 1
+            ) AS h ON a.product_id = h.product_id
+            LEFT JOIN (
+                SELECT
+                    product_id
+                    , category_name
+                FROM ${ref('dim_product_category')}
+                WHERE level = 1
+            ) AS i ON a.product_id = i.product_id
+            LEFT JOIN ${ref('dim_seller')} AS j ON a.seller_id = j.supplier_id
+            LEFT JOIN (
+                SELECT
+                    sku_code
+                    , MIN(sku_display_price) AS sku_display_price
+                    , MIN(display_price) AS display_price
+                FROM ${ref('adhoc_pricing_v2')}
+                WHERE SPLIT(sku_code, ".")[OFFSET(0)] NOT IN ('I1I4OQEM8D','MEDX_E', 'MEDC', 'MED_NT', 'TENDER', 'MEDX-HN', 'DENX', 'MARKETING', '9SUUUUUUUU', 'QMQEM8DN9F', 'UQRRRRRRRR', 'TAM_GIA', 'BML_E')
+                GROUP BY 1
+            ) AS k ON k.sku_code = a.sku_code
+            LEFT JOIN (
+                SELECT
+                    product_id
+                    , MIN(sku_display_price) AS min_price
+                    , MAX(sku_display_price) AS max_price
+                FROM ${ref('adhoc_pricing_v2')}
+                WHERE SPLIT(sku_code, ".")[OFFSET(0)] NOT IN ('I1I4OQEM8D','MEDX_E', 'MEDC', 'MED_NT', 'TENDER', 'MEDX-HN', 'DENX', 'MARKETING', '9SUUUUUUUU', 'QMQEM8DN9F', 'UQRRRRRRRR', 'TAM_GIA', 'BML_E')
+                GROUP BY 1
+            ) AS l ON a.product_id = l.product_id
+            LEFT JOIN (
+                SELECT
+                    sku_code
+                    , SUM(available_qty) AS available_qty
+                    , MAX_BY(
+                        sku_system_status,
+                        CASE sku_system_status
+                            WHEN "NORMAL" THEN 3
+                            WHEN "LIMIT" THEN 2
+                            WHEN "OUT_OF_STOCK" THEN 1
+                            WHEN "SUSPENDED" THEN 0
+                            ELSE 0
+                        END
+                    ) AS available_status
+                    , NOT(MAX(sku_system_active)) AS is_hidden
+                FROM ${ref('dim_sku_sales_region_current')}
+                WHERE (seller_code = "MEDX" OR seller_class = "EXTERNAL")
+                    AND seller_code NOT IN ('I1I4OQEM8D','MEDX_E', 'MEDC', 'MED_NT', 'TENDER', 'MEDX-HN', 'DENX', 'MARKETING', '9SUUUUUUUU', 'QMQEM8DN9F', 'UQRRRRRRRR', 'TAM_GIA', 'BML_E')
+                GROUP BY 1
+            ) AS m ON a.sku_code = m.sku_code
+            LEFT JOIN (
+                SELECT
+                    sku
+                    , MAX(created_date) AS order_updated_at
+                    , SUM(quantity) AS sales_unit_total
+                    , SUM(total_price) AS sales_value_total
+                    , SUM(IF(created_date BETWEEN CURRENT_DATE("+7") - 7 AND CURRENT_DATE("+7") - 1, quantity, 0)) AS sales_unit_7d
+                    , SUM(IF(created_date BETWEEN CURRENT_DATE("+7") - 7 AND CURRENT_DATE("+7") - 1, total_price, 0)) AS sales_value_7d
+                    , SUM(IF(created_date BETWEEN CURRENT_DATE("+7") - 30 AND CURRENT_DATE("+7") - 1, quantity, 0)) AS sales_unit_30d
+                    , SUM(IF(created_date BETWEEN CURRENT_DATE("+7") - 30 AND CURRENT_DATE("+7") - 1, total_price, 0)) AS sales_value_30d
+                    , SUM(IF(created_date BETWEEN DATE_TRUNC(CURRENT_DATE("+7"), WEEK(MONDAY ) ) - 7 AND DATE_TRUNC(CURRENT_DATE("+7"), WEEK(MONDAY ) ) - 1, quantity, 0)) AS sales_unit_last_week
+                    , SUM(IF(created_date BETWEEN DATE_TRUNC(CURRENT_DATE("+7"), WEEK(MONDAY ) ) - 7 AND DATE_TRUNC(CURRENT_DATE("+7"), WEEK(MONDAY ) ) - 1, total_price, 0)) AS sales_value_last_week
+                    , SUM(IF(created_date BETWEEN DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH ), INTERVAL 1 MONTH) AND DATE_TRUNC(CURRENT_DATE("+7"), MONTH )  - 1, quantity, 0)) AS sales_unit_last_month
+                    , SUM(IF(created_date BETWEEN DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH ), INTERVAL 1 MONTH) AND DATE_TRUNC(CURRENT_DATE("+7"), MONTH )  - 1, total_price, 0)) AS sales_value_last_month
+                    , SUM(IF(created_date BETWEEN DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) AND CURRENT_DATE("+7")  - 1, quantity, 0)) AS sales_unit_this_month
+                    , SUM(IF(created_date BETWEEN DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) AND CURRENT_DATE("+7")  - 1, total_price, 0)) AS sales_value_this_month
+                FROM ${source.platinum}.marketplace_prd_order_v2_order_item AS a
+                    LEFT JOIN ${ref('fact_order')} AS b ON a.order_id = b.order_id
+                WHERE created_date BETWEEN DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH ), INTERVAL 1 MONTH) AND CURRENT_DATE("+7") - 1
+                    AND DATE(b.created_at) BETWEEN DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH ), INTERVAL 1 MONTH) AND CURRENT_DATE("+7") - 1
+                    AND b.order_status <> "CANCEL"
+                    AND b.channel IN ("MARKETPLACE", "CIRCA")
+                GROUP BY 1
+            ) AS n ON a.sku_code= n.sku
+            LEFT JOIN (
+                SELECT
+                    seller_code
+                    , a.code AS shop_id
+                    , a.name AS shop_name
+                    , seller_store_id AS shop_platform_id
+                    , IF(
+                        JSON_VALUE(a.extra_props, "$.slug") IS NOT NULL,
+                        CONCAT("https://thuocsi.vn/seller/", JSON_VALUE(a.extra_props, "$.slug")),
+                        CONCAT("https://thuocsi.vn/seller-products/", a.seller_code ,"/", b.slug)
+                    ) AS shop_url
+                FROM ${source.platinum}.seller_prd_core_seller_store AS a
+                    LEFT JOIN ${source.platinum}.seller_prd_core_seller AS b ON a.seller_code = b.code
+            ) AS o ON a.seller_code = o.seller_code
+            LEFT JOIN (
+                SELECT
+                    a.code AS shop_id
+                    , a.name AS shop_name
+                    , a.store_id AS shop_platform_id
+                    , url AS shop_url
+                    , b.sku_code
+                FROM ${source.platinum}.seller_prd_core_vendor_store AS a
+                    LEFT JOIN ${ref('dim_sku_tag')} AS b ON a.all_product_tag = b.tag_code
+                WHERE status = "ACTIVE"
+                QUALIFY ROW_NUMBER() OVER(PARTITION BY sku_code) = 1
+            ) AS p ON a.sku_code = p.sku_code
+            LEFT JOIN (
+                SELECT
+                    code AS seller_code
+                    , code AS shop_id
+                    , name AS shop_name
+                    , seller_id AS shop_platform_id
+                    , CONCAT("https://thuocsi.vn/seller-products/", code ,"/", slug) AS shop_url
+                FROM ${source.platinum}.seller_prd_core_seller
+                WHERE code IN ('MEDX', 'BML_INT')
+            ) AS q ON a.seller_code = q.seller_code
+        WHERE 1=1
+            AND (a.seller_code IN ("MEDX", "BML_INT") OR a.seller_class = "EXTERNAL")
+            AND a.seller_code NOT IN ('I1I4OQEM8D','MEDX_E', 'MEDC', 'MED_NT', 'TENDER', 'MEDX-HN', 'DENX', 'MARKETING', '9SUUUUUUUU', 'QMQEM8DN9F', 'UQRRRRRRRR', 'TAM_GIA', 'BML_E')
+        QUALIFY ROW_NUMBER() over (PARTITION BY a.sku_code) = 1
+    )
+
+SELECT 
+    a.*
+    , cate1.category_id AS category_id_level_1
+    , cate1.category_code AS category_code_level_1
+    , cate2.category_id AS category_id_level_2
+    , cate2.category_code AS category_code_level_2
+    , cate3.category_id AS category_id_level_3
+    , cate3.category_code AS category_code_level_3
+FROM  final AS a
+    LEFT JOIN cate AS cate1 ON cate1.category_name = bm_category_1 AND cate1.level = 1
+    LEFT JOIN cate AS cate2 ON cate2.category_name = bm_category_2 AND cate2.level = 2
+    LEFT JOIN cate AS cate3 ON cate3.category_name = bm_category_3 AND cate3.level = 3
+
+
