@@ -1,0 +1,29 @@
+config {
+    type: "view",
+    schema: "platinum_buymed_vn",
+    name: "seller_prd_wis_refund_bill",
+    description : `
+    PIC: minh.luu
+    Internal: internal.thuocsi.vn/internal-seller/MEDX/PUR_HN/refund-bill
+    `,
+    tags:["platinum","seller_prd_wis"]
+}
+SELECT
+    *,
+    CASE
+        WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time, 'Asia/Ho_Chi_Minh'))
+        ELSE DATE( '2099-01-01' )
+    END
+    created_date
+FROM ${source.silver}.seller_prd_wis_refund_bill
+WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 1 DAY
+QUALIFY ROW_NUMBER() OVER (_window) = 1 
+        AND ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 16 HOUR
+        WINDOW _window AS (
+        PARTITION BY mg_id
+        ORDER BY synced_at DESC,
+        IF
+            (action='d',3,
+            IF
+            (action='u',2,1)) DESC
+        ,last_updated_time DESC)

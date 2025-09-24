@@ -6,7 +6,7 @@ config {
     PIC: minh.luu
     Partition by: created date
     `,
-    tags:["platinum","seller_prd_wis"]
+    tags:["platinum","seller_prd_mis"]
 }
 
   WITH silver AS (
