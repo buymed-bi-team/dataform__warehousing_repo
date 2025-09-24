@@ -47,7 +47,7 @@ Select distinct product_id
                 ,sum(cost_price_include_tax * on_hand_quantity) as current_stock_value
                 ,p.client_id
 from ${source.ref}.cos_fact_inventory v
-left join ${source.circa_os}.entity_pos_profile p on v.pos_id = p.id 
+left join ${source.ref}.circa_pos_profile p on v.pos_id = p.id 
 where p.type = 'CIRCA'
       and p.id not in ('c95a3338-4f5e-4264-958b-0d02e3fea49b','0d4c2e76-c6bf-487d-bf3e-d0b608d9fb5d')
       and v.location_type <> 'CANCELLED'
