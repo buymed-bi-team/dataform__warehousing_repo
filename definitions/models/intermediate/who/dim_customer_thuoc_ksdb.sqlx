@@ -33,7 +33,7 @@ FROM (
             WHEN "COLD_STORAGE_DRUG" THEN "thuoc_bao_quan_lanh"
           END AS ksdb
         , true AS has_ksdb
-        , DATE_ADD(DATE(SAFE.TIMESTAMP(JSON_VALUE(gpp_info, "$.date"))),  INTERVAL 3 YEAR) AS gdp_gpp_expired_date
+        , DATE_ADD(DATE(SAFE.TIMESTAMP(JSON_VALUE(gdp_info, "$.date"))),  INTERVAL 3 YEAR) AS gdp_gpp_expired_date
     FROM ${source.platinum}.marketplace_prd_customer_customer
         , UNNEST(JSON_VALUE_ARRAY(gdp_info, "$.scope_of_business")) AS ksdb
     WHERE JSON_QUERY(gpp_info, "$.scope_of_business") IS NULL
