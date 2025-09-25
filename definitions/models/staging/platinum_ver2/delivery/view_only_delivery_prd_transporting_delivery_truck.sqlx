@@ -1,11 +1,8 @@
 config {
-    type: "table",
+    type: "view",
     name: "delivery_prd_transporting_delivery_truck",
     schema: "platinum_buymed_vn",
-    assertions: {
-        uniqueKey: 'mg_id'
-    },
-    tags: ["platinum_custom_20m","delivery_prd_transporting"]
+    tags: ["delivery_prd_transporting"]
 }
 SELECT 
     *,
