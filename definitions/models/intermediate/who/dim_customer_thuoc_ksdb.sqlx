@@ -3,39 +3,71 @@ config {
     tags: ["custom_1h_past10"]
 }
 
--- SELECT 
---     *
--- FROM ${source.external}.customer_thuoc_ksdb
 
 SELECT
     *
     , thuoc_doc OR thuoc_danh_muc_cam OR thuoc_dang_phoi_hop AS thuoc_ksdb
 FROM (
+    -- SELECT
+    --     customer_id
+    --     , CASE ksdb
+    --         WHEN "COMPOUND_DRUG" THEN "thuoc_dang_phoi_hop"
+    --         WHEN "BANNED_DRUG" THEN "thuoc_danh_muc_cam"
+    --         WHEN "TOXIC_DRUG" THEN "thuoc_doc"
+    --         WHEN "COLD_STORAGE_DRUG" THEN "thuoc_bao_quan_lanh"
+    --       END AS ksdb
+    --     , true AS has_ksdb
+    --     , DATE_ADD(DATE(SAFE.TIMESTAMP(JSON_VALUE(gpp_info, "$.date"))),  INTERVAL 3 YEAR) AS gdp_gpp_expired_date
+    -- FROM ${source.platinum}.marketplace_prd_customer_customer
+    --     , UNNEST(JSON_VALUE_ARRAY(gpp_info, "$.scope_of_business")) AS ksdb
+    -- UNION DISTINCT
+    -- SELECT
+    --     customer_id
+    --     , CASE ksdb
+    --         WHEN "COMPOUND_DRUG" THEN "thuoc_dang_phoi_hop"
+    --         WHEN "BANNED_DRUG" THEN "thuoc_danh_muc_cam"
+    --         WHEN "TOXIC_DRUG" THEN "thuoc_doc"
+    --         WHEN "COLD_STORAGE_DRUG" THEN "thuoc_bao_quan_lanh"
+    --       END AS ksdb
+    --     , true AS has_ksdb
+    --     , DATE_ADD(DATE(SAFE.TIMESTAMP(JSON_VALUE(gdp_info, "$.date"))),  INTERVAL 3 YEAR) AS gdp_gpp_expired_date
+    -- FROM ${source.platinum}.marketplace_prd_customer_customer
+    --     , UNNEST(JSON_VALUE_ARRAY(gdp_info, "$.scope_of_business")) AS ksdb
+    -- WHERE JSON_QUERY(gpp_info, "$.scope_of_business") IS NULL
+    WITH
+        ksdb AS (
+            SELECT
+                customer_id
+                , JSON_QUERY(gpp_info, "$.scope_of_business") AS scope
+            FROM ${source.platinum}.marketplace_prd_customer_customer
+            WHERE ARRAY_LENGTH(JSON_VALUE_ARRAY(gpp_info, "$.scope_of_business")) > 0
+            UNION ALL
+            SELECT
+                customer_id
+                , JSON_QUERY(gdp_info, "$.scope_of_business") AS scope
+            FROM ${source.platinum}.marketplace_prd_customer_customer
+            WHERE ARRAY_LENGTH(JSON_VALUE_ARRAY(gdp_info, "$.scope_of_business")) > 0
+        )
+
     SELECT
-        customer_id
-        , CASE ksdb
+        a.customer_id
+        , CASE s
             WHEN "COMPOUND_DRUG" THEN "thuoc_dang_phoi_hop"
             WHEN "BANNED_DRUG" THEN "thuoc_danh_muc_cam"
             WHEN "TOXIC_DRUG" THEN "thuoc_doc"
             WHEN "COLD_STORAGE_DRUG" THEN "thuoc_bao_quan_lanh"
-          END AS ksdb
+        END AS ksdb
         , true AS has_ksdb
-        , DATE_ADD(DATE(SAFE.TIMESTAMP(JSON_VALUE(gpp_info, "$.date"))),  INTERVAL 3 YEAR) AS gdp_gpp_expired_date
-    FROM ${source.platinum}.marketplace_prd_customer_customer
-        , UNNEST(JSON_VALUE_ARRAY(gpp_info, "$.scope_of_business")) AS ksdb
-    UNION DISTINCT
-    SELECT
-        customer_id
-        , CASE ksdb
-            WHEN "COMPOUND_DRUG" THEN "thuoc_dang_phoi_hop"
-            WHEN "BANNED_DRUG" THEN "thuoc_danh_muc_cam"
-            WHEN "TOXIC_DRUG" THEN "thuoc_doc"
-            WHEN "COLD_STORAGE_DRUG" THEN "thuoc_bao_quan_lanh"
-          END AS ksdb
-        , true AS has_ksdb
-        , DATE_ADD(DATE(SAFE.TIMESTAMP(JSON_VALUE(gdp_info, "$.date"))),  INTERVAL 3 YEAR) AS gdp_gpp_expired_date
-    FROM ${source.platinum}.marketplace_prd_customer_customer
-        , UNNEST(JSON_VALUE_ARRAY(gdp_info, "$.scope_of_business")) AS ksdb
-    WHERE JSON_QUERY(gpp_info, "$.scope_of_business") IS NULL
+        , COALESCE(
+            DATE_ADD(DATE(SAFE.TIMESTAMP(JSON_VALUE(gpp_info, "$.date"))),  INTERVAL 3 YEAR)
+            , DATE_ADD(DATE(SAFE.TIMESTAMP(JSON_VALUE(gdp_info, "$.date"))),  INTERVAL 3 YEAR)
+        ) AS gdp_gpp_expired_date
+    FROM ${source.platinum}.marketplace_prd_customer_customer AS a
+        LEFT JOIN (
+            SELECT *
+            FROM ksdb
+            QUALIFY ROW_NUMBER() over (PARTITION BY customer_id) = 1
+        ) AS ksdb ON ksdb.customer_id = a.customer_id
+            , UNNEST(JSON_VALUE_ARRAY(ksdb.scope)) AS s
 )
 PIVOT ( MAX(has_ksdb) FOR ksdb IN ("thuoc_dang_phoi_hop" AS thuoc_dang_phoi_hop, "thuoc_danh_muc_cam" AS thuoc_danh_muc_cam, "thuoc_doc" AS thuoc_doc, "thuoc_bao_quan_lanh" AS thuoc_bao_quan_lanh) )
