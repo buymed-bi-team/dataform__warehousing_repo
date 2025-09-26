@@ -48,6 +48,7 @@ select distinct
     ,dis.name as Vendor
     ,a.client_id
     ,a.recon_payment_method
+    ,p.code as pos_code
 from ${source.circa_os}.order_purchase_order as a 
 left join ${source.ref}.fact_order as o on a.sale_order_number = safe_cast(o.order_id as string)
 left join ${source.circa_os}.entity_owner as eo on a.owner_id = eo.id and a.client_id = eo.client_id
