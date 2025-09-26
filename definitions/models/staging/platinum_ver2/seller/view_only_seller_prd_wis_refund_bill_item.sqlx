@@ -15,9 +15,7 @@ SELECT
     END
     created_date
 FROM ${source.silver}.seller_prd_wis_refund_bill_item
-WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 1 DAY
 QUALIFY ROW_NUMBER() OVER (_window) = 1 
-        AND ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 16 HOUR
         WINDOW _window AS (
         PARTITION BY mg_id
         ORDER BY synced_at DESC,
