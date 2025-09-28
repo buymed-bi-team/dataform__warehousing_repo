@@ -1,0 +1,103 @@
+config {
+    type: "table",
+    description: `"tracking_purchase_put PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`,
+    /*Source:
+      ${source.silver}.marketplace_prd_order_v2_order_item
+      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5,*/
+    tags: ["custom_1h_past5"],
+    name: "tracking_purchase_put",
+    columns: {
+        
+    }
+}
+
+with base_unit_selection as (
+  select
+    product_id
+    ,client_id
+    ,base_unit
+    ,row_number() over (partition by product_id, client_id order by count(*) desc) as rn
+  from  ${source.ref}.cos_product_convert_base_unit
+  where client_id = 1
+  group by product_id, client_id, base_unit
+), base_unit as (
+select a.*
+from  ${source.ref}.cos_product_convert_base_unit a
+left join  base_unit_selection b on a.product_id = b.product_id
+                                    and a.client_id = b.client_id
+                                    and a.base_unit = b.base_unit
+where b.rn = 1
+)
+,purchase_order as  (
+ Select distinct 
+        o.code
+        ,o.id
+        ,o.pos_id 
+        ,p.name as pos_name
+        ,DATETIME_ADD(o.created_at, INTERVAL 7 HOUR) as created_at
+        ,date(DATETIME_ADD(o.created_at, INTERVAL 7 HOUR)) as created_date
+        ,i.product_id
+        ,i.id as item_id
+        ,sum(i.quantity) as demand_quantity
+        ,i.unit as Po_unit
+        ,sum(i.received_quantity) as received_quantity
+        ,o.client_id
+        ,p.pos_code
+    from  ${source.circa_os}.order_purchase_order o 
+    left join ${source.circa_os}.order_purchase_order_item i on o.id = i.purchase_order_id
+    left join  ${source.ref}.circa_pos_profile p on o.pos_id = p.id
+    where o.status <> 'SEPERATED'
+          and p.id is not null
+          and o.client_id = 1
+          and i.product_id is not null
+    --and o.code = 'CO00004664'
+     group by all
+),t as (
+    select distinct rc.purchase_order_id
+                   ,rci.ref_id
+                   ,putd.product_id 
+                   ,sum(putd.quantity)  as put_quantity
+                   ,putd.unit as put_unit
+                   ,put.status as put_status
+                   ,rc.client_id
+    from  ${source.circa_os}.order_goods_receipt rc --on rc.purchase_order_id = o.id 
+    left join  ${source.circa_os}.order_goods_receipt_item rci on rc.id = rci.goods_receipt_id -- and o.item_id = rci.ref_id --and o.product_id = rci.product_id 
+    left join  ${source.circa_os}.inventory_put_ticket put on put.goods_receipt_id = rc.id
+    left join  ${source.circa_os}.inventory_put_ticket_item putd  on putd.put_ticket_id = put.id  and rci.id = putd.ref_id --and o.product_id = putd.product_id 
+    where rci.received_quantity <> 0
+    and rc.status <> 'CANCELED'
+    and rc.client_id =1
+   group by all
+),base_tracking as(
+select distinct purchase_order.* except(item_id)
+               ,put_quantity
+               ,put_unit
+               --,put_status
+               ,put_quantity * cv.convert_rate as put_base_qty 
+from purchase_order
+left join t on purchase_order.id = t.purchase_order_id 
+               and purchase_order.item_id = t.ref_id 
+               and purchase_order.product_id = t.product_id   
+               and purchase_order.client_id = t.client_id
+left join  ${source.ref}.cos_dim_product td on t.product_id = td.product_id
+left join  base_unit cv on cv.product_id = t.product_id
+                        and Put_unit = cv.convert_unit
+                                                                                              
+where purchase_order.id is not null                                                                                                 
+group by all
+),to_check as (
+Select distinct base_tracking.* except (pos_id,put_quantity,put_base_qty)
+      ,sum(put_quantity) as total_put_quantity
+      ,sum(put_base_qty) as put_base_qty
+      ,base_tracking.received_quantity  * cv.convert_rate as po_base_qty
+from base_tracking
+left join base_unit cv on cv.product_id = base_tracking.product_id and Po_unit = cv.convert_unit 
+group by all
+)
+Select to_check.* 
+       ,concat(product_id,"_", pos_code) as product_pos_code
+      ,case when to_check.put_base_qty <> po_base_qty then 'true'
+            when to_check.total_put_quantity is null and to_check.received_quantity > 0 then 'not_yet_put'
+            when  to_check.total_put_quantity is null and to_check.received_quantity  =  0 then 'not_yet_have_item'
+            else 'false' end as is_difference
+from to_check
