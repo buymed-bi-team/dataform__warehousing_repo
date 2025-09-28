@@ -96,6 +96,7 @@ group by all
 )
 Select to_check.* 
        ,concat(product_id,"_", pos_code) as product_pos_code
+       ,concat(product_id, "_", client_id) as product_client_id
       ,case when to_check.put_base_qty <> po_base_qty then 'true'
             when to_check.total_put_quantity is null and to_check.received_quantity > 0 then 'not_yet_put'
             when  to_check.total_put_quantity is null and to_check.received_quantity  =  0 then 'not_yet_have_item'
