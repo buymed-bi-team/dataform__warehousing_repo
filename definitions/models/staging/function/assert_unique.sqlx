@@ -33,7 +33,7 @@ SELECT duplicate_mg_id;
 
 */
 
-CREATE OR REPLACE PROCEDURE platinum_buymed_vn__stg.unique_assertion(
+CREATE OR REPLACE PROCEDURE platinum_buymed_vn_restricted__stg.unique_assertion(
   table_name STRING,
   has_created_time BOOL,
   default_guarantee_time_start_point DATE,
