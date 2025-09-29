@@ -47,6 +47,7 @@ select
        ,b.received_quantity * rt.convert_rate as base_qty_received
        ,c.fulfillment_method as Channel
        ,p.code
+       ,p.code as pos_code
        ,concat(a.product_id, "_", p.code) as product_pos_code
        
 from ${source.circa_os}.order_purchase_order_item as a
