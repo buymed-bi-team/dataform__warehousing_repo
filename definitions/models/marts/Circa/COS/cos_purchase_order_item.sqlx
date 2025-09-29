@@ -45,7 +45,9 @@ select
        ,concat(a.product_id, "_", c.client_id) as product_client_id
        ,rt.convert_rate
        ,b.received_quantity * rt.convert_rate as base_qty_received
-       ,C.fulfillment_method as Channel
+       ,c.fulfillment_method as Channel
+       ,p.code
+       ,concat(a.product_id, "_", p.code) as product_pos_code
        
 from ${source.circa_os}.order_purchase_order_item as a
 left join ${source.circa_os}.order_purchase_order as c on a.purchase_order_id = c.id
