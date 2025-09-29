@@ -5,9 +5,9 @@ config {
 }
 
 SELECT
-    SPLIT(string_field_0, "_")[SAFE_OFFSET(0)] AS segment_id
-    , UPPER(SPLIT(string_field_0, "_")[SAFE_OFFSET(1)]) AS table
-    , LOWER(string_field_2) AS field
+    SPLIT(string_field_0, "-")[SAFE_OFFSET(0)] AS segment_id
+    , UPPER(SPLIT(string_field_0, "-")[SAFE_OFFSET(1)]) AS table
+    , LOWER(SPLIT(string_field_0, "-")[SAFE_OFFSET(2)]) AS field
     , UPPER(string_field_3) AS value
 -- FROM ${source.collector}.data_prd
 FROM ${source.external}.import_segment

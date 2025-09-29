@@ -1,0 +1,8 @@
+config {
+    type: "incremental",
+    description: "Result of Dynamic Segment",
+    tags: ["custom_1h_past10"]
+}
+
+-- SELECT *
+-- FROM ${ref("platinum_buymed_vn__stg", "bi_dynamic_segment_result")}

@@ -38,14 +38,14 @@ function query_customer({customer_status, customer_level, config_fc, province_co
         condition = condition + "AND customer_tag_sub_group IN (" + str + ") ";
     }
 
-    return `(
+    return `
         SELECT customer_id
         FROM gold_buymed_vn2.dim_customer
         ${condition}
-    )`
+    `
 }
 
-function query_order({created_at, seller_code, product_id}) {
+function query_order({created_at, seller_code="MEDX", product_id}) {
     let condition = 'WHERE 1 = 1 AND o.channel = "MARKETPLACE" AND o.order_status <> "CANCEL" AND ';
 
     if(created_at != null){
@@ -119,22 +119,22 @@ function query_order({created_at, seller_code, product_id}) {
     }
     
     if(product_id != null) {
-        let arr = product_id.split(",");
-        let str = arr.join(", ");
-        condition = condition + "AND product_id IN (" + str + ") ";
+        // let arr = product_id.split(",");
+        // let str = arr.join(", ");
+        condition = condition + "AND product_id IN (" + product_id + ") ";
     }
 
     return `
-        SELECT 
+        (SELECT 
             oi.customer_id
         FROM gold_buymed_vn2.fact_order_item AS oi
             LEFT JOIN gold_buymed_vn2.fact_order AS o ON oi.order_id = o.order_id
         ${condition}
-        GROUP BY 1
+        GROUP BY 1)
     `
 }
 
-function segment({customer, order1, order2, customer_type, product1, product2, operator}) {
+function query_segment({customer, order1, order2, customer_type}) {
 
     let qCustomer = query_customer({
         customer_status: customer.customer_status,
@@ -148,16 +148,16 @@ function segment({customer, order1, order2, customer_type, product1, product2, o
     let qOrder = query_order({
         created_at: order1.created_at,
         seller_code: order1.seller_code,
-        product_id: product1,
+        product_id: order1.product_id
     })
 
     let query = qCustomer + ` AND `;
 
     if(customer_type == "NEW") {
-        query = query + `NOT EXISTS ${qCustomer}`;
+        query = query + `customer_id NOT IN ${qOrder}`;
     }
 
     return query
 }
 
-module.exports = { segment };
+module.exports = { query_segment };
