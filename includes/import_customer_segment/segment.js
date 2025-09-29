@@ -135,7 +135,6 @@ function query_order({created_at, seller_code, product_id}) {
 }
 
 function segment({customer, order1, order2, customer_type, product1, product2, operator}) {
-    let query = ` AND `;
 
     let qCustomer = query_customer({
         customer_status: customer.customer_status,
@@ -151,6 +150,8 @@ function segment({customer, order1, order2, customer_type, product1, product2, o
         seller_code: order1.seller_code,
         product_id: product1,
     })
+
+    let query = qCustomer + ` AND `;
 
     if(customer_type == "NEW") {
         query = query + `NOT EXISTS ${qCustomer}`;
