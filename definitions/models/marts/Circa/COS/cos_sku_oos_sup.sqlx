@@ -1,4 +1,3 @@
-
 config {
     type: "table",
     description: `PIC: huyen.ngo; model_type: Table ;schedule: At 10h30`
@@ -52,9 +51,9 @@ Select distinct
     ,p.name as pos_name
     ,z.client_id
 from zero_stock_candidates z
-left join `buymed_circa_v2.entity_pos_profile` p on z.pos_id = p.id
+left join  ${source.ref}.circa_pos_profile p on z.pos_id = p.id
 where p.type = 'CIRCA'
-      and pos_id not in ('c95a3338-4f5e-4264-958b-0d02e3fea49b','0d4c2e76-c6bf-487d-bf3e-d0b608d9fb5d')
+      and p.id is not null
 order by product_id
 )
 select distinct
@@ -69,22 +68,3 @@ from zero_and_stable_inventory a
 left join ${source.ref}.cos_sku_status st on a.product_id = st.product_id and  a.pos_id = st.pos_id
 where st.product_status ='OOS'
 group by all
-union all
-Select distinct 
- s.product_id
- ,pos_id
- ,DATE(th.created_time)
- ,s.product_status
-,date_diff(current_date(), date(th.created_time), day) as days_since_zero
-,s.client_id
-,concat(s.product_id, "_", s.client_id) as product_client_id
-from ${source.ref}.cos_sku_status s
-left join (Select distinct product_id,created_time
-                        , row_number() over (partition by product_id order by created_time desc) as rn
-                          from ${source.ref}.adhoc_pm_master_sku p
-                         left join ${source.ref}.staging_sku_status_history t on p.sku_code = t.sku) th on s.product_id = th.product_id
-where s.product_status not in (Select distinct product_status from ${source.ref}.cos_sku_status  where product_status = 'OOS' or product_status = 'NORMAL'   )
-and created_time >= '2024-05-01'
-and rn = 1
-
-
