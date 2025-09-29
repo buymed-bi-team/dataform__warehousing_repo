@@ -31,6 +31,10 @@ SELECT duplicate_mg_id;
 
 ```
 
+
+TODO:
+- Consider add "input_silver" to use between restricted or not
+- Because some platinum_restricted has source from normal 
 */
 
 CREATE OR REPLACE PROCEDURE platinum_buymed_vn_restricted__stg.unique_assertion(
@@ -64,7 +68,7 @@ BEGIN
         DATE(DATETIME(''' || created_time_expr || ''', "Asia/Ho_Chi_Minh"))
       )
     ) AS created_date_array
-    FROM ${source.silver}.''' || table_name || '''
+    FROM ${source.silver_restricted}.''' || table_name || '''
     WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 2 HOUR
   ''';
 
@@ -74,7 +78,7 @@ BEGIN
   SET query = '''
     SELECT ARRAY_AGG(mg_id) FROM (
       SELECT mg_id
-      FROM ${source.platinum}.''' || table_name || '''
+      FROM ${source.platinum_restricted}.''' || table_name || '''
       WHERE created_date IN UNNEST(@created_date_array)
         AND created_date >= @default_guarantee_time_start_point
       GROUP BY mg_id
