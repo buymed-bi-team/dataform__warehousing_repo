@@ -31,6 +31,7 @@ where b.rn = 1
 ,purchase_order as  (
  Select distinct 
         o.code
+        ,o.status
         ,o.id
         ,o.pos_id 
         ,p.name as pos_name
@@ -43,6 +44,7 @@ where b.rn = 1
         ,sum(i.received_quantity) as received_quantity
         ,o.client_id
         ,p.pos_code
+        ,o.fulfillment_method
     from  ${source.circa_os}.order_purchase_order o 
     left join ${source.circa_os}.order_purchase_order_item i on o.id = i.purchase_order_id
     left join  ${source.ref}.circa_pos_profile p on o.pos_id = p.id

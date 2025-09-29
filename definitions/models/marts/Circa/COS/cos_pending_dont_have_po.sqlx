@@ -27,13 +27,14 @@ Select distinct
              when p.id is null and o.customer_name = 'COS Nguyễn Trãi' then '5976e784-3be9-4504-8b8f-cb28424cbeb2'
              when p.id is null and o.customer_name = 'COS Lý Thường Kiệt' then 'f8aa9f5c-183a-4fb2-a6a6-8f2ecf5d56f9'
              when p.id is null and (o.customer_name = 'Circa Sunrise Riverside' or o.customer_name = 'COS Circa Sunrise Riverside' or o.customer_name = 'COS Sunrise riverside' or o.customer_name = 'COS Sunrise Riverside') then 'b9ce5177-b294-4282-b2d5-728ab91ab14c'
-             when p.id is null and o.customer_name = 'Circa Medora' then '73dcf891-f4a1-42c5-bea4-115412f1018d'
+             when p.id is null and o.customer_name = 'Circa Medora' or o.customer_name = 'circa medora' then '73dcf891-f4a1-42c5-bea4-115412f1018d'
              when p.id is null and o.customer_name = 'Circa Astoria' then '61437f95-55ba-44b6-a994-99f2d9209c79'
-             when p.id is null and o.customer_name = 'Circa Tâm Việt' then '265ed9b9-1e48-4390-8321-42c95529072e'
+             when p.id is null and o.customer_name = 'Circa Tâm Việt' or o.customer_name = 'Nhà thuốc Circa Tâm Việt' then '265ed9b9-1e48-4390-8321-42c95529072e'
              when p.id is null and o.customer_name = 'Hub Nadyphar' then '9dd83081-9919-4bc3-84bd-f5dfece10049'
              when p.id is null and o.customer_name = 'Circa Cityland' then '55388c70-30fe-4c80-b119-92b24a1aa1bf'
              when p.id is null and o.customer_name = 'Circa Tâm An' then '94c6f221-5015-47da-b1ea-887fa75ccc3a'
              when p.id is null and o.customer_name = 'Circa Mira - Lê Văn Việt' then '9b37d4ec-b0ea-4e1a-9c6d-292c8e450b25'
+             when p.id is null and o.customer_name = 'Nhà thuốc Circa Astoria' then '61437f95-55ba-44b6-a994-99f2d9209c79'
              else ''
             end as pos_id
        ,a.product_id
