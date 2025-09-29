@@ -40,4 +40,5 @@ from inventory_by_product o
 left join base_data on o.product_id = base_data.product_id 
 -- lấy trạng thái hiện tại của sản phẩm theo tồn kho, detail by sku
 )
-Select * from by_product
+Select p.*, ts.sku_system_status as thuocsi_status from by_product p 
+left join ${source.ref}.sku_status_thuocsi ts on p.product_id =  ts.product_id
