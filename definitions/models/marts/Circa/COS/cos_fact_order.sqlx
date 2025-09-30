@@ -51,6 +51,7 @@ cte_fs as
        ,datetime_add(o.created_at, interval 7 hour) as created_at
        ,fulfillment_status
        ,'' as reference_order_in_platform
+       ,datetime_add(completed_at, interval 7 hour) as end_pick_at
        ,datetime_add(completed_at, interval 7 hour) as completed_at
        ,date(datetime_add(completed_at, interval 7 hour))  as completed_date
        ,medicine_cutting_fee
@@ -85,6 +86,7 @@ group by all)
        ,datetime_add(o.created_at, interval 7 hour) as created_at
        ,fulfillment_status
        ,reference_order_in_platform
+       ,datetime_add(o.end_pick_at, interval 7 hour) as end_pick_at
        ,coalesce(datetime_add(o.completed_at, interval 7 hour),datetime_add(o.updated_at, interval 7 hour))  as completed_at
        ,coalesce(date(datetime_add(o.completed_at, interval 7 hour)),date(datetime_add(o.updated_at, interval 7 hour)))  as completed_date
        ,medicine_cutting_fee -- tiền cắt liều
