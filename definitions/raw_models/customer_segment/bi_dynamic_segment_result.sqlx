@@ -4,5 +4,5 @@ config {
     tags: ["custom_1h_past10"]
 }
 
--- SELECT *
--- FROM ${ref("platinum_buymed_vn__stg", "bi_dynamic_segment_result")}
+SELECT *
+FROM ${ref("gold_buymed_vn2__stg", "bi_dynamic_segment_result")}

@@ -1,4 +1,4 @@
-function query_customer({customer_status, customer_level, config_fc, province_code, customer_tag_group, customer_tag_sub_group}) {
+function query_customer(segment_id, {customer_status, customer_level, config_fc, province_code, customer_tag_group, customer_tag_sub_group}) {
     
     let condition = "WHERE 1 = 1 "
 
@@ -39,7 +39,7 @@ function query_customer({customer_status, customer_level, config_fc, province_co
     }
 
     return `
-        SELECT customer_id
+        SELECT customer_id, ${segment_id} AS segment_id
         FROM gold_buymed_vn2.dim_customer
         ${condition}
     `
@@ -134,15 +134,17 @@ function query_order({created_at, seller_code="MEDX", product_id}) {
     `
 }
 
-function query_segment({customer, order1, order2, customer_type}) {
+function query_segment(segment_id, {customer, order1, order2, customer_type}) {
 
-    let qCustomer = query_customer({
-        customer_status: customer.customer_status,
-        customer_level: customer.customer_level,
-        config_fc: customer.config_fc,
-        province_code: customer.province_code,
-        customer_tag_group: customer.customer_tag_group,
-        customer_tag_sub_group: customer.customer_tag_sub_group
+    let qCustomer = query_customer(
+        segment_id,
+        {
+            customer_status: customer.customer_status,
+            customer_level: customer.customer_level,
+            config_fc: customer.config_fc,
+            province_code: customer.province_code,
+            customer_tag_group: customer.customer_tag_group,
+            customer_tag_sub_group: customer.customer_tag_sub_group
     })
 
     let qOrder = query_order({
