@@ -1,0 +1,56 @@
+config {
+    type: "table",
+    description: `Last 13 month| PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour;Table này dùng để tracking những đơn hàng đã được đặt nhưng hàng chưa về, sử dụng cho report Purchase Planner`
+    /*Source:
+      ${source.silver}.marketplace_prd_order_v2_order_item
+      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
+    tags: ["custom_1h_past5"],
+    name: "price_inventory_by_pos",
+    columns: {
+        order_id: "NonNull |" + docs.order_id,
+        customer_id: "NonNull | The unique identifier for each customer"
+        
+    }
+}
+
+with price_tbl AS (
+  Select distinct 
+     product_id
+    ,unit
+    ,convert_rate
+    ,sale_unit_price
+    ,is_base_unit
+    ,seller_code
+  from gold_buymed_vn2.cos_adhoc_pos_product_client
+  where client_id = 1
+  -- WHERE
+  --   seller_code = 'CIRCA'
+),
+inv_tbl as  (
+  Select
+    pos_id
+    ,product_id
+    ,seller_code
+    ,sum(on_hand_quantity) as qty
+  from `gold_buymed_vn2.cos_fact_inventory`
+  where client_id = 1
+  group by all
+
+)
+Select
+  p.product_id
+  ,p.unit
+  ,is_base_unit
+  ,p.sale_unit_price
+  ,i.pos_id
+  ,pos.name as pos_name
+  ,p.seller_code
+  ,case
+    when p.is_base_unit = true then i.qty
+    else 0
+  end as qty
+from price_tbl p
+left join inv_tbl i on p.product_id = i.product_id and p.seller_code = i.seller_code
+left join `gold_buymed_vn2.circa_pos_profile` pos on i.pos_id = pos.id
+where pos.id is not null
+    -- and p.product_id = 1165 
