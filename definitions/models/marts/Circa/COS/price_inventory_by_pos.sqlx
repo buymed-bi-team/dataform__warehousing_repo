@@ -19,6 +19,7 @@ with price_tbl AS (
     ,unit
     ,convert_rate
     ,sale_unit_price
+    ,price_set_check
     ,is_base_unit
     ,seller_code
     ,client_id
@@ -38,12 +39,13 @@ inv_tbl as  (
   where client_id = 1
   group by all
 
-)
+),_all as (
 Select
   p.product_id
   ,p.unit
   ,is_base_unit
   ,p.sale_unit_price
+  ,price_set_check
   ,i.pos_id
   ,pos.name as pos_name
   ,p.seller_code
@@ -58,4 +60,9 @@ from price_tbl p
 left join inv_tbl i on p.product_id = i.product_id and p.seller_code = i.seller_code
 left join `gold_buymed_vn2.circa_pos_profile` pos on i.pos_id = pos.id
 where pos.id is not null
+)
+Select *
+      ,case when qty > 0 then 'Available'
+            else 'Unavailable' end as stock_check
+from _all
     -- and p.product_id = 1165 
