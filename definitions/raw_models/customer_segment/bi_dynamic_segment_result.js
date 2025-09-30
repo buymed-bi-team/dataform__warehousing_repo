@@ -1,24 +1,24 @@
 const {query_segment} = require('/includes/import_customer_segment/query_segment.js')
 
 function main() {
-    const arr_segment = publish("segment_ids", {schema: "gold_buymed_vn2__stg", type: "table"}).query(`
+    const arr_segment = publish("segment_ids", {schema: "gold_buymed_vn2__stg"}).query(`
         SELECT DISTINCT segment_id 
         FROM gold_buymed_vn2.bi_dynamic_segment
     `);
 
-    const arr_customer = publish("customer_segments", {schema: "gold_buymed_vn2__stg", type: "table"}).query(`
+    const arr_customer = publish("customer_segments", {schema: "gold_buymed_vn2__stg"}).query(`
         SELECT * 
         FROM gold_buymed_vn2.bi_dynamic_segment 
         WHERE table = "CUSTOMER"
     `);
 
-    const arr_order = publish("order_segments", {schema: "gold_buymed_vn2__stg", type: "table"}).query(`
+    const arr_order = publish("order_segments", {schema: "gold_buymed_vn2__stg"}).query(`
         SELECT * 
         FROM gold_buymed_vn2.bi_dynamic_segment 
         WHERE table = "ORDER"
     `);
 
-    const arr_operator = publish("operator_segments", {schema: "gold_buymed_vn2__stg", type: "table"}).query(`
+    const arr_operator = publish("operator_segments", {schema: "gold_buymed_vn2__stg"}).query(`
         SELECT * 
         FROM gold_buymed_vn2.bi_dynamic_segment 
         WHERE table = "OPERATOR"
