@@ -47,6 +47,7 @@ Select
   ,i.pos_id
   ,pos.name as pos_name
   ,p.seller_code
+  ,concat(p.seller_code, "_", p.client_id) as seller_client_id
   ,case
     when p.is_base_unit = true then i.qty
     else 0
