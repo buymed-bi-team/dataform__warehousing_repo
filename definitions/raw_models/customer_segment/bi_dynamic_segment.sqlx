@@ -5,9 +5,15 @@ config {
 }
 
 SELECT
-    SPLIT(string_field_0, "-")[SAFE_OFFSET(0)] AS segment_id
-    , UPPER(SPLIT(string_field_0, "-")[SAFE_OFFSET(1)]) AS table
-    , LOWER(SPLIT(string_field_0, "-")[SAFE_OFFSET(2)]) AS field
-    , UPPER(string_field_3) AS value
--- FROM ${source.collector}.data_prd
-FROM ${source.external}.import_segment
+  a.* EXCEPT(value)
+  , STRING_AGG(CONCAT('"', u, '"'), ",") AS value
+FROM (
+    SELECT
+      SPLIT(string_field_0, "-")[SAFE_OFFSET(0)] AS segment_id
+      , UPPER(SPLIT(string_field_0, "-")[SAFE_OFFSET(1)]) AS table
+      , LOWER(SPLIT(string_field_0, "-")[SAFE_OFFSET(2)]) AS field
+      , REGEXP_REPLACE( UPPER(string_field_3), r' ', '') AS value
+  FROM ${source.external}.import_segment
+) AS a
+  , UNNEST(SPLIT(a.value, ",")) AS u
+GROUP BY ALL
