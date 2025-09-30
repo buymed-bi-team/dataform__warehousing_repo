@@ -60,7 +60,7 @@ function main() {
     return publish(
         "bi_dynamic_segment_result",
         {
-            type: "incremental",
+            type: "table",
             schema:"gold_buymed_vn2__stg",
             dependencies: ["segment_ids", "customer_segments", "order_segments","operator_segments"],
             tags: ["2h00"],
