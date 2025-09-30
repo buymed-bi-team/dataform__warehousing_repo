@@ -1,28 +1,29 @@
-const {query_segment} = require('/includes/import_customer_segment/query_segment.js')
+const {query_segment} = require('./query_segment.js')
 
-async function main() {
-    const arr_segment = await dataform.runQuery(`
+function main() {
+    const arr_segment = publish("segment_ids", {schema: "gold_buymed_vn2__stg", type: "table"}).query(`
         SELECT DISTINCT segment_id 
         FROM gold_buymed_vn2.bi_dynamic_segment
     `);
 
-    const arr_customer = await dataform.runQuery(`
+    const arr_customer = publish("customer_segments", {schema: "gold_buymed_vn2__stg", type: "table"}).query(`
         SELECT * 
         FROM gold_buymed_vn2.bi_dynamic_segment 
         WHERE table = "CUSTOMER"
     `);
 
-    const arr_order = await dataform.runQuery(`
+    const arr_order = publish("order_segments", {schema: "gold_buymed_vn2__stg", type: "table"}).query(`
         SELECT * 
         FROM gold_buymed_vn2.bi_dynamic_segment 
         WHERE table = "ORDER"
     `);
 
-    const arr_operator = await dataform.runQuery(`
+    const arr_operator = publish("operator_segments", {schema: "gold_buymed_vn2__stg", type: "table"}).query(`
         SELECT * 
         FROM gold_buymed_vn2.bi_dynamic_segment 
         WHERE table = "OPERATOR"
     `);
+
 
     let query = [];
 
@@ -43,10 +44,12 @@ async function main() {
             product_id: order.find(o => o.field == "product_id")?.value
         };
         let operator = arr_operator.find(segment => segment.segment_id == arr_segment[i])?.value;
-        const sql = query_segment({
-            customer:objCustomer,
-            order1:objOrder,
-            customer_type: operator
+        const sql = query_segment(
+            arr_segment[i],
+            {
+                customer:objCustomer,
+                order1:objOrder,
+                customer_type: operator
         });
 
         query.push(sql)
@@ -54,15 +57,16 @@ async function main() {
 
     const finalQuery = query.join(" UNION ALL ");
 
-    publish(
+    return publish(
         "bi_dynamic_segment_result",
         {
-            type: "incremental",
-            schema:"platinum_buymed_vn__stg",
-            tags: ["2h00"],
+            type: "table",
+            schema:"gold_buymed_vn2__stg",
+            dependencies: ["segment_ids", "customer_segments", "order_segments","operator_segments"],
+            tags: ["1h00"],
         }
     ).query(finalQuery);
 
 }
 
-module.exports = { main };
+module.exports = {main};

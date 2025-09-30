@@ -64,7 +64,10 @@ select distinct
   ,date_diff(current_date(), min(first_zero_date), day) as days_since_zero
   ,a.client_id
   ,concat(a.product_id, "_", a.client_id) as product_client_id
+  ,concat(a.product_id, "_", p.code) as product_pos_code
 from zero_and_stable_inventory a
 left join ${source.ref}.cos_sku_status st on a.product_id = st.product_id and  a.pos_id = st.pos_id
+left join ${source.ref}.circa_pos_profile p on a.pos_id = p.id 
 where st.product_status ='OOS'
+     and p.id is not null
 group by all
