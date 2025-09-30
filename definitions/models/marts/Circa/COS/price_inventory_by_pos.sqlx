@@ -21,6 +21,7 @@ with price_tbl AS (
     ,sale_unit_price
     ,is_base_unit
     ,seller_code
+    ,client_id
   from gold_buymed_vn2.cos_adhoc_pos_product_client
   where client_id = 1
   -- WHERE
@@ -49,6 +50,7 @@ Select
     when p.is_base_unit = true then i.qty
     else 0
   end as qty
+  ,concat(p.product_id, "_", p.client_id) as product_client_id
 from price_tbl p
 left join inv_tbl i on p.product_id = i.product_id and p.seller_code = i.seller_code
 left join `gold_buymed_vn2.circa_pos_profile` pos on i.pos_id = pos.id
