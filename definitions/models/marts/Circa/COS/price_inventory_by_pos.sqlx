@@ -33,6 +33,7 @@ inv_tbl as  (
     ,product_id
     ,seller_code
     ,sum(on_hand_quantity) as qty
+    ,sum(on_hand_quantity * cost_price_include_tax) as stock_value
   from `gold_buymed_vn2.cos_fact_inventory`
   where client_id = 1
   group by all
@@ -50,6 +51,7 @@ Select
     when p.is_base_unit = true then i.qty
     else 0
   end as qty
+  ,i.stock_value
   ,concat(p.product_id, "_", p.client_id) as product_client_id
 from price_tbl p
 left join inv_tbl i on p.product_id = i.product_id and p.seller_code = i.seller_code
