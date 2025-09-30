@@ -63,7 +63,7 @@ function main() {
             type: "table",
             schema:"gold_buymed_vn2__stg",
             dependencies: ["segment_ids", "customer_segments", "order_segments","operator_segments"],
-            tags: ["2h00"],
+            tags: ["1h00"],
         }
     ).query(finalQuery);
 
