@@ -55,6 +55,7 @@ group by all
 Select i.*
        ,concat(i.product_id, "_", i.client_id) as product_client_id
        ,eo.name as owner_name
+       ,eo.seller_code
        ,o.sale_order_number as SO_code
        ,o.distributor_id
        ,o.fulfillment_method
