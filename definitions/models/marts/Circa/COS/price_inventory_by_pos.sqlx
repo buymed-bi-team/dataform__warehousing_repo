@@ -52,7 +52,7 @@ Select
   ,concat(p.seller_code, "_", p.client_id) as seller_client_id
   ,case
     when p.is_base_unit = true then i.qty
-    else 0
+    else i.qty/convert_rate
   end as qty
   ,i.stock_value
   ,concat(p.product_id, "_", p.client_id) as product_client_id
