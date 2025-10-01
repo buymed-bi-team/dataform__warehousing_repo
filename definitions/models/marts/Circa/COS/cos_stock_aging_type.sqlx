@@ -24,6 +24,8 @@ Select distinct l.pos_id
                 ,p.name as pos_name
                 ,a.product_id
                 ,min(date_add(a.created_at, interval 7 hour) ) as firstime_have_inventory
+                ,a.client_id
+                ,p.code as pos_code
 from  ${source.circa_os}.inventory_location_detail_historical_cut_off a
 left join ${source.circa_os}.inventory_location_detail ld ON a.id = ld.id and a.client_id = ld.client_id
 left join ${source.circa_os}.inventory_location l on ld.location_id = l.id and a.client_id = l.client_id
@@ -56,6 +58,8 @@ left join count_ord b on a.pos_id = b.pos_id and a.product_id = b.product_id
 where a.pos_id not in ('9dd83081-9919-4bc3-84bd-f5dfece10049')
 )
 Select *
+      ,concat(product_id, "_", client_id) as product_client_id
+      ,concat(product_id, "_", pos_code) as product_pos_code
       ,case when latest_date_order_range = "15D" THEN "DEAD-1:No-Demand 15D"
             when latest_date_order_range = "30D" THEN "DEAD-2:No-Demand 30D"
             when latest_date_order_range = "45D" THEN "DEAD-3:No-Demand 45D"
