@@ -65,6 +65,6 @@ Select *
             when latest_date_order_range = "45D" THEN "DEAD-3:No-Demand 45D"
             when latest_date_order_range = "60D" THEN "DEAD-4:No-Demand 60D"
             when latest_date_order_range = "90D" THEN "DEAD-5:No-Demand 90D"
-            when latest_date_order_range = "> 90D" THEN "DEAD-5:No-Demand > 90D"
+            when latest_date_order_range = "> 90D" THEN "DEAD-6:No-Demand > 90D"
       end as stock_aging_type
 from add_order_range
