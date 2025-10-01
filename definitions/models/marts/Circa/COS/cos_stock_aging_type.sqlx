@@ -6,7 +6,7 @@ config {
 }
 
 
-with count_ord as ( select o.pos_id
+with count_ord as ( select distinct o.pos_id
                     ,oi.product_id
                     ,max(o.created_date) as latest_ord
                     ,count(distinct o.order_id) as no_ord
