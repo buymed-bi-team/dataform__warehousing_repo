@@ -6,7 +6,7 @@ config {
     PIC: minh.luu
     Internal: internal-seller/MEDX/PUR_HCM/vendor-bill
     Partition by: created date
-    Cluster By: ["status","seller_code","vendor_code","issue_time"]
+    Cluster By: ["status","seller_code","vendor_code","issued_time"]
     `,
     tags:["platinum","seller_prd_purchasing"]
 }

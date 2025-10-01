@@ -10,7 +10,7 @@ const model = new main.PlatinumModel(
         has_createdTime : true,
         bigquery: {
             partitionBy: "created_date",
-            clusterBy: ["vendor_bill_id","po_code","product_id","seller_code"]
+            clusterBy: ["vendor_bill_id","po_code","product_id"]
         }
     }
 );
