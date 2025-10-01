@@ -1,0 +1,53 @@
+config {
+    type: "view",
+    schema: "platinum_buymed_vn",
+    name: "seller_prd_purchasing_vendor_bill",
+    description : `
+    PIC: minh.luu
+    Internal: internal-seller/MEDX/PUR_HCM/vendor-bill
+    Partition by: created date
+    Cluster By: ["status","seller_code","vendor_code","issue_time"]
+    `,
+    tags:["platinum","seller_prd_purchasing"]
+}
+  WITH silver AS (
+    SELECT
+      key,mg_id,fiscal_position,growth_invoice_id,buyer_tax_code,vendor_legal_name,total_vat_price,product_codes,vendor_bill_id,po_code,invoice_series,total_price_without_vat,status,buyer_address_line,total_discount_price,payment_term,due_time,vendor_legal_name_origin,invoice_state,issued_time,vendor_tax_code,invoice_number,vat,template_code,vendor_bill_code,seller_code,buyer_legal_name,total_price,hash_tag,created_time,purchaser_code,vendor_code,bank_account_number,difference_price,last_updated_time,note,total_discount_after_vat,accounting_time,approved_by_id,approved_by_name,approved_time,remaining_money,is_completed_po,is_wrong_lot_date,is_wrong_quantity,synced_at,extra_props,action,ingest_time,
+      
+        CASE
+            WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time, 'Asia/Ho_Chi_Minh'))
+            ELSE DATE( '2099-01-01' )
+        END
+     created_date,
+      CAST(null as datetime) 
+    FROM silver_buymed_vn.seller_prd_purchasing_vendor_bill
+    WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 1 DAY
+    QUALIFY ROW_NUMBER() OVER (_window) = 1 
+          AND ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 16 HOUR
+          WINDOW _window AS (
+          PARTITION BY mg_id
+          ORDER BY synced_at DESC,
+          IF
+              (action='d',3,
+              IF
+              (action='u',2,1)) DESC
+          ,last_updated_time DESC)
+  ), platinum AS (
+    SELECT 
+      key,mg_id,fiscal_position,growth_invoice_id,buyer_tax_code,vendor_legal_name,total_vat_price,product_codes,vendor_bill_id,po_code,invoice_series,total_price_without_vat,status,buyer_address_line,total_discount_price,payment_term,due_time,vendor_legal_name_origin,invoice_state,issued_time,vendor_tax_code,invoice_number,vat,template_code,vendor_bill_code,seller_code,buyer_legal_name,total_price,hash_tag,created_time,purchaser_code,vendor_code,bank_account_number,difference_price,last_updated_time,note,total_discount_after_vat,accounting_time,approved_by_id,approved_by_name,approved_time,remaining_money,is_completed_po,is_wrong_lot_date,is_wrong_quantity,synced_at,extra_props,action,ingest_time,
+      created_date,
+      platinum_refresh
+    FROM ${ref(`platinum_buymed_vn__stg`, `seller_prd_purchasing_vendor_bill`)}
+  )
+  SELECT p.*
+  FROM platinum p
+  LEFT JOIN silver s 
+      ON p.mg_id = s.mg_id 
+  WHERE s.mg_id is null 
+
+  UNION ALL 
+
+  SELECT s.*
+  FROM silver s
+  WHERE action <> "d"
+  
