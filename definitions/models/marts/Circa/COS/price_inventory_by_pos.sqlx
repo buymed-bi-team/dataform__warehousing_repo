@@ -19,8 +19,10 @@ with price_tbl AS (
     ,unit
     ,convert_rate
     ,sale_unit_price
+    ,price_set_check
     ,is_base_unit
     ,seller_code
+    ,client_id
   from gold_buymed_vn2.cos_adhoc_pos_product_client
   where client_id = 1
   -- WHERE
@@ -32,25 +34,35 @@ inv_tbl as  (
     ,product_id
     ,seller_code
     ,sum(on_hand_quantity) as qty
+    ,sum(on_hand_quantity * cost_price_include_tax) as stock_value
   from `gold_buymed_vn2.cos_fact_inventory`
   where client_id = 1
   group by all
 
-)
+),_all as (
 Select
   p.product_id
   ,p.unit
   ,is_base_unit
   ,p.sale_unit_price
+  ,price_set_check
   ,i.pos_id
   ,pos.name as pos_name
   ,p.seller_code
+  ,concat(p.seller_code, "_", p.client_id) as seller_client_id
   ,case
     when p.is_base_unit = true then i.qty
-    else 0
+    else i.qty/case when convert_rate is null or convert_rate = 0 then 1 else convert_rate end
   end as qty
+  ,i.stock_value
+  ,concat(p.product_id, "_", p.client_id) as product_client_id
 from price_tbl p
 left join inv_tbl i on p.product_id = i.product_id and p.seller_code = i.seller_code
 left join `gold_buymed_vn2.circa_pos_profile` pos on i.pos_id = pos.id
 where pos.id is not null
+)
+Select *
+      ,case when qty > 0 then 'Available'
+            else 'Unavailable' end as stock_check
+from _all
     -- and p.product_id = 1165 
