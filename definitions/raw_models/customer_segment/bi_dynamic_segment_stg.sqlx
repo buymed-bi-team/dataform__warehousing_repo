@@ -1,5 +1,112 @@
 config {
-    type: "table",
+    type: "incremental",
     description: "Result of Dynamic Segment",
     tags: ["custom_1h_past10"]
 }
+
+WITH
+    segment_data AS (
+        SELECT
+            segment_id,
+            -- Customer fields
+            MAX(CASE WHEN table = 'CUSTOMER' AND field = 'customer_status' THEN value END) as customer_status,
+            MAX(CASE WHEN table = 'CUSTOMER' AND field = 'customer_level' THEN value END) as customer_level,
+            MAX(CASE WHEN table = 'CUSTOMER' AND field = 'config_fc' THEN value END) as config_fc,
+--             MAX(CASE WHEN table = 'CUSTOMER' AND field = 'province_code' THEN value END) as province_code,
+            MAX(CASE WHEN table = 'CUSTOMER' AND field = 'customer_tag_group' THEN value END) as customer_tag_group,
+            MAX(CASE WHEN table = 'CUSTOMER' AND field = 'customer_tag_sub_group' THEN value END) as customer_tag_sub_group,
+
+            -- Order1 fields
+            MAX(CASE WHEN table = 'ORDER1' AND field = 'created_at' THEN value END) as created_at1,
+            MAX(CASE WHEN table = 'ORDER1' AND field = 'seller_code' THEN value END) as seller_code1,
+            MAX(CASE WHEN table = 'ORDER1' AND field = 'product_id' THEN value END) as product_id1,
+
+            -- Order2 fields
+            MAX(CASE WHEN table = 'ORDER2' AND field = 'created_at' THEN value END) as created_at2,
+            MAX(CASE WHEN table = 'ORDER2' AND field = 'seller_code' THEN value END) as seller_code2,
+            MAX(CASE WHEN table = 'ORDER2' AND field = 'product_id' THEN value END) as product_id2,
+
+            -- Operator
+            MAX(CASE WHEN table = 'OPERATOR' THEN COALESCE(NULLIF(field, 'nan'),value) END) as operator
+        FROM ${ref('bi_dynamic_segment')} AS a
+        ${when(incremental(), 
+            `WHERE NOT EXISTS (SELECT 1 FROM ${self()} AS b WHERE a.segment_id = b.segment_id AND CURRENT_DATE("+7") = DATE(b.processed_at))`)
+        }
+        GROUP BY segment_id
+
+    )
+
+    , query_order1 AS (
+        SELECT
+            DISTINCT oi.customer_id, sd.segment_id
+        FROM ${ref('fact_order_item')} oi
+            LEFT JOIN ${ref('fact_order')} o ON oi.order_id = o.order_id
+            , (SELECT IFNULL(created_at1, "400") AS created_at1, seller_code1, product_id1, segment_id FROM segment_data) sd
+        WHERE o.channel IN ("MARKETPLACE", "CIRCA")
+            AND o.order_status <> "CANCEL"
+            AND
+                DATE(oi.created_at) BETWEEN
+                DATE_SUB(CURRENT_DATE(), INTERVAL CAST(REGEXP_EXTRACT(SPLIT(sd.created_at1, ",")[SAFE_OFFSET(0)], r'[0-9]+') AS INT64) DAY)
+                AND DATE_SUB(CURRENT_DATE(), INTERVAL IFNULL(SAFE_CAST(REGEXP_EXTRACT(SPLIT(sd.created_at1, ",")[SAFE_OFFSET(1)], r'[0-9]+') AS INT64),0) DAY)
+            AND (sd.seller_code1 IS NULL OR STRPOS(sd.seller_code1, CONCAT('"',oi.seller_code,'"')) > 0)
+            AND (sd.product_id1 IS NULL OR STRPOS(sd.product_id1, CONCAT('"',oi.product_id,'"')) > 0)
+    )
+
+    , query_order2 AS (
+        SELECT
+            DISTINCT oi.customer_id, sd.segment_id
+        FROM ${ref('fact_order_item')} oi
+            LEFT JOIN ${ref('fact_order')} o ON oi.order_id = o.order_id
+            , (SELECT IFNULL(created_at2, "400") AS created_at2, seller_code2, product_id2, segment_id FROM segment_data) sd
+        WHERE o.channel IN ("MARKETPLACE", "CIRCA")
+            AND o.order_status <> "CANCEL"
+            AND
+                DATE(oi.created_at) BETWEEN
+                DATE_SUB(CURRENT_DATE(), INTERVAL CAST(REGEXP_EXTRACT(SPLIT(sd.created_at2, ",")[SAFE_OFFSET(0)], r'[0-9]+') AS INT64) DAY)
+                AND DATE_SUB(CURRENT_DATE(), INTERVAL IFNULL(SAFE_CAST(REGEXP_EXTRACT(SPLIT(sd.created_at2, ",")[SAFE_OFFSET(1)], r'[0-9]+') AS INT64),0) DAY)
+            AND (sd.seller_code2 IS NULL OR STRPOS(sd.seller_code2, CONCAT('"',oi.seller_code,'"')) > 0)
+            AND (sd.product_id2 IS NULL OR STRPOS(sd.product_id2, CONCAT('"',oi.product_id,'"')) > 0)
+    )
+
+    , final AS (
+        SELECT
+            c.customer_id,
+            sd.segment_id,
+            CURRENT_TIMESTAMP()  + INTERVAL 7 HOUR AS processed_at
+        FROM ${ref('dim_customer')} c
+        CROSS JOIN  segment_data sd
+        WHERE 1=1
+            -- Customer conditions
+            AND (sd.customer_status IS NULL OR STRPOS(sd.customer_status, CONCAT('"',c.customer_status,'"')) > 0)
+            AND (sd.customer_level IS NULL OR STRPOS(sd.customer_level, CONCAT('"',c.customer_level,'"')) > 0)
+            AND (sd.config_fc IS NULL OR STRPOS(sd.config_fc, CONCAT('"',c.config_fc,'"')) > 0)
+--             AND (sd.province_code IS NULL OR STRPOS(sd.province_code, CONCAT('"',c.province_code,'"')) >0)
+            AND (sd.customer_tag_group IS NULL OR STRPOS(sd.customer_tag_group, CONCAT('"',c.customer_tag_group,'"')) > 0)
+            AND (sd.customer_tag_sub_group IS NULL OR STRPOS(sd.customer_tag_sub_group, CONCAT('"',c.customer_tag_sub_group,'"')) > 0)
+
+            -- Order conditions for NEW customers
+            AND (
+                sd.operator <> '"NEW"'
+                OR ( NOT EXISTS (SELECT 1 FROM query_order1 qo WHERE qo.customer_id = c.customer_id AND qo.segment_id = sd.segment_id)
+                    AND (sd.created_at1 IS NULL OR c.last_purchase >= DATE_SUB(CURRENT_DATE(), INTERVAL CAST(REGEXP_EXTRACT(SPLIT(sd.created_at1, ",")[SAFE_OFFSET(0)], r'[0-9]+') AS INT64) DAY))
+                )
+            )
+
+            AND (
+                sd.operator <> '"CHURN"'
+                OR ( EXISTS (SELECT 1 FROM query_order1 qo WHERE qo.customer_id = c.customer_id AND qo.segment_id = sd.segment_id)
+                    AND NOT EXISTS (SELECT 1 FROM query_order2 qoo WHERE qoo.customer_id = c.customer_id AND qoo.segment_id = sd.segment_id)
+                )
+            )
+
+            AND (
+                sd.operator <> '"EXCEPT"'
+                OR ( EXISTS (SELECT 1 FROM query_order1 qo WHERE qo.customer_id = c.customer_id AND qo.segment_id = sd.segment_id)
+                    AND NOT EXISTS (SELECT 1 FROM query_order2 qoo WHERE qoo.customer_id = c.customer_id AND qoo.segment_id = sd.segment_id)
+                )
+            )
+    )
+
+SELECT *
+FROM final
+WHERE segment_id IS NOT NULL
