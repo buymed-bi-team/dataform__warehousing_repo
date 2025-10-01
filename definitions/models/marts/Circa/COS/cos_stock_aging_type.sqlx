@@ -1,0 +1,66 @@
+config {
+    type: "table",
+    description: ` PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 past hour 6, 8, 10, 12, 14, 16, 18, 20 and 22`,
+    name: "cos_stock_aging_type",
+    tags: ["custom_2h_past5"]
+}
+
+
+with count_ord as ( select o.pos_id
+                    ,oi.product_id
+                    ,max(o.created_date) as latest_ord
+                    ,count(distinct o.order_id) as no_ord
+                    ,sum(unit_price * quantity) AS GMV
+                    ,o.client_id
+             from  ${source.ref}.cos_fact_order o
+             left join  ${source.ref}.cos_fact_order_item oi
+                        on o.order_id = oi.order_id
+             where status like "%COMPLETE%"
+                   and o.client_id = 1
+             group by all)
+,first_time_have_inventory as
+(
+Select distinct l.pos_id
+                ,p.name as pos_name
+                ,a.product_id
+                ,min(date_add(a.created_at, interval 7 hour) ) as firstime_have_inventory
+from  ${source.circa_os}.inventory_location_detail_historical_cut_off a
+left join ${source.circa_os}.inventory_location_detail ld ON a.id = ld.id and a.client_id = ld.client_id
+left join ${source.circa_os}.inventory_location l on ld.location_id = l.id and a.client_id = l.client_id
+left join ${source.circa_os}.entity_pos_profile p on l.pos_id = p.id and a.client_id = p.client_id
+where a.client_id = 1 
+      and p.id is not null
+group by all
+), add_order_range as (
+
+Select a.*
+       ,b.GMV
+       ,b.no_ord
+       ,b.latest_ord
+       ,case when DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<16 then "15D"
+             when DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<31 and DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day ) >= 16 then "30D"
+             when DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<46 and DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day ) >= 31 then "45D"
+             when DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<61 and DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day ) >= 46 then "60D"
+             when DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<91 and DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day ) >= 61 then "90D"
+             when DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day ) > 90 then "> 90D" 
+             when b.latest_ord is null and DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),date(firstime_have_inventory),day )<16 then "15D"
+             when b.latest_ord is null and DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),date(firstime_have_inventory),day )<31 and DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),date(firstime_have_inventory),day ) >= 16 then "30D"
+             when b.latest_ord is null and DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),date(firstime_have_inventory),day )<46 and DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),date(firstime_have_inventory),day ) >= 31 then "45D"
+             when b.latest_ord is null and DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),date(firstime_have_inventory),day )<61 and DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),date(firstime_have_inventory),day ) >= 46 then "60D"
+             when b.latest_ord is null and DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),date(firstime_have_inventory),day )< 91 and DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),date(firstime_have_inventory),day ) >=61 then "90D"
+             when b.latest_ord is null and DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),date(firstime_have_inventory),day ) > 90 then "> 90D" 
+             end as latest_date_order_range
+
+ from first_time_have_inventory a
+left join count_ord b on a.pos_id = b.pos_id and a.product_id = b.product_id
+where a.pos_id not in ('9dd83081-9919-4bc3-84bd-f5dfece10049')
+)
+Select *
+      ,case when latest_date_order_range = "15D" THEN "DEAD-1:No-Demand 15D"
+            when latest_date_order_range = "30D" THEN "DEAD-2:No-Demand 30D"
+            when latest_date_order_range = "45D" THEN "DEAD-3:No-Demand 45D"
+            when latest_date_order_range = "60D" THEN "DEAD-4:No-Demand 60D"
+            when latest_date_order_range = "90D" THEN "DEAD-5:No-Demand 90D"
+            when latest_date_order_range = "> 90D" THEN "DEAD-5:No-Demand > 90D"
+      end as stock_aging_type
+from add_order_range
