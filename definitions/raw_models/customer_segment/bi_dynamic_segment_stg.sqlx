@@ -27,7 +27,7 @@ WITH
             MAX(CASE WHEN table = 'ORDER2' AND field = 'product_id' THEN value END) as product_id2,
 
             -- Operator
-            MAX(CASE WHEN table = 'OPERATOR' THEN COALESCE(NULLIF(field, 'nan'),value) END) as operator
+            MAX(CASE WHEN table = 'OPERATOR' THEN UPPER(COALESCE(value,CONCAT('"',field,'"'))) END) as operator
         FROM ${ref('bi_dynamic_segment')} AS a
         ${when(incremental(), 
             `WHERE NOT EXISTS (SELECT 1 FROM ${self()} AS b WHERE a.segment_id = b.segment_id AND CURRENT_DATE("+7") = DATE(b.processed_at))`)
