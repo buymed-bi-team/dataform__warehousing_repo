@@ -310,6 +310,7 @@ SELECT
         WHEN TO_JSON_STRING( customer.tags ) LIKE '%\"NHANVIEN\"%' /*OR REGEXP_CONTAINS( customer.email, "@buymed|@thuocsi") */ THEN "EMPLOYEE"
         WHEN STRPOS(list_channel, "TENDER") > 0 THEN "TENDER"
         WHEN STRPOS(list_channel, "CONSIGNMENT") > 0 THEN "CONSIGNMENT"
+        ELSE "MARKETPLACE"
     END AS customer_channel,
     cb.bank_code,
     cb.bank_account_name,
