@@ -1,0 +1,9 @@
+config {
+    type:"operations",
+}
+
+
+GRANT `roles/bigquery.dataViewer`
+ON TABLE ${ref(`buymed_tech_dev`)}
+TO 
+"buymed-tech-bigquery@lakehouse-prod-394907.iam.gserviceaccount.com";

@@ -1,0 +1,9 @@
+config {
+    schema: "buymed_tech",
+    type: "table"
+}
+
+SELECT 
+    "1" AS col_a,
+    2 AS col_b,
+    1.234 AS col_f
