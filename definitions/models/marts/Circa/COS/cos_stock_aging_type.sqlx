@@ -40,7 +40,7 @@ group by all
              pos_id
              ,product_id
              ,sum(on_hand_quantity) as stock_qty
-             ,sum(on_hand_quantity * cost_price_include_tax)
+             ,sum(on_hand_quantity * cost_price_include_tax) as stock_value
       from  ${source.ref}.cos_fact_inventory
       where client_id = 1
            and seller_code <> 'CIRCA_MKP'
@@ -52,6 +52,7 @@ Select a.*
        ,b.no_ord
        ,b.latest_ord
        ,stock_qty
+       ,stock_value
        ,case when stock_qty > 0 then 'Available' else 'Unavailable' end as stock_check 
        ,case when DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<16 then "15D"
              when DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<31 and DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day ) >= 16 then "30D"
