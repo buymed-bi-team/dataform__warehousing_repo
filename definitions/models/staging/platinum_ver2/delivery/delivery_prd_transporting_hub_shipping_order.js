@@ -1,6 +1,6 @@
 
 const model = new main.PlatinumModel(
-    "delivery_prd_transporting_shipping_order",
+    "delivery_prd_transporting_hub_shipping_order",
     {
         target_schema : "platinum_buymed_vn__stg", // Use for document
         // customAssertionsSchema : `dataform_playground_assertions`,
