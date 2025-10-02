@@ -26,7 +26,8 @@ model.assertUnique(
     ["platinum_0h00","platinum_12h00", "platinum_unique_assertion", "delivery_prd_transporting"],
     {
         intervalCheckpoint : `INTERVAL 1 YEAR`,
-        maxRetry: 2
+        maxRetry: 2,
+        dependencies: [{schema:"platinum_buymed_vn",name:"warehouse_prd_inventory_sku_location"}]
     }
 )
 model.createMismatchAssertionView(
