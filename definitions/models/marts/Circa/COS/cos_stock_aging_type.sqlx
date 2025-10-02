@@ -6,7 +6,7 @@ config {
 }
 
 
-with count_ord as ( select o.pos_id
+with count_ord as ( select distinct o.pos_id
                     ,oi.product_id
                     ,max(o.created_date) as latest_ord
                     ,count(distinct o.order_id) as no_ord
@@ -33,12 +33,22 @@ left join ${source.circa_os}.entity_pos_profile p on l.pos_id = p.id and a.clien
 where a.client_id = 1 
       and p.id is not null
 group by all
+), inventory as (
+      Select distinct 
+             pos_id
+             ,product_id
+             ,sum(on_hand_quantity) as stock_qty
+             ,sum(on_hand_quantity * cost_price_include_tax)
+      from  ${source.ref}.cos_fact_inventory
+      where client_id = 1
+      group by all
 ), add_order_range as (
 
 Select a.*
        ,b.GMV
        ,b.no_ord
        ,b.latest_ord
+       ,stock_qty
        ,case when DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<16 then "15D"
              when DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<31 and DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day ) >= 16 then "30D"
              when DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<46 and DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day ) >= 31 then "45D"
@@ -55,6 +65,7 @@ Select a.*
 
  from first_time_have_inventory a
 left join count_ord b on a.pos_id = b.pos_id and a.product_id = b.product_id
+left join inventory i on a.pos_id = i.pos_id and a.product_id = i.product_id 
 where a.pos_id not in ('9dd83081-9919-4bc3-84bd-f5dfece10049')
 )
 Select *
