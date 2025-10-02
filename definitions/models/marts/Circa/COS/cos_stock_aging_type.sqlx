@@ -49,6 +49,7 @@ Select a.*
        ,b.no_ord
        ,b.latest_ord
        ,stock_qty
+       ,case when stock_qty > 0 then 'Available' else 'Unavailable' end as stock_check 
        ,case when DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<16 then "15D"
              when DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<31 and DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day ) >= 16 then "30D"
              when DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day )<46 and DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),latest_ord,day ) >= 31 then "45D"
