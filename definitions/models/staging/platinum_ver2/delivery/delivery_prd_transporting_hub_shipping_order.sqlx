@@ -5,7 +5,7 @@ config {
     description : `
     PIC: minh.luu
     Partition by: created date
-    Cluster by: type
+    ClusterBy: ["driver_id","status","type","hub_code"]
     `,
     tags:["platinum","delivery_prd_transporting"]
 }
