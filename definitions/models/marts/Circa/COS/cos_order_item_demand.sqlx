@@ -1,0 +1,48 @@
+config {
+    type: "table",
+    description: `Last 13 month| PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every 2 hours.Circa /cos_order_item_demand `
+    /*Source:
+      ${source.silver}.marketplace_prd_order_v2_order_item
+      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
+    tags: ["custom_1h_past5"],
+    name: "/cos_order_item_demand",
+    columns: {
+        order_id: "NonNull |" + docs.order_id,
+        customer_id: "NonNull | The unique identifier for each customer"
+        
+    },
+    bigquery: {
+        partitionBy: "date(created_at)"
+    }
+}
+
+
+
+with t as 
+(Select distinct p.name 
+                ,date(datetime_add(o.created_at, interval 7 hour)) as created_date
+                ,datetime_add(o.created_at, interval 7 hour) as created_at
+                ,o.order_id
+                ,o.status 
+                ,unit_id
+                ,product_id
+                ,product_name
+                ,unit
+                ,unit_price
+                ,platform_price
+                ,quantity
+                ,sale_quantity
+                ,unfulfilled_quantity
+                ,s.order_code
+                ,s.status as order_status 
+from ${source.circa_os}.order_order_item_demand o
+left join ${source.ref}.circa_pos_profile p on o.pos_id = p.id 
+left join ${source.ref}.cos_fact_order s on o.order_id = s.order_id
+where o.status is not null
+      and o.status <> 'DRAFT'
+      and s.status <> 'CANCELED'
+      and p.id is not null 
+      and quantity > 0 
+)
+Select *
+from t
