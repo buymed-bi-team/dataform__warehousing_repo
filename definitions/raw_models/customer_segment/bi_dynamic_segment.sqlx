@@ -12,7 +12,7 @@ FROM (
         SPLIT(code, "::")[SAFE_OFFSET(0)] AS segment_id
         , UPPER(SPLIT(code, "::")[SAFE_OFFSET(1)]) AS table
         , LOWER(SPLIT(code, "::")[SAFE_OFFSET(2)]) AS field
-        , TRIM( UPPER(value) ) AS value
+        , TRIM( UPPER(value), "\'" ) AS value
     FROM ${source.collector}.data_prd
     WHERE DATE(submit_at) >= "2025-10-01"
         AND object = "CUSTOMER_SEGMENT"
