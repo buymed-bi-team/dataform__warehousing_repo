@@ -1,7 +1,7 @@
 config {
     type: "incremental",
     description: "Result of Dynamic Segment",
-    //tags: ["custom_1h_past10"]
+    tags: ["CUSTOMER_SEGMENT", "0h30"/*, "custom_1h_past10"*/]
 }
 
 WITH
@@ -34,7 +34,7 @@ WITH
             MAX(CASE WHEN table = 'OPERATOR' THEN UPPER(COALESCE(value,CONCAT('"',field,'"'))) END) as operator
         FROM ${ref('bi_dynamic_segment')} AS a
         ${when(incremental(), 
-            `WHERE NOT EXISTS (SELECT 1 FROM ${self()} AS b WHERE a.segment_id = b.segment_id AND CURRENT_DATE("+7") = DATE(b.processed_at))`)
+            `WHERE NOT EXISTS (SELECT 1 FROM ${self()} AS b WHERE a.segment_id = b.segment_id AND CURRENT_DATE("+7") = b.processed_date)`)
         }
         GROUP BY segment_id
     ),
@@ -178,6 +178,11 @@ WITH
             )
     )
 
-SELECT *
+SELECT
+    segment_id
+    , DATE(processed_at) AS processed_date
+    , COUNT(1) AS total_customers
+    , ARRAY_AGG(customer_id) AS customer_list
 FROM final
 WHERE segment_id IS NOT NULL
+GROUP BY ALL
