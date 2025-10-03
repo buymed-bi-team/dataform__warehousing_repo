@@ -5,7 +5,7 @@ config {
       ${source.silver}.marketplace_prd_order_v2_order_item
       ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
     tags: ["custom_1h_past5"],
-    name: "/cos_order_item_demand",
+    name: "cos_order_item_demand",
     columns: {
         order_id: "NonNull |" + docs.order_id,
         customer_id: "NonNull | The unique identifier for each customer"
