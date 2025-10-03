@@ -11,7 +11,7 @@ SELECT
         ELSE "2099-01-01"
     END AS created_date
 FROM silver_buymed_vn.platform_core_prd_master_data_legal_entity
-QUALIFY ROW_NUMBER() OVER (_window) > 1
+QUALIFY ROW_NUMBER() OVER (_window) = 1 AND FIRST_VALUE(action) OVER(_window) != "d"
 WINDOW _window AS (
     PARTITION BY mg_id
     ORDER BY synced_at DESC,
