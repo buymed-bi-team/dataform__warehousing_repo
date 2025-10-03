@@ -146,21 +146,17 @@ WITH
             AND (sd.customer_tag_sub_group IS NULL OR STRPOS(sd.customer_tag_sub_group, CONCAT('"',c.customer_tag_sub_group,'"')) > 0)
             AND (
                 sd.start_count_order IS NULL
-                OR (sd.count_order_operator = '>' AND (q.no_order > SAFE_CAST(start_count_order AS INT64) OR q.no_order IS NULL))
---                 OR (sd.count_order_operator = '>=' AND (q.no_order >= SAFE_CAST(count_order AS INT64) OR q.no_order IS NULL))
-                OR (sd.count_order_operator = '=' AND (q.no_order = SAFE_CAST(start_count_order AS INT64) OR q.no_order IS NULL))
+                OR (sd.count_order_operator = '>' AND q.no_order > SAFE_CAST(start_count_order AS INT64))
+                OR (sd.count_order_operator = '=' AND q.no_order = SAFE_CAST(start_count_order AS INT64) )
                 OR (sd.count_order_operator = '<' AND (q.no_order < SAFE_CAST(start_count_order AS INT64) OR q.no_order IS NULL))
                 OR (sd.count_order_operator = '><' AND (q.no_order > SAFE_CAST(start_count_order AS INT64) AND q.no_order < SAFE_CAST(end_count_order AS INT64)))
---                 OR EXISTS (SELECT 1 FROM query_order qo WHERE qo.customer_id = c.customer_id AND qo.segment_id = sd.segment_id)
             )
             AND (
                 sd.start_sum_gmv IS NULL
-                OR (sum_gmv_operator = '>' AND (_gmv > SAFE_CAST(start_sum_gmv AS INT64) OR _gmv IS NULL))
---                 OR (sum_gmv_operator = '>=' AND (_gmv >= SAFE_CAST(sum_gmv AS INT64) OR _gmv IS NULL))
-                OR (sum_gmv_operator = '=' AND (_gmv = SAFE_CAST(start_sum_gmv AS INT64) OR _gmv IS NULL))
+                OR (sum_gmv_operator = '>' AND _gmv > SAFE_CAST(start_sum_gmv AS INT64))
+                OR (sum_gmv_operator = '=' AND _gmv = SAFE_CAST(start_sum_gmv AS INT64) )
                 OR (sum_gmv_operator = '<' AND (_gmv < SAFE_CAST(start_sum_gmv AS INT64) OR _gmv IS NULL))
                 OR (sum_gmv_operator = '><' AND (_gmv > SAFE_CAST(start_sum_gmv AS INT64) AND  _gmv < SAFE_CAST(start_sum_gmv AS INT64) ))
---                 OR EXISTS (SELECT 1 FROM query_order qo WHERE qo.customer_id = c.customer_id AND qo.segment_id = sd.segment_id)
             )
 
             -- Order conditions for NEW customers
