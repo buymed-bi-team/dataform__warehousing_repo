@@ -147,14 +147,14 @@ WITH
             AND (
                 sd.start_count_order IS NULL
                 OR (sd.count_order_operator = '>' AND q.no_order > SAFE_CAST(start_count_order AS INT64))
-                OR (sd.count_order_operator = '=' AND q.no_order = SAFE_CAST(start_count_order AS INT64) )
+                OR (sd.count_order_operator = '' AND COALESCE( q.no_order,0) = SAFE_CAST(start_count_order AS INT64) )
                 OR (sd.count_order_operator = '<' AND (q.no_order < SAFE_CAST(start_count_order AS INT64) OR q.no_order IS NULL))
                 OR (sd.count_order_operator = '><' AND (q.no_order > SAFE_CAST(start_count_order AS INT64) AND q.no_order < SAFE_CAST(end_count_order AS INT64)))
             )
             AND (
                 sd.start_sum_gmv IS NULL
                 OR (sum_gmv_operator = '>' AND _gmv > SAFE_CAST(start_sum_gmv AS INT64))
-                OR (sum_gmv_operator = '=' AND _gmv = SAFE_CAST(start_sum_gmv AS INT64) )
+                OR (sum_gmv_operator = '' AND COALESCE( _gmv,0) = SAFE_CAST(start_sum_gmv AS INT64) )
                 OR (sum_gmv_operator = '<' AND (_gmv < SAFE_CAST(start_sum_gmv AS INT64) OR _gmv IS NULL))
                 OR (sum_gmv_operator = '><' AND (_gmv > SAFE_CAST(start_sum_gmv AS INT64) AND  _gmv < SAFE_CAST(start_sum_gmv AS INT64) ))
             )
