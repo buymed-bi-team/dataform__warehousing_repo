@@ -16,24 +16,24 @@ WITH
             MAX(CASE WHEN table = 'CUSTOMER' AND field = 'region_name' THEN value END) as region_name,
             MAX(CASE WHEN table = 'CUSTOMER' AND field = 'customer_tag_group' THEN value END) as customer_tag_group,
             MAX(CASE WHEN table = 'CUSTOMER' AND field = 'customer_tag_sub_group' THEN value END) as customer_tag_sub_group,
-            MAX(CASE WHEN table = 'CUSTOMER' AND field = 'count_order' THEN value END) as count_order,
-            MAX(CASE WHEN table = 'CUSTOMER' AND field = 'sum_gmv' THEN value END) as sum_gmv,
-            MAX(CASE WHEN table = 'CUSTOMER' AND field = 'time_range_count_sum' THEN value END) as time_range_count_sum,
+            MAX(CASE WHEN table = 'CUSTOMER' AND field = 'count_order' THEN REGEXP_REPLACE(value, r' ','') END) as count_order,
+            MAX(CASE WHEN table = 'CUSTOMER' AND field = 'sum_gmv' THEN REGEXP_REPLACE(value, r' ','') END) as sum_gmv,
+            MAX(CASE WHEN table = 'CUSTOMER' AND field = 'time_range_count_sum' THEN REGEXP_REPLACE(value, r' ','') END) as time_range_count_sum,
 
             -- Order1 fields
-            MAX(CASE WHEN table = 'ORDER1' AND field = 'created_at' THEN value END) as created_at1,
+            MAX(CASE WHEN table = 'ORDER1' AND field = 'created_at' THEN REGEXP_REPLACE(value, r' ','') END) as created_at1,
             MAX(CASE WHEN table = 'ORDER1' AND field = 'seller_code' THEN value END) as seller_code1,
             MAX(CASE WHEN table = 'ORDER1' AND field = 'product_id' THEN value END) as product_id1,
 
             -- Order2 fields
-            MAX(CASE WHEN table = 'ORDER2' AND field = 'created_at' THEN value END) as created_at2,
+            MAX(CASE WHEN table = 'ORDER2' AND field = 'created_at' THEN REGEXP_REPLACE(value, r' ','') END) as created_at2,
             MAX(CASE WHEN table = 'ORDER2' AND field = 'seller_code' THEN value END) as seller_code2,
             MAX(CASE WHEN table = 'ORDER2' AND field = 'product_id' THEN value END) as product_id2,
 
             -- Operator
             MAX(CASE WHEN table = 'OPERATOR' THEN UPPER(COALESCE(value,CONCAT('"',field,'"'))) END) as operator
         FROM ${ref('bi_dynamic_segment')} AS a
-        ${when(incremental(), 
+        ${when(incremental(),
             `WHERE NOT EXISTS (SELECT 1 FROM ${self()} AS b WHERE a.segment_id = b.segment_id AND CURRENT_DATE("+7") = b.processed_date)`)
         }
         GROUP BY segment_id
@@ -66,41 +66,32 @@ WITH
                 SAFE.PARSE_DATE('"%Y-%m-%d"', SPLIT(created_at2, ",")[SAFE_OFFSET(1)])
                 , DATE_SUB(CURRENT_DATE(), INTERVAL IFNULL(SAFE_CAST(REGEXP_EXTRACT(SPLIT(created_at2, ",")[SAFE_OFFSET(1)], r'[0-9]+') AS INT64),0) DAY)
             ) AS end_date2
-            , REGEXP_EXTRACT(count_order, r'[0-9]+') AS count_order
-            , REGEXP_EXTRACT(count_order, r'>|<|=') AS count_order_operator
-            , REGEXP_EXTRACT(sum_gmv, r'[0-9]+') AS sum_gmv
-            , REGEXP_EXTRACT(sum_gmv, r'>|<|=') AS sum_gmv_operator
+            , SPLIT(REGEXP_REPLACE(count_order, r'[^0-9,]+', ''), ',')[SAFE_OFFSET(0)] AS start_count_order
+            , SPLIT(REGEXP_REPLACE(count_order, r'[^0-9,]+', ''), ',')[SAFE_OFFSET(1)] AS end_count_order
+            , REGEXP_REPLACE(count_order, r'[^><=]', '') AS count_order_operator
+            , SPLIT(REGEXP_REPLACE(sum_gmv, r'[^0-9,]+', ''), ',')[SAFE_OFFSET(0)] AS start_sum_gmv
+            , SPLIT(REGEXP_REPLACE(sum_gmv, r'[^0-9,]+', ''), ',')[SAFE_OFFSET(1)] AS end_sum_gmv
+            , REGEXP_REPLACE(sum_gmv, r'[^><=]', '') AS sum_gmv_operator
             , IFNULL(operator, '') AS operator
         FROM segment_data
     )
 
     , query_order AS (
         SELECT
-            o.customer_id
+            customer_id
             , sd.segment_id
             , COUNT(DISTINCT order_id) AS no_order
-            , SUM(o.ordered_amount) AS _gmv
-        FROM ${ref('fact_order')} AS o
+            , SUM(ordered_amount) AS _gmv
+        FROM  ${ref('fact_order')}
             ,  get_start_end AS sd
         WHERE 1=1
-            AND o.channel IN ("MARKETPLACE", "CIRCA")
-            AND o.order_status <> "CANCEL"
+            AND channel IN ("MARKETPLACE", "CIRCA")
+            AND order_status <> "CANCEL"
             AND (
                 sd.start_date_time_range_count_sum IS NULL
-                OR DATE(o.created_at) BETWEEN sd.start_date_time_range_count_sum AND sd.end_date_time_range_count_sum
+                OR DATE(created_at) BETWEEN sd.start_date_time_range_count_sum AND sd.end_date_time_range_count_sum
             )
-        GROUP BY 1,2, sd.count_order, sd.count_order_operator, sd.sum_gmv, sd.sum_gmv_operator
-        HAVING
-            ( sd.count_order IS NULL
-                OR (sd.count_order_operator = '>' AND no_order > SAFE_CAST(count_order AS INT64))
-                OR (sd.count_order_operator = '=' AND no_order = SAFE_CAST(count_order AS INT64))
-                OR (sd.count_order_operator = '<' AND no_order < SAFE_CAST(count_order AS INT64))
-            )
-            AND ( sd.sum_gmv IS NULL
-                OR (sd.sum_gmv_operator = '>' AND _gmv > SAFE_CAST(sum_gmv AS INT64))
-                OR (sd.sum_gmv_operator = '=' AND _gmv = SAFE_CAST(sum_gmv AS INT64))
-                OR (sd.sum_gmv_operator = '<' AND _gmv < SAFE_CAST(sum_gmv AS INT64))
-            )
+        GROUP BY ALL
     )
 
     , query_order1 AS (
@@ -141,8 +132,9 @@ WITH
             sd.segment_id,
             CURRENT_TIMESTAMP()  + INTERVAL 7 HOUR AS processed_at
         FROM ${ref('dim_customer')} c
-            LEFT JOIN gold_buymed_vn2.dim_geo_location AS g ON c.location_code= g.location_code
-        CROSS JOIN  get_start_end sd
+            LEFT JOIN ${ref('dim_geo_location')} AS g ON c.location_code= g.location_code
+            CROSS JOIN  get_start_end sd
+            LEFT JOIN query_order AS q ON q.customer_id = c.customer_id AND q.segment_id = sd.segment_id
         WHERE 1=1
             -- Customer conditions
             AND (sd.customer_status IS NULL OR STRPOS(sd.customer_status, CONCAT('"',c.customer_status,'"')) > 0)
@@ -152,8 +144,24 @@ WITH
             AND (sd.region_name IS NULL OR STRPOS(sd.region_name, CONCAT('"',UPPER(g.region_name),'"')) >0)
             AND (sd.customer_tag_group IS NULL OR STRPOS(sd.customer_tag_group, CONCAT('"',c.customer_tag_group,'"')) > 0)
             AND (sd.customer_tag_sub_group IS NULL OR STRPOS(sd.customer_tag_sub_group, CONCAT('"',c.customer_tag_sub_group,'"')) > 0)
-            AND (sd.count_order IS NULL OR EXISTS (SELECT 1 FROM query_order qo WHERE qo.customer_id = c.customer_id AND qo.segment_id = sd.segment_id))
-            AND (sd.sum_gmv IS NULL OR EXISTS (SELECT 1 FROM query_order qo WHERE qo.customer_id = c.customer_id AND qo.segment_id = sd.segment_id))
+            AND (
+                sd.start_count_order IS NULL
+                OR (sd.count_order_operator = '>' AND (q.no_order > SAFE_CAST(start_count_order AS INT64) OR q.no_order IS NULL))
+--                 OR (sd.count_order_operator = '>=' AND (q.no_order >= SAFE_CAST(count_order AS INT64) OR q.no_order IS NULL))
+                OR (sd.count_order_operator = '=' AND (q.no_order = SAFE_CAST(start_count_order AS INT64) OR q.no_order IS NULL))
+                OR (sd.count_order_operator = '<' AND (q.no_order < SAFE_CAST(start_count_order AS INT64) OR q.no_order IS NULL))
+                OR (sd.count_order_operator = '><' AND (q.no_order > SAFE_CAST(start_count_order AS INT64) AND q.no_order < SAFE_CAST(end_count_order AS INT64)))
+--                 OR EXISTS (SELECT 1 FROM query_order qo WHERE qo.customer_id = c.customer_id AND qo.segment_id = sd.segment_id)
+            )
+            AND (
+                sd.start_sum_gmv IS NULL
+                OR (sum_gmv_operator = '>' AND (_gmv > SAFE_CAST(start_sum_gmv AS INT64) OR _gmv IS NULL))
+--                 OR (sum_gmv_operator = '>=' AND (_gmv >= SAFE_CAST(sum_gmv AS INT64) OR _gmv IS NULL))
+                OR (sum_gmv_operator = '=' AND (_gmv = SAFE_CAST(start_sum_gmv AS INT64) OR _gmv IS NULL))
+                OR (sum_gmv_operator = '<' AND (_gmv < SAFE_CAST(start_sum_gmv AS INT64) OR _gmv IS NULL))
+                OR (sum_gmv_operator = '><' AND (_gmv > SAFE_CAST(start_sum_gmv AS INT64) AND  _gmv < SAFE_CAST(start_sum_gmv AS INT64) ))
+--                 OR EXISTS (SELECT 1 FROM query_order qo WHERE qo.customer_id = c.customer_id AND qo.segment_id = sd.segment_id)
+            )
 
             -- Order conditions for NEW customers
             AND (
