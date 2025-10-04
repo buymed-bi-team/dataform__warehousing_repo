@@ -1,39 +1,39 @@
 config {
     type: "table",
     description: "Get Segment's Condition from Import Form",
-    //tags: ["custom_1h_past10"]
+    tags: ["custom_1h_past10", "CUSTOMER_SEGMENT"]
 }
-
--- SELECT
---     a.* EXCEPT(value)
---     , STRING_AGG(CONCAT('"', u, '"'), ",") AS value
--- FROM (
---     SELECT
---         SPLIT(code, "-")[SAFE_OFFSET(0)] AS segment_id
---         , UPPER(SPLIT(code, "-")[SAFE_OFFSET(1)]) AS table
---         , LOWER(SPLIT(code, "-")[SAFE_OFFSET(2)]) AS field
---         , REGEXP_REPLACE( UPPER(value), r' ', '') AS value
---     FROM ${source.collector}.data_prd
---     WHERE DATE(submit_at) >= "2025-10-01"
---         AND object = "CUSTOMER_SEGMENT"
---     QUALIFY ROW_NUMBER() over (PARTITION BY code, object ORDER BY submit_id) = 1
--- ) AS a
---     , UNNEST(SPLIT(a.value, ",")) AS u
--- GROUP BY ALL
 
 SELECT
     a.* EXCEPT(value)
     , STRING_AGG(CONCAT('"', TRIM(u), '"'), ",") AS value
 FROM (
     SELECT
-        SPLIT(string_field_0, "-")[SAFE_OFFSET(0)] AS segment_id
-        , UPPER(SPLIT(string_field_0, "-")[SAFE_OFFSET(1)]) AS table
-        , LOWER(SPLIT(string_field_0, "-")[SAFE_OFFSET(2)]) AS field
-        , TRIM( UPPER(string_field_3)) AS value
-    FROM ${source.external}.import_segment
-    -- WHERE DATE(submit_at) >= "2025-10-01"
-    --     AND object = "CUSTOMER_SEGMENT"
-    -- QUALIFY ROW_NUMBER() over (PARTITION BY code, object ORDER BY submit_id) = 1
+        SPLIT(code, "::")[SAFE_OFFSET(0)] AS segment_id
+        , UPPER(SPLIT(code, "::")[SAFE_OFFSET(1)]) AS table
+        , LOWER(SPLIT(code, "::")[SAFE_OFFSET(2)]) AS field
+        , TRIM( UPPER(value), "\'" ) AS value
+    FROM ${source.collector}.data_prd
+    WHERE DATE(submit_at) >= "2025-10-01"
+        AND object = "CUSTOMER_SEGMENT"
+    QUALIFY ROW_NUMBER() over (PARTITION BY code, object ORDER BY submit_id) = 1
 ) AS a
     , UNNEST(SPLIT(a.value, ",")) AS u
 GROUP BY ALL
+
+-- SELECT
+--     a.* EXCEPT(value)
+--     , STRING_AGG(CONCAT('"', TRIM(u), '"'), ",") AS value
+-- FROM (
+--     SELECT
+--         SPLIT(string_field_0, "::")[SAFE_OFFSET(0)] AS segment_id
+--         , UPPER(SPLIT(string_field_0, "::")[SAFE_OFFSET(1)]) AS table
+--         , LOWER(SPLIT(string_field_0, "::")[SAFE_OFFSET(2)]) AS field
+--         , TRIM( UPPER(string_field_3)) AS value
+--     FROM ${source.external}.import_segment
+--     -- WHERE DATE(submit_at) >= "2025-10-01"
+--     --     AND object = "CUSTOMER_SEGMENT"
+--     -- QUALIFY ROW_NUMBER() over (PARTITION BY code, object ORDER BY submit_id) = 1
+-- ) AS a
+--     , UNNEST(SPLIT(a.value, ",")) AS u
+-- GROUP BY ALL

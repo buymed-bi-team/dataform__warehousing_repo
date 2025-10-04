@@ -35,7 +35,19 @@ where a.client_id = 1
       and p.id is not null
       and a.seller_code not in ( 'CIRCA_MKP', 'MARKETING')
 group by all
-), inventory as (
+),lastdate_pur as (
+         Select distinct o.pos_id
+                        ,i.product_id
+                        ,max(date(i.created_at)) as lastdate_pur
+         from ${source.ref}.cos_purchase_order o 
+         left join ${source.ref}.cos_purchase_order_item i on o.po_id = i.po_id
+         where received_quantity > 0 
+                and i.seller_code not in ( 'CIRCA_MKP', 'MARKETING')
+                and o.client_id = 1
+         group by all 
+
+)
+, inventory as (
       Select distinct 
              pos_id
              ,product_id
@@ -51,6 +63,7 @@ Select a.*
        ,b.GMV
        ,b.no_ord
        ,b.latest_ord
+       ,lastdate_pur
        ,stock_qty
        ,stock_value
        ,case when stock_qty > 0 then 'Available' else 'Unavailable' end as stock_check 
@@ -71,6 +84,7 @@ Select a.*
  from first_time_have_inventory a
 left join count_ord b on a.pos_id = b.pos_id and a.product_id = b.product_id
 left join inventory i on a.pos_id = i.pos_id and a.product_id = i.product_id 
+left join lastdate_pur p on a.pos_id = p.pos_id and a.product_id = p.product_id 
 where a.pos_id not in ('9dd83081-9919-4bc3-84bd-f5dfece10049')
 )
 Select *

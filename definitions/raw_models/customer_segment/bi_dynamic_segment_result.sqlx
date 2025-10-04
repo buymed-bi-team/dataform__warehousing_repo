@@ -1,14 +1,13 @@
 config {
     type: "table",
     description: "Result of Dynamic Segment",
-    tags: ["custom_1h_past10"]
+    tags: ["custom_1h_past10", "CUSTOMER_SEGMENT", "0h30"]
 }
 
 SELECT
-    segment_id
-    , DATE(processed_at) AS processed_date
-    , COUNT(1) AS total_customers
-    , STRING_AGG(SAFE_CAST(customer_id AS STRING), ", ") AS customer_list
+    segment_id AS voucher_code
+    , processed_date
+    , total_customers
+    , customer_list
 FROM ${ref('bi_dynamic_segment_stg')}
-GROUP BY ALL
-QUALIFY RANK() OVER(PARTITION BY segment_id ORDER BY processed_date DESC) = 1
+QUALIFY ROW_NUMBER() OVER(PARTITION BY segment_id ORDER BY processed_date DESC) = 1

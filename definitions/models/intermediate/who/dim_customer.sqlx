@@ -9,7 +9,7 @@ config {
         uniqueKey: ["customer_id"]
     },
     name: "dim_customer",
-    tags: ["custom_1h_past5"],
+    tags: ["custom_1h_past5", "CUSTOMER_SEGMENT"],
     columns: {
         customer_id: "NonNull",
         customer_name: "NonNull",
@@ -111,7 +111,7 @@ WITH
         , SUM(1) AS no_orders
     FROM ${ref('fact_order')}
     WHERE order_status <> 'CANCEL'
-      AND channel = "MARKETPLACE"
+      AND channel IN ("MARKETPLACE", "CIRCA")
     GROUP BY ALL
   ),
 
