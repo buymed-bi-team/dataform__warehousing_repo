@@ -28,7 +28,6 @@ Select distinct p.name
                 ,unit_id
                 ,product_id
                 ,product_name
-                ,unit
                 ,price
                 ,quantity
                 ,total_amount
