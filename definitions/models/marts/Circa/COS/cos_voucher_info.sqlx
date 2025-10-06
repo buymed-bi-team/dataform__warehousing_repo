@@ -32,6 +32,7 @@ where gift_code not like '%TEST%'
 )
 Select distinct 
                us.code
+              ,t.order_code_created
               ,DATETIME_ADD(us.created_at, INTERVAL 7 HOUR) as created_at
               ,DATETIME_ADD(us.start_date, INTERVAL 7 HOUR) as start_date
               ,DATETIME_ADD(us.end_date, INTERVAL 7 HOUR) as end_date
