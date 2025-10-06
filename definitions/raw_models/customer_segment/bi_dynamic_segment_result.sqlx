@@ -6,8 +6,10 @@ config {
 
 SELECT
     segment_id AS voucher_code
+    , voucher_id
     , processed_date
     , total_customers
     , customer_list
-FROM ${ref('bi_dynamic_segment_stg')}
+FROM ${ref('bi_dynamic_segment_stg')} AS s
+    LEFT JOIN ${ref('dim_voucher')} AS v ON v.voucher_code = segment_id
 QUALIFY ROW_NUMBER() OVER(PARTITION BY segment_id ORDER BY processed_date DESC) = 1
