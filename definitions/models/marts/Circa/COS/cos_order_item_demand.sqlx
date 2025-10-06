@@ -35,9 +35,10 @@ with t as
                 ,unfulfilled_quantity
                 ,s.order_code
                 ,s.status as order_status 
+                ,datetime_add(o.pre_order_scheduled_time, interval 7 hour) as pre_order_scheduled_time
 from ${source.circa_os}.order_order_item_demand o
 left join ${source.ref}.circa_pos_profile p on o.pos_id = p.id 
-left join ${source.ref}.cos_fact_order s on o.order_id = s.order_id
+left join ${source.circa_os}.order_order s on o.order_id = s.id
 where o.status is not null
       and o.status <> 'DRAFT'
       and s.status <> 'CANCELED'
