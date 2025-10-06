@@ -58,4 +58,5 @@ left join ${source.circa_os}.entity_pos_profile pr on o.pos_id = pr.id
 left join  ${source.circa_os}.order_delivery_info i ON o.order_id = i.order_id
 left join ${source.circa_os}.entity_customer e ON o.entity_id = e.id
 left join ${source.circa_os}.order_order_voucher ov on ov.voucher_id = t.voucher_id 
-left join ${source.circa_os}.promotion_promotion_campaign cp on us.promotion_campaign_id = cp.id
+left join ${source.circa_os}.promotion_promotion_campaign cp on us.promotion_campaign_id = cp.id and us.client_id = cp.client_id
+where us.is_sample = false
