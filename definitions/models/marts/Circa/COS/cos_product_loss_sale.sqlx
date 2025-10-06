@@ -33,6 +33,7 @@ Select distinct p.name
                 ,quantity
                 ,total_amount
                 ,o.client_id
+                ,concat(product_id, "_", 1) as product_client_id
 from ${source.circa_os}.product_product_loss_sale o
 left join ${source.ref}.circa_pos_profile p on o.pos_id = p.id 
 where p.id is not null 
