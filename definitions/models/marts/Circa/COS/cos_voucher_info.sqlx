@@ -41,22 +41,22 @@ Select distinct
               ,us.percent
               ,us.promotion_voucher_type
               ,e.name
-              ,COALESCE(e.phone_number) as customer_phone
+              ,e.phone_number as customer_phone
               ,datetime_add(ov.created_at, interval 7 hour) as date_used
               ,case when ov.created_at is not null then "Yes"
                      else "No"
                      end as Is_used
-               ,ov.order_code as order_code_use
+               ,ov.order_code as order_code_used
                ,cp.code as campaign_code
                ,cp.name as compaign_name
                ,pr.code as pos_code
                ,pr.name as pos_name
                ,us.client_id
 from ${source.circa_os}.promotion_promotion_voucher us  
-left join t on us.code = t.voucher_code
-left join ${source.ref}.cos_fact_order o on o.order_code = t.order_code_created
-left join ${source.circa_os}.entity_pos_profile pr on o.pos_id = pr.id
-left join ${source.circa_os}.entity_customer e ON o.entity_id = e.id
 left join ${source.circa_os}.order_order_voucher ov on ov.voucher_id = us.id
+left join t on us.code = t.voucher_code
+left join ${source.ref}.cos_fact_order o on ov.order_id = o.order_id
+left join ${source.circa_os}.entity_pos_profile pr on o.pos_id = pr.id
+left join ${source.circa_os}.entity_customer e on o.entity_id = e.id
 left join ${source.circa_os}.promotion_promotion_campaign cp on us.promotion_campaign_id = cp.id and us.client_id = cp.client_id
 where us.is_sample = false
