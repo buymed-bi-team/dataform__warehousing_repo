@@ -100,6 +100,12 @@ WITH
             , COALESCE(o.shop_name, p.shop_name, j.supplier_name) AS shop_name
             , COALESCE(o.shop_platform_id, p.shop_platform_id, a.seller_id) AS shop_platform_id
             , COALESCE(o.shop_url, p.shop_url, q.shop_url) AS shop_url
+            , IF(a.seller_code IN ("MEDX", "BML_INT"), "ENTERPRISE",
+                 CASE j.supplier_type
+                    WHEN "MARKET" THEN "BIZ_HOUSEHOLD"
+                    ELSE j.supplier_type
+                 END
+              ) AS shop_type
             , k.display_price AS price_before_discount
             , k.sku_display_price AS price
             , l.min_price AS price_min
@@ -275,5 +281,3 @@ FROM  final AS a
     LEFT JOIN cate AS cate1 ON cate1.category_name = bm_category_1 AND cate1.level = 1
     LEFT JOIN cate AS cate2 ON cate2.category_name = bm_category_2 AND cate2.level = 2
     LEFT JOIN cate AS cate3 ON cate3.category_name = bm_category_3 AND cate3.level = 3
-
-
