@@ -42,6 +42,7 @@ Select distinct
               ,us.discount_value
               ,us.percent
               ,us.promotion_voucher_type
+              ,coalesce(o.entity_id,gift_for_customer_id) as customer_id
               ,e.name
               ,coalesce(e.phone_number,gift_for_customer_phone) as customer_phone
               ,datetime_add(ov.created_at, interval 7 hour) as date_used
