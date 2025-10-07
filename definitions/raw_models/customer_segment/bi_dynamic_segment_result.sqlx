@@ -12,5 +12,4 @@ SELECT
     , customer_list
 FROM ${ref('bi_dynamic_segment_stg')} AS s
     LEFT JOIN ${ref('dim_voucher')} AS v ON v.voucher_code = segment_id
-WHERE NOT REGEXP_CONTAINS(voucher_code, r'TECHTEST_IMPORT|TECHTESTBASE|TECH_TEST_IMPORT2')
 QUALIFY ROW_NUMBER() OVER(PARTITION BY segment_id ORDER BY processed_date DESC) = 1
