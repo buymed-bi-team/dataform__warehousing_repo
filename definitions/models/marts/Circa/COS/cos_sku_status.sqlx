@@ -27,6 +27,7 @@ from ${source.ref}.cos_fact_inventory v
 left join ${source.ref}.circa_pos_profile p on v.pos_id = p.id 
 where p.type = 'CIRCA'
       and p.id is not null
+      and seller_code not in ( 'CIRCA_MKP', 'MARKETING')
       and v.location_type <> 'CANCELLED'
 group by all
 ---- tổng tồn kho hiện tại theo product , pos
