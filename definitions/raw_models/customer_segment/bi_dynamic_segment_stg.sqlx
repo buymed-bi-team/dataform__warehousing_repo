@@ -188,12 +188,12 @@ SELECT
     , COUNT(1) AS total_customers
     , ARRAY_AGG(customer_id) AS customer_list
 FROM final AS s
-WHERE segment_id IS NOT NULL
-    AND NOT EXISTS (
-        SELECT 1
-        FROM ${source.platinum}.marketplace_prd_promotion_user_promotion AS up
-        WHERE created_date >= "2025-09-01"
-            AND status IN ("USED","DELETED")
-            AND up.customer_id = s.customer_id AND up.voucher_code = s.segment_id
-    )
+-- WHERE segment_id IS NOT NULL
+--     AND NOT EXISTS (
+--         SELECT 1
+--         FROM ${source.platinum}.marketplace_prd_promotion_user_promotion AS up
+--         WHERE created_date >= "2025-09-01"
+--             AND status IN ("USED","DELETED")
+--             AND up.customer_id = s.customer_id AND up.voucher_code = s.segment_id
+--     )
 GROUP BY ALL
