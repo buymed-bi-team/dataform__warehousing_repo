@@ -36,7 +36,7 @@ with t as
                 ,unfulfilled_quantity
                 ,s.code
                 ,s.status as order_status 
-                ,datetime_add(s.delivery_scheduled_time, interval 7 hour) as pre_order_scheduled_time
+                ,datetime_add(s.pre_order_scheduled_time, interval 7 hour) as pre_order_scheduled_time
                 ,concat(product_id, "_", o.client_id) as product_client_id
 from ${source.circa_os}.order_order_item_demand o
 left join ${source.ref}.circa_pos_profile p on o.pos_id = p.id 

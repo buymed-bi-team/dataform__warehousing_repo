@@ -27,8 +27,11 @@ Select distinct
         ,voucher_code
         ,customer_id as gift_for_customer_id
         ,JSON_EXTRACT_SCALAR(order_code) as order_code_created
+        ,e.phone_number as gift_for_customer_phone
+        ,e.name as gift_for_customer_name
 FROM ${source.circa_os}.promotion_gift_voucher v,
 UNNEST(JSON_EXTRACT_ARRAY(assigned_order_codes)) AS order_code
+left join ${source.circa_os}.entity_customer e on v.customer_id = e.id
 where gift_code not like '%TEST%'
 )
 Select distinct 
@@ -40,8 +43,10 @@ Select distinct
               ,us.discount_value
               ,us.percent
               ,us.promotion_voucher_type
+              ,coalesce(o.entity_id,gift_for_customer_id) as customer_id
               ,e.name
-              ,e.phone_number as customer_phone
+              ,coalesce(e.phone_number,gift_for_customer_phone) as customer_phone
+              ,coalesce(e.name,gift_for_customer_name) as customer_name
               ,datetime_add(ov.created_at, interval 7 hour) as date_used
               ,case when ov.created_at is not null then "Yes"
                      else "No"
