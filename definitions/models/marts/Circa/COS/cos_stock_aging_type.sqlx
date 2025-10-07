@@ -10,7 +10,8 @@ with count_ord as ( select distinct o.pos_id
                     ,oi.product_id
                     ,max(o.created_date) as latest_ord
                     ,count(distinct o.order_id) as no_ord
-                    ,sum(unit_price * quantity) AS GMV
+                    ,sum(unit_price * quantity) as GMV
+                    ,sum(unit_cost_price * quantity) as cogs
                     ,o.client_id
              from  ${source.ref}.cos_fact_order o
              left join  ${source.ref}.cos_fact_order_item oi
@@ -61,6 +62,7 @@ group by all
 
 Select a.*
        ,b.GMV
+       ,b.cogs
        ,b.no_ord
        ,b.latest_ord
        ,lastdate_pur
