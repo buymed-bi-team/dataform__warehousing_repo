@@ -19,6 +19,7 @@ config {
 
 
 Select distinct p.name 
+                ,o.pos_id
                 ,date(datetime_add(o.created_at, interval 7 hour)) as created_date
                 ,datetime_add(o.created_at, interval 7 hour) as created_at
                 ,datetime_add(o.date_time, interval 7 hour) as date_time
