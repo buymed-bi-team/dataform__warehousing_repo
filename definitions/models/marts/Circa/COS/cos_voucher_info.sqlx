@@ -50,6 +50,7 @@ Select distinct
               ,e.name
               ,coalesce(e.phone_number,gift_for_customer_phone) as customer_phone
               ,coalesce(e.name,gift_for_customer_name) as customer_name
+              ,voucher_created_at
               ,datetime_add(ov.created_at, interval 7 hour) as date_used
               ,case when ov.created_at is not null then "Yes"
                      else "No"
