@@ -5,6 +5,7 @@ config {
     type: "incremental",
     name: "seller_prd_promotion_log_price_after_rebate",
     schema: "platinum_buymed_vn",
+    disabled: true,
     assertions: {
         uniqueKey: 'mg_id',
         nonNull: ["created_date"]
