@@ -24,4 +24,4 @@ config {
  from ${source.ref}.cos_fact_order o 
  left join ${source.ref}.cos_fact_order_item i on o.order_id = i.order_id
  where delivery_scheduled_time is not null
-       and o.order_code <> 'DHC00263364'
+       --and o.order_code <> 'DHC00263364'
