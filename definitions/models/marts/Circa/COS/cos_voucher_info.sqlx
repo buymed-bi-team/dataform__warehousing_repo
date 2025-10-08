@@ -47,7 +47,6 @@ Select distinct
               ,us.percent
               ,us.promotion_voucher_type
               ,coalesce(o.entity_id,gift_for_customer_id) as customer_id
-              ,e.name
               ,coalesce(e.phone_number,gift_for_customer_phone) as customer_phone
               ,coalesce(e.name,gift_for_customer_name) as customer_name
               ,voucher_created_at
@@ -69,3 +68,4 @@ left join ${source.circa_os}.entity_pos_profile pr on o.pos_id = pr.id
 left join ${source.circa_os}.entity_customer e on o.entity_id = e.id
 left join ${source.circa_os}.promotion_promotion_campaign cp on us.promotion_campaign_id = cp.id and us.client_id = cp.client_id
 where us.is_sample = false
+       and o.status <> 'CANCELED'
