@@ -17,7 +17,10 @@ config {
 }
 
 
- Select * from ${source.ref}.cos_fact_order o 
+ Select o.*
+        ,i.* except (order_id,completed_date,discount_amount,client_id)
+        ,i.discount_amount as discount_amount_item
+ from ${source.ref}.cos_fact_order o 
  left join ${source.ref}.cos_fact_order_item i on o.order_id = i.order_id
  where origin_order_id in (Select order_id from ${source.ref}.cos_fact_order
                                         where pre_order_required = 'true')
