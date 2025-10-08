@@ -26,7 +26,7 @@ Select distinct r.id
               ,unit
               ,sum(rid.quantity) as quantity
               ,rid.unit_price
-              ,sum(rid.quantity) as qty_received
+              ,sum(rid.received_quantity) as qty_received
               ,sum(rid.quantity * rid.unit_price) as total_amount_item
               ,r.client_id
               ,concat(ri.product_id, "_", r.client_id) as product_client_id
