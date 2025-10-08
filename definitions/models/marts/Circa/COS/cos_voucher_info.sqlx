@@ -1,0 +1,71 @@
+config {
+    type: "table",
+    description: `Last 13 month| PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every 2 hours.Circa OS Transaction order `
+    /*Source:
+      ${source.silver}.marketplace_prd_order_v2_order_item
+      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
+    tags: ["custom_3h_past5"],
+    name: "cos_voucher_info",
+    columns: {
+        order_id: "NonNull |" + docs.order_id,
+        customer_id: "NonNull | The unique identifier for each customer"
+        
+    },
+    bigquery: {
+        partitionBy: "date(created_at)"
+    }
+}
+
+
+
+with t as (
+Select distinct
+         gift_id
+        ,gift_code
+        ,datetime_add(v.created_at, interval 7 hour) as voucher_created_at
+        ,voucher_id
+        ,voucher_code
+        ,customer_id as gift_for_customer_id
+        ,JSON_EXTRACT_SCALAR(order_code) as order_code_created
+        ,e.phone_number as gift_for_customer_phone
+        ,e.name as gift_for_customer_name
+        ,pr.code as pos_code
+FROM ${source.circa_os}.promotion_gift_voucher v,
+UNNEST(JSON_EXTRACT_ARRAY(assigned_order_codes)) AS order_code
+left join ${source.circa_os}.entity_customer e on v.customer_id = e.id
+left join ${source.ref}.cos_fact_order o on cast(JSON_EXTRACT_SCALAR(order_code) as string) = o.order_code
+left join ${source.circa_os}.entity_pos_profile pr on o.pos_id = pr.id
+where gift_code not like '%TEST%'
+)
+Select distinct 
+               us.code
+              ,t.order_code_created
+              ,datetime_add(us.created_at, interval 7 hour) as created_at
+              ,datetime_add(us.start_date, interval 7 hour) as start_date
+              ,datetime_add(us.end_date, interval 7 hour) as end_date
+              ,us.discount_value
+              ,us.percent
+              ,us.promotion_voucher_type
+              ,coalesce(o.entity_id,gift_for_customer_id) as customer_id
+              ,coalesce(e.phone_number,gift_for_customer_phone) as customer_phone
+              ,coalesce(e.name,gift_for_customer_name) as customer_name
+              ,voucher_created_at
+              ,datetime_add(ov.created_at, interval 7 hour) as date_used
+              ,case when ov.created_at is not null then "Yes"
+                     else "No"
+                     end as Is_used
+               ,ov.order_code as order_code_used
+               ,cp.code as campaign_code
+               ,cp.name as compaign_name
+               ,coalesce(pr.code,t.pos_code) as pos_code
+               ,pr.name as pos_name
+               ,us.client_id
+from ${source.circa_os}.promotion_promotion_voucher us  
+left join (Select * from ${source.circa_os}.order_order_voucher where is_valid = true) ov on ov.voucher_id = us.id
+left join t on us.code = t.voucher_code
+left join (Select * from ${source.ref}.cos_fact_order where status <> 'CANCELED' ) o on ov.order_id = o.order_id
+left join ${source.circa_os}.entity_pos_profile pr on o.pos_id = pr.id
+left join ${source.circa_os}.entity_customer e on o.entity_id = e.id
+left join ${source.circa_os}.promotion_promotion_campaign cp on us.promotion_campaign_id = cp.id and us.client_id = cp.client_id
+where us.is_sample = false
+       

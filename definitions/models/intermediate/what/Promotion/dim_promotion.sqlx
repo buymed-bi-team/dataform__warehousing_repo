@@ -72,5 +72,5 @@ LEFT JOIN (
 ) AS b ON a.promotion_id = b.promotion_id
 LEFT JOIN ${ref("dim_employee")} e
     ON a.created_by = e.branch_account_id
-WHERE
-    a.end_time >= TIMESTAMP_SUB('2023-01-01', INTERVAL 7 HOUR)
+-- WHERE
+--     a.end_time >= TIMESTAMP_SUB('2023-01-01', INTERVAL 7 HOUR)

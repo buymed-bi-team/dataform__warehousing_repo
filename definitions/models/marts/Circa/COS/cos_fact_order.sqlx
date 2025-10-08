@@ -51,9 +51,12 @@ cte_fs as
        ,datetime_add(o.created_at, interval 7 hour) as created_at
        ,fulfillment_status
        ,'' as reference_order_in_platform
-       ,datetime_add(completed_at, interval 7 hour) as end_pick_at
+       ,cast (null as timestamp) as end_pick_at
        ,datetime_add(completed_at, interval 7 hour) as completed_at
        ,date(datetime_add(completed_at, interval 7 hour))  as completed_date
+       ,cast (null as timestamp) as delivery_scheduled_time
+       ,cast (null as timestamp) as pre_order_scheduled_time
+       , cast (null as string) as pre_order_required
        ,medicine_cutting_fee
        ,string_agg(CAST(return_id as string)) as return_codes
        ,1 as client_id
@@ -89,6 +92,9 @@ group by all)
        ,datetime_add(o.end_pick_at, interval 7 hour) as end_pick_at
        ,coalesce(datetime_add(o.completed_at, interval 7 hour),datetime_add(o.updated_at, interval 7 hour))  as completed_at
        ,coalesce(date(datetime_add(o.completed_at, interval 7 hour)),date(datetime_add(o.updated_at, interval 7 hour)))  as completed_date
+       ,datetime_add(delivery_scheduled_time, interval 7 hour) as delivery_scheduled_time
+       ,datetime_add(pre_order_scheduled_time, interval 7 hour) as pre_order_scheduled_time
+       ,cast(pre_order_required as string) as pre_order_required
        ,medicine_cutting_fee -- tiền cắt liều
        ,string_agg(CAST(return_id as string)) as return_codes
        ,o.client_id
