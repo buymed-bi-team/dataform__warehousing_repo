@@ -17,6 +17,7 @@ config {
 }
 
 
- Select * from ${source.ref}.cos_fact_order
+ Select * from ${source.ref}.cos_fact_order o 
+ left join ${source.ref}.cos_fact_order_item i on o.order_id = i.order_id
  where origin_order_id in (Select order_id from ${source.ref}.cos_fact_order
                                         where pre_order_required = 'true')
