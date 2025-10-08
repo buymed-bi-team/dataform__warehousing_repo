@@ -50,7 +50,8 @@ cte_fs as
        ,date(datetime_add(o.created_at, interval 7 hour)) as created_date
        ,datetime_add(o.created_at, interval 7 hour) as created_at
        ,fulfillment_status
-       ,'' as reference_order_in_platform
+       ,cast (null as string) as reference_order_in_platform
+       ,cast(null as string) as origin_order_id
        ,cast (null as timestamp) as end_pick_at
        ,datetime_add(completed_at, interval 7 hour) as completed_at
        ,date(datetime_add(completed_at, interval 7 hour))  as completed_date
@@ -89,6 +90,7 @@ group by all)
        ,datetime_add(o.created_at, interval 7 hour) as created_at
        ,fulfillment_status
        ,reference_order_in_platform
+       ,o.origin_order_id
        ,datetime_add(o.end_pick_at, interval 7 hour) as end_pick_at
        ,coalesce(datetime_add(o.completed_at, interval 7 hour),datetime_add(o.updated_at, interval 7 hour))  as completed_at
        ,coalesce(date(datetime_add(o.completed_at, interval 7 hour)),date(datetime_add(o.updated_at, interval 7 hour)))  as completed_date
