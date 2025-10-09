@@ -38,4 +38,3 @@ Select o.*
  left join  ${source.ref}.cos_order_item_demand d on o.order_id = d.order_id
  where delivery_scheduled_time is not null
  group by all 
- order by o.status 
