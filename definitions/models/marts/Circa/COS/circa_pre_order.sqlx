@@ -17,13 +17,25 @@ config {
 }
 
 
- Select o.*
-        ,i.* except (order_id,completed_date,discount_amount,client_id)
-        ,i.discount_amount as discount_amount_item
-        ,concat(i.product_id, "_",i.client_id) as product_client_id
-        ,p.product_name
- from ${source.ref}.cos_fact_order o 
- left join ${source.ref}.cos_fact_order_item i on o.order_id = i.order_id
+Select o.*
+        ,coalesce(i.product_id, d.product_id) as product_id
+        ,coalesce(p.product_name, d.product_name) as product_name 
+        ,d.quantity as demand_quantity
+        ,d.unit as demand_unit
+        ,i.quantity as sales_qty
+        ,i.unit as sales_unit 
+        ,i.unit_price
+        ,i.unit_cost_price
+        ,sum (i.quantity * i.unit_price) as item_amount
+        ,i.lot_date
+        ,i.po_code
+        ,i.owner_name
+        ,i.distributor_id
+        ,concat(coalesce(i.product_id, d.product_id), "_",i.client_id) as product_client_id
+ from  ${source.ref}.cos_fact_order o 
+ left join  ${source.ref}.cos_fact_order_item i on o.order_id = i.order_id
  left join  ${source.ref}.cos_dim_product p on i.product_id = p.product_id and o.client_id = p.client_id
+ left join  ${source.ref}.cos_order_item_demand d on o.order_id = d.order_id
  where delivery_scheduled_time is not null
-       --and o.order_code <> 'DHC00263364'
+ group by all 
+ order by o.status 
