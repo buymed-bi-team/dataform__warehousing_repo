@@ -51,6 +51,7 @@ Select distinct r.code
 left join ${source.ref}.circa_pos_profile p on r.dest_pos_id = p.id and r.client_id = p.client_id
 where p.id is not null
       and r.type = 'TRANSFER_IN'
+      and r.status <> 'CANCELED'
       --and r.code = 'RCV00006775'
      and r.client_id = 1
 group by all
