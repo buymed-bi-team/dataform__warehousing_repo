@@ -91,7 +91,7 @@ from base_tracking
 left join base_unit cv on cv.product_id = base_tracking.product_id and rcv_unit = cv.convert_unit 
 group by all
 )
-Select to_check.* 
+Select to_check.* except (unit_id)
        ,concat(product_id,"_", pos_code) as product_pos_code
        ,concat(product_id, "_", client_id) as product_client_id
        ,case when to_check.put_base_qty <> po_base_qty then 'true'
