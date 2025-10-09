@@ -43,7 +43,7 @@ Select distinct r.code
                 ,unit as rcv_unit
                 ,sum(rid.received_quantity) as received_quantity
                 ,r.client_id
-                ,p.pos_code
+                ,p.code as pos_code
                 ,'TRANSFER_IN' as fulfillment_method
  from ${source.circa_os}.inventory_transfer_request r 
  left join ${source.circa_os}.inventory_transfer_item ri on r.id = ri.transfer_request_id 
