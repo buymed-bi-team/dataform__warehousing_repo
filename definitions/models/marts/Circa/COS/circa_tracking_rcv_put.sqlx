@@ -33,6 +33,7 @@ where b.rn = 1
 Select distinct r.code
                 ,r.status
                 ,r.id
+                ,ri.id as ref_item_id
                 ,dest_pos_id as pos_id
                 ,p.name as pos_name
                 ,datetime_add(r.created_at, interval 7 hour) as created_at
@@ -58,6 +59,7 @@ where p.id is not null
 group by all
 ),t as (
     select distinct put.ref_id
+                    ,putd.ref_id as ref_item_id
                    ,putd.product_id 
                    ,sum(putd.quantity)  as put_quantity
                    ,putd.unit as put_unit
@@ -75,6 +77,7 @@ select distinct rcv.*
                ,put_quantity * cv.convert_rate as put_base_qty 
 from rcv
 left join t on rcv.id = t.ref_id
+              and rcv.ref_item_id = t.ref_item_id
               and rcv.product_id = t.product_id   
               and rcv.client_id = t.client_id
 left join  ${source.ref}.cos_dim_product td on t.product_id = td.product_id
@@ -92,7 +95,7 @@ from base_tracking
 left join base_unit cv on cv.product_id = base_tracking.product_id and rcv_unit = cv.convert_unit 
 group by all
 )
-Select to_check.* except (unit_id)
+Select to_check.* except (unit_id,ref_item_id)
        ,concat(product_id,"_", pos_code) as product_pos_code
        ,concat(product_id, "_", client_id) as product_client_id
        ,case when to_check.put_base_qty <> po_base_qty then 'true'
@@ -100,3 +103,5 @@ Select to_check.* except (unit_id)
             when  to_check.total_put_quantity is null and to_check.received_quantity  =  0 then 'not_yet_have_item'
             else 'false' end as is_difference
 from to_check
+where code = 'RCV00008634'
+      and product_id = 2302
