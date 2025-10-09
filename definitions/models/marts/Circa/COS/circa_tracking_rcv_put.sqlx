@@ -103,5 +103,5 @@ Select to_check.* except (unit_id,ref_item_id)
             when  to_check.total_put_quantity is null and to_check.received_quantity  =  0 then 'not_yet_have_item'
             else 'false' end as is_difference
 from to_check
-where code = 'RCV00008634'
-      and product_id = 2302
+-- where code = 'RCV00008634'
+--       and product_id = 2302
