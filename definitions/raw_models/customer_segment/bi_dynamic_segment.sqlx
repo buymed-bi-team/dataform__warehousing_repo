@@ -15,10 +15,11 @@ WITH
                 , LOWER(SPLIT(code, "::")[SAFE_OFFSET(2)]) AS field
                 , TRIM( UPPER(value), "\'" ) AS value
                 , submit_id
+                , DATE(submit_at) AS submit_date
             FROM ${source.collector}.data_prd
             WHERE DATE(submit_at) >= "2025-10-01"
                 AND object = "CUSTOMER_SEGMENT"
-            QUALIFY ROW_NUMBER() over (PARTITION BY code, object ORDER BY submit_id) = 1
+            QUALIFY ROW_NUMBER() over (PARTITION BY code, object ORDER BY submit_id DESC ) = 1
         ) AS a
             , UNNEST(SPLIT(a.value, ",")) AS u
         WHERE NOT REGEXP_CONTAINS(segment_id, r'TECHTEST_IMPORT1|TECHTESTBASE|TECH_TEST_IMPORT2')
@@ -28,6 +29,7 @@ WITH
 SELECT
     segment_id,
     submit_id,
+    submit_date,
     -- Customer fields
     MAX(CASE WHEN table = 'CUSTOMER' AND field = 'customer_status' THEN value END) as customer_status,
     MAX(CASE WHEN table = 'CUSTOMER' AND field = 'customer_level' THEN value END) as customer_level,
@@ -57,7 +59,7 @@ SELECT
     MAX(CASE WHEN table = 'OPERATOR' THEN UPPER(COALESCE(value,CONCAT('"',field,'"'))) END) as operator
 FROM cte AS a
 GROUP BY ALL
-QUALIFY ROW_NUMBER() over (PARTITION BY segment_id ORDER BY submit_id DESC ) = 1
+-- QUALIFY ROW_NUMBER() over (PARTITION BY segment_id ORDER BY submit_id DESC ) = 1
 
 -- SELECT
 --     a.* EXCEPT(value)

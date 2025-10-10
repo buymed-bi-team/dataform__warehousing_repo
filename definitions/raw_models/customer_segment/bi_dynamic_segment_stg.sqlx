@@ -63,6 +63,10 @@ WITH
             AND channel IN ("MARKETPLACE", "CIRCA")
             AND order_status <> "CANCEL"
             AND (
+                sd.customer_order_status IS NULL
+                OR STRPOS(sd.customer_order_status, CONCAT('"',order_status,'"')) > 0
+            )
+            AND (
                 sd.start_date_time_range_count_sum IS NULL
                 OR DATE(created_at) BETWEEN sd.start_date_time_range_count_sum AND sd.end_date_time_range_count_sum
             )
@@ -131,14 +135,14 @@ WITH
                 sd.start_count_order IS NULL
                 OR (sd.count_order_operator = '>' AND q.no_order > SAFE_CAST(start_count_order AS INT64))
                 OR (sd.count_order_operator = '' AND COALESCE( q.no_order,0) = SAFE_CAST(start_count_order AS INT64) )
-                OR (sd.count_order_operator = '<' AND (q.no_order < SAFE_CAST(start_count_order AS INT64) OR q.no_order IS NULL))
+                OR (sd.count_order_operator = '<' AND (q.no_order < SAFE_CAST(start_count_order AS INT64) /*OR q.no_order IS NULL*/))
                 OR (sd.count_order_operator = '><' AND (q.no_order > SAFE_CAST(start_count_order AS INT64) AND q.no_order < SAFE_CAST(end_count_order AS INT64)))
             )
             AND (
                 sd.start_sum_gmv IS NULL
                 OR (sum_gmv_operator = '>' AND _gmv > SAFE_CAST(start_sum_gmv AS INT64))
                 OR (sum_gmv_operator = '' AND COALESCE( _gmv,0) = SAFE_CAST(start_sum_gmv AS INT64) )
-                OR (sum_gmv_operator = '<' AND (_gmv < SAFE_CAST(start_sum_gmv AS INT64) OR _gmv IS NULL))
+                OR (sum_gmv_operator = '<' AND (_gmv < SAFE_CAST(start_sum_gmv AS INT64) /*OR _gmv IS NULL*/))
                 OR (sum_gmv_operator = '><' AND (_gmv > SAFE_CAST(start_sum_gmv AS INT64) AND  _gmv < SAFE_CAST(start_sum_gmv AS INT64) ))
             )
 
