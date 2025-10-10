@@ -7,36 +7,11 @@ config {
 WITH
     segment_data AS (
         SELECT
-            segment_id,
-            -- Customer fields
-            MAX(CASE WHEN table = 'CUSTOMER' AND field = 'customer_status' THEN value END) as customer_status,
-            MAX(CASE WHEN table = 'CUSTOMER' AND field = 'customer_level' THEN value END) as customer_level,
-            MAX(CASE WHEN table = 'CUSTOMER' AND field = 'config_fc' THEN value END) as config_fc,
-            MAX(CASE WHEN table = 'CUSTOMER' AND field = 'province_name' THEN value END) as province_name,
-            MAX(CASE WHEN table = 'CUSTOMER' AND field = 'region_name' THEN value END) as region_name,
-            MAX(CASE WHEN table = 'CUSTOMER' AND field = 'customer_tag_group' THEN value END) as customer_tag_group,
-            MAX(CASE WHEN table = 'CUSTOMER' AND field = 'customer_tag_sub_group' THEN value END) as customer_tag_sub_group,
-            MAX(CASE WHEN table = 'CUSTOMER' AND field = 'count_order' THEN REGEXP_REPLACE(value, r' ','') END) as count_order,
-            MAX(CASE WHEN table = 'CUSTOMER' AND field = 'sum_gmv' THEN REGEXP_REPLACE(value, r' ','') END) as sum_gmv,
-            MAX(CASE WHEN table = 'CUSTOMER' AND field = 'time_range_count_sum' THEN REGEXP_REPLACE(value, r' ','') END) as time_range_count_sum,
-
-            -- Order1 fields
-            MAX(CASE WHEN table = 'ORDER1' AND field = 'created_at' THEN REGEXP_REPLACE(value, r' ','') END) as created_at1,
-            MAX(CASE WHEN table = 'ORDER1' AND field = 'seller_code' THEN value END) as seller_code1,
-            MAX(CASE WHEN table = 'ORDER1' AND field = 'product_id' THEN value END) as product_id1,
-
-            -- Order2 fields
-            MAX(CASE WHEN table = 'ORDER2' AND field = 'created_at' THEN REGEXP_REPLACE(value, r' ','') END) as created_at2,
-            MAX(CASE WHEN table = 'ORDER2' AND field = 'seller_code' THEN value END) as seller_code2,
-            MAX(CASE WHEN table = 'ORDER2' AND field = 'product_id' THEN value END) as product_id2,
-
-            -- Operator
-            MAX(CASE WHEN table = 'OPERATOR' THEN UPPER(COALESCE(value,CONCAT('"',field,'"'))) END) as operator
+            *
         FROM ${ref('bi_dynamic_segment')} AS a
         ${when(incremental(),
             `WHERE NOT EXISTS (SELECT 1 FROM ${self()} AS b WHERE a.segment_id = b.segment_id AND CURRENT_DATE("+7") = b.processed_date)`)
         }
-        GROUP BY segment_id
     ),
 
     get_start_end AS (
@@ -99,9 +74,13 @@ WITH
             DISTINCT oi.customer_id, sd.segment_id
         FROM ${ref('fact_order_item')} oi
             LEFT JOIN ${ref('fact_order')} o ON oi.order_id = o.order_id
-            , (SELECT start_date1, end_date1, seller_code1, product_id1, segment_id FROM get_start_end) sd
+            , (SELECT start_date1, end_date1, seller_code1, product_id1, segment_id, order_status1 FROM get_start_end) sd
         WHERE o.channel IN ("MARKETPLACE", "CIRCA")
             AND o.order_status <> "CANCEL"
+            AND (
+                sd.order_status1 IS NULL
+                OR STRPOS(sd.order_status1, CONCAT('"',o.order_status,'"')) > 0
+            )
             AND (
                 sd.start_date1 IS NULL
                 OR DATE(oi.created_at) BETWEEN sd.start_date1 AND sd.end_date1
@@ -115,9 +94,13 @@ WITH
             DISTINCT oi.customer_id, sd.segment_id
         FROM ${ref('fact_order_item')} oi
             LEFT JOIN ${ref('fact_order')} o ON oi.order_id = o.order_id
-            , (SELECT start_date2, end_date2, seller_code2, product_id2, segment_id FROM get_start_end) sd
+            , (SELECT start_date2, end_date2, seller_code2, product_id2, segment_id, order_status2 FROM get_start_end) sd
         WHERE o.channel IN ("MARKETPLACE", "CIRCA")
             AND o.order_status <> "CANCEL"
+            AND (
+                sd.order_status2 IS NULL
+                OR STRPOS(sd.order_status2, CONCAT('"',o.order_status,'"')) > 0
+            )
             AND (
                 sd.start_date2 IS NULL
                 OR DATE(oi.created_at) BETWEEN sd.start_date2 AND sd.end_date2
