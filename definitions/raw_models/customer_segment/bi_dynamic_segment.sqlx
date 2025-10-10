@@ -38,6 +38,7 @@ SELECT
     MAX(CASE WHEN table = 'CUSTOMER' AND field = 'customer_tag_sub_group' THEN value END) as customer_tag_sub_group,
     MAX(CASE WHEN table = 'CUSTOMER' AND field = 'count_order' THEN REGEXP_REPLACE(value, r' ','') END) as count_order,
     MAX(CASE WHEN table = 'CUSTOMER' AND field = 'sum_gmv' THEN REGEXP_REPLACE(value, r' ','') END) as sum_gmv,
+    MAX(CASE WHEN table = 'CUSTOMER' AND field = 'order_status' THEN value END) as customer_order_status,
     MAX(CASE WHEN table = 'CUSTOMER' AND field = 'time_range_count_sum' THEN REGEXP_REPLACE(value, r' ','') END) as time_range_count_sum,
 
     -- Order1 fields
