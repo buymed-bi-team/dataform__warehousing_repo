@@ -123,16 +123,19 @@ i.seller_code,
     group by all)
 ,check_unit_pricing as
     (
-        select product_id,
-               max(case when sale_unit_price >= 0 then 0 else 1 end ) as check_price_unit
-        from combine
-        where unit is not null
-        group by all
+         select distinct
+        product_id
+        ,count(*) as total_units
+        ,sum(case when sale_unit_price is null then 1 else 0 end) as unset_units
+    from combine
+    group by product_id
     )
 ,_all as (
-select i.*,
-       case when (cup.check_price_unit = 1 and i.unit is not null) or price_set_check like "Price not set" then "contain unit not set"
-       else "set full" end as check_unit_price_set
+select i.*
+       ,case 
+           when cup.unset_units = cup.total_units then "not set full"
+           when cup.unset_units > 0 then "contain unit not set"
+           else "set full" end as check_unit_price_set
        ,1 as client_id
 from combine i
 left join check_unit_pricing cup on i.product_id= cup.product_id 
