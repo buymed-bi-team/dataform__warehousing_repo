@@ -7,11 +7,12 @@ config {
 }
 
 Select o.*
-      ,i.* except (client_id, name)
+      ,i.* except (client_id, name,product_id,product_thuocsi_id)
       ,case when unit_price > min_price then '> thuocsi_price'
             when unit_price < min_price then '< thuocsi_price'
             when unit_price = min_price then '= thuocsi_price'
             else null end as compare_price
+       ,concat(o.product_id, "_", o.client_id) as product_client_id
        ,'yes' as is_same_unit
 from  ${source.ref}.circafs_lastest_price o 
 left join  ${source.ref}.thuocsi_price_by_level i on o.product_thuocsi_id = i.product_thuocsi_id
@@ -21,11 +22,12 @@ union all
 
 
  Select o.*
-      ,i.* except (client_id, name)
-      ,case when round(o.base_unit_price) > round(i.base_unit_price) then '> thuocsi_price'
-            when  round(o.base_unit_price) < round(i.base_unit_price) then '< thuocsi_price'
-            when  round(o.base_unit_price) = round(i.base_unit_price) then '= thuocsi_price'
+      ,i.* except (client_id, name,product_id,product_thuocsi_id)
+      ,case when round(o.base_unit_price) > round(i.base_unit_price_thuocsi) then '> thuocsi_price'
+            when  round(o.base_unit_price) < round(i.base_unit_price_thuocsi) then '< thuocsi_price'
+            when  round(o.base_unit_price) = round(i.base_unit_price_thuocsi) then '= thuocsi_price'
             else 'can_not_convert_price' end as compare_price
+       ,concat(o.product_id, "_", o.client_id) as product_client_id
        ,'no' as is_same_unit
 from  ${source.ref}.circafs_lastest_price o 
 left join  ${source.ref}.thuocsi_price_by_level i on o.product_thuocsi_id = i.product_thuocsi_id

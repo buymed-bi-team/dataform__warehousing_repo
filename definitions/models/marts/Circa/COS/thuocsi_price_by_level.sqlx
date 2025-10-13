@@ -55,7 +55,7 @@ left join ${source.ref}.circa_pos_profile p on price.customer_id = p.thuocsi_id
 Select distinct p.*
       ,po.name
       ,r.* except (product_id,client_id)
-      ,p.min_price/ convert_rate as base_unit_price
+      ,p.min_price/ convert_rate as base_unit_price_thuocsi
  from _all p 
 left join gold_buymed_vn2.circa_pos_profile po on p.customer_id = po.thuocsi_id
 left join gold_buymed_vn2.cos_product_convert_base_unit r on p.product_id = r.product_id 
