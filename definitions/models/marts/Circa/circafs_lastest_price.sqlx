@@ -45,7 +45,7 @@ where product_id in (Select distinct product_id from ${source.ref}.dim_product)
 order by p.name, latest_order desc
 )
 Select sku_circa.*
-     ,sku_circa.unit_price * convert_rate as base_unit_price
+     ,sku_circa.unit_price/ convert_rate as base_unit_price
 from sku_circa
 left join ${source.ref}.cos_product_convert_base_unit r on sku_circa.product_id = r.product_id 
                                                                and sku_circa.unit = r.convert_unit
