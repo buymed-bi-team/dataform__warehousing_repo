@@ -23,7 +23,7 @@ from (
          , o.created_at
          , o.fulfillment_method
          , row_number() over (
-             partition by i.product_id, o.client_id, o.fulfillment_method
+             partition by i.product_id, o.pos_id
              order by o.created_at desc
            ) as rn
     from ${source.ref}.cos_purchase_order o
