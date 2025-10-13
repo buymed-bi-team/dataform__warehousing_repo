@@ -29,7 +29,7 @@ from (
     from ${source.ref}.cos_purchase_order o
     left join ${source.ref}.cos_purchase_order_item i on o.po_id = i.po_id
     where o.client_id <> 1
-        and fulfillment_method <> 'SO_THUOCSI'
+        and fulfillment_method =  'EXTERNAL'
 )
 where rn = 1
 ), sku_circa as (
