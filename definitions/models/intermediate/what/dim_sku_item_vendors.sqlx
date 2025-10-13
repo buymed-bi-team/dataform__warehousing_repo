@@ -1,6 +1,6 @@
 config {
     type: "view",
-    description: "Source: seller_prd_purchasing_sku_config | PIC: dong.le",
+    description: "Source: seller_prd_purchasing_sku_config | PIC: nguyen.tran",
     name: "dim_sku_item_vendors",
     columns: {
       sku_code: "sku identifier", fc_code: "warehouse code", purchaser_code: "code of the purchaser",
@@ -26,6 +26,7 @@ SELECT
   JSON_VALUE(vendor, "$.min_per_step") AS min_per_step,
   v.supplier_name AS vendor_name,
   v.supplier_type AS vendor_type,
+  v.commercial_supplier_name,
   case
     when s.is_active is True then 'On'
     when s.is_active is False then 'Off'
