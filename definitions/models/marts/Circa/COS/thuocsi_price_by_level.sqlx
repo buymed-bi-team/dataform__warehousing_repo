@@ -1,0 +1,48 @@
+config {
+    type: "table",
+    description: `Tracking price for Circa OS
+             PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 past hour 6, 8, 10, 12, 14, 16, 18, 20 and 22`,
+    tags: ["custom_2h_past5"],
+    name: "thuocsi_price_by_level",
+}
+ 
+ 
+with fee as (
+ 
+SELECT DISTINCT
+    c.province_name
+    ,c.district_name
+    ,c.sales_region_code
+    ,a.fee_value
+    ,a.district_code
+    , CONCAT("Delivery_Fee_", DENSE_RANK() over (ORDER BY a.fee_value) ) as delivery_level
+FROM (
+    SELECT
+        code as district_code
+        ,fee_value
+    FROM platinum_buymed_vn.marketplace_prd_pricing_v2_setting
+    WHERE
+        type = 'DELIVERY_REGION' OR type is null
+        AND LENGTH(code) = 3
+    QUALIFY ROW_NUMBER() over (PARTITION BY type, code ORDER BY synced_at DESC, last_updated_time DESC) = 1
+) as a
+    LEFT JOIN gold_buymed_vn2.dim_geo_location AS c
+        ON c.district_code = a.district_code
+WHERE
+    c.sales_region_code is not null
+ 
+), price as (
+Select distinct m.customer_id
+      ,p.product_id
+      ,td.unit as thuocsi_unit
+      ,min(p.sku_display_price) as min_price
+      ,concat(p.product_id,'_',customer_id ) as product_thuocsi_id
+from gold_buymed_vn2.dim_customer m
+left join fee on m.district_code = fee.district_code
+left join gold_buymed_vn2.adhoc_pricing_full p on fee.delivery_level = p.delivery_fee and m.customer_level = p.customer_level and p.sales_region_code = m.config_fc
+left join gold_buymed_vn2.dim_product td on p.product_id = td.product_id
+where m.customer_id in  (Select distinct thuocsi_id from gold_buymed_vn2.circa_pos_profile where type = 'FS')
+group by all
+)
+ 
+Select * from price
