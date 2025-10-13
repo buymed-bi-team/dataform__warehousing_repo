@@ -1,0 +1,52 @@
+config {
+    type: "table",
+    description: `thuocsi_price_by_level
+             PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 past hour 6, 8, 10, 12, 14, 16, 18, 20 and 22`,
+    tags: ["custom_2h_past5"],
+    name: "circafs_lastest_price",
+}
+ 
+ with t as (
+select distinct product_id
+     ,unit_price
+     ,unit
+     ,pos_id
+     , client_id
+     , created_at as latest_order
+     , fulfillment_method
+from (
+    select i.product_id
+         ,i.unit_price
+         ,unit
+         ,pos_id
+         , o.client_id
+         , o.created_at
+         , o.fulfillment_method
+         , row_number() over (
+             partition by i.product_id, o.client_id, o.fulfillment_method
+             order by o.created_at desc
+           ) as rn
+    from ${source.ref}.cos_purchase_order o
+    left join ${source.ref}.cos_purchase_order_item i on o.po_id = i.po_id
+    where o.client_id <> 1
+        and fulfillment_method <> 'SO_THUOCSI'
+)
+where rn = 1
+), sku_circa as (
+Select t.*
+,p.thuocsi_id
+,concat(product_id,'_',thuocsi_id) as product_thuocsi_id
+,p.name
+,m.customer_level
+from t
+left join ${source.ref}.circa_pos_profile p on t.pos_id = p.id
+left join ${source.ref}.dim_customer  as  m on p.thuocsi_id = m.customer_id
+where product_id in (Select distinct product_id from ${source.ref}.dim_product)
+order by p.name, latest_order desc
+)
+Select sku_circa.*
+     ,sku_circa.unit_price * convert_rate as base_unit_price
+from sku_circa
+left join ${source.ref}.cos_product_convert_base_unit r on sku_circa.product_id = r.product_id 
+                                                               and sku_circa.unit = r.convert_unit
+                                                               and sku_circa.client_id = r.client_id 
