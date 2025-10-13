@@ -26,7 +26,7 @@ union all
       ,case when round(o.base_unit_price) > round(i.base_unit_price_thuocsi) then '> thuocsi_price'
             when  round(o.base_unit_price) < round(i.base_unit_price_thuocsi) then '< thuocsi_price'
             when  round(o.base_unit_price) = round(i.base_unit_price_thuocsi) then '= thuocsi_price'
-            else 'can_not_convert_price' end as compare_price
+            else 'can_not_convert_unit' end as compare_price
        ,concat(o.product_id, "_", o.client_id) as product_client_id
        ,'no' as is_same_unit
 from  ${source.ref}.circafs_lastest_price o 
