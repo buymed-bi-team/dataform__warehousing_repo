@@ -115,7 +115,7 @@ with
                 a.retail_price_value * 0.02 * d.fee_value                                          -- Customer Level
                     * IF( p.is_combo AND a.seller_class = "EXTERNAL", 1, COALESCE(b.fee_value,1))  -- Dynamic Level
                     * c.fee_value                                                                  -- Price Range
-                    * IF(a.pricing_strategy = 0, 1, a.pricing_strategy),                           -- Pricing Strategy
+                    * COALESCE(NULLIF(a.pricing_strategy, 0),1),                           -- Pricing Strategy
                 null
             ) as platform_fee,
 
