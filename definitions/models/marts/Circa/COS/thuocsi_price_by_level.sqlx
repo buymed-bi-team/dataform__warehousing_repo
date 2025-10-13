@@ -1,6 +1,6 @@
 config {
     type: "table",
-    description: `Tracking price for Circa OS
+    description: `thuocsi_price_by_level
              PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 past hour 6, 8, 10, 12, 14, 16, 18, 20 and 22`,
     tags: ["custom_2h_past5"],
     name: "thuocsi_price_by_level",
@@ -45,6 +45,8 @@ where m.customer_id in  (Select distinct thuocsi_id from ${source.ref}.circa_pos
 group by all
 )
  
-Select *
+Select price.*
       ,concat(product_id,'_',lower(thuocsi_unit )) as productid_unit
+      ,p.client_id
 from price
+left join ${source.ref}.circa_pos_profile p on price.customer_id = p.thuocsi_id
