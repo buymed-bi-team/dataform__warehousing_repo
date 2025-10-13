@@ -1,5 +1,5 @@
 config {
-    type: "view",
+    type: "table",
     //disabled: true,
     description: `Last 13 month| PIC: huyen.ngo`,
     name: "circa_pos_profile"

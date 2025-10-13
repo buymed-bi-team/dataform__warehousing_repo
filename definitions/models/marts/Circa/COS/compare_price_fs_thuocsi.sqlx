@@ -1,0 +1,34 @@
+config {
+    type: "table",
+    description: `compare_price_fs_thuocsi
+             PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 past hour 6, 8, 10, 12, 14, 16, 18, 20 and 22`,
+    tags: ["custom_2h_past5"],
+    name: "compare_price_fs_thuocsi",
+}
+
+Select o.*
+      ,i.* except (client_id, name)
+      ,case when unit_price > min_price then '> thuocsi_price'
+            when unit_price < min_price then '< thuocsi_price'
+            when unit_price = min_price then '= thuocsi_price'
+            else null end as compare_price
+       ,'yes' as is_same_unit
+from  ${source.ref}.circafs_lastest_price o 
+left join  ${source.ref}.thuocsi_price_by_level i on o.product_thuocsi_id = i.product_thuocsi_id
+where i.customer_id is not null
+       and o.unit = lower(i.thuocsi_unit)
+union all
+
+
+ Select o.*
+      ,i.* except (client_id, name)
+      ,case when round(o.base_unit_price) > round(i.base_unit_price) then '> thuocsi_price'
+            when  round(o.base_unit_price) < round(i.base_unit_price) then '< thuocsi_price'
+            when  round(o.base_unit_price) = round(i.base_unit_price) then '= thuocsi_price'
+            else 'can_not_convert_price' end as compare_price
+       ,'no' as is_same_unit
+from  ${source.ref}.circafs_lastest_price o 
+left join  ${source.ref}.thuocsi_price_by_level i on o.product_thuocsi_id = i.product_thuocsi_id
+where i.customer_id is not null
+       and o.unit <> lower(i.thuocsi_unit)
+
