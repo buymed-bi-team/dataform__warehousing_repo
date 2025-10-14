@@ -61,13 +61,13 @@ SELECT
     rebate,
     a.contract_price_code,
     b.contract_price_id,
-    SAFE_CAST(JSON_VALUE(a.extra_props, '$.is_fav_vendor') AS BOOLEAN) AS is_fav_vendor,
-    SAFE_CAST(JSON_VALUE(a.extra_props, '$.is_active_contract_price') AS BOOLEAN) AS is_active_contract_price,
+    IFNULL(SAFE_CAST(JSON_VALUE(a.extra_props, '$.is_fav_vendor') AS BOOLEAN), FALSE) AS is_fav_vendor,
+    IFNULL(SAFE_CAST(JSON_VALUE(a.extra_props, '$.is_active_contract_price') AS BOOLEAN), FALSE) AS is_active_contract_price,
     SAFE_CAST(JSON_VALUE(a.extra_props, '$.rebate_log.save_rebate_percent') AS FLOAT64) AS rebate_reserve
 FROM ${ref('platinum_buymed_vn','seller_prd_promotion_log_price_after_rebate')} AS a
     LEFT JOIN contract_price AS b ON a.contract_price_code = b.contract_price_code
 WHERE
     created_date >= '2024-01-01'
     AND warehouse_code IN ('BD', 'HN', 'DN')
-QUALIFY ROW_NUMBER() OVER (PARTITION BY product_id, warehouse_code,vendor_code, rebate_date ORDER BY start_time DESC, last_updated_time DESC) = 1
+QUALIFY ROW_NUMBER() OVER (PARTITION BY product_id, warehouse_code,vendor_code, rebate_date ORDER BY is_fav_vendor DESC, is_active_contract_price DESC, start_time DESC, last_updated_time DESC) = 1
 
