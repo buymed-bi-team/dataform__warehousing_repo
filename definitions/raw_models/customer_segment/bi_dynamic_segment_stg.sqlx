@@ -10,7 +10,12 @@ WITH
             *
         FROM ${ref('bi_dynamic_segment')} AS a
         ${when(incremental(),
-            `WHERE NOT EXISTS (SELECT 1 FROM ${self()} AS b WHERE a.segment_id = b.segment_id AND CURRENT_DATE("+7") = b.processed_date)`)
+            `WHERE NOT EXISTS (SELECT 1 
+                                FROM ${self()} AS b 
+                                WHERE a.segment_id = b.segment_id 
+                                AND CURRENT_DATE("+7") = b.processed_date
+                                AND a.submit_id = b.submit_id)`
+            )
         }
     ),
 
