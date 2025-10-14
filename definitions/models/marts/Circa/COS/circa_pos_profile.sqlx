@@ -4,7 +4,7 @@ config {
     description: `Last 13 month| PIC: huyen.ngo`,
     name: "circa_pos_profile"
 }
-
+with t as (
 select p.*
        ,s.* except (status)
        ,case when p.code = 'POS0010' then 'Active'
@@ -17,3 +17,8 @@ where type in ('CIRCA', 'FS')
     and code not in ('POS0006','POS0024','POS0030','POS0001','POS0047','POS0020','POS0020')
     --and s.pos_code is null
    
+)
+Select t.*
+      ,customer_level
+from t 
+left join ${source.ref}.dim_customer m on t.thuocsi_id = m.customer_id

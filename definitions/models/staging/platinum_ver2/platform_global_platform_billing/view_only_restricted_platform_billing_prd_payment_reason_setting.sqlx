@@ -1,16 +1,16 @@
 config {
-    type: "table",
+    type: "view",
     name: "platform_billing_prd_payment_reason_setting",
     description: "PIC: minhLuu ; Internal: Accounting/Payment",
     schema: "platinum_buymed_vn_restricted",
-    assertions: {
-        uniqueKey: 'mg_id',
-        nonNull: ["created_date"]
-    },
-    bigquery: {
-        partitionBy: "created_date"
-    },
-    tags: ["platinum_custom_2h_past7","platform_billing_prd_payment"]
+    // assertions: {
+    //     uniqueKey: 'mg_id',
+    //     nonNull: ["created_date"]
+    // },
+    // bigquery: {
+    //     partitionBy: "created_date"
+    // },
+    tags: ["platform_billing_prd_payment"]
 }
 SELECT
  *,

@@ -14,6 +14,8 @@ select distinct product_id
      , client_id
      , created_at as latest_order
      , fulfillment_method
+     ,vendor as last_vendor
+     ,distributor_id
 from (
     select i.product_id
          ,i.unit_price
@@ -22,6 +24,8 @@ from (
          , o.client_id
          , o.created_at
          , o.fulfillment_method
+         ,o.vendor
+         ,o.distributor_id
          , row_number() over (
              partition by i.product_id, o.pos_id
              order by o.created_at desc
