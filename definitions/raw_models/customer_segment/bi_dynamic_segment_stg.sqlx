@@ -122,6 +122,7 @@ WITH
         SELECT
             c.customer_id,
             sd.segment_id,
+            sd.submit_id,
             CURRENT_TIMESTAMP()  + INTERVAL 7 HOUR AS processed_at
         FROM ${ref('dim_customer')} c
             LEFT JOIN ${ref('dim_geo_location')} AS g ON c.location_code= g.location_code
@@ -179,6 +180,7 @@ SELECT
     , DATE(processed_at) AS processed_date
     , COUNT(1) AS total_customers
     , ARRAY_AGG(customer_id) AS customer_list
+    , submit_id
 FROM final AS s
 -- WHERE segment_id IS NOT NULL
 --     AND NOT EXISTS (
