@@ -114,7 +114,7 @@ select
     , vcpic.commitment_leadtime
     , IF(uns.value IS NOT NULL, "UNSTABLE", NULL) as unstable
     , it.type as internal_transfer
-    , reason.reason_turnoff
+    , IF(sku.purchase_status = "Off", reason.reason_turnoff, NULL) AS reason_turnoff
     , vcpic.cic_category_username as vendor_cic_name
     , vcpic.pic_purchase_username as vendor_pic_name
     , TIMESTAMP( JSON_EXTRACT_SCALAR(JSON_QUERY(level_.extra_props, '$.level_special'), '$.time_start_apply_level')) as time_start_apply_level
