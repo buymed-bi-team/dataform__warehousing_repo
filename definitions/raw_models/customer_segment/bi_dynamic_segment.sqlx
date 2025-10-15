@@ -27,7 +27,7 @@ WITH
 )
 
 SELECT
-    segment_id,
+    TRIM(segment_id) AS segment_id,
     submit_id,
     submit_date,
     -- Customer fields

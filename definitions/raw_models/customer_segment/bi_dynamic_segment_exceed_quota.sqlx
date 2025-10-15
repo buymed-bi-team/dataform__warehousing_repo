@@ -12,5 +12,9 @@ SELECT
     , customer_list
 FROM ${ref('bi_dynamic_segment_stg')} AS s
     LEFT JOIN ${ref('dim_voucher')} AS v ON v.voucher_code = segment_id
-WHERE total_customers > 32000
+WHERE 1=1
+    -- AND total_customers > 32000
+    AND DATE(v.end_date) >= CURRENT_DATE("+7")
+    AND voucher_id IS NOT NULL
 QUALIFY ROW_NUMBER() OVER(PARTITION BY segment_id ORDER BY processed_date DESC) = 1
+    AND FIRST_VALUE(total_customers) over (PARTITION BY segment_id ORDER BY processed_date DESC) > 32000
