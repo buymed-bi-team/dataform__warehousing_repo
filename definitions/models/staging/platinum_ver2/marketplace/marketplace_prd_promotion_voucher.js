@@ -26,7 +26,8 @@ model.assertUnique(
     ["0h00","12h00", "platinum_unique_assertion", "marketplace_prd_promotion"],
     {
         intervalCheckpoint : `INTERVAL 3 MONTH`,
-        maxRetry: 2
+        maxRetry: 2,
+        dependencies: [{schema:"platinum_buymed_vn",name:"marketplace_prd_promotion_voucher"}]
     }
 )
 model.createMismatchAssertionView(
