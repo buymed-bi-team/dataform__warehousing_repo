@@ -1,0 +1,51 @@
+config {
+    type: "view",
+    schema: "platinum_buymed_vn",
+    name: "marketplace_prd_promotion_voucher",
+    description : `
+    PIC: minh.luu
+    Partition by: created date
+    Cluster by: ["code","voucher_id","status","type"]
+    `,
+    tags:["platinum","marketplace_prd_promotion"]
+}
+  WITH silver AS (
+    SELECT
+      key,mg_id,usage_type,start_time,applied_customers,created_by_user_name,promotion_id,promotion_name,public_time,max_usage,type,status,created_by,voucher_id,code,end_time,max_usage_per_customer,created_time,hash_tag,last_updated_time,updated_by,usage_total,and_conditions,apply_type,customer_apply_type,display_name,promotion_type,rewards,scopes,system_note,is_migrate_user_code,system_display,voucher_group_code,max_auto_apply_count,voucher_status,synced_at,extra_props,action,ingest_time,
+      
+        CASE
+            WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time, 'Asia/Ho_Chi_Minh'))
+            ELSE DATE( '2099-01-01' )
+        END
+     created_date,
+      CAST(null as datetime) 
+    FROM silver_buymed_vn.marketplace_prd_promotion_voucher
+    WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 1 DAY
+    QUALIFY ROW_NUMBER() OVER (_window) = 1 
+          AND ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 16 HOUR
+          WINDOW _window AS (
+          PARTITION BY mg_id
+          ORDER BY synced_at DESC,
+          IF
+              (action='d',3,
+              IF
+              (action='u',2,1)) DESC
+          ,last_updated_time DESC)
+  ), platinum AS (
+    SELECT 
+      key,mg_id,usage_type,start_time,applied_customers,created_by_user_name,promotion_id,promotion_name,public_time,max_usage,type,status,created_by,voucher_id,code,end_time,max_usage_per_customer,created_time,hash_tag,last_updated_time,updated_by,usage_total,and_conditions,apply_type,customer_apply_type,display_name,promotion_type,rewards,scopes,system_note,is_migrate_user_code,system_display,voucher_group_code,max_auto_apply_count,voucher_status,synced_at,extra_props,action,ingest_time,
+      created_date,
+      platinum_refresh
+    FROM ${ref(`platinum_buymed_vn__stg`, `marketplace_prd_promotion_voucher`)}
+  )
+  SELECT p.*
+  FROM platinum p
+  LEFT JOIN silver s 
+      ON p.mg_id = s.mg_id 
+  WHERE s.mg_id is null 
+
+  UNION ALL 
+
+  SELECT s.*
+  FROM silver s
+  WHERE action <> "d"
