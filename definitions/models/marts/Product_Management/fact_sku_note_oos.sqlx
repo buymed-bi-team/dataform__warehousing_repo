@@ -140,7 +140,7 @@ WITH
                 AND DATE(b.oos_time) = ps.date
         WHERE
             (
-                (a.seller_code = "MEDX"
+                (a.seller_code IN ("MEDX","BML_INT")
                     -- AND EXISTS (SELECT 1 FROM gmv WHERE gmv.sku_key_sales_region_code = a.sku_key_sales_region_code)
                 )
                 OR ( a.seller_class = "EXTERNAL"
