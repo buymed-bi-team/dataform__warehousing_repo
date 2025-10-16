@@ -51,7 +51,7 @@ FROM ${ref('dim_sku_sales_region_current')} AS a
         QUALIFY ROW_NUMBER() over (PARTITION BY item_code ORDER BY note_created_time DESC) = 1
     ) AS n ON n.item_code = a.sub_sku_code
     LEFT JOIN ${source.external}.nearly_oos_transfer_seller AS ts ON ts.product_id = a.product_id AND ts.sales_region_code = a.sales_region_code
-WHERE a.seller_code = "MEDX"
+WHERE a.seller_code IN ("MEDX", "BML_INT")
     AND a.available_qty < b.avg_demand
     AND a.sku_system_status IN ("LIMIT", "NORMAL")
     AND ts.product_id IS NULL
