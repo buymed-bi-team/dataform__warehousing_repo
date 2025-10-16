@@ -22,7 +22,7 @@ config {
       CAST(null as datetime) 
     FROM silver_buymed_vn.warehouse_prd_inventory_sku_location
     WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 1 DAY
-    AND created_time IS NULL AND last_updated_time IS NULL 
+    -- AND created_time IS NULL AND last_updated_time IS NULL 
 
     QUALIFY ROW_NUMBER() OVER (_window) = 1 
           AND ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 16 HOUR
