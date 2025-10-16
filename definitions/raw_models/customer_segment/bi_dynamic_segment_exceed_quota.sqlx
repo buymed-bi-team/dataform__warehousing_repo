@@ -17,5 +17,5 @@ WHERE 1=1
     -- AND total_customers > 32000
     AND DATE(v.end_date) >= CURRENT_DATE("+7")
     AND voucher_id IS NOT NULL
-QUALIFY ROW_NUMBER() OVER(PARTITION BY segment_id ORDER BY processed_date DESC) = 1
+QUALIFY ROW_NUMBER() OVER(PARTITION BY segment_id ORDER BY processed_date DESC, submit_id DESC) = 1
     AND FIRST_VALUE(total_customers) over (PARTITION BY segment_id ORDER BY processed_date DESC) > 32000
