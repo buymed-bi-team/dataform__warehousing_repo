@@ -81,7 +81,24 @@ WITH
     , query_order1 AS (
         SELECT
             DISTINCT oi.customer_id, sd.segment_id
-        FROM ${ref('fact_order_item')} oi
+        FROM (
+            SELECT
+                order_id
+                , customer_id
+                , seller_code
+                , product_id
+                , created_at
+            FROM ${ref('fact_order_item')}
+            UNION DISTINCT
+            SELECT
+                order_id
+                , customer_id
+                , seller_code
+                , product_id
+                , created_at
+            FROM ${ref('fact_order_item_historical')}
+            WHERE DATE(created_at) < DATE_TRUNC(CURRENT_DATE("+7"), MONTH) - INTERVAL 12 MONTH
+        ) AS oi
             LEFT JOIN ${ref('fact_order')} o ON oi.order_id = o.order_id
             , (SELECT start_date1, end_date1, seller_code1, product_id1, segment_id, order_status1 FROM get_start_end) sd
         WHERE o.channel IN ("MARKETPLACE", "CIRCA")
