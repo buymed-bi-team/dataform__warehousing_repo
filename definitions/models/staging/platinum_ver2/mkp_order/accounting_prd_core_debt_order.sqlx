@@ -1,0 +1,30 @@
+config {
+    type: "view",
+    schema: "platinum_buymed_vn_restricted",
+    name: "accounting_prd_core_debt_order",
+    description: "PIC: MinhLuu",
+    tags: ["accounting_prd_core"]
+}
+
+SELECT
+ *,
+ CASE 
+    WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
+    ELSE "2099-01-01"
+  END AS created_date
+FROM ${source.silver_restricted}.accounting_prd_core_debt_order o 
+ QUALIFY ROW_NUMBER() OVER (_window) = 1
+       AND FIRST_VALUE(action) OVER (_window) <> 'd'
+WINDOW
+  _window AS (
+  PARTITION BY
+    mg_id
+  ORDER BY
+    synced_at DESC,
+  IF
+    (action='d',3,
+    IF
+      (action='u',2,1)) DESC,
+    last_updated_time DESC
+)
+
