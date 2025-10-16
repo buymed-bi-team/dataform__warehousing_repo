@@ -17,6 +17,7 @@ config {
 SELECT
   a.product_id,
   c.sku_code,
+  a.seller_code,
   c.sku_key,
   c.sub_sku_code,
   c.sales_region_code,

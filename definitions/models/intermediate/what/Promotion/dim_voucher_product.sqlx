@@ -29,7 +29,7 @@ SELECT DISTINCT
     , s.product_id
     , SAFE_CAST(JSON_VALUE(p.product_tag_condition.min_total_price) AS INT64) as mov
     , SAFE_CAST(JSON_VALUE(p.product_tag_condition.min_quantity) AS INT64) as min_sku_quantity
-    , JSON_VALUE(p.product_tag_condition.seller_code) as seller_code
+    , COALESCE(JSON_VALUE(p.product_tag_condition.seller_code), s.seller_code) as seller_code
     , v.campaign_brand
     , v.charge_fee
 FROM ${ref('dim_voucher')} as v
@@ -52,7 +52,7 @@ SELECT DISTINCT
     , s.product_id
     , SAFE_CAST(JSON_VALUE(p.product_tag_condition.min_total_price) AS INT64) as mov
     , SAFE_CAST(JSON_VALUE(p.product_tag_condition.min_quantity) AS INT64) as min_sku_quantity
-    , JSON_VALUE(p.product_tag_condition.seller_code) as seller_code
+    , COALESCE(JSON_VALUE(p.product_tag_condition.seller_code), s.seller_code) as seller_code
     , v.campaign_brand
     , v.charge_fee
 FROM ${ref('dim_voucher')} as v
