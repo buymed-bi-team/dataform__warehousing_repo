@@ -1,0 +1,156 @@
+config {
+    type: "view",
+    schema: "de_buymed_vn",
+    name: "metadata_table",
+    description: "PIC: MinhLuu, bigquery all table metadata"
+}
+
+WITH table_metadata AS (
+  SELECT
+    table_id,
+    dataset_id,
+    dataset_id || "." || table_id full_table_id,
+    TIMESTAMP_MILLIS(last_modified_time) last_modified_time,
+    TIMESTAMP_MILLIS(creation_time) creation_time,
+    row_count,
+    CASE 
+      WHEN size_bytes / (1024 * 1024 * 1024) > 1 THEN CAST(size_bytes / (1024 * 1024 * 1024) AS STRING ) || " GB" 
+      WHEN size_bytes / (1024 * 1024 ) > 1 THEN CAST(size_bytes / (1024 * 1024 ) AS STRING ) || " MB" 
+      ELSE  CAST(size_bytes AS STRING ) || " byte" 
+    END AS readable_size,
+    size_bytes,
+    CASE
+      WHEN type = 1 THEN "BASE TABLE"
+      WHEN type = 2 THEN "VIEW"
+      WHEN type = 3 THEN "EXTERNAL"
+      WHEN type = 6 THEN "SNAPSHOT"
+      WHEN type = 5 THEN "CLONE"
+      ELSE "UNKNOWN"
+    END AS table_type,
+
+  FROM (
+    SELECT * FROM silver_buymed_vn.__TABLES__
+    UNION ALL 
+    SELECT * FROM silver_buymed_vn_restricted.__TABLES__
+    UNION ALL
+    SELECT * FROM silver_buymed_th.__TABLES__
+    UNION ALL
+    SELECT * FROM silver_buymed_cam.__TABLES__
+    UNION ALL 
+    SELECT * FROM platinum_buymed_vn.__TABLES__
+    UNION ALL 
+    SELECT * FROM platinum_buymed_vn_restricted.__TABLES__
+    UNION ALL
+    SELECT * FROM platinum_buymed_th.__TABLES__
+    UNION ALL
+    SELECT * FROM platinum_buymed_cam.__TABLES__
+    UNION ALL
+    SELECT * FROM platinum_buymed_vn__stg.__TABLES__
+    UNION ALL 
+    SELECT * FROM platinum_buymed_vn_restricted__stg.__TABLES__
+    UNION ALL
+    SELECT * FROM platinum_buymed_th__stg.__TABLES__
+    UNION ALL
+    SELECT * FROM platinum_buymed_cam__stg.__TABLES__
+  )
+  WHERE table_id not like "%historical_cut_off"
+  AND table_id not like "%_migrate"
+  AND table_id not like "%_drop%"
+
+  AND dataset_id || "." || table_id NOT IN (
+    -- Deprecated tables and view
+    "silver_buymed_vn.archived_onboarding_tickets_biglake",
+    "silver_buymed_vn.backup_mis_biglake",
+    "silver_buymed_vn.fin_backup_medx_margin_biglake",
+    "silver_buymed_vn.view_medxoutbound_fact_invoice_item",
+    "silver_buymed_vn.view_medxoutbound_fact_orders_item_info",
+    "silver_buymed_vn.seller_prd_wis_log_internal_seller_inventory_by_period",
+
+    "::::END"
+  )
+), silver AS (
+  SELECT *
+  FROM table_metadata
+  WHERE dataset_id like "silver%"
+), platinum AS (
+  SELECT *
+  FROM table_metadata
+  WHERE dataset_id like "platinum%"
+  AND dataset_id not like "%__stg"
+), platinum_stg AS (
+  SELECT *
+  FROM table_metadata
+  WHERE dataset_id like "platinum%__stg"
+), final_metadata AS (
+  SELECT 
+    s.table_id,
+    s.dataset_id silver_dataset,
+    p.dataset_id platinum_dataset,
+    p_stg.dataset_id platinum_stg_dataset,
+    
+    s.creation_time silver_creation,
+    CASE 
+      WHEN p.table_type = "VIEW" AND p_stg.table_type = "BASE TABLE" THEN p_stg.creation_time
+      ELSE p.creation_time
+    END AS platinum_creation_time,
+
+    s.last_modified_time silver_modified_time,
+    CASE 
+      WHEN p.table_type = "VIEW" AND p_stg.table_type = "BASE TABLE" THEN p_stg.last_modified_time
+      ELSE p.last_modified_time
+    END AS platinum_modified_time,
+
+    CASE 
+      WHEN p.table_type = "VIEW" AND p_stg.table_type = "BASE TABLE" THEN "NEW INCREMENTAL"
+      WHEN p.table_type = "VIEW" THEN "VIEW"
+      WHEN p.table_type = "BASE TABLE" and REGEXP_CONTAINS(p.dataset_id, "_vn") THEN "OLD INCREMENTAL"
+      WHEN p.table_type = "BASE TABLE" THEN "TABLE"
+      ELSE p.table_type
+    END AS model_type,
+    
+    s.readable_size silver_readable_size,
+    CASE 
+      WHEN p.table_type = "VIEW" AND p_stg.table_type = "BASE TABLE" THEN p_stg.readable_size
+      WHEN p.table_type = "BASE TABLE" THEN p.readable_size
+      ELSE CAST(NULL AS STRING) -- BECAUSE OF VIEW
+    END AS platinum_readable_size,
+
+    s.size_bytes silver_size_bytes,
+    CASE 
+      WHEN p.table_type = "VIEW" AND p_stg.table_type = "BASE TABLE" THEN p_stg.size_bytes
+      WHEN p.table_type = "BASE TABLE" THEN p.size_bytes
+      ELSE CAST(NULL AS INT64) -- BECAUSE OF VIEW
+    END AS platinum_size_bytes
+
+  FROM silver s
+  LEFT JOIN platinum p 
+    ON s.table_id = p.table_id
+    AND REPLACE(s.dataset_id, "silver_","platinum_") = p.dataset_id
+  LEFT JOIN platinum_stg p_stg
+    ON s.table_id = p_stg.table_id
+    AND p.dataset_id || "__stg" = p_stg.dataset_id
+)
+SELECT 
+  table_id
+  , silver_dataset
+  , platinum_dataset
+  , platinum_stg_dataset
+  , silver_creation
+  , platinum_creation_time
+  , silver_modified_time
+  , platinum_modified_time
+  , model_type
+  , silver_readable_size
+  , platinum_readable_size
+  , silver_size_bytes
+  , platinum_size_bytes
+  , IF(platinum_size_bytes IS NOT NULL AND platinum_size_bytes > 0 ,silver_size_bytes / platinum_size_bytes, NULL) duplicate_ratio
+  , CASE 
+      WHEN platinum_size_bytes IS NOT NULL AND platinum_size_bytes > 0 
+        AND silver_size_bytes / platinum_size_bytes > 10 AND platinum_readable_size LIKE "%GB" THEN TRUE 
+      WHEN (platinum_size_bytes IS NULL OR platinum_size_bytes = 0) AND silver_readable_size LIKE "%GB" THEN TRUE
+      ELSE FALSE
+    END AS need_backup
+
+FROM final_metadata
+
