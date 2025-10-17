@@ -81,7 +81,24 @@ WITH
     , query_order1 AS (
         SELECT
             DISTINCT oi.customer_id, sd.segment_id
-        FROM ${ref('fact_order_item')} oi
+        FROM (
+            SELECT
+                order_id
+                , customer_id
+                , seller_code
+                , product_id
+                , created_at
+            FROM ${ref('fact_order_item')}
+            UNION DISTINCT
+            SELECT
+                order_id
+                , customer_id
+                , seller_code
+                , product_id
+                , created_at
+            FROM ${ref('fact_order_item_historical')}
+            WHERE DATE(created_at) < DATE_TRUNC(CURRENT_DATE("+7"), MONTH) - INTERVAL 12 MONTH
+        ) AS oi
             LEFT JOIN ${ref('fact_order')} o ON oi.order_id = o.order_id
             , (SELECT start_date1, end_date1, seller_code1, product_id1, segment_id, order_status1 FROM get_start_end) sd
         WHERE o.channel IN ("MARKETPLACE", "CIRCA")
@@ -182,12 +199,4 @@ SELECT
     , ARRAY_AGG(customer_id) AS customer_list
     , submit_id
 FROM final AS s
--- WHERE segment_id IS NOT NULL
---     AND NOT EXISTS (
---         SELECT 1
---         FROM ${source.platinum}.marketplace_prd_promotion_user_promotion AS up
---         WHERE created_date >= "2025-09-01"
---             AND status IN ("USED","DELETED")
---             AND up.customer_id = s.customer_id AND up.voucher_code = s.segment_id
---     )
 GROUP BY ALL
