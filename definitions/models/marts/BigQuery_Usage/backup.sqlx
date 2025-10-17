@@ -1,0 +1,32 @@
+config {
+    type: "operations",
+    name: "backup_bigquery_usage"
+}
+
+-- -- Create table but gold_buymed_vn2.fact_bq_activity_backup has been deleted
+-- CREATE TABLE IF NOT EXISTS de_buymed_vn._backup__fact_bq_activity
+-- PARTITION BY DATE(creation_time) CLUSTER BY user_email, destination_dataset_id, destination_table_id
+-- AS (
+--     SELECT *, destination_table.dataset_id destination_dataset_id, destination_table.table_id destination_table_id
+--     FROM gold_buymed_vn2.fact_bq_activity_backup
+-- )
+
+
+-- -- Extra_props for storing the unexpected data by nested it as {"<column_name>": {"data_type": < data_type>, "value": <value>}}
+-- ALTER TABLE de_buymed_vn._backup__fact_bq_activity
+-- ADD COLUMN extra_props JSON;
+
+
+
+-- INSERT INTO de_buymed_vn._backup__fact_bq_activity
+-- (
+--     SELECT *, 
+--     FROM 
+-- )
+
+
+
+/*
+TODO: 
+    MERGE fact_bq_activity_2025_09_23 into _backup_
+*/

@@ -27,6 +27,8 @@ SELECT
     ) source_tables_full_id,
     -- output table
     destination_table.dataset_id || "." || destination_table.table_id destination_table_full_id,
+    destination_table.table_id destination_table_id,
+    destination_table.dataset_id destination_dataset_id,
 
 
     -- Dataform labels
