@@ -85,7 +85,7 @@ left join product_base_unit as bu on s.product_id = bu.product_id and pd.unit = 
 left join thuosi_unit t on s.product_id = t.product_id and lower(pd.unit) = lower(t.unit)
 where bu.convert_unit is not null
       and ps.client_id = 1 
-      and ps.type = 'CLIENT' -- Loại trừ nhừng sản phẩm đã set giá trên các pos
+      and ps.name = 'Bảng giá client 1'-- Loại trừ nhừng sản phẩm đã set giá trên các pos
       and s.seller_code is not null
       and ps.channel = 'OFFLINE'
      -- and pd.product_id = 11463 
