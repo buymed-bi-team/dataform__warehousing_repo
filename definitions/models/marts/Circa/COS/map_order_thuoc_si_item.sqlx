@@ -39,6 +39,16 @@ Select date(o.created_at) as created_date
              when p.id is null and (o.customer_name = 'Circa Medly' or o.customer_name = 'Nhà thuốc Circa Medly' or o.customer_name = 'Circa Medly - HCM' or o.customer_name = 'Nhà thuốc Medly') then 'bd0a5c91-c25f-4d49-92b4-7fe5ea174a5f'
              when p.id is null and o.customer_name = 'Circa Florita' then 'c476efb2-415c-429a-978e-d389b4b06607'
              when p.id is null and o.customer_name = 'Circa PharmaOne' then 'ef29a397-72d8-40c3-9602-e1cbbc5d1da1'
+             when p.id is null and o.customer_id = 407640 and o.customer_name = 'Chị Tình - Circa Mira' then '9b37d4ec-b0ea-4e1a-9c6d-292c8e450b25'
+             when p.id is null and o.customer_id = 407640 and o.customer_name = 'Chị Nhi - Tâm An - Store Manager' then '94c6f221-5015-47da-b1ea-887fa75ccc3a'
+             when p.id is null and o.customer_id = 407640 and o.customer_name = 'Chị An - Cityland - Store Manager' then '55388c70-30fe-4c80-b119-92b24a1aa1bf'
+             when p.id is null and o.customer_id = 407640 and o.customer_name = 'Chị Dung - Medora - Store Manager' then '73dcf891-f4a1-42c5-bea4-115412f1018d'
+             when p.id is null and o.customer_id = 407640 and o.customer_name = 'Chị Dung - Tâm Việt - Store Manager' then '265ed9b9-1e48-4390-8321-42c95529072e'
+             when p.id is null and o.customer_id = 407640 and o.customer_name = 'Chị Ngân - Symphony - Store Manager' then 'faeb1575-3ba0-4684-9ea9-621d6c3fc606'
+             when p.id is null and o.customer_id = 407640 and o.customer_name = 'Chị Lệ - Medly - Store Manager' then 'bd0a5c91-c25f-4d49-92b4-7fe5ea174a5f'
+             when p.id is null and o.customer_id = 407640 and o.customer_name = 'Chị Minh - La Astoria - Store Manager' then '61437f95-55ba-44b6-a994-99f2d9209c79'
+             when p.id is null and o.customer_id = 409603 and o.customer_name = 'Chị Ngân - Symphony - Store Manager' then 'faeb1575-3ba0-4684-9ea9-621d6c3fc606'
+             when p.id is null and o.customer_id = 409603 and o.customer_name = 'Chị Lệ - Medly - Store Manager' then 'bd0a5c91-c25f-4d49-92b4-7fe5ea174a5f'
              else ''
             end as pos_id
   ,a.product_id
