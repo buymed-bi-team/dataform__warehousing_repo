@@ -20,7 +20,7 @@ CREATE OR REPLACE ROW ACCESS POLICY
 ON 
   ${ref(`fact_bq_activity`)} GRANT TO (
     "user:nguyen.tran@buymed.com",
-    "serviceAccount:nguyen-tran-service-account@lakehouse-prod-394907.iam.gserviceaccount.com"
+    "serviceAccount:nguyen-tran-service-account@lakehouse-prod-394907.iam.gserviceaccount.com",
     "user:minh.luugia@buymed.com",
     "user:huong.dang@buymed.com",
     "user:huyen.ngo@buymed.com"
