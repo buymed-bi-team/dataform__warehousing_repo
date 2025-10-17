@@ -25,6 +25,8 @@ Select distinct
 from base_data_employee e
 left join ${source.circa_os}.entity_entity c on e.employee_mail = c.email
 where c.deleted_at is null --and c.type = 'CONSUMER'
+      and type <> 'SYSTEM'
       and client_id = 1
+      --and email = 'khuyen.ho@buymed.com'
 order by year_month desc
 --qualify row_number () over (partition by email, client_id order by updated_at desc) = 1
