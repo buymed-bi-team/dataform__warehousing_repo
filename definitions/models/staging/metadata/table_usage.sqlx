@@ -1,0 +1,206 @@
+config {
+  type: "view",
+  schema: "de_buymed_vn",
+  name: "metadata_table_usage",
+  description: "PIC: MinhLuu"
+}
+/*
+Query table is used since 2025-10-12
+
+Limitation:
+  - Can be duplicated on table_id 
+    - Because it can existance in both restricted and normal
+  - Since "INCREMENTAL TABLE" will run view query on both silver and platinum__stg
+    So I get the silver as representation
+    - If user query data that only existance on platinum, I don't known what actually happen
+      Is this query will only reference platinum__stg table?
+*/
+js { const start_timestamp = `CURRENT_TIMESTAMP() - INTERVAL 14 DAY`}
+
+WITH tbl_usage AS (
+  SELECT
+    rt.dataset_id,
+    rt.table_id,
+    CASE 
+        WHEN SUM(total_bytes_billed) / (1024 * 1024 * 1024) > 1 THEN FORMAT("%.4f GB", (SUM(total_bytes_billed) / (1024 * 1024 * 1024)))
+        WHEN SUM(total_bytes_billed) / (1024 * 1024 ) > 1 THEN FORMAT("%.4f MB", (SUM(total_bytes_billed) / (1024 * 1024 * 1024)))
+        ELSE  CAST(SUM(total_bytes_billed) AS STRING ) || " byte" 
+    END AS total_bytes_billed_string,
+    SUM(total_bytes_billed) total_bytes_billed,
+
+  FROM ${ref(`fact_bq_activity`)}
+  , UNNEST (referenced_tables) rt
+  WHERE creation_time >= ${start_timestamp}
+  
+  AND dataset_id in (
+    "platinum_buymed_cam", "silver_buymed_cam",
+    "platinum_buymed_th", "silver_buymed_th", 
+    "platinum_buymed_vn","silver_buymed_vn",
+    "platinum_buymed_vn_restricted", "silver_buymed_vn_restricted"
+    )
+
+  AND user_email not like "platinum-dataform%"
+
+  GROUP BY 1,2
+)
+, platinum_metadata AS ( 
+  SELECT p.dataset_id, p.table_id, TIMESTAMP_MILLIS(p.last_modified_time) last_modified_time, TIMESTAMP_MILLIS(p.creation_time) creation_time, IF( p.type = 2, s.row_count, p.row_count ) row_count,
+    CASE 
+      WHEN p.type = 1 THEN "BASE TABLE"
+      WHEN p.type = 2 and s.type = 1 THEN "INCREMENTAL TABLE"
+      WHEN p.type = 2 THEN "VIEW"
+      WHEN p.type = 3 THEN "EXTERNAL"
+      WHEN p.type = 6 THEN "SNAPSHOT"
+      WHEN p.type = 5 THEN "CLONE"
+      ELSE "UNKNOWN"
+    END AS table_type,
+  FROM platinum_buymed_vn.__TABLES__ p
+  LEFT JOIN platinum_buymed_vn__stg.__TABLES__ s
+    ON p.table_id = s.table_id
+    
+  UNION ALL 
+  SELECT p.dataset_id, p.table_id, TIMESTAMP_MILLIS(p.last_modified_time) last_modified_time, TIMESTAMP_MILLIS(p.creation_time) creation_time, IF( p.type = 2, s.row_count, p.row_count ) row_count,
+      CASE 
+      WHEN p.type = 1 THEN "BASE TABLE"
+      WHEN p.type = 2 and s.type = 1 THEN "INCREMENTAL TABLE"
+      WHEN p.type = 2 THEN "VIEW"
+      WHEN p.type = 3 THEN "EXTERNAL"
+      WHEN p.type = 6 THEN "SNAPSHOT"
+      WHEN p.type = 5 THEN "CLONE"
+      ELSE "UNKNOWN"
+    END AS table_type,
+  FROM platinum_buymed_vn_restricted.__TABLES__ p
+  LEFT JOIN platinum_buymed_vn_restricted__stg.__TABLES__ s
+    ON p.table_id = s.table_id
+), silver_metadata AS (
+  SELECT dataset_id, table_id, TIMESTAMP_MILLIS(last_modified_time) last_modified_time, TIMESTAMP_MILLIS(creation_time) creation_time, row_count,
+      CASE 
+      WHEN type = 1 THEN "BASE TABLE"
+      WHEN type = 2 THEN "VIEW"
+      WHEN type = 3 THEN "EXTERNAL"
+      WHEN type = 6 THEN "SNAPSHOT"
+      WHEN type = 5 THEN "CLONE"
+      ELSE "UNKNOWN"
+    END AS table_type,
+  FROM silver_buymed_vn.__TABLES__
+  UNION ALL 
+  SELECT dataset_id, table_id, TIMESTAMP_MILLIS(last_modified_time) last_modified_time, TIMESTAMP_MILLIS(creation_time) creation_time, row_count,
+      CASE 
+      WHEN type = 1 THEN "BASE TABLE"
+      WHEN type = 2 THEN "VIEW"
+      WHEN type = 3 THEN "EXTERNAL"
+      WHEN type = 6 THEN "SNAPSHOT"
+      WHEN type = 5 THEN "CLONE"
+      ELSE "UNKNOWN"
+    END AS table_type,
+  FROM silver_buymed_vn_restricted.__TABLES__
+)
+, main_metadata AS (
+  SELECT 
+    silver.dataset_id silver_dataset, silver.table_id,
+    platinum.dataset_id platinum_dataset,
+
+    silver.last_modified_time silver_modified_time,
+    silver.table_type silver_table_type,
+
+    platinum.last_modified_time platinum_modified_time,
+    platinum.creation_time platinum_creation_time,
+    platinum.row_count platinum_row_count,
+    platinum.table_type platinum_table_type,
+
+  FROM silver_metadata silver
+  LEFT JOIN platinum_metadata platinum
+    ON silver.table_id = platinum.table_id
+
+  WHERE silver.table_type = "BASE TABLE"
+)
+
+SELECT 
+  tbl_usage.table_id,
+  tbl_usage.dataset_id used_dataset,
+
+  silver_dataset,
+  platinum_dataset,
+
+  silver_modified_time,
+  platinum_modified_time,
+  platinum_creation_time,
+  platinum_row_count,
+  platinum_table_type,
+  CASE 
+    WHEN platinum_row_count <= 1000000 THEN "full_sync"
+    WHEN platinum_table_type LIKE "VIEW" THEN "full_sync"
+    WHEN platinum_row_count IS NULL THEN CAST ( NULL AS STRING)
+    ELSE "2025-05-01"
+  END AS mechanism
+FROM tbl_usage 
+LEFT JOIN main_metadata
+  ON tbl_usage.table_id = main_metadata.table_id
+WHERE 1=1
+AND dataset_id in (
+  "platinum_buymed_cam", "silver_buymed_cam",
+  "platinum_buymed_th", "silver_buymed_th", 
+  "platinum_buymed_vn","silver_buymed_vn",
+  "platinum_buymed_vn_restricted", "silver_buymed_vn_restricted",
+
+
+  ":::BLANK FOR END"
+  )
+AND NOT (
+  0=1
+  OR tbl_usage.table_id like "%_migrate%"
+  OR tbl_usage.table_id like "INFORMATION_SCHEMA%"
+  OR tbl_usage.table_id like "__TABLES__"
+
+  ## Special table, need recheck after every done
+  OR (
+    tbl_usage.dataset_id IN ("platinum_buymed_vn","silver_buymed_vn")
+    AND tbl_usage.table_id IN (
+      "platform_event_prd_management_participant", -- silver_buymed_vn
+      "platform_event_prd_management_event", -- silver_buymed_vn
+      "marketplace_prd_product_v2_sku_tag", -- silver_buymed_vn
+      "core_prd_master_data_region", -- silver_buymed_vn
+
+      "core_dev_crawl_product", -- silver_buymed_vn
+      "pim_prd_product_product_retail_price_retail_price", -- platinum_buymed_vn ->> Seem Broken
+
+      "circa_online_prd_order_order_item", --> Missing from watcher
+      "platform_accounting_prd_reconcile_template_reconcile_line", --> Missing from watcher
+      "monitoring_prd_realtime_user_failed_login_v8", -- Wrong name table, its must be user_user_failed_login_v8
+      -- Check if has any user, if not then change the table name, and turn off platinum
+      -- Else not in mongo_to_bq_metadata.csv
+      -- -- ## Batch Pipeline 
+      -- "monitoring_prd_collector_user_stats",
+
+      -- ## Deprecate table
+      "innovation_prd_document_analyzer_document",
+
+      ":::BLANK FOR END"
+    ))
+  OR (
+    tbl_usage.dataset_id IN ("platinum_buymed_th","silver_buymed_th")
+    AND tbl_usage.table_id IN (
+      -- -- ## Batch Pipeline 
+      -- "platform_billing_prd_invoice_v2_log_hilo_factory_client",
+      -- "accounting_prd_invoice_log_hilo_factory_medx_client",
+      
+      -- -- ## datateam created tables
+      -- "marketplace_prd_product_v2_sku_limit_historical_cut_off",
+      -- "accounting_prd_core_bill_historical_cut_off",
+      -- "marketplace_prd_product_v2_sku_status_historical",
+      -- "marketplace_prd_product_v2_sku_merge",
+      
+      ":::BLANK FOR END"
+    ))
+)
+AND ( 
+  -- Drop Duplicate
+  ( 
+    platinum_table_type Like "INCREMENTAL TABLE" AND tbl_usage.dataset_id like "silver%"
+  ) OR (
+    platinum_table_type Like "VIEW" AND tbl_usage.dataset_id like "silver%"
+  ) OR (
+    platinum_table_type Like "BASE TABLE" AND tbl_usage.dataset_id like "platinum%"
+  )
+)
+

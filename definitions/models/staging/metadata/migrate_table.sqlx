@@ -1,0 +1,102 @@
+config {
+    type: "view",
+    schema: "de_buymed_vn",
+    name: "metadata_table_migrate",
+    description: "PIC: Minh Luu"
+}
+WITH tbl AS (
+    SELECT 
+        table_id,
+        dataset_id,
+        dataset_id || "." || table_id full_table_id,
+        TIMESTAMP_MILLIS(last_modified_time) last_modified_time,
+        TIMESTAMP_MILLIS(creation_time) creation_time,
+        row_count,
+        CASE 
+            WHEN size_bytes / (1024 * 1024 * 1024) > 1 THEN FORMAT( "%.4f GB", size_bytes / (1024 * 1024 * 1024) )
+            WHEN size_bytes / (1024 * 1024 ) > 1 THEN  FORMAT( "%.4f MB", size_bytes / (1024 * 1024 ) )
+            ELSE  CAST(size_bytes AS STRING ) || " byte" 
+        END AS readable_size,
+        size_bytes,
+        CASE
+            WHEN type = 1 THEN "BASE TABLE"
+            WHEN type = 2 THEN "VIEW"
+            WHEN type = 3 THEN "EXTERNAL"
+            WHEN type = 6 THEN "SNAPSHOT"
+            WHEN type = 5 THEN "CLONE"
+            ELSE "UNKNOWN"
+        END AS table_type
+    FROM (
+        SELECT * FROM silver_buymed_vn.__TABLES__
+        UNION ALL 
+        SELECT * FROM silver_buymed_vn_restricted.__TABLES__
+        UNION ALL
+        SELECT * FROM silver_buymed_th.__TABLES__
+        UNION ALL
+        SELECT * FROM silver_buymed_cam.__TABLES__
+    )
+)
+, migrate_tbl AS (
+    SELECT 
+        SPLIT(table_id, "_migrate")[0] table_id,
+        table_id migrate_table_id,
+        dataset_id,
+        dataset_id || "." || table_id full_table_id,
+        last_modified_time,
+        creation_time,
+        row_count,
+        readable_size,
+        size_bytes,
+        table_type,
+        REGEXP_CONTAINS(table_id,"_drop_") is_migrated,
+        IF(
+            REGEXP_CONTAINS(table_id,"_migrate_drop_"),
+            PARSE_TIMESTAMP("%y%m%dT%H%M%S", SPLIT(table_id,"_migrate_drop_")[1] )
+            , CAST(NULL AS TIMESTAMP)
+        ) migrated_time
+    FROM tbl
+    WHERE REGEXP_CONTAINS(table_id, "migrate")
+)
+
+SELECT 
+    a.table_id,
+    a.silver_dataset,
+    a.platinum_dataset,
+    m.migrate_table_id,
+
+    platinum_creation_time,
+    platinum_modified_time,
+    m.creation_time migrate_creation_time,
+    m.last_modified_time migrate_modified_time,
+    m.migrated_time,
+
+    IF (
+        (is_migrated = TRUE)
+        -- Without FullRefresh
+        AND (
+            (
+                TIMESTAMP_DIFF(migrated_time, m.creation_time, hour) < 12
+                AND platinum_modified_time > m.migrated_time
+                AND model_type = "NEW INCREMENTAL"
+            )
+            OR model_type = "VIEW"
+            OR (
+                TIMESTAMP_DIFF(migrated_time, m.creation_time, minute) < 120
+                AND platinum_modified_time > m.migrated_time 
+                AND model_type = "TABLE"
+            )
+        )
+        -- With FullRefresh 
+        -- I cannot capture which query, or how to calculate full refresh time now
+
+        -- Limitation
+        -- What if migrate table is too long a go, then it might be wrong
+
+        , TRUE 
+        , FALSE
+    ) is_migrated_platinum,
+    
+FROM ${ref(`metadata_table`)} a -- table all metadata
+LEFT JOIN migrate_tbl m 
+    ON a.table_id = m.table_id
+
