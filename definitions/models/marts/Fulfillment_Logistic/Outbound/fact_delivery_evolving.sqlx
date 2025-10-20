@@ -5,7 +5,7 @@ config {
         Log of changing status of a SO;
         PIC: nguyen.tran; 
         Type: Table; 
-		Refresh Schedule: hourly;
+		Refresh Schedule: hourly; 
         Source: 
             ${source.platinum}.integration_prd_tpl_callback_callback
         `,
@@ -26,7 +26,7 @@ config {
 }
 
 with cte_date as (
-	select  CAST(date_trunc(date_sub(current_date(),interval 7 month), month) as timestamp) as date_scan_2
+	select  date_trunc(date_sub(current_date(),interval 7 month), month) as date_scan_2
 )
 
 , cte_data as (
@@ -38,7 +38,7 @@ with cte_date as (
 		logs,
         hub_code
 	from ${source.platinum}.integration_prd_tpl_callback_callback
-	where ingest_time >= (select date_scan_2 from cte_date)
+	where created_date >= (select date_scan_2 from cte_date)
 )
 
 select  
