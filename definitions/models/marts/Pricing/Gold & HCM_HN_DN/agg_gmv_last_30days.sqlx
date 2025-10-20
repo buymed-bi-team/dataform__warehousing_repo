@@ -9,12 +9,12 @@ config {
         Source: 
             ${source.ref}.fact_order_item
         `,
-    tags: ["0h00", "PRICING"]
+    tags: ["8h00", "PRICING"]
 }
 
 WITH 
     target_date as (
-        select  TIMESTAMP (  date_sub( current_date('+7'), interval 30 day)  )  as start_date
+        select  date_sub( current_date('+7'), interval 30 day)   as start_date
     ),
 
     last_order AS (
@@ -53,7 +53,8 @@ WITH
         FROM ${ref('fact_order_item')}  oi
             LEFT JOIN ${ref('fact_order')} o ON oi.order_id = o.order_id
         WHERE 
-            oi.created_at >= (SELECT start_date FROM target_date)
+            DATE(oi.created_at) BETWEEN (SELECT start_date FROM target_date) AND CURRENT_DATE("+7") - 1
+            AND DATE(o.created_at) BETWEEN (SELECT start_date FROM target_date) AND CURRENT_DATE("+7") - 1
             AND o.order_status <> 'CANCEL'
         GROUP BY 1, 2, 3, 4
     )

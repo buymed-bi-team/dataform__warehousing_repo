@@ -56,5 +56,5 @@ FROM ${source.platinum}.seller_prd_purchasing_vendor_bill AS v
     LEFT JOIN purchase_order AS p ON v.po_code = p.po_code
 WHERE
     v.created_date >= (SELECT start_date FROM target_date) 
-    AND v.status NOT IN ('DRAFT', 'CANCEL')
+    AND v.status NOT IN ( 'CANCEL')
 

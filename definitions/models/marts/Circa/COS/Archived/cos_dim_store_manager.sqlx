@@ -1,0 +1,17 @@
+
+config {
+    type: "table",
+    description: `cos_dim_store_manager  item detail PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`,
+    /*Source:
+      ${source.silver}.marketplace_prd_order_v2_order_item
+      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5,*/
+    tags: ["custom_1h_past5"],
+    name: "cos_dim_store_manager",
+    columns: {
+        
+    }
+}
+
+
+Select * from buymed_external.store_manager
+where pos_code is not null

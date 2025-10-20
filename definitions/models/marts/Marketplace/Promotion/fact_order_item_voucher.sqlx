@@ -40,6 +40,7 @@ WHERE
     vp.voucher_code IS NOT NULL
     AND vp.product_id IS NOT NULL 
     AND oi.created_at >= '2024-05-01'
+    AND ov.order_id IS NOT NULL
     -- AND oi.item_type <> 'IN_COMBO'
     -- AND vp.campaign_brand IS NOT NULL
 GROUP BY ALL

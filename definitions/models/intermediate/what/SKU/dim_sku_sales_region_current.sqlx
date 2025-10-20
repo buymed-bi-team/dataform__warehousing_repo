@@ -162,24 +162,13 @@ SELECT
     CONCAT('https://thuocsi.vn/product/', s.slug) as product_link,
     JSON_VALUE(s.fee_codes, '$.0') as fee_code,
 
-    CASE
-        WHEN s.status = 'GIFT' AND s.seller_class = 'INTERNAL'
-            THEN 
-              COALESCE(
-                NULLIF(bill.newest_price_bill_after_discount_VAT, 0)
-                , NULLIF(s.purchase_price, 0)
-                , NULLIF(s.retail_price_value, 0)
-                , 1000
-              )
-        WHEN s.status <> 'GIFT' AND s.seller_class = 'INTERNAL'
-            THEN 
-              IF(
-                s.seller_code = 'MARKETING' OR s.seller_code = 'MEDX_E',
-                COALESCE(NULLIF(bill.newest_price_bill_after_discount_VAT, 0), NULLIF(s.purchase_price, 0), NULLIF(s.retail_price_value, 0), 1000),
-                COALESCE(NULLIF(s.retail_price_value, 0), 1000)
-              )
-        ELSE COALESCE(NULLIF(s.retail_price_value, 0), 1000)
-    END AS inventory_price,
+    COALESCE(
+      CASE
+        WHEN sup.supplier_class = "EXTERNAL" THEN s.retail_price_value
+        WHEN sup.supplier_class = "INTERNAL" THEN s.purchase_price
+      END
+      , 999
+    ) AS inventory_price,
     JSON_VALUE(s.extra_props, '$.demand_classification_code') as sku_demand_class,
     fv_vendor_fc.commitment_leadtime as fv_vendor_leadtime,
 
@@ -200,6 +189,7 @@ FROM cte_full AS cte
     LEFT JOIN (
         SELECT * 
         FROM ${source.platinum}.marketplace_prd_product_v2_sku_limit
+        WHERE JSON_VALUE(extra_props, "$.segment_code") IS NULL
         QUALIFY ROW_NUMBER() OVER(PARTITION BY item_code ORDER BY ingest_time DESC) = 1
     ) AS sl
         ON sl.item_code = s.item_code

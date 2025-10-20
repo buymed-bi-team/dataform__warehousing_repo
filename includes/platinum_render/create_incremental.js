@@ -13,10 +13,10 @@ function createIncremental_preOps({
         preOperation = `
         # Incremental
         DECLARE has_new_data BOOLEAN;
+        DECLARE has_delete_data BOOLEAN;
         DECLARE Ingest_checkpoint TIMESTAMP;
         DECLARE checkpoint_date ARRAY<date>;
-        DECLARE deleted_records ARRAY<STRING>;
-
+        
         SET Ingest_checkpoint = (
             SELECT max(ingest_time)  - INTERVAL 1 HOUR  FROM ${ctx.self()}
             ${ingestCutOffInterval}
@@ -27,7 +27,7 @@ function createIncremental_preOps({
             );
         END IF;
 
-        SET ( has_new_data, checkpoint_date, deleted_records ) = (
+        SET ( has_new_data, checkpoint_date, has_delete_data ) = (
             SELECT AS STRUCT
                 IF (
                     COUNT(*) > 0 , TRUE, FALSE
@@ -38,9 +38,7 @@ function createIncremental_preOps({
                 ARRAY_AGG(
                     DISTINCT IF(${config.createdTime} is NULL, "2099-01-01" , DATE( DATETIME(${config.createdTime},'Asia/Ho_Chi_Minh') ) )
                 ) AS checkpoint_date,
-                ARRAY_AGG (
-                    DISTINCT IF(action = 'd',mg_id, NULL) IGNORE NULLS
-                ) AS deleted_records
+                COUNTIF( action = 'd' ) > 0 AS has_delete_data
             FROM ${config.source_schema}.${config.tableName}
             WHERE ingest_time > Ingest_checkpoint
         );
@@ -52,7 +50,10 @@ function createIncremental_preOps({
         );
 
         IF ( has_new_data = TRUE ) THEN
-            IF (SELECT ARRAY_LENGTH(deleted_records) > 0) THEN
+            IF (has_delete_data = TRUE) THEN
+              -- if has deleted, then we must get created_date of old data from platinum
+              -- In silver, delete event doesn't store created_time
+              -- So this step is required
               SET checkpoint_date = ARRAY(
                 SELECT DISTINCT created_date
                 FROM ${ctx.self()}
@@ -114,6 +115,16 @@ function createIncremental_query({
     FROM ${config.source_schema}.${config.tableName}
     WHERE key IN (SELECT o.key FROM over_tbl o)
     ${ctx.incremental() ? `AND ingest_time > Ingest_checkpoint - INTERVAL 2 HOUR` : ""}
+
+    -- For stituation that key is dedup because of manual import
+    QUALIFY ROW_NUMBER() OVER(w) = 1
+    WINDOW w AS (
+        PARTITION BY mg_id
+        ORDER BY synced_at desc,
+            synced_at DESC,
+        IF (action='d',3, IF (action='u',2,1)) DESC,
+        ${config.lastUpdatedTime} DESC
+    )
     `
     return selectQuery;
 }

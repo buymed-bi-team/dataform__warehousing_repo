@@ -162,14 +162,18 @@ WITH product_retail_unit AS (
         UNION DISTINCT
         SELECT DISTINCT
             product_id
-            , "MARGIN >10%"
+            , "CIRCA"
         FROM buymed_external.potential_high_margin_product
+        WHERE product_id NOT IN (SELECT DISTINCT
+            product_id
+        FROM ${ref('dim_product_division')}
+        WHERE brand_group = "OWNBRAND") 
   )
 
   , chronic AS (
       SELECT
           SAFE_CAST(code AS INT64) AS product_id
-          , NULLIF(value, "NAN") AS chronic
+          , IF(value <> "CHRONIC", NULL, value) AS chronic
       FROM ${source.collector}.data_prd
       WHERE DATE(submit_at) >= "2025-06-18"
           AND submit_id >= 5539
@@ -189,6 +193,30 @@ WITH product_retail_unit AS (
           AND type = "ESSENTIAL"
       QUALIFY ROW_NUMBER() over (PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
   )
+  
+  , atc4 AS (
+      SELECT
+          SAFE_CAST(code AS INT64) AS product_id
+          , NULLIF(value, "NAN") AS atc_4
+      FROM collector.data_prd
+      WHERE DATE(submit_at) >= "2025-08-13"
+          AND submit_id >= 5623
+          AND object = "Product"
+          AND type = "ATC4"
+      QUALIFY ROW_NUMBER() over (PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
+  )
+  
+  , atc3 AS (
+      SELECT
+          SAFE_CAST(code AS INT64) AS product_id
+          , NULLIF(value, "NAN") AS atc_3
+      FROM collector.data_prd
+      WHERE DATE(submit_at) >= "2025-08-13"
+          AND submit_id >= 5624
+          AND object = "Product"
+          AND type = "ATC3"
+      QUALIFY ROW_NUMBER() over (PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
+  )
 
 SELECT
   ${utils.ToTimezone('current_timestamp()')} as transformed_at,
@@ -203,6 +231,9 @@ SELECT
   -- product.brand,
   br.brand,
   JSON_VALUE(product.extra_props, "$.product_category_management") as brand_type,
+  JSON_VALUE(product.extra_props, "$.product_status") as product_status,
+  SAFE_CAST(JSON_VALUE(product.extra_props, "$.related_product_id") AS INT64) as related_product_id,
+  JSON_VALUE(product.extra_props, "$.status_reason") as status_reason,
 
   seller.code as owner_code,
   seller.name as owner_name,
@@ -272,7 +303,9 @@ SELECT
 
   IF(product.usage = "Dùng tại chổ","Dùng tại chỗ", product.usage) AS usage,
   atc2.name AS act_2,
-  atc3.name AS act_3,
+  -- COALESCE(a3.atc_3, atc3.name) AS act_3,
+  a3.atc_3 AS act_3,
+  a4.atc_4,
   JSON_EXTRACT_SCALAR(product.retail_info, '$.retail_name') as retail_name,
   tb1.name as retail_categogy_name,
 
@@ -312,16 +345,33 @@ SELECT
     ELSE 'NORMAL'
   END product_report_category,
   tb4.name as main_category_name,
-  product.is_combo,
+  IFNULL(product.is_combo,FALSE) AS is_combo,
   hmp.high_margin,
   rp.retail_price,
   op.ownbrand_portfolio,
   IF(
     chronic.chronic = "CHRONIC"
-    , "CHRONIC"
-    , IF(product.seller_category_code = "AQFV2U" AND product.seller_sub_category_code = "LALT0T", "ACUTE", NULL)
+    , "Chronic"
+    , IF(product.seller_category_code = "AQFV2U" AND product.seller_sub_category_code = "LALT0T", "Acute", NULL)
   ) AS chronic,
-  essential.essential
+  essential.essential,
+
+  CASE
+      WHEN product.seller_category_code = "AQFV2U" THEN 
+        CASE
+          WHEN seller_sub_category.code ='LALT0T' THEN "Rx"
+          WHEN seller_sub_category.code ='XT2U1Y' THEN "OTC"
+        END
+      WHEN product.seller_category_code IS NOT NULL THEN "Non-Drug"
+  END AS product_category_commercial,
+
+  REGEXP_REPLACE(JSON_VALUE(product.image_urls, "$[0]"), r'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS product_image_url
+  --  , CASE
+  --       WHEN product.product_category = "Thuốc kê đơn" THEN "Rx"
+  --       WHEN d.product_category = "Thuốc không kê đơn" THEN "OTC"
+  --       WHEN d.product_category = "Thuốc (Chưa phân loại)" OR d.product_category IS NULL THEN NULL
+  --       ELSE "Non-Drug"
+  --   END AS product_category_commercial
 
 
 FROM ${source.platinum}.marketplace_prd_product_v2_product AS product
@@ -343,6 +393,8 @@ LEFT JOIN brand AS br ON br.product_id = product.product_id
 LEFT JOIN ownbrand_portfolio AS op ON op.product_id = product.product_id
 LEFT JOIN chronic AS chronic ON chronic.product_id = product.product_id
 LEFT JOIN essential AS essential ON essential.product_id = product.product_id
+LEFT JOIN atc3 AS a3 ON a3.product_id = product.product_id
+LEFT JOIN atc4 AS a4 ON a4.product_id = product.product_id
 
 WHERE
     LOWER(product.name) NOT LIKE '%(bỏ)%'

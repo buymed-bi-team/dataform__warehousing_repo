@@ -20,7 +20,7 @@ SELECT DISTINCT
     lp.sku,
     lp.warehouse_code,
     lp.latest_pick_time,
-    TIMESTAMP_DIFF(CURRENT_TIMESTAMP(), lp.latest_pick_time, DAY) AS aging_pick_days,
+    TIMESTAMP_DIFF(CURRENT_DATE("+7"), DATE(lp.latest_pick_time + INTERVAL 7 HOUR), DAY) AS aging_pick_days,
     a.ticket_id AS latest_pick_ticket_id,
     b.so AS latest_so
 FROM LatestPick lp

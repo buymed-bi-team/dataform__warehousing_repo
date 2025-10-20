@@ -1,18 +1,19 @@
 -- pending
 
--- config {
---     type: "incremental",
---     name: "monitoring_prd_realtime_supply_margin_sku",
---     schema: "platinum_buymed_vn",
---     assertions: {
---         uniqueKey: 'mg_id',
---         nonNull: ["created_date"]
---     },
---     bigquery: {
---         partitionBy: "created_date"
---     },
---     tags:["platinum_custom_2h_past7","monitoring_prd_realtime-supply"]
--- }
+config {
+    type: "incremental",
+    name: "updated_monitoring_prd_realtime_supply_margin_sku",
+    schema: "platinum_buymed_vn",
+    disabled: true,
+    assertions: {
+        uniqueKey: 'mg_id',
+        nonNull: ["created_date"]
+    },
+    bigquery: {
+        partitionBy: "created_date"
+    },
+    tags:["platinum_custom_2h_past7","monitoring_prd_realtime-supply"]
+}
 
 -- /*
 -- Currently I expect that monitoring_prd_realtime_supply margin_sku will never have delete action and deleting field update action

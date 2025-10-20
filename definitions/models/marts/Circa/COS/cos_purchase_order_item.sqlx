@@ -13,11 +13,12 @@ config {
 select
         datetime_add(c.created_at, interval 7 hour) as created_at
        ,a.purchase_order_id as po_id
+       ,c.code as po_code
        ,a.product_id
        ,a.sku as sku_code
        ,c.status
-       ,case when b.quantity <> 0 then b.quantity
-             else b.received_quantity end as quantity
+       ,coalesce(case when b.quantity <> 0 then b.quantity
+             else b.received_quantity end, a.quantity) as quantity
        ,b.received_quantity
        ,b.base_quantity
        ,case when b.tax_rate <= 0 then 0 else b.tax_rate end as tax_rate
@@ -30,7 +31,7 @@ select
       --   end as PO_item_amount,
        ,b.quantity * a.unit_price as PO_item_amount
        ,b.lot_date
-       ,product_id || "_" || lot_date || "_" || b.tax_rate || "_" || c.client_id as product_lot_date_vat_client_id
+       ,a.product_id || "_" || lot_date || "_" || b.tax_rate || "_" || c.client_id as product_lot_date_vat_client_id
        ,a.sku || "_" || lot_date || "_" || b.tax_rate as sku_lotdate_vat
        ,il.location_type
        --,a.discount_amount
@@ -42,6 +43,12 @@ select
        ,dis.name as Vendor
        ,c.client_id
        ,concat(a.product_id, "_", c.client_id) as product_client_id
+       ,rt.convert_rate
+       ,b.received_quantity * rt.convert_rate as base_qty_received
+       ,c.fulfillment_method as Channel
+       ,p.code
+       ,p.code as pos_code
+       ,concat(a.product_id, "_", p.code) as product_pos_code
        
 from ${source.circa_os}.order_purchase_order_item as a
 left join ${source.circa_os}.order_purchase_order as c on a.purchase_order_id = c.id
@@ -50,6 +57,9 @@ left join ${source.circa_os}.inventory_location as il on b.location_id = il.id a
 left join ${source.circa_os}.entity_owner eo on a.seller_code = eo.seller_code and c.client_id = eo.client_id 
 left join ${source.circa_os}.entity_distributor dis on c.distributor_id = dis.id and c.client_id = dis.client_id 
 left join ${source.ref}.circa_pos_profile  p on c.pos_id = p.id and c.client_id = p.client_id 
+left join ${source.circa_os}.product_retail_unit rt on a.unit = rt.unit 
+                                                 and a.product_id = rt.product_id 
+                                                 and c.client_id = rt.client_id
 where c.status <> 'CANCELED'
      and eo.name NOT LIKE '%TEST%'
      and p.id is not null

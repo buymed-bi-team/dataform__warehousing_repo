@@ -20,15 +20,15 @@ WITH
 mkp_o1 AS ( 
     SELECT 
         o.order_id,
-        COUNT(DISTINCT o.order_id) as SO_count,
         o.order_code as sale_order_code,
         o.customer_id, 
         o.status,
         CASE
-        WHEN order_channel IN ("MARKETPLACE","CONSIGNMENT") THEN "MARKETPLACE"
+        WHEN doc.order_channel IN ("MARKETPLACE","CONSIGNMENT") THEN "MARKETPLACE"
         ELSE order_channel
         END AS channel,
-        b.eom,
+        -- b.eom,
+        DATE(o.created_time, "Asia/Ho_Chi_Minh") AS order_date,
         CAST(NULL AS STRING) AS supplier_class,
         CASE
         WHEN dosr.sales_region_code LIKE "MIENNAM" THEN "SOUTHERN"
@@ -37,7 +37,6 @@ mkp_o1 AS (
         ELSE "GMV_VN_REGION_UNKNOWN" 
         END AS location,
     FROM  ${source.platinum}.marketplace_prd_order_v2_order o
-    LEFT JOIN ${source.ref}.dim_calendar as b on b.date = date(o.created_time)
     LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = o.order_id 
     LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON o.order_id = dosr.order_id
     WHERE DATE(o.created_time) >= ${start_date}
@@ -51,15 +50,14 @@ mkp_o1 AS (
 tender_o1 AS(
     SELECT 
         o.order_id,
-        COUNT(DISTINCT o.order_id) as SO_count,
         o.order_code as sale_order_code,
         o.customer_id, 
         o.status,
         CASE
-        WHEN order_channel IN ("MARKETPLACE","CONSIGNMENT") THEN "MARKETPLACE"
+        WHEN doc.order_channel IN ("MARKETPLACE","CONSIGNMENT") THEN "MARKETPLACE"
         ELSE order_channel
         END AS channel,
-        b.eom,
+        DATE(o.confirmation_date,"Asia/Ho_Chi_Minh") AS order_date,
         CAST(NULL AS STRING) AS supplier_class,
         CASE
         WHEN dosr.sales_region_code LIKE "MIENNAM" THEN "SOUTHERN"
@@ -68,7 +66,6 @@ tender_o1 AS(
         ELSE "GMV_VN_REGION_UNKNOWN" 
         END AS location,
     FROM  ${source.platinum}.marketplace_prd_order_v2_order o
-    LEFT JOIN ${source.ref}.dim_calendar as b on b.date = date(o.confirmation_date) --confirmation_date
     LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = o.order_id 
     LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON o.order_id = dosr.order_id
     WHERE DATE(o.confirmation_date) >= ${start_date} --confirmation_date
@@ -84,12 +81,14 @@ tender_o1 AS(
 , tender_o AS (
     SELECT 
         o.order_id,
-        COUNT(DISTINCT o.order_id) as SO_count,
         o.sale_order_code, 
         o.receiver_id * (10000) AS customer_id,
         o.status,
-        "TENDER" AS channel,
-        a.eom,
+        CASE
+        WHEN doc.order_channel IN ("MARKETPLACE","CONSIGNMENT") THEN "MARKETPLACE"
+        ELSE order_channel 
+        END AS channel,
+        DATE(o.confirmation_date,"Asia/Ho_Chi_Minh") AS order_date,
         CAST(NULL AS STRING) AS supplier_class,
         CASE
         WHEN dosr.sales_region_code LIKE "MIENNAM" THEN "SOUTHERN"
@@ -98,9 +97,10 @@ tender_o1 AS(
         ELSE "GMV_VN_REGION_UNKNOWN" 
         END AS location,
     FROM ${source.platinum}.tender_prd_core_tender_orders o
-    LEFT JOIN ${source.ref}.dim_calendar as a on a.date = date(o.confirmation_date)
     LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON o.order_id = dosr.order_id
+    LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = o.order_id
     WHERE o.created_date >= ${start_date} 
+    AND order_channel in ("TENDER", "TAYAU")
     AND o.confirmation_date is not null
     GROUP BY ALL
 )

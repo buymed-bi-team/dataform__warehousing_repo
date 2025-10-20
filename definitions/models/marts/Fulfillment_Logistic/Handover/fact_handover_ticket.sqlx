@@ -5,11 +5,11 @@ config {
         Detailed information of the handover tickets;
         PIC: nguyen.tran; 
         Type: Table; 
-		Refresh Schedule: each 2h from 6 to 22;
+		Refresh Schedule: hourly;
         Source: 
             ${source.platinum}.delivery_prd_transporting_handover_ticket
         `,
-    tags: ["custom_2h_past5"],
+    tags: ["custom_1h_past5"],
     columns: {
 		created_at: "Thời gian tạo phiếu bàn giao (handover)",
         done_handover_at: "Thời gian bàn giao xong cho đơn vị vận chuyển",
@@ -55,8 +55,10 @@ select
     JSON_VALUE(a.extra_props, '$.carrier_name') AS carrier_name,
     -- case when b.pod is null then 'Updating' else 'With attached image' end as delivery_image,
     -- case when b.pop is null then 'Updating' else 'With attached image' end as pick_up_image,
-    null as delivery_image,
-    null as pick_up_image,
+    REGEXP_REPLACE(REGEXP_REPLACE(REGEXP_REPLACE(TO_JSON_STRING(JSON_QUERY(extra_data, "$.pod")), r'\[|\]|\"', ''), r'storage.googleapis.com', 'cdn-gcs.thuocsi.vn'), r',', '\n') AS delivery_image,
+    REGEXP_REPLACE(REGEXP_REPLACE(REGEXP_REPLACE(TO_JSON_STRING(JSON_QUERY(extra_data, "$.pop")), r'\[|\]|\"', ''), r'storage.googleapis.com', 'cdn-gcs.thuocsi.vn'), r',', '\n') AS pick_up_image,
+    -- null as delivery_image,
+    -- null as pick_up_image,
     cast(json_value(a_l,"$.num_package") as int64) as num_packages,
     cast(json_value(a_l,"$.scanned_quantity") as int64) as scanned_packages,
     json_value(a_l,"$.so") as so_code,

@@ -9,7 +9,7 @@ config {
         partitionBy: "created_date",
         clusterBy: ["driver_id","trip_id"]
     },
-    tags:["platinum_custom_2h_past7","delivery_prd_transporting"]
+    tags:["platinum_custom_1h_past7","delivery_prd_transporting"]
 }
 
 pre_operations {

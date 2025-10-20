@@ -1,7 +1,7 @@
 config {
     type: "table",
     description: " PIC: minh.luu; model_type: table; schedule: 0h01",
-    tags: ["e0h01"],
+    tags: ["e0h01", "7h30"],
     columns: {
         date : "ngày-tháng-năm",
         date_key: "Date nhưng không có dấu phân cách",

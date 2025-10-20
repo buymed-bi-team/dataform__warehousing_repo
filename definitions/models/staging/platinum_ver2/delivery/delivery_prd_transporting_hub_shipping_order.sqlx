@@ -1,0 +1,53 @@
+config {
+    type: "view",
+    schema: "platinum_buymed_vn",
+    name: "delivery_prd_transporting_hub_shipping_order",
+    description : `
+    PIC: minh.luu
+    Partition by: created date
+    ClusterBy: ["driver_id","status","type","hub_code"]
+    `,
+    tags:["platinum","delivery_prd_transporting"]
+}
+ 
+
+WITH silver AS (
+SELECT
+    key,mg_id,hub_code,reference_code,action_name,action_time,cod_amount,created_time,delivery_amount,extra_info,fee_collect_method,fee_sender_amount,from_customer_code,from_customer_name,height,last_updated_time,length,note,num_package,parent_reference_code,payment_method,products,receive_package,status,tags,to_customer_address,to_customer_code,to_customer_name,to_customer_phone,to_district_code,to_district_name,to_province_code,to_province_name,to_ward_code,to_ward_name,total_amount,total_collect_receiver_amount,total_collect_sender_amount,tpl_code,tpl_name,tracking_code,type,version_no,weight,width,fee_amount,stored_time,need_verify_address,productivity_action,to_address_id,to_latitude,to_longitude,driver_id,driver_name,updated_by,trip_id,logs,fail_reasons,reason,delivered_time,private_note,created_by,from_address_id,from_customer_address,from_customer_phone,from_district_code,from_district_name,from_latitude,from_longitude,from_province_code,from_province_name,from_ward_code,from_ward_name,late_lead_time_level,pickup_lead_time,sub_type,from_customer_email,to_customer_email,expected_delivery_time,rescheduled_delivery_time,synced_at,extra_props,action,ingest_time,
+    
+    CASE
+        WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time, 'Asia/Ho_Chi_Minh'))
+        ELSE DATE( '2099-01-01' )
+    END
+    created_date,
+    CAST(null as datetime) 
+FROM silver_buymed_vn.delivery_prd_transporting_hub_shipping_order
+WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 1 DAY
+QUALIFY ROW_NUMBER() OVER (_window) = 1 
+        AND ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 16 HOUR
+        WINDOW _window AS (
+        PARTITION BY mg_id
+        ORDER BY synced_at DESC,
+        IF
+            (action='d',3,
+            IF
+            (action='u',2,1)) DESC
+        ,last_updated_time DESC)
+), platinum AS (
+SELECT 
+    key,mg_id,hub_code,reference_code,action_name,action_time,cod_amount,created_time,delivery_amount,extra_info,fee_collect_method,fee_sender_amount,from_customer_code,from_customer_name,height,last_updated_time,length,note,num_package,parent_reference_code,payment_method,products,receive_package,status,tags,to_customer_address,to_customer_code,to_customer_name,to_customer_phone,to_district_code,to_district_name,to_province_code,to_province_name,to_ward_code,to_ward_name,total_amount,total_collect_receiver_amount,total_collect_sender_amount,tpl_code,tpl_name,tracking_code,type,version_no,weight,width,fee_amount,stored_time,need_verify_address,productivity_action,to_address_id,to_latitude,to_longitude,driver_id,driver_name,updated_by,trip_id,logs,fail_reasons,reason,delivered_time,private_note,created_by,from_address_id,from_customer_address,from_customer_phone,from_district_code,from_district_name,from_latitude,from_longitude,from_province_code,from_province_name,from_ward_code,from_ward_name,late_lead_time_level,pickup_lead_time,sub_type,from_customer_email,to_customer_email,expected_delivery_time,rescheduled_delivery_time,synced_at,extra_props,action,ingest_time,
+    created_date,
+    platinum_refresh
+FROM ${ref(`platinum_buymed_vn__stg`, `delivery_prd_transporting_hub_shipping_order`)}
+)
+SELECT p.*
+FROM platinum p
+LEFT JOIN silver s 
+    ON p.mg_id = s.mg_id 
+WHERE s.mg_id is null 
+
+UNION ALL 
+
+SELECT s.*
+FROM silver s
+WHERE action <> "d"

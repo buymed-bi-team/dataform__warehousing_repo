@@ -1,0 +1,52 @@
+config {
+    type: "view",
+    schema: "platinum_buymed_vn",
+    name: "warehouse_prd_core_warehouse",
+    description : `
+    PIC: minh.luu
+    Partition by: created date
+    Cluster by: status
+    `,
+    tags:["platinum","warehouse_prd_core"]
+}
+
+  WITH silver AS (
+    SELECT
+      key,mg_id,status,warehouse_id,district_code,manager_id,length,area,created_by,created_time,ward_code,code,name,type,areas,width,version_no,address,province_code,last_updated_time,updated_by,district_name,province_name,ward_name,phone,email,height,config_delivery,config_delivery_same_day,shifts,customer_id,config_same_day_delivery,sub_areas,config_sub_area,is_merge_do,main_hub_code,synced_at,extra_props,action,ingest_time,
+      
+        CASE
+            WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time, 'Asia/Ho_Chi_Minh'))
+            ELSE DATE( '2099-01-01' )
+        END
+     created_date,
+      CAST(null as datetime) 
+    FROM silver_buymed_vn.warehouse_prd_core_warehouse
+    WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 1 DAY
+    QUALIFY ROW_NUMBER() OVER (_window) = 1 
+          AND ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 16 HOUR
+          WINDOW _window AS (
+          PARTITION BY mg_id
+          ORDER BY synced_at DESC,
+          IF
+              (action='d',3,
+              IF
+              (action='u',2,1)) DESC
+          ,last_updated_time DESC)
+  ), platinum AS (
+    SELECT 
+      key,mg_id,status,warehouse_id,district_code,manager_id,length,area,created_by,created_time,ward_code,code,name,type,areas,width,version_no,address,province_code,last_updated_time,updated_by,district_name,province_name,ward_name,phone,email,height,config_delivery,config_delivery_same_day,shifts,customer_id,config_same_day_delivery,sub_areas,config_sub_area,is_merge_do,main_hub_code,synced_at,extra_props,action,ingest_time,
+      created_date,
+      platinum_refresh
+    FROM ${ref(`platinum_buymed_vn__stg`, `warehouse_prd_core_warehouse`)}
+  )
+  SELECT p.*
+  FROM platinum p
+  LEFT JOIN silver s 
+      ON p.mg_id = s.mg_id 
+  WHERE s.mg_id is null 
+
+  UNION ALL 
+
+  SELECT s.*
+  FROM silver s
+  WHERE action <> "d"

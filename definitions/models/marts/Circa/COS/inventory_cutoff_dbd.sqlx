@@ -18,6 +18,9 @@ select distinct
       ,sum(on_hand_qty) as on_hand_qty
       ,sum(on_hand_qty * cost_price_include_tax) as stock_value
       ,a.client_id
+      ,case 
+          when date(datetime_add(a.updated_at, interval 7 hour)) > date(cutoff_date_index) then 0 else 1
+          end as is_same_day
 from ${source.circa_os}.inventory_location_detail_historical_cut_off as a
 left join ${source.circa_os}.inventory_location as b on a.location_id = b.id and a.client_id = b.client_id
 --where a.client_id = 1 

@@ -23,6 +23,11 @@ WITH
             , JSON_VALUE(r, '$.code') AS redeem_code
             , SAFE_CAST(JSON_VALUE(r, '$.discount_value') AS FLOAT64) AS discount_value
             , CONCAT(a.order_id, "_", JSON_VALUE(r, '$.code')) AS order_voucher_code
+            , IF(
+                JSON_VALUE(r, '$.code') = "SERVIER_07MATURENEW", 
+                IF(TIMESTAMP(a.created_at) > "2025-07-08 07:12:40.067000", 1, 0),
+                1
+            ) AS cheating_flag -- cheating servier promotion
         FROM ${ref('fact_order')} AS a
             , UNNEST(JSON_QUERY_ARRAY(a.redeem_apply_result)) AS r
             
@@ -33,3 +38,4 @@ SELECT
   , discount_value / SUM(discount_value) OVER (PARTITION BY order_id) AS percent
   , COALESCE(gmv * (discount_value / SUM(discount_value) OVER (PARTITION BY order_id)),0) AS gmv_voucher
 FROM promotion_order
+WHERE cheating_flag = 1

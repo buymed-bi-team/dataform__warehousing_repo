@@ -9,7 +9,7 @@ config {
         uniqueKey: ["customer_id"]
     },
     name: "dim_customer",
-    tags: ["custom_1h_past5"],
+    tags: ["custom_1h_past5", "CUSTOMER_SEGMENT"],
     columns: {
         customer_id: "NonNull",
         customer_name: "NonNull",
@@ -111,7 +111,7 @@ WITH
         , SUM(1) AS no_orders
     FROM ${ref('fact_order')}
     WHERE order_status <> 'CANCEL'
-      AND channel = "MARKETPLACE"
+      AND channel IN ("MARKETPLACE", "CIRCA")
     GROUP BY ALL
   ),
 
@@ -295,11 +295,11 @@ SELECT
         WHEN REGEXP_CONTAINS( UPPER(name), r'TECH SELLER|TEST|TECH-QC|TS-TECH|\[TECH\]|\(TECH\)|DEMO|QC|TECH MONITOR|TECH 2') THEN "TECH"
         WHEN INITCAP(name) LIKE '%Tech%' THEN "TECH"
         -- WHEN TO_JSON_STRING( customer.tags ) LIKE '%\"TERMINATE_CIRCA\"%'  THEN 'MARKETPLACE'
-        WHEN TO_JSON_STRING( customer.tags ) LIKE '%\"CIRCA\"%'  THEN 'CIRCA' -- Một số terminate circa vẫn được gán nhãn là circa ví dụ customer_id in (252404,358259,369079)
-        WHEN TO_JSON_STRING( customer.tags ) LIKE '%\"NHANVIEN\"%' OR REGEXP_CONTAINS( customer.email, "@buymed|@thuocsi") THEN "EMPLOYEE"
+        WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"CIRCA\"|\"CIRCACOS\"')  THEN 'CIRCA' -- Một số terminate circa vẫn được gán nhãn là circa ví dụ customer_id in (252404,358259,369079)
+        WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"NHANVIEN\"') /*OR REGEXP_CONTAINS( customer.email, "@buymed|@thuocsi")*/ THEN "EMPLOYEE"
         WHEN customer.customer_id = 241098 THEN "CONSIGNMENT"
         WHEN customer.customer_id = 360299 THEN "OPV"
-        WHEN TO_JSON_STRING( customer.tags ) LIKE '%TENDER%' THEN 'TENDER'
+        WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'TENDER') THEN 'TENDER'
         ELSE 'MARKETPLACE' -- Một số order trong dim_order bị xếp loại vào Marketplace trong khi vốn tên có là FC-CIRCA
     END AS customer_report_category,
 
@@ -307,9 +307,10 @@ SELECT
         WHEN STRPOS(list_channel, "MARKETPLACE") > 0 THEN "MARKETPLACE"
         WHEN STRPOS(list_channel, "CIRCA") > 0 THEN "CIRCA"
         WHEN STRPOS(list_channel, "DISTRIBUTION") > 0  THEN "DISTRIBUTION"
-        WHEN TO_JSON_STRING( customer.tags ) LIKE '%\"NHANVIEN\"%' OR REGEXP_CONTAINS( customer.email, "@buymed|@thuocsi") THEN "EMPLOYEE"
+        WHEN TO_JSON_STRING( customer.tags ) LIKE '%\"NHANVIEN\"%' /*OR REGEXP_CONTAINS( customer.email, "@buymed|@thuocsi") */ THEN "EMPLOYEE"
         WHEN STRPOS(list_channel, "TENDER") > 0 THEN "TENDER"
         WHEN STRPOS(list_channel, "CONSIGNMENT") > 0 THEN "CONSIGNMENT"
+        ELSE "MARKETPLACE"
     END AS customer_channel,
     cb.bank_code,
     cb.bank_account_name,
@@ -318,11 +319,22 @@ SELECT
 
     CASE
         WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"TOP200\"|\"AMBASSADOR_TOP200\"|\"WHOLESALER\"|\"BANSI\"') THEN 'KAM'
-        WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"ETC\"') THEN 'ETC'
-        WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"CIRCA\"|\"CIRCACOS\"') THEN 'CIRCA'
-        WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"VIP\"|\"AMBASSADOR\"') THEN 'VIP'
-        ELSE "NORMAL"
+        -- WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"ETC\"') THEN 'ETC'
+        -- WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"ETC\"|\"CLINIC\"') THEN 'ETC'
+        WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"CIRCA\"|\"CIRCACOS\"|\"CIRCAFOFO\"') THEN 'CIRCA'
+        WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"VIP\"|\"AMBASSADOR\"') THEN 'RETAIL'
+        ELSE "RETAIL"
     END AS customer_tag_group,
+    CASE  
+        WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"TOP200\"|\"AMBASSADOR_TOP200\"') THEN "TOP200"
+        WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"WHOLESALER\"|\"BANSI\"') THEN "WHOLESALE"
+        -- WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"ETC\"') THEN "TENDER_TAYAU"
+        -- WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"CLINIC\"') THEN "TENDER_CLINIC"
+        WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"CIRCACOS\"') THEN 'CIRCA_COS'
+        WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"CIRCAFOFO\"|\"CIRCA\"') THEN 'CIRCA_FS'
+        WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"VIP\"|\"AMBASSADOR\"') THEN "RETAIL_A"
+        ELSE "RETAIL_B"
+    END  AS customer_tag_sub_group,
     IFNULL(SAFE_CAST(JSON_VALUE(customer.extra_props, "$.is_skip_sync_level") AS BOOLEAN), FALSE) AS is_skip_sync_level,
     flom.ordered_amount,
     flom.no_orders,

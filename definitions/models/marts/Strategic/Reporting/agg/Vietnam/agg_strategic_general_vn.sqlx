@@ -27,7 +27,7 @@ WITH base_calendar AS (
 -- Order_item metrics
 order_metrics AS (
   SELECT
-    c.eom as date,
+    DATE(created_time) as order_date,
     location,
     channel,
     supplier_class,
@@ -47,14 +47,13 @@ order_metrics AS (
     SUM(IF(order_status NOT LIKE "CANCEL", returned_quantity * sales_price, 0)) AS gmv_return,
     SUM(demand_quantity) AS item_sold
   FROM ${ref(`fact_strategic_sale_order_item_single`)} as f
-  LEFT JOIN base_calendar c ON date(f.created_time) = c.date 
   GROUP BY 1, 2, 3, 4
 ),
 
 -- Delivery metrics
 delivery_metrics AS (
   SELECT 
-    c.eom as date,
+    DATE(do.created_time) as delivery_date,
     do.location,
     do.channel,
     CAST(NULL AS STRING) AS supplier_class,
@@ -63,15 +62,24 @@ delivery_metrics AS (
       ELSE delivery_order_code 
     END) AS do_count
   FROM ${ref(`fact_strategic_delivery_order`)} do
-  LEFT JOIN base_calendar c ON DATE(do.created_time) = c.date
   GROUP BY 1, 2, 3, 4
 ),
 
--- Flattened order metric measures for reuse
-order_metrics_flattened AS (
+-- Sale order metrics
+sales_order_metrics AS (
+  SELECT 
+    order_date,
+    so.location,
+    so.channel,
+    CAST(NULL AS STRING) AS supplier_class,
+    COUNT(DISTINCT order_id ) AS so_count
+  FROM ${ref(`fact_strategic_sale_order`)} so
+  GROUP BY 1, 2, 3, 4
+)
+
   SELECT
     CURRENT_DATETIME("+7") AS refresh_time,
-    date,
+    c.eom as date,
     m.location,
     m.channel,
     m.supplier_class,
@@ -96,22 +104,33 @@ order_metrics_flattened AS (
     STRUCT("GMV_BACKLOG", m.gmv_backlog),
     STRUCT("GMV_RETURN", m.gmv_return)
   ]) AS metric
-)
+INNER JOIN base_calendar c ON m.order_date = c.date
 
-SELECT * FROM order_metrics_flattened as a
 
 UNION ALL
-
-
 SELECT 
   CURRENT_DATETIME("+7") AS refresh_time,
-  date,
+  c.eom as date,
   d.location,
   d.channel,
   d.supplier_class,
   "DO" AS measure,
   d.do_count AS value
 FROM delivery_metrics d
+INNER JOIN base_calendar c ON d.delivery_date = c.date
+
+
+UNION ALL
+SELECT 
+  CURRENT_DATETIME("+7") AS refresh_time,
+  c.eom as date,
+  so.location,
+  so.channel,
+  so.supplier_class,
+  "SO" AS measure,
+  so.so_count AS value
+FROM sales_order_metrics so
+INNER JOIN base_calendar c ON so.order_date = c.date
 
 
 UNION ALL
@@ -152,14 +171,3 @@ supplier_class,
 measure,
 value
 FROM ${ref(`agg_inventory_cutoff`)}
-
-UNION ALL
-SELECT
-  CURRENT_DATETIME("+7") AS refresh_time,
-  eom AS date,
-  location,
-  channel,
-  supplier_class,
-  "SO" AS measure,
-  SO_count AS value
-FROM ${ref(`fact_strategic_sale_order`)}

@@ -1,8 +1,9 @@
 config {
     type: "table",
-    description: `Last 13 month| PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 past hour 6, 8, 10, 12, 14, 16, 18, 20 and 22`,
+    description: ` target OS PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 past hour 6, 8, 10, 12, 14, 16, 18, 20 and 22`,
     tags:["10h30"],
     name: "target_sales"
 }
 
-select * from buymed_external.Target_Sales
+select * from buymed_external.target_sales_v2
+where pos_code is not null

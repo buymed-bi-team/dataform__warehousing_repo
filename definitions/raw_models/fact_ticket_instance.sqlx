@@ -82,13 +82,19 @@ select
     DATETIME(PARSE_TIMESTAMP('%Y-%m-%dT%H:%M:%E*S%Ez',JSON_EXTRACT_SCALAR(extra_props,'$.completed_time')), "Asia/Ho_Chi_Minh") as completed_time,
     message_notes,
     c.cause_name AS cause_name,
-    c.reason_name
+    c.reason_name,
+    JSON_VALUE(ti.input_data, "$.inboundCode") AS pgh,
+    JSON_VALUE(ti.input_data, "$.withdrawCode") AS prh,
+    JSON_VALUE(ti.input_data, "$.productCode") AS item_code,
+    s.product_name
 from `${source.platinum}.platform_organization_prd_ticket_ticket_instance` ti
 
     left join unnest(JSON_EXTRACT_ARRAY(assign_roles,'$')) a
     left join unnest(JSON_EXTRACT_ARRAY(decision_selecteds,'$')) b
     left join cause AS c ON c.cause_code = ti.cause_code AND c.reason_code = ti.reason_code
 left join ticket_note as tn on ti.ticket_instance_code = tn.ref_code
+left join ${ref('dim_sku_sales_region_current')} AS s ON s.sub_sku_code = JSON_VALUE(ti.input_data, "$.productCode")
+-- where status <> 'DRAFT'
 -- where key like 'a0110ebd-0265-4bcb-832a-78322d27c34f'
 -- requester_type like "CIRCA_FS" or
 -- template_module_code like "CIRCA_FS" and branch_code like "VN"

@@ -96,7 +96,7 @@ with cte_product as (
       from ${source.circa_os}.product_retail_unit as a
       -- right join ${source.circa_os}.product_product as b on a.product_id = b.product_id
       where unit is not null or unit <> "" --and client_id = 1
-      qualify row_number() over(partition by product_id  order by convert_rate desc ) =1
+      qualify row_number() over(partition by product_id ,client_id order by convert_rate desc ) =1
       )
       ,brand_type as
       (
@@ -135,7 +135,7 @@ select distinct pd.product_id
                ,pd.* except (product_id)
           --   ,a.unit as retail_unit
                ,cr.convert_rate
-               ,cr.convert_unit
+               ,cr.convert_unit 
           --   ,a.sale_allowed as is_sale_allowed
                ,op.status as medship_status
                ,op.unit_name as medship_unit

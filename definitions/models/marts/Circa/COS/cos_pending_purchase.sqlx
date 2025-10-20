@@ -48,7 +48,7 @@ Select distinct
 from t 
 left join ${source.circa_os}.order_purchase_order_item i on t.id = i.purchase_order_id
 where t.fulfillment_method <> 'SO_THUOCSI'
-and date(t.created_at) >=  '2025-04-11'
+and date(t.created_at) >=  '2025-08-01'
 --Lấy những đơn hàng mua ngoài hoặc import stock
 )
 ,Map_thuocsi as (
@@ -76,7 +76,7 @@ where  TO_JSON_STRING(customer_tags) LIKE "%CIRCACOS%"
        and o.order_status <> 'CANCEL'
        and t.code is not null
        and p.id is not null
-       and date(created_date) >=  '2025-06-01' 
+       and date(created_date) >=  '2025-08-01' 
 group by all
 --Lấy những đơn hàng đặt mua thuốc sỉ
 )
@@ -106,7 +106,7 @@ where  TO_JSON_STRING(customer_tags) LIKE "%CIRCACOS%"
        and t.code is not null
        and t.seller_code is null
        and p.id is not null
-       and date(created_date) >=  '2025-06-01' 
+       and date(created_date) >=  '2025-08-01' 
 group by all
 )
 ,Pending as (
@@ -121,6 +121,7 @@ Select p.*
  from Pending p 
  where p.id not in 
 (Select distinct purchase_order_id from ${source.circa_os}.order_goods_receipt where status = 'COMPLETED' and client_id = 1) -- điều kiện này dùng để loại trừ những trường hợp cửa hàng đã nhận hàng nhưng ko bấm hoàn thành trên pos
+     and p.pos_id not in ('3faa7e69-a4ef-4cf7-aa5b-97f935f498b1','a2e662c3-56e5-4b63-a608-40fed955c83c','86dc7409-1f85-4d53-b398-8048ea932f30')
 -- union all
 --  Select p.*
 --  from Pending p 

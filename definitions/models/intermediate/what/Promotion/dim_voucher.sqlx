@@ -10,7 +10,7 @@ config {
             ${source.platinum}.marketplace_prd_promotion_voucher,
             ${source.ref}.dim_promotion
         `,
-    tags: ["custom_1h_past5","PROMOTION_MKP"],
+    tags: ["custom_1h_past5","PROMOTION_MKP", "CUSTOMER_SEGMENT"],
     bigquery: {
         clusterBy: ["voucher_code","voucher_id"]
     }
@@ -77,5 +77,5 @@ FROM ${source.platinum}.marketplace_prd_promotion_voucher AS v
     ) AS u ON u.voucher_code = v.code
 WHERE
     v.voucher_id NOT IN (6475,41228,43668, 286759)
-    AND v.end_time >= TIMESTAMP_SUB('2023-01-01', INTERVAL 7 HOUR)
+    -- AND v.end_time >= TIMESTAMP_SUB('2023-01-01', INTERVAL 7 HOUR)
 QUALIFY ROW_NUMBER() OVER(PARTITION BY voucher_code) = 1

@@ -63,10 +63,10 @@ SELECT DISTINCT
     f.product_name,
     f.warehouse_code,
     l.latest_put_time,
-    TIMESTAMP_DIFF(CURRENT_TIMESTAMP(), l.latest_put_time, DAY) AS aging_put_days,
+    TIMESTAMP_DIFF(CURRENT_DATE("+7"), DATE(l.latest_put_time + INTERVAL 7 HOUR), DAY) AS aging_put_days,
     b.code AS latest_put_code,
     f.code AS final_put_code,
-    TIMESTAMP_DIFF(CURRENT_TIMESTAMP(), f.latest_time, DAY) AS aging_final_days,
+    TIMESTAMP_DIFF(CURRENT_DATE("+7"), DATE(f.latest_time + INTERVAL 7 HOUR), DAY) AS aging_final_days,
     COALESCE(p.inbound_code, json_value(b.extra_props, "$.inbound_code")) AS latest_inbound_code
 FROM LatestPut l
 JOIN ${source.platinum}.warehouse_prd_inbound_put_ticket_item a

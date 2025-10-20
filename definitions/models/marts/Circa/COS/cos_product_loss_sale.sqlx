@@ -1,0 +1,42 @@
+config {
+    type: "table",
+    description: `Last 13 month| PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every 2 hours.Circa /cos_order_item_demand `
+    /*Source:
+      ${source.silver}.marketplace_prd_order_v2_order_item
+      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
+    tags: ["custom_1h_past5"],
+    name: "cos_product_loss_sale",
+    columns: {
+        order_id: "NonNull |" + docs.order_id,
+        customer_id: "NonNull | The unique identifier for each customer"
+        
+    },
+    bigquery: {
+        partitionBy: "date(created_at)"
+    }
+}
+
+
+
+Select distinct p.name 
+                ,o.pos_id
+                ,date(datetime_add(o.created_at, interval 7 hour)) as created_date
+                ,datetime_add(o.created_at, interval 7 hour) as created_at
+                ,datetime_add(o.date_time, interval 7 hour) as date_time
+                ,datetime_add(o.updated_at, interval 7 hour) as updated_at
+                ,o.id
+                ,o.unit
+                ,unit_id
+                ,o.product_id
+                ,o.product_name
+                ,case when td.product_categories is null then 'Khác' else td.product_categories end as product_categories
+                ,price
+                ,quantity
+                ,total_amount
+                ,o.client_id
+                ,concat(o.product_id, "_", o.client_id) as product_client_id
+from ${source.circa_os}.product_product_loss_sale o
+left join ${source.ref}.circa_pos_profile p on o.pos_id = p.id 
+left join  ${source.ref}.cos_dim_product td on o.product_id = td.product_id and o.client_id = td.client_id
+where p.id is not null 
+

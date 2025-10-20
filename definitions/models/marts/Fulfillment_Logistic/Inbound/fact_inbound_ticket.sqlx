@@ -77,7 +77,7 @@ WITH cte_date AS (
 			, MIN_BY(hub_code, received_ts) AS first_received_location
             -- , MIN(IF(hub_code NOT IN ('HN','BD','DN'), received_ts, NULL)) AS first_received_time_at_hub
 		FROM ${ref('fact_inbound_receipts')}
-		-- WHERE receipt_fc_code = destination_location
+		WHERE status <> "CANCEL"
 		GROUP BY 1
 	),
 
@@ -87,6 +87,7 @@ WITH cte_date AS (
             , MIN(IF(hub_code NOT IN ('HN','BD','DN') OR first_received_location <> a.fc_code, received_ts, NULL)) AS first_received_time_at_hub
         FROM ${ref('fact_inbound_receipts')} AS a
             LEFT JOIN first_location USING (po_code)
+		WHERE status <> "CANCEL"
         GROUP BY 1
     )
 

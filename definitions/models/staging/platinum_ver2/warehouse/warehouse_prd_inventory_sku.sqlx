@@ -1,0 +1,21 @@
+config {
+    type: "view",
+    schema: "platinum_buymed_vn",
+    name: "warehouse_prd_inventory_sku",
+    description : `
+    PIC: minh.luu
+    Partition by: created date
+    Cluster by: status
+    `,
+    tags:["platinum","warehouse_prd_inventory"]
+}
+
+
+SELECT
+  *
+FROM ${ref(`platinum_buymed_vn__stg`,`warehouse_prd_inventory_sku`)}
+WHERE NOT ( 
+  (created_time is null and last_updated_time is null) 
+  or (created_time is null and last_updated_time is not null) 
+  or (created_time is not null and last_updated_time is null)
+)

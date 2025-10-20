@@ -85,7 +85,7 @@ with
             if (
                 a.retail_price_value > 0,
                 a.retail_price_value * 0.02 * d.fee_value * COALESCE(b.fee_value,1)  * c.fee_value *
-                    IF(a.pricing_strategy = 0, 1, a.pricing_strategy),
+                    COALESCE(NULLIF(a.pricing_strategy, 0),1),
                 null
             ) as platform_fee,
 
@@ -116,6 +116,7 @@ with
             or ((a.retail_price_value is null or a.retail_price_value > 100000000) and c.flag = true))
             AND sku_system_status IN ("NORMAL", "LIMIT", "OUT_OF_STOCK")
             AND (seller_code = "MEDX" OR seller_class = "EXTERNAL")
+            AND a.sales_region_code <> "MIENTRUNG"
     ),
 
     normal_product AS (

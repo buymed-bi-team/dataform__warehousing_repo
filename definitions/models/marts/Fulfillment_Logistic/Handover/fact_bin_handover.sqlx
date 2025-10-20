@@ -86,12 +86,12 @@ with
         * except (scope), 
         json_value(json_extract_array(scope)[offset(0)]) as opposite_hub_code, -- get first hub that sent transport orders to another 
         case 
-          when to_department_code in ('HUBVSIPBACNINH','HUBTRUONGDINH','HUBVSIPII','HUBHOACAM_DANANG') then "IN_FC"
-          when to_department_code not in ('HUBVSIPBACNINH','HUBTRUONGDINH','HUBVSIPII','HUBHOACAM_DANANG') then 'IN_HUB'
+          when to_department_code in ('HUBVSIPBACNINH','HUBVSIPII','HUBHOACAM_DANANG') then "IN_FC"
+          when to_department_code not in ('HUBVSIPBACNINH','HUBVSIPII','HUBHOACAM_DANANG') then 'IN_HUB'
           else null
         end as in_out_type,
         case 
-          when from_department_code  in ('HUBVSIPBACNINH','HUBTRUONGDINH') or to_department_code in ('HUBVSIPBACNINH','HUBTRUONGDINH') then 'HN'	
+          when from_department_code  = 'HUBVSIPBACNINH' or to_department_code ='HUBVSIPBACNINH' then 'HN'	
           when from_department_code = 'HUBVSIPII' or to_department_code = 'HUBVSIPII' then 'BD'
           when from_department_code = 'HUBHOACAM_DANANG' or to_department_code = 'HUBHOACAM_DANANG' then 'DN' 
           else null 
@@ -104,12 +104,12 @@ with
         *  except (scope),
         json_value(json_extract_array(scope)[offset(array_length(json_extract_array(scope))-1)]) as opposite_hub_code, -- get last hub that sent transport orders to another 
         case 
-          when from_department_code in ('HUBVSIPBACNINH','HUBTRUONGDINH','HUBVSIPII','HUBHOACAM_DANANG') then "OUT_FC"
-          when from_department_code not in ('HUBVSIPBACNINH','HUBTRUONGDINH','HUBVSIPII','HUBHOACAM_DANANG') then "OUT_HUB"
+          when from_department_code in ('HUBVSIPBACNINH','HUBVSIPII','HUBHOACAM_DANANG') then "OUT_FC"
+          when from_department_code not in ('HUBVSIPBACNINH','HUBVSIPII','HUBHOACAM_DANANG') then "OUT_HUB"
           else null
         end as in_out_type,
           case 
-            when from_department_code  in ('HUBVSIPBACNINH','HUBTRUONGDINH') or to_department_code in ('HUBVSIPBACNINH','HUBTRUONGDINH') then 'HN'	
+            when from_department_code  = 'HUBVSIPBACNINH' or to_department_code = 'HUBVSIPBACNINH' then 'HN'	
             when from_department_code = 'HUBVSIPII' or to_department_code = 'HUBVSIPII' then 'BD'
             when from_department_code = 'HUBHOACAM_DANANG' or to_department_code = 'HUBHOACAM_DANANG' then 'DN' 
           else null 
@@ -124,7 +124,7 @@ where
   fc_code is not null
   -- Exclude Handover Ticket Handover between 2 FC 
   and (
-    not (from_department_code in ("HUBVSIPBACNINH","HUBTRUONGDINH","HUBVSIPII","HUBHOACAM_DANANG")
-      and to_department_code in ("HUBVSIPBACNINH","HUBTRUONGDINH","HUBVSIPII","HUBHOACAM_DANANG")
+    not (from_department_code in ("HUBVSIPBACNINH","HUBVSIPII","HUBHOACAM_DANANG")
+      and to_department_code in ("HUBVSIPBACNINH","HUBVSIPII","HUBHOACAM_DANANG")
   ))
 

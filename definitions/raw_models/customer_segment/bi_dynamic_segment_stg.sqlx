@@ -1,0 +1,202 @@
+config {
+    type: "incremental",
+    description: "Result of Dynamic Segment",
+    tags: ["CUSTOMER_SEGMENT", "0h30", "custom_1h_past10"]
+}
+
+WITH
+    segment_data AS (
+        SELECT
+            *
+        FROM ${ref('bi_dynamic_segment')} AS a
+        ${when(incremental(),
+            `WHERE NOT EXISTS (SELECT 1 
+                                FROM ${self()} AS b 
+                                WHERE a.segment_id = b.segment_id 
+                                AND CURRENT_DATE("+7") = b.processed_date
+                                AND a.submit_id = b.submit_id)`
+            )
+        }
+    ),
+
+    get_start_end AS (
+        SELECT
+            * EXCEPT (count_order, sum_gmv, operator)
+            , IFNULL(
+                SAFE.PARSE_DATE('"%Y-%m-%d"', SPLIT(time_range_count_sum, ",")[SAFE_OFFSET(0)])
+                , DATE_SUB(CURRENT_DATE(), INTERVAL SAFE_CAST(REGEXP_EXTRACT(SPLIT(time_range_count_sum, ",")[SAFE_OFFSET(0)], r'[0-9]+') AS INT64) DAY)
+            ) AS start_date_time_range_count_sum
+            , IFNULL(
+                SAFE.PARSE_DATE('"%Y-%m-%d"', SPLIT(time_range_count_sum, ",")[SAFE_OFFSET(1)])
+                , DATE_SUB(CURRENT_DATE(), INTERVAL IFNULL(SAFE_CAST(REGEXP_EXTRACT(SPLIT(time_range_count_sum, ",")[SAFE_OFFSET(1)], r'[0-9]+') AS INT64),0) DAY)
+            ) AS end_date_time_range_count_sum
+            , IFNULL(
+                SAFE.PARSE_DATE('"%Y-%m-%d"', SPLIT(created_at1, ",")[SAFE_OFFSET(0)])
+                , DATE_SUB(CURRENT_DATE(), INTERVAL SAFE_CAST(REGEXP_EXTRACT(SPLIT(created_at1, ",")[SAFE_OFFSET(0)], r'[0-9]+') AS INT64) DAY)
+            ) AS start_date1
+            , IFNULL(
+                SAFE.PARSE_DATE('"%Y-%m-%d"', SPLIT(created_at1, ",")[SAFE_OFFSET(1)])
+                , DATE_SUB(CURRENT_DATE(), INTERVAL IFNULL(SAFE_CAST(REGEXP_EXTRACT(SPLIT(created_at1, ",")[SAFE_OFFSET(1)], r'[0-9]+') AS INT64),0) DAY)
+            ) AS end_date1
+            , IFNULL(
+                SAFE.PARSE_DATE('"%Y-%m-%d"', SPLIT(created_at2, ",")[SAFE_OFFSET(0)])
+                , DATE_SUB(CURRENT_DATE(), INTERVAL SAFE_CAST(REGEXP_EXTRACT(SPLIT(created_at2, ",")[SAFE_OFFSET(0)], r'[0-9]+') AS INT64) DAY)
+            ) AS start_date2
+            , IFNULL(
+                SAFE.PARSE_DATE('"%Y-%m-%d"', SPLIT(created_at2, ",")[SAFE_OFFSET(1)])
+                , DATE_SUB(CURRENT_DATE(), INTERVAL IFNULL(SAFE_CAST(REGEXP_EXTRACT(SPLIT(created_at2, ",")[SAFE_OFFSET(1)], r'[0-9]+') AS INT64),0) DAY)
+            ) AS end_date2
+            , SPLIT(REGEXP_REPLACE(count_order, r'[^0-9,]+', ''), ',')[SAFE_OFFSET(0)] AS start_count_order
+            , SPLIT(REGEXP_REPLACE(count_order, r'[^0-9,]+', ''), ',')[SAFE_OFFSET(1)] AS end_count_order
+            , REGEXP_REPLACE(count_order, r'[^><=]', '') AS count_order_operator
+            , SPLIT(REGEXP_REPLACE(sum_gmv, r'[^0-9,]+', ''), ',')[SAFE_OFFSET(0)] AS start_sum_gmv
+            , SPLIT(REGEXP_REPLACE(sum_gmv, r'[^0-9,]+', ''), ',')[SAFE_OFFSET(1)] AS end_sum_gmv
+            , REGEXP_REPLACE(sum_gmv, r'[^><=]', '') AS sum_gmv_operator
+            , IFNULL(operator, '') AS operator
+        FROM segment_data
+    )
+
+    , query_order AS (
+        SELECT
+            customer_id
+            , sd.segment_id
+            , COUNT(DISTINCT order_id) AS no_order
+            , SUM(ordered_amount) AS _gmv
+        FROM  ${ref('fact_order')}
+            ,  get_start_end AS sd
+        WHERE 1=1
+            AND channel IN ("MARKETPLACE", "CIRCA")
+            AND order_status <> "CANCEL"
+            AND (
+                sd.customer_order_status IS NULL
+                OR STRPOS(sd.customer_order_status, CONCAT('"',order_status,'"')) > 0
+            )
+            AND (
+                sd.start_date_time_range_count_sum IS NULL
+                OR DATE(created_at) BETWEEN sd.start_date_time_range_count_sum AND sd.end_date_time_range_count_sum
+            )
+        GROUP BY ALL
+    )
+
+    , query_order1 AS (
+        SELECT
+            DISTINCT oi.customer_id, sd.segment_id
+        FROM (
+            SELECT
+                order_id
+                , customer_id
+                , seller_code
+                , product_id
+                , created_at
+            FROM ${ref('fact_order_item')}
+            UNION DISTINCT
+            SELECT
+                order_id
+                , customer_id
+                , seller_code
+                , product_id
+                , created_at
+            FROM ${ref('fact_order_item_historical')}
+            WHERE DATE(created_at) < DATE_TRUNC(CURRENT_DATE("+7"), MONTH) - INTERVAL 12 MONTH
+        ) AS oi
+            LEFT JOIN ${ref('fact_order')} o ON oi.order_id = o.order_id
+            , (SELECT start_date1, end_date1, seller_code1, product_id1, segment_id, order_status1 FROM get_start_end) sd
+        WHERE o.channel IN ("MARKETPLACE", "CIRCA")
+            AND o.order_status <> "CANCEL"
+            AND (
+                sd.order_status1 IS NULL
+                OR STRPOS(sd.order_status1, CONCAT('"',o.order_status,'"')) > 0
+            )
+            AND (
+                sd.start_date1 IS NULL
+                OR DATE(oi.created_at) BETWEEN sd.start_date1 AND sd.end_date1
+            )
+            AND (sd.seller_code1 IS NULL OR STRPOS(sd.seller_code1, CONCAT('"',oi.seller_code,'"')) > 0)
+            AND (sd.product_id1 IS NULL OR STRPOS(sd.product_id1, CONCAT('"',oi.product_id,'"')) > 0)
+    )
+
+    , query_order2 AS (
+        SELECT
+            DISTINCT oi.customer_id, sd.segment_id
+        FROM ${ref('fact_order_item')} oi
+            LEFT JOIN ${ref('fact_order')} o ON oi.order_id = o.order_id
+            , (SELECT start_date2, end_date2, seller_code2, product_id2, segment_id, order_status2 FROM get_start_end) sd
+        WHERE o.channel IN ("MARKETPLACE", "CIRCA")
+            AND o.order_status <> "CANCEL"
+            AND (
+                sd.order_status2 IS NULL
+                OR STRPOS(sd.order_status2, CONCAT('"',o.order_status,'"')) > 0
+            )
+            AND (
+                sd.start_date2 IS NULL
+                OR DATE(oi.created_at) BETWEEN sd.start_date2 AND sd.end_date2
+            )
+            AND (sd.seller_code2 IS NULL OR STRPOS(sd.seller_code2, CONCAT('"',oi.seller_code,'"')) > 0)
+            AND (sd.product_id2 IS NULL OR STRPOS(sd.product_id2, CONCAT('"',oi.product_id,'"')) > 0)
+    )
+
+    , final AS (
+        SELECT
+            c.customer_id,
+            sd.segment_id,
+            sd.submit_id,
+            CURRENT_TIMESTAMP()  + INTERVAL 7 HOUR AS processed_at
+        FROM ${ref('dim_customer')} c
+            LEFT JOIN ${ref('dim_geo_location')} AS g ON c.location_code= g.location_code
+            CROSS JOIN  get_start_end sd
+            LEFT JOIN query_order AS q ON q.customer_id = c.customer_id AND q.segment_id = sd.segment_id
+        WHERE 1=1
+            -- Customer conditions
+            AND (sd.customer_status IS NULL OR STRPOS(sd.customer_status, CONCAT('"',c.customer_status,'"')) > 0)
+            AND (sd.customer_level IS NULL OR STRPOS(sd.customer_level, CONCAT('"',c.customer_level,'"')) > 0)
+            AND (sd.config_fc IS NULL OR STRPOS(sd.config_fc, CONCAT('"',c.config_fc,'"')) > 0)
+            AND (sd.province_name IS NULL OR STRPOS(sd.province_name, CONCAT('"',UPPER(g.province_name),'"')) >0)
+            AND (sd.region_name IS NULL OR STRPOS(sd.region_name, CONCAT('"',UPPER(g.region_name),'"')) >0)
+            AND (sd.customer_tag_group IS NULL OR STRPOS(sd.customer_tag_group, CONCAT('"',c.customer_tag_group,'"')) > 0)
+            AND (sd.customer_tag_sub_group IS NULL OR STRPOS(sd.customer_tag_sub_group, CONCAT('"',c.customer_tag_sub_group,'"')) > 0)
+            AND (
+                sd.start_count_order IS NULL
+                OR (sd.count_order_operator = '>' AND q.no_order > SAFE_CAST(start_count_order AS INT64))
+                OR (sd.count_order_operator = '' AND COALESCE( q.no_order,0) = SAFE_CAST(start_count_order AS INT64) )
+                OR (sd.count_order_operator = '<' AND (q.no_order < SAFE_CAST(start_count_order AS INT64) /*OR q.no_order IS NULL*/))
+                OR (sd.count_order_operator = '><' AND (q.no_order > SAFE_CAST(start_count_order AS INT64) AND q.no_order < SAFE_CAST(end_count_order AS INT64)))
+            )
+            AND (
+                sd.start_sum_gmv IS NULL
+                OR (sum_gmv_operator = '>' AND _gmv > SAFE_CAST(start_sum_gmv AS INT64))
+                OR (sum_gmv_operator = '' AND COALESCE( _gmv,0) = SAFE_CAST(start_sum_gmv AS INT64) )
+                OR (sum_gmv_operator = '<' AND (_gmv < SAFE_CAST(start_sum_gmv AS INT64) /*OR _gmv IS NULL*/))
+                OR (sum_gmv_operator = '><' AND (_gmv > SAFE_CAST(start_sum_gmv AS INT64) AND  _gmv < SAFE_CAST(start_sum_gmv AS INT64) ))
+            )
+
+            -- Order conditions for NEW customers
+            AND (
+                sd.operator <> '"NEW"'
+                OR ( NOT EXISTS (SELECT 1 FROM query_order1 qo WHERE qo.customer_id = c.customer_id AND qo.segment_id = sd.segment_id)
+                    AND (sd.created_at1 IS NULL OR c.last_purchase >= start_date1)
+                )
+            )
+
+            AND (
+                sd.operator <> '"CHURN"'
+                OR ( EXISTS (SELECT 1 FROM query_order1 qo WHERE qo.customer_id = c.customer_id AND qo.segment_id = sd.segment_id)
+                    AND NOT EXISTS (SELECT 1 FROM query_order2 qoo WHERE qoo.customer_id = c.customer_id AND qoo.segment_id = sd.segment_id)
+                )
+            )
+
+            AND (
+                sd.operator <> '"EXCEPT"'
+                OR ( EXISTS (SELECT 1 FROM query_order1 qo WHERE qo.customer_id = c.customer_id AND qo.segment_id = sd.segment_id)
+                    AND NOT EXISTS (SELECT 1 FROM query_order2 qoo WHERE qoo.customer_id = c.customer_id AND qoo.segment_id = sd.segment_id)
+                )
+            )
+    )
+
+SELECT
+    segment_id
+    , DATE(processed_at) AS processed_date
+    , COUNT(1) AS total_customers
+    , ARRAY_AGG(customer_id) AS customer_list
+    , submit_id
+FROM final AS s
+GROUP BY ALL

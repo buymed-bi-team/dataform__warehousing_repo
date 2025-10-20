@@ -2,7 +2,7 @@ config {
     type: "table",
     description: 
         `
-        Details of the items in the order in 2022-2024, with combos split into normal products and its prices recalculated according to the corresponding combo;
+        Details of the items in the order in 2018-2024, with combos split into normal products and its prices recalculated according to the corresponding combo;
         PIC: nguyen.tran; 
         Type: Table; 
         Source: 
@@ -60,8 +60,8 @@ cte_order_item as (
         , seller_class
     FROM ${source.platinum}.marketplace_prd_order_v2_order_item as oi
     where
-        created_date BETWEEN '2022-01-01' AND DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), YEAR ), INTERVAL 1 DAY)
-        AND (seller_code IN ("MEDX", "MEDX-HN") OR seller_class = "EXTERNAL")
+        created_date BETWEEN '2018-01-01' AND DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), YEAR ), INTERVAL 1 DAY)
+        AND (seller_code IN ("MEDX", "MEDX-HN", "MEDX_E") OR seller_class = "EXTERNAL")
 ),
 
 cte_combo_item as (

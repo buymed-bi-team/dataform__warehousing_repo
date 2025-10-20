@@ -51,10 +51,38 @@ left join ${source.platinum}.tender_prd_core_tender_orders o on oi.order_id = o.
     gl.province_code,
     "INTERNAL-THUOCSI" as source_type,
 oi.product_id ||"_"|| lower(unit)  as product_unit_key
-    from ${source.gold}.fact_order_item oi
+    from ${source.ref}.fact_order_item oi
     left join ${source.ref}.dim_order o on oi.order_id = o.order_id
     left join ${source.ref}.dim_geo_location gl on o.location_code = gl.location_code
-    left join ${source.gold}.dim_seller s on oi.seller_code = s.supplier_code
+    left join ${source.ref}.dim_seller s on oi.seller_code = s.supplier_code
+    left join ${source.ref}.dim_product dp on oi.product_id = dp.product_id
+    where
+     o.order_channel like "%TENDER%"
+    --  and
+    -- date(oi.created_at) > "2024-07-01"
+    group by all
+--     where cus
+)
+, internal_thuocsi_historical as (
+    select
+    oi.order_id,
+    oi.sales_price as price,
+    s.supplier_class as  seller_class,
+    oi.vat_code as vat,
+    oi.demand_quantity as quantity,
+    oi.seller_code,
+    oi.product_id,
+    sum( oi.demand_quantity * sales_price) as total_amount ,
+    dp.unit,
+    -- o.receiver_name,
+    oi.customer_id as receiver_id,
+    gl.province_code,
+    "INTERNAL-THUOCSI" as source_type,
+oi.product_id ||"_"|| lower(unit)  as product_unit_key
+    from ${source.ref}.fact_order_item_historical oi
+    left join ${source.ref}.dim_order o on oi.order_id = o.order_id
+    left join ${source.ref}.dim_geo_location gl on o.location_code = gl.location_code
+    left join ${source.ref}.dim_seller s on oi.seller_code = s.supplier_code
     left join ${source.ref}.dim_product dp on oi.product_id = dp.product_id
     where
      o.order_channel like "%TENDER%"
@@ -68,3 +96,6 @@ from internal_tender
 union all
 select *
 from internal_thuocsi
+union all
+select *
+from internal_thuocsi_historical
