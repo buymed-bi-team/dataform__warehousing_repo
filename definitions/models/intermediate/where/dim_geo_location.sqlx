@@ -32,37 +32,26 @@ config {
 
 
 WITH 
-    dedup_district AS ${dedup.dedup(
-        source.silver + `.core_prd_master_data_district`,
-        `
-        code,
-        name as district_name,
-        province_code
-        `
-    )},
-    dedup_ward AS ${dedup.dedup(
-        source.silver + `.core_prd_master_data_ward`,
-        `
-        code,
-        name as ward_name,
-        district_code
-        `
-    )},
-    dedup_province AS ${dedup.dedup(
-        source.silver + `.core_prd_master_data_province`,
-        `
-        code,
-        name as province_name,
-        region_code
-        `
-    )},
-    dedup_region AS ${dedup.dedup(
-        source.silver + `.core_prd_master_data_region`,
-        `
-        code,
-        name as region_name
-        `
-    )}, tbl AS (
+    dedup_district AS (
+        SELECT code, name as district_name, province_code
+        FROM ${source.platinum}.core_prd_master_data_district
+    )
+    ,
+    dedup_ward AS (
+        SELECT code, name as ward_name, district_code
+        FROM ${source.platinum}.core_prd_master_data_ward
+    )
+    ,
+    dedup_province AS (
+        SELECT code, name as province_name, region_code
+        FROM ${source.platinum}.core_prd_master_data_province
+    )
+    ,
+    dedup_region AS (
+        SELECT code, name as region_name
+        FROM ${source.platinum}.core_prd_master_data_region
+    )
+    , tbl AS (
         SELECT
             dedup_ward.code AS location_code,
             dedup_ward.ward_name AS location_name,

@@ -1,17 +1,24 @@
 config {
     type: 'table',
-    name: 'adhoc_item_fc'
+    name: 'adhoc_item_fc',
+    disabled: true
 
 }
 
-WITH put_ticket_item AS ${dedup.dedup(
-    source.silver + `.warehouse_prd_inbound_put_ticket_item`,
-    `warehouse_code,ticket_id,sku, created_time`
-)}, put_ticket AS ${dedup.dedup(
-    source.silver + `.warehouse_prd_inbound_put_ticket`,
-    `warehouse_code,ticket_id, start_put_time, end_put_time`
-)}, sku_lastest_put_time AS (
-    SELECT put_ticket_item.warehouse_code, put_ticket_item.sku, ARRAY_AGG(put_ticket_item.ticket_id order by created_time desc)[0] as ticket_id,DATETIME(max(end_put_time),'+7') AS latest_put_done_at
+WITH put_ticket_item AS (
+    SELECT warehouse_code,ticket_id,sku, created_time
+    FROM ${source.platinum}.warehouse_prd_inbound_put_ticket_item
+), put_ticket AS (
+    SELECT 
+    warehouse_code,ticket_id, start_put_time, end_put_time
+    FROM ${source.platinum}.warehouse_prd_inbound_put_ticket
+)
+, sku_lastest_put_time AS (
+    SELECT 
+        put_ticket_item.warehouse_code, 
+        put_ticket_item.sku, 
+        ARRAY_AGG(put_ticket_item.ticket_id order by created_time desc)[0] as ticket_id,
+        DATETIME(max(end_put_time),'+7') AS latest_put_done_at
     FROM put_ticket_item
     INNER JOIN put_ticket
         ON put_ticket_item.ticket_id = put_ticket.ticket_id
@@ -19,16 +26,19 @@ WITH put_ticket_item AS ${dedup.dedup(
     GROUP BY 1,2
 ), dedup_sku AS (
     SELECT DISTINCT sku,  seller_class, ARRAY_AGG(retail_price_value order by last_updated_time desc)[0] retail_price_value
-    FROM ${dedup.dedup(
-    source.silver + `.marketplace_prd_product_v2_sku`,
-    'sku,  seller_class,retail_price_value')}
+    FROM (
+        SELECT 
+            sku,  seller_class, retail_price_value
+        FROM ${source.platinum}.marketplace_prd_product_v2_sku
+    )
     GROUP BY 1,2
 ), inventory_sku as (
     SELECT
         sku,warehouse_code, name, seller_code, ARRAY_AGG(available_quantity order by last_updated_time desc)[0] available_quantity
-    FROM 
-        ${dedup.dedup(source.silver + `.warehouse_prd_inventory_sku`,
-        'sku,warehouse_code, name, seller_code, available_quantity')}
+    FROM (
+        SELECT sku,warehouse_code, name, seller_code, available_quantity
+        FROM ${source.platinum}.warehouse_prd_inventory_sku
+    )
     GROUP BY 1,2,3,4
 )
 

@@ -38,14 +38,11 @@ config {
     ]
 }
 
-WITH dedup_full_table AS ${dedup.dedup(
-    source.silver + ".marketplace_prd_cart_cart_item",
-    `*` // get all column
-)}, dedup_table AS (
+WITH dedup_full_table AS (
     SELECT 
         customer_id,
         flatten_location
-    FROM ${source.silver}.marketplace_prd_cart_cart
+    FROM ${source.platinum}.marketplace_prd_cart_cart
 )
 
 SELECT
