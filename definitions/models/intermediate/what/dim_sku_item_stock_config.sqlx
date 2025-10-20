@@ -12,10 +12,10 @@ config {
 }
 
 WITH
-  dedup_stock_draft_unique AS ${dedup.dedup(
-  source.silver + `.seller_prd_purchasing_initial_stock_draft_unique`,
-  "sku, warehouse_code, origin_initial_stock, extra_props"
-)}
+  dedup_stock_draft_unique AS (
+  SELECT "sku, warehouse_code, origin_initial_stock, extra_props"
+  FROM ${source.platinum}.seller_prd_purchasing_initial_stock_draft_unique
+)
 
 SELECT
   a.sku as sku_code,

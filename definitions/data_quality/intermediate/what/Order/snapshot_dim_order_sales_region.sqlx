@@ -15,7 +15,7 @@ THEN
     CREATE OR REPLACE TABLE dataform_assertions.marketplace_prd_order_v2_order_dim_order_${datetime.current_datetime()}
     AS (
         SELECT * FROM ${source.platinum}.marketplace_prd_order_v2_order
-        WHERE created_date >= "${datetime.getPastDate(intervalDays=1)}"
+        WHERE created_date >= "${datetime.getPastDate({ intervalDays: 1 })}"
     );
 
     CREATE OR REPLACE TABLE ${source.ref}.dim_order_sales_region 

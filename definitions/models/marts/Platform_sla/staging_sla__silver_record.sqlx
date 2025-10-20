@@ -8,7 +8,7 @@ config {
   }
 }
 js {
-    table_lst = [
+    const table_lst = [
         [ "seller_prd_purchasing_initial_stock_draft", "1", "1" ]  , 
   [ "platform_insider_prd_communication_app_push_campaign", "1", "1" ]  , 
   [ "seller_prd_mis_order_seller", "1", "1" ]  , 

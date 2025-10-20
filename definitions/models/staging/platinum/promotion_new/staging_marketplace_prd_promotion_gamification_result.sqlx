@@ -13,8 +13,8 @@ config {
 
 
 js {
-  incremental_time = `DATE_TRUNC(CURRENT_DATETIME() - INTERVAL 6 HOUR, DAY)`
-  incremental_ts = `TIMESTAMP(${incremental_time})`
+  let incremental_time = `DATE_TRUNC(CURRENT_DATETIME() - INTERVAL 6 HOUR, DAY)`
+  let incremental_ts = `TIMESTAMP(${incremental_time})`
 }
 
 

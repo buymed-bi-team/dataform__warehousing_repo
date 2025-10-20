@@ -18,27 +18,36 @@ select
     , fc.sales_region_code
     , "PROVINCE" AS area_type
 from 
-    ${ ref('dim_fc') } as fc,
+    (
+        SELECT code, name, status, areas, extra_props
+        FROM ${ref(`platinum_buymed_vn`, `warehouse_prd_core_warehouse` )}
+    ) as fc,
     unnest( (json_extract_array(fc.service_areas, '$'))) as unnested_value
 
 UNION ALL
 
-${cfunction.csvToSQL(
-    `
-    "fc_code"   ,"service_area_code","sales_region_code", "area_type"
-    "BD"        ,"00"              ,"MIENNAM"       , "EXTENSION"     
-    "DN"        ,"00"              ,"MIENTRUNG"     , "EXTENSION"   
-    "HN"        ,"00"              ,"MIENBAC"       , "EXTENSION"     
-    "BD"        ,"0"               ,"MIENNAM"       , "EXTENSION"
-    "DN"        ,"0"               ,"MIENTRUNG"     , "EXTENSION"
-    "HN"        ,"0"               ,"MIENBAC"       , "EXTENSION"
-    "HN"        ,"1"               ,"MIENBAC"       , "EXTENSION"
-    "BD"        ,"MIENNAM"         ,"MIENNAM"       , "EXTENSION"
-    "DN"        ,"MIENTRUNG"       ,"MIENTRUNG"     , "EXTENSION"
-    "HN"        ,"MIENBAC"         ,"MIENBAC"       , "EXTENSION"
-    "BD"        ,"MN_ADM"          ,"MIENNAM"       , "EXTENSION"
-    "DN"        ,"MT_ADM"          ,"MIENTRUNG"     , "EXTENSION"
-    "HN"        ,"MB_ADM"          ,"MIENBAC"       , "EXTENSION"
-    `,
-    value_prediction = '"'
-)}
+SELECT "BD" AS fc_code, "00" AS service_area_code, "MIENNAM" AS sales_region_code, "EXTENSION" AS area_type
+UNION ALL
+SELECT "DN" AS fc_code, "00" AS service_area_code, "MIENTRUNG" AS sales_region_code, "EXTENSION" AS area_type
+UNION ALL
+SELECT "HN" AS fc_code, "00" AS service_area_code, "MIENBAC" AS sales_region_code, "EXTENSION" AS area_type
+UNION ALL
+SELECT "BD" AS fc_code, "0" AS service_area_code, "MIENNAM" AS sales_region_code, "EXTENSION" AS area_type
+UNION ALL
+SELECT "DN" AS fc_code, "0" AS service_area_code, "MIENTRUNG" AS sales_region_code, "EXTENSION" AS area_type
+UNION ALL
+SELECT "HN" AS fc_code, "0" AS service_area_code, "MIENBAC" AS sales_region_code, "EXTENSION" AS area_type
+UNION ALL
+SELECT "HN" AS fc_code, "1" AS service_area_code, "MIENBAC" AS sales_region_code, "EXTENSION" AS area_type
+UNION ALL
+SELECT "BD" AS fc_code, "MIENNAM" AS service_area_code, "MIENNAM" AS sales_region_code, "EXTENSION" AS area_type
+UNION ALL
+SELECT "DN" AS fc_code, "MIENTRUNG" AS service_area_code, "MIENTRUNG" AS sales_region_code, "EXTENSION" AS area_type
+UNION ALL
+SELECT "HN" AS fc_code, "MIENBAC" AS service_area_code, "MIENBAC" AS sales_region_code, "EXTENSION" AS area_type
+UNION ALL
+SELECT "BD" AS fc_code, "MN_ADM" AS service_area_code, "MIENNAM" AS sales_region_code, "EXTENSION" AS area_type
+UNION ALL
+SELECT "DN" AS fc_code, "MT_ADM" AS service_area_code, "MIENTRUNG" AS sales_region_code, "EXTENSION" AS area_type
+UNION ALL
+SELECT "HN" AS fc_code, "MB_ADM" AS service_area_code, "MIENBAC" AS sales_region_code, "EXTENSION" AS area_type

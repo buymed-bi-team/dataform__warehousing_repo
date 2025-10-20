@@ -29,8 +29,4 @@ select
     po.vendor_code,
     po.vendor_name,
     po.bill_status
-from ${dedup.dedup(
-    source.silver + `.seller_prd_purchasing_purchase_order`,
-    `*`
-)} po
-
+from ${source.platinum}.seller_prd_purchasing_purchase_order po
