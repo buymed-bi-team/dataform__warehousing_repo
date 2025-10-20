@@ -151,6 +151,15 @@ SELECT
       WHEN (platinum_size_bytes IS NULL OR platinum_size_bytes = 0) AND silver_readable_size LIKE "%GB" THEN TRUE
       ELSE FALSE
     END AS need_backup
+  , 
+    ( 
+      TIMESTAMP_DIFF(silver_modified_time, platinum_modified_time, HOUR ) > 2
+      AND model_type != "NEW INCREMENTAL"
+      -- Can be model changed, like table to view
+    ) OR (
+      TIMESTAMP_DIFF(silver_modified_time, platinum_modified_time, HOUR ) > 12
+      AND model_type = "NEW INCREMENTAL"
+    ) platinum_miss_data
 
 FROM final_metadata
 
