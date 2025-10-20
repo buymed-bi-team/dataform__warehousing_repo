@@ -64,7 +64,7 @@ WITH base AS (
         STRUCT('huyen.ngo',        'BI-core' ,          ['huyenngo','huyen.ngo','huyen-ngo']),
         STRUCT('minh.ly',          'BI-fin' ,           ['minhly','minh.ly','minh-ly']),
         STRUCT('van.le',           'BI-fin' ,           ['vanle','van.le','van-le']),
-        STRUCT('hau.le',           'BI-fin',            ['haule','hau.le','hau-lecong']),
+        STRUCT('hau.le',           'BI-fin',            ['haule','hau.le','hau-le']),
         STRUCT('chien.le',         'BI-growth',         ['chienle','chien.le','chien-le']),
         STRUCT('thach.nguyenngoc', 'BI-growth',         ['thachnguyen','thach.nguyen','thach-nguyen']),
         STRUCT('matthew.s',        'Product Director',  ['matthews','matthew.s','matthew-s']),
