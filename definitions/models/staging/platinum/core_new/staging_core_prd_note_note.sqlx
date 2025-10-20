@@ -16,7 +16,7 @@ config {
 }
 
 js {
-  incremental_time = `TIMESTAMP(DATE_TRUNC(CURRENT_DATETIME() - INTERVAL 6 HOUR, DAY))`
+  const incremental_time = `TIMESTAMP(DATE_TRUNC(CURRENT_DATETIME() - INTERVAL 6 HOUR, DAY))`
 }
 
 

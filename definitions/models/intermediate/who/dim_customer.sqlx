@@ -130,8 +130,16 @@ WITH
           b.event_name,
           date(JSON_VALUE(b.extra_props, '$.start_time')) AS created_date_event,
           ROW_NUMBER() OVER (PARTITION BY a.phone ORDER BY date(JSON_VALUE(b.extra_props, '$.start_time'))) as row_num
-      FROM ${dedup.dedup( source.silver + '.platform_event_prd_management_participant','*')} AS a  
-      LEFT JOIN ${dedup.dedup( source.silver + '.platform_event_prd_management_event','*')} AS b on a.event_id = b.event_id
+      FROM 
+        (
+          SELECT *
+          FROM ${source.platinum}.platform_event_prd_management_participant
+        ) AS a
+
+      LEFT JOIN (
+        SELECT *
+        FROM ${source.platinum}.platform_event_prd_management_event
+      ) AS b on a.event_id = b.event_id
   ),
 
   customer_bank AS (

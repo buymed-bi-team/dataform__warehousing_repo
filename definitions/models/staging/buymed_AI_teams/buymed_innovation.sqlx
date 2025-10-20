@@ -3,7 +3,7 @@ config {
 }
 
 js {
-    internal_source = "buymed_innovation"
+    const internal_source = "buymed_innovation"
 }
 
 

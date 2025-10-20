@@ -59,8 +59,7 @@ SELECT
   ${utils.ToTimezone('last_updated_time')} last_updated_time
   
 FROM 
-
-${dedup.dedup(`silver_buymed_vn.marketplace_prd_customer_priority_customer`,'*')}
+  ${source.platinum}.marketplace_prd_customer_priority_customer
 
 post_operations {
   ALTER TABLE ${self()} 

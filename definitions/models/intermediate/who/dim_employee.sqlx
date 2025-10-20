@@ -19,19 +19,19 @@ config {
     tags: ["0h00"]
 }
 
-WITH dedup_human_resource AS ${dedup.dedup(
-    source.silver + `.platform_human_resource_prd_employee_employee_info`,
-    `        
-    employee_id,       
-    email,
-    user_name,
-    full_name as fullname,
-    status as employee_status,
-    employee_department as department,
-    employee_position as job_title,
-    user_branch_infos
-    `
-)},
+WITH dedup_human_resource AS (
+    SELECT 
+        employee_id,       
+        email,
+        user_name,
+        full_name as fullname,
+        status as employee_status,
+        employee_department as department,
+        employee_position as job_title,
+        user_branch_infos
+    FROM ${source.platinum}.platform_human_resource_prd_employee_employee_info
+)
+,
 
     employee_phone_number AS (
         SELECT

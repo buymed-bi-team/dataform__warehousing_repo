@@ -2,7 +2,7 @@ config {
     type: "view",
     description: `PIC: minh.luu
     Source:
-        ${source.silver}.marketplace_prd_customer_customer`,
+        ${source.platinum}.marketplace_prd_customer_customer`,
     assertions: {
         rowConditions: []
     }
@@ -23,5 +23,5 @@ SELECT
     district_code AS customer_district_code,
     province_code AS customer_province_code
 FROM 
-    ${dedup.dedup(source.silver + `.marketplace_prd_customer_customer`,'*')} dedup_customer
+    ${source.platinum}.marketplace_prd_customer_customer dedup_customer
 

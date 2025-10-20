@@ -12,28 +12,26 @@ config {
     },
     tags: ["custom_1h_past5"]
 }
-WITH core_pic AS ${dedup.dedup(
-    `${source.silver}.seller_prd_core_pic`,
-    `
-    action,
-    object_code as supplier_code,
-    warehouse_code as fc_code,
-    pic_account_id AS pic_purchase_id,
-    cic_account_id AS cic_category_id,
-    object_type
-    `
-)}
-, purchasing_pic AS ${dedup.dedup(
-    `${source.silver}.seller_prd_purchasing_pic`,
-        `
+WITH core_pic AS (
+    SELECT 
         action,
         object_code as supplier_code,
         warehouse_code as fc_code,
         pic_account_id AS pic_purchase_id,
         cic_account_id AS cic_category_id,
         object_type
-        `
-)}, cte_main AS (
+    FROM ${source.platinum}.seller_prd_core_pic
+)
+, purchasing_pic AS (
+    SELECT 
+        action,
+        object_code as supplier_code,
+        warehouse_code as fc_code,
+        pic_account_id AS pic_purchase_id,
+        cic_account_id AS cic_category_id,
+        object_type
+    FROM ${source.platinum}.seller_prd_purchasing_pic
+), cte_main AS (
         SELECT * except(object_type) FROM purchasing_pic
         WHERE 
             object_type = "VENDOR" 
@@ -44,10 +42,11 @@ WITH core_pic AS ${dedup.dedup(
             object_type = "SELLER"
         QUALIFY ROW_NUMBER() OVER(PARTITION BY supplier_code, fc_code ORDER BY synced_at DESC, last_updated_time DESC) = 1
 )
-, dedup_pic AS ${dedup.dedup(
-    `cte_main`,
-    `*`
-)}
+, dedup_pic AS (
+    SELECT *
+    FROM cte_main
+    QUALIFY ROW_NUMBER() OVER(PARTITION BY supplier_code, fc_code ORDER BY synced_at DESC, last_updated_time DESC) = 1
+)
 
 SELECT
     supplier_code,
