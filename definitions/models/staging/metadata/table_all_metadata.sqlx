@@ -56,6 +56,7 @@ WITH table_metadata AS (
   WHERE table_id not like "%historical_cut_off"
   AND table_id not like "%_migrate"
   AND table_id not like "%_drop%"
+  AND table_id not like "%snapshot%"
 
   AND dataset_id || "." || table_id NOT IN (
     -- Deprecated tables and view
@@ -155,6 +156,7 @@ SELECT
     ( 
       TIMESTAMP_DIFF(silver_modified_time, platinum_modified_time, HOUR ) > 2
       AND model_type != "NEW INCREMENTAL"
+      AND model_type != "VIEW"
       -- Can be model changed, like table to view
     ) OR (
       TIMESTAMP_DIFF(silver_modified_time, platinum_modified_time, HOUR ) > 12
