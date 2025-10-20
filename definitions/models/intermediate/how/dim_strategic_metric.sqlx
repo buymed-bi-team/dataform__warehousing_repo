@@ -15,6 +15,9 @@ config {
         - Remember to trigger assertions
 */
 
+SELECT *
+FROM (
+
 SELECT CAST(NULL AS STRING)  metric_code, CAST (NULL AS STRING) lv1, CAST ( NULL AS STRING) lv2 , CAST (NULL AS STRING) description
 UNION ALL 
 SELECT "GMV_By_Channel_TENDER"             ,"TENDER"           ,"GMV By Channel","GMV calculated from orders in the Tender channel. GMV is the sum of price field in marketplace order table. In tender GMV is the sum of total_amount in order table "
@@ -30,6 +33,11 @@ UNION ALL
 SELECT "GMV_By_Region_MIENTRUNG"           ,"MIENTRUNG"        ,"GMV By Region","GMV calculated from orders in the MIENBAC region"
 UNION ALL 
 SELECT "GMV_By_Region_MIENNAM"             ,"MIENNAM"          ,"GMV By Region","GMV calculated from orders in the MIENBAC region"
+)
+WHERE metric_code IS NOT NULL
+AND lv1 IS NOT NULL 
+AND lv2 IS NOT NULL
+AND description IS NOT NULL
 
 /*
     "Fulfilled_Amount_MIENBAC"          ,"MIENBAC"          ,"Fulfilled_Amount","The total amount based on fulfilled orders in the MIENBAC region. The fulfilled orders must be one of following status: DELIVERING or DELIVERED or COMPLETED "
