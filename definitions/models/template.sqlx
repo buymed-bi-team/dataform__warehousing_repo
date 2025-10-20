@@ -12,8 +12,8 @@ config {
 }
 
 js {
-  incremental_time = `TIMESTAMP(DATE_TRUNC(CURRENT_DATETIME() - INTERVAL 4 HOUR, DAY))`
-  table_name = ``
+  let incremental_time = `TIMESTAMP(DATE_TRUNC(CURRENT_DATETIME() - INTERVAL 4 HOUR, DAY))`
+  let table_name = ``
 }
 
 

@@ -43,9 +43,9 @@ js {
 WITH 
 -- Marketplace
 dedup_order AS ${
-    dedup.dedup(
-      source.silver + `.marketplace_prd_order_v2_order`,
-      `
+    dedup.dedup({
+      table_name: source.silver + `.marketplace_prd_order_v2_order`,
+      col_name: `
       order_id, 
       ${utils.ToTimezone(`created_time`)} as created_time, 
       ${utils.ToTimezone(`confirmation_date`)} as confirmation_date, 
@@ -62,11 +62,12 @@ dedup_order AS ${
       JSON_VALUE(extra_props, "\$.brand_code") AS brand_code,
       warehouse_code
       `,
-      start_timestamp= when(incremental(),
+      start_timestamp: when(incremental(),
                 ` TIMESTAMP(current_datetime() - INTERVAL 2 DAY )`, // Nếu incremental thì mình chỉ lấy 3 ngày trở lại
                 ` TIMESTAMP_SECONDS(0)`)                            // tránh cho việc dedup phải thực hiện window function cả bảng
                                                                     // Điều này giúp nâng performance cụ thể là 1.32GB thành 37MB mỗi lần chạy incremental
-)}
+      , last_updated_time : true
+})}
 , order_sales_region_code as (
   SELECT
     a.*,
@@ -116,9 +117,9 @@ dedup_order AS ${
 
 
 -- TENDER
-, dedup_tender_order AS ${ dedup.dedup(
-    source.silver + `.tender_prd_core_tender_orders`,
-    `
+, dedup_tender_order AS ${ dedup.dedup({
+    table_name: source.silver + `.tender_prd_core_tender_orders`,
+    column_name: `
     order_id,
     ${utils.ToTimezone(`created_time`)} as created_time, 
     ${utils.ToTimezone(`confirmation_date`)} as confirmation_date, 
@@ -126,10 +127,11 @@ dedup_order AS ${
     district_code,
     province_code
     `,
-    start_timestamp = when ( incremental(),
+    start_timestamp : when ( incremental(),
               ` TIMESTAMP(current_datetime() - INTERVAL 2 DAY )`,
-              ` TIMESTAMP_SECONDS(0)`)                           
-)}
+              ` TIMESTAMP_SECONDS(0)`)  ,
+    last_updated_time: true                         
+})}
 
 ,dedup_tender_order_sales_region_code AS  
   (

@@ -29,7 +29,7 @@ HAVING SUM(active_customer) <> SUM(new_customer + reacquire_customer + repeat_cu
 UNION ALL 
 
 js {
-    columns = [
+    const columns = [
         "new_customer",
         "repeat_customer",
         "reacquire_customer",

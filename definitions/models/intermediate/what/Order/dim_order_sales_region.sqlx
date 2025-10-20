@@ -41,9 +41,9 @@ WITH
     order_mkp AS (
         SELECT 
             * EXCEPT ( mg_id, synced_at, last_updated_time)
-        FROM ${dedup.dedup(
-        source.silver + `.marketplace_prd_order_v2_order`,
-        `
+        FROM ${dedup.dedup({
+        table_name: source.silver + `.marketplace_prd_order_v2_order`,
+        column_name: `
             order_id,
             ward_code,
             district_code,
@@ -53,10 +53,10 @@ WITH
             customer_province_code, 
             created_time
         `,
-        start_timestamp= when(incremental(),
+        start_timestamp: when(incremental(),
             ` TIMESTAMP(current_datetime() - INTERVAL 2 DAY )`, 
             ` TIMESTAMP_SECONDS(0)`)                           
-    )}
+        })}
 )
 ,
     order_tender AS (

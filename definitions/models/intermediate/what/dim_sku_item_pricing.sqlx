@@ -8,10 +8,11 @@ config {
 }
 
 WITH
-  dedup_marketplace_sku AS ${dedup.dedup(
-  source.silver + `.marketplace_prd_product_v2_sku_merge`,
-  "item_code, retail_price_value, purchase_price, seller_class"
-)}
+  dedup_marketplace_sku AS (
+  SELECT 
+    item_code, retail_price_value, purchase_price, seller_class
+  FROM ${source.platinum}.marketplace_prd_product_v2_sku_merge
+)
 
 SELECT
   s.item_code,

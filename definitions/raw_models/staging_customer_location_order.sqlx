@@ -17,23 +17,23 @@ js {
 
 
 WITH 
-    dedup_order_tbl AS ${dedup.dedup(source.silver + `.marketplace_prd_order_v2_order`,`
-        order_id, 
-        customer_id,
-        ward_code,
-        district_code,
-        province_code,
-
-        customer_ward_code,
-        customer_district_code,
-        customer_province_code,
-
-        JSON_VALUE_ARRAY(flatten_location,'\$') flatten_location ,
-        ARRAY_LENGTH(JSON_VALUE_ARRAY(flatten_location,'\$')) flatten_location_len,
-        customer_shipping_address,
-        created_time
-    `)},
-    order_tbl AS (
+    dedup_order_tbl AS (
+        SELECT 
+            order_id, 
+            customer_id,
+            ward_code,
+            district_code,
+            province_code,
+            customer_ward_code,
+            customer_district_code,
+            customer_province_code,
+            JSON_VALUE_ARRAY(flatten_location,'$') flatten_location ,
+            ARRAY_LENGTH(JSON_VALUE_ARRAY(flatten_location,'$')) flatten_location_len,
+            customer_shipping_address,
+            created_time
+        FROM ${source.platinum}.marketplace_prd_order_v2_order
+    )
+    , order_tbl AS (
         SELECT
             *,
             IF(flatten_location_len >=1, ARRAY_REVERSE(flatten_location)[0], NULL) AS ward_code_json,
