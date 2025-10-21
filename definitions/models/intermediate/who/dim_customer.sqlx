@@ -324,6 +324,8 @@ SELECT
 
     CASE
         WHEN TO_JSON_STRING( customer.tags ) LIKE '%\"NHANVIEN\"%' THEN "EMPLOYEE"
+        WHEN REGEXP_CONTAINS( UPPER(name), r'TECH SELLER|TEST|TECH-QC|TS-TECH|\[TECH\]|\(TECH\)|DEMO|QC|TECH MONITOR|TECH 2') AND customer.customer_id <> 265890 THEN "TECH"
+        WHEN INITCAP(name) LIKE '%Tech%' THEN "TECH"
         WHEN STRPOS(list_channel, "MARKETPLACE") > 0 AND NOT REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"CIRCA\"|\"CIRCACOS\"|\"CIRCAFOFO\"') THEN "MARKETPLACE"
         WHEN /*STRPOS(list_channel, "CIRCA") > 0 OR*/ REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"CIRCA\"|\"CIRCACOS\"|\"CIRCAFOFO\"') THEN "CIRCA"
         WHEN STRPOS(list_channel, "TENDER") > 0 THEN "TENDER"
