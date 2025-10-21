@@ -314,8 +314,7 @@ SELECT
     CASE
         WHEN REGEXP_CONTAINS( UPPER(name), r'TECH SELLER|TEST|TECH-QC|TS-TECH|\[TECH\]|\(TECH\)|DEMO|QC|TECH MONITOR|TECH 2') AND customer.customer_id <> 265890 THEN "TECH"
         WHEN INITCAP(name) LIKE '%Tech%' THEN "TECH"
-        -- WHEN TO_JSON_STRING( customer.tags ) LIKE '%\"TERMINATE_CIRCA\"%'  THEN 'MARKETPLACE'
-        WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"CIRCA\"|\"CIRCACOS\"')  THEN 'CIRCA' -- Một số terminate circa vẫn được gán nhãn là circa ví dụ customer_id in (252404,358259,369079)
+        WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"CIRCA\"|\"CIRCACOS\"|\"CIRCAFOFO\"|\"CIRCAFOCO\"')  THEN 'CIRCA'
         WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"NHANVIEN\"') /*OR REGEXP_CONTAINS( customer.email, "@buymed|@thuocsi")*/ THEN "EMPLOYEE"
         WHEN customer.customer_id = 241098 THEN "CONSIGNMENT"
         WHEN customer.customer_id = 360299 THEN "OPV"
@@ -324,12 +323,10 @@ SELECT
     END AS customer_report_category,
 
     CASE
+        WHEN TO_JSON_STRING( customer.tags ) LIKE '%\"NHANVIEN\"%' THEN "EMPLOYEE"
+        WHEN STRPOS(list_channel, "MARKETPLACE") > 0 AND NOT REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"CIRCA\"|\"CIRCACOS\"|\"CIRCAFOFO\"') THEN "MARKETPLACE"
         WHEN STRPOS(list_channel, "CIRCA") > 0 OR REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"CIRCA\"|\"CIRCACOS\"|\"CIRCAFOFO\"') THEN "CIRCA"
-        WHEN TO_JSON_STRING( customer.tags ) LIKE '%\"NHANVIEN\"%' /*OR REGEXP_CONTAINS( customer.email, "@buymed|@thuocsi") */ THEN "EMPLOYEE"
-        WHEN STRPOS(list_channel, "MARKETPLACE") > 0 THEN "MARKETPLACE"
-        WHEN STRPOS(list_channel, "DISTRIBUTION") > 0  THEN "DISTRIBUTION"
         WHEN STRPOS(list_channel, "TENDER") > 0 THEN "TENDER"
-        WHEN STRPOS(list_channel, "CONSIGNMENT") > 0 THEN "CONSIGNMENT"
         ELSE "MARKETPLACE"
     END AS customer_channel,
     cb.bank_code,
@@ -339,19 +336,15 @@ SELECT
 
     CASE
         WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"TOP200\"|\"AMBASSADOR_TOP200\"|\"WHOLESALER\"|\"BANSI\"') THEN 'KAM'
-        -- WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"ETC\"') THEN 'ETC'
-        -- WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"ETC\"|\"CLINIC\"') THEN 'ETC'
-        WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"CIRCA\"|\"CIRCACOS\"|\"CIRCAFOFO\"') THEN 'CIRCA'
+        WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"CIRCA\"|\"CIRCACOS\"|\"CIRCAFOFO\"|\"CIRCAFOCO\"') THEN 'CIRCA'
         WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"VIP\"|\"AMBASSADOR\"') THEN 'RETAIL'
         ELSE "RETAIL"
     END AS customer_tag_group,
     CASE  
         WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"TOP200\"|\"AMBASSADOR_TOP200\"') THEN "TOP200"
         WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"WHOLESALER\"|\"BANSI\"') THEN "WHOLESALE"
-        -- WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"ETC\"') THEN "TENDER_TAYAU"
-        -- WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"CLINIC\"') THEN "TENDER_CLINIC"
         WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"CIRCACOS\"') THEN 'CIRCA_COS'
-        WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"CIRCAFOFO\"|\"CIRCA\"') THEN 'CIRCA_FS'
+        WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"CIRCAFOFO\"|\"CIRCA\"\"CIRCAFOCO\"') THEN 'CIRCA_FS'
         WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"VIP\"|\"AMBASSADOR\"') THEN "RETAIL_A"
         ELSE "RETAIL_B"
     END  AS customer_tag_sub_group,
