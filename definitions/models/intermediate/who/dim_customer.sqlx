@@ -124,23 +124,23 @@ WITH
       GROUP BY 1
   ),
 
-  --   customer_event AS(
-  --     SELECT
-  --         a.phone AS registrant_phone,
-  --         b.event_name,
-  --         date(JSON_VALUE(b.extra_props, '$.start_time')) AS created_date_event,
-  --         ROW_NUMBER() OVER (PARTITION BY a.phone ORDER BY date(JSON_VALUE(b.extra_props, '$.start_time'))) as row_num
-  --     FROM 
-  --       (
-  --         SELECT *
-  --         FROM ${source.platinum}.platform_event_prd_management_participant
-  --       ) AS a
+    customer_event AS(
+      SELECT
+          a.phone AS registrant_phone,
+          b.event_name,
+          date(JSON_VALUE(b.extra_props, '$.start_time')) AS created_date_event,
+          ROW_NUMBER() OVER (PARTITION BY a.phone ORDER BY date(JSON_VALUE(b.extra_props, '$.start_time'))) as row_num
+      FROM 
+        (
+          SELECT *
+          FROM ${source.platinum}.platform_event_prd_management_participant
+        ) AS a
 
-  --     LEFT JOIN (
-  --       SELECT *
-  --       FROM ${source.platinum}.platform_event_prd_management_event
-  --     ) AS b on a.event_id = b.event_id
-  -- ),
+      LEFT JOIN (
+        SELECT *
+        FROM ${source.platinum}.platform_event_prd_management_event
+      ) AS b on a.event_id = b.event_id
+  ),
 
   customer_bank AS (
       SELECT
@@ -266,7 +266,7 @@ SELECT
       WHEN TO_JSON_STRING(JSON_QUERY(customer.extra_props, '$.gsp')) LIKE "%name%" THEN 1
       -- WHEN JSON_QUERY(customer.extra_props, '$.gsp') IS NULL OR TO_JSON_STRING(JSON_QUERY(customer.extra_props, '$.gsp')) LIKE "%null%" THEN 0
     ELSE 0 END AS GSP,
-    -- concat(c.event_name,"_",c.created_date_event) as event_name,
+    concat(c.event_name,"_",c.created_date_event) as event_name,
 
     pos.code AS circa_pos_code,
 
@@ -371,7 +371,7 @@ LEFT JOIN customer_channel ON customer.customer_id = customer_channel.customer_i
 LEFT JOIN ${source.platinum}.core_prd_account_account AS b ON customer.account_id = b.account_id
 LEFT JOIN stg_customer_note AS note ON note.customer_code = customer.code 
 LEFT JOIN stg_province AS p ON p.province_code = customer.province_code
--- LEFT JOIN customer_event as c on c.registrant_phone = customer.phone and c.created_date_event= date(TIMESTAMP_ADD(customer.created_time, INTERVAL 7 hour)) and c.row_num=1
+LEFT JOIN customer_event as c on c.registrant_phone = customer.phone and c.created_date_event= date(TIMESTAMP_ADD(customer.created_time, INTERVAL 7 hour)) and c.row_num=1
 LEFT JOIN customer_bank AS cb ON cb.customer_id = customer.customer_id
 LEFT JOIN (
   SELECT
