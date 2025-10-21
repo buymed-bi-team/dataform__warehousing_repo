@@ -18,7 +18,9 @@ WITH core_pic AS (
         warehouse_code as fc_code,
         pic_account_id AS pic_purchase_id,
         cic_account_id AS cic_category_id,
-        object_type
+        object_type,
+        synced_at,
+        last_updated_time
     FROM ${source.platinum}.seller_prd_core_pic
     QUALIFY ROW_NUMBER() OVER(PARTITION BY supplier_code, fc_code ORDER BY synced_at DESC, last_updated_time DESC) = 1
 )
@@ -28,7 +30,9 @@ WITH core_pic AS (
         warehouse_code as fc_code,
         pic_account_id AS pic_purchase_id,
         cic_account_id AS cic_category_id,
-        object_type
+        object_type,
+        synced_at,
+        last_updated_time
     FROM ${source.platinum}.seller_prd_purchasing_pic
     QUALIFY ROW_NUMBER() OVER(PARTITION BY supplier_code, fc_code ORDER BY synced_at DESC, last_updated_time DESC) = 1
 ), cte_main AS (

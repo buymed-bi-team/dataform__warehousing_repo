@@ -1,0 +1,29 @@
+config {
+    type: "view",
+    name: "platform_event_prd_management_participant",
+    description: "PIC: minhLuu",
+    schema: "platinum_buymed_vn",
+    // assertions: {
+    //     uniqueKey: 'mg_id',
+    //     nonNull: ["created_date"]
+    // },
+    // bigquery: {
+    //     partitionBy: "created_date"
+    // },
+    tags: ["platform_billing_prd_payment"]
+}
+
+WITH silver AS (
+    SELECT 
+        key,
+        ARRAY_AGG(action order by synced_at desc)[0] AS action,
+        ARRAY_AGG(synced_at order by synced_at desc)[0] AS synced_at,
+        ARRAY_AGG(last_updated_time order by synced_at desc)[0] AS last_updated_time
+    FROM ${source.silver}.platform_event_prd_management_participant
+    GROUP BY 1
+    HAVING action != "d"
+)
+
+SELECT *
+FROM ${source.silver}.platform_event_prd_management_participant
+WHERE key IN (SELECT key FROM silver)
