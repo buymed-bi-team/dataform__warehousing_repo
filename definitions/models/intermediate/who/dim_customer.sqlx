@@ -176,6 +176,18 @@ customer_segment_custom AS (
         , opella_segment
     FROM ${source.external}.customer_segment_custom
     QUALIFY ROW_NUMBER() OVER(PARTITION BY customer_id) = 1
+),
+
+customer_check_location AS (
+    SELECT
+        c.*
+        , IF(w.ward_code IS NOT NULL , TRUE, FALSE) AS ward_code_exists
+        , IF(d.district_code IS NOT NULL , TRUE, FALSE) AS district_code_exists
+        , IF(p.province_code IS NOT NULL , TRUE, FALSE) AS province_code_exists
+    FROM ${source.platinum}.marketplace_prd_customer_customer AS c
+        LEFT JOIN ${ref('dim_ward')} AS w ON c.ward_code = w.ward_code
+        LEFT JOIN ${ref('dim_district')} AS d ON c.district_code = d.district_code
+        LEFT JOIN ${ref('dim_province')} AS p ON c.province_code = p.province_code
 )
 
 js {
@@ -278,9 +290,9 @@ SELECT
     -- customer.phone,
     customer.business_type,
     CASE
-        WHEN SAFE_CAST(customer.ward_code AS integer) > 0 THEN LPAD(customer.ward_code, 5, '0')
-        WHEN SAFE_CAST(customer.district_code AS integer) > 0 THEN LPAD(customer.district_code, 3, '0')
-        WHEN SAFE_CAST(customer.province_code AS integer) > 0 THEN LPAD(customer.province_code, 2, '0')
+        WHEN SAFE_CAST(customer.ward_code AS integer) > 0 AND customer.ward_code_exists THEN LPAD(customer.ward_code, 5, '0')
+        WHEN SAFE_CAST(customer.district_code AS integer) > 0 AND customer.district_code_exists THEN LPAD(customer.district_code, 3, '0')
+        WHEN SAFE_CAST(customer.province_code AS integer) > 0 AND customer.province_code_exists THEN LPAD(customer.province_code, 2, '0')
         ELSE NULL
     END AS location_code,
     p.sales_region_code AS config_fc,
@@ -300,11 +312,10 @@ SELECT
         ELSE NULL
     END AS customer_address,
     CASE
-        WHEN REGEXP_CONTAINS( UPPER(name), r'TECH SELLER|TEST|TECH-QC|TS-TECH|\[TECH\]|\(TECH\)|DEMO|QC|TECH MONITOR|TECH 2') THEN "TECH"
+        WHEN REGEXP_CONTAINS( UPPER(name), r'TECH SELLER|TEST|TECH-QC|TS-TECH|\[TECH\]|\(TECH\)|DEMO|QC|TECH MONITOR|TECH 2') AND customer.customer_id <> 265890 THEN "TECH"
         WHEN INITCAP(name) LIKE '%Tech%' THEN "TECH"
-        -- WHEN TO_JSON_STRING( customer.tags ) LIKE '%\"TERMINATE_CIRCA\"%'  THEN 'MARKETPLACE'
-        WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"CIRCA\"|\"CIRCACOS\"')  THEN 'CIRCA' -- Một số terminate circa vẫn được gán nhãn là circa ví dụ customer_id in (252404,358259,369079)
         WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"NHANVIEN\"') /*OR REGEXP_CONTAINS( customer.email, "@buymed|@thuocsi")*/ THEN "EMPLOYEE"
+        WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"CIRCA\"|\"CIRCACOS\"|\"CIRCAFOFO\"|\"CIRCAFOCO\"')  THEN 'CIRCA'
         WHEN customer.customer_id = 241098 THEN "CONSIGNMENT"
         WHEN customer.customer_id = 360299 THEN "OPV"
         WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'TENDER') THEN 'TENDER'
@@ -312,12 +323,10 @@ SELECT
     END AS customer_report_category,
 
     CASE
-        WHEN STRPOS(list_channel, "CIRCA") > 0 THEN "CIRCA"
-        WHEN STRPOS(list_channel, "MARKETPLACE") > 0 THEN "MARKETPLACE"
-        WHEN STRPOS(list_channel, "DISTRIBUTION") > 0  THEN "DISTRIBUTION"
-        WHEN TO_JSON_STRING( customer.tags ) LIKE '%\"NHANVIEN\"%' /*OR REGEXP_CONTAINS( customer.email, "@buymed|@thuocsi") */ THEN "EMPLOYEE"
+        WHEN TO_JSON_STRING( customer.tags ) LIKE '%\"NHANVIEN\"%' THEN "EMPLOYEE"
+        WHEN STRPOS(list_channel, "MARKETPLACE") > 0 AND NOT REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"CIRCA\"|\"CIRCACOS\"|\"CIRCAFOFO\"') THEN "MARKETPLACE"
+        WHEN /*STRPOS(list_channel, "CIRCA") > 0 OR*/ REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"CIRCA\"|\"CIRCACOS\"|\"CIRCAFOFO\"') THEN "CIRCA"
         WHEN STRPOS(list_channel, "TENDER") > 0 THEN "TENDER"
-        WHEN STRPOS(list_channel, "CONSIGNMENT") > 0 THEN "CONSIGNMENT"
         ELSE "MARKETPLACE"
     END AS customer_channel,
     cb.bank_code,
@@ -327,19 +336,15 @@ SELECT
 
     CASE
         WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"TOP200\"|\"AMBASSADOR_TOP200\"|\"WHOLESALER\"|\"BANSI\"') THEN 'KAM'
-        -- WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"ETC\"') THEN 'ETC'
-        -- WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"ETC\"|\"CLINIC\"') THEN 'ETC'
-        WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"CIRCA\"|\"CIRCACOS\"|\"CIRCAFOFO\"') THEN 'CIRCA'
+        WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"CIRCA\"|\"CIRCACOS\"|\"CIRCAFOFO\"|\"CIRCAFOCO\"') THEN 'CIRCA'
         WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"VIP\"|\"AMBASSADOR\"') THEN 'RETAIL'
         ELSE "RETAIL"
     END AS customer_tag_group,
     CASE  
         WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"TOP200\"|\"AMBASSADOR_TOP200\"') THEN "TOP200"
         WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"WHOLESALER\"|\"BANSI\"') THEN "WHOLESALE"
-        -- WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"ETC\"') THEN "TENDER_TAYAU"
-        -- WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"CLINIC\"') THEN "TENDER_CLINIC"
         WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"CIRCACOS\"') THEN 'CIRCA_COS'
-        WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"CIRCAFOFO\"|\"CIRCA\"') THEN 'CIRCA_FS'
+        WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"CIRCAFOFO\"|\"CIRCA\"|\"CIRCAFOCO\"') THEN 'CIRCA_FS'
         WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"VIP\"|\"AMBASSADOR\"') THEN "RETAIL_A"
         ELSE "RETAIL_B"
     END  AS customer_tag_sub_group,
@@ -364,7 +369,7 @@ SELECT
     , FORMAT_DATE("%Y-%m-%d", DATE(SAFE.TIMESTAMP(JSON_VALUE(gpp_info, "$.date")))+ INTERVAL 3 YEAR) AS GPP_expired_date
     , FORMAT_DATE("%Y-%m-%d", DATE(SAFE.TIMESTAMP(JSON_VALUE(gdp_info, "$.date")))+ INTERVAL 3 YEAR) AS GDP_expired_date
     -- , FORMAT_DATE("%Y-%m-%d", DATE(SAFE.TIMESTAMP(JSON_VALUE(pharmacy_eligibility_license_info, "$.date")))+ INTERVAL 3 YEAR) AS DDKKDD_expired_date
-FROM ${source.platinum}.marketplace_prd_customer_customer customer
+FROM customer_check_location AS customer
 LEFT JOIN customer_order ON customer.customer_id = customer_order.customer_id
 LEFT JOIN first_last_order_marketplace AS flom ON customer.customer_id = flom.customer_id
 LEFT JOIN customer_channel ON customer.customer_id = customer_channel.customer_id
