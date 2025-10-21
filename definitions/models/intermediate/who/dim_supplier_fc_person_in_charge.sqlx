@@ -14,38 +14,38 @@ config {
 }
 WITH core_pic AS (
     SELECT 
-        action,
         object_code as supplier_code,
         warehouse_code as fc_code,
         pic_account_id AS pic_purchase_id,
         cic_account_id AS cic_category_id,
         object_type
     FROM ${source.platinum}.seller_prd_core_pic
+    QUALIFY ROW_NUMBER() OVER(PARTITION BY supplier_code, fc_code ORDER BY synced_at DESC, last_updated_time DESC) = 1
 )
 , purchasing_pic AS (
     SELECT 
-        action,
         object_code as supplier_code,
         warehouse_code as fc_code,
         pic_account_id AS pic_purchase_id,
         cic_account_id AS cic_category_id,
         object_type
     FROM ${source.platinum}.seller_prd_purchasing_pic
+    QUALIFY ROW_NUMBER() OVER(PARTITION BY supplier_code, fc_code ORDER BY synced_at DESC, last_updated_time DESC) = 1
 ), cte_main AS (
         SELECT * except(object_type) FROM purchasing_pic
         WHERE 
             object_type = "VENDOR" 
-        QUALIFY ROW_NUMBER() OVER(PARTITION BY supplier_code, fc_code ORDER BY synced_at DESC, last_updated_time DESC) = 1
+        -- QUALIFY ROW_NUMBER() OVER(PARTITION BY supplier_code, fc_code ORDER BY synced_at DESC, last_updated_time DESC) = 1
         UNION ALL 
         SELECT * except(object_type) FROM core_pic
         WHERE 
             object_type = "SELLER"
-        QUALIFY ROW_NUMBER() OVER(PARTITION BY supplier_code, fc_code ORDER BY synced_at DESC, last_updated_time DESC) = 1
+        -- QUALIFY ROW_NUMBER() OVER(PARTITION BY supplier_code, fc_code ORDER BY synced_at DESC, last_updated_time DESC) = 1
 )
 , dedup_pic AS (
     SELECT *
     FROM cte_main
-    QUALIFY ROW_NUMBER() OVER(PARTITION BY supplier_code, fc_code ORDER BY synced_at DESC, last_updated_time DESC) = 1
+    QUALIFY ROW_NUMBER() OVER(PARTITION BY supplier_code, fc_code) = 1
 )
 
 SELECT
