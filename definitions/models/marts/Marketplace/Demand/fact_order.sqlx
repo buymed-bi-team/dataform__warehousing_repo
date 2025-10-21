@@ -204,7 +204,7 @@ WITH
       -- END AS channel,
 
       CASE
-        WHEN TO_JSON_STRING(JSON_VALUE_ARRAY(a.extra_props, '$.customer_tags')) LIKE '%"CIRCA"%' THEN 'CIRCA'
+        WHEN REGEXP_CONTAINS(TO_JSON_STRING(JSON_VALUE_ARRAY(a.extra_props, '$.customer_tags')), r'\"CIRCA\"|\"CIRCACOS\"|\"CIRCAFOFO\"')  THEN 'CIRCA'
         WHEN a.source = 'brand-portal' AND JSON_VALUE(a.extra_props, "$.brand_code") IN ('Q8HDUVQX', '2E84FW961P', 'PG961P') THEN 'TENDER'
         WHEN TO_JSON_STRING(JSON_VALUE_ARRAY(a.extra_props, '$.customer_tags')) LIKE '%TENDER%' THEN 'TENDER'
         WHEN a.source IN ('brand-portal', 'clinic-portal') OR customer_id IN (360299, 360439) THEN 'TENDER'
