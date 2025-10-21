@@ -19,7 +19,9 @@ WITH core_pic AS (
         warehouse_code as fc_code,
         pic_account_id AS pic_purchase_id,
         cic_account_id AS cic_category_id,
-        object_type
+        object_type,
+        synced_at,
+        last_updated_time
     FROM ${source.platinum}.seller_prd_core_pic
 )
 , purchasing_pic AS (
@@ -29,7 +31,9 @@ WITH core_pic AS (
         warehouse_code as fc_code,
         pic_account_id AS pic_purchase_id,
         cic_account_id AS cic_category_id,
-        object_type
+        object_type,
+        synced_at,
+        last_updated_time
     FROM ${source.platinum}.seller_prd_purchasing_pic
 ), cte_main AS (
         SELECT * except(object_type) FROM purchasing_pic
