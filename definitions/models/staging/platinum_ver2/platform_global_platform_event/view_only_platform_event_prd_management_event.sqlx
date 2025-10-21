@@ -10,12 +10,13 @@ config {
     // bigquery: {
     //     partitionBy: "created_date"
     // },
-    tags: ["platform_billing_prd_payment"]
+    tags: ["platform_event_prd_management"]
 }
 
 WITH silver AS (
     SELECT 
-        key,
+        mg_id,
+        ARRAY_AGG(key order by synced_at desc)[0] AS key,
         ARRAY_AGG(action order by synced_at desc)[0] AS action,
         ARRAY_AGG(synced_at order by synced_at desc)[0] AS synced_at,
         ARRAY_AGG(last_updated_time order by synced_at desc)[0] AS last_updated_time

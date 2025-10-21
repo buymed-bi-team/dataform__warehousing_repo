@@ -1,0 +1,30 @@
+config {
+    type: "view",
+    name: "core_prd_master_data_region",
+    description: "PIC: minhLuu",
+    schema: "platinum_buymed_vn",
+    // assertions: {
+    //     uniqueKey: 'mg_id',
+    //     nonNull: ["created_date"]
+    // },
+    // bigquery: {
+    //     partitionBy: "created_date"
+    // },
+    tags: ["core_prd_master-data"]
+}
+
+WITH silver AS (
+    SELECT 
+        mg_id,
+        ARRAY_AGG(key order by synced_at desc)[0] AS key,
+        ARRAY_AGG(action order by synced_at desc)[0] AS action,
+        ARRAY_AGG(synced_at order by synced_at desc)[0] AS synced_at,
+        ARRAY_AGG(last_updated_time order by synced_at desc)[0] AS last_updated_time
+    FROM ${source.silver}.core_prd_master_data_region
+    GROUP BY 1
+    HAVING action != "d"
+)
+
+SELECT *
+FROM ${source.silver}.core_prd_master_data_region
+WHERE key IN (SELECT key FROM silver)
