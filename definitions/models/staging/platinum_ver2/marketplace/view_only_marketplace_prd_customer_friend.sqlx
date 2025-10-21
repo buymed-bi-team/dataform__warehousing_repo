@@ -1,0 +1,47 @@
+config {
+    type: "view",
+    schema: "platinum_buymed_vn",
+    name: "marketplace_prd_customer_friend",
+    description : `
+    PIC: minh.luu
+    Partition by: created date
+    `,
+    tags:["platinum","marketplace_prd_customer"]
+}
+
+WITH over_tbl AS (
+    SELECT
+        mg_id,
+        ARRAY_AGG(
+            key 
+            ORDER BY
+                synced_at DESC,
+                IF (action='d',3, IF (action='u',2,1)) DESC,
+                last_updated_time DESC
+            LIMIT 1
+        )[0] key ,
+        ARRAY_AGG(
+            action 
+            ORDER BY
+                synced_at DESC,
+                IF (action='d',3, IF (action='u',2,1)) DESC,
+                last_updated_time DESC
+            LIMIT 1
+        )[0] action
+    FROM ${source.silver}.marketplace_prd_customer_friend
+    
+    GROUP BY mg_id HAVING action != "d"
+)
+SELECT
+    * ,
+    CASE
+        WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time, 'Asia/Ho_Chi_Minh'))
+        ELSE DATE( '2099-01-01' )
+    END AS created_date,
+    CURRENT_DATETIME() AS platinum_refresh
+FROM ${source.silver}.marketplace_prd_customer_friend
+WHERE key IN (SELECT o.key FROM over_tbl o)
+
+
+
+

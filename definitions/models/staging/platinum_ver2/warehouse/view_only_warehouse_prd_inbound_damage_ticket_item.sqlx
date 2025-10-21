@@ -13,7 +13,7 @@ config {
 SELECT 
     *,
     CASE
-        WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time, 'Asia/Ho_Chi_Minh'))
+        WHEN silver_buymed_vn.MONGOID_TIMESTAMP(mg_id) IS NOT NULL THEN DATE(DATETIME(silver_buymed_vn.MONGOID_TIMESTAMP(mg_id), 'Asia/Ho_Chi_Minh'))
         ELSE DATE( '2099-01-01' )
     END
     created_date
