@@ -36,3 +36,10 @@ SELECT
 FROM ${source.platinum}.accounting_prd_invoice_order AS io
     LEFT JOIN ${source.platinum}.accounting_prd_invoice_order_invoice AS ioi
         USING(order_id)
+    LEFT JOIN ${ref('fact_order')} AS fo
+        USING(order_id)
+WHERE 1=1
+  AND fo.order_status <> "CANCEL"
+  AND io.created_date >= "2024-01-01"
+  AND ioi.created_date >= "2024-01-01"
+  AND DATE(fo.created_at) >= "2024-01-01"
