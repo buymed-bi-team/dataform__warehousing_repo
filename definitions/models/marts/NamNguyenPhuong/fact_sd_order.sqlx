@@ -14,7 +14,7 @@ WITH
    dedup_credit_note AS (
     SELECT order_id, amount, type
     FROM ${source.platinum}.accounting_prd_core_credit_note
-)
+),
 
   return_amount AS (
   SELECT order_id, SUM(amount) AS return_amount
@@ -26,7 +26,7 @@ WITH
     SELECT order_id, total_order_amount, status
     FROM ${source.platinum}.accounting_prd_core_bill
     WHERE created_time >= TIMESTAMP(current_datetime() - INTERVAL 32 DAY )
-    AND created_date >= TIMESTAMP(current_datetime() - INTERVAL 33 DAY )
+    AND created_date >= DATE(current_datetime() - INTERVAL 33 DAY )
   ),
 
   invoice_amount AS(
@@ -45,7 +45,7 @@ WITH
     SELECT *
     FROM ${source.platinum}.marketplace_prd_order_v2_order
     WHERE created_time >= TIMESTAMP(current_datetime() - INTERVAL 32 DAY )
-    AND created_date >= TIMESTAMP(current_datetime() - INTERVAL 33 DAY )
+    AND created_date >= DATE(current_datetime() - INTERVAL 33 DAY )
 )
 ,
 
