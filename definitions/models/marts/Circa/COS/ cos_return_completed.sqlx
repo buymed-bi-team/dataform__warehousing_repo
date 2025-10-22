@@ -38,7 +38,7 @@ with return_completed as (
 ),
 
 cte_fs as
-    (select o.id as order_id
+    (select distinct o.id as order_id
        ,o.created_at
        ,pos_id
        ,p.code as pos_code
@@ -53,7 +53,7 @@ where pos_id in ("b6c40920-af79-4fb0-bdc4-9965ddb885d2", "e737c882-e90c-4fd2-8a4
       and o.type <> 'RETURN'
 group by all)
 ,cte_os as
-    (select
+    (select distinct
         o.id as order_id
        ,o.created_at
        ,pos_id
@@ -72,7 +72,7 @@ group by all)
 (
 select f.*
        ,c.id
-       ,COALESCE(SUM(f.total_amount), 0) as total_return_amount
+       ,coalesce(sum(f.total_amount), 0) as total_return_amount
        ,f.total_amount - COALESCE(SUM(c.total_amount), 0) AS exclude_return
 from cte_fs f
 left join return_completed c on f.return_codes = c.code
@@ -84,8 +84,8 @@ union all
 
 select o.*
        ,c.id
-       ,COALESCE(SUM(c.total_amount), 0) as total_return_amount
-       ,o.total_amount - COALESCE(SUM(c.total_amount), 0) AS exclude_return
+       ,coalesce(sum(c.total_amount), 0) as total_return_amount
+       ,o.total_amount - COALESCE(SUM(c.total_amount), 0) as exclude_return
 from cte_os o
 left join return_completed c on o.return_codes = c.code
 --where o.total_amount > c.total_amount
