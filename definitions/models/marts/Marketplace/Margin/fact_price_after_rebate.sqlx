@@ -1,5 +1,5 @@
 config {
-  type: "table",
+  type: "incremental",
   description: 
         `
         Price after rebate of MEDX's products by date, warehouse, vendor
@@ -17,6 +17,18 @@ config {
   tags: ["custom_1h_past5", "PRICING"]
 }
 
+
+pre_operations {
+    ${when(
+        incremental(),
+        `     
+            DELETE FROM ${self()}
+            WHERE rebate_date >=  CURRENT_DATE("+7") - INTERVAL 10 DAY;
+        `
+        )
+    }
+}
+
 WITH
     contract_price as (
         SELECT
@@ -30,7 +42,7 @@ WITH
 
 SELECT
     COALESCE(
-        SAFE.PARSE_DATE("%Y%m%%d", version),
+        SAFE.PARSE_DATE("%Y%m%d", version),
         IF(
             EXTRACT(HOUR FROM created_time) >= 11,
             DATE_ADD(created_date, INTERVAL 1 DAY),
@@ -67,7 +79,11 @@ SELECT
 FROM ${ref('platinum_buymed_vn','seller_prd_promotion_log_price_after_rebate')} AS a
     LEFT JOIN contract_price AS b ON a.contract_price_code = b.contract_price_code
 WHERE
-    created_date >= '2024-01-01'
+    ${when(incremental(), 
+    `created_date >= CURRENT_DATE("+7") - 11
+    AND COALESCE(SAFE.PARSE_TIMESTAMP("%Y%m%d", version), TIMESTAMP_ADD(created_time, INTERVAL 13 HOUR)) >= TIMESTAMP(CURRENT_DATE("+7") - 10)`
+    , `created_date >= '2024-01-01'`
+    )}
     AND warehouse_code IN ('BD', 'HN', 'DN')
 QUALIFY ROW_NUMBER() OVER (PARTITION BY product_id, warehouse_code,vendor_code, rebate_date ORDER BY is_fav_vendor DESC, is_active_contract_price DESC, start_time DESC, last_updated_time DESC) = 1
 
