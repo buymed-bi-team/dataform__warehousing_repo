@@ -20,6 +20,7 @@ from (
     , p.status
     , p.source_location
   from ${source.platinum}.warehouse_prd_inbound_put_ticket as p
-)
-where
+  where
   status not in  ('COMPLETED', 'CANCEL', 'DRAFT')
+  AND created_date >= DATE_TRUNC(CURRENT_DATE, YEAR)
+)
