@@ -4,7 +4,7 @@ config {
     /*Source:
       ${source.silver}.marketplace_prd_order_v2_order_item
       ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
-    tags: ["custom_2h_past5"],
+    tags: ["custom_1h_past5"],
     name: "cos_return_completed",
     columns: {
         order_id: "NonNull |" + docs.order_id,
@@ -23,7 +23,8 @@ with return_completed as (
     from ${source.circa}.order_order o
     left join ${source.circa}.entity_pos_profile p on o.pos_id = p.id
     where pos_id in ("b6c40920-af79-4fb0-bdc4-9965ddb885d2", "e737c882-e90c-4fd2-8a4f-ac6afd248a33")
-    AND o.type = 'RETURN' and o.status = 'COMPLETED'
+          and o.type = 'RETURN' 
+          and o.status = 'COMPLETED'
 
     union all
 
@@ -43,16 +44,15 @@ cte_fs as
        ,p.code as pos_code
        ,o.code as order_code
        ,o.total_amount
-       ,CAST(return_id as string) as return_codes
+       ,cast(return_id as string) as return_codes
        ,1 as client_id
 from ${source.circa}.order_order o
-left join UNNEST(JSON_VALUE_ARRAY(order_return_codes)) AS return_id
+left join unnest(JSON_VALUE_ARRAY(order_return_codes)) as return_id
 left join ${source.circa}.entity_pos_profile p on o.pos_id = p.id
 where pos_id in ("b6c40920-af79-4fb0-bdc4-9965ddb885d2", "e737c882-e90c-4fd2-8a4f-ac6afd248a33")
-    AND o.type <> 'RETURN'
-group by all),
-
-cte_os as
+      and o.type <> 'RETURN'
+group by all)
+,cte_os as
     (select
         o.id as order_id
        ,o.created_at
@@ -60,10 +60,10 @@ cte_os as
        ,p.code as pos_code
        ,o.code as order_code
        ,o.total_amount
-       ,CAST(return_id as string) as return_codes
+       ,cast(return_id as string) as return_codes
        ,o.client_id
 from ${source.circa_os}.order_order o
-left join UNNEST(JSON_VALUE_ARRAY(order_return_codes)) AS return_id
+left join unnest(JSON_VALUE_ARRAY(order_return_codes)) AS return_id
 left join ${source.ref}.circa_pos_profile p on o.pos_id = p.id and o.client_id = p.client_id
 where o.type <> 'RETURN'
       and p.id is not null
