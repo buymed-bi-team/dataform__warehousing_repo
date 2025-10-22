@@ -88,6 +88,7 @@ select o.*
        ,o.total_amount - COALESCE(SUM(c.total_amount), 0) as exclude_return
 from cte_os o
 left join return_completed c on o.return_codes = c.code
+where c.code is not null
 --where o.total_amount > c.total_amount
 group by all
 )
