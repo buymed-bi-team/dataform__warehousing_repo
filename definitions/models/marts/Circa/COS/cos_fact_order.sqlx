@@ -21,14 +21,14 @@ with return_cancel as (
     left join ${source.circa}.entity_pos_profile p on o.pos_id = p.id
         where pos_id in ("b6c40920-af79-4fb0-bdc4-9965ddb885d2", "e737c882-e90c-4fd2-8a4f-ac6afd248a33")
               and o.type = 'RETURN' 
-              and o.status = 'CANCELED'
+              and (o.status = 'CANCELED' or o.status = 'PENDING')
     
     union all
 
     select c.code
     from ${source.circa_os}.order_return_order c
     left join ${source.ref}.circa_pos_profile p on c.pos_id = p.id
-        where c.status = 'CANCELED'
+        where (c.status = 'CANCELED' or c.status = 'PENDING')
 ),
 cte_fs as
     (select o.id as order_id
