@@ -66,6 +66,7 @@ WITH base_data as (
         ,ld.doc_code
         ,so as sale_order_number
         ,po.distributor_id
+        ,case when so is not null then 'SO_THUOCSI' else null end as fulfillment_method
     from base_data as a
     left join ${source.circa}.inventory_allocation as ia ON a.item_id = ia.item_ref_id
     left join ${source.circa}.inventory_location as il ON ia.location_id = il.id
@@ -86,6 +87,7 @@ cte_online as (
         ,ld.doc_code
         ,so as sale_order_number
         ,po.distributor_id
+        ,case when so is not null then 'SO_THUOCSI' else null end as fulfillment_method
     from base_data as a
     left join ${source.circa}.inventory_allocation as ia ON a.item_id = ia.item_ref_id
     left join ${source.circa}.inventory_location as il ON ia.location_id = il.id
@@ -115,6 +117,7 @@ cte_online as (
       ,"CIRCA" as owner_name
       ,doc_code as po_code
       ,sale_order_number
+      ,fulfillment_method
       ,promotion_event_code
       ,distributor_id
       ,employee_name
@@ -151,6 +154,7 @@ select distinct
   ,eo.name as owner_name
   ,po.code as po_code
   ,po.sale_order_number
+  ,po.fulfillment_method
   ,promotion_event_code
   ,po.distributor_id
   ,e.name as employee_name
