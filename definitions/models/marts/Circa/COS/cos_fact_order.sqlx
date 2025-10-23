@@ -15,17 +15,29 @@ config {
         partitionBy: "date(created_at)"
     }
 }
-
-with cte_fs as
+with return_cancel as (
+    select o.code
+    from ${source.circa}.order_order o
+    left join ${source.circa}.entity_pos_profile p on o.pos_id = p.id
+        where pos_id in ("b6c40920-af79-4fb0-bdc4-9965ddb885d2", "e737c882-e90c-4fd2-8a4f-ac6afd248a33")
+              and o.type = 'RETURN' 
+              and (o.status = 'CANCELED' or o.status = 'PENDING')
+    
+    union all
+    select c.code
+    from ${source.circa_os}.order_return_order c
+    left join ${source.ref}.circa_pos_profile p on c.pos_id = p.id
+        where (c.status = 'CANCELED' or c.status = 'PENDING')
+),
+cte_fs as
     (select o.id as order_id
-       ,o.pos_id
-       , p.code as pos_code
+       ,pos_id, p.code as pos_code
        ,entity_id
        ,o.code as order_code
        ,o.total_amount
        ,actual_total_item_amount
        ,o.total_item_amount
-       ,o.discount_amount
+       ,discount_amount
        ,o.created_by
        ,o.updated_by
        ,en.name
@@ -45,30 +57,25 @@ with cte_fs as
        ,cast (null as timestamp) as delivery_scheduled_time
        ,cast (null as timestamp) as pre_order_scheduled_time
        , cast (null as string) as pre_order_required
-       ,o.medicine_cutting_fee
-       ,rt.return_codes
-       ,case when rt.return_codes is null then "NORMAL" 
-             else "RETURN"
-             end as order_type
+       ,medicine_cutting_fee
+       ,string_agg(CAST(return_id as string)) as return_codes
        ,1 as client_id
 from ${source.circa}.order_order o
-left join unnest(json_value_array(order_return_codes)) as return_id
-left join ${source.ref}.cos_return_completed as rt on return_codes  = rt.return_codes
+left join UNNEST(JSON_VALUE_ARRAY(order_return_codes)) AS return_id
 left join ${source.circa}.entity_pos_profile p on o.pos_id = p.id
 left join ${source.circa}.entity_entity en on o.updated_by = en.id
-where o.pos_id in ("b6c40920-af79-4fb0-bdc4-9965ddb885d2", "e737c882-e90c-4fd2-8a4f-ac6afd248a33")
+where pos_id in ("b6c40920-af79-4fb0-bdc4-9965ddb885d2", "e737c882-e90c-4fd2-8a4f-ac6afd248a33")
       and o.type <> 'RETURN'
 group by all)
 ,cte_os as
     (select o.id as order_id
-       ,o.pos_id
-       , p.code as pos_code
+       ,pos_id, p.code as pos_code
        ,entity_id
        ,o.code as order_code
-       ,o.total_amount -- giá trị đơn (rev)
+       ,o.total_amount -- Tiền hàng + phí cắt liều - giảm giá
        ,actual_total_item_amount --hình như giống o.total_item_amount
        ,o.total_item_amount -- tiền hàng
-       ,o.discount_amount -- khuyến mãi 
+       ,discount_amount -- khuyến mãi 
        ,o.created_by
        ,o.updated_by
        ,en.name
@@ -89,22 +96,30 @@ group by all)
        ,datetime_add(delivery_scheduled_time, interval 7 hour) as delivery_scheduled_time
        ,datetime_add(pre_order_scheduled_time, interval 7 hour) as pre_order_scheduled_time
        ,cast(pre_order_required as string) as pre_order_required
-       ,o.medicine_cutting_fee -- tiền cắt liều
-       ,rt.return_codes
-       ,case when rt.return_codes is null then "NORMAL" 
-             else "RETURN"
-             end as order_type
+       ,medicine_cutting_fee -- tiền cắt liều
+       ,string_agg(CAST(return_id as string)) as return_codes
        ,o.client_id
 from ${source.circa_os}.order_order o
-left join unnest(JSON_VALUE_ARRAY(order_return_codes)) as return_id
-left join ${source.ref}.cos_return_completed as rt on return_id  = rt.return_codes
+left join UNNEST(JSON_VALUE_ARRAY(order_return_codes)) AS return_id
 left join ${source.ref}.circa_pos_profile p on o.pos_id = p.id and o.client_id = p.client_id
 left join ${source.circa_os}.entity_entity en on o.updated_by = en.id
 where o.type <> 'RETURN'
       and o.status <> 'PENDING'
       and p.id is not null
 group by all)
-Select * from cte_fs
-union all 
-Select * from cte_os
+select
+    *
+    , case
+        when return_codes is null or return_codes in (select * from return_cancel) then "NORMAL"
+        else "RETURN"
+    end as order_type
+from cte_fs
+union all
+select
+    *
+    , case
+        when return_codes is null or return_codes in (select * from return_cancel) then "NORMAL"
+        else "RETURN"
+    end as order_type
+from cte_os
 --gmv = Giá bán * sản phẩm + bất kì phí nào khác (hiện tại có phí cắt liều) - những đơn return hoặc return 1 phần  = total_item_amount + medicine_cutting_fee - return
