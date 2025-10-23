@@ -85,6 +85,7 @@ group by all)
 , _all as
 (
 select f.* 
+       ,c.id
        ,coalesce(sum(c.total_amount), 0) as total_return_amount
        ,sum(gmv_return) as gmv_return
        ,sum(rev_return) as rev_return
@@ -98,6 +99,7 @@ group by all
 union all
 
 select o.* 
+       ,c.id
        ,coalesce(sum(c.total_amount), 0) as total_return_amount
        ,sum(gmv_return) as gmv_return
        ,sum(rev_return) as rev_return

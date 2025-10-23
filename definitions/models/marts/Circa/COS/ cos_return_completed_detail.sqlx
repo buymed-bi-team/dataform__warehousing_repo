@@ -16,7 +16,6 @@ config {
     }
 }
 
-
 Select b.*
       ,c.product_id
       ,c.sku_code
