@@ -19,32 +19,38 @@ config {
 with return_completed as (
     select o.id
            ,o.code
-           ,total_amount
+           ,sum(total_item_amount - medicine_cutting_fee) as gmv_return
+           ,sum(total_amount) as rev_return
     from ${source.circa}.order_order o
     left join ${source.circa}.entity_pos_profile p on o.pos_id = p.id
-    where pos_id in ("b6c40920-af79-4fb0-bdc4-9965ddb885d2", "e737c882-e90c-4fd2-8a4f-ac6afd248a33")
+    where o.pos_id in ("b6c40920-af79-4fb0-bdc4-9965ddb885d2", "e737c882-e90c-4fd2-8a4f-ac6afd248a33")
           and o.type = 'RETURN' 
           and o.status = 'COMPLETED'
+    group by all
 
     union all
 
     select c.id
           ,c.code
-          ,total_amount
+          ,sum(total_item_amount) as gmv_return
+          ,sum(total_amount - loyalty_discount_amount)  as rev_return
     from ${source.circa_os}.order_return_order c
     left join ${source.ref}.circa_pos_profile p on c.pos_id = p.id
     where c.status = 'COMPLETED'
           and p.id is not null
-),
-
-cte_fs as
+    group by all
+)
+, cte_fs as
     (select distinct o.id as order_id
-       ,o.created_at
-       ,pos_id
+       ,datetime_add(o.created_at, interval 7 hour) as created_at
+       ,o.pos_id
        ,p.code as pos_code
        ,o.code as order_code
        ,o.total_amount
        ,cast(return_id as string) as return_codes
+       ,o.total_item_amount
+       ,o.medicine_cutting_fee
+       ,o.discount_amount
        ,1 as client_id
 from ${source.circa}.order_order o
 left join unnest(JSON_VALUE_ARRAY(order_return_codes)) as return_id
@@ -55,41 +61,47 @@ group by all)
 ,cte_os as
     (select distinct
         o.id as order_id
-       ,o.created_at
-       ,pos_id
+       ,datetime_add(o.created_at, interval 7 hour) as created_at
+       ,o.pos_id
        ,p.code as pos_code
        ,o.code as order_code
        ,o.total_amount
-       ,cast(return_id as string) as return_codes
+       ,rt.code as return_codes
+       ,o.total_item_amount
+       ,o.medicine_cutting_fee
+       ,o.discount_amount
        ,o.client_id
 from ${source.circa_os}.order_order o
-left join unnest(JSON_VALUE_ARRAY(order_return_codes)) AS return_id
+left join unnest(JSON_VALUE_ARRAY(order_return_codes)) as return_codes
+left join (Select * from ${source.circa_os}.order_return_order where status = 'COMPLETED') as rt on return_codes  = rt.code
+-- unnest(JSON_VALUE_ARRAY(order_return_codes)) as return_id
 left join ${source.ref}.circa_pos_profile p on o.pos_id = p.id and o.client_id = p.client_id
 where o.type <> 'RETURN'
       and p.id is not null
+      and rt.code is not null
 group by all)
 , _all as
 (
 select f.*
        ,c.id
-       ,coalesce(sum(f.total_amount), 0) as total_return_amount
-       ,f.total_amount - COALESCE(SUM(c.total_amount), 0) AS exclude_return
+       ,coalesce(sum(c.gmv_return), 0) as total_return_amount
+       ,f.total_amount - coalesce(sum(c.rev_return), 0) as rev_exclude_return
+       ,(f.total_item_amount + f.medicine_cutting_fee - gmv_return) as gmv_exclude_return
 from cte_fs f
 left join return_completed c on f.return_codes = c.code
 where f.return_codes is not null
---where f.total_amount > c.total_amount
 group by all
 
 union all
 
 select o.*
        ,c.id
-       ,coalesce(sum(c.total_amount), 0) as total_return_amount
-       ,o.total_amount - COALESCE(SUM(c.total_amount), 0) as exclude_return
+       ,coalesce(sum(c.gmv_return), 0) as total_return_amount
+       ,o.total_amount - coalesce(sum(c.rev_return), 0) as rev_exclude_return
+       ,(o.total_item_amount + o.medicine_cutting_fee - gmv_return) as gmv_exclude_return
 from cte_os o
 left join return_completed c on o.return_codes = c.code
 where c.code is not null
---where o.total_amount > c.total_amount
 group by all
 )
 Select * from _all 
