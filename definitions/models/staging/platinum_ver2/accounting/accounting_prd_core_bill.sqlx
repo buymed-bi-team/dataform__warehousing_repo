@@ -5,6 +5,7 @@ config {
     description : `
     PIC: minh.luu
     Partition by: created date
+    cluster By: ["status"]
     `,
     tags:["platinum","accounting_prd_core"]
 }
