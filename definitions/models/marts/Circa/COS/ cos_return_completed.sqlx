@@ -19,6 +19,7 @@ config {
 with return_completed as (
     select o.id
            ,o.code
+           ,sum(total_amount) as total_amount
            ,sum(total_item_amount - medicine_cutting_fee) as gmv_return
            ,sum(total_amount) as rev_return
     from ${source.circa}.order_order o
@@ -32,6 +33,7 @@ with return_completed as (
 
     select c.id
           ,c.code
+          ,sum(total_amount) as total_amount
           ,sum(total_item_amount) as gmv_return
           ,sum(total_amount - loyalty_discount_amount)  as rev_return
     from ${source.circa_os}.order_return_order c
@@ -66,7 +68,7 @@ group by all)
        ,p.code as pos_code
        ,o.code as order_code
        ,o.total_amount
-       ,rt.code as return_codes
+       ,rt.code as return_codes 
        ,o.total_item_amount
        ,o.medicine_cutting_fee
        ,o.discount_amount
@@ -82,9 +84,10 @@ where o.type <> 'RETURN'
 group by all)
 , _all as
 (
-select f.*
-       ,c.id
-       ,coalesce(sum(c.gmv_return), 0) as total_return_amount
+select f.* 
+       ,coalesce(sum(c.total_amount), 0) as total_return_amount
+       ,sum(gmv_return) as gmv_return
+       ,sum(rev_return) as rev_return
        ,f.total_amount - coalesce(sum(c.rev_return), 0) as rev_exclude_return
        ,(f.total_item_amount + f.medicine_cutting_fee - gmv_return) as gmv_exclude_return
 from cte_fs f
@@ -94,9 +97,10 @@ group by all
 
 union all
 
-select o.*
-       ,c.id
-       ,coalesce(sum(c.gmv_return), 0) as total_return_amount
+select o.* 
+       ,coalesce(sum(c.total_amount), 0) as total_return_amount
+       ,sum(gmv_return) as gmv_return
+       ,sum(rev_return) as rev_return
        ,o.total_amount - coalesce(sum(c.rev_return), 0) as rev_exclude_return
        ,(o.total_item_amount + o.medicine_cutting_fee - gmv_return) as gmv_exclude_return
 from cte_os o
@@ -105,4 +109,4 @@ where c.code is not null
 group by all
 )
 Select * from _all 
-where total_return_amount <> 0
+-- where order_code = 'DHC00255137'
