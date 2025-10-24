@@ -79,7 +79,7 @@ Select check.*
              when DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),pur_order_date,day )<91 and DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),pur_order_date,day ) >= 61 then "90D"
              when DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),pur_order_date,day ) > 90 then "> 90D" 
              end as date_purchase_range
-       ,concat(i.product_id, "_", i.client_id) as product_client_id
+       ,concat(product_id, "_", check.client_id) as product_client_id
        ,p.name as pos_name
 from check
 left join ${source.ref}.circa_pos_profile p on check.pos_id = p.id 
