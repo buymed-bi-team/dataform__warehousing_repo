@@ -30,15 +30,19 @@ mkp_o1 AS (
         -- b.eom,
         DATE(o.created_time, "Asia/Ho_Chi_Minh") AS order_date,
         CAST(NULL AS STRING) AS supplier_class,
-        CASE
-        WHEN dosr.sales_region_code LIKE "MIENNAM" THEN "SOUTHERN"
-        WHEN dosr.sales_region_code LIKE "MIENTRUNG" THEN "CENTRAL"
-        WHEN dosr.sales_region_code LIKE "MIENBAC" THEN "NORTHERN"
-        ELSE "GMV_VN_REGION_UNKNOWN" 
-        END AS location,
+        -- CASE
+        -- WHEN dosr.sales_region_code LIKE "MIENNAM" THEN "SOUTHERN"
+        -- WHEN dosr.sales_region_code LIKE "MIENTRUNG" THEN "CENTRAL"
+        -- WHEN dosr.sales_region_code LIKE "MIENBAC" THEN "NORTHERN"
+        CASE o.warehouse_code
+        WHEN "BD" THEN "SOUTHERN"
+        WHEN "DN" THEN "CENTRAL"
+        WHEN "HN" THEN "NORTHERN"
+        ELSE "SOUTHERN"
+        END AS location
     FROM  ${source.platinum}.marketplace_prd_order_v2_order o
     LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = o.order_id 
-    LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON o.order_id = dosr.order_id
+    -- LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON o.order_id = dosr.order_id
     WHERE DATE(o.created_time) >= ${start_date}
     AND o.order_code is not null
     AND order_channel NOT IN ("TENDER","CONSIGNMENT-RECOGNITION")
@@ -60,15 +64,15 @@ tender_o1 AS(
         END AS channel,
         DATE(o.confirmation_date,"Asia/Ho_Chi_Minh") AS order_date,
         CAST(NULL AS STRING) AS supplier_class,
-        CASE
-        WHEN dosr.sales_region_code LIKE "MIENNAM" THEN "SOUTHERN"
-        WHEN dosr.sales_region_code LIKE "MIENTRUNG" THEN "CENTRAL"
-        WHEN dosr.sales_region_code LIKE "MIENBAC" THEN "NORTHERN"
-        ELSE "GMV_VN_REGION_UNKNOWN" 
+        CASE o.warehouse_code
+        WHEN "BD" THEN "SOUTHERN"
+        WHEN "DN" THEN "CENTRAL"
+        WHEN "HN" THEN "NORTHERN"
+        ELSE "SOUTHERN"
         END AS location,
     FROM  ${source.platinum}.marketplace_prd_order_v2_order o
     LEFT JOIN ${ref(`dim_order_channel`)} doc ON doc.order_id = o.order_id 
-    LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON o.order_id = dosr.order_id
+    -- LEFT JOIN ${ref(`dim_order_sales_region`)} dosr ON o.order_id = dosr.order_id
     WHERE DATE(o.confirmation_date) >= ${start_date} --confirmation_date
     AND o.order_code is not null
     AND order_channel IN ("TENDER")
