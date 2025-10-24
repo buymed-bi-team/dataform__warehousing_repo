@@ -110,8 +110,8 @@ select
         retail_price_value > 1,
         if(
             supplier_type in ("MARKET", "BIZ_HOUSEHOLD"),
-            retail_price_value * (1 - (fullfilment_fee_seller + sale_fee_percent + 1.5) / 100),
-            retail_price_value * (1 - (fullfilment_fee_seller + sale_fee_percent ) / 100)
+            retail_price_value * (1 - (fullfilment_fee_seller + sale_fee_percent + 1.5 + 1) / 100),
+            retail_price_value * (1 - (fullfilment_fee_seller + sale_fee_percent + 1) / 100)
         ),
         null
     ) as seller_received_without_promo,
@@ -128,7 +128,7 @@ select
 
     if (
         retail_price_value > 1,
-        retail_price_value * (fullfilment_fee_seller + sale_fee_percent ) / 100,
+        retail_price_value * (fullfilment_fee_seller + sale_fee_percent + 1) / 100,
         null
     ) as fee_without_promo,
 
@@ -139,13 +139,13 @@ select
         promotion_price is not null ,
         case
             when COALESCE(charge_fee, charge_deal_fee) = 'MARKETPLACE' and supplier_type in ("MARKET", "BIZ_HOUSEHOLD")
-                then retail_price_value * (1 - (fullfilment_fee_seller + sale_fee_percent + 1.5) / 100)
+                then retail_price_value * (1 - (fullfilment_fee_seller + sale_fee_percent + 1.5 + 1) / 100)
             when COALESCE(charge_fee, charge_deal_fee) = 'MARKETPLACE' and supplier_type not in ("MARKET", "BIZ_HOUSEHOLD")
-                then retail_price_value * (1 - (fullfilment_fee_seller + sale_fee_percent) / 100)
+                then retail_price_value * (1 - (fullfilment_fee_seller + sale_fee_percent + 1) / 100)
             when COALESCE(charge_fee, charge_deal_fee) != 'MARKETPLACE' and supplier_type in ("MARKET", "BIZ_HOUSEHOLD")
-                then ( promotion_price - service_fee ) * (1 - (fullfilment_fee_seller + sale_fee_percent + 1.5) / 100)
+                then ( promotion_price - service_fee ) * (1 - (fullfilment_fee_seller + sale_fee_percent + 1.5 + 1) / 100)
             when COALESCE(charge_fee, charge_deal_fee) != 'MARKETPLACE' and supplier_type not in ("MARKET", "BIZ_HOUSEHOLD")
-                then ( promotion_price - service_fee ) * (1 - (fullfilment_fee_seller + sale_fee_percent) / 100)
+                then ( promotion_price - service_fee ) * (1 - (fullfilment_fee_seller + sale_fee_percent + 1) / 100)
         end,
         null
     ) as seller_received_with_promo,
@@ -165,9 +165,9 @@ select
         promotion_price is not null ,
         case
             when COALESCE(charge_fee, charge_deal_fee) = 'MARKETPLACE'
-                then retail_price_value *  (fullfilment_fee_seller + sale_fee_percent) / 100
+                then retail_price_value *  (fullfilment_fee_seller + sale_fee_percent + 1) / 100
             when COALESCE(charge_fee, charge_deal_fee) != 'MARKETPLACE'
-                then ( promotion_price - service_fee) *  (fullfilment_fee_seller + sale_fee_percent) / 100
+                then ( promotion_price - service_fee) *  (fullfilment_fee_seller + sale_fee_percent+ 1) / 100
         end,
         null
     ) as fee_with_promo
