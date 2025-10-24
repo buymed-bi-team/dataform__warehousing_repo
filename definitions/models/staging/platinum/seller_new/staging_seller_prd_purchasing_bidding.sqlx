@@ -1,5 +1,5 @@
 config {
-    type: "table",
+    type: "view",
     name: "seller_prd_purchasing_bidding",
     schema: "platinum_buymed_vn",
     assertions: {
@@ -10,19 +10,14 @@ config {
         'action != "d"'
     ]
      },
-    bigquery: {
-        partitionBy: "created_date"
-    },
-    tags: ["custom_1h_past7","seller_prd_purchasing"]
+    //bigquery: {
+   //     partitionBy: "created_date"
+   // },
+   tags: "seller_prd_purchasing"
+    //tags: ["custom_1h_past7","seller_prd_purchasing"]
    
 }
--- for marketplace_prd_cart only
-WITH deleted_records_table AS (
-  SELECT mg_id
-  FROM lakehouse-prod-394907.silver_buymed_vn.seller_prd_purchasing_bidding
-  WHERE action = 'd'
-    AND date(ingest_time) >= current_date() - 1
-)
+
 SELECT *, 
   CASE 
     WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
