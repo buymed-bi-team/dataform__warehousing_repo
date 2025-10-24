@@ -43,6 +43,7 @@ mkp_o1 AS (
     AND o.order_code is not null
     AND order_channel NOT IN ("TENDER","CONSIGNMENT-RECOGNITION")
     AND order_channel is not null
+    AND o.status NOT LIKE "WAIT_TO_CONFIRM"
     GROUP BY ALL
 
 ),
