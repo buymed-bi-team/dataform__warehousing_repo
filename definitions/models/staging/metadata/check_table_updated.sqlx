@@ -1,0 +1,184 @@
+config {
+    type: "operations",
+    description: `PIC: MinhLuu`
+}
+
+CREATE OR REPLACE PROCEDURE `de_buymed_vn.check_table_updated` (
+    json_input_string STRING
+
+)
+OPTIONS(
+    strict_mode=false,
+    description= """
+    Usecase: 
+        Select loaded data in silver, group by created_time, last_updated_time, ingest_time
+
+    Quick Usage:
+        CALL de_buymed_vn.check_table_updated(
+            '{"full_table_id": "silver_buymed_vn.seller_prd_promotion_log_price_after_rebate"}'
+        )
+    
+    Input full description:
+        json_input_string must be a json, and in format of '{"<keyword>":"value"}'
+
+        keywords:
+            - full_table_id : Required : 
+                    is concat of dataset_id and table_id, like usage example
+            - has_created_time : Optional (Default: "True") : 
+                    is boolean to verify if table has created_time or not
+                    If table isn't created_time, it will use Mongo Id creation_time instead
+            - has_last_updated_time : Optional (Default: "True") : 
+                    is boolean to verify if table has last_updated_time or not
+                    If table isn't last_updated_time, it will use synced_at instead
+                    Note that: I don't recommend to use synced_at for batching table
+            - start_time : Optional (Default: last 7 day) : 
+                    is start timestamp of ingest_time to choose the qualify time range
+            - timestamp_granularity: Optional (Default: "HOUR") 
+                    is granularity for trunc and group by
+    
+    Advance Usage:
+        - Use mg_id for group instead
+        CALL de_buymed_vn.check_table_updated('''{
+            "full_table_id": "silver_buymed_vn.seller_prd_promotion_log_price_after_rebate",
+            "has_created_time": "False"
+        }''')
+
+        - Use synced_at for group instead, or Quick Usage is error because of last_updated_time
+        CALL de_buymed_vn.check_table_updated('''{
+            "full_table_id": "silver_buymed_vn.seller_prd_promotion_log_price_after_rebate",
+            "has_last_updated_time": "False"
+        }''')
+        
+        - Group By DAY, and Start from start of month
+        CALL de_buymed_vn.check_table_updated('''{
+            "full_table_id": "silver_buymed_vn.seller_prd_promotion_log_price_after_rebate",
+            "start_time": "TIMESTAMP_TRUNC(CURRENT_TIMESTAMP(), MONTH)",
+            "timestamp_granularity": "DAY"
+        }''')
+
+    LIMITATION:
+        - Not supported timestamp_granularity = "MONTH"
+        - Platinum has no partition on Ingest_time, so this will cost money
+        - Value of JSON must be string only
+    
+    Quick Link to Creation Script:
+        https://console.cloud.google.com/bigquery/dataform/locations/asia-southeast1/repositories/warehousing_repo/workspaces/MinhLuu/files/definitions%2Fmodels%2Fstaging%2Fmetadata%2Fcheck_table_updated.sqlx?hl=vi&project=lakehouse-prod-394907
+    """
+    
+)
+BEGIN
+    js {
+        let full_table_id = `
+        COALESCE(
+            JSON_VALUE(json_input_string, "\$.full_table_id" ),
+            ERROR( "Missing full_table_id argument")
+        )
+        `;
+        let created_time = `
+        IF(
+            LOWER(COALESCE(
+                JSON_VALUE(json_input_string, "\$.has_created_time"),
+                "TRUE"
+            )) = "true",
+            "created_time",
+            "silver_buymed_vn.MONGOID_TIMESTAMP(mg_id)"
+        )
+        `;
+        let last_updated_time = `
+        IF(
+            LOWER(COALESCE(
+                JSON_VALUE(json_input_string, "\$.has_last_updated_time"),
+                "TRUE"
+            )) = "true",
+            "last_updated_time",
+            "synced_at"
+        )
+        `;
+        let start_time = `
+        COALESCE(
+            JSON_VALUE(json_input_string, "\$.start_time"),
+            "CURRENT_TIMESTAMP () - INTERVAL 7 DAY"
+        )`;
+        let timestamp_granularity = `
+        COALESCE(
+            JSON_VALUE(json_input_string, "\$.timestamp_granularity"),
+            "HOUR"
+        )
+        `
+    }
+    EXECUTE IMMEDIATE FORMAT(
+        """
+            WITH table_name AS (
+            SELECT 
+                mg_id,
+                %s created_time,
+                -- created_time,
+                -- silver_buymed_vn.MONGOID_TIMESTAMP(mg_id) created_time,
+                %s last_updated_time,
+                -- last_updated_time,
+                -- synced_at last_updated_time, -- Not use this if pipeline is batching
+                ingest_time
+            FROM %s
+            WHERE ingest_time >= %s
+        ), ingest_table AS (
+            SELECT 
+                TIMESTAMP_TRUNC(ingest_time, %s ) _grain,
+                COUNT(*) ingest_cnt
+            FROM table_name
+            GROUP BY 1
+        ), updated_table AS (
+            SELECT 
+                TIMESTAMP_TRUNC(last_updated_time, %s ) _grain,
+                COUNT(*) updated_cnt
+            FROM table_name
+            GROUP BY 1
+        ), created_table AS (
+            SELECT 
+                TIMESTAMP_TRUNC(created_time, %s ) _grain,
+                COUNT(*) created_cnt
+            FROM table_name
+            GROUP BY 1
+        ), grain_table AS (
+            SELECT t _grain
+            FROM UNNEST(GENERATE_TIMESTAMP_ARRAY(
+                TIMESTAMP_TRUNC( %s, HOUR),
+                CURRENT_TIMESTAMP(),
+                INTERVAL 1 %s
+            )) t
+
+            UNION ALL 
+            SELECT CAST(NULL AS TIMESTAMP)
+        )
+
+        SELECT 
+        _grain,
+        ingest_cnt,
+        created_cnt,
+        updated_cnt
+        FROM grain_table
+        LEFT JOIN ingest_table USING(_grain)
+        LEFT JOIN created_table USING(_grain)
+        LEFT JOIN updated_table USING(_grain)
+
+        ORDER BY _grain DESC
+        """
+        , -- created_time
+        ${created_time}
+        , -- last_updated_time
+        ${last_updated_time}
+        ,-- full_table_id
+        ${full_table_id}
+        , -- start_time 
+        ${start_time}
+        ,
+        ${timestamp_granularity}
+        ,
+        ${timestamp_granularity}
+        ,
+        ${timestamp_granularity}
+        ,
+        ${start_time}
+        ,
+        ${timestamp_granularity}
+    );
+END;
