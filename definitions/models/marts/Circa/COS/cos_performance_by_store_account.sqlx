@@ -1,0 +1,86 @@
+config {
+    type: "table",
+    description: `"tracking_purchase_put PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`,
+    /*Source:
+      ${source.silver}.marketplace_prd_order_v2_order_item
+      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5,*/
+    tags: ["custom_1h_past5"],
+    name: "cos_performance_by_store_account",
+    columns: {
+        
+    }
+}
+
+with purchase as 
+(Select distinct    o.pos_id
+                    ,o.client_id
+                    ,oi.product_id
+                    ,oi.lot_date
+                    ,oi.sku_code
+                    ,oi.po_code
+                    ,created_date as pur_order_date
+                    ,sum(base_qty_received) as base_purchase_qty
+from ${source.ref}.cos_purchase_order o
+left join ${source.ref}.cos_purchase_order_item oi on o.po_id = oi.po_id
+where store_id = 1
+       and po_status <>  'SEPERATED'
+group by all
+    )
+,count_ord as ( select distinct o.pos_id
+                    ,oi.product_id
+                    ,oi.lot_date
+                    ,oi.sku_code
+                    ,oi.po_code
+                    ,max(o.created_date) as latest_ord
+                    ,count(distinct o.order_id) as no_ord
+                    ,sum(unit_price * quantity) as GMV
+                    ,sum(unit_cost_price * quantity) as cogs
+                    ,coalesce(sum(base_quantity),0) as sales_base_qty
+                    ,o.client_id
+             from  ${source.ref}.cos_fact_order o
+             left join  ${source.ref}.cos_fact_order_item oi on o.order_id = oi.order_id
+             where status like "%COMPLETE%"
+                   and o.client_id = 1
+                   and po_code in ( Select distinct po_code from purchase)
+             group by all)
+,inventory as (
+      Select distinct 
+              pos_id
+             ,product_id
+             ,lot_date
+             ,sku_code
+             ,doc_code
+             ,sum(on_hand_quantity) as stock_qty
+             ,sum(on_hand_quantity * cost_price_include_tax) as stock_value
+      from  ${source.ref}.cos_fact_inventory
+      where client_id = 1
+           and doc_code in ( Select distinct po_code from purchase)
+      group by all
+), check as (
+
+Select a.*
+       ,coalesce(b.sales_base_qty,0) as sales_base_qty
+       ,stock_qty
+      , case when (base_purchase_qty - sales_base_qty) <> stock_qty then 1 else 0 end as is_different
+      ,td.base_unit
+ from purchase  a
+left join count_ord b on a.product_id = b.product_id and a.sku_code = b.sku_code and a.lot_date = b.lot_date and a.po_code = b.po_code and a.pos_id = b.pos_id
+left join inventory C on a.product_id = c.product_id and a.sku_code = c.sku_code and a.lot_date = c.lot_date and a.po_code = c.doc_code and a.pos_id = c.pos_id
+left join ${source.ref}.cos_dim_product td on a.product_id = td.product_id and a.client_id = td.client_id
+order by no_ord desc
+)
+
+Select check.*   
+       ,DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),pur_order_date,day ) as cnt_date
+       ,case when DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),pur_order_date,day )<16 then "15D"
+             when DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),pur_order_date,day )<31 and DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),pur_order_date,day ) >= 16 then "30D"
+             when DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),pur_order_date,day )<46 and DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),pur_order_date,day ) >= 31 then "45D"
+             when DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),pur_order_date,day )<61 and DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),pur_order_date,day ) >= 46 then "60D"
+             when DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),pur_order_date,day )<91 and DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),pur_order_date,day ) >= 61 then "90D"
+             when DATE_DIFF(CURRENT_DATE( "Asia/Ho_Chi_Minh"),pur_order_date,day ) > 90 then "> 90D" 
+             end as date_purchase_range
+       ,p.name as pos_name
+from check
+left join ${source.ref}.circa_pos_profile p on check.pos_id = p.id 
+--where is_different = 1
+order by pur_order_date desc
