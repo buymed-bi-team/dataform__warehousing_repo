@@ -37,6 +37,7 @@ select distinct
     ,o.order_status
     ,o.so_status
     ,map.id_thuocisi
+    ,customer_id
     ,case when map.id_thuocisi is not null then 1 else 0 end as store_id
     ,a.payment_method
     ,o.created_date as so_created_date
