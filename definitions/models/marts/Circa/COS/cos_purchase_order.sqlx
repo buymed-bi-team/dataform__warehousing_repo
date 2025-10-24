@@ -36,11 +36,13 @@ select distinct
     ,a.sub_type
     ,o.order_status
     ,o.so_status
+    ,map.id_thuocisi
+    ,case when map.id_thuocisi is not null then 1 else 0 end as store_id
     ,a.payment_method
-    ,date(o.created_at) as so_created_date
-    --,tags
+    ,o.created_date as so_created_date
+    ,to_json_string(order_tag) as order_tag
     ,case 
-        when to_json_string(o.tags) like '%vip%' then 'vip'
+        when to_json_string(o.order_tag) like '%vip%' then 'vip'
         else 'others'
      end as vip_tag
     ,so_code
@@ -50,11 +52,12 @@ select distinct
     ,a.recon_payment_method
     ,p.code as pos_code
 from ${source.circa_os}.order_purchase_order as a 
-left join ${source.ref}.fact_order as o on a.sale_order_number = safe_cast(o.order_id as string)
+left join ${source.ref}.map_order_thuoc_si as o on a.sale_order_number = safe_cast(o.order_id as string)
 left join ${source.circa_os}.entity_owner as eo on a.owner_id = eo.id and a.client_id = eo.client_id
 left join ${source.circa_os}.entity_distributor dis on a.distributor_id = dis.id and a.client_id = dis.client_id
 left join (select * from ${source.circa_os}.order_return_po where status not in ('PENDING','CANCELED')) as rt on a.id = rt.source_id and a.client_id = rt.client_id-- Lấy nhừng PO có trả hàng 
 left join ${source.ref}.circa_pos_profile p on a.pos_id = p.id and a.client_id = p.client_id
+left join ${source.ref}.os_map_idthuocsi map on o.customer_id = map.id_thuocisi
 where a.status <> 'CANCELED'
       and a.status <> 'PENDING'
       and p.id is not null
