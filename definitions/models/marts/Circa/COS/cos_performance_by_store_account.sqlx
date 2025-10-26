@@ -39,8 +39,7 @@ group by all
                     ,o.client_id
              from  ${source.ref}.cos_fact_order o
              left join  ${source.ref}.cos_fact_order_item oi on o.order_id = oi.order_id
-             where status like "%COMPLETE%"
-                   and o.client_id = 1
+             where  o.client_id = 1
                    and po_code in ( Select distinct po_code from purchase)
              group by all)
 ,inventory as (
