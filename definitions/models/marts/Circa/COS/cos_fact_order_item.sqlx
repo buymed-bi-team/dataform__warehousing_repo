@@ -169,6 +169,7 @@ left join ${source.circa_os}.entity_owner eo on po.owner_id = eo.id and eo.clien
 left join  ${source.ref}.cos_product_convert_base_unit cv on cv.product_id = oi.product_id and cv.convert_unit = oi.unit and o.client_id = cv.client_id
 left join ${source.circa_os}.entity_entity e on o.updated_by = e.id and o.client_id = e.client_id
 where o.status <> 'PENDING'
+     and o.status <> 'CANCELED'
       --and p.id is not null
 --o.status LIKE '%COMPLETE%'
 group by all
