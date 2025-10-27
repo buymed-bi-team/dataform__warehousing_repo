@@ -26,11 +26,14 @@ Select distinct r.id
               ,product_id
               ,unit
               ,sum(rid.quantity) as quantity
+              ,sum(rid.base_quantity) as base_qty_transfer
               ,rid.unit_price
               ,sum(rid.quantity * rid.unit_price) as total_amount_item
               ,r.client_id
               ,concat(ri.product_id, "_", r.client_id) as product_client_id
               ,lot_id
+              ,lot_date
+              ,sku_code
               ,rid.doc_code
  from ${source.circa_os}.inventory_transfer_request r 
  left join ${source.circa_os}.inventory_transfer_item ri on r.id = ri.transfer_request_id 
@@ -42,6 +45,7 @@ where p.id is not null
       --  and product_id = 65050
 group by all
 ), rcv as 
+--hướng dẫn tôi cách để kiểm tra lỗi, doc_code nào đang bị duplicate
 (
 Select distinct rcv.id
                ,rcv.status as rcv_status
@@ -64,7 +68,7 @@ group by all
 )
 Select trf.* 
       ,p.name as pos_received
-      ,rcv.* except(id,dest_pos_id,client_id,product_id,lot_id)
+      ,rcv.* except(id,dest_pos_id,client_id,product_id,lot_id,doc_code)
 from trf 
 left join rcv on trf.id = rcv.related_transfer_request_id 
              and trf.dest_pos_id = rcv.dest_pos_id 

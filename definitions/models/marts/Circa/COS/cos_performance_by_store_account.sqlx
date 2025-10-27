@@ -44,7 +44,19 @@ group by all
                    and po_code in ( Select distinct po_code from purchase)
                    and o.status not in ('FAILED_SHIPMENT','OUT_OF_STOCK','CANCELED')
              group by all)
-,inventory as (
+,_transfer as (
+      Select distinct 
+              src_pos_id as pos_id
+             ,product_id
+             ,lot_date
+             ,sku_code
+             ,doc_code
+             ,sum(base_qty_transfer) as base_qty_transfer
+      from  ${source.ref}.transfer_request
+      where client_id = 1
+           and doc_code in ( Select distinct po_code from purchase)
+      group by all
+),inventory as (
       Select distinct 
               pos_id
              ,product_id
@@ -61,14 +73,16 @@ group by all
 
 Select a.*
        ,coalesce(b.sales_base_qty,0) as sales_base_qty
+       ,coalesce(d.base_qty_transfer,0) as base_qty_transfer
        ,stock_qty
-      , case when (base_purchase_qty - sales_base_qty) <> stock_qty then 1 else 0 end as is_different
+      , case when sum(base_purchase_qty - sales_base_qty - base_qty_transfer ) <> stock_qty then 1 else 0 end as is_different
       ,td.base_unit
  from purchase  a
 left join count_ord b on a.product_id = b.product_id and a.sku_code = b.sku_code and a.lot_date = b.lot_date and a.po_code = b.po_code and a.pos_id = b.pos_id
-left join inventory C on a.product_id = c.product_id and a.sku_code = c.sku_code and a.lot_date = c.lot_date and a.po_code = c.doc_code and a.pos_id = c.pos_id
+left join _transfer d on a.product_id = d.product_id and a.sku_code = d.sku_code and a.lot_date = d.lot_date and a.po_code = d.doc_code and a.pos_id = d.pos_id
+left join inventory c on a.product_id = c.product_id and a.sku_code = c.sku_code and a.lot_date = c.lot_date and a.po_code = c.doc_code and a.pos_id = c.pos_id
 left join ${source.ref}.cos_dim_product td on a.product_id = td.product_id and a.client_id = td.client_id
-order by no_ord desc
+group by all
 )
 
 Select check.*   
