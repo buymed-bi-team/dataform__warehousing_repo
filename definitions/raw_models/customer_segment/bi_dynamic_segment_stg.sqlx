@@ -20,11 +20,12 @@ WITH
             *
         FROM ${ref('bi_dynamic_segment')} AS a
         ${when(incremental(),
-            `WHERE NOT EXISTS (SELECT 1 
+            `WHERE NOT EXISTS ( SELECT 1 
                                 FROM ${self()} AS b 
                                 WHERE a.segment_id = b.segment_id 
-                                AND TIMESTAMP_TRUNC(CURRENT_TIMESTAMP() + INTERVAL 7 HOUR, HOUR) = b.processed_at
-                                AND a.submit_id = b.submit_id)`
+                                AND DATE(b.processed_at) = CURRENT_DATE("+7")
+                                AND EXTRACT(HOUR FROM CURRENT_TIMESTAMP + INTERVAL 7 HOUR) NOT IN (0, 11)
+                                AND a.submit_id = b.submit_id )`
             )
         }
     ),
