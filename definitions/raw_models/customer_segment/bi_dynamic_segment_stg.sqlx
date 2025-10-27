@@ -4,6 +4,16 @@ config {
     tags: ["CUSTOMER_SEGMENT", "0h30", "custom_1h_past10"]
 }
 
+-- SELECT *
+-- FROM gold_buymed_vn2.bi_dynamic_segment_bu
+
+-- pre_operation {
+--     ${
+--         when(incremental()
+--         , 
+--     )}
+-- }
+
 WITH
     segment_data AS (
         SELECT
@@ -13,7 +23,7 @@ WITH
             `WHERE NOT EXISTS (SELECT 1 
                                 FROM ${self()} AS b 
                                 WHERE a.segment_id = b.segment_id 
-                                AND CURRENT_DATE("+7") = b.processed_date
+                                AND TIMESTAMP_TRUNC(CURRENT_TIMESTAMP() + INTERVAL 7 HOUR, HOUR) = b.processed_at
                                 AND a.submit_id = b.submit_id)`
             )
         }
@@ -140,7 +150,7 @@ WITH
             c.customer_id,
             sd.segment_id,
             sd.submit_id,
-            CURRENT_TIMESTAMP()  + INTERVAL 7 HOUR AS processed_at
+            TIMESTAMP_TRUNC(CURRENT_TIMESTAMP() + INTERVAL 7 HOUR, HOUR) AS processed_at
         FROM ${ref('dim_customer')} c
             LEFT JOIN ${ref('dim_geo_location')} AS g ON c.location_code= g.location_code
             CROSS JOIN  get_start_end sd
@@ -194,7 +204,7 @@ WITH
 
 SELECT
     segment_id
-    , DATE(processed_at) AS processed_date
+    , processed_at
     , COUNT(1) AS total_customers
     , ARRAY_AGG(customer_id) AS customer_list
     , submit_id

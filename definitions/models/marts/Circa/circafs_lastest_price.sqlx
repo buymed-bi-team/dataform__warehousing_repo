@@ -2,7 +2,7 @@ config {
     type: "table",
     description: `thuocsi_price_by_level
              PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 past hour 6, 8, 10, 12, 14, 16, 18, 20 and 22`,
-    tags: ["custom_2h_past5"],
+    tags: ["custom_2h_past15"],
     name: "circafs_lastest_price",
 }
  

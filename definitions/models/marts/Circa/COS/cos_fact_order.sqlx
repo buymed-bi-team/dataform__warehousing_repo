@@ -4,7 +4,7 @@ config {
     /*Source:
       ${source.silver}.marketplace_prd_order_v2_order_item
       ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
-    tags: ["custom_1h_past5"],
+    tags: ["custom_1h_past15"],
     name: "cos_fact_order",
     columns: {
         order_id: "NonNull |" + docs.order_id,
@@ -45,7 +45,7 @@ with cte_fs as
        ,cast (null as timestamp) as pre_order_scheduled_time
        , cast (null as string) as pre_order_required
        ,o.medicine_cutting_fee
-       ,rt.return_codes
+       ,string_agg(rt.return_codes) as return_codes
        ,case when rt.return_codes is null then "NORMAL"
              else "RETURN"
              end as order_type

@@ -4,7 +4,7 @@ config {
     /*Source:
       ${source.silver}.marketplace_prd_order_v2_order_item
       ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5,*/
-    tags: ["custom_1h_past5"],
+    tags: ["custom_1h_past15"],
     name: "cos_fact_order_item",
     columns: {
 
@@ -16,12 +16,12 @@ config {
 WITH base_data as (
     select
          date(datetime_add(c.completed_at, interval 7 hour)) as completed_date
-        ,a.id
         ,case when c.type = 'ONLINE' then b.id else a.id end as item_id--=llocation.item_ref_id
         ,a.order_id
         ,c.code
         ,a.note
         ,c.type
+        ,a.id
         ,a.product_id
         ,"NULL" as sku_code
         ,a.unit
@@ -101,6 +101,7 @@ cte_online as (
 (select 
        completed_date
       ,order_id
+      ,a.id
       ,a.product_id
       ,sku_code
       ,quantity 
@@ -137,6 +138,7 @@ and pos_id in ("b6c40920-af79-4fb0-bdc4-9965ddb885d2", "e737c882-e90c-4fd2-8a4f-
 select distinct
   coalesce(date(datetime_add(o.completed_at, interval 7 hour)),date(datetime_add(o.updated_at, interval 7 hour)))  as completed_date
   ,order_id
+  ,oi.id
   --   o.code as order_code,
   ,oi.product_id
   ,oi.sku_code
