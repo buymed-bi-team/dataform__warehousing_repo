@@ -15,6 +15,7 @@ config {
 with trf  as (
 Select distinct r.id
                ,r.code
+               ,r.src_pos_id
               ,p.name as pos_tranfer
               ,r.type
               ,datetime_add(r.created_at, interval 7 hour) as created_at
