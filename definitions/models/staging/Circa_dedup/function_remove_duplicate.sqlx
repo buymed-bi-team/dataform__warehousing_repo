@@ -1,0 +1,89 @@
+config {
+    type: "operations",
+    description: `
+    PIC: minh.luu
+    `
+}
+
+CREATE TABLE IF NOT EXISTS  `de_buymed_vn.circa_duplicated_table`
+(
+    full_table_id STRING NOT NULL OPTIONS( description = "dataset_id.table_id"),
+    old_ingest_time ARRAY <TIMESTAMP> OPTIONS ( description = "Old _airbyte_extracted_time that must be deleted, must not be empty"),
+    remove_time TIMESTAMP NOT NULL OPTIONS (description = "The timestamp that execute delete aciton")
+)
+;
+
+CREATE OR REPLACE PROCEDURE `de_buymed_vn.circa_remove_duplicate` (
+    list_of_full_table_ids ARRAY <STRING>
+)
+OPTIONS(
+    -- strict_mode=false,
+    description= """
+    Checking and Remove Duplication on multiple table
+    Input Argument
+        - list_of_full_table_ids : meaning each of table must be the combination of dataset_id and table_id
+            E.g: ['buymed_circa_v2.order_order']
+
+    Logic:
+        - I will first query again to get the list of duplicate
+        - then remove latter, because the remove stage will take long time to process
+    
+    Note:
+      - You can use select from metadata to get all table in datasets
+        E.g: 
+        ```
+        SELECT '[' 
+        || STRING_AGG( 
+            '\'' || dataset_id || '.' || table_id || '\''
+            , ',\n' ) 
+        || ']' 
+        FROM buymed_circa_v2.__TABLES__
+        WHERE table_id not like "%dev%"
+        AND table_id not like "%crawl%"
+        AND table_id not like "%historical%"
+        ```
+      - Then just push the result in to list_of_full_table_ids
+    """
+)
+BEGIN 
+    DECLARE dynamic_query STRING DEFAULT "";
+    DECLARE length_array INT64;
+    DECLARE loop_index INT64 DEFAULT 0;
+    SET length_array =  ARRAY_LENGTH(list_of_full_table_ids);
+
+    IF length_array = 0 THEN
+        RAISE USING MESSAGE = "There isn't any table for processing" ;
+    END IF;
+
+    -- check if table are duplicated
+    FOR record IN (SELECT full_table_id FROM UNNEST(list_of_full_table_ids) full_table_id) DO 
+        SET loop_index = loop_index + 1;
+        SET dynamic_query = dynamic_query 
+            || " SELECT '" || record.full_table_id|| "' as full_table_id, _airbyte_extracted_at old_ingest_time "
+            || "\n FROM "|| record.full_table_id || " GROUP BY 1,2"
+            || "\n QUALIFY ROW_NUMBER() OVER ( ORDER BY old_ingest_time DESC ) > 1"
+            || IF( loop_index < length_array, "\n  UNION ALL \n", "" );
+    END FOR;
+
+    EXECUTE IMMEDIATE "CREATE TEMPORARY TABLE tbl AS ("
+        || "\nSELECT full_table_id, ARRAY_AGG(old_ingest_time) old_ingest_time \nFROM (\n" || dynamic_query || "\n )"
+        || "\nGROUP BY 1);";
+
+    -- If There is any duplicated table then remove duplicate
+    IF (SELECT COUNT(1) > 0 FROM tbl) THEN 
+        FOR duplicated_table IN ( SELECT full_table_id, old_ingest_time FROM tbl) DO 
+            EXECUTE IMMEDIATE "DELETE FROM " || duplicated_table.full_table_id 
+                || "\n WHERE _airbyte_extracted_at IN UNNEST( @old_ingest_time);"
+            USING duplicated_table.old_ingest_time AS old_ingest_time;
+        END FOR;
+
+        -- Record the duplicated table
+        INSERT INTO `de_buymed_vn.circa_duplicated_table`
+        (
+            SELECT full_table_id, old_ingest_time, CURRENT_TIMESTAMP() 
+            FROM tbl
+        );
+    END IF;
+END 
+
+
