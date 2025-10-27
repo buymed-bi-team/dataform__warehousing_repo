@@ -101,7 +101,6 @@ cte_online as (
 (select 
        completed_date
       ,order_id
-      ,a.id
       ,a.product_id
       ,sku_code
       ,quantity 
@@ -138,7 +137,6 @@ and pos_id in ("b6c40920-af79-4fb0-bdc4-9965ddb885d2", "e737c882-e90c-4fd2-8a4f-
 select distinct
   coalesce(date(datetime_add(o.completed_at, interval 7 hour)),date(datetime_add(o.updated_at, interval 7 hour)))  as completed_date
   ,order_id
-  ,oi.id
   --   o.code as order_code,
   ,oi.product_id
   ,oi.sku_code
@@ -177,7 +175,8 @@ group by all
 --qualify row_number() over(partition by oi.id order by base_unit_cost_price desc) = 1
     
     ),
-order_items as (select *
+order_items as (
+   select *
 from cte_fs
 union all
 select * from cte_os)
