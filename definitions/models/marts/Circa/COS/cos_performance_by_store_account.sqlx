@@ -42,6 +42,7 @@ group by all
              left join ${source.ref}.cos_return_completed_detail rt on oi.order_id = rt.order_id and oi.product_id = rt.product_id and oi.lot_date = rt.lot_date and oi.sku_code = rt.sku_code
              where  o.client_id = 1
                    and po_code in ( Select distinct po_code from purchase)
+                   and o.status not in ('FAILED_SHIPMENT','OUT_OF_STOCK','CANCELED')
              group by all)
 ,inventory as (
       Select distinct 
