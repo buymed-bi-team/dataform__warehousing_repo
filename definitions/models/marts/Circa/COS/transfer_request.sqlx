@@ -31,6 +31,7 @@ Select distinct r.id
               ,r.client_id
               ,concat(ri.product_id, "_", r.client_id) as product_client_id
               ,lot_id
+              ,rid.doc_code
  from ${source.circa_os}.inventory_transfer_request r 
  left join ${source.circa_os}.inventory_transfer_item ri on r.id = ri.transfer_request_id 
  left join ${source.circa_os}.inventory_transfer_item_detail rid on ri.id = rid.transfer_item_id 
@@ -51,6 +52,7 @@ Select distinct rcv.id
               ,rcv.client_id
               ,product_id
               ,lot_id
+              ,rid.doc_code
  from ${source.circa_os}.inventory_transfer_request  rcv 
   left join ${source.circa_os}.inventory_transfer_item ri on rcv.id = ri.transfer_request_id
  left join ${source.circa_os}.inventory_transfer_item_detail rid on ri.id = rid.transfer_item_id 
@@ -69,6 +71,6 @@ left join rcv on trf.id = rcv.related_transfer_request_id
              and trf.client_id = rcv.client_id 
              and trf.product_id = rcv.product_id
              and trf.lot_id = rcv.lot_id
-
+             and trf.doc_code = rcv.doc_code
 left join ${source.ref}.circa_pos_profile p on trf.dest_pos_id = p.id
 where  rcv_status <> 'CANCELED'
