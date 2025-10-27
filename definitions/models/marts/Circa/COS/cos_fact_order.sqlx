@@ -45,7 +45,7 @@ with cte_fs as
        ,cast (null as timestamp) as pre_order_scheduled_time
        , cast (null as string) as pre_order_required
        ,o.medicine_cutting_fee
-       ,rt.return_codes
+       ,string_agg(rt.return_codes) as return_codes
        ,case when rt.return_codes is null then "NORMAL"
              else "RETURN"
              end as order_type
