@@ -33,12 +33,13 @@ group by all
                     ,oi.po_code
                     ,max(o.created_date) as latest_ord
                     ,count(distinct o.order_id) as no_ord
-                    ,sum(unit_price * quantity) as GMV
-                    ,sum(unit_cost_price * quantity) as cogs
-                    ,coalesce(sum(base_quantity),0) as sales_base_qty
+                    ,sum(unit_price * oi.quantity) as GMV
+                    ,sum(unit_cost_price * oi.quantity) as cogs
+                    ,coalesce(sum(oi.base_quantity - rt.base_quantity),0) as sales_base_qty
                     ,o.client_id
              from  ${source.ref}.cos_fact_order o
-             left join  ${source.ref}.cos_fact_order_item oi on o.order_id = oi.order_id
+             left join ${source.ref}.cos_fact_order_item oi on o.order_id = oi.order_id
+             left join ${source.ref}.cos_return_completed_detail rt on oi.order_id = rt.order_id and oi.product_id = rt.product_id and oi.lot_date = rt.lot_date and oi.sku_code = rt.sku_code
              where  o.client_id = 1
                    and po_code in ( Select distinct po_code from purchase)
              group by all)
