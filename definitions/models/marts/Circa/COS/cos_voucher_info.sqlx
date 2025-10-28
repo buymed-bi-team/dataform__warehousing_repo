@@ -37,8 +37,8 @@ left join ${source.ref}.cos_fact_order o on cast(JSON_EXTRACT_SCALAR(order_code)
 left join ${source.circa_os}.entity_pos_profile pr on o.pos_id = pr.id
 where gift_code not like '%TEST%'
 )
-Select distinct 
-               us.code
+Select distinct timestamp_add(current_timestamp(), interval 7 hour) as transformed_at
+              ,us.code
               ,t.order_code_created
               ,datetime_add(us.created_at, interval 7 hour) as created_at
               ,datetime_add(us.start_date, interval 7 hour) as start_date

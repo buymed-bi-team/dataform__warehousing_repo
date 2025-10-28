@@ -11,7 +11,8 @@ config {
     }
 }
 select distinct
-     a.id as po_id
+     timestamp_add(current_timestamp(), interval 7 hour) as transformed_at
+    ,a.id as po_id
     ,a.pos_id
     ,a.distributor_id
     ,a.source_id

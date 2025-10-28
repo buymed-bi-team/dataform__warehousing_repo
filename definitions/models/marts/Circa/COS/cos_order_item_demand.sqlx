@@ -48,4 +48,5 @@ where o.status is not null
       and quantity > 0 
 )
 Select *
+       ,timestamp_add(current_timestamp(), interval 7 hour) as transformed_at
 from t

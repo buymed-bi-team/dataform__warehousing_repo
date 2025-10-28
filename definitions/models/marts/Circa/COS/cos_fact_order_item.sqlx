@@ -182,7 +182,9 @@ from cte_fs
 union all
 select * from cte_os)
 
-select distinct i.*
+select distinct 
+      timestamp_add(current_timestamp(), interval 7 hour) as transformed_at
+      ,i.*
       ,base_unit_cost_price * convert_rate  as  unit_cost_price
 from order_items i
 left join ${ref('cos_fact_order')} fo on i.order_id = fo.order_id

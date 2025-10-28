@@ -52,7 +52,8 @@ left join ${source.circa_os}.inventory_location as b on a.location_id = b.id  an
 where p.id is not null
 group by all
 )
-Select i.*
+Select timestamp_add(current_timestamp(), interval 7 hour) as transformed_at
+       ,i.*
        ,concat(i.product_id, "_", i.client_id) as product_client_id
        ,eo.name as owner_name
        ,eo.seller_code
