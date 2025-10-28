@@ -18,6 +18,8 @@ with purchase as
                     ,oi.lot_date
                     ,oi.sku_code
                     ,oi.po_code
+                    ,o.fulfillment_method
+                    ,o.Vendor as vendor
                     ,created_date as pur_order_date
                     ,sum(base_qty_received) as base_purchase_qty
 from ${source.ref}.cos_purchase_order o
