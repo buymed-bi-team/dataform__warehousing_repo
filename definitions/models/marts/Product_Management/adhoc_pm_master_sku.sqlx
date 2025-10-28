@@ -47,22 +47,25 @@ with
 
 -- get it product ---
     it_list as (
-        select distinct concat(c.sku_code,"_",c.sales_region_code) as sku_sales_region_code, a.type
-        from (
-            select max(submit_id) as id,
-                code,
-                type
-            from ${source.collector}.data_prd
-            where code is not null
-                and upper(code) not like '%CIRCA%'
-                and upper(code) not like '%.0%'
-                and upper(code) not like '%NAN%'
-                and upper(type) = "INTERNAL_TRANSFER"
-            group by 2,3
+        SELECT DISTINCT
+            concat(c.sku_code,"_",c.sales_region_code) as sku_sales_region_code
+            , a.value
+        FROM (
+            SELECT
+                code
+                , type
+                , NULLIF(UPPER(value), 'NAN') as value
+            FROM ${source.collector}.data_prd
+            WHERE
+                object = 'SKU'
+                AND type = 'INTERNAL_TRANSFER'
+                AND code is not null
+                AND upper(code) not like '%CIRCA%'
+                AND upper(code) not like '%.0%'
+                AND upper(code) not like '%NAN%'
+            QUALIFY ROW_NUMBER() over (PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
         ) a
-        inner join ${source.collector}.data_prd b on b.submit_id = a.id
-        inner join ${ref('dim_sku_sales_region_current')} c on a.code = concat(c.product_id,"_",c.seller_code,"_",c.fc_code)
-        where upper(value) = "INTERNAL_TRANSFER"
+        JOIN ${ref('dim_sku_sales_region_current')} AS c ON concat(c.product_id,"_",c.seller_code,"_",c.fc_code) = a.code
     ),
 
 -- get reason_turn_off column for sku
@@ -113,7 +116,7 @@ select
     , sku.*
     , vcpic.commitment_leadtime
     , IF(uns.value IS NOT NULL, "UNSTABLE", NULL) as unstable
-    , it.type as internal_transfer
+    , IF(it.value IS NOT NULL, "INTERNAL_TRANSFER", NULL) as internal_transfer
     , IF(sku.purchase_status = "Off", reason.reason_turnoff, NULL) AS reason_turnoff
     , vcpic.cic_category_username as vendor_cic_name
     , vcpic.pic_purchase_username as vendor_pic_name
