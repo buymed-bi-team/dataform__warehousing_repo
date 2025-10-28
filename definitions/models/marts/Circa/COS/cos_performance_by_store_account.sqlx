@@ -77,6 +77,7 @@ Select a.*
        ,coalesce(b.sales_base_qty,0) as sales_base_qty
        ,coalesce(d.base_qty_transfer,0) as base_qty_transfer
        ,stock_qty
+       ,sum(base_purchase_qty - sales_base_qty - base_qty_transfer ) as gap
       , case when sum(base_purchase_qty - sales_base_qty - base_qty_transfer ) <> stock_qty then 1 else 0 end as is_different
       ,td.base_unit
  from purchase  a
