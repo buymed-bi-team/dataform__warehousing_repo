@@ -58,24 +58,27 @@ WITH
             , SAFE_DIVIDE(b.voucher_discount, a.min_sku_quantity) AS avg_discount
             , IFNULL(mov,0) AS mov1
             , discount_type
+            , c.area_code
         FROM ${ref('dim_voucher_product')} AS a
             LEFT JOIN ${ref('dim_voucher')} AS b USING(voucher_code)
+            LEFT JOIN area AS c USING(voucher_code)
         WHERE
             b.voucher_status = "ACTIVE"
             -- AND b.discount_type = "ABSOLUTE"
             AND b.is_specific
             AND b.all_customer
-        QUALIFY ROW_NUMBER() over (PARTITION BY product_id, a.seller_code ORDER BY mov1, a.min_sku_quantity, voucher_discount DESC) = 1
+            AND c.area_code IS NOT NULL
+        QUALIFY ROW_NUMBER() over (PARTITION BY product_id, a.seller_code, area_code ORDER BY mov1, a.min_sku_quantity, voucher_discount DESC) = 1
     ),
 
-    discount_value AS (
-        SELECT
-            a.*
-            , b.area_code
-        FROM voucher AS a
-            LEFT JOIN area AS b USING(voucher_code)
-        WHERE b.area_code IS NOT NULL
-    ),
+    -- discount_value AS (
+    --     SELECT
+    --         a.*
+    --         , b.area_code
+    --     FROM voucher AS a
+    --         LEFT JOIN area AS b USING(voucher_code)
+    --     WHERE b.area_code IS NOT NULL
+    -- ),
 
     final_price AS (
         SELECT
@@ -116,10 +119,10 @@ SELECT
               , 0)
         , -2
     ) AS price_after_discount
-
+    , c.voucher_code
 
 FROM final_price AS a
-    LEFT JOIN discount_value AS c 
+    LEFT JOIN voucher AS c 
         ON (c.product_id = a.product_id AND c.seller_code = a.seller_code )
             AND  (c.area_code IS NULL OR c.area_code = a.sales_region_code)
 QUALIFY ROW_NUMBER() OVER(PARTITION BY sku_key_sales_region_code) = 1
