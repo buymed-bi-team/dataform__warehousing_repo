@@ -12,4 +12,5 @@ config {
     }
 }
 
-Select * from buymed_external.OS_map_IDthuocsi
+Select map,*, p.id as pos_id from buymed_external.OS_map_IDthuocsi map 
+left join ${source.ref}.circa_pos_profile p on map.pos_code = p.code
