@@ -38,7 +38,7 @@ select distinct
     ,o.so_status
     ,map.id_thuocisi
     ,customer_id
-    ,case when map.id_thuocisi is not null then 1 else 0 end as store_id
+    ,case when map.id_thuocisi is not null and a.client_id = 1 then 1 else 0 end as store_id
     ,a.payment_method
     ,o.created_date as so_created_date
     ,to_json_string(order_tag) as order_tag
