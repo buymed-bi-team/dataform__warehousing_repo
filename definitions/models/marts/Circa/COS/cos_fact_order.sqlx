@@ -16,7 +16,8 @@ config {
     }
 }
 with cte_fs as
-    (select o.id as order_id
+    (select timestamp_add(current_timestamp(), interval 7 hour) as transformed_at
+       ,o.id as order_id
        ,o.pos_id
        , p.code as pos_code
        ,entity_id
@@ -58,9 +59,11 @@ where o.pos_id in ("b6c40920-af79-4fb0-bdc4-9965ddb885d2", "e737c882-e90c-4fd2-8
       and o.type <> 'RETURN'
 group by all)
 ,cte_os as
-    (select distinct o.id as order_id
+    (select distinct
+        timestamp_add(current_timestamp(), interval 7 hour) as transformed_at
+       ,o.id as order_id
        ,o.pos_id
-       , p.code as pos_code
+       ,p.code as pos_code
        ,entity_id
        ,o.code as order_code
        ,o.total_amount -- giá trị đơn (rev)
