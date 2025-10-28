@@ -10,8 +10,9 @@ config {
         
     }
 }
-select
-        datetime_add(c.created_at, interval 7 hour) as created_at
+select distinct  
+       timestamp_add(current_timestamp(), interval 7 hour) as transformed_at
+      ,datetime_add(c.created_at, interval 7 hour) as created_at
        ,a.purchase_order_id as po_id
        ,c.code as po_code
        ,a.product_id
