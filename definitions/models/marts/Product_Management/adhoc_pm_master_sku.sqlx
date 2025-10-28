@@ -31,7 +31,7 @@ with
             SELECT
                 code
                 , type
-                , NULLIF(value, 'NAN') as value
+                , NULLIF(UPPER(value), 'NAN') as value
             FROM ${source.collector}.data_prd
             WHERE
                 object = 'SKU'
