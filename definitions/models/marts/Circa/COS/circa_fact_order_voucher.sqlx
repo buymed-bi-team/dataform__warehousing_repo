@@ -8,7 +8,8 @@ config {
 
 
 
-select distinct order_code
+select distinct timestamp_add(current_timestamp(), interval 7 hour) as transformed_at
+                ,order_code
                 ,ov.created_at
                 , voucher_code
                 , ov.paid_source

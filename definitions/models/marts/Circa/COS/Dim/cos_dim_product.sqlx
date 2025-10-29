@@ -131,7 +131,8 @@ popular_product as (
     qualify ROW_NUMBER() over(partition by code, object, type order by submit_id desc) = 1  
 )
 
-select distinct pd.product_id
+select distinct timestamp_add(current_timestamp(), interval 7 hour) as transformed_at
+               ,pd.product_id
                ,pd.* except (product_id)
           --   ,a.unit as retail_unit
                ,cr.convert_rate
