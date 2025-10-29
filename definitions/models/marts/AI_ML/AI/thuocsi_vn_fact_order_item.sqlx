@@ -6,20 +6,26 @@ config {
 
 SELECT
     a.created_date
-    , order_id
-    , total_price
+    , a.created_time + INTERVAL 7 HOUR AS created_time
+    , a.order_id
+    , a.total_price
     , s.seller_class
 FROM ${source.platinum}.marketplace_prd_order_v2_order_item AS a
     LEFT JOIN ${source.platinum}.seller_prd_core_seller AS s ON a.seller_code = s.code
+    LEFT JOIN ${ref('buymed_innovation','thuocsi_vn_fact_order')} AS o ON a.order_id = o.order_id
 WHERE 1=1
     AND a.created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 1 MONTH
+    AND o.status <> "CANCEL"
 UNION ALL
 SELECT
-    created_date
-    , order_id
-    , total_amount
+    a.created_date
+    , a.created_time + INTERVAL 7 HOUR AS created_time
+    , a.order_id
+    , a.total_amount
     , "INTERNAL" AS seller_class
 FROM ${source.platinum}.tender_prd_core_tender_order_items AS a
+    LEFT JOIN ${ref('buymed_innovation','thuocsi_vn_fact_order')} AS b ON a.order_id = b.order_id
 WHERE 1=1
-    AND created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 1 MONTH
+    AND a.created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 1 MONTH
+    AND b.status <> "CANCEL"
 

@@ -6,6 +6,7 @@ config {
 
 SELECT
     created_date
+    , created_time + INTERVAL 7 HOUR AS created_time
     , order_id
     , customer_id
     , price AS gmv
@@ -23,6 +24,7 @@ WHERE 1=1
 UNION ALL
 SELECT
     created_date
+    , created_time + INTERVAL 7 HOUR AS created_time
     , order_id
     , 1000000 + receiver_id
     , total_amount
