@@ -5,7 +5,7 @@ config {
     /*Source:
       ${source.silver}.marketplace_prd_order_v2_order_item
       ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5,*/
-    tags: ["custom_2h_past5"],
+    tags: ["custom_2h_past15"],
     name: "clearance_sale_sep",
     columns: {
         
@@ -22,7 +22,8 @@ where product_id is not null
 qualify row_number() over(partition by product_id,pos_code order by product_id desc ) =1
 )
 
-Select base_data.* 
+Select timestamp_add(current_timestamp(), interval 7 hour) as transformed_at
+       ,base_data.* 
        ,r.convert_rate
 from base_data 
 left join ${source.circa_os}.product_retail_unit r on base_data.product_id = r.product_id
