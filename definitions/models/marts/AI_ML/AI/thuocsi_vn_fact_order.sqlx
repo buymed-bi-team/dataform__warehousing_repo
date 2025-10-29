@@ -26,7 +26,7 @@ SELECT
     , order_id
     , 1000000 + receiver_id
     , total_amount
-    , status
+    , IF(status = 'CANCELLED','CANCEL', status) AS status
     , 'TENDER' AS channel
 FROM ${source.platinum}.tender_prd_core_tender_orders AS a
 WHERE 1=1
