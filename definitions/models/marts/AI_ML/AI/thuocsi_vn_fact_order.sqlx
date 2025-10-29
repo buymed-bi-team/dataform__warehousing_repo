@@ -1,0 +1,33 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `All orders in the Vietnam marketplace (including tender orders).`
+}
+
+SELECT
+    created_date
+    , order_id
+    , customer_id
+    , price AS gmv
+    , status
+    , CASE
+        WHEN REGEXP_CONTAINS(TO_JSON_STRING(JSON_VALUE_ARRAY(a.extra_props, '$.customer_tags')), r'\"CIRCA\"|\"CIRCACOS\"|\"CIRCAFOFO\"|\"CIRCAFOCO\"')  THEN 'CIRCA'
+        WHEN a.source = 'brand-portal' AND JSON_VALUE(a.extra_props, "$.brand_code") IN ('Q8HDUVQX', '2E84FW961P', 'PG961P') THEN 'TENDER'
+        WHEN TO_JSON_STRING(JSON_VALUE_ARRAY(a.extra_props, '$.customer_tags')) LIKE '%TENDER%' THEN 'TENDER'
+        WHEN a.source IN ('brand-portal', 'clinic-portal') OR customer_id IN (360299, 360439, 375375) THEN 'TENDER'
+        ELSE 'MARKETPLACE'
+      END AS channel,
+FROM ${source.platinum}.marketplace_prd_order_v2_order AS a
+WHERE 1=1
+    AND created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 1 MONTH
+UNION ALL
+SELECT
+    created_date
+    , order_id
+    , 1000000 + receiver_id
+    , total_amount
+    , status
+    , 'TENDER' AS channel
+FROM ${source.platinum}.tender_prd_core_tender_orders AS a
+WHERE 1=1
+    AND created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 1 MONTH
