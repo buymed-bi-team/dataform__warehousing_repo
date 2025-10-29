@@ -240,19 +240,19 @@ pre_operations {
 }
 
 
-post_operations {                
-  ${
-    when(incremental(),
-      "",
-      `
-      -- Bước thực hiện add primary key, nhưng chỉ trong lần đầu full-refresh, nếu thực hiện incremental sau thì k cần làm gì
-      ALTER TABLE ${self()} 
-        ADD PRIMARY KEY (order_id) NOT ENFORCED,
-        ADD FOREIGN KEY (location_code) references ${ref(`dim_geo_location`)}(location_code) NOT ENFORCED,
-        ADD FOREIGN KEY (shipping_location_code) references ${ref(`dim_geo_location`)}(location_code) NOT ENFORCED;
-      `
-    )
-  }
-}
+-- post_operations {                
+--   ${
+--     when(incremental(),
+--       "",
+--       `
+--       -- Bước thực hiện add primary key, nhưng chỉ trong lần đầu full-refresh, nếu thực hiện incremental sau thì k cần làm gì
+--       ALTER TABLE ${self()} 
+--         ADD PRIMARY KEY (order_id) NOT ENFORCED,
+--         ADD FOREIGN KEY (location_code) references ${ref(`dim_geo_location`)}(location_code) NOT ENFORCED,
+--         ADD FOREIGN KEY (shipping_location_code) references ${ref(`dim_geo_location`)}(location_code) NOT ENFORCED;
+--       `
+--     )
+--   }
+-- }
 
 
