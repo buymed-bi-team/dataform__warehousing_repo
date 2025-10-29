@@ -14,7 +14,7 @@ config {
     columns: {
         transformed_at: "NonNull | The last time that table is refresh",
         product_created_at: "NonNull | Timezone in +7",
-        product_id: "NonNull | Unique identifier for each product",
+        product_id: "PrimaryKey | Unique identifier for each product",
         filter_product_id: "NonNull | is string type cast from product_id",
         // product_code : "",
         product_name: "NonNull | Name of the product",
@@ -406,6 +406,6 @@ WHERE
     AND LOWER(product.name) NOT LIKE '%[removed]%'
 QUALIFY ROW_NUMBER() OVER(PARTITION BY product_id) = 1
 
-post_operations {                
-  ALTER TABLE ${self()} ADD PRIMARY KEY (product_id) NOT ENFORCED;
-}
+-- post_operations {                
+--   ALTER TABLE ${self()} ADD PRIMARY KEY (product_id) NOT ENFORCED;
+-- }
