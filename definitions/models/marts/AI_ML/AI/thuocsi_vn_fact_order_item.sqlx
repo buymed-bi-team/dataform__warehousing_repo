@@ -4,15 +4,49 @@ config {
     description: `All orders item in the Vietnam marketplace (including tender orders).`
 }
 
+WITH
+    fact_order AS ( 
+        SELECT
+            created_date
+            , created_time + INTERVAL 7 HOUR AS created_time
+            , order_id
+            , customer_id
+            , price AS gmv
+            , status
+            , CASE
+                WHEN REGEXP_CONTAINS(TO_JSON_STRING(JSON_VALUE_ARRAY(a.extra_props, '$.customer_tags')), r'\"CIRCA\"|\"CIRCACOS\"|\"CIRCAFOFO\"|\"CIRCAFOCO\"')  THEN 'CIRCA'
+                WHEN a.source = 'brand-portal' AND JSON_VALUE(a.extra_props, "$.brand_code") IN ('Q8HDUVQX', '2E84FW961P', 'PG961P') THEN 'TENDER'
+                WHEN TO_JSON_STRING(JSON_VALUE_ARRAY(a.extra_props, '$.customer_tags')) LIKE '%TENDER%' THEN 'TENDER'
+                WHEN a.source IN ('brand-portal', 'clinic-portal') OR customer_id IN (360299, 360439, 375375) THEN 'TENDER'
+                ELSE 'MARKETPLACE'
+            END AS channel,
+        FROM ${source.platinum}.marketplace_prd_order_v2_order AS a
+        WHERE 1=1
+            AND created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 1 MONTH
+        UNION ALL
+        SELECT
+            created_date
+            , created_time + INTERVAL 7 HOUR AS created_time
+            , order_id
+            , 1000000 + receiver_id
+            , total_amount
+            , IF(status = 'CANCELLED','CANCEL', status) AS status
+            , 'TENDER' AS channel
+        FROM ${source.platinum}.tender_prd_core_tender_orders AS a
+        WHERE 1=1
+            AND created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 1 MONTH
+    )
+
 SELECT
     a.created_date
     , a.created_time + INTERVAL 7 HOUR AS created_time
     , a.order_id
     , a.total_price
     , s.seller_class
+    , o.channel
 FROM ${source.platinum}.marketplace_prd_order_v2_order_item AS a
     LEFT JOIN ${source.platinum}.seller_prd_core_seller AS s ON a.seller_code = s.code
-    LEFT JOIN ${ref('buymed_innovation','thuocsi_vn_fact_order')} AS o ON a.order_id = o.order_id
+    LEFT JOIN fact_order AS o ON a.order_id = o.order_id
 WHERE 1=1
     AND a.created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 1 MONTH
     AND o.status <> "CANCEL"
@@ -23,8 +57,9 @@ SELECT
     , a.order_id
     , a.total_amount
     , "INTERNAL" AS seller_class
+    , b.channel
 FROM ${source.platinum}.tender_prd_core_tender_order_items AS a
-    LEFT JOIN ${ref('buymed_innovation','thuocsi_vn_fact_order')} AS b ON a.order_id = b.order_id
+    LEFT JOIN fact_order AS b ON a.order_id = b.order_id
 WHERE 1=1
     AND a.created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 1 MONTH
     AND b.status <> "CANCEL"
