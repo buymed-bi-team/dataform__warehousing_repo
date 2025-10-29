@@ -1,5 +1,6 @@
 config {
     type: 'table',
+    disabled: true,
     description: `Started time: 2024-06-28 | PIC: minh.luu; schedule: 0h00 daily; model type: table
     Source:
         ${source.silver}.monitoring_prd_collector_user_stats_*`,
@@ -86,8 +87,8 @@ SELECT
 FROM stg
 
 
-post_operations {
-      ALTER TABLE ${self()} 
-      ADD FOREIGN KEY(product_id) references ${ref(`dim_product`)}(product_id) NOT ENFORCED,
-      ADD FOREIGN KEY(seller_code) references ${ref(`dim_supplier`)}(supplier_code) NOT ENFORCED
-}
+-- post_operations {
+--       ALTER TABLE ${self()} 
+--       ADD FOREIGN KEY(product_id) references ${ref(`dim_product`)}(product_id) NOT ENFORCED,
+--       ADD FOREIGN KEY(seller_code) references ${ref(`dim_supplier`)}(supplier_code) NOT ENFORCED
+-- }
