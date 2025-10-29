@@ -19,4 +19,6 @@ SELECT
     , total_amount
     , "INTERNAL" AS seller_class
 FROM ${source.platinum}.tender_prd_core_tender_order_items AS a
+WHERE 1=1
+    AND created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 1 MONTH
 
