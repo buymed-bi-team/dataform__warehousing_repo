@@ -110,5 +110,6 @@ left join return_completed c on o.return_codes = c.code
 where c.code is not null
 group by all
 )
-Select * from _all 
+Select timestamp_add(current_timestamp(), interval 7 hour) as transformed_at
+       , * from _all 
 -- where order_code = 'DHC00255137'
