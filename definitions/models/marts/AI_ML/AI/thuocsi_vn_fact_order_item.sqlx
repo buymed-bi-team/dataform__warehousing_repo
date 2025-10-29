@@ -6,6 +6,7 @@ config {
 
 SELECT
     a.created_date
+    , a.created_time + INTERVAL 7 HOUR AS created_time
     , order_id
     , total_price
     , s.seller_class
@@ -16,6 +17,7 @@ WHERE 1=1
 UNION ALL
 SELECT
     created_date
+    , created_time + INTERVAL 7 HOUR AS created_time
     , order_id
     , total_amount
     , "INTERNAL" AS seller_class
