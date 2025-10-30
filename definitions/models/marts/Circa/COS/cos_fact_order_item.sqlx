@@ -13,7 +13,25 @@ config {
 }
 
 
-WITH base_data as (
+ with base_unit_selection as (
+  select distinct
+    product_id
+    ,client_id
+    ,base_unit
+    ,row_number() over (partition by product_id, client_id order by count(*) desc) as rn
+  from  ${source.ref}.cos_product_convert_base_unit
+  where client_id = 1
+  group by product_id, client_id, base_unit
+), base_unit as (
+select a.*
+from  ${source.ref}.cos_product_convert_base_unit a
+left join  base_unit_selection b on a.product_id = b.product_id
+                                    and a.client_id = b.client_id
+                                    and a.base_unit = b.base_unit
+where b.rn = 1
+
+)
+, base_data as (
     select
          date(datetime_add(c.completed_at, interval 7 hour)) as completed_date
         ,case when c.type = 'ONLINE' then b.id else a.id end as item_id--=llocation.item_ref_id
@@ -127,7 +145,7 @@ from (
     UNION ALL
     select * from cte_online
 ) a
-left join  ${source.ref}.cos_product_convert_base_unit  cv on cv.product_id = a.product_id and cv.convert_unit = a.unit and a.client_id = cv.client_id
+left join base_unit  cv on cv.product_id = a.product_id and cv.convert_unit = a.unit and a.client_id = cv.client_id
 where item_id  is not null or item_id <> ""
 and pos_id in ("b6c40920-af79-4fb0-bdc4-9965ddb885d2", "e737c882-e90c-4fd2-8a4f-ac6afd248a33")
 
@@ -166,7 +184,7 @@ left join ${source.circa_os}.inventory_location_detail ld ON al.location_detail_
 --left join ${source.circa_os}.inventory_cost_price as cp on oi.product_id = cp.product_id and o.pos_id=cp.pos_id and oi.sku_code = cp.sku_code 
 left join ${source.circa_os}.order_purchase_order po on  ld.doc_code = po.code and o.client_id = po.client_id
 left join ${source.circa_os}.entity_owner eo on po.owner_id = eo.id and eo.client_id = o.client_id
-left join  ${source.ref}.cos_product_convert_base_unit cv on cv.product_id = oi.product_id and cv.convert_unit = oi.unit and o.client_id = cv.client_id
+left join base_unit cv on cv.product_id = oi.product_id and cv.convert_unit = oi.unit and o.client_id = cv.client_id
 left join ${source.circa_os}.entity_entity e on o.updated_by = e.id and o.client_id = e.client_id
 where o.status <> 'PENDING'
      and o.status <> 'CANCELED'
@@ -188,5 +206,5 @@ select distinct
       ,base_unit_cost_price * convert_rate  as  unit_cost_price
 from order_items i
 left join ${ref('cos_fact_order')} fo on i.order_id = fo.order_id
-left join  ${source.ref}.cos_product_convert_base_unit  cv on cv.product_id = i.product_id and cv.convert_unit = i.unit and i.client_id = cv.client_id
+left join base_unit cv on cv.product_id = i.product_id and cv.convert_unit = i.unit and i.client_id = cv.client_id
 where fo.order_id is not null
