@@ -49,7 +49,8 @@ left join ${source.ref}.dim_customer  as  m on p.thuocsi_id = m.customer_id
 where product_id in (Select distinct product_id from ${source.ref}.dim_product)
 order by p.name, latest_order desc
 )
-Select sku_circa.*
+Select timestamp_add(current_timestamp(), interval 7 hour) as transformed_at
+     ,sku_circa.*
      ,sku_circa.unit_price/ convert_rate as base_unit_price
 from sku_circa
 left join ${source.ref}.cos_product_convert_base_unit r on sku_circa.product_id = r.product_id 
