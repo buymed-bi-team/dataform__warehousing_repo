@@ -8,7 +8,7 @@ WITH
     fact_order AS ( 
         SELECT
             created_date
-            , created_time + INTERVAL 7 HOUR AS created_time
+            , DATETIME(created_time, "+7") AS created_time
             , order_id
             , customer_id
             , price AS gmv
@@ -26,7 +26,7 @@ WITH
         UNION ALL
         SELECT
             created_date
-            , created_time + INTERVAL 7 HOUR AS created_time
+            , DATETIME(created_time, "+7") AS created_time
             , order_id
             , 1000000 + receiver_id
             , total_amount
@@ -39,7 +39,7 @@ WITH
 
 SELECT
     a.created_date
-    , a.created_time + INTERVAL 7 HOUR AS created_time
+    , DATETIME(a.created_time, "+7") AS created_time
     , a.order_id
     , a.total_price
     , s.seller_class
@@ -53,7 +53,7 @@ WHERE 1=1
 UNION ALL
 SELECT
     a.created_date
-    , a.created_time + INTERVAL 7 HOUR AS created_time
+    , DATETIME(a.created_time, "+7") AS created_time
     , a.order_id
     , a.total_amount
     , "INTERNAL" AS seller_class
