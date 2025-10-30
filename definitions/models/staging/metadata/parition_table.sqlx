@@ -1,0 +1,25 @@
+
+WITH base AS (
+  SELECT 
+    table_name, partition_id, total_rows, total_logical_bytes, total_billable_bytes, last_modified_time,
+    ROW_NUMBER() OVER (w) row_num,
+    CASE 
+        WHEN total_billable_bytes / (1024 * 1024 * 1024) > 1 THEN FORMAT( "%.4f GB", total_billable_bytes / (1024 * 1024 * 1024) )
+        WHEN total_billable_bytes / (1024 * 1024 ) > 1 THEN  FORMAT( "%.4f MB", total_billable_bytes / (1024 * 1024 ) )
+        ELSE  CAST(total_billable_bytes AS STRING ) || " byte" 
+    END AS readable_size
+  FROM silver_buymed_vn.INFORMATION_SCHEMA.PARTITIONS
+  WHERE partition_id != "__NULL__"
+  QUALIFY row_num =1 
+  WINDOW w AS (
+    PARTITION BY table_name
+    ORDER BY partition_id DESC 
+  )
+) 
+SELECT a.*
+FROM base a
+LEFT JOIN silver_buymed_vn.INFORMATION_SCHEMA.TABLES b
+  ON a.table_name = b.table_name
+WHERE b.table_name not like "backup_%"
+AND not REGEXP_CONTAINS( b.table_name , "_2025|_2024|dev|migrate|drop|backup")
+AND b.table_type like "BASE TABLE"

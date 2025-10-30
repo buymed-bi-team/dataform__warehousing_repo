@@ -1,0 +1,55 @@
+config {
+    type: "view",
+    schema: "platinum_buymed_vn",
+    name: "seller_prd_purchasing_inbound_request",
+    description : `
+    PIC: minh.luu
+    Internal: internal.thuocsi.vn/internal-seller/MEDX/PUR_HCM/inbound-request
+
+    partitionBy: created_date
+    clusterBy: ["status","inbound_request_type","is_active"]
+    `,
+    tags:["platinum","seller_prd_purchasing"]
+}
+
+  WITH silver AS (
+    SELECT
+      key,mg_id,seller_code,warehouse_code,inbound_request_id,hash_tag,start_weekday,end_weekday,inbound_request_code,inbound_request_type,created_by_name,created_by_id,name,status,created_time,action_time,is_active,last_updated_time,migrate_metadata,synced_at,extra_props,action,ingest_time,
+      
+        CASE
+            WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time, 'Asia/Ho_Chi_Minh'))
+            ELSE DATE( '2099-01-01' )
+        END
+     created_date,
+      CAST(null as datetime) 
+    FROM silver_buymed_vn.seller_prd_purchasing_inbound_request
+    WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 1 DAY
+    QUALIFY ROW_NUMBER() OVER (_window) = 1 
+          AND ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 16 HOUR
+          WINDOW _window AS (
+          PARTITION BY mg_id
+          ORDER BY synced_at DESC,
+          IF
+              (action='d',3,
+              IF
+              (action='u',2,1)) DESC
+          ,last_updated_time DESC)
+  ), platinum AS (
+    SELECT 
+      key,mg_id,seller_code,warehouse_code,inbound_request_id,hash_tag,start_weekday,end_weekday,inbound_request_code,inbound_request_type,created_by_name,created_by_id,name,status,created_time,action_time,is_active,last_updated_time,migrate_metadata,synced_at,extra_props,action,ingest_time,
+      created_date,
+      platinum_refresh
+    FROM ${ref(`platinum_buymed_vn__stg`, `seller_prd_purchasing_inbound_request`)}
+  )
+  SELECT p.*
+  FROM platinum p
+  LEFT JOIN silver s 
+      ON p.mg_id = s.mg_id 
+  WHERE s.mg_id is null 
+
+  UNION ALL 
+
+  SELECT s.*
+  FROM silver s
+  WHERE action <> "d"
+  
