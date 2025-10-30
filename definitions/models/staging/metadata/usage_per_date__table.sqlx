@@ -1,0 +1,94 @@
+config {
+    type: "view",
+    schema: "de_buymed_vn",
+    name: "bigquery_table_usage_per_date"
+}
+
+WITH base AS (
+  SELECT *
+  FROM gold_buymed_vn2.fact_bq_activity
+  WHERE creation_time >= CURRENT_TIMESTAMP() - INTERVAL 1 WEEK
+    AND EXISTS(
+      SELECT  
+          ref.dataset_id like "silver_buymed%"
+          OR ref.dataset_id like "platinum_buymed%"
+      FROM UNNEST(referenced_tables) ref
+    )
+    AND user_email not like "platinum-dataform%"
+    AND NOT dataform_workflow_execution_action_id_schema LIKE "platinum_buymed%"
+)
+, int_referenced_tables AS (
+  SELECT 
+    cte.job_id,
+    cte.table_id,
+    dataset_id
+  FROM (
+    SELECT 
+      job_id,
+      ref.table_id,
+      IF (
+        COUNTIF (
+          ref.dataset_id like "silver_buymed%"
+          OR ref.dataset_id like "platinum_buymed%_stg"
+        ) = 2,
+        [
+        CASE 
+          WHEN MAX(ref.dataset_id like "%_th") THEN "platinum_buymed_th"
+          WHEN MAX(ref.dataset_id like "%_cam") THEN "platinum_buymed_cam"
+          WHEN MAX(ref.dataset_id like "%_vn") THEN "platinum_buymed_vn"
+          ELSE "platinum_buymed_vn_restricted"
+        END || 
+        "_new"
+        ]
+        ,
+        CASE 
+          -- WHEN COUNT(DISTINCT dataform_workflow_execution_action_id_name) = 1 THEN ["platinum_job"]
+          WHEN COUNT(DISTINCT ref.dataset_id) < 2 THEN ARRAY_AGG( dataset_id IGNORE NULLS)
+          WHEN REGEXP_CONTAINS(base.dataform_workflow_execution_action_id_name, "assert_|_assert|_assertion") THEN ARRAY_AGG( dataset_id IGNORE NULLS)
+          WHEN ref.table_id IS NULL THEN []
+          WHEN ref.table_id like "__TABLES__" OR ref.table_id like "INFORMATION_SCHEMA.TABLES" THEN ARRAY_AGG(dataset_id)
+          WHEN COUNTIF(ref.dataset_id like "buymed_circ%") = COUNT(*) THEN ARRAY_AGG(dataset_id)
+          WHEN COUNTIF(ref.dataset_id like "gold_buymed%") = COUNT(*) THEN ARRAY_AGG(dataset_id)
+          ELSE ERROR(
+            FORMAT(
+              "%s has more than 1 table, with dataform_action: %s ; dataset: %s", 
+              ref.table_id, 
+              COALESCE( STRING_AGG( DISTINCT dataform_workflow_execution_action_id_name, ", "), "NULL" ), 
+              STRING_AGG(dataset_id, ", "))
+            )
+        END
+
+        ) dataset_ids
+      
+    FROM base
+    LEFT JOIN UNNEST(referenced_tables) ref
+    GROUP BY 1,2, dataform_workflow_execution_action_id_name
+  ) cte
+  LEFT JOIN UNNEST(cte.dataset_ids) dataset_id
+  
+)
+
+
+    SELECT 
+        DATETIME_TRUNC(creation_time + INTERVAL 7 HOUR +  INTERVAL 14 HOUR, DAY) day,
+        ref.table_id,
+        ref.dataset_id,
+        -- ARRAY_AGG( DISTINCT user_email) user_email_list,
+        -- COUNT(DISTINCT user_email) user_email_cnt,
+        SUM(total_bytes_billed) total_bytes_billed,
+        COUNT(DISTINCT base.job_id) job_cnt,
+
+        CASE 
+            WHEN SUM(total_bytes_billed) / (1024 * 1024 * 1024) > 1 THEN FORMAT( "%.4f GB", SUM(total_bytes_billed) / (1024 * 1024 * 1024) )
+            WHEN SUM(total_bytes_billed) / (1024 * 1024 ) > 1 THEN  FORMAT( "%.4f MB", SUM(total_bytes_billed) / (1024 * 1024 ) )
+            ELSE  CAST(SUM(total_bytes_billed) AS STRING ) || " byte" 
+        END AS readable_size
+
+    FROM base
+    LEFT JOIN int_referenced_tables ref 
+    ON base.job_id = ref.job_id
+    GROUP BY 1,2,3
+
+
+
+

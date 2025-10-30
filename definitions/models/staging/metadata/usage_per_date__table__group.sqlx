@@ -1,0 +1,41 @@
+config {
+    type: "view",
+    schema: "de_buymed_vn",
+    name: "bigquery_dataset_usage_per_date"
+}
+
+SELECT 
+    dataset_id,
+    table_id,
+
+    SUM(total_bytes_billed) total_bytes_billed,
+    SUM(job_cnt) job_cnt,
+    AVG( job_cnt ) avg_job_cnt, 
+    CASE 
+        WHEN SUM(total_bytes_billed) / (1024 * 1024 * 1024) > 1 THEN FORMAT( "%.4f GB", SUM(total_bytes_billed) / (1024 * 1024 * 1024) )
+        WHEN SUM(total_bytes_billed) / (1024 * 1024 ) > 1 THEN  FORMAT( "%.4f MB", SUM(total_bytes_billed) / (1024 * 1024 ) )
+        ELSE  CAST(SUM(total_bytes_billed) AS STRING ) || " byte" 
+    END AS readable_size,
+        CASE 
+        WHEN AVG(total_bytes_billed) / (1024 * 1024 * 1024) > 1 THEN FORMAT( "%.4f GB", AVG(total_bytes_billed) / (1024 * 1024 * 1024) )
+        WHEN AVG(total_bytes_billed) / (1024 * 1024 ) > 1 THEN  FORMAT( "%.4f MB", AVG(total_bytes_billed) / (1024 * 1024 ) )
+        ELSE  CAST(AVG(total_bytes_billed) AS STRING ) || " byte" 
+    END AS avg_readable_size,
+
+    ARRAY_AGG (
+        STRUCT ( day, readable_size, job_cnt)
+        ORDER BY day DESC
+    ) readable_size_per_date,
+
+    /*
+    TODO:
+        Adđ Column of silver size_bytes per date -- Ingest_time & Created_date
+        Add Column of platinum size_bytes per date -- Ingest_time & Created_date
+
+        >> Figure out Which table need to transfer to Incremental with staging - Which is not
+    */
+
+FROM ${ref(`bigquery_table_usage_per_date`)}
+GROUP BY 1 , 2
+ORDER BY total_bytes_billed desc
+
