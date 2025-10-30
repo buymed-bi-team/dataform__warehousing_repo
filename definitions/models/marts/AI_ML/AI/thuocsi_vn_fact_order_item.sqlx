@@ -8,7 +8,7 @@ WITH
     fact_order AS ( 
         SELECT
             created_date
-            , created_time + INTERVAL 7 HOUR AS created_time
+            , DATETIME(created_time, "+7") AS created_time
             , order_id
             , customer_id
             , price AS gmv
@@ -26,7 +26,7 @@ WITH
         UNION ALL
         SELECT
             created_date
-            , created_time + INTERVAL 7 HOUR AS created_time
+            , DATETIME(created_time, "+7") AS created_time
             , order_id
             , 1000000 + receiver_id
             , total_amount
@@ -39,11 +39,12 @@ WITH
 
 SELECT
     a.created_date
-    , a.created_time + INTERVAL 7 HOUR AS created_time
+    , DATETIME(a.created_time, "+7") AS created_time
     , a.order_id
     , a.total_price
     , s.seller_class
     , o.channel
+    , o.customer_id
 FROM ${source.platinum}.marketplace_prd_order_v2_order_item AS a
     LEFT JOIN ${source.platinum}.seller_prd_core_seller AS s ON a.seller_code = s.code
     LEFT JOIN fact_order AS o ON a.order_id = o.order_id
@@ -53,11 +54,12 @@ WHERE 1=1
 UNION ALL
 SELECT
     a.created_date
-    , a.created_time + INTERVAL 7 HOUR AS created_time
+    , DATETIME(a.created_time, "+7") AS created_time
     , a.order_id
     , a.total_amount
     , "INTERNAL" AS seller_class
     , b.channel
+    , b.customer_id
 FROM ${source.platinum}.tender_prd_core_tender_order_items AS a
     LEFT JOIN fact_order AS b ON a.order_id = b.order_id
 WHERE 1=1
