@@ -5,6 +5,9 @@ config {
     description : `
     PIC: minh.luu
     Internal: internal.thuocsi.vn/internal-seller/MEDX/PUR_HCM/inbound-request
+
+    partitionBy: created_date
+    clusterBy: ["inbound_request_code","status","sku","product_id"]
     `,
     tags:["platinum","seller_prd_purchasing"]
 }
