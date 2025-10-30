@@ -44,6 +44,7 @@ SELECT
     , a.total_price
     , s.seller_class
     , o.channel
+    , o.customer_id
 FROM ${source.platinum}.marketplace_prd_order_v2_order_item AS a
     LEFT JOIN ${source.platinum}.seller_prd_core_seller AS s ON a.seller_code = s.code
     LEFT JOIN fact_order AS o ON a.order_id = o.order_id
@@ -58,6 +59,7 @@ SELECT
     , a.total_amount
     , "INTERNAL" AS seller_class
     , b.channel
+    , b.customer_id
 FROM ${source.platinum}.tender_prd_core_tender_order_items AS a
     LEFT JOIN fact_order AS b ON a.order_id = b.order_id
 WHERE 1=1
