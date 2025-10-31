@@ -18,7 +18,8 @@ where type in ('CIRCA', 'FS')
     --and s.pos_code is null
    
 )
-Select t.*
+Select timestamp_add(current_timestamp(), interval 7 hour) as transformed_at
+       ,t.*
       ,customer_level
 from t 
 left join ${source.ref}.dim_customer m on t.thuocsi_id = m.customer_id
