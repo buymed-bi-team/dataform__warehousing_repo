@@ -13,7 +13,7 @@ config {
 
 -- extract sku, item_code and status, and filter the time status of item_cod changed
 js {
-    const checkpoint = `CURRENT_TIMESTAMP() - INTERVAL 2 HOUR`;
+    const checkpoint = `CURRENT_TIMESTAMP() - INTERVAL 12 HOUR`;
 }
 
 SELECT
