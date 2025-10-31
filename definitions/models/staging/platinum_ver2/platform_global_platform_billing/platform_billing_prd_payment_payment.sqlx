@@ -1,0 +1,78 @@
+
+config {
+    type: "view",
+    name: "platform_billing_prd_payment_payment",
+    schema: "platinum_buymed_vn_restricted",
+    tags: ['platform_accounting_prd_reconcile'],
+    description: `
+    PIC: minh.luu
+    Internal internal.thuocsi.vn/internal-seller/MEDX/PUR_HCM/payment
+    Internal: 
+      - Accounting/Payment ; danh sách phiếu thanh toán của kế toán
+      - accounting.buymed.com/payment/detail
+      - internal-seller/MEDX/PUR_HCM/payment : JSON_EXTRACT_SCALAR(extra_props,"\$.source") ="THUOCSIVN_INTERNAL_SELLER" OR 
+
+    partitionBy: "created_date"
+    clusterBy: ["payment_code","payment_type","status","company_code"]
+    `,
+    columns: {
+      payment_code: "Mã phiếu thanh toán",
+      partner_type: "",
+      type:"loại phiếu",
+      payment_method: "hình thức thanh toán",
+
+      company_code: "mã tên công ty",
+      object_type_codes: "Đơn hàng",
+      type: "Loại phiếu",
+      payment_method: "Loại thanh toán",
+      amount: "Số tiền cần xử lý",
+      balance: "Dư nợ còn lại",
+      paid_time: "Ngày thanh toán",
+      created_time: "Ngày tạo theo UTC",
+      created_by_account_id: "id của người tạo",
+      status: "trạng thái",
+      object_type_codes: "Hóa đơn liên quan",
+      extra_props: "{ reason_code:<Mục đích, join với bảng reason_setting>, extra_data:<JSON, gồm created_by_id và list po_related> }"
+    }
+}
+
+  WITH silver AS (
+    SELECT
+      key,mg_id,payment_code,amount,payment_method,note,partner_name,paid_time,created_by_account_id,currency_code,company_code,payment_id,type,partner_type,transaction_code,created_time,branch_code,partner_code,balance,status,last_updated_time,hash_tag,object_type_codes,object_types,synced_at,extra_props,action,ingest_time,
+      
+        CASE
+            WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time, 'Asia/Ho_Chi_Minh'))
+            ELSE DATE( '2099-01-01' )
+        END
+     created_date,
+      CAST(null as datetime) 
+    FROM silver_buymed_vn_restricted.platform_billing_prd_payment_payment
+    WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 1 DAY
+    QUALIFY ROW_NUMBER() OVER (_window) = 1 
+          AND ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 16 HOUR
+          WINDOW _window AS (
+          PARTITION BY mg_id
+          ORDER BY synced_at DESC,
+          IF
+              (action='d',3,
+              IF
+              (action='u',2,1)) DESC
+          ,last_updated_time DESC)
+  ), platinum AS (
+    SELECT 
+      key,mg_id,payment_code,amount,payment_method,note,partner_name,paid_time,created_by_account_id,currency_code,company_code,payment_id,type,partner_type,transaction_code,created_time,branch_code,partner_code,balance,status,last_updated_time,hash_tag,object_type_codes,object_types,synced_at,extra_props,action,ingest_time,
+      created_date,
+      platinum_refresh
+    FROM ${ref(`platinum_buymed_vn_restricted__stg`, `platform_billing_prd_payment_payment`)}
+  )
+  SELECT p.*
+  FROM platinum p
+  LEFT JOIN silver s 
+      ON p.mg_id = s.mg_id 
+  WHERE s.mg_id is null 
+
+  UNION ALL 
+
+  SELECT s.*
+  FROM silver s
+  WHERE action <> "d"
