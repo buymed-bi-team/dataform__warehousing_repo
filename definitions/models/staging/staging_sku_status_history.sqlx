@@ -43,7 +43,7 @@ ${ when(incremental(), incremental_bound, full_refresh_bound)}
 QUALIFY status <> COALESCE(LAG(status) OVER (w),"::NonExistance" ) 
 WINDOW w AS (
     PARTITION BY item_code
-    ORDER BY created_time, 
+    ORDER BY created_time DESC, 
         ingest_time DESC -- Because this Mongo Collection will only be append, not upđate value
 )
 
@@ -57,7 +57,7 @@ post_operations {
             QUALIFY  status = LAG(status) OVER(w)
             WINDOW w AS (
                 PARTITION BY item_code
-                ORDER BY created_time, 
+                ORDER BY created_time DESC, 
                     ingest_time DESC -- Because this Mongo Collection will only be append, not upđate value
             )
         );

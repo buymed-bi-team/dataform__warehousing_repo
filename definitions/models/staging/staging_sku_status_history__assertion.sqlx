@@ -5,34 +5,36 @@ config {
     tags: ["custom_1h_past5"]
 }
 
-CREATE TEMP TABLE tmp AS (
-    WITH full_refresh AS (
-    -- extract sku, item_code and status, and filter the time status of item_cod changed
-    SELECT
-        JSON_VALUE(extra_props, "$.sku") AS sku,
-        JSON_VALUE(extra_props, "$.item_code") AS item_code,
-        JSON_VALUE(next, "$.seller_class") AS seller_class,
-        created_time,
-        JSON_VALUE(next, "$.status") AS status,
-        cast(JSON_VALUE(next, "$.is_active") as boolean ) as is_active,
-        ingest_time,
-        key
-    FROM
-        lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_product_v2_history_update_price  a
-    WHERE ingest_time >= TIMESTAMP("2025-11-01") 
-    -- AND ingest_time <= TIMESTAMP("2025-11-02")
-
-    QUALIFY status <> COALESCE(LAG(status) OVER (w),"::NonExistance" ) 
-    WINDOW w AS (
-        PARTITION BY item_code
-        ORDER BY created_time, 
-            ingest_time DESC -- Because this Mongo Collection will only be append, not upđate value
-    )
-    ), upbound_time AS (
+CREATE OR REPLACE TEMP TABLE staging_sku_status_history__tmp AS (
+    WITH upbound_time AS (
     SELECT 
         max(ingest_time) ingest_time,
-        max(created_time) created_time
-    FROM ${ref(`staging_sku_status_history`)}
+        max(created_time) created_time,
+        COUNT(*) cnt
+    FROM gold_buymed_vn2.staging_sku_status_history
+    ),
+
+    full_refresh AS (
+        SELECT
+            JSON_VALUE(extra_props, "$.sku") AS sku,
+            JSON_VALUE(extra_props, "$.item_code") AS item_code,
+            JSON_VALUE(next, "$.seller_class") AS seller_class,
+            created_time,
+            JSON_VALUE(next, "$.status") AS status,
+            cast(JSON_VALUE(next, "$.is_active") as boolean ) as is_active,
+            ingest_time,
+            key
+        FROM
+            lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_product_v2_history_update_price  a
+        WHERE ingest_time > "2024-01-01" AND created_time > "2024-01-01"
+        AND ingest_time <= (SELECT ingest_time FROM upbound_time)
+
+        QUALIFY status <> COALESCE(LAG(status) OVER (w),"::NonExistance" ) 
+        WINDOW w AS (
+            PARTITION BY item_code
+            ORDER BY created_time DESC, 
+                ingest_time DESC -- Because this Mongo Collection will only be append, not upđate value
+        )
     )
 
     SELECT 
@@ -50,12 +52,11 @@ CREATE TEMP TABLE tmp AS (
     g.*,
     fr.*
 
-    FROM ${ref(`staging_sku_status_history`)} g
+    FROM gold_buymed_vn2.staging_sku_status_history g
     FULL JOIN full_refresh fr 
     ON g.key = fr.key
     CROSS JOIN upbound_time ut
     WHERE 
-    (
         g.key IS NULL OR fr.key IS NULL  -- Missing records
         OR (g.key = fr.key AND (  -- Same key but different values
         COALESCE(g.sku, '') != COALESCE(fr.sku, '') OR
@@ -63,9 +64,6 @@ CREATE TEMP TABLE tmp AS (
         COALESCE(g.status, '') != COALESCE(fr.status, '')
         -- Add other columns you want to compare
         ))
-    )
-    AND fr.ingest_time <= ut.ingest_time
-    OR fr.ingest_time IS NULL
 
     ORDER BY t_ingest_time DESC
 );
