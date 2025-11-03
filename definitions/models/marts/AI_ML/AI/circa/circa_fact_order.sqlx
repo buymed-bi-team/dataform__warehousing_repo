@@ -24,3 +24,4 @@ FROM ${ref('gold_buymed_vn2','cos_fact_order')} AS o
     ) AS r ON o.order_id = r.order_id
     LEFT JOIN buymed_circa_v2.entity_pos_profile AS p ON o.pos_code = p.code
 WHERE o.completed_date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 1 MONTH)
+    AND o.status IN ('COMPLETED', 'COMPLETED_SHIPPING')
