@@ -1,0 +1,73 @@
+config {
+    type: "operations",
+    description: "item_code status change history || PIC: minh.luu;  model_type: table; schedule: hourly past 5",
+    name: "staging_sku_status_history__assertion",
+    tags: ["custom_1h_past5"]
+}
+
+CREATE TEMP TABLE tmp AS (
+    WITH full_refresh AS (
+    -- extract sku, item_code and status, and filter the time status of item_cod changed
+    SELECT
+        JSON_VALUE(extra_props, "$.sku") AS sku,
+        JSON_VALUE(extra_props, "$.item_code") AS item_code,
+        JSON_VALUE(next, "$.seller_class") AS seller_class,
+        created_time,
+        JSON_VALUE(next, "$.status") AS status,
+        cast(JSON_VALUE(next, "$.is_active") as boolean ) as is_active,
+        ingest_time,
+        key
+    FROM
+        lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_product_v2_history_update_price  a
+    WHERE ingest_time >= TIMESTAMP("2025-11-01") 
+    -- AND ingest_time <= TIMESTAMP("2025-11-02")
+
+    QUALIFY status <> COALESCE(LAG(status) OVER (w),"::NonExistance" ) 
+    WINDOW w AS (
+        PARTITION BY item_code
+        ORDER BY created_time, 
+            ingest_time DESC -- Because this Mongo Collection will only be append, not upđate value
+    )
+    ), upbound_time AS (
+    SELECT 
+        max(ingest_time) ingest_time,
+        max(created_time) created_time
+    FROM ${ref(`staging_sku_status_history`)}
+    )
+
+    SELECT 
+    COALESCE(fr.sku, g.sku) t_sku,
+    COALESCE(fr.item_code, g.item_code) t_item_code,
+    COALESCE(fr.status, g.status) t_status,
+    COALESCE(fr.ingest_time, g.ingest_time) t_ingest_time,
+    ut.created_time ut_created_time,
+    ut.ingest_time ut_ingest_time,
+    CASE 
+        WHEN fr.key IS NULL THEN "missing_in_fullrefresh"
+        WHEN g.key IS NULL THEN "missing_in_gold" 
+        ELSE "value_difference"
+    END AS discrepancy_type,
+    g.*,
+    fr.*
+
+    FROM ${ref(`staging_sku_status_history`)} g
+    FULL JOIN full_refresh fr 
+    ON g.key = fr.key
+    CROSS JOIN upbound_time ut
+    WHERE 
+    (
+        g.key IS NULL OR fr.key IS NULL  -- Missing records
+        OR (g.key = fr.key AND (  -- Same key but different values
+        COALESCE(g.sku, '') != COALESCE(fr.sku, '') OR
+        COALESCE(g.item_code, '') != COALESCE(fr.item_code, '') OR
+        COALESCE(g.status, '') != COALESCE(fr.status, '')
+        -- Add other columns you want to compare
+        ))
+    )
+    AND fr.ingest_time <= ut.ingest_time
+    OR fr.ingest_time IS NULL
+
+    ORDER BY t_ingest_time DESC
+);
+
+ASSERT (SELECT COUNT(*) = 0 FROM tmp) AS "Still error";
