@@ -12,4 +12,4 @@ config {
 
 SELECT
     *
-FROM ${source.external}.import_target_ownbrand
+FROM ${source.external}.import_target_ownbrand_v2
