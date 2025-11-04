@@ -2,7 +2,7 @@ config {
     type: "table",
     description: `Tracking price for Circa OS
              PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 past hour 6, 8, 10, 12, 14, 16, 18, 20 and 22`,
-    tags: ["custom_2h_past5"],
+    tags: ["custom_1h_past15"],
     name: "cos_adhoc_pos_product_client",
 }
 
