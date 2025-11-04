@@ -20,9 +20,9 @@ config {
      created_date,
       CAST(null as datetime) 
     FROM silver_buymed_vn.marketplace_prd_order_v2_order
-    WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 1 DAY
+    WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 12 HOUR
     QUALIFY ROW_NUMBER() OVER (_window) = 1 
-          AND ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 16 HOUR
+          AND ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 9 HOUR
           WINDOW _window AS (
           PARTITION BY mg_id
           ORDER BY synced_at DESC,

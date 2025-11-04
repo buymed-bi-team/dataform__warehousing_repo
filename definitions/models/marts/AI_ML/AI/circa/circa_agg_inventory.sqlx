@@ -1,0 +1,25 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `Inventory of Circa.`,
+    tags: ['AI_CIRCA']
+}
+
+WITH inventory_by_pos AS (
+  SELECT
+    pos_id,
+    SUM(on_hand_quantity) AS stock_quantity,
+    SUM(on_hand_quantity * COALESCE(cost_price_include_tax, 0)) AS stock_value
+  FROM ${ref('gold_buymed_vn2', 'cos_fact_inventory')}
+  WHERE pos_id IS NOT NULL
+  GROUP BY pos_id
+)
+SELECT
+  COALESCE(p.name, i.pos_id) AS pos_name,
+  -- COALESCE(p.code, i.pos_id) AS pos_code,
+  IF(p.type = "FS", "FS", "COS") AS pos_type,
+  i.stock_quantity,
+  i.stock_value
+FROM inventory_by_pos i
+LEFT JOIN `buymed_circa_v2.entity_pos_profile` p ON i.pos_id = p.id
+ORDER BY i.stock_value DESC

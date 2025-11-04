@@ -2,7 +2,7 @@ config {
     type: "table", 
     description: 
         `
-        Ownbrand target by month ;
+        Ownbrand target by month & channel ;
         PIC: nguyen.tran; 
         Type: Table; 
         Refresh Schedule: daily at 8h30;
@@ -12,4 +12,4 @@ config {
 
 SELECT
     *
-FROM ${source.external}.import_target_ownbrand_v2
+FROM ${source.external}.import_target_ownbrand_channel

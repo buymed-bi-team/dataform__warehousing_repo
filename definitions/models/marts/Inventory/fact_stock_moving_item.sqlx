@@ -86,7 +86,8 @@ WITH
             , CASE
                 WHEN destination_location = "WH-MISSING" AND source_location = 'WH-MAIN' THEN "MISSING-IN"
                 WHEN source_location = "WH-MISSING" AND destination_location = 'WH-MAIN' THEN "MISSING-OUT"
-                WHEN destination_location = "WH-MISSING" AND source_location <> 'WH-MAIN' THEN "MISSING-OTHER"
+                WHEN destination_location = "WH-MISSING" AND source_location <> 'WH-MAIN' THEN "MISSING-OTHER-IN"
+                WHEN source_location = "WH-MISSING" AND destination_location <> 'WH-MAIN' THEN "MISSING-OTHER-OUT"
                 WHEN destination_location = "WH-DAMAGE" THEN "DAMAGE-IN"
                 WHEN source_location = "WH-DAMAGE" THEN "DAMAGE-OUT"
             END AS moving_type

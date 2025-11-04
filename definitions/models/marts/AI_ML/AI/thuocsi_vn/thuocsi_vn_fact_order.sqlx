@@ -1,7 +1,8 @@
 config {
     type: 'view',
     schema: "buymed_innovation",
-    description: `All orders in the Vietnam marketplace (including tender orders).`
+    description: `All orders in the Vietnam marketplace (including tender orders).`,
+    //tags: ['AI_THUOCSI_VN']
 }
 
 SELECT

@@ -1,10 +1,21 @@
 config {
-    type: "incremental",
+    type: "table",
     description: "item_code status change history || PIC: minh.luu;  model_type: table; schedule: hourly past 5",
     name: "staging_sku_status_history",
     bigquery: {
         partitionBy: "DATE(created_time)",
         clusterBy: ["item_code"]
+    },
+    columns:{
+        product_id: "",
+        sku: "",
+        item_code: "",
+        created_date: "date with VN timezone, if created_time is null then created_date will be 2099-01-01",
+        created_time: "timestamp with UTC timzone",
+        status: "status",
+        is_active: "is_active",
+        synced_at: "synced_at",
+        key: "key use to map to silver - which is unique identify in silver layer",
     },
 
     tags: ["custom_1h_past5"]
@@ -19,56 +30,65 @@ js {
     let incremental_bound;
     let full_refresh_bound;
     if (mode == "stg") {
-        incremental_bound = `WHERE ingest_time >= TIMESTAMP("2025-11-02") AND ingest_time <= TIMESTAMP("2025-11-03")`;
-        full_refresh_bound = `WHERE ingest_time >= TIMESTAMP("2025-11-01") AND ingest_time <= TIMESTAMP("2025-11-02")`;
+        incremental_bound = `AND synced_at >= TIMESTAMP("2025-11-02") AND synced_at <= TIMESTAMP("2025-11-03")`;
+        // full_refresh_bound = `AND synced_at >= TIMESTAMP("2025-11-01") AND synced_at <= TIMESTAMP("2025-11-02")`;
+        full_refresh_bound = ``
     } else if (mode == "prd") {
-        incremental_bound = `WHERE ingest_time > ${checkpoint}`;
-        full_refresh_bound = `WHERE ingest_time > "2024-01-01" AND created_time > "2024-01-01"`;
+        incremental_bound = `AND synced_at > ${checkpoint}`;
+        full_refresh_bound = `AND synced_at > "2024-01-01" AND created_time > "2024-01-01"`;
     }
 }
 
 SELECT
+    product_id,
     JSON_VALUE(extra_props, "$.sku") AS sku,
     JSON_VALUE(extra_props, "$.item_code") AS item_code,
-    JSON_VALUE(next, "$.seller_class") AS seller_class,
+    CASE 
+        WHEN created_time IS NULL THEN DATE("2099-01-01")
+        ELSE DATE(created_time + INTERVAL 7 HOUR )
+    END AS created_date,
     created_time,
     JSON_VALUE(next, "$.status") AS status,
     cast(JSON_VALUE(next, "$.is_active") as boolean ) as is_active,
-    ingest_time,
+    synced_at,
     key
 FROM
-    ${source.silver}.marketplace_prd_product_v2_history_update_price  a
+    ${source.platinum}.marketplace_prd_product_v2_history_update_price  a
+WHERE json_value(a.extra_props.action_mg) in ('UPDATE_SKU', 'CREATE_SKU')
 ${ when(incremental(), incremental_bound, full_refresh_bound)}
 
-QUALIFY status <> COALESCE(LAG(status) OVER (w),"::NonExistance" ) 
+QUALIFY status <> LAG(status) OVER (w) OR LAG(status) OVER(w) IS NULL
 WINDOW w AS (
     PARTITION BY item_code
-    ORDER BY created_time, 
-        ingest_time DESC -- Because this Mongo Collection will only be append, not upđate value
+    ORDER BY created_time ASC, 
+        synced_at ASC -- Because this Mongo Collection will only be append, not upđate value
 )
 
-post_operations {
-  ${
-    when(incremental(),
-        `
-        CREATE TEMP TABLE tbl AS (
-            SELECT key, item_code, created_time,status
-            FROM ${self()}
-            QUALIFY  status = LAG(status) OVER(w)
-            WINDOW w AS (
-                PARTITION BY item_code
-                ORDER BY created_time, 
-                    ingest_time DESC -- Because this Mongo Collection will only be append, not upđate value
-            )
-        );
-        DELETE FROM ${self()}
-        WHERE key IN (
-            SELECT key
-            FROM tbl
-        ) AND item_code IN ( select DISTINCT item_code FROM tbl)
-        `,
-        ``
-    )
-  }
-}
+-- Use Platinum_Incremental strategy
+
+-- post_operations {
+--   ${
+--     when(incremental(),
+--         `
+--         CREATE TEMP TABLE tbl AS (
+--             SELECT key, item_code, created_time,status
+--             FROM ${self()}
+--             QUALIFY  status = LEAD(status) OVER(w)
+--                 AND LEAD(status) OVER(w) IS NOT NULL
+--             WINDOW w AS (
+--                 PARTITION BY item_code
+--                 ORDER BY created_time DESC, 
+--                     synced_at DESC -- Because this Mongo Collection will only be append, not upđate value
+--             )
+--         );
+--         DELETE FROM ${self()}
+--         WHERE key IN (
+--             SELECT key
+--             FROM tbl
+--         ) AND item_code IN ( select DISTINCT item_code FROM tbl)
+--         `,
+--         ``
+--     )
+--   }
+-- }
 
