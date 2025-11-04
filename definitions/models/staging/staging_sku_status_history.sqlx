@@ -6,6 +6,17 @@ config {
         partitionBy: "DATE(created_time)",
         clusterBy: ["item_code"]
     },
+    columns:{
+        product_id: "",
+        sku: "",
+        item_code: "",
+        created_date: "date with VN timezone, if created_time is null then created_date will be 2099-01-01",
+        created_time: "timestamp with UTC timzone",
+        status: "status",
+        is_active: "is_active",
+        synced_at: "synced_at",
+        key: "key use to map to silver - which is unique identify in silver layer",
+    },
 
     tags: ["custom_1h_past5"]
     
@@ -54,7 +65,7 @@ WINDOW w AS (
 )
 
 -- Use Platinum_Incremental strategy
- 
+
 -- post_operations {
 --   ${
 --     when(incremental(),
