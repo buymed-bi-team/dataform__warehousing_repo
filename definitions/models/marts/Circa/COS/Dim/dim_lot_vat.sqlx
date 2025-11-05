@@ -55,6 +55,6 @@ Select *
             when aging = "<180D" then  "4. < 6 months" 
             when aging = "<270D"  then "5. < 9 months"
             when aging = "<365D" then "6. < 12 months"
-            when aging = ">= 365D" then "7. < 12 months"
+            when aging = ">= 365D" then "7. >= 12 months"
             else "8. NED" end as Aging_level
  from t 
