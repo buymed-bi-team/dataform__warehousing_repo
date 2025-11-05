@@ -32,7 +32,7 @@ Select distinct
                when DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, interval 7 hour)) , current_date( "+7"), day ) >= 90 and DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, interval 7 hour)) , current_date( "+7"), day ) < 180 then "<180D"
                when DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, interval 7 hour)) , current_date( "+7"), day ) >= 180 and DATE_DIFF( DATE(TIMESTAMP_ADD(expired_date, interval 7 hour)), current_date( "+7"),day ) < 270 then "<270D"
                when DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, interval 7 hour)) , current_date( "+7"), day ) >= 270 and DATE_DIFF( DATE(TIMESTAMP_ADD(expired_date, interval 7 hour)), current_date( "+7"),day ) < 365 then "<365D"
-               when DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, interval 7 hour)) , current_date( "+7"), day ) > 365 then ">365D"
+               when DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, interval 7 hour)) , current_date( "+7"), day ) >= 365 then ">= 365D"
                end as aging
             --  ,case
             --    when DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, interval 7 hour)) , current_date( "+7"), day ) <= 0 then "1. Expired"
@@ -55,6 +55,6 @@ Select *
             when aging = "<180D" then  "4. < 6 months" 
             when aging = "<270D"  then "5. < 9 months"
             when aging = "<365D" then "6. < 12 months"
-            when aging = ">365D" then "7. < 12 months"
+            when aging = ">= 365D" then "7. < 12 months"
             else "8. NED" end as Aging_level
  from t 
