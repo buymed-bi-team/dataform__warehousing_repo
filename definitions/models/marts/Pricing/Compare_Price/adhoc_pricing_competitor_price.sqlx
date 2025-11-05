@@ -19,7 +19,7 @@ WITH
             , TIMESTAMP_ADD(a.last_updated_time, INTERVAL 7 HOUR) AS last_updated_time
             , JSON_VALUE(a.extra_props, '$.source') AS competitor
             , JSON_VALUE(a.extra_props, '$.market_name') AS competitor_product_name
-            , SAFE_CAST(JSON_VALUE(a.extra_props, '$.market_price') AS INT64) AS competitor_price
+            , SAFE_CAST(JSON_VALUE(a.extra_props, '$.market_price') AS FLOAT64) AS competitor_price
             , SAFE_CAST(JSON_VALUE(a.extra_props, '$.product_id') AS INT64) AS product_id
             , IF(
                 LOWER(JSON_VALUE(a.extra_props, '$.market_data.unit')) IN ('', "null")
@@ -31,7 +31,7 @@ WITH
             , JSON_VALUE(a.extra_props, '$.qc') AS qc
             -- , IFNULL(JSON_VALUE(a.extra_props, '$.qc'), "NOT_QC_YET") AS qc
             , SAFE_CAST(JSON_VALUE(a.extra_props, '$.conversion_rate') AS FLOAT64) AS conversion_rate
-            , SAFE_CAST(JSON_VALUE(a.extra_props, '$.market_price') AS INT64) * SAFE_CAST(JSON_VALUE(a.extra_props, '$.conversion_rate') AS FLOAT64) AS market_price_aft_convert
+            , SAFE_CAST(JSON_VALUE(a.extra_props, '$.market_price') AS FLOAT64) * SAFE_CAST(JSON_VALUE(a.extra_props, '$.conversion_rate') AS FLOAT64) AS market_price_aft_convert
             , JSON_VALUE(a.extra_props, '$.province_code') AS province_code
         FROM ${source.platinum}.marketplace_prd_product_v2_product_market_price AS a
             -- LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_market_price_source AS b 
@@ -44,7 +44,9 @@ WITH
         -- QUALIFY ROW_NUMBER() over (PARTITION BY product_id, competitor, qc ORDER BY market_price_aft_convert DESC, last_updated_time DESC) = 1
     )
 SELECT
-    a.*
+    a.* EXCEPT(competitor_price, market_price_aft_convert)
+    , IF(REGEXP_CONTAINS(LOWER(competitor_product_name), r'ngưng bán|chờ hàng') OR competitor_price < 0, 0, competitor_price) AS competitor_price
+    , IF(REGEXP_CONTAINS(LOWER(competitor_product_name), r'ngưng bán|chờ hàng') OR market_price_aft_convert < 0, 0, market_price_aft_convert) AS market_price_aft_convert
     , IF(b.product_id IS NOT NULL , 1, 0) AS flag
 FROM cte AS a
     LEFT JOIN ${ref('dim_product')} AS b 
