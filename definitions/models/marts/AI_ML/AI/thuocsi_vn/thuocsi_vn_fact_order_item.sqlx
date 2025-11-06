@@ -10,6 +10,7 @@ WITH
         SELECT
             created_date
             , DATETIME(created_time, "+7") AS created_time
+            , DATETIME(a.delivered_time, "+7") AS delivered_time
             , order_id
             , customer_id
             , price AS gmv
@@ -23,11 +24,12 @@ WITH
             END AS channel,
         FROM ${source.platinum}.marketplace_prd_order_v2_order AS a
         WHERE 1=1
-            AND created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 1 MONTH
+            AND created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 2 MONTH
         UNION ALL
         SELECT
             created_date
             , DATETIME(created_time, "+7") AS created_time
+            , DATETIME(a.delivered_time, "+7") AS delivered_time
             , order_id
             , 1000000 + receiver_id
             , total_amount
@@ -35,35 +37,41 @@ WITH
             , 'TENDER' AS channel
         FROM ${source.platinum}.tender_prd_core_tender_orders AS a
         WHERE 1=1
-            AND created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 1 MONTH
+            AND created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 2 MONTH
     )
 
 SELECT
     a.created_date
     , DATETIME(a.created_time, "+7") AS created_time
+    , o.delivered_time
     , a.order_id
     , a.total_price
+    , a.price * a.outbound_quantity AS total_outbound
     , s.seller_class
     , o.channel
     , o.customer_id
+    , o.status AS order_status
 FROM ${source.platinum}.marketplace_prd_order_v2_order_item AS a
     LEFT JOIN ${source.platinum}.seller_prd_core_seller AS s ON a.seller_code = s.code
     LEFT JOIN fact_order AS o ON a.order_id = o.order_id
 WHERE 1=1
-    AND a.created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 1 MONTH
+    AND a.created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 2 MONTH
     AND o.status <> "CANCEL"
 UNION ALL
 SELECT
     a.created_date
     , DATETIME(a.created_time, "+7") AS created_time
+    , b.delivered_time
     , a.order_id
     , a.total_amount
+    , COALESCE(SAFE_CAST(JSON_VALUE(a.extra_props, "$.completed_quantity")  AS INT64), quantity) * price AS total_outbound
     , "INTERNAL" AS seller_class
     , b.channel
     , b.customer_id
+    , b.status AS order_status
 FROM ${source.platinum}.tender_prd_core_tender_order_items AS a
     LEFT JOIN fact_order AS b ON a.order_id = b.order_id
 WHERE 1=1
-    AND a.created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 1 MONTH
+    AND a.created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 2 MONTH
     AND b.status <> "CANCEL"
 

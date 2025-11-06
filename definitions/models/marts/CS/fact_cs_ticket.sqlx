@@ -16,8 +16,8 @@ config {
 WITH
     cte_date AS (
       SELECT
-        "2024-01-01" AS start_date 
-        -- DATETIME_SUB(DATETIME_SUB(DATETIME_TRUNC(CURRENT_DATETIME(), MONTH), INTERVAL 7 MONTH), INTERVAL 7 HOUR) AS start_date 
+        -- "2024-01-01" AS start_date 
+        DATETIME_SUB(DATETIME_SUB(DATETIME_TRUNC(CURRENT_DATETIME(), MONTH), INTERVAL 7 MONTH), INTERVAL 7 HOUR) AS start_date 
     )
     , ticket AS ( 
       SELECT
