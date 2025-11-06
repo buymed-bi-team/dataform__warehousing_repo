@@ -89,64 +89,87 @@ WITH cte_date AS (
             LEFT JOIN first_location USING (po_code)
 		WHERE status <> "CANCEL"
         GROUP BY 1
-    )
+    ),
 
-select
-	i.ticket_id,
-	i.warehouse_code as fc_code,
-	i.code as inbound_code,
-	i.po_code,
-	case
-		when i.seller_code in ('MEDX-HN', 'MEDX', 'MED_NT', 'MEDX_E', 'MARKETING', 'TENDER') then p.vendor_code
-		else i.seller_code
-	end partner_code,
-    case when i.external_type = 'PURCHASE_SYS' then 'PO'
-        when i.external_type = 'SELLER' then 'PGH'
-        when i.external_type = 'TRANSFER' then 'TO'
-        else 'OTHER'
-	end as order_type, 
-	CASE
-		when i.external_type = 'PURCHASE_SYS' then 'INTERNAL'
-        when i.external_type = 'SELLER' then 'EXTERNAL'
-		when i.external_type = 'TRANSFER' then 'TO'
-	END AS seller_class,
-	i.type as inbound_type,
-	i.priority as inbound_priority,
-	i.status as inbound_status,
-	timestamp_add(i.created_time, interval 7 hour) as po_confirmed_ts,
-	i.total_sku,
-	i.total_item,
-	to_json_string(i.tags) as tags,
-	p.source_document,
-	p.status as po_status,
-	p.bill_status as po_bill_status,
-	c.received_ts AS first_received_check_in,
-	l.first_received_location,
-	r.first_received_time_at_hub,
-	c.receipt_fc_code,
-	f.first_checkin_destination_fc,
-	c.is_it_po_pgh,
-    TIMESTAMP_ADD(TIMESTAMP(JSON_VALUE(i.extra_props, '$.add_urgent_tag_time')), INTERVAL 7 HOUR) AS add_urgent_tag_time,
-	CASE
-        WHEN f.first_checkin_destination_fc IS NOT NULL AND TIMESTAMP(JSON_VALUE(i.extra_props, '$.add_urgent_tag_time')) IS NOT NULL THEN 
-            IF(
-				TIMESTAMP_ADD(TIMESTAMP(JSON_VALUE(i.extra_props, '$.add_urgent_tag_time')), INTERVAL 7 HOUR) 
-					<= f.first_checkin_destination_fc
-				, "URGENT_AT_CHECK-IN"
-				, "URGENT_AFTER_INBOUND"
-			) 
-	END AS po_urgent,
-	p.type AS po_type,
-	COALESCE(TIMESTAMP_ADD(p.created_time, interval 7 hour), TIMESTAMP_ADD(ps.created_time, interval 7 hour)) AS po_created_ts
+	inbound_ticket AS (
+		select
+			i.ticket_id,
+			i.warehouse_code as fc_code,
+			i.code as inbound_code,
+			i.po_code,
+			case
+				when i.seller_code in ('MEDX-HN', 'MEDX', 'MED_NT', 'MEDX_E', 'MARKETING', 'TENDER') then p.vendor_code
+				else i.seller_code
+			end partner_code,
+			case when i.external_type = 'PURCHASE_SYS' then 'PO'
+				when i.external_type = 'SELLER' then 'PGH'
+				when i.external_type = 'TRANSFER' then 'TO'
+				else 'OTHER'
+			end as order_type, 
+			CASE
+				when i.external_type = 'PURCHASE_SYS' then 'INTERNAL'
+				when i.external_type = 'SELLER' then 'EXTERNAL'
+				when i.external_type = 'TRANSFER' then 'TO'
+			END AS seller_class,
+			i.type as inbound_type,
+			i.priority as inbound_priority,
+			i.status as inbound_status,
+			timestamp_add(i.created_time, interval 7 hour) as po_confirmed_ts,
+			i.total_sku,
+			i.total_item,
+			to_json_string(i.tags) as tags,
+			p.source_document,
+			COALESCE(p.status, ps.status) as po_status,
+			p.bill_status as po_bill_status,
+			c.received_ts AS first_received_check_in,
+			l.first_received_location,
+			r.first_received_time_at_hub,
+			c.receipt_fc_code,
+			f.first_checkin_destination_fc,
+			c.is_it_po_pgh,
+			TIMESTAMP_ADD(TIMESTAMP(JSON_VALUE(i.extra_props, '$.add_urgent_tag_time')), INTERVAL 7 HOUR) AS add_urgent_tag_time,
+			CASE
+				WHEN f.first_checkin_destination_fc IS NOT NULL AND TIMESTAMP(JSON_VALUE(i.extra_props, '$.add_urgent_tag_time')) IS NOT NULL THEN 
+					IF(
+						TIMESTAMP_ADD(TIMESTAMP(JSON_VALUE(i.extra_props, '$.add_urgent_tag_time')), INTERVAL 7 HOUR) 
+							<= f.first_checkin_destination_fc
+						, "URGENT_AT_CHECK-IN"
+						, "URGENT_AFTER_INBOUND"
+					) 
+			END AS po_urgent,
+			p.type AS po_type,
+			COALESCE(TIMESTAMP_ADD(p.created_time, interval 7 hour), TIMESTAMP_ADD(ps.created_time, interval 7 hour)) AS po_created_ts,
+			JSON_VALUE(ps.delivery_info, "$.delivery_method") AS pgh_delivery_method
+		from (
+			select *
+			from ${source.platinum}.warehouse_prd_inbound_inbound_ticket
+			where created_date >= (select DATE(start_date) from cte_date)
+		) i
+			left join ${source.platinum}.seller_prd_purchasing_purchase_order as p on i.po_code = p.po_code
+			left join ${source.platinum}.seller_prd_wis_inbound as ps on i.po_code = ps.inbound_code
+			LEFT JOIN check_it_popgh AS c ON c.po_code = i.po_code
+			LEFT JOIN first_checkin_destination_fc AS f ON f.po_code = i.po_code
+			LEFT JOIN first_location AS l ON l.po_code = i.po_code
+			LEFT JOIN first_receive_at_hub AS r ON r.po_code = i.po_code
+	)
 
-from (
-    select *
-    from ${source.platinum}.warehouse_prd_inbound_inbound_ticket
-    where created_date >= (select DATE(start_date) from cte_date)
-) i
-    left join ${source.platinum}.seller_prd_purchasing_purchase_order as p on i.po_code = p.po_code
-    left join ${source.platinum}.seller_prd_wis_inbound as ps on i.po_code = ps.inbound_code
-    LEFT JOIN check_it_popgh AS c ON c.po_code = i.po_code
-	LEFT JOIN first_checkin_destination_fc AS f ON f.po_code = i.po_code
-	LEFT JOIN first_location AS l ON l.po_code = i.po_code
-	LEFT JOIN first_receive_at_hub AS r ON r.po_code = i.po_code
+SELECT
+	i.* EXCEPT(pgh_delivery_method)
+	, COALESCE(
+		IF(i.pgh_delivery_method = "FIRST_MILE", "PICK-UP", i.pgh_delivery_method) 
+		, CASE
+			WHEN f.type = "PICKUP" THEN "PICK-UP"
+			WHEN f.type = "TRANSPORTING" THEN "DROP-OFF"
+			WHEN f.type IS NULL  AND i.order_type = "PGH" THEN "SELLER_DELIVERY"
+			WHEN f.type IS NULL  AND i.order_type = "PO" THEN "VENDOR_DELIVERY"
+			ELSE "INTERNAL-TRANSFER"
+		END 
+	) AS transport_type
+FROM inbound_ticket AS i
+	LEFT JOIN (
+        SELECT
+            po_code
+            , type
+        FROM ${ref('fact_fmpo')}
+        QUALIFY ROW_NUMBER() over (PARTITION BY po_code) = 1
+    ) AS f ON i.po_code = f.po_code
