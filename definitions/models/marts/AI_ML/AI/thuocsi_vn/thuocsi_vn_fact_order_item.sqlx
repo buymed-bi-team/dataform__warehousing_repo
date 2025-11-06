@@ -10,6 +10,7 @@ WITH
         SELECT
             created_date
             , DATETIME(created_time, "+7") AS created_time
+            , DATETIME(a.delivered_time, "+7") AS delivered_time
             , order_id
             , customer_id
             , price AS gmv
@@ -28,6 +29,7 @@ WITH
         SELECT
             created_date
             , DATETIME(created_time, "+7") AS created_time
+            , DATETIME(a.delivered_time, "+7") AS delivered_time
             , order_id
             , 1000000 + receiver_id
             , total_amount
@@ -41,6 +43,7 @@ WITH
 SELECT
     a.created_date
     , DATETIME(a.created_time, "+7") AS created_time
+    , o.delivered_time
     , a.order_id
     , a.total_price
     , a.price * a.outbound_quantity AS total_outbound
@@ -58,6 +61,7 @@ UNION ALL
 SELECT
     a.created_date
     , DATETIME(a.created_time, "+7") AS created_time
+    , b.delivered_time
     , a.order_id
     , a.total_amount
     , COALESCE(SAFE_CAST(JSON_VALUE(a.extra_props, "$.completed_quantity")  AS INT64), quantity) * price AS total_outbound
