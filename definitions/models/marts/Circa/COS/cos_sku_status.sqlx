@@ -18,17 +18,22 @@ where (sku is not null or sku <> '')
      and received_quantity <> 0
 ) --lấy danh sách sản phẩm đã mua trong quá khứ
 ,inventory_by_product as (
-Select distinct product_id
+Select distinct v.product_id
                 ,pos_id
-                ,sum(on_hand_quantity) as current_stock_by_product
-                ,sum(cost_price_include_tax * on_hand_quantity) as current_stock_value
+                ,sum(v.on_hand_quantity) as current_stock_by_product
+                ,td.convert_rate
+                ,td.unit 
+                ,sum(v.on_hand_quantity)/td.convert_rate as stock_qty
+                ,sum(cost_price_include_tax * v.on_hand_quantity) as current_stock_value
                 ,p.client_id
 from ${source.ref}.cos_fact_inventory v
 left join ${source.ref}.circa_pos_profile p on v.pos_id = p.id 
+left join ${source.ref}.cos_dim_product td on v.product_id = td.product_id
 where p.type = 'CIRCA'
       and p.id is not null
       and seller_code not in ( 'CIRCA_MKP', 'MARKETING')
       and v.location_type <> 'CANCELLED'
+      and td.client_id = 1
 group by all
 ---- tổng tồn kho hiện tại theo product , pos
 ), by_product as (
@@ -41,5 +46,6 @@ from inventory_by_product o
 left join base_data on o.product_id = base_data.product_id 
 -- lấy trạng thái hiện tại của sản phẩm theo tồn kho, detail by sku
 )
-Select p.*, ts.sku_system_status as thuocsi_status from by_product p 
+Select p.*
+        ,ts.sku_system_status as thuocsi_status from by_product p 
 left join ${source.ref}.sku_status_thuocsi ts on p.product_id =  ts.product_id
