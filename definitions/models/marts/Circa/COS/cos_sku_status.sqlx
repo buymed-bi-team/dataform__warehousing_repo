@@ -33,6 +33,7 @@ where p.type = 'CIRCA'
       and p.id is not null
       and seller_code not in ( 'CIRCA_MKP', 'MARKETING')
       and v.location_type <> 'CANCELLED'
+      and td.client_id = 1
 group by all
 ---- tổng tồn kho hiện tại theo product , pos
 ), by_product as (
