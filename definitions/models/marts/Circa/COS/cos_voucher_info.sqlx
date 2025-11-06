@@ -36,7 +36,7 @@ left join ${source.circa_os}.entity_customer e on v.customer_id = e.id
 left join ${source.ref}.cos_fact_order o on cast(JSON_EXTRACT_SCALAR(order_code) as string) = o.order_code
 left join ${source.circa_os}.entity_pos_profile pr on o.pos_id = pr.id
 where gift_code not like '%TEST%'
-)
+), map_voucher as (
 Select distinct timestamp_add(current_timestamp(), interval 7 hour) as transformed_at
               ,us.code
               ,t.order_code_created
@@ -68,4 +68,11 @@ left join ${source.circa_os}.entity_pos_profile pr on o.pos_id = pr.id
 left join ${source.circa_os}.entity_customer e on o.entity_id = e.id
 left join ${source.circa_os}.promotion_promotion_campaign cp on us.promotion_campaign_id = cp.id and us.client_id = cp.client_id
 where us.is_sample = false
+)
+Select map_voucher.*
+       ,e.id as customer_id_gift
+       ,e.phone_number as customer_phone_gift
+from map_voucher
+left join ${source.ref}.cos_fact_order o on map_voucher.order_code_created = o.order_code
+left join ${source.circa_os}.entity_customer e on o.entity_id = e.id
        
