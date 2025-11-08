@@ -17,6 +17,7 @@ config {
 with cte_product as (
                      select distinct p.product_id
                             ,p.name as product_name
+                            ,tp.retail_name
                             ,p.volumes
                             ,p.unit
                             ,p.length
