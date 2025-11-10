@@ -1,0 +1,39 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `All orders item in the Cambodia marketplace.`,
+    tags: ['AI_THUOCSI_CAM']
+}
+
+WITH
+    fact_order AS ( 
+        SELECT
+            created_date
+            , DATETIME(created_time, "+7") AS created_time
+            , DATETIME(a.delivered_time, "+7") AS delivered_time
+            , order_id
+            , customer_id
+            , price AS gmv
+            , status
+        FROM lakehouse-prod-394907.platinum_buymed_cam.marketplace_prd_order_v2_order AS a
+        WHERE 1=1
+            AND created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 2 MONTH
+    )
+
+SELECT
+    a.created_date
+    , DATETIME(a.created_time, "+7") AS created_time
+    , o.delivered_time
+    , a.order_id
+    , a.total_price
+    , a.price * a.outbound_quantity AS total_outbound
+    , s.seller_class
+    , o.customer_id
+    , o.status AS order_status
+FROM lakehouse-prod-394907.platinum_buymed_cam.marketplace_prd_order_v2_order_item AS a
+    LEFT JOIN lakehouse-prod-394907.platinum_buymed_cam.seller_prd_core_seller AS s ON a.seller_code = s.code
+    LEFT JOIN fact_order AS o ON a.order_id = o.order_id
+WHERE 1=1
+    AND a.created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 2 MONTH
+    AND o.status <> "CANCEL"
+
