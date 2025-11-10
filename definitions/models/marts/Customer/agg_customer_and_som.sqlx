@@ -30,7 +30,7 @@ WITH
             ${ref('fact_order')} AS C
         WHERE
             order_status <> "CANCEL"
-            AND channel = "MARKETPLACE"
+            AND channel IN ("MARKETPLACE", "CIRCA")
     )
 
     , order_item_l3m AS (
@@ -44,7 +44,7 @@ WITH
             LEFT JOIN ${ref('fact_order')} AS o USING(order_id)
         WHERE
             order_status <> "CANCEL"
-            AND channel = "MARKETPLACE" 
+            AND channel IN ("MARKETPLACE" , "CIRCA")
             AND DATE(oi.created_at) >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 3 MONTH)
             AND DATE(o.created_at) >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 3 MONTH)
         GROUP BY ALL
