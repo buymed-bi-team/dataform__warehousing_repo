@@ -127,6 +127,7 @@ with cte_date as (
 			COALESCE(o.customer_phone, JSON_VALUE(so.customer.phone)) AS customer_phone,
 			COALESCE(o.customer_email, JSON_VALUE(so.customer.email)) AS customer_email,
 			COALESCE(o.customer_name, JSON_VALUE(so.customer.name)) AS customer_name,
+			o.payment_method,
 
 			json_value(p.customer,"$.delivery_mode") as delivery_mode,
 			case 
