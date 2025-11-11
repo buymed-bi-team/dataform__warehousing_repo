@@ -97,6 +97,9 @@ group by all)
           ,p.is_thuocsi_unit
           ,i.base_unit as is_base_unit
           ,p.last_updated_at
+          ,p.purchase_price
+          ,p.cost_price
+          ,p.market_price
           ,p.sale_price as sale_unit_price
           ,case when i.on_hand_quantity > 0 then "Available" else "Unavailable" end as have_stock
           ,case when p.sale_price is null then "Price not set" else "Price set" end as price_set_check
