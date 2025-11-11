@@ -99,6 +99,7 @@ WITH
                 , seller_code
                 , product_id
                 , created_at
+                , sku_key_sales_region_code
             FROM ${ref('fact_order_item')}
             UNION DISTINCT
             SELECT
@@ -107,11 +108,13 @@ WITH
                 , seller_code
                 , product_id
                 , created_at
+                , sku_key_sales_region_code
             FROM ${ref('fact_order_item_historical')}
             WHERE DATE(created_at) < DATE_TRUNC(CURRENT_DATE("+7"), MONTH) - INTERVAL 12 MONTH
         ) AS oi
             LEFT JOIN ${ref('fact_order')} o ON oi.order_id = o.order_id
-            , (SELECT start_date1, end_date1, seller_code1, product_id1, segment_id, order_status1 FROM get_start_end) sd
+            LEFT JOIN ${ref('dim_sku_sales_region_current')} AS s ON oi.sku_key_sales_region_code = s.sku_key_sales_region_code
+            , (SELECT start_date1, end_date1, seller_code1, product_id1, segment_id, order_status1, product_tag1 FROM get_start_end) sd
         WHERE o.channel IN ("MARKETPLACE", "CIRCA")
             AND o.order_status <> "CANCEL"
             AND (
@@ -124,6 +127,7 @@ WITH
             )
             AND (sd.seller_code1 IS NULL OR STRPOS(sd.seller_code1, CONCAT('"',oi.seller_code,'"')) > 0)
             AND (sd.product_id1 IS NULL OR STRPOS(sd.product_id1, CONCAT('"',oi.product_id,'"')) > 0)
+            AND (sd.product_tag1 IS NULL OR STRPOS(s.sku_tags, sd.product_tag1) > 0)
     )
 
     , query_order2 AS (
@@ -131,7 +135,8 @@ WITH
             DISTINCT oi.customer_id, sd.segment_id
         FROM ${ref('fact_order_item')} oi
             LEFT JOIN ${ref('fact_order')} o ON oi.order_id = o.order_id
-            , (SELECT start_date2, end_date2, seller_code2, product_id2, segment_id, order_status2 FROM get_start_end) sd
+            LEFT JOIN ${ref('dim_sku_sales_region_current')} AS s ON oi.sku_key_sales_region_code = s.sku_key_sales_region_code
+            , (SELECT start_date2, end_date2, seller_code2, product_id2, segment_id, order_status2, product_tag2 FROM get_start_end) sd
         WHERE o.channel IN ("MARKETPLACE", "CIRCA")
             AND o.order_status <> "CANCEL"
             AND (
@@ -144,6 +149,7 @@ WITH
             )
             AND (sd.seller_code2 IS NULL OR STRPOS(sd.seller_code2, CONCAT('"',oi.seller_code,'"')) > 0)
             AND (sd.product_id2 IS NULL OR STRPOS(sd.product_id2, CONCAT('"',oi.product_id,'"')) > 0)
+            AND (sd.product_tag2 IS NULL OR STRPOS(s.sku_tags, sd.product_tag2) > 0)
     )
 
     , final AS (
