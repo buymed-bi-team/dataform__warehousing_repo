@@ -25,7 +25,7 @@ status_history_location AS (
     a.status,
     a.created_time,
     b.sales_region_code as location_code,
-    a.ingest_time,
+    -- a.ingest_time,
     a.key
   FROM
     ${ref("staging_sku_status_history")} a

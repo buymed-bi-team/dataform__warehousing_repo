@@ -24,7 +24,7 @@ is_active_history_location AS (
     a.is_active,
     a.created_time,
     b.sales_region_code as location_code,
-    a.ingest_time,
+    -- a.ingest_time,
     a.key
   FROM
     ${ref("staging_sku_is_active_history")} a
@@ -214,7 +214,7 @@ where c.date > DATE(DATE_TRUNC(current_date(), MONTH) - INTERVAL 3 MONTH)
       , DATETIME(TIMESTAMP(CURRENT_DATETIME()) ,'Asia/Ho_Chi_Minh') as end_at_custom
       , DATETIME(TIMESTAMP(CURRENT_DATETIME()) ,'Asia/Ho_Chi_Minh') as end_at
       -- , DATEtime(current_date() - INTERVAL 3 MONTH)
-  from gold_buymed_vn.adhoc_pm_master_sku ms
+  from ${ref('adhoc_pm_master_sku')} ms
 left join sku_list sl on ms.sku_code = sl.sku and ms.sales_region_code = sl.sales_region_code
 where sl.sub_sku_sales_region_code is null 
 -- qualify row_number() over(order by 1,2,3,4,5,6) = 1
