@@ -102,7 +102,7 @@ group by all)
           ,p.market_price
           ,p.sale_price as sale_unit_price
           ,case when i.on_hand_quantity > 0 then "Available" else "Unavailable" end as have_stock
-          ,case when p.sale_price is null then "Price not set" else "Price set" end as price_set_check
+          ,case when (p.sale_price is null or p.sale_price = 0) then "Price not set" else "Price set" end as price_set_check
           ,case when date_diff(current_date( "Asia/Ho_Chi_Minh"),latest_ord,day )<16 then "15D"
                 when date_diff(current_date( "Asia/Ho_Chi_Minh"),latest_ord,day )<31 then "30D"
                 when date_diff(current_date( "Asia/Ho_Chi_Minh"),latest_ord,day )<46 then "45D"
