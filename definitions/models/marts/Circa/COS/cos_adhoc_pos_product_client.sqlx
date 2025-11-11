@@ -72,6 +72,8 @@ left join full_unit u on i.product_id = u.product_id)
         ,pd.market_price
         ,pd.auto_sale_price
         ,pd.sale_price
+        ,case when cost_price > 0 and market_price > 0 then (pd.cost_price - pd.market_price)/ pd.cost_price else null end as gap_ts_market
+        ,case when sale_price > 0 and cost_price > 0 then (pd.sale_price - pd.cost_price)/ pd.sale_price else null end as exp_mar
         ,pd.unit
         ,bu.base_unit
         ,bu.convert_rate
@@ -103,6 +105,8 @@ group by all)
           ,p.market_price
           ,p.auto_sale_price
           ,p.sale_price as sale_unit_price
+          ,gap_ts_market
+          ,exp_mar
           ,case when i.on_hand_quantity > 0 then "Available" else "Unavailable" end as have_stock
           ,case when (p.sale_price is null or p.sale_price = 0) then "Price not set" else "Price set" end as price_set_check
           ,case when date_diff(current_date( "Asia/Ho_Chi_Minh"),latest_ord,day )<16 then "15D"
