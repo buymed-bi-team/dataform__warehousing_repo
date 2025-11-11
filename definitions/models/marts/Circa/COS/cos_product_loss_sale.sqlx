@@ -39,4 +39,4 @@ from ${source.circa_os}.product_product_loss_sale o
 left join ${source.ref}.circa_pos_profile p on o.pos_id = p.id 
 left join  ${source.ref}.cos_dim_product td on o.product_id = td.product_id and o.client_id = td.client_id
 where p.id is not null 
-     and o.id not in ('8af8dcfb-da91-413c-9ccf-02525bd00876','c5d6fcaf-2d1d-4868-be4c-00b4ae6d7ae8')
+     and o.id not in ('8af8dcfb-da91-413c-9ccf-02525bd00876','c5d6fcaf-2d1d-4868-be4c-00b4ae6d7ae8','b729fb2c-7b00-455b-9d28-c5a942bc90fa','03e178f2-4bca-4dbe-9967-134d6618632d','08c9e5da-3ace-478b-a7dd-be17f1f208fb','cca7ed6c-6f2c-40f2-836c-3aad6495105a','b913b653-1268-4d59-bdbe-3b157c2ee469')
