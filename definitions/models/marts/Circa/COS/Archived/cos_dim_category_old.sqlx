@@ -3,7 +3,7 @@ config {
     disabled: true,
     description: ` PIC: huyen.nguyenthu; model_type: Table ;schedule: At minute 5 past hour 6, 8, 10, 12, 14, 16, 18, 20 and 22`,
     tags: ["custom_2h_past5"]
-   , name: "cos_dim_category"
+   , name: "cos_dim_category_old"
 }
 
 WITH RECURSIVE input AS (
