@@ -32,9 +32,10 @@ with cte_product as (
                             ,tp.origin
                             ,manufacturer_short_name
                             ,tp.registration_number
-                            ,product_category 
+                            ,tp.product_category_code
+                            ,tp.product_category 
                             ,p.dosage_form
-                            ,product_report_category
+                            ,tp.product_report_category
                             ,mc.code as main_category_code
                             ,mc.name as product_categories
                             ,m.name as manufacture_name
