@@ -81,9 +81,10 @@ WITH
             , oi.seller_revenue
             , oi.sku_key_sales_region_code
             , oi.fc_code
-            , seller_revenue * (1 - ( c.fulfillment_fee_percent + c.sale_fee_percent 
-                + IF(s.supplier_type IN ("MARKET", "BIZ_HOUSEHOLD"), 1.5, 0) ) / 100
-              ) AS seller_received_amount
+            , seller_revenue * 
+                (1 - ( c.fulfillment_fee_percent + c.sale_fee_percent + 1+ IF(s.supplier_type IN ("MARKET", "BIZ_HOUSEHOLD"), 1.5, 0) ) / 100
+                ) 
+              AS seller_received_amount
             , seller_revenue * c.fulfillment_fee_percent / 100 AS seller_fulfillment_fee
             , seller_revenue * c.sale_fee_percent / 100 AS seller_sale_fee
             , seller_revenue * IF(s.supplier_type IN ("MARKET", "BIZ_HOUSEHOLD"), 1.5, 0) / 100 AS seller_tax

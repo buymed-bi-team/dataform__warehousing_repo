@@ -54,7 +54,7 @@ SELECT
     sku_main.product_id || "_" || sku_main.seller_code as sku_key,
     seller.seller_class,
 
-    sku_main.is_combo,
+    IFNULL(sku_main.is_combo, FALSE) AS is_combo,
     sku_main.type as sku_type,
     sku_main.status as sku_status,
     sku_main.is_active as sku_active,
