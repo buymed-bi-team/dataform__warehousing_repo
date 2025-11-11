@@ -67,6 +67,9 @@ left join full_unit u on i.product_id = u.product_id)
          s.product_id
         ,s.seller_code
         ,s.sku_code
+        ,pd.purchase_price
+        ,pd.cost_price
+        ,pd.market_price
         ,pd.sale_price
         ,pd.unit
         ,bu.base_unit
