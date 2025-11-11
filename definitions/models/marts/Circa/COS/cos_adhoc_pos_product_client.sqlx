@@ -67,6 +67,9 @@ left join full_unit u on i.product_id = u.product_id)
          s.product_id
         ,s.seller_code
         ,s.sku_code
+        ,pd.purchase_price
+        ,pd.cost_price
+        ,pd.market_price
         ,pd.sale_price
         ,pd.unit
         ,bu.base_unit
@@ -123,7 +126,7 @@ group by all)
          select distinct
          product_id
         ,count(*) as total_units
-        ,sum(case when sale_unit_price is null then 1 else 0 end) as unset_units
+        ,sum(case when (sale_unit_price is null or sale_unit_price = 0) then 1 else 0 end) as unset_units
     from combine
     group by product_id
     )
