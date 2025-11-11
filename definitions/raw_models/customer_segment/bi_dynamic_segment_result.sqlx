@@ -11,6 +11,7 @@ SELECT
     , total_customers
     , customer_list
     , submit_id
+    , DATE(v.end_date) AS end_date
 FROM ${ref('bi_dynamic_segment_stg')} AS s
     LEFT JOIN ${ref('dim_voucher')} AS v ON v.voucher_code = segment_id
 WHERE 1=1
