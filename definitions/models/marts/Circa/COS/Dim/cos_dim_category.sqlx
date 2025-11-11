@@ -1,0 +1,21 @@
+config {
+    type: "table",
+    description: `PIC: huyen.ngo; model_type: Table ;schedule: At 10h30`
+    /*Source:
+      ${source.silver}.marketplace_prd_order_v2_order_item
+      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
+    tags: ["10h30"],
+    name: "cos_dim_category",
+    columns: {/*
+        order_id: "NonNull |" + docs.order_id,
+        customer_id: "NonNull | The unique identifier for each customer"*/
+        
+    }
+}
+
+Select distinct code as categories_code
+               ,name
+               ,client_id
+               ,main_category_id
+               ,concat(code,'_',client_id) as  categories_code_client_id
+from ${source.circa_os}.product_main_category
