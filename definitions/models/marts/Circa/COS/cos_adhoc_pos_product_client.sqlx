@@ -70,6 +70,7 @@ left join full_unit u on i.product_id = u.product_id)
         ,pd.purchase_price
         ,pd.cost_price
         ,pd.market_price
+        ,pd.auto_sale_price
         ,pd.sale_price
         ,pd.unit
         ,bu.base_unit
@@ -100,6 +101,7 @@ group by all)
           ,p.purchase_price
           ,p.cost_price
           ,p.market_price
+          ,p.auto_sale_price
           ,p.sale_price as sale_unit_price
           ,case when i.on_hand_quantity > 0 then "Available" else "Unavailable" end as have_stock
           ,case when (p.sale_price is null or p.sale_price = 0) then "Price not set" else "Price set" end as price_set_check
