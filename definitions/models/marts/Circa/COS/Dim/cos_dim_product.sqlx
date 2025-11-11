@@ -35,7 +35,8 @@ with cte_product as (
                             ,product_category 
                             ,p.dosage_form
                             ,product_report_category
-                            ,sc.name as product_categories
+                            ,mc.code as main_category_code
+                            ,mc.name as product_categories
                             ,m.name as manufacture_name
                             ,is_combo
                             ,is_gift
