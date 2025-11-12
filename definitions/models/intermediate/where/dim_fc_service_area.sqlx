@@ -13,16 +13,20 @@ config {
 }
 
 select
-    fc.fc_code
-    , json_extract_scalar(unnested_value) as service_area_code
-    , fc.sales_region_code
+    fc.code AS fc_code
+    , unnested_value as service_area_code
+    , CASE code
+        WHEN "BD" THEN "MIENNAM"
+        WHEN "DN" THEN "MIENTRUNG"
+        WHEN "HN" THEN "MIENBAC"
+    END AS sales_region_code
     , "PROVINCE" AS area_type
 from 
     (
-        SELECT code, name, status, areas, extra_props
+        SELECT *
         FROM ${ref(`platinum_buymed_vn`, `warehouse_prd_core_warehouse` )}
     ) as fc,
-    unnest( (json_extract_array(fc.service_areas, '$'))) as unnested_value
+    unnest( (JSON_VALUE_ARRAY(fc.areas))) as unnested_value
 
 UNION ALL
 
