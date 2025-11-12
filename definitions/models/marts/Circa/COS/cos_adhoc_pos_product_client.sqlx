@@ -107,6 +107,7 @@ group by all)
           ,p.market_price
           ,p.auto_sale_price
           ,p.sale_price as sale_unit_price
+          ,final_sale_price
           ,gap_ts_market
           ,case when final_sale_price > 0 and cost_price > 0 then (final_sale_price - cost_price)/ final_sale_price else null end as exp_mar
           ,case when i.on_hand_quantity > 0 then "Available" else "Unavailable" end as have_stock
