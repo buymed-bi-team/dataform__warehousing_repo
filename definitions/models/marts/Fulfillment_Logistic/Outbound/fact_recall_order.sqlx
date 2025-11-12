@@ -67,7 +67,7 @@ with cte_date as (
 (
 	select 
 		reference_code,
-		max(TIMESTAMP_ADD(TIMESTAMP_SECONDS(action_time),INTERVAL 7 HOUR)) as completed_ts
+		max(TIMESTAMP_SECONDS(action_time)) as completed_ts
   from (
     select * 
     from ${source.platinum}.delivery_prd_transporting_hub_shipping_order
