@@ -109,7 +109,7 @@ group by all)
           ,p.sale_price as sale_unit_price
           ,final_sale_price
           ,gap_ts_market
-          ,case when final_sale_price > 0 and cost_price > 0 then (final_sale_price - cost_price)/ final_sale_price else null end as exp_mar
+          ,case when on_hand_quantity > 0 then purchase_price else cost_price end as exp_cost_price
           ,case when i.on_hand_quantity > 0 then "Available" else "Unavailable" end as have_stock
           ,case when (p.sale_price is null or p.sale_price = 0) then "Price not set" else "Price set" end as price_set_check
           ,case when date_diff(current_date( "Asia/Ho_Chi_Minh"),latest_ord,day )<16 then "15D"
@@ -144,6 +144,7 @@ group by all)
     )
 ,_all as (
 select i.*
+       ,case when final_sale_price > 0 and exp_cost_price > 0 then (final_sale_price - exp_cost_price)/ final_sale_price else null end as exp_mar
        ,case 
            when cup.unset_units = cup.total_units then "not set full"
            when cup.unset_units > 0 then "contain unit not set"
