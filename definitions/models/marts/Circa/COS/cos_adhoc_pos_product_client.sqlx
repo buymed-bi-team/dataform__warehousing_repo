@@ -74,7 +74,7 @@ left join full_unit u on i.product_id = u.product_id)
         ,pd.sale_price
         ,case when cost_price > 0 and market_price > 0 then (pd.cost_price - pd.market_price)/ pd.cost_price else null end as gap_ts_market
         ,case when td.price_type = 'DYNAMIC' then pd.auto_sale_price
-              when td.price_type = 'MANUAL' then pd.sale_price else null end as final_sale_price
+              when td.price_type <> 'DYNAMIC' then pd.sale_price else null end as final_sale_price
         ,pd.unit
         ,bu.base_unit
         ,bu.convert_rate
