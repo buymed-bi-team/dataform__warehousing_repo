@@ -95,10 +95,10 @@ where bu.convert_unit is not null
      -- and pd.product_id = 11463 
 group by all)
 ,combine as (select distinct 
-           i.product_id
-          ,i.seller_code
-          ,i.sku_code
-          ,i.unit
+           p.product_id
+          ,p.seller_code
+          ,p.sku_code
+          ,p.unit
           ,i.convert_rate
           ,p.is_thuocsi_unit
           ,is_purchase_unit
@@ -129,8 +129,8 @@ group by all)
           ,GMV
           ,latest_ord
           ,on_hand_quantity
-    from inventory_full_unit i
-    left join has_price p on i.product_id = p.product_id and i.unit = p.unit and p.sku_code = i.sku_code
+    from has_price p 
+    left join inventory_full_unit i on i.product_id = p.product_id and i.unit = p.unit and p.sku_code = i.sku_code
     left join count_ord co on i.product_id = co.product_id
     --where p.seller_code is not null
     --where  p.product_id is not null
