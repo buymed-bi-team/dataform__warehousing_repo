@@ -123,6 +123,7 @@ WITH product_retail_unit AS (
           , NULLIF(value, "NAN") as high_margin
       FROM ${source.collector}.data_prd
       WHERE object = 'Product' and type = 'HIGH_MARGIN'
+        AND DATE(submit_at) >= "2024-11-21"
       QUALIFY ROW_NUMBER() OVER(PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
   )
 
@@ -258,7 +259,7 @@ SELECT
     WHEN product.origin IN ('Vietnam', 'VN') THEN 'Local'
     WHEN product.origin NOT IN ('Vietnam', 'VN') THEN 'Import'
   END AS origin_type,
-  COALESCE(tb3.name, product.origin) as country_origin,
+  COALESCE(JSON_VALUE(tb3.translations, "$.vi"), JSON_VALUE(tb3.translations, "$.en"), product.origin) as country_origin,
   product.registration_number,
 
   -- IF(product.is_prescription = TRUE, "DRUG","NON-DRUG") is_prescription,
@@ -383,7 +384,7 @@ LEFT JOIN ${source.platinum}.core_prd_master_data_atc AS atc2 ON product.atc2_co
 LEFT JOIN ${source.platinum}.core_prd_master_data_atc AS atc3 ON product.atc3_code = atc3.code
 LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_product AS tb1 ON tb1.code = JSON_EXTRACT_SCALAR(product.extra_props, '$.retail_category_codes.0')
 LEFT JOIN product_retail_unit AS tb2 ON tb2.product_id = product.product_id
-LEFT JOIN ${source.platinum}.core_prd_master_data_country AS tb3 ON tb3.code = product.origin
+LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_country_translation_config AS tb3 ON tb3.code = product.origin
 LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_main_category AS tb4 ON tb4.code = product.main_category_code
 -- LEFT JOIN product_cic AS cic ON cic.product_id = product.product_id
 LEFT JOIN high_margin_product AS hmp ON hmp.product_id = product.product_id
