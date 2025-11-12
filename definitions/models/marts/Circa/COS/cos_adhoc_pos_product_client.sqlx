@@ -79,6 +79,7 @@ left join full_unit u on i.product_id = u.product_id)
         ,bu.base_unit
         ,bu.convert_rate
         ,case when t.unit is not null then true else false end as is_thuocsi_unit
+        ,case when lower(pd.unit) = lower(td.unit) then true else false end as is_purchase_unit
         ,max(datetime(pd.updated_at, "Asia/Ho_Chi_Minh")) as last_updated_at
 from ${source.circa_os}.product_price_sheet_sku_detail as pd
 left join ${source.circa_os}.product_price_sheet_sku as s on pd.price_sheet_sku_id = s.id
@@ -100,6 +101,7 @@ group by all)
           ,i.unit
           ,i.convert_rate
           ,p.is_thuocsi_unit
+          ,is_purchase_unit
           ,i.base_unit as is_base_unit
           ,p.last_updated_at
           ,p.purchase_price
