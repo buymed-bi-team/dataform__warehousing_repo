@@ -73,7 +73,8 @@ left join full_unit u on i.product_id = u.product_id)
         ,pd.auto_sale_price
         ,pd.sale_price
         ,case when cost_price > 0 and market_price > 0 then (pd.cost_price - pd.market_price)/ pd.cost_price else null end as gap_ts_market
-        ,case when sale_price > 0 and cost_price > 0 then (pd.sale_price - pd.cost_price)/ pd.sale_price else null end as exp_mar
+        ,case when td.price_type = 'DYNAMIC' then pd.auto_sale_price
+              when td.price_type = 'MANUAL' then pd.sale_price else null end as final_sale_price
         ,pd.unit
         ,bu.base_unit
         ,bu.convert_rate
@@ -84,6 +85,7 @@ left join ${source.circa_os}.product_price_sheet_sku as s on pd.price_sheet_sku_
 left join ${source.circa_os}.product_price_sheet as ps on s.price_sheet_id = ps.id
 left join product_base_unit as bu on s.product_id = bu.product_id and pd.unit = bu.convert_unit
 left join thuosi_unit t on s.product_id = t.product_id and lower(pd.unit) = lower(t.unit)
+left join ${source.ref}.cos_dim_product td on td.product_id = s.product_id and td.client_id = ps.client_id 
 where bu.convert_unit is not null
       and ps.client_id = 1 
       and ps.name = 'Bảng giá client 1'-- Loại trừ nhừng sản phẩm đã set giá trên các pos
@@ -106,7 +108,7 @@ group by all)
           ,p.auto_sale_price
           ,p.sale_price as sale_unit_price
           ,gap_ts_market
-          ,exp_mar
+          ,case when final_sale_price > 0 and cost_price > 0 then (final_sale_price - cost_price)/ final_sale_price else null end as exp_mar
           ,case when i.on_hand_quantity > 0 then "Available" else "Unavailable" end as have_stock
           ,case when (p.sale_price is null or p.sale_price = 0) then "Price not set" else "Price set" end as price_set_check
           ,case when date_diff(current_date( "Asia/Ho_Chi_Minh"),latest_ord,day )<16 then "15D"
