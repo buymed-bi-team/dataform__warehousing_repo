@@ -1,0 +1,17 @@
+
+config {
+    type: "table",
+    description: `cos_demand_planning detail PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`,
+    tags: ["custom_2h_past5"],
+    name: "purchase_top_trending",
+    columns: {
+        
+    }
+}
+
+Select   
+   trial_period
+  ,case when dat_time is not null then cast(dat_time as date) else null end as date_time
+  ,case when product_id is not null then cast(product_id as int64)  else null end as product_id
+  ,product_name 
+  from buymed_external.purchase_top_trending
