@@ -19,8 +19,9 @@ WITH
         SELECT
             *
         FROM ${ref('bi_dynamic_segment')} AS a
+        WHERE type = '"AVAILABLE"' OR type IS NULL
         ${when(incremental(),
-            `WHERE NOT EXISTS ( SELECT 1 
+            `AND NOT EXISTS ( SELECT 1 
                                 FROM ${self()} AS b 
                                 WHERE a.segment_id = b.segment_id 
                                 AND DATE(b.processed_at) = CURRENT_DATE("+7")
