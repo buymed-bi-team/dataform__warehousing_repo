@@ -1,15 +1,16 @@
 config {
     type: "incremental",
-    description: "Voucher Segment - Generate a list of customers who are allowed to use the voucher",
+    description: "Voucher Segment - Generate a list of customers who are not allowed to use the voucher",
     tags: ["CUSTOMER_SEGMENT", "0h30", "custom_1h_past10"]
 }
+
 
 WITH
     segment_data AS (
         SELECT
             *
         FROM ${ref('bi_dynamic_segment')} AS a
-        WHERE type = '"AVAILABLE"' OR type IS NULL
+        WHERE type = '"UNAVAILABLE"'
         ${when(incremental(),
             `AND NOT EXISTS ( SELECT 1 
                                 FROM ${self()} AS b 
