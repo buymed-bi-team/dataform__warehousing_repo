@@ -58,6 +58,9 @@ SELECT
     MAX(CASE WHEN table = 'ORDER2' AND field = 'product_tag' THEN value END) as product_tag2,
 
     -- Operator
-    MAX(CASE WHEN table = 'OPERATOR' THEN UPPER(COALESCE(value,CONCAT('"',field,'"'))) END) as operator
+    MAX(CASE WHEN table = 'OPERATOR' THEN UPPER(COALESCE(value,CONCAT('"',field,'"'))) END) as operator,
+
+    -- Type
+    MAX(CASE WHEN table = 'TYPE' THEN UPPER(COALESCE(value,CONCAT('"',field,'"'))) END) as type
 FROM cte AS a
 GROUP BY ALL
