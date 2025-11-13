@@ -1,0 +1,40 @@
+config {
+    type: "view",
+    name: "pim_prd_product_ingredient_dosage",
+    schema: "platinum_buymed_vn",
+
+    tags:["platinum","pim_prd_product","PLATFORM.global-platform"]
+}
+
+WITH over_tbl AS (
+    SELECT
+        mg_id,
+        ARRAY_AGG(
+            key 
+            ORDER BY
+                synced_at DESC,
+                IF (action='d',3, IF (action='u',2,1)) DESC,
+                last_updated_time DESC
+            LIMIT 1
+        )[0] key ,
+        ARRAY_AGG(
+            action 
+            ORDER BY
+                synced_at DESC,
+                IF (action='d',3, IF (action='u',2,1)) DESC,
+                last_updated_time DESC
+            LIMIT 1
+        )[0] action
+    FROM ${source.silver}.pim_prd_product_ingredient_dosage
+    
+    GROUP BY mg_id HAVING action != "d"
+)
+SELECT
+    *,
+    CASE
+        WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time, 'Asia/Ho_Chi_Minh'))
+        ELSE DATE( '2099-01-01' )
+    END AS created_date,
+    CURRENT_DATETIME() AS platinum_refresh
+FROM ${source.silver}.pim_prd_product_ingredient_dosage
+WHERE key IN (SELECT o.key FROM over_tbl o)
