@@ -79,14 +79,15 @@ left join full_unit u on i.product_id = u.product_id)
         ,bu.base_unit
         ,bu.convert_rate
         ,case when t.unit is not null then true else false end as is_thuocsi_unit
-        ,case when lower(pd.unit) = lower(td.unit) then true else false end as is_purchase_unit
+        ,case when lower(pd.unit) = lower(pr.unit) then true else false end as is_purchase_unit
         ,max(datetime(pd.updated_at, "Asia/Ho_Chi_Minh")) as last_updated_at
 from ${source.circa_os}.product_price_sheet_sku_detail as pd
 left join ${source.circa_os}.product_price_sheet_sku as s on pd.price_sheet_sku_id = s.id
 left join ${source.circa_os}.product_price_sheet as ps on s.price_sheet_id = ps.id
 left join product_base_unit as bu on s.product_id = bu.product_id and pd.unit = bu.convert_unit
 left join thuosi_unit t on s.product_id = t.product_id and lower(pd.unit) = lower(t.unit)
-left join ${source.ref}.cos_dim_product td on td.product_id = s.product_id and td.client_id = ps.client_id 
+left join ${source.circa_os}.product_sku td on td.product_id = s.product_id and td.client_id = ps.client_id and td.sku_code = s.seller_code
+left join ${source.ref}.cos_dim_product pr on pr.product_id = s.product_id and pr.client_id = ps.client_id 
 where bu.convert_unit is not null
       and ps.client_id = 1 
       and ps.name = 'Bảng giá client 1'-- Loại trừ nhừng sản phẩm đã set giá trên các pos
