@@ -17,4 +17,4 @@ Select
   ,concat(product_id,'_',1) as product_client_id
   ,product_name 
   from buymed_external.purchase_top_trending
-  where product_id is not null and  product_id <> 'New'
+  where (product_id is not null or  product_id <> 'New' or product_name is not null)
