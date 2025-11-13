@@ -22,7 +22,7 @@ SELECT
       OR destination_dataset_id like "buymed_circa_v2"
     ) THEN "circa_v2"
     ELSE ERROR(FORMAT("Flow cannot dectect, %s - %s",destination_dataset_id,destination_table_id ))
-  END AS Flow,
+  END AS flow,
   COUNT(DISTINCT job_id) job_count,
   COUNT(DISTINCT IF(job_type = "LOAD", job_id, NULL)) load_job_count,
   COUNT(DISTINCT IF(job_type = "QUERY", job_id, NULL))  query_job_count,
@@ -40,7 +40,9 @@ SELECT
 
 FROM gold_buymed_vn2.fact_bq_activity
 WHERE
-  execution_time >= "2025-11-01"
+  -- Partition Fields
+  execution_time >= TIMESTAMP_TRUNC(CURRENT_TIMESTAMP() - INTERVAL 14 DAY, DAY)
+  -- Cluster Fields
 AND user_email = "231189618019-compute@developer.gserviceaccount.com"
 AND (
   destination_dataset_id like "airbyte_internal"
@@ -49,3 +51,25 @@ AND (
 )
 
 GROUP BY 1,2
+
+
+-- ################################################################
+/*
+SELECT 
+  TIMESTAMP_TRUNC(execution_time +INTERVAL 7 HOUR, DAY) execution_time,
+  flow,
+  SUM(job_count) job_count,
+  SUM(load_job_count) load_job_count,
+  SUM(query_job_count) query_job_count,
+  SUM(copy_job_count) copy_job_count,
+
+  de_buymed_vn.readable_size(SUM(total_bytes_billed)) total_readable_size,
+  de_buymed_vn.readable_size(SUM(load_bytes_billed)) load_readable_size_billed, 
+  de_buymed_vn.readable_size(SUM(query_bytes_billed)) query_readable_size_billed, 
+  de_buymed_vn.readable_size(SUM(copy_bytes_billed)) load_readable_size_billed, 
+
+FROM lakehouse-prod-394907.de_buymed_vn.circa_pipeline_cost
+WHERE flow = "circa_v2"
+GROUP BY 1,2
+ORDER BY 1 DESC
+*/
