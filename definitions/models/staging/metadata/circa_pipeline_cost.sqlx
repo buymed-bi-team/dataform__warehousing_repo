@@ -1,0 +1,51 @@
+config {
+    name:"circa_pipeline_cost",
+    schema: "de_buymed_vn",
+    type: "view",
+    description: "PIC: minhluu"
+}
+
+SELECT 
+  TIMESTAMP_TRUNC(execution_time, HOUR) execution_time,
+  CASE 
+    WHEN (
+      destination_dataset_id like "airbyte_internal"
+      AND destination_table_id like "buymed_circa_raw__stream_%"
+      -- AND destination_table_id LIKE "buymed_circa_raw__stream_zNew_%"
+
+      OR destination_dataset_id like "buymed_circa"
+    ) THEN "circa_v1"
+    WHEN (
+      destination_dataset_id like "airbyte_internal"
+      AND destination_table_id like "buymed_circa_v2_raw__stream_%"
+      -- AND destination_table_id LIKE "buymed_circa_v2_raw__stream_zNew%"
+      OR destination_dataset_id like "buymed_circa_v2"
+    ) THEN "circa_v2"
+    ELSE ERROR(FORMAT("Flow cannot dectect, %s - %s",destination_dataset_id,destination_table_id ))
+  END AS Flow,
+  COUNT(DISTINCT job_id) job_count,
+  COUNT(DISTINCT IF(job_type = "LOAD", job_id, NULL)) load_job_count,
+  COUNT(DISTINCT IF(job_type = "QUERY", job_id, NULL))  query_job_count,
+  COUNT(DISTINCT IF(job_type = "COPY", job_id, NULL)) copy_job_count,
+
+  de_buymed_vn.readable_size(SUM(total_bytes_billed)) total_readable_size,
+  de_buymed_vn.readable_size(SUM(IF(job_type = "LOAD", total_bytes_billed, 0))) load_readable_size_billed,
+  de_buymed_vn.readable_size(SUM(IF(job_type = "QUERY", total_bytes_billed, 0))) query_readable_size_billed,
+  de_buymed_vn.readable_size(SUM(IF(job_type = "COPY", total_bytes_billed, 0))) load_readable_size_billed,
+
+  SUM(total_bytes_billed) total_bytes_billed,
+  SUM(IF(job_type = "LOAD", total_bytes_billed, 0)) load_bytes_billed,
+  SUM(IF(job_type = "QUERY", total_bytes_billed, 0)) query_bytes_billed,
+  SUM(IF(job_type = "COPY", total_bytes_billed, 0)) copy_bytes_billed,
+
+FROM gold_buymed_vn2.fact_bq_activity
+WHERE
+  execution_time >= "2025-11-01"
+AND user_email = "231189618019-compute@developer.gserviceaccount.com"
+AND (
+  destination_dataset_id like "airbyte_internal"
+  OR 
+  destination_dataset_id like "buymed_circ%"
+)
+
+GROUP BY 1,2
