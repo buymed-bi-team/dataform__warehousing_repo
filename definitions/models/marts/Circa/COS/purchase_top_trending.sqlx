@@ -12,6 +12,6 @@ config {
 Select   
    trial_period
   ,case when dat_time is not null then cast(dat_time as date) else null end as date_time
-  ,case when product_id is not null then cast(product_id as int64)  else null end as product_id
+  ,case when product_id is not null and product_id <> 'New ' then cast(product_id as int64)  else null end as product_id
   ,product_name 
   from buymed_external.purchase_top_trending
