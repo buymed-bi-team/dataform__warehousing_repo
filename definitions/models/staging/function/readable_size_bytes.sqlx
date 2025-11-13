@@ -1,0 +1,21 @@
+config {
+    type: "operations"
+}
+
+CREATE FUNCTION de_buymed_vn.readable_size ( size_bytes INT64 )
+RETURNS STRING 
+AS (
+  CASE 
+    WHEN size_bytes / (1024 * 1024 * 1024) > 1 THEN FORMAT("%.4f GB", (size_bytes / (1024 * 1024 * 1024)))
+    WHEN size_bytes / (1024 * 1024 ) > 1 THEN FORMAT("%.4f MB", (size_bytes / (1024 * 1024 * 1024)))
+    ELSE CAST(size_bytes AS STRING ) || " byte" 
+  END
+)
+OPTIONS (
+  description = """
+  Use Case:
+    - Normal   : de_buymed_vn.readable_size ( total_bytes_billed )
+    - Aggregate: de_buymed_vn.readable_size ( SUM(total_bytes_billed) )
+  """
+)
+;
