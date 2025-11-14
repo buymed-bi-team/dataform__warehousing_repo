@@ -18,6 +18,7 @@ WITH
 
 SELECT
     o.date
+    , o.order_id
     , o.gmv_circa
     , o.pos_name
     , o.pos_type
