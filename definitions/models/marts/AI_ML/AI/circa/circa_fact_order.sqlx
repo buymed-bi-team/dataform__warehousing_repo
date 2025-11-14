@@ -18,7 +18,7 @@ SELECT
     , GREATEST(o.total_item_amount + o.medicine_cutting_fee - COALESCE(r.total_return_amount, 0), 0) AS gmv_circa
 FROM ${ref('gold_buymed_vn2','cos_fact_order')} AS o
     LEFT JOIN (
-        SELECT order_id, SUM(COALESCE(total_return_amount, 0)) AS total_return_amount
+        SELECT order_id, SUM(COALESCE(gmv_return, 0)) AS total_return_amount
         FROM ${ref('gold_buymed_vn2','cos_return_completed')}
         GROUP BY 1
     ) AS r ON o.order_id = r.order_id
