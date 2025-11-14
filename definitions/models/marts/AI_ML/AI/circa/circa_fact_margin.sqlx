@@ -1,7 +1,7 @@
 config {
     type: 'view',
     schema: "buymed_innovation",
-    description: `Margin of Circa.`,
+    description: `Margin of Circa COS.`,
     tags: ['AI_CIRCA']
 }
 
@@ -26,4 +26,5 @@ FROM ${ref('gold_buymed_vn2','cos_fact_order_item')} AS oi
     LEFT JOIN ${ref('buymed_innovation', 'circa_fact_order')} AS o ON oi.order_id = o.order_id
     LEFT JOIN cogs ON oi.order_id = cogs.order_id
 WHERE o.order_id IS NOT NULL
+    AND o.client_id = 1
 GROUP BY ALL

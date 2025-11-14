@@ -9,6 +9,7 @@ SELECT
     o.completed_date AS date
     , o.order_id
     , o.entity_id AS customer_id
+    , o.client_id
     , o.pos_id
     , p.name AS pos_name
     , IF(p.type = "FS", "FS", "COS") AS pos_type
