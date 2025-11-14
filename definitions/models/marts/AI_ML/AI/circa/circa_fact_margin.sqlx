@@ -1,17 +1,30 @@
 config {
     type: 'view',
     schema: "buymed_innovation",
-    description: `Margin of Circa.`,
+    description: `Margin of Circa COS.`,
     tags: ['AI_CIRCA']
 }
+
+WITH 
+    cogs AS (
+        SELECT  
+            i.order_id
+            ,SUM(i.unit_cost_price *  i.quantity ) -  COALESCE(SUM(i.unit_cost_price *  rt.quantity),0) AS cogs
+        FROM ${ref('gold_buymed_vn2','cos_fact_order_item')} AS i
+        LEFT JOIN ${ref('gold_buymed_vn2', 'cos_return_completed_detail')} AS rt 
+            ON i.order_id = rt.order_id AND i.product_id = rt.product_id AND i.lot_date = rt.lot_date AND i.sku_code = rt.sku_code
+        GROUP BY ALL
+    )
 
 SELECT
     o.date
     , o.gmv_circa
     , o.pos_name
     , o.pos_type
-    , SUM(COALESCE(oi.unit_cost_price, 0) * COALESCE(CAST(oi.quantity AS NUMERIC), 0)) AS total_cost
-FROM ${ref('gold_buymed_vn2','cos_fact_order_item')} AS oi
-    LEFT JOIN ${ref('buymed_innovation', 'circa_fact_order')} AS o ON oi.order_id = o.order_id
-WHERE o.order_id IS NOT NULL
+    , cogs.cogs AS total_cost
+FROM ${ref('buymed_innovation', 'circa_fact_order')} AS o
+    LEFT JOIN cogs ON o.order_id = cogs.order_id
+WHERE  1=1
+    -- AND o.order_id IS NOT NULL
+    AND o.client_id = 1
 GROUP BY ALL
