@@ -45,6 +45,8 @@ SELECT
     , DATETIME(a.created_time, "+7") AS created_time
     , o.delivered_time
     , a.order_id
+    , a.product_id
+    -- , a.sku
     , a.total_price
     , a.price * a.outbound_quantity AS total_outbound
     , s.seller_class
@@ -63,6 +65,8 @@ SELECT
     , DATETIME(a.created_time, "+7") AS created_time
     , b.delivered_time
     , a.order_id
+    , a.product_id
+    -- , a.sku_code
     , a.total_amount
     , COALESCE(SAFE_CAST(JSON_VALUE(a.extra_props, "$.completed_quantity")  AS INT64), quantity) * price AS total_outbound
     , "INTERNAL" AS seller_class
