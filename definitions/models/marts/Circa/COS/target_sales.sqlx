@@ -7,3 +7,6 @@ config {
 
 select * from buymed_external.target_sales_v2
 where pos_code is not null
+union all 
+select * from buymed_external.target_sales_fs
+where pos_code is not null
