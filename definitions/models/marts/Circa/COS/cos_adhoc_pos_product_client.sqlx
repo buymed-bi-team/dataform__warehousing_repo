@@ -86,7 +86,7 @@ left join ${source.circa_os}.product_price_sheet_sku as s on pd.price_sheet_sku_
 left join ${source.circa_os}.product_price_sheet as ps on s.price_sheet_id = ps.id
 left join product_base_unit as bu on s.product_id = bu.product_id and pd.unit = bu.convert_unit
 left join thuosi_unit t on s.product_id = t.product_id and lower(pd.unit) = lower(t.unit)
-left join ${source.circa_os}.product_sku td on td.product_id = s.product_id and td.client_id = ps.client_id and td.sku_code = s.seller_code
+left join ${source.circa_os}.product_sku td on td.product_id = s.product_id and td.client_id = ps.client_id and td.sku_code = s.sku_code
 left join ${source.ref}.cos_dim_product pr on pr.product_id = s.product_id and pr.client_id = ps.client_id 
 where bu.convert_unit is not null
       and ps.client_id = 1 
