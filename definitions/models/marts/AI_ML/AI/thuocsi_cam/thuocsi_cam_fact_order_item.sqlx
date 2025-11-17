@@ -15,6 +15,7 @@ WITH
             , customer_id
             , price AS gmv
             , status
+            , total_discount
         FROM lakehouse-prod-394907.platinum_buymed_cam.marketplace_prd_order_v2_order AS a
         WHERE 1=1
             AND created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 2 MONTH
@@ -31,6 +32,7 @@ SELECT
     , s.seller_class
     , o.customer_id
     , o.status AS order_status
+    , o.total_discount
 FROM lakehouse-prod-394907.platinum_buymed_cam.marketplace_prd_order_v2_order_item AS a
     LEFT JOIN lakehouse-prod-394907.platinum_buymed_cam.seller_prd_core_seller AS s ON a.seller_code = s.code
     LEFT JOIN fact_order AS o ON a.order_id = o.order_id
