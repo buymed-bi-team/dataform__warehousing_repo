@@ -20,7 +20,7 @@ WITH
     cte_date AS (
         select
             TIMESTAMP_ADD(current_timestamp(), interval 7 hour) as current_timestamp_,
-            timestamp_sub(current_timestamp(), interval 60 day) as start_date
+            timestamp_sub(current_timestamp(), interval 365 day) as start_date
     )
 
 -- step 1: Get skus in a campaign that is active on website.
@@ -32,13 +32,14 @@ WITH
             b.absolute_discount as absolute_price,
             b.campaign_price,
             b.percentage_discount,
-            JSON_VALUE(a.regions, '$.0') as regions
+            JSON_VALUE(a.regions, '$.0') as regions,
+            charge_fee
         from ${source.platinum}.marketplace_prd_promotion_campaign a
             left join ${source.platinum}.marketplace_prd_promotion_campaign_product b
                 ON a.campaign_id = b.campaign_id
         where
         -- condition to get active campaign
-            b.is_active = true and upper(b.status) = "NORMAL" and a.is_active
+            b.is_active = true and upper(b.status) = "NORMAL" and a.is_active 
             and (select current_timestamp_ from cte_date) between TIMESTAMP_ADD(a.start_time,INTERVAL 7 HOUR) and TIMESTAMP_ADD(a.end_time,INTERVAL 7 HOUR)
     )
 -- step 2: Get skus in a deal that is active on website.
@@ -75,12 +76,15 @@ WITH
                 when string(area_code) like "%00%" then "00"
             -- else string(area_code)
                 else sr.sales_region_code
-            end as sales_region_code
+            end as sales_region_code,
+
+            JSON_VALUE(a.extra_props, '$.reason') AS deal_reason,
+            SAFE_CAST(JSON_VALUE(a.extra_props, '$.vendor_promo_info.price') AS FLOAT64) AS cost_price_of_deal
         from (
             SELECT *
             FROM ${source.platinum}.marketplace_prd_product_v2_deal 
             where 
-                created_date >= (select DATE(start_date) from cte_date) 
+                created_date >= (select DATE(start_date) from cte_date)  
                 AND (JSON_VALUE(extra_props, "$.deal_tags.0") = "NORMAL_DEAL" OR JSON_VALUE(extra_props, "$.deal_tags.0") IS NULL)
         ) a
             left join unnest(JSON_QUERY_ARRAY(a.skus)) as sku_json
@@ -90,7 +94,7 @@ WITH
             status = "ACTIVE"
             and (select current_timestamp_ from cte_date) between TIMESTAMP_ADD(start_time,INTERVAL 7 HOUR) and TIMESTAMP_ADD(end_time,INTERVAL 7 HOUR)
         qualify 
-            row_number() over (partition by code,sku_code,sales_region_code order by ingest_time desc) = 1
+            row_number() over (partition by sku_code,sales_region_code order by created_date desc) = 1
     )
 
 -- step 3: skus in step 1 join to sku_sales_region with key sku and sales_region_code (I want to modeling data with 1-1 dim_sku_sales_region_current in powerbi model layer)
@@ -104,7 +108,8 @@ WITH
                 when upper(b.promotion_type) = 'ABSOLUTE' then b.absolute_price
                 when upper(b.promotion_type) = 'PRICE' then b.campaign_price
                 else b.percentage_discount
-            end as campaign_value
+            end as campaign_value,
+            charge_fee
         from  ${ref('dim_sku_sales_region_current')} a
             cross join get_campaign_products b
         where
@@ -126,7 +131,10 @@ WITH
                 when upper(c.promotion_type) = 'ABSOLUTE' then c.absolute_price
                 when upper(c.promotion_type) = 'PRICE' then c.campaign_price
                 else c.percentage_discount
-            end as deal_value
+            end as deal_value,
+
+            -- deal_reason,
+            -- cost_price_of_deal
 
         from ${ref('dim_sku_sales_region_current')} a
             cross join get_deal_products c
@@ -148,18 +156,21 @@ WITH
             b.campaign_code,
             b.campaign_type,
             b.campaign_value,
+            b.charge_fee,
             c.deal_code,
             c.deal_type,
             c.deal_value,
             c.charge_deal_fee,
             c.max_discount_value,
+            -- c.deal_reason,
+            -- c.cost_price_of_deal
         from ${ref('dim_sku_sales_region_current')} a
             left join sku_campaign_table b on a.sku_code = b.sku_code and a.sales_region_code = b.sales_region_code
             left join sku_deal_table c on a.sku_code = c.sku_code and a.sales_region_code = c.sales_region_code
         where
             campaign_code is not null
             or deal_code is not null
-        qualify row_number() over (partition by a.sku_code, a.sales_region_code) = 1
+        qualify row_number() over (partition by a.sku_code, a.sales_region_code ) = 1
     )
 
 -- step 6: Calculate promotion price accorrding to logic.
