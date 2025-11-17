@@ -1,0 +1,25 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `Customer in the Vietnam marketplace.`,
+    tags: ['AI_THUOCSI_VN']
+}
+
+SELECT
+    customer_id
+    , customer_name
+    , customer_status
+    , business_scope
+    , customer_tag_group AS customer_tag_priority
+    , customer_tag_sub_group AS customer_tag_sub_priority
+    -- , customer_level
+FROM ${ref('gold_buymed_vn2', 'dim_customer')}
+UNION ALL
+SELECT
+    1000000 + beneficiary_id
+    , name
+    , status
+    , "HOSPITAL"
+    , "TENDER"
+    , "TENDER"
+FROM platinum_buymed_vn.tender_prd_core_tender_beneficiaries

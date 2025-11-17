@@ -1,0 +1,20 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `Product-SKU in the Vietnam marketplace.`,
+    tags: ['AI_THUOCSI_VN']
+}
+
+SELECT
+    s.product_id
+    , s.product_name
+    , s.sku_code
+    , s.sku_key
+    , s.seller_code
+    , s.seller_class
+    , product_category AS product_category_CAT1
+    , brand
+    , manufacturer_short_name AS manufacturer_name
+    , country_origin
+FROM ${ref('gold_buymed_vn2', 'dim_sku')} AS s
+    LEFT JOIN ${ref('gold_buymed_vn2', 'dim_product')} AS p ON s.product_id = p.product_id

@@ -22,6 +22,10 @@ WITH
                 WHEN a.source IN ('brand-portal', 'clinic-portal') OR customer_id IN (360299, 360439, 375375) THEN 'TENDER'
                 ELSE 'MARKETPLACE'
             END AS channel,
+            CASE
+                WHEN SAFE_CAST(a.customer_ward_code AS integer) > 0 THEN a.customer_ward_code
+                ELSE a.customer_district_code
+            END AS shipping_ward_code,
         FROM ${source.platinum}.marketplace_prd_order_v2_order AS a
         WHERE 1=1
             AND created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 2 MONTH
@@ -35,6 +39,10 @@ WITH
             , total_amount
             , IF(status = 'CANCELLED','CANCEL', status) AS status
             , 'TENDER' AS channel
+            , CASE
+                WHEN SAFE_CAST(a.ward_code AS integer) > 0 THEN a.ward_code
+                ELSE a.district_code
+            END AS shipping_ward_code,
         FROM ${source.platinum}.tender_prd_core_tender_orders AS a
         WHERE 1=1
             AND created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 2 MONTH
@@ -46,6 +54,7 @@ SELECT
     , o.delivered_time
     , a.order_id
     , a.product_id
+    , CONCAT(a.product_id, "_", a.seller_code) AS sku_key
     -- , a.sku
     , a.total_price
     , a.price * a.outbound_quantity AS total_outbound
@@ -53,9 +62,14 @@ SELECT
     , o.channel
     , o.customer_id
     , o.status AS order_status
+    , g.ward_name
+    , g.district_name
+    , g.province_name
+    , g.region_name
 FROM ${source.platinum}.marketplace_prd_order_v2_order_item AS a
     LEFT JOIN ${source.platinum}.seller_prd_core_seller AS s ON a.seller_code = s.code
     LEFT JOIN fact_order AS o ON a.order_id = o.order_id
+    LEFT JOIN ${ref('gold_buymed_vn2','dim_geo_location')} AS g ON o.shipping_ward_code = g.location_code
 WHERE 1=1
     AND a.created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 2 MONTH
     AND o.status <> "CANCEL"
@@ -63,19 +77,25 @@ UNION ALL
 SELECT
     a.created_date
     , DATETIME(a.created_time, "+7") AS created_time
-    , b.delivered_time
+    , o.delivered_time
     , a.order_id
     , a.product_id
+    , CONCAT(a.product_id, "_", a.seller_code) AS sku_key
     -- , a.sku_code
     , a.total_amount
     , COALESCE(SAFE_CAST(JSON_VALUE(a.extra_props, "$.completed_quantity")  AS INT64), quantity) * price AS total_outbound
     , "INTERNAL" AS seller_class
-    , b.channel
-    , b.customer_id
-    , b.status AS order_status
+    , o.channel
+    , o.customer_id
+    , o.status AS order_status
+    , g.ward_name
+    , g.district_name
+    , g.province_name
+    , g.region_name
 FROM ${source.platinum}.tender_prd_core_tender_order_items AS a
-    LEFT JOIN fact_order AS b ON a.order_id = b.order_id
+    LEFT JOIN fact_order AS o ON a.order_id = o.order_id
+    LEFT JOIN ${ref('gold_buymed_vn2','dim_geo_location')} AS g ON o.shipping_ward_code = g.location_code
 WHERE 1=1
     AND a.created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 2 MONTH
-    AND b.status <> "CANCEL"
+    AND o.status <> "CANCEL"
 
