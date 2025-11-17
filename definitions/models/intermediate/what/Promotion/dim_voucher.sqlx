@@ -63,7 +63,7 @@ SELECT
     , REGEXP_REPLACE(JSON_VALUE(v.extra_props, '$.condition_description'), r'\\n|\\|<[^>]*>|&nbsp;', '') AS condition_description
     , SAFE_CAST(JSON_VALUE(v.and_conditions, '$.ORDER_VALUE.or_conditions.0.order_condition.min_sku_quantity') AS INT64) AS min_sku_quantity
     , SAFE_CAST(JSON_VALUE(v.and_conditions, '$.ORDER_VALUE.or_conditions.0.order_condition.min_total_price') AS INT64) AS min_total_price
-    , applied_customers IS NULL/* AND u.voucher_code IS NULL */ AS all_customer 
+    , applied_customers IS NULL AND customer_apply_type = "ALL"  AS all_customer 
     , scopes
     , JSON_QUERY(and_conditions, "$.ORDER_VALUE") IS NOT NULL AS is_order_value_condition
 FROM ${source.platinum}.marketplace_prd_promotion_voucher AS v
