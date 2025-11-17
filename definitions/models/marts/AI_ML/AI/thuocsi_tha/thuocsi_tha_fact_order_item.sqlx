@@ -44,7 +44,7 @@ SELECT
     , s.seller_class
     , o.customer_id
     , o.status AS order_status
-    , o.total_discount
+    , o.total_discount / COUNT(1) OVER(PARTITION BY a.order_id) AS total_discount
 FROM platinum_buymed_th.marketplace_prd_order_v2_order_item AS a
     LEFT JOIN platinum_buymed_th.seller_prd_core_seller AS s ON a.seller_code = s.code
     LEFT JOIN fact_order AS o ON a.order_id = o.order_id
