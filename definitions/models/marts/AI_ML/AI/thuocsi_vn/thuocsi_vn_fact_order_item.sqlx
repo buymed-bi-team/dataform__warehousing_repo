@@ -26,6 +26,7 @@ WITH
                 WHEN SAFE_CAST(a.customer_ward_code AS integer) > 0 THEN a.customer_ward_code
                 ELSE a.customer_district_code
             END AS shipping_ward_code,
+            total_discount
         FROM ${source.platinum}.marketplace_prd_order_v2_order AS a
         WHERE 1=1
             AND created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 2 MONTH
@@ -43,6 +44,7 @@ WITH
                 WHEN SAFE_CAST(a.ward_code AS integer) > 0 THEN a.ward_code
                 ELSE a.district_code
             END AS shipping_ward_code,
+            0
         FROM ${source.platinum}.tender_prd_core_tender_orders AS a
         WHERE 1=1
             AND created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 2 MONTH
@@ -66,6 +68,7 @@ SELECT
     , g.district_name
     , g.province_name
     , g.region_name
+    , total_discount
 FROM ${source.platinum}.marketplace_prd_order_v2_order_item AS a
     LEFT JOIN ${source.platinum}.seller_prd_core_seller AS s ON a.seller_code = s.code
     LEFT JOIN fact_order AS o ON a.order_id = o.order_id
@@ -92,6 +95,7 @@ SELECT
     , g.district_name
     , g.province_name
     , g.region_name
+    , total_discount
 FROM ${source.platinum}.tender_prd_core_tender_order_items AS a
     LEFT JOIN fact_order AS o ON a.order_id = o.order_id
     LEFT JOIN ${ref('gold_buymed_vn2','dim_geo_location')} AS g ON o.shipping_ward_code = g.location_code
