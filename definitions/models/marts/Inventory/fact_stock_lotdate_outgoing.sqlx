@@ -43,6 +43,7 @@ SELECT
     , b.fc_code
     , JSON_VALUE(b1.lot) as lot
     , JSON_VALUE(b1.exp_date) as expired_date
+    , JSON_VALUE(b1.po_code) as po_code
     , COALESCE(d.parent_location_code, JSON_VALUE(b2.location_code)) as location
     , d.location_code
     , d.location_fc_code
