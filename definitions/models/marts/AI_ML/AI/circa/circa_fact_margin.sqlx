@@ -13,6 +13,7 @@ WITH
         FROM ${ref('gold_buymed_vn2','cos_fact_order_item')} AS i
         LEFT JOIN ${ref('gold_buymed_vn2', 'cos_return_completed_detail')} AS rt 
             ON i.order_id = rt.order_id AND i.product_id = rt.product_id AND i.lot_date = rt.lot_date AND i.sku_code = rt.sku_code
+        WHERE owner_name = 'CIRCA'
         GROUP BY ALL
     )
 
