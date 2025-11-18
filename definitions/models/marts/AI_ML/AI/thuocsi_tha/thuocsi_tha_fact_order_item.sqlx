@@ -9,6 +9,8 @@ WITH
     fact_order AS ( 
         SELECT
             created_date
+            , FORMAT_DATE("%Y-%m", created_date ) AS year_month
+            , DATE_TRUNC(created_date, MONTH) AS som
             , DATETIME(created_time, "+7") AS created_time
             , DATETIME(a.delivered_time, "+7") AS delivered_time
             , order_id
@@ -19,7 +21,8 @@ WITH
             , total_discount
         FROM platinum_buymed_th.marketplace_prd_order_v2_order AS a
         WHERE 1=1
-            AND created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 2 MONTH
+            -- AND created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 2 MONTH
+            AND status <> "CANCEL"
     ),
 
     delivery AS (
@@ -31,25 +34,68 @@ WITH
             AND created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 2 MONTH
             AND type = "DELIVERY"
         GROUP BY 1
+    ),
+
+    order_item AS  (
+        SELECT
+            a.created_date
+            , DATETIME(a.created_time, "+7") AS created_time
+            , COALESCE(d.delivered_time, o.delivered_time) AS delivered_time
+            , a.order_id
+            , a.product_id
+            , a.total_price
+            , a.price * a.outbound_quantity AS total_outbound
+            , s.seller_class
+            , o.customer_id
+            , o.status AS order_status
+            , o.total_discount / COUNT(1) OVER(PARTITION BY a.order_id) AS total_discount
+        FROM platinum_buymed_th.marketplace_prd_order_v2_order_item AS a
+            LEFT JOIN platinum_buymed_th.seller_prd_core_seller AS s ON a.seller_code = s.code
+            LEFT JOIN fact_order AS o ON a.order_id = o.order_id
+            LEFT JOIN delivery AS d ON d.reference_code = o.sale_order_code
+        WHERE 1=1
+            AND a.created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 2 MONTH
+            AND o.created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 2 MONTH
+            -- AND o.status <> "CANCEL"
+    )
+
+    , new_customer AS (
+        SELECT
+            customer_id
+            , MIN_BY(year_month, created_date) AS first_order_year_month
+            , MIN_BY(som, created_date) AS first_order_som
+            , MIN(created_date) AS first_order_date
+            , "NEW" AS customer_active_type
+        FROM fact_order
+        GROUP BY ALL
+    )
+
+    , reapeat_customer AS (
+        SELECT
+            customer_id
+            , year_month
+            , som
+            , LEAD(som) over (PARTITION BY customer_id ORDER BY som DESC) AS before_som
+        FROM fact_order
+    )
+
+    , active_customer AS (
+        SELECT * , IF(DATE_DIFF(som, before_som, MONTH) = 1, "REPEAT", "REACQUIRED") AS customer_active_type
+        FROM reapeat_customer
+        WHERE som <> before_som
+        UNION ALL
+        SELECT * FROM new_customer
     )
 
 SELECT
-    a.created_date
-    , DATETIME(a.created_time, "+7") AS created_time
-    , COALESCE(d.delivered_time, o.delivered_time) AS delivered_time
-    , a.order_id
-    , a.product_id
-    , a.total_price
-    , a.price * a.outbound_quantity AS total_outbound
-    , s.seller_class
-    , o.customer_id
-    , o.status AS order_status
-    , o.total_discount / COUNT(1) OVER(PARTITION BY a.order_id) AS total_discount
-FROM platinum_buymed_th.marketplace_prd_order_v2_order_item AS a
-    LEFT JOIN platinum_buymed_th.seller_prd_core_seller AS s ON a.seller_code = s.code
-    LEFT JOIN fact_order AS o ON a.order_id = o.order_id
-    LEFT JOIN delivery AS d ON d.reference_code = o.sale_order_code
-WHERE 1=1
-    AND a.created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 2 MONTH
-    AND o.status <> "CANCEL"
+    oi.*
+    , COALESCE(ac.customer_active_type, ac1.customer_active_type) AS customer_active_type
+FROM order_item AS oi
+    LEFT JOIN active_customer AS ac 
+        ON DATE_TRUNC(oi.created_date, MONTH) = ac.som AND oi.customer_id = ac.customer_id AND ac.customer_active_type <> "NEW"
+    LEFT JOIN active_customer AS ac1
+        ON oi.created_date = ac1.before_som AND oi.customer_id = ac1.customer_id AND ac1.customer_active_type = "NEW"
+
+
+
 
