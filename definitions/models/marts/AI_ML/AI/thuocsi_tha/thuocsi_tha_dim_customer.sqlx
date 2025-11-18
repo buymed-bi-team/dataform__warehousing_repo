@@ -1,0 +1,14 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `All orders item in the Thailand marketplace.`,
+    tags: ['AI_THUOCSI_TH']
+}
+
+SELECT
+    customer_id
+    , customer_name
+    , user_system_status AS customer_status
+    , business_type AS business_scope
+    , level AS customer_level
+FROM `lakehouse-prod-394907.gold_buymed_th.dim_customer`

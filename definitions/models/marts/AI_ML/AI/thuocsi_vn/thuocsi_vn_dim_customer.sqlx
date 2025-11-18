@@ -12,7 +12,7 @@ SELECT
     , business_scope
     , customer_tag_group AS customer_tag_priority
     , customer_tag_sub_group AS customer_tag_sub_priority
-    -- , customer_level
+    , customer_level
 FROM ${ref('gold_buymed_vn2', 'dim_customer')}
 UNION ALL
 SELECT
@@ -20,6 +20,7 @@ SELECT
     , name
     , status
     , "HOSPITAL"
+    , "TENDER"
     , "TENDER"
     , "TENDER"
 FROM platinum_buymed_vn.tender_prd_core_tender_beneficiaries

@@ -1,0 +1,22 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `All orders item in the Thailand marketplace.`,
+    tags: ['AI_THUOCSI_TH']
+}
+
+SELECT
+    s.product_id
+    , s.product_name
+    , s.sku_code
+    -- , s.sku_key
+    , s.seller_code
+    , sl.seller_class
+    , sl.name AS seller_name
+    , p.product_industry AS product_category
+    , p.brand
+    , p.manufacturer AS manufacturer_name
+    , p.origin
+FROM `lakehouse-prod-394907.gold_buymed_th.dim_sku` AS s
+    LEFT JOIN `lakehouse-prod-394907.gold_buymed_th.dim_product` AS p ON s.product_id = p.product_id
+    LEFT JOIN lakehouse-prod-394907.platinum_buymed_th.seller_prd_core_seller AS sl ON sl.code = s.seller_code

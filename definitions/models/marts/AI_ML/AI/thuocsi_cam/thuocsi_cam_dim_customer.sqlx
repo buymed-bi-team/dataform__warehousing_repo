@@ -1,0 +1,14 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `Customers in the Cambodia marketplace.`,
+    tags: ['AI_THUOCSI_CAM']
+}
+
+SELECT
+    customer_id
+    , customer_name
+    , user_system_status AS customer_status
+    , business_scope
+    , customer_level
+FROM `lakehouse-prod-394907.gold_buymed_cam.dim_customer`
