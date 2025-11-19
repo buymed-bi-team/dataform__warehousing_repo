@@ -20,7 +20,7 @@ WITH
 SELECT
     o.date
     , o.order_id
-    , o.gmv_circa
+    , SUM(o.gmv_circa) AS gmv_circa
     , o.pos_name
     , o.pos_type
     , cogs.cogs AS total_cost

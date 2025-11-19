@@ -5,24 +5,54 @@ config {
     tags: ['AI_CIRCA']
 }
 
+WITH 
+    fact_order AS (
+        SELECT
+            o.completed_date AS date
+            , o.order_id
+            , o.entity_id AS customer_id
+            , o.client_id
+            , o.pos_id
+            , p.name AS pos_name
+            , IF(p.type = "FS", "FS", "COS") AS pos_type
+            -- , o.total_item_amount
+            , COALESCE(o.medicine_cutting_fee, 0) AS medicine_cutting_fee
+            -- , COALESCE(r.total_return_amount, 0) AS total_return_amount
+            -- , o.total_item_amount + o.medicine_cutting_fee - COALESCE(r.total_return_amount, 0) AS gmv_circa
+        FROM ${ref('gold_buymed_vn2','cos_fact_order')} AS o
+            -- LEFT JOIN (
+            --     SELECT order_id, SUM(COALESCE(gmv_return, 0)) AS total_return_amount
+            --     FROM ${ref('gold_buymed_vn2','cos_return_completed')}
+            --     GROUP BY 1
+            -- ) AS r ON o.order_id = r.order_id
+            LEFT JOIN buymed_circa_v2.entity_pos_profile AS p ON o.pos_code = p.code
+        WHERE o.completed_date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 1 MONTH)
+            AND o.status IN ('COMPLETED', 'COMPLETED_SHIPPING')
+    ),
+
+    fact_order_item AS (
+        SELECT
+            o.date
+            , o.order_id
+            , o.customer_id
+            , o.client_id
+            , o.pos_id
+            , o.pos_name
+            , o.pos_type
+            , oi.product_id
+            -- , oi.total_item_amount
+            , oi.unit_price * oi.quantity AS total_item_amount
+            , o.medicine_cutting_fee / COUNT(1) OVER(PARTITION BY oi.order_id) AS medicine_cutting_fee
+            , COALESCE(oi.unit_price * rt.quantity, 0) AS total_return_amount
+            , CONCAT(oi.client_id, "_", oi.product_id) AS product_id_key
+        FROM ${ref('gold_buymed_vn2','cos_fact_order_item')} AS oi
+            LEFT JOIN fact_order AS o ON oi.order_id = o.order_id
+            LEFT JOIN ${ref('gold_buymed_vn2', 'cos_return_completed_detail')} AS rt 
+                ON oi.order_id = rt.order_id AND oi.product_id = rt.product_id AND oi.lot_date = rt.lot_date AND oi.sku_code = rt.sku_code
+    )
+
 SELECT
-    o.completed_date AS date
-    , o.order_id
-    , o.entity_id AS customer_id
-    , o.client_id
-    , o.pos_id
-    , p.name AS pos_name
-    , IF(p.type = "FS", "FS", "COS") AS pos_type
-    , o.total_item_amount
-    , COALESCE(o.medicine_cutting_fee, 0) AS medicine_cutting_fee
-    , COALESCE(r.total_return_amount, 0) AS total_return_amount
-    , o.total_item_amount + o.medicine_cutting_fee - COALESCE(r.total_return_amount, 0) AS gmv_circa
-FROM ${ref('gold_buymed_vn2','cos_fact_order')} AS o
-    LEFT JOIN (
-        SELECT order_id, SUM(COALESCE(gmv_return, 0)) AS total_return_amount
-        FROM ${ref('gold_buymed_vn2','cos_return_completed')}
-        GROUP BY 1
-    ) AS r ON o.order_id = r.order_id
-    LEFT JOIN buymed_circa_v2.entity_pos_profile AS p ON o.pos_code = p.code
-WHERE o.completed_date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 1 MONTH)
-    AND o.status IN ('COMPLETED', 'COMPLETED_SHIPPING')
+    *
+    , total_item_amount + medicine_cutting_fee - total_return_amount AS gmv_circa
+FROM fact_order_item
+

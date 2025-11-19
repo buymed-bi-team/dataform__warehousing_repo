@@ -1,0 +1,18 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `Margin of Circa COS.`,
+    tags: ['AI_CIRCA']
+}
+
+SELECT 
+  client_id
+  , product_id
+  , product_name
+  , product_category
+  , volumes
+  , unit
+  , manufacture_name
+  , CONCAT(client_id, "_", product_id) AS product_id_key
+FROM ${ref('gold_buymed_vn2', 'cos_dim_product')}
+QUALIFY ROW_NUMBER() OVER(PARTITION BY product_id_key) = 1
