@@ -1,0 +1,23 @@
+config {
+    type: "table",
+    description: `PIC: huyen.ngo; model_type: Table ;schedule: At 10h30`,
+    tags: ["10h30"],
+    name: "cos_product_assortment",
+    columns: {/*
+        */
+        
+    }
+}
+
+
+Select distinct
+       o.id
+      ,name
+      ,product_id
+      ,product_name
+      ,i.status
+      ,i.purchase_status
+      ,datetime_add(i.created_at, interval 7 hour) as created_at
+      ,datetime_add(i.updated_at, interval 7 hour) as updated_at
+from buymed_circa_v2.product_assortment_template o 
+left join buymed_circa_v2.product_assortment_template_items i on o.id = i.assortment_template_id
