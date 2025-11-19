@@ -1,0 +1,12 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `Customers of Circa COS.`,
+    tags: ['AI_CIRCA']
+}
+
+SELECT
+  id AS customer_id
+  , name AS customer_name
+  , gender
+FROM `buymed_circa_v2.entity_customer`
