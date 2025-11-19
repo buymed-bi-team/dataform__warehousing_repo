@@ -1,5 +1,5 @@
 config {
-    type: "table", 
+    type: "view", 
     disabled: true,
     description: 
         `PIC: tu.dang; 
@@ -16,10 +16,8 @@ config {
             buymed_circa.product_efficacy,
             buymed_circa.product_manufacturer
         `,
-    tags: ["adhoc-office"],
-    columns: {
+   // tags: ["adhoc-office"],
 
-    }
 /*    ,
 
     assertions: {
