@@ -137,6 +137,7 @@ popular_product as (
 select distinct timestamp_add(current_timestamp(), interval 7 hour) as transformed_at
                ,pd.product_id
                ,pd.* except (product_id)
+               ,case when e.product_id is not null then 1 else 0 end as is_essential
           --   ,a.unit as retail_unit
                ,cr.convert_rate
                ,cr.convert_unit 
@@ -164,7 +165,8 @@ left join convert_unit cr on pd.product_id = cr.product_id and pd.client_id = cr
 left join sub_cat on pd.product_id = sub_cat.product_id
 left join brand_type_add ba on pd.product_id = ba.product_id
 left join popular_product pop on pd.product_id = pop.product_id
-where product_name not like "%[Removed]%"
+left join ${source.ref}.cos_product_essential e on pd.product_id = e.product_id and pd.client_id = e.client_id 
+where pd.product_name not like "%[Removed]%"
         --and pd.product_id = 1112
        --and pd.product_id = 16149
 -- WHERE p.product_id>=1
