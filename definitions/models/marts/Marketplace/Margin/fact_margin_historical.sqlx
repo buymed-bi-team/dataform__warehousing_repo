@@ -29,7 +29,7 @@ WITH
         ) AS a
             LEFT JOIN (
                 SELECT *
-                FROM ${ref('warehouse_prd_core_delivery_order')}
+                FROM ${ref('platinum_buymed_vn','warehouse_prd_core_delivery_order')}
                 WHERE created_date BETWEEN "2024-01-01" AND "2025-01-31"
             ) AS b 
                 ON a.do_code = b.delivery_order_code

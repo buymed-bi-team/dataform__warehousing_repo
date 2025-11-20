@@ -63,7 +63,7 @@ WITH
         ) AS a
             LEFT JOIN (
                 SELECT *
-                FROM ${ref('warehouse_prd_core_delivery_order')}
+                FROM ${ref('platinum_buymed_vn','warehouse_prd_core_delivery_order')}
                 WHERE created_date >= (SELECT target_date FROM cte_date)
             ) AS b 
                 ON a.do_code = b.delivery_order_code
