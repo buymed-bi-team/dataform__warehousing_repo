@@ -171,11 +171,11 @@ with
                     when retail_price_type = "FIXED_PRICE" and retail_price_value > 1 then retail_price_value
                     when retail_price_type = "CUSTOM_FEE" and retail_price_value > 1 then
                         CASE
-                            WHEN fee_code = '1BRTE9AQ1PG' THEN retail_price_value + platform_fee
-                            WHEN fee_code = '3WQD9UBW961' THEN retail_price_value + logistic_fee
-                            ELSE retail_price_value + platform_fee + logistic_fee
+                            WHEN fee_code = '1BRTE9AQ1PG' THEN GREATEST(retail_price_value + platform_fee, retail_price_value)
+                            WHEN fee_code = '3WQD9UBW961' THEN GREATEST(retail_price_value + logistic_fee, retail_price_value)
+                            ELSE GREATEST(retail_price_value + platform_fee + logistic_fee, retail_price_value)
                         END
-                    when retail_price_value > 1 then retail_price_value + platform_fee + logistic_fee
+                    when retail_price_value > 1 then GREATEST(retail_price_value + platform_fee + logistic_fee, retail_price_value)
                 end,
                 -2
             ) as display_price
