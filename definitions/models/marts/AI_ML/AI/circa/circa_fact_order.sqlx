@@ -30,7 +30,9 @@ WITH
             -- ) AS r ON o.order_id = r.order_id
             LEFT JOIN buymed_circa_v2.entity_pos_profile AS p ON o.pos_code = p.code
             LEFT JOIN ${ref('gold_buymed_vn2','dim_geo_location')} AS g ON g.location_code = COALESCE(p.ward, p.district, p.province)
-        WHERE o.completed_date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 1 MONTH)
+        WHERE 1=1
+            AND o.completed_date IS NOT NULL
+            -- AND o.completed_date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 1 MONTH)
             AND o.status IN ('COMPLETED', 'COMPLETED_SHIPPING')
     ),
 
@@ -56,10 +58,90 @@ WITH
             LEFT JOIN fact_order AS o ON oi.order_id = o.order_id
             LEFT JOIN ${ref('gold_buymed_vn2', 'cos_return_completed_detail')} AS rt 
                 ON oi.order_id = rt.order_id AND oi.product_id = rt.product_id AND oi.lot_date = rt.lot_date AND oi.sku_code = rt.sku_code
+    ),
+
+    orders_weekly AS (
+        SELECT
+            DATE_TRUNC(o.date, WEEK(MONDAY)) AS week_start
+            , FORMAT_DATE('%Y_W%W', o.date) AS week_label
+            , o.customer_id
+        FROM fact_order AS o
+            LEFT JOIN buymed_circa_v2.entity_customer AS c ON o.customer_id = c.id
+        WHERE 1=1
+            AND o.client_id = 1
+            AND o.customer_id <> '00000000-0000-0000-0000-000000000000'
+            AND c.phone_number IS NOT NULL
+            AND c.phone_number <> ""
+            AND REGEXP_REPLACE(c.phone_number, '0','') <> ""
+    ),
+
+    customer_first_order AS (
+        SELECT DISTINCT
+            customer_id
+            , MIN(week_start) AS first_week
+        FROM orders_weekly
+        GROUP BY 1
+    ),
+
+    customer_weeks AS (
+        SELECT DISTINCT
+            o.customer_id
+            , o.week_start
+            , o.week_label
+            , c.first_week
+        FROM orders_weekly o
+        LEFT JOIN customer_first_order c
+            ON o.customer_id = c.customer_id
+    ),
+
+    labeled_customers AS (
+        SELECT
+            cw.customer_id
+            , cw.week_label
+            , cw.week_start
+            , CASE WHEN cw.week_start = cw.first_week THEN 1 ELSE 0 END AS is_new
+            , CASE WHEN EXISTS (
+                SELECT 1
+                FROM customer_weeks prev
+                WHERE prev.customer_id = cw.customer_id
+                AND prev.week_start = cw.week_start - INTERVAL 7 DAY
+            ) THEN 1 ELSE 0 END AS is_repeat
+            ,CASE
+                WHEN EXISTS (
+                    SELECT 1
+                    FROM customer_weeks prev
+                    WHERE prev.customer_id = cw.customer_id
+                    AND prev.week_start < cw.week_start - INTERVAL 7 DAY
+                )
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM customer_weeks prev
+                    WHERE prev.customer_id = cw.customer_id
+                    AND prev.week_start = cw.week_start - INTERVAL 7 DAY
+                )
+            THEN 1 ELSE 0 END AS is_reacquire
+        FROM customer_weeks cw
+    ),
+
+    active_customer AS (
+        SELECT
+            week_label
+            , week_start
+            , customer_id
+            , CASE
+                WHEN is_new = 1 THEN 'NEW'
+                WHEN is_repeat = 1 THEN 'REPEAT'
+                WHEN is_reacquire = 1 THEN 'REACQUIRED'
+            END AS customer_active_type
+        FROM labeled_customers
     )
 
 SELECT
-    *
-    , total_item_amount + medicine_cutting_fee - total_return_amount AS gmv_circa
-FROM fact_order_item
+    oi.*
+    , oi.total_item_amount + oi.medicine_cutting_fee - oi.total_return_amount AS gmv_circa
+    , ac.customer_active_type
+FROM fact_order_item AS oi
+    LEFT JOIN active_customer AS ac 
+        ON oi.customer_id = ac.customer_id
+        AND DATE_TRUNC(oi.date, WEEK(MONDAY)) = ac.week_start
 
