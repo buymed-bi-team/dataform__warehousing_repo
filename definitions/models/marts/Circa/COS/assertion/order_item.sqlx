@@ -1,0 +1,55 @@
+config {
+    name: "cos_order_item_asssertion",
+    type: "assertion",
+    description: "PIC: minh.luu & huyen.ngo",
+    disabled: true, // In Processing
+    tags: ["alert_dataform"]
+}
+js {
+    const completed_date = `CURRENT_DATE() - INTERVAL 3 MONTH`;
+}
+
+with bypass_case as (
+    SELECT
+        *
+    FROM (
+        SELECT           CAST(NULL AS INT64) AS product_id    , ""    AS reason                                   , "" AS link 
+        UNION ALL SELECT 74170                                , "thường xuyên nhầm lẫn giữa hộp lớn và hộp nhỏ"   , "https://admin.v2.circa.vn/quan-ly-san-pham-pos?product=74170"
+        UNION ALL SELECT 2731                                 , "thường xuyên nhầm lẫn giữa hộp lớn và hộp nhỏ"   , ""
+    )
+    WHERE product_id IS NOT NULL
+)
+, gold_layer as (
+    SELECT DISTINCT 
+        o.client_id, 
+        o.completed_date, 
+        o.order_id,
+        o.order_code, 
+        p.name as pos_name, 
+        product_id,
+        unit, 
+        sum(quantity) as total_qty_transform
+    FROM ${ref(`cos_fact_order_item`)} i
+    LEFT JOIN ${ref(`cos_fact_order`)} o ON i.order_id = o.order_id
+    LEFT JOIN ${ref(`circa_pos_profile`)} p ON o.pos_id = p.id
+    GROUP BY ALL
+), platinum_layer as (
+    SELECT DISTINCT 
+        order_id, 
+        product_id, 
+        unit, 
+        sum(quantity) as total_qty_raw
+    FROM `buymed_circa_v2.order_order_item`
+    GROUP BY ALL
+)
+SELECT a.* except(client_id,order_id ), b.total_qty_raw 
+FROM gold_layer a
+LEFT JOIN platinum_layer b 
+    ON a.order_id = b.order_id 
+    AND a.product_id = b.product_id 
+    AND a.unit = b.unit
+WHERE a.client_id = 1
+    AND total_qty_transform <> total_qty_raw
+    AND a.product_id NOT IN (SELECT product_id FROM bypass_case)
+    AND completed_date >= ${completed_date}
+WINDOW w AS ( order by completed_date desc, order_code )
