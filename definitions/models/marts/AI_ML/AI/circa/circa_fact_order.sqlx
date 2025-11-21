@@ -149,4 +149,3 @@ FROM fact_order_item AS oi
     LEFT JOIN active_customer AS ac 
         ON oi.customer_id = ac.customer_id
         AND DATE_TRUNC(oi.date, WEEK(MONDAY)) = ac.week_start
-

@@ -5,21 +5,40 @@ config {
     tags: ['AI_CIRCA']
 }
 
-WITH inventory_by_pos AS (
-  SELECT
-    pos_id,
-    SUM(on_hand_quantity) AS stock_quantity,
-    SUM(on_hand_quantity * COALESCE(cost_price_include_tax, 0)) AS stock_value
-  FROM ${ref('gold_buymed_vn2', 'cos_fact_inventory')}
-  WHERE pos_id IS NOT NULL
-  GROUP BY pos_id
-)
+WITH 
+  inventory_by_pos AS (
+    SELECT
+      pos_id,
+      SUM(on_hand_quantity) AS stock_quantity,
+      SUM(on_hand_quantity * COALESCE(cost_price_include_tax, 0)) AS stock_value
+    FROM ${ref('gold_buymed_vn2', 'cos_fact_inventory')}
+    WHERE pos_id IS NOT NULL
+    GROUP BY 1
+  ),
+
+  avg_demand_l30d AS (
+    SELECT
+      o.pos_id
+      , SUM(oi.base_quantity) / 30 AS avg_base_quantity
+      , SUM(oi.quantity * oi.unit_price) /30 AS  avg_amount
+    FROM ${ref('gold_buymed_vn2', 'cos_fact_order_item')} AS oi
+      LEFT JOIN ${ref('gold_buymed_vn2', 'cos_fact_order')} AS o ON oi.order_id = o.order_id
+    WHERE 1=1
+      AND o.completed_date IS NOT NULL
+      AND o.completed_date BETWEEN CURRENT_DATE("+7") - 30 AND CURRENT_DATE("+7") - 1
+      AND o.status IN ('COMPLETED', 'COMPLETED_SHIPPING')
+    GROUP BY 1
+  )
+
 SELECT
   COALESCE(p.name, i.pos_id) AS pos_name,
-  -- COALESCE(p.code, i.pos_id) AS pos_code,
   IF(p.type = "FS", "FS", "COS") AS pos_type,
   i.stock_quantity,
-  i.stock_value
-FROM inventory_by_pos i
-LEFT JOIN `buymed_circa_v2.entity_pos_profile` p ON i.pos_id = p.id
+  i.stock_value,
+  a.avg_base_quantity,
+  a.avg_amount
+FROM inventory_by_pos AS i
+  LEFT JOIN `buymed_circa_v2.entity_pos_profile` AS p ON i.pos_id = p.id
+  LEFT JOIN avg_demand_l30d AS a ON i.pos_id = a.pos_id
+WHERE a.avg_base_quantity > 0
 ORDER BY i.stock_value DESC
