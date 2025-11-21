@@ -1,0 +1,17 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `Margin of the Thailand marketplace.`,
+    tags: ['AI_THUOCSI_TH']
+}
+
+SELECT
+    created_date
+    , order_id
+    , main_product_id AS product_id
+    , SUBSTRING(main_item_code, 1, LENGTH(main_item_code)-2) AS sku_code
+    , SUM(outbound_quantity * price) AS total_price
+    , SUM(outbound_quantity * (price - purchase_price_final_rebate)) AS profit
+FROM gold_buymed_th.fact_fin_tl_margin
+WHERE created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 2 MONTH
+GROUP BY ALL

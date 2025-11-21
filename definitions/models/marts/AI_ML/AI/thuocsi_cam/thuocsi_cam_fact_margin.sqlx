@@ -1,0 +1,21 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `Margin of the Cambodia marketplace.`,
+    tags: ['AI_THUOCSI_CAM']
+}
+
+SELECT
+    DATETIME(o.confirmation_date, "+7") AS date
+    , oi.order_id
+    , oi.sku AS sku_code
+    , oi.total_price
+    , oi.total_price - oi.total_seller_revenue AS profit
+FROM platinum_buymed_cam.marketplace_prd_order_v2_order_item AS oi
+  LEFT JOIN platinum_buymed_cam.marketplace_prd_order_v2_order AS o ON oi.order_id = o.order_id
+WHERE 1=1 
+    AND oi.created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 2 MONTH
+    AND o.created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 2 MONTH
+    AND o.confirmation_date IS NOT NULL
+    AND o.status <> "CANCEL"
+    AND outbound_quantity > 0
