@@ -28,7 +28,8 @@ with bypass_case as (
         p.name as pos_name, 
         product_id,
         unit, 
-        sum(quantity) as total_qty_transform
+        sum(quantity) as total_qty_transform,
+        -- ARRAY_AGG(  <tên field cho thông tin thêm/ tốt nhất là unique Key >      IGNORE NULLS order by created_time) extra_props 
     FROM ${ref(`cos_fact_order_item`)} i
     LEFT JOIN ${ref(`cos_fact_order`)} o ON i.order_id = o.order_id
     LEFT JOIN ${ref(`circa_pos_profile`)} p ON o.pos_id = p.id
@@ -49,7 +50,9 @@ LEFT JOIN platinum_layer b
     AND a.product_id = b.product_id 
     AND a.unit = b.unit
 WHERE a.client_id = 1
-    AND total_qty_transform <> total_qty_raw
+    AND total_qty_transform <> total_qty_raw -- -> quá strict, bên đội deb không hiểu được impact đối với value của business
+    -- nên so sánh GMV của từng sản phẩm như là value của bamgr nào 
+    -- ABS( value - value' ) / value > 5% 
     AND a.product_id NOT IN (SELECT product_id FROM bypass_case)
     AND completed_date >= ${completed_date}
 WINDOW w AS ( order by completed_date desc, order_code )
