@@ -157,13 +157,13 @@ select distinct
   --   o.code as order_code,
   ,oi.product_id
   ,oi.sku_code
-  ,sum(al.base_quantity / convert_rate) as quantity
+  ,case when oi.product_id = 1 then sum(oi.quantity) else  sum(al.base_quantity / convert_rate) end as quantity
   ,unit
   ,unit_price
   ,oi.discount_amount
   ,(oi.discount_amount + oi.unit_price) as unit_price_before_discount
   ,oi.lot_date
-  ,sum(al.base_quantity) as base_quantity
+  ,case when oi.product_id = 1 then  sum(oi.quantity) else sum(al.base_quantity) end as base_quantity
   ,oi.tax_rate
   ,oi.product_id || '_' || oi.lot_date || '_' || oi.tax_rate || '_' || o.client_id  as product_lot_date_vat_client_id
   ,oi.sku_code || '_' || oi.lot_date || '_' || oi.tax_rate as sku_lotdate_vat
