@@ -21,6 +21,7 @@ WITH
             , g.province_name
             -- , o.total_item_amount
             , COALESCE(o.medicine_cutting_fee, 0) AS medicine_cutting_fee
+            , o.discount_amount
             -- , COALESCE(r.total_return_amount, 0) AS total_return_amount
             -- , o.total_item_amount + o.medicine_cutting_fee - COALESCE(r.total_return_amount, 0) AS gmv_circa
         FROM ${ref('gold_buymed_vn2','cos_fact_order')} AS o
@@ -55,6 +56,7 @@ WITH
             -- , oi.total_item_amount
             , oi.unit_price * oi.quantity AS total_item_amount
             , o.medicine_cutting_fee / COUNT(1) OVER(PARTITION BY oi.order_id) AS medicine_cutting_fee
+            , o.discount_amount / COUNT(1) OVER(PARTITION BY oi.order_id) AS discount_amount
             , COALESCE(oi.unit_price * rt.quantity, 0) AS total_return_amount
             , CONCAT(oi.client_id, "_", oi.product_id) AS product_id_key
         FROM ${ref('gold_buymed_vn2','cos_fact_order_item')} AS oi
@@ -147,4 +149,3 @@ FROM fact_order_item AS oi
     LEFT JOIN active_customer AS ac 
         ON oi.customer_id = ac.customer_id
         AND DATE_TRUNC(oi.date, WEEK(MONDAY)) = ac.week_start
-

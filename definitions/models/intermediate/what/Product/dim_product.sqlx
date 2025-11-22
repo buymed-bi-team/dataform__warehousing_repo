@@ -183,6 +183,7 @@ WITH product_retail_unit AS (
       QUALIFY ROW_NUMBER() over (PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
   )
   
+  
   , essential AS (
       SELECT
           SAFE_CAST(code AS INT64) AS product_id
@@ -219,6 +220,18 @@ WITH product_retail_unit AS (
       QUALIFY ROW_NUMBER() over (PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
   )
 
+  , sub_brand AS (
+      SELECT
+          SAFE_CAST(code AS INT64) AS product_id
+          , INITCAP(NULLIF(value, "NAN")) AS sub_brand
+      FROM ${source.collector}.data_prd
+      WHERE DATE(submit_at) >= "2025-11-21"
+          AND submit_id >= 5818
+          AND object = "Product"
+          AND type = "SUB_BRAND"
+      QUALIFY ROW_NUMBER() over (PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
+  )
+
 SELECT
   ${utils.ToTimezone('current_timestamp()')} as transformed_at,
   ${utils.ToTimezone('product.created_time')} as product_created_at,
@@ -231,6 +244,7 @@ SELECT
   product.vat,
   -- product.brand,
   br.brand,
+  sb.sub_brand,
   JSON_VALUE(product.extra_props, "$.product_category_management") as brand_type,
   JSON_VALUE(product.extra_props, "$.product_status") as product_status,
   SAFE_CAST(JSON_VALUE(product.extra_props, "$.related_product_id") AS INT64) as related_product_id,
@@ -396,6 +410,7 @@ LEFT JOIN chronic AS chronic ON chronic.product_id = product.product_id
 LEFT JOIN essential AS essential ON essential.product_id = product.product_id
 LEFT JOIN atc3 AS a3 ON a3.product_id = product.product_id
 LEFT JOIN atc4 AS a4 ON a4.product_id = product.product_id
+LEFT JOIN sub_brand AS sb ON sb.product_id = product.product_id
 
 WHERE
     LOWER(product.name) NOT LIKE '%(bỏ)%'
