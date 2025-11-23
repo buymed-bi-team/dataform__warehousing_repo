@@ -74,6 +74,7 @@ where b.rn = 1
 ,cte_not_online as (
     select
         a.*
+        ,item_ref_id
         ,(a.discount_amount + a.unit_price) as unit_price_before_discount
         ,case when a.type = 'RETURN' then original_quantity * (-1) else original_quantity end as quantity
         ,case when a.type = 'RETURN' then base_quantity_original * (-1) else base_quantity_original end as base_quantity
@@ -95,6 +96,7 @@ where b.rn = 1
 cte_online as (
     select
         a.*
+        ,item_ref_id
         ,(a.discount_amount + a.unit_price) as unit_price_before_discount
         ,case when a.type = 'RETURN' then original_quantity * (-1) else original_quantity end as quantity
         ,case when a.type = 'RETURN' then base_quantity_original * (-1) else base_quantity_original end as base_quantity
@@ -120,6 +122,7 @@ cte_online as (
       ,order_id
       ,a.product_id
       ,sku_code
+      ,item_ref_id
       ,quantity 
       ,unit
       ,unit_price
@@ -157,13 +160,14 @@ select distinct
   --   o.code as order_code,
   ,oi.product_id
   ,oi.sku_code
-  ,case when oi.product_id = 1 then sum(oi.quantity) else  sum(al.base_quantity / convert_rate) end as quantity
+  ,al.item_ref_id
+  ,case when al.item_ref_id is null then sum(oi.quantity) else  sum(al.base_quantity / convert_rate) end as quantity
   ,unit
   ,unit_price
   ,oi.discount_amount
   ,(oi.discount_amount + oi.unit_price) as unit_price_before_discount
   ,oi.lot_date
-  ,case when oi.product_id = 1 then  sum(oi.quantity) else sum(al.base_quantity) end as base_quantity
+  ,case when al.item_ref_id is null then sum(oi.base_quantity) else sum(al.base_quantity) end as base_quantity
   ,oi.tax_rate
   ,oi.product_id || '_' || oi.lot_date || '_' || oi.tax_rate || '_' || o.client_id  as product_lot_date_vat_client_id
   ,oi.sku_code || '_' || oi.lot_date || '_' || oi.tax_rate as sku_lotdate_vat
