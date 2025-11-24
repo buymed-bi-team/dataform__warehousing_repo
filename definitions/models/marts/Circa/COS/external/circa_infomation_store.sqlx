@@ -1,0 +1,9 @@
+config {
+    name: "circa_infomation_store",
+    type: "table",
+    description: "PIC: minh.luu & giau.vo",
+    tags: ["00h00"]
+}
+
+SELECT *
+FROM buymed_external.circa_infomation_store
