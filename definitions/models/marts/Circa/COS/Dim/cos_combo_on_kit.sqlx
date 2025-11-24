@@ -1,0 +1,31 @@
+config {
+    type: "table",
+    description: `Last 13 month| PIC: huyen.ngo; model_type: Table ;schedule: At minute 10h30`,
+     tags: ["custom_1h_past10"],
+    name: "cos_combo_on_kit"
+}
+
+
+
+Select distinct timestamp_add(current_timestamp(), interval 7 hour) as transformed_at
+               ,datetime_add(o.created_at, interval 7 hour) as created_at
+               ,datetime_add(o.updated_at, interval 7 hour) as updated_at
+               ,o.order_id
+               ,o.quantity
+               ,o.product_id as combo_id 
+               ,o.combo_price
+               ,o.seller_code
+from  ${source.circa_os}.order_order_apply_combo o 
+where product_id in(
+                 999900196
+                ,999900178
+                ,999900190
+                ,999900192
+                ,999900194
+                ,999900193
+                )
+     and o.order_id in 
+        (
+        Select distinct order_id from ${source.ref}.cos_fact_order 
+        where  status in ('COMPLETED', 'COMPLETED_SHIPPING' )
+        )
