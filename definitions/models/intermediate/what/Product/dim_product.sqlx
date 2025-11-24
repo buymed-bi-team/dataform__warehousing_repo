@@ -92,30 +92,41 @@ Chú thích chi tiết:
         PROMOTION : Tất cả các sản phẩm khuyến mãi
         NORMAL    : Các Sản phẩm không theo nhóm trên
 */
-WITH product_retail_unit AS ( 
-  SELECT
-      product_id
-      , max(case when level = 1 then unit end) as level_1_unit,
-          sum(case when level = 1 then quantity end) as level_1_quantity,
-          max(case when level = 2 then unit end) as level_2_unit,
-          sum(case when level = 2 then quantity end) as level_2_quantity,
-          max(case when level = 3 then unit end) as level_3_unit,
-          sum(case when level = 3 then quantity end) as level_3_quantity,
-          max(case when level = 4 then unit end) as level_4_unit,
-          sum(case when level = 4 then quantity end) as level_4_quantity,
-          max(case when is_sale = true then unit end) as unit_sale_allowed
-  FROM (
+WITH 
+
+  convert_unit AS (
+    SELECT
+        product_id
+        , JSON_EXTRACT_SCALAR(ru.unit) as unit
+        , SAFE_CAST(JSON_EXTRACT_SCALAR(ru.level) AS INT64) as level
+        , SAFE_CAST(JSON_EXTRACT_SCALAR(ru.quantity) AS INT64) as quantity
+        , SAFE_CAST(JSON_EXTRACT_SCALAR(ru.is_sale) as BOOLEAN) as is_sale
+        , MAX(SAFE_CAST(JSON_EXTRACT_SCALAR(ru.quantity) AS INT64)) OVER (PARTITION BY product_id) as max_quantity
+    FROM ${source.platinum}.marketplace_prd_product_v2_product AS p
+    LEFT JOIN UNNEST(JSON_EXTRACT_ARRAY(p.retail_units)) AS ru
+  ),
+
+  product_retail_unit AS ( 
+    SELECT
+        product_id,
+        max(case when level = 1 then unit end) as level_1_unit,
+        sum(case when level = 1 then quantity end) as level_1_quantity,
+        max(case when level = 2 then unit end) as level_2_unit,
+        sum(case when level = 2 then quantity end) as level_2_quantity,
+        max(case when level = 3 then unit end) as level_3_unit,
+        sum(case when level = 3 then quantity end) as level_3_quantity,
+        max(case when level = 4 then unit end) as level_4_unit,
+        sum(case when level = 4 then quantity end) as level_4_quantity,
+        min_by(unit, case when is_sale = true then level end) as unit_sale_allowed,
+        min_by(convert_qty, case when is_sale = true then level end) as convert_qty_unit_sale_allowed
+    FROM (
       SELECT
-          product_id
-          , JSON_EXTRACT_SCALAR(ru.unit) as unit
-          , SAFE_CAST(JSON_EXTRACT_SCALAR(ru.level) AS INT64) as level
-          , SAFE_CAST(JSON_EXTRACT_SCALAR(ru.quantity) AS INT64) as quantity
-          , SAFE_CAST(JSON_EXTRACT_SCALAR(ru.is_sale) as BOOLEAN) as is_sale
-      FROM ${source.platinum}.marketplace_prd_product_v2_product AS p
-      LEFT JOIN UNNEST(JSON_EXTRACT_ARRAY(p.retail_units)) AS ru
-  ) a
-  GROUP BY product_id
-)
+        *
+        , SAFE_DIVIDE( MAX(quantity) OVER (PARTITION BY product_id), quantity) as convert_qty
+      FROM convert_unit
+    ) a
+    GROUP BY product_id
+  )
 
   , high_margin_product AS (
       SELECT 
@@ -335,6 +346,7 @@ SELECT
   tb2.level_4_quantity,
 
   tb2.unit_sale_allowed,
+  tb2.convert_qty_unit_sale_allowed,
 
   CASE
     WHEN seller.name LIKE '%[Tech]%' OR lower(product.name) LIKE "%[tech]%"THEN 'TECH'
