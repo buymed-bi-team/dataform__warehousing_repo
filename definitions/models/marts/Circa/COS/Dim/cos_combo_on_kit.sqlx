@@ -1,6 +1,6 @@
 config {
     type: "table",
-    description: `Last 13 month| PIC: huyen.ngo; model_type: Table ;schedule: At minute 10h30`,
+    description: `Last 13 month| PIC: huyen.ngo; model_type: Table ;schedule: `,
      tags: ["custom_1h_past10"],
     name: "cos_combo_on_kit"
 }
