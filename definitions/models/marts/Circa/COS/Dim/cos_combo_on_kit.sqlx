@@ -15,6 +15,7 @@ Select distinct timestamp_add(current_timestamp(), interval 7 hour) as transform
                ,o.product_id as combo_id 
                ,o.combo_price
                ,o.seller_code
+               ,concat(product_id, "_", 1) as product_client_id
 from  ${source.circa_os}.order_order_apply_combo o 
 where product_id in(
                  999900196
@@ -28,4 +29,5 @@ where product_id in(
         (
         Select distinct order_id from ${source.ref}.cos_fact_order 
         where  status in ('COMPLETED', 'COMPLETED_SHIPPING' )
+               and client_id = 1
         )
