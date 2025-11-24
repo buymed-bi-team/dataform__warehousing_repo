@@ -76,8 +76,9 @@ WITH
 
     , stock_moving AS (
         SELECT 
-            a.*,
-            timestamp_add(b.transfer_finish_time, interval 7 hour) as ts_moving_done
+            a.*
+            , b.code AS transfer_code
+            , timestamp_add(b.transfer_finish_time, interval 7 hour) as ts_moving_done
             , b.type
             , b.source_location as area_from
             , b.destination_location as area_to
