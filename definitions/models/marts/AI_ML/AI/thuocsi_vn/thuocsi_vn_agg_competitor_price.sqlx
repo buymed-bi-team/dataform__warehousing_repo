@@ -13,6 +13,14 @@ FROM ${ref('gold_buymed_vn2', 'adhoc_pricing_competitor_price')} AS a
 WHERE  qc = "QC"
     AND competitor_price > 0
     AND NOT REGEXP_CONTAINS(competitor, r'P[0-9]+')
+    AND LOWER(competitor) IN (
+        SELECT
+            LOWER(source) AS competitor
+        FROM platinum_buymed_vn.marketplace_prd_product_v2_market_price_source
+        WHERE NOT REGEXP_CONTAINS(source, r'P[0-9]+')
+            AND COALESCE(is_active, true)
+    )
+
 -- UNION ALL
 -- SELECT
 --     product_id

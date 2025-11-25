@@ -93,7 +93,7 @@ WITH
             , a.order_id
             , a.product_id
             , CONCAT(a.product_id, "_", a.seller_code) AS sku_key
-            , a.price AS unit_price
+            -- , a.price AS unit_price
             , a.total_price
             , a.price * a.outbound_quantity AS total_outbound
             , s.seller_class
@@ -122,7 +122,7 @@ WITH
             , a.order_id
             , a.product_id
             , CONCAT(a.product_id, "_", a.seller_code) AS sku_key
-            , a.price
+            -- , a.price
             , a.total_amount
             , COALESCE(SAFE_CAST(JSON_VALUE(a.extra_props, "$.completed_quantity")  AS INT64), quantity) * price AS total_outbound
             , "INTERNAL" AS seller_class
