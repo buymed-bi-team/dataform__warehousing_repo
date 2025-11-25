@@ -10,6 +10,7 @@ config {
 Select distinct timestamp_add(current_timestamp(), interval 7 hour) as transformed_at
                ,datetime_add(o.created_at, interval 7 hour) as created_at
                ,datetime_add(o.updated_at, interval 7 hour) as updated_at
+               ,o.id as combo_id
                ,o.order_id
                ,o.quantity
                ,o.product_id as combo_id 
