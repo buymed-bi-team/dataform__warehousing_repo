@@ -13,7 +13,7 @@ Select distinct timestamp_add(current_timestamp(), interval 7 hour) as transform
                ,o.id as combo_id
                ,o.order_id
                ,o.quantity
-               ,o.product_id as combo_id 
+               ,o.product_id as combo_code
                ,o.combo_price
                ,o.seller_code
                ,concat(product_id, "_", 1) as product_client_id
