@@ -64,6 +64,7 @@ where b.rn = 1
         end as discount_voucher_on_item
         ,datetime(a.created_at, "asia/Ho_Chi_Minh") as created_at, pos_id
         ,e.name as employee_name
+        ,cast (null as string) as order_apply_combo_id
         ,1 as client_id
     from ${source.circa}.order_order_item as a
     left join ${source.circa}.order_so_item_detail as b ON a.id = b.item_id
@@ -141,6 +142,7 @@ cte_online as (
       ,promotion_event_code
       ,distributor_id
       ,employee_name
+      ,order_apply_combo_id
       ,a.client_id
 from (
     select * from cte_not_online
@@ -179,6 +181,7 @@ select distinct
   ,promotion_event_code
   ,po.distributor_id
   ,e.name as employee_name
+  ,oi.order_apply_combo_id
   ,o.client_id
 from ${source.circa_os}.order_order o
 left join ${source.circa_os}.order_order_item oi on o.id = oi.order_id
