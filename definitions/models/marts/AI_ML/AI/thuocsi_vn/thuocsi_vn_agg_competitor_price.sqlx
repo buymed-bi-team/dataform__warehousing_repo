@@ -1,0 +1,39 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `Competitor's Price in the Vietnam marketplace.`,
+    tags: ['AI_THUOCSI_VN']
+}
+
+SELECT
+    a.product_id
+    , competitor AS competitor_name
+    , market_price_aft_convert AS competitor_price
+FROM ${ref('gold_buymed_vn2', 'adhoc_pricing_competitor_price')} AS a
+WHERE  qc = "QC"
+    AND competitor_price > 0
+    AND NOT REGEXP_CONTAINS(competitor, r'P[0-9]+')
+UNION ALL
+SELECT
+product_id
+    , competitor
+    , competitor_price
+FROM (
+     SELECT
+            p.product_id
+            , MIN(IF(p.sales_region_code = "MIENNAM" AND s.seller_code IN ("MEDX", "BML_INT"), p.sku_display_price, NULL)) AS miennam_price_medx
+            , MIN(IF(p.sales_region_code = "MIENBAC" AND s.seller_code IN ("MEDX", "BML_INT"), p.sku_display_price, NULL)) AS mienbac_price_medx
+            , MIN(IF(p.sales_region_code = "MIENNAM" AND s.seller_class = "EXTERNAL" AND s.sku_system_status IN ("NORMAL", "LIMIT") AND s.sku_system_active, p.sku_display_price, NULL)) AS miennam_price_seller
+            , MIN(IF(p.sales_region_code = "MIENBAC" AND s.seller_class = "EXTERNAL" AND s.sku_system_status IN ("NORMAL", "LIMIT") AND s.sku_system_active, p.sku_display_price, NULL)) AS mienbac_price_seller
+        FROM ${ref('gold_buymed_vn2', 'adhoc_pricing_v2')} AS p
+            LEFT JOIN ${ref('gold_buymed_vn2', 'dim_sku_sales_region_current')} AS s ON p.sku_key_sales_region_code = s.sku_key_sales_region_code
+        GROUP BY p.product_id
+) AS a
+UNPIVOT (
+    competitor_price FOR competitor IN (
+        miennam_price_medx AS "MIENNAM_MEDX"
+        , mienbac_price_medx AS "MIENBAC_MEDX"
+        , miennam_price_seller AS "MIENNAM_SELLER"
+        , mienbac_price_seller AS "MIENBAC_SELLER"
+    )
+)
