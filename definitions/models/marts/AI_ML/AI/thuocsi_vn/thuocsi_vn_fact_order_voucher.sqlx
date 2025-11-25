@@ -4,6 +4,7 @@ config {
     description: `Voucher in the Vietnam marketplace.`,
     tags: ['AI_THUOCSI_VN']
 }
+
 WITH 
     cte AS (
         SELECT 
