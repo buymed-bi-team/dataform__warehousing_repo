@@ -1,0 +1,63 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `Voucher in the Vietnam marketplace.`,
+    tags: ['AI_THUOCSI_VN']
+}
+WITH 
+    cte AS (
+        SELECT 
+            a.order_id
+            , a.created_date
+            , a.customer_id
+            , JSON_VALUE(r, '$.code') AS voucher_code
+            , SAFE_CAST(JSON_VALUE(r, '$.discount_value') AS FLOAT64) AS discount_value
+        FROM ${source.platinum}.marketplace_prd_order_v2_order AS a
+            , UNNEST(JSON_QUERY_ARRAY(a.redeem_apply_result)) AS r
+        WHERE 1=1
+            AND a.created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 2 MONTH
+    )
+
+SELECT 
+    a.*
+    , CASE
+        WHEN LOWER(a.voucher_code) LIKE '%chuyenkhoan%'            THEN ' ChuyenKhoan'
+        WHEN LOWER(a.voucher_code) LIKE '%tichluy%'                THEN ' TichLuy'
+        WHEN LOWER(a.voucher_code) LIKE 'w25%'                     THEN ' SupOps'
+        WHEN STARTS_WITH(LOWER(a.voucher_code), 'trogia_')         THEN ' TroGia'
+        WHEN LOWER(a.voucher_code) LIKE 'p25%'                     THEN ' Personalize'
+        WHEN LOWER(a.voucher_code) LIKE 'newbie%'                  THEN ' Newbie'
+        WHEN LOWER(a.voucher_code) LIKE 'c25%'                     THEN ' Churn3M'
+        WHEN STARTS_WITH(LOWER(a.voucher_code), 'sanofi_')         THEN ' Brand'
+        WHEN LOWER(a.voucher_code) LIKE 'lendon%'                  THEN ' CTTT'
+        WHEN STARTS_WITH(LOWER(a.voucher_code), 'vip_')            THEN ' CusLevel'
+        WHEN STARTS_WITH(LOWER(a.voucher_code), 'sptt')            THEN ' SPTT'
+
+        WHEN STARTS_WITH(LOWER(a.voucher_code), 'sep25_adhoc_')    THEN ' AdhocCampaign'
+        WHEN STARTS_WITH(LOWER(a.voucher_code), 'adhoc_28jul_')    THEN ' AdhocProduct'
+        WHEN STARTS_WITH(LOWER(a.voucher_code), 'adhoc_combo')     THEN ' AdhocProduct'
+        WHEN STARTS_WITH(LOWER(a.voucher_code), 'adhoc_product')   THEN ' AdhocProduct'
+        WHEN STARTS_WITH(LOWER(a.voucher_code), 'adhoc-prd-')      THEN ' PushOrder'
+        WHEN STARTS_WITH(LOWER(a.voucher_code), 'adhoc_')          THEN ' Adhoc'
+
+        WHEN STARTS_WITH(LOWER(a.voucher_code), 'prd_aug')         THEN ' DoubleDown'
+        WHEN STARTS_WITH(LOWER(a.voucher_code), 'prd_jul')         THEN ' DoubleDown'
+        WHEN STARTS_WITH(LOWER(a.voucher_code), 'prd_sep')         THEN ' DoubleDown'
+        WHEN STARTS_WITH(LOWER(a.voucher_code), 'prd_oct')         THEN ' DoubleDown'
+        WHEN STARTS_WITH(LOWER(a.voucher_code), 'ddmedx-')         THEN ' DoubleDown'
+        WHEN STARTS_WITH(LOWER(a.voucher_code), 'ddseller-')       THEN ' DoubleDown'
+        WHEN STARTS_WITH(LOWER(a.voucher_code), 'prd_oct')         THEN ' DoubleDown'
+        WHEN STARTS_WITH(LOWER(a.voucher_code), 'prd_churn')       THEN ' ChurnCus'
+        WHEN STARTS_WITH(LOWER(a.voucher_code), 'prd_adhoc_oct')   THEN ' MinusMargin'
+        WHEN STARTS_WITH(LOWER(a.voucher_code), 'prd_')            THEN ' PushAC'
+
+        WHEN LOWER(a.voucher_code) LIKE '%bmse%'                   THEN ' BMSELECTED'
+
+        WHEN STARTS_WITH(LOWER(a.voucher_code), 'medx_')           THEN ' Commercial'
+        WHEN LOWER(a.voucher_code) LIKE '%clinic%'                 THEN ' ClinicEcom'
+
+        WHEN LOWER(a.voucher_code) LIKE 'hmprd%'                   THEN ' HighMargin'
+        WHEN LOWER(a.voucher_code) LIKE 'hm_prd_ws%'               THEN ' HighMarginWS'
+      ELSE 'Other'
+    END AS voucher_code_group
+FROM cte AS a
