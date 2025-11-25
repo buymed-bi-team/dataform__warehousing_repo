@@ -6,7 +6,7 @@ config {
 }
 
 
-
+with base_data as (
 Select distinct timestamp_add(current_timestamp(), interval 7 hour) as transformed_at
                ,datetime_add(o.created_at, interval 7 hour) as created_at
                ,datetime_add(o.updated_at, interval 7 hour) as updated_at
@@ -32,3 +32,8 @@ where product_id in(
         where  status in ('COMPLETED', 'COMPLETED_SHIPPING' )
                and client_id = 1
         )
+)
+Select base_data.*
+      ,p.product_name as combo_name
+from base_data 
+left join ${source.ref}.cos_dim_product p on base_data.combo_code = p.product_id 
