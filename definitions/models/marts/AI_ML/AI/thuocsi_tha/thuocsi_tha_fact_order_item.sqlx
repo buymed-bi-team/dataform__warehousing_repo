@@ -8,10 +8,10 @@ config {
 WITH
     fact_order AS ( 
         SELECT
-            created_date
-            , FORMAT_DATE("%Y-%m", created_date ) AS year_month
-            , DATE_TRUNC(created_date, MONTH) AS som
-            , DATETIME(created_time, "+7") AS created_time
+            a.created_date
+            , FORMAT_DATE("%Y-%m", a.created_date ) AS year_month
+            , DATE_TRUNC(a.created_date, MONTH) AS som
+            , DATETIME(a.created_time, "+7") AS created_time
             , DATETIME(a.delivered_time, "+7") AS delivered_time
             , order_id
             , customer_id
@@ -19,9 +19,16 @@ WITH
             , status
             , sale_order_code
             , total_discount
+            , JSON_VALUE(w.extra_props, "$.name_en") AS ward_name
+            , JSON_VALUE(d.extra_props, "$.name_en") AS district_name
+            , JSON_VALUE(p.extra_props, "$.name_en") AS province_name
+            , p.region_name
         FROM platinum_buymed_th.marketplace_prd_order_v2_order AS a
+            LEFT JOIN `platinum_buymed_th.core_prd_master_data_ward` AS w ON w.code = a.customer_ward_code
+            LEFT JOIN `platinum_buymed_th.core_prd_master_data_district` AS d ON d.code = a.customer_district_code
+            LEFT JOIN `platinum_buymed_th.core_prd_master_data_province` AS p ON p.code = a.customer_province_code
         WHERE 1=1
-            -- AND created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 2 MONTH
+            -- AND created_date >= "2025-01-01"
             AND status <> "CANCEL"
     ),
 
@@ -31,7 +38,7 @@ WITH
             , MIN(DATETIME(TIMESTAMP_SECONDS(NULLIF(delivered_time,0)), "+7")) AS delivered_time
         FROM platinum_buymed_th.delivery_prd_transporting_shipping_order AS a
         WHERE 1=1
-            AND created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 2 MONTH
+            AND created_date >= "2025-01-01"
             AND type = "DELIVERY"
         GROUP BY 1
     ),
@@ -49,14 +56,18 @@ WITH
             , s.seller_class
             , o.customer_id
             , o.status AS order_status
+            , o.ward_name
+            , o.district_name
+            , o.province_name
+            , o.region_name
             , o.total_discount / COUNT(1) OVER(PARTITION BY a.order_id) AS total_discount
         FROM platinum_buymed_th.marketplace_prd_order_v2_order_item AS a
             LEFT JOIN platinum_buymed_th.seller_prd_core_seller AS s ON a.seller_code = s.code
             LEFT JOIN fact_order AS o ON a.order_id = o.order_id
             LEFT JOIN delivery AS d ON d.reference_code = o.sale_order_code
         WHERE 1=1
-            AND a.created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 2 MONTH
-            AND o.created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 2 MONTH
+            AND a.created_date >= "2025-01-01"
+            AND o.created_date >= "2025-01-01"
             -- AND o.status <> "CANCEL"
     )
 
@@ -96,7 +107,3 @@ FROM order_item AS oi
         ON DATE_TRUNC(oi.created_date, MONTH) = ac.som AND oi.customer_id = ac.customer_id AND ac.customer_active_type <> "NEW"
     LEFT JOIN active_customer AS ac1
         ON oi.created_date = ac1.before_som AND oi.customer_id = ac1.customer_id AND ac1.customer_active_type = "NEW"
-
-
-
-

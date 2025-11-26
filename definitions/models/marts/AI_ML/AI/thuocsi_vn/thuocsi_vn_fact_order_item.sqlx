@@ -94,6 +94,7 @@ WITH
             , a.product_id
             , CONCAT(a.product_id, "_", a.seller_code) AS sku_key
             -- , a.price AS unit_price
+            , a.quantity AS ordered_quantity
             , a.total_price
             , a.price * a.outbound_quantity AS total_outbound
             , s.seller_class
@@ -111,8 +112,8 @@ WITH
             LEFT JOIN fact_order AS o ON a.order_id = o.order_id
             LEFT JOIN ${ref('gold_buymed_vn2','dim_geo_location')} AS g ON o.shipping_ward_code = g.location_code
         WHERE 1=1
-            AND a.created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 2 MONTH
-            AND o.created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 2 MONTH
+            AND a.created_date >= "2025-01-01"
+            AND o.created_date >= "2025-01-01"
             -- AND o.status <> "CANCEL"
         UNION ALL
         SELECT
@@ -123,6 +124,7 @@ WITH
             , a.product_id
             , CONCAT(a.product_id, "_", a.seller_code) AS sku_key
             -- , a.price
+            , a.quantity AS ordered_quantity
             , a.total_amount
             , COALESCE(SAFE_CAST(JSON_VALUE(a.extra_props, "$.completed_quantity")  AS INT64), quantity) * price AS total_outbound
             , "INTERNAL" AS seller_class
@@ -139,8 +141,8 @@ WITH
             LEFT JOIN fact_order AS o ON a.order_id = o.order_id
             LEFT JOIN ${ref('gold_buymed_vn2','dim_geo_location')} AS g ON o.shipping_ward_code = g.location_code
         WHERE 1=1
-            AND a.created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 2 MONTH
-            AND o.created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 2 MONTH
+            AND a.created_date >= "2025-01-01"
+            AND o.created_date >= "2025-01-01"
     )
 
 SELECT

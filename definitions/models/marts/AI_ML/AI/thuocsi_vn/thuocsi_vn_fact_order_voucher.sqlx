@@ -16,7 +16,7 @@ WITH
         FROM ${source.platinum}.marketplace_prd_order_v2_order AS a
             , UNNEST(JSON_QUERY_ARRAY(a.redeem_apply_result)) AS r
         WHERE 1=1
-            AND a.created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 2 MONTH
+            AND a.created_date >= "2025-01-01"
     )
 
 SELECT 

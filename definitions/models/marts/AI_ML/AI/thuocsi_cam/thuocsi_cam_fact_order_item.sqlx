@@ -27,9 +27,9 @@ WITH
                 ELSE 'SELF_ORDER' 
             END AS assist_order
         FROM platinum_buymed_cam.marketplace_prd_order_v2_order AS a
-        LEFT JOIN `platinum_buymed_cam.core_prd_master_data_ward` AS w ON w.code = a.customer_ward_code
-        LEFT JOIN `platinum_buymed_cam.core_prd_master_data_district` AS d ON d.code = a.customer_district_code
-        LEFT JOIN `platinum_buymed_cam.core_prd_master_data_province` AS p ON p.code = a.customer_province_code
+            LEFT JOIN `platinum_buymed_cam.core_prd_master_data_ward` AS w ON w.code = a.customer_ward_code
+            LEFT JOIN `platinum_buymed_cam.core_prd_master_data_district` AS d ON d.code = a.customer_district_code
+            LEFT JOIN `platinum_buymed_cam.core_prd_master_data_province` AS p ON p.code = a.customer_province_code
         WHERE 1=1
             -- AND created_date >= "2025-01-01"
             AND status <> "CANCEL"

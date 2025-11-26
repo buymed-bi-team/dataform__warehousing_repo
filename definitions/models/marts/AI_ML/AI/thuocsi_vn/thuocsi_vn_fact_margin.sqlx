@@ -14,4 +14,4 @@ SELECT
     , total_price
 FROM ${source.platinum}.monitoring_prd_realtime_supply_margin_order_sku AS a
     LEFT JOIN ${ref('gold_buymed_vn2','dim_sku')} AS b ON a.sku = b.sku_code
-WHERE created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH ) - INTERVAL 2 MONTH
+WHERE created_date >= "2025-01-01"
