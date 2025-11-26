@@ -35,21 +35,25 @@ WITH
     dedup_district AS (
         SELECT code, name as district_name, province_code
         FROM ${source.platinum}.core_prd_master_data_district
+        WHERE REGEXP_CONTAINS(code, '[0-9]')
     )
     ,
     dedup_ward AS (
         SELECT code, name as ward_name, district_code
         FROM ${source.platinum}.core_prd_master_data_ward
+        WHERE REGEXP_CONTAINS(code, '[0-9]')
     )
     ,
     dedup_province AS (
         SELECT code, name as province_name, region_code
         FROM ${source.platinum}.core_prd_master_data_province
+        WHERE REGEXP_CONTAINS(code, '[0-9]')
     )
     ,
     dedup_region AS (
         SELECT code, name as region_name
         FROM ${source.platinum}.core_prd_master_data_region
+        WHERE code IS NOT NULL
     )
     , tbl AS (
         SELECT
