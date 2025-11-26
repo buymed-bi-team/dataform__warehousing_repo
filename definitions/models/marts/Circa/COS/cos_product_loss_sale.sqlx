@@ -4,8 +4,6 @@ config {
     tags: ["custom_1h_past15"],
     name: "cos_product_loss_sale",
     columns: {
-        order_id: "NonNull |" + docs.order_id,
-        customer_id: "NonNull | The unique identifier for each customer"
         
     },
     bigquery: {
