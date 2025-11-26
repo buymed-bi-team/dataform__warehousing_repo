@@ -54,7 +54,7 @@ SELECT
     , s.status AS supplier_status
     , s.seller_type AS supplier_type  -- 310 null,  6 unique value -- null means unknown
     , IF ( 
-        REGEXP_CONTAINS( UPPER(s.name), r'TECH SELLER|TEST|TECH-QC|TS-TECH|\[TECH\]|\(TECH\)|DEMO|QC|TECH MONITOR|TECH 2')
+        REGEXP_CONTAINS( UPPER(s.name), r'TECH SELLER|TEST|TECH-QC|TS-TECH|\[TECH\]|\(TECH\)|DEMO|TECH MONITOR|TECH 2')
         AND NOT s.name LIKE "Abbott  test- Sang Pharma" , 
         "TECH" ,
         s.seller_class ) 
