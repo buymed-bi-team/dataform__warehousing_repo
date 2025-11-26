@@ -20,6 +20,7 @@ WITH
 SELECT
     o.date
     , o.order_id
+    , o.customer_id
     , SUM(o.gmv_circa) AS gmv_circa
     , o.pos_name
     , o.pos_type

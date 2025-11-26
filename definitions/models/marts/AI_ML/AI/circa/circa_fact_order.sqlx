@@ -6,6 +6,16 @@ config {
 }
 
 WITH 
+    voucher AS (
+        SELECT 
+            v.order_code_used
+            , v.code AS voucher_code
+            , v.campaign_code
+        FROM ${ref('gold_buymed_vn2','cos_voucher_info')} AS v
+        QUALIFY ROW_NUMBER() OVER(PARTITION BY order_code_used) = 1
+        -- WHERE v.campaign_code = "CAMPAIGN000165"
+    ),
+
     fact_order AS (
         SELECT
             o.completed_date AS date
@@ -19,18 +29,14 @@ WITH
             , g.ward_name
             , g.district_name
             , g.province_name
-            -- , o.total_item_amount
             , COALESCE(o.medicine_cutting_fee, 0) AS medicine_cutting_fee
             , o.discount_amount
-            -- , COALESCE(r.total_return_amount, 0) AS total_return_amount
-            -- , o.total_item_amount + o.medicine_cutting_fee - COALESCE(r.total_return_amount, 0) AS gmv_circa
+            , v.voucher_code
+            , IF(v.campaign_code = "CAMPAIGN000165", true, false) AS is_referral
+            -- , IF(o.order_code IN (SELECT order_code_used FROM referral ), true, false) AS is_referral
         FROM ${ref('gold_buymed_vn2','cos_fact_order')} AS o
-            -- LEFT JOIN (
-            --     SELECT order_id, SUM(COALESCE(gmv_return, 0)) AS total_return_amount
-            --     FROM ${ref('gold_buymed_vn2','cos_return_completed')}
-            --     GROUP BY 1
-            -- ) AS r ON o.order_id = r.order_id
             LEFT JOIN buymed_circa_v2.entity_pos_profile AS p ON o.pos_code = p.code
+            LEFT JOIN voucher AS v ON v.order_code_used = o.order_code
             LEFT JOIN ${ref('gold_buymed_vn2','dim_geo_location')} AS g ON g.location_code = COALESCE(p.ward, p.district, p.province)
         WHERE 1=1
             AND o.completed_date IS NOT NULL
@@ -59,6 +65,8 @@ WITH
             , o.discount_amount / COUNT(1) OVER(PARTITION BY oi.order_id) AS discount_amount
             , COALESCE(oi.unit_price * rt.quantity, 0) AS total_return_amount
             , CONCAT(oi.client_id, "_", oi.product_id) AS product_id_key
+            , o.voucher_code
+            , o.is_referral
         FROM ${ref('gold_buymed_vn2','cos_fact_order_item')} AS oi
             LEFT JOIN fact_order AS o ON oi.order_id = o.order_id
             LEFT JOIN ${ref('gold_buymed_vn2', 'cos_return_completed_detail')} AS rt 
