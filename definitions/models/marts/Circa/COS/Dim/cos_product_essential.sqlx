@@ -22,3 +22,4 @@ Select distinct
       ,1 as client_id 
 from buymed_circa_v2.product_assortment_template o 
 left join buymed_circa_v2.product_assortment_template_items i on o.id = i.assortment_template_id
+where o.id = '1430759b-40e3-4d86-86b8-8b9a1d5dae27'
