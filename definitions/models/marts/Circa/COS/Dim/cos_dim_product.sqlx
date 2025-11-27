@@ -132,8 +132,15 @@ popular_product as (
     from collector.data_prd
     where object = 'Product' and type = 'POPULAR'
     qualify ROW_NUMBER() over(partition by code, object, type order by submit_id desc) = 1  
-)
+), combo_on_kit as (
 
+    Select distinct cast(code as int64) as product_id
+                    ,1 as client_id 
+    from collector.data_prd
+    where object = 'CIRCA' 
+    and type = 'CIRCA_ON_KIT_PRODUCT'
+    qualify ROW_NUMBER() over(partition by code, object, type order by submit_id desc) = 1  
+)
 select distinct timestamp_add(current_timestamp(), interval 7 hour) as transformed_at
                ,pd.product_id
                ,pd.* except (product_id)
@@ -154,6 +161,7 @@ select distinct timestamp_add(current_timestamp(), interval 7 hour) as transform
                ,COALESCE(bt.brand_type, ba.brand_type) as brand_type
                ,seller_sub_category_name
                ,pop.popular as is_popular
+               ,case when kit.product_id is not null then true else false end as is_combo_on_kit
 from cte_product pd
 -- left join ${source.circa_os}.product_retail_unit as a on a.product_id = pd.product_id and a.unit = pd.unit
 left join ${source.platinum}.circa_online_prd_product_product as op on pd.product_id = op.product_id
@@ -165,6 +173,7 @@ left join convert_unit cr on pd.product_id = cr.product_id and pd.client_id = cr
 left join sub_cat on pd.product_id = sub_cat.product_id
 left join brand_type_add ba on pd.product_id = ba.product_id
 left join popular_product pop on pd.product_id = pop.product_id
+left join combo_on_kit kit on kit.product_id = pd.product_id and kit.client_id = pd.client_id
 left join ${source.ref}.cos_product_essential e on pd.product_id = e.product_id and pd.client_id = e.client_id 
 where pd.product_name not like "%[Removed]%"
         --and pd.product_id = 1112
