@@ -17,6 +17,8 @@ SELECT
     , p.brand
     , p.manufacturer AS manufacturer_name
     , p.origin
+    , s.sku_status
+    , s.sku_active
 FROM `lakehouse-prod-394907.gold_buymed_th.dim_sku` AS s
     LEFT JOIN `lakehouse-prod-394907.gold_buymed_th.dim_product` AS p ON s.product_id = p.product_id
     LEFT JOIN lakehouse-prod-394907.platinum_buymed_th.seller_prd_core_seller AS sl ON sl.code = s.seller_code

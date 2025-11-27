@@ -28,7 +28,8 @@ WITH
                 WHEN SAFE_CAST(a.customer_ward_code AS integer) > 0 THEN a.customer_ward_code
                 ELSE a.customer_district_code
             END AS shipping_ward_code,
-            total_discount
+            total_discount,
+            a.warehouse_code
         FROM ${source.platinum}.marketplace_prd_order_v2_order AS a
         WHERE 1=1
             -- AND created_date >= "2022-01-01"
@@ -50,8 +51,10 @@ WITH
                 WHEN SAFE_CAST(a.ward_code AS integer) > 0 THEN a.ward_code
                 ELSE a.district_code
             END AS shipping_ward_code,
-            0
+            0,
+            p.fc_code
         FROM ${source.platinum}.tender_prd_core_tender_orders AS a
+            LEFT JOIN ${ref('gold_buymed_vn2','dim_province')} AS p ON a.province_code = p.province_code
         WHERE 1=1
             -- AND created_date >= "2022-01-01"
             AND status <> "CANCELLED"
@@ -92,7 +95,7 @@ WITH
             , o.delivered_time
             , a.order_id
             , a.product_id
-            , CONCAT(a.product_id, "_", a.seller_code) AS sku_key
+            , CONCAT(a.product_id, "_", a.seller_code, "_", b.warehouse_code) AS sku_key
             -- , a.price AS unit_price
             , a.quantity AS ordered_quantity
             , a.total_price
@@ -122,7 +125,7 @@ WITH
             , o.delivered_time
             , a.order_id
             , a.product_id
-            , CONCAT(a.product_id, "_", a.seller_code) AS sku_key
+            , CONCAT(a.product_id, "_", a.seller_code, "_", a.warehouse_code) AS sku_key
             -- , a.price
             , a.quantity AS ordered_quantity
             , a.total_amount
