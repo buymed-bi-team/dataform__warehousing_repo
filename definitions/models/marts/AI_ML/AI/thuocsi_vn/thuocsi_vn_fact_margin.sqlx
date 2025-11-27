@@ -6,12 +6,15 @@ config {
 }
 
 SELECT
-    created_date
-    , order_id
-    , sku_key
-    , product_id
-    , profit
-    , total_price
+    a.created_date
+    , a.order_id
+    , CONCAT(b.sku_key, "_", o.warehouse_code) AS sku_key
+    , b.product_id
+    , a.profit
+    , a.total_price
 FROM ${source.platinum}.monitoring_prd_realtime_supply_margin_order_sku AS a
+    LEFT JOIN ${source.platinum}.marketplace_prd_order_v2_order AS o ON a.order_id = o.order_id
     LEFT JOIN ${ref('gold_buymed_vn2','dim_sku')} AS b ON a.sku = b.sku_code
-WHERE created_date >= "2025-01-01"
+WHERE 1=1 
+    AND a.created_date >= "2025-01-01"
+    AND o.created_date >= "2025-01-01"

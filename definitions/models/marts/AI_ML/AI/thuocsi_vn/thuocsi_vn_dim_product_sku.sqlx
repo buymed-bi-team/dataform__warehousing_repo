@@ -9,7 +9,7 @@ SELECT
     s.product_id
     , s.product_name
     , s.sku_code
-    , s.sku_key
+    , s.sku_key_fc_code AS sku_key
     , s.seller_code
     , s.seller_class
     , sl.name AS seller_name
@@ -17,17 +17,22 @@ SELECT
     , brand
     , manufacturer_short_name AS manufacturer_name
     , country_origin
-    , pr.unit_price
-FROM ${ref('gold_buymed_vn2', 'dim_sku')} AS s
+    , pr.sku_display_price AS unit_price
+    , s.sku_system_status AS sku_status
+    , s.sku_system_active AS sku_active
+    , s.fc_code
+FROM ${ref('gold_buymed_vn2', 'dim_sku_sales_region_full')} AS s
     LEFT JOIN ${ref('gold_buymed_vn2', 'dim_product')} AS p ON s.product_id = p.product_id
     LEFT JOIN ${source.platinum}.seller_prd_core_seller AS sl ON sl.code = s.seller_code
-    LEFT JOIN (
-        SELECT
-            a.sku_code
-            , MIN(sku_display_price) AS unit_price
-        FROM ${ref('gold_buymed_vn2', 'adhoc_pricing_v2')} AS a
-            LEFT JOIN ${ref('gold_buymed_vn2', 'dim_sku_sales_region_current')} AS b ON a.sku_key_sales_region_code = b.sku_key_sales_region_code
-        WHERE sku_system_status IN ("NORMAL", "LIMIT")
-            AND sku_system_active
-        GROUP BY ALL
-    ) AS pr ON pr.sku_code = s.sku_code
+    LEFT JOIN ${ref('gold_buymed_vn2', 'adhoc_pricing_v2')} AS pr ON pr.sku_key_sales_region_code = s.sku_key_sales_region_code
+    -- LEFT JOIN (
+    --     SELECT
+    --         a.sku_code
+    --         , MIN(sku_display_price) AS unit_price
+    --     FROM ${ref('gold_buymed_vn2', 'adhoc_pricing_v2')} AS a
+    --         LEFT JOIN ${ref('gold_buymed_vn2', 'dim_sku_sales_region_current')} AS b ON a.sku_key_sales_region_code = b.sku_key_sales_region_code
+    --     WHERE sku_system_status IN ("NORMAL", "LIMIT")
+    --         AND sku_system_active
+    --     GROUP BY ALL
+    -- ) AS pr ON pr.sku_code = s.sku_code
+WHERE sl.code NOT IN ('MEDC', 'MED_NT', 'TENDER', 'MEDX-HN', 'DENX', 'MARKETING', '9SUUUUUUUU', 'QMQEM8DN9F', 'UQRRRRRRRR', 'TAM_GIA')

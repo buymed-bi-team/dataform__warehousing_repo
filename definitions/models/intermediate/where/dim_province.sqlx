@@ -91,6 +91,7 @@ SELECT
         ELSE "OTHER"
     END picking_rule_location_code
     , sales_region_code
+    , fc_code
 FROM ${ref('dim_geo_location')} AS g
     LEFT JOIN cte_province_without_accent AS p
         ON g.location_code = p.province_code
