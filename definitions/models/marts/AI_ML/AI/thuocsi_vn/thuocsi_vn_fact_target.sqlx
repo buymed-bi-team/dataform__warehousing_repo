@@ -1,0 +1,15 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `Target of the Vietnam marketplace.`,
+    tags: ['AI_THUOCSI_VN']
+}
+
+SELECT
+    a.date
+    , b.province_name
+    , b.region_name
+    , a.customer_tag_priority
+    , a.gmv_target
+FROM ${ref('gold_buymed_vn2', 'fact_vn_target')} AS a
+    LEFT JOIN ${ref('gold_buymed_vn2', 'dim_province')} AS b USING(province_code)

@@ -1,0 +1,18 @@
+config {
+    type: "table", 
+    description: 
+        `
+        Target of Marketplace Vietnam;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: daily at 8h30;
+        `,
+    tags: ["0h30"]
+}
+
+SELECT
+    date
+    , customer_tag_priority
+    , LPAD(SAFE_CAST(province_code AS STRING), 2, "0") AS province_code
+    , gmv_target
+FROM ${source.external}.import_target_thuocsi_vn

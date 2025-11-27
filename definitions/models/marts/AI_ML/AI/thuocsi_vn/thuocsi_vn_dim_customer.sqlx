@@ -6,21 +6,22 @@ config {
 }
 
 SELECT
-    customer_id
-    , customer_name
-    , customer_status
-    , business_scope
-    , customer_tag_group AS customer_tag_priority
+    a.customer_id
+    , a.customer_name
+    , a.customer_status
+    , a.business_scope
+    , b.customer_tag_priority
     -- , customer_tag_sub_group AS customer_tag_sub_priority
     , customer_level
-FROM ${ref('gold_buymed_vn2', 'dim_customer')}
+FROM ${ref('gold_buymed_vn2', 'dim_customer')} AS a
+    LEFT JOIN gold_buymed_vn2.dim_customer_tag_priority AS b USING(customer_id)
 UNION ALL
 SELECT
     1000000 + beneficiary_id
     , name
     , status
     , "HOSPITAL"
-    , "TENDER"
+    , "3. TENDER"
     -- , "TENDER"
     , "TENDER"
 FROM platinum_buymed_vn.tender_prd_core_tender_beneficiaries
