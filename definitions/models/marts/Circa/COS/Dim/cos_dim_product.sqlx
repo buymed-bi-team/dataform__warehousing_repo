@@ -1,7 +1,7 @@
 config {
     type: "table",
     description: `PIC: huyen.ngo; model_type: Table ;schedule: At 10h30`,
-    tags: ["10h30"],
+    tags: ["custom_1h_past20"],
     name: "cos_dim_product",
     columns: {/*
         order_id: "NonNull |" + docs.order_id,
@@ -52,14 +52,16 @@ with cte_product as (
                               )
 ,inventory as (
                    select distinct a.product_id
-                              ,sum(a.on_hand_qty) as on_hand_quantity
+                              ,sum(a.on_hand_quantity) as on_hand_quantity
+                              ,count(distinct case when a.client_id = 1 and ep.client_id = 1 then a.pos_id
+                                                    end) as pos_os_have_stock
+                               ,count(distinct case when a.client_id <> 1 and ep.client_id <> 1 then a.pos_id
+                                                    end) as  pos_fs_have_stock
                               ,STRING_AGG(distinct ep.name, ", ") as stock_available_in_POSs
                               ,a.client_id
-                     from ${source.circa_os}.inventory_location_detail as a
-                             left join ${source.circa_os}.inventory_location as b on a.location_id = b.id and a.client_id = b.client_id
-                             left join  ${source.ref}.circa_pos_profile as ep on b.pos_id = ep.id and a.client_id = ep.client_id and b.client_id = ep.client_id
-                             where a.deleted_at is null and lower(ep.name) <> "%test%"
-                                   and ep.id is not null
+                     from ${source.ref}.cos_fact_inventory a
+                             left join  ${source.ref}.circa_pos_profile as ep on a.pos_id = ep.id and a.client_id = ep.client_id 
+                             where ep.id is not null
                              group by all)
 -- , ingregients as (
 --     select
@@ -152,6 +154,7 @@ select distinct timestamp_add(current_timestamp(), interval 7 hour) as transform
                ,op.status as medship_status
                ,op.unit_name as medship_unit
                ,case when i.on_hand_quantity > 0 then "Available" else "Not Available" end as stock_check
+               ,pos_os_have_stock
                ,stock_available_in_POSs
                ,on_hand_quantity
                ,case when op.product_id is not null then "True" else "False" end as is_medship_product
