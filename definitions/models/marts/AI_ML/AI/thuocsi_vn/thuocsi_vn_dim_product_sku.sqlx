@@ -20,6 +20,7 @@ SELECT
     , pr.sku_display_price AS unit_price
     , s.sku_system_status AS sku_status
     , s.sku_system_active AS sku_active
+    , s.fc_code
 FROM ${ref('gold_buymed_vn2', 'dim_sku_sales_region_full')} AS s
     LEFT JOIN ${ref('gold_buymed_vn2', 'dim_product')} AS p ON s.product_id = p.product_id
     LEFT JOIN ${source.platinum}.seller_prd_core_seller AS sl ON sl.code = s.seller_code
@@ -34,3 +35,4 @@ FROM ${ref('gold_buymed_vn2', 'dim_sku_sales_region_full')} AS s
     --         AND sku_system_active
     --     GROUP BY ALL
     -- ) AS pr ON pr.sku_code = s.sku_code
+WHERE sl.code NOT IN ('MEDC', 'MED_NT', 'TENDER', 'MEDX-HN', 'DENX', 'MARKETING', '9SUUUUUUUU', 'QMQEM8DN9F', 'UQRRRRRRRR', 'TAM_GIA')
