@@ -95,7 +95,7 @@ WITH
             , o.delivered_time
             , a.order_id
             , a.product_id
-            , CONCAT(a.product_id, "_", a.seller_code, "_", b.warehouse_code) AS sku_key
+            , CONCAT(a.product_id, "_", a.seller_code, "_", o.warehouse_code) AS sku_key
             -- , a.price AS unit_price
             , a.quantity AS ordered_quantity
             , a.total_price
@@ -125,7 +125,7 @@ WITH
             , o.delivered_time
             , a.order_id
             , a.product_id
-            , CONCAT(a.product_id, "_", a.seller_code, "_", a.warehouse_code) AS sku_key
+            , CONCAT(a.product_id, "_", a.seller_code, "_", o.warehouse_code) AS sku_key
             -- , a.price
             , a.quantity AS ordered_quantity
             , a.total_amount
