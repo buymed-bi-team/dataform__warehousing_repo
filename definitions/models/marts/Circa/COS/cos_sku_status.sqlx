@@ -53,11 +53,13 @@ group by all
                    and regexp_replace(e.phone_number, '0', '') <> ''
                    and o.status in ('COMPLETED', 'COMPLETED_SHIPPING')
                    and owner_name not in ('CIRCA MARKETING')
+                   and o.completed_date >= CURRENT_DATE() - INTERVAL 3 MONTH
              group by all)
 , by_product as (
 Select distinct o.product_id
             , o.* except (product_id)
             ,c.no_customers
+            ,c.GMV
             ,concat(o.product_id, "_", o.client_id) as product_client_id
             ,case when o.current_stock_by_product > 0 then 'NORMAL'
                     else 'OOS' END AS product_status
