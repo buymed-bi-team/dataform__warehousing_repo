@@ -20,7 +20,11 @@ SELECT
     , pr.sku_display_price AS unit_price
     , s.sku_system_status AS sku_status
     , s.sku_system_active AS sku_active
-    , s.fc_code
+    , s.fc_code AS warehouse_code
+    , CASE 
+        WHEN s.fc_code = "BD" THEN "Kho Bình Dương"
+        WHEN s.fc_code = "HN" THEN "Kho Bắc Ninh"
+      END AS warehouse_name
 FROM ${ref('gold_buymed_vn2', 'dim_sku_sales_region_full')} AS s
     LEFT JOIN ${ref('gold_buymed_vn2', 'dim_product')} AS p ON s.product_id = p.product_id
     LEFT JOIN ${source.platinum}.seller_prd_core_seller AS sl ON sl.code = s.seller_code
