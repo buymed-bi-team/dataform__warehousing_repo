@@ -40,12 +40,14 @@ group by all
 ), customer as ( select distinct o.pos_id
                         ,oi.product_id
                         ,count(distinct o.entity_id) as no_customers
-                        ,sum(unit_price * quantity) as GMV
-                        ,sum(unit_cost_price * quantity) as cogs
+                        ,sum(oi.unit_price * oi.quantity) -  coalesce(sum(oi.unit_price *  rt.quantity),0) as GMV
+                        ,sum(unit_cost_price *  oi.quantity ) -  coalesce(sum(unit_cost_price *  rt.quantity),0) as cogs
                         ,o.client_id
              from  ${source.ref}.cos_fact_order o
              left join  ${source.ref}.cos_fact_order_item oi on o.order_id = oi.order_id
              left join buymed_circa_v2.entity_customer e on o.entity_id = e.id
+             left join  ${source.ref}.cos_return_completed_detail rt on oi.order_id = rt.order_id and oi.sku_code = rt.sku_code and oi.lot_date = rt.lot_date and oi.client_id = rt.client_id
+
              where o.completed_date is not null
                    and o.client_id = 1
                    and o.entity_id <> '00000000-0000-0000-0000-000000000000'
