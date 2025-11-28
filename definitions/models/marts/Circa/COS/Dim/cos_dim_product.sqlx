@@ -1,7 +1,7 @@
 config {
     type: "table",
     description: `PIC: huyen.ngo; model_type: Table ;schedule: At 10h30`,
-    tags: ["10h30"],
+    tags: ["custom_1h_past20"],
     name: "cos_dim_product",
     columns: {/*
         order_id: "NonNull |" + docs.order_id,
@@ -50,17 +50,19 @@ with cte_product as (
                               left join ${ref('dim_product')} as tp on p.product_id = tp.product_id
                               --where p.client_id = 1
                               )
-,inventory as (
-                   select distinct a.product_id
-                              ,sum(a.on_hand_qty) as on_hand_quantity
-                              ,STRING_AGG(distinct ep.name, ", ") as stock_available_in_POSs
-                              ,a.client_id
-                     from ${source.circa_os}.inventory_location_detail as a
-                             left join ${source.circa_os}.inventory_location as b on a.location_id = b.id and a.client_id = b.client_id
-                             left join  ${source.ref}.circa_pos_profile as ep on b.pos_id = ep.id and a.client_id = ep.client_id and b.client_id = ep.client_id
-                             where a.deleted_at is null and lower(ep.name) <> "%test%"
-                                   and ep.id is not null
-                             group by all)
+-- ,inventory as (
+--                    select distinct a.product_id
+--                               ,sum(a.on_hand_quantity) as on_hand_quantity
+--                               ,count(distinct case when a.client_id = 1 and ep.client_id = 1 and sum(a.on_hand_quantity) > 0 then a.pos_id
+--                                                     end) as pos_os_have_stock
+--                                ,count(distinct case when a.client_id <> 1 and ep.client_id <> 1 and sum(a.on_hand_quantity) > 0 then a.pos_id
+--                                                     end) as  pos_fs_have_stock
+--                               ,STRING_AGG(distinct ep.name, ", ") as stock_available_in_POSs
+--                               ,a.client_id
+--                      from ${source.ref}.cos_fact_inventory a
+--                              left join  ${source.ref}.circa_pos_profile as ep on a.pos_id = ep.id and a.client_id = ep.client_id 
+--                              where ep.id is not null
+--                              group by all)
 -- , ingregients as (
 --     select
 --         product_id,
@@ -70,6 +72,41 @@ with cte_product as (
 --     left join ${source.platinum}.marketplace_prd_product_v2_ingredient i ON p.ingredient_code = i.ingredient_code
 --     where ingredient_level = 1
 -- ),
+,inventory_summary as (
+  select 
+    a.product_id
+    , a.pos_id
+    , a.client_id
+    , sum(a.on_hand_quantity) as total_on_hand_quantity
+    , ep.name as pos_name
+  from lakehouse-prod-394907.gold_buymed_vn2.cos_fact_inventory a
+  left join lakehouse-prod-394907.gold_buymed_vn2.circa_pos_profile ep 
+    on a.pos_id = ep.id 
+    and a.client_id = ep.client_id
+  where ep.id is not null
+  group by 
+    a.product_id
+    , a.pos_id
+    , a.client_id
+    , ep.name
+)
+, inventory as (
+  select 
+    product_id
+    , sum(total_on_hand_quantity) as on_hand_quantity
+    , count(distinct case 
+        when client_id = 1 and total_on_hand_quantity > 0 then pos_id 
+      end) as pos_os_have_stock
+    , count(distinct case 
+        when client_id <> 1 and total_on_hand_quantity > 0 then pos_id 
+      end) as pos_fs_have_stock
+    , string_agg(distinct pos_name, ', ') as stock_available_in_poss
+    , client_id
+  from inventory_summary
+  group by 
+    product_id
+    , client_id
+)
 
 ,ingregients as (
                    select distinct
@@ -132,12 +169,27 @@ popular_product as (
     from collector.data_prd
     where object = 'Product' and type = 'POPULAR'
     qualify ROW_NUMBER() over(partition by code, object, type order by submit_id desc) = 1  
+), combo_on_kit as (
+   Select * from 
+(
+    Select cast(code as int64) as product_id
+          , 1 as client_id
+          ,type
+          ,value
+    from collector.data_prd
+    where object = 'CIRCA' 
+    and (type = 'CIRCA_ON_KIT_PRODUCT'
+    or type = 'KIT_NAME')
 )
-
+pivot (
+max(value) for type in ('KIT_NAME', 'CIRCA_ON_KIT_PRODUCT')
+)
+)
 select distinct timestamp_add(current_timestamp(), interval 7 hour) as transformed_at
                ,pd.product_id
                ,pd.* except (product_id)
                ,case when e.product_id is not null then true else false end as is_essential
+               ,e.status as status_essential
           --   ,a.unit as retail_unit
                ,cr.convert_rate
                ,cr.convert_unit 
@@ -145,6 +197,7 @@ select distinct timestamp_add(current_timestamp(), interval 7 hour) as transform
                ,op.status as medship_status
                ,op.unit_name as medship_unit
                ,case when i.on_hand_quantity > 0 then "Available" else "Not Available" end as stock_check
+               ,pos_os_have_stock
                ,stock_available_in_POSs
                ,on_hand_quantity
                ,case when op.product_id is not null then "True" else "False" end as is_medship_product
@@ -154,6 +207,8 @@ select distinct timestamp_add(current_timestamp(), interval 7 hour) as transform
                ,COALESCE(bt.brand_type, ba.brand_type) as brand_type
                ,seller_sub_category_name
                ,pop.popular as is_popular
+               ,case when kit.product_id is not null then true else false end as is_combo_on_kit
+               ,kit.KIT_NAME as kit_name
 from cte_product pd
 -- left join ${source.circa_os}.product_retail_unit as a on a.product_id = pd.product_id and a.unit = pd.unit
 left join ${source.platinum}.circa_online_prd_product_product as op on pd.product_id = op.product_id
@@ -165,6 +220,7 @@ left join convert_unit cr on pd.product_id = cr.product_id and pd.client_id = cr
 left join sub_cat on pd.product_id = sub_cat.product_id
 left join brand_type_add ba on pd.product_id = ba.product_id
 left join popular_product pop on pd.product_id = pop.product_id
+left join combo_on_kit kit on kit.product_id = pd.product_id and kit.client_id = pd.client_id
 left join ${source.ref}.cos_product_essential e on pd.product_id = e.product_id and pd.client_id = e.client_id 
 where pd.product_name not like "%[Removed]%"
         --and pd.product_id = 1112

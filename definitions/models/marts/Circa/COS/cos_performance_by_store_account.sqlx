@@ -1,9 +1,7 @@
 config {
     type: "table",
-    description: `"tracking_purchase_put PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`,
-    /*Source:
-      ${source.silver}.marketplace_prd_order_v2_order_item
-      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5,*/
+    description: `"Tracking việc bán hàng của những sản phẩm được mua bởi store.  PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`,
+    /**/
     tags: ["custom_1h_past15"],
     name: "cos_performance_by_store_account",
     columns: {
