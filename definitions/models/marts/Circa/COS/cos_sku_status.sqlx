@@ -53,7 +53,7 @@ group by all
                    and regexp_replace(e.phone_number, '0', '') <> ''
                    and o.status in ('COMPLETED', 'COMPLETED_SHIPPING')
                    and owner_name not in ('CIRCA MARKETING')
-                   and o.completed_date >= CURRENT_DATE() - INTERVAL 3 MONTH
+                   and o.completed_date >= CURRENT_DATE() - INTERVAL 1 MONTH
              group by all)
 , by_product as (
 Select distinct o.product_id
