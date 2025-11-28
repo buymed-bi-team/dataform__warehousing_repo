@@ -189,6 +189,7 @@ select distinct timestamp_add(current_timestamp(), interval 7 hour) as transform
                ,pd.product_id
                ,pd.* except (product_id)
                ,case when e.product_id is not null then true else false end as is_essential
+               ,e.status as status_essential
           --   ,a.unit as retail_unit
                ,cr.convert_rate
                ,cr.convert_unit 
