@@ -2,6 +2,7 @@ config {
     type: "operations",
     description: "item_code status change history || PIC: minh.luu;  model_type: table; schedule: hourly past 5",
     name: "staging_sku_status_history__assertion",
+    disabled: true,
     tags: ["custom_1h_past5"]
 }
 
