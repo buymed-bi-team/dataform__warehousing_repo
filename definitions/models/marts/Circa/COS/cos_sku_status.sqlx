@@ -1,4 +1,4 @@
-config {
+ config {
     type: "table",
     description: `PIC: huyen.ngo; model_type: Table ;schedule: At 10h30`
     /*Source:
