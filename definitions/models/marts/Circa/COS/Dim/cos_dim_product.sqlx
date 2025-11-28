@@ -170,18 +170,26 @@ popular_product as (
     where object = 'Product' and type = 'POPULAR'
     qualify ROW_NUMBER() over(partition by code, object, type order by submit_id desc) = 1  
 ), combo_on_kit as (
-
-    Select distinct cast(code as int64) as product_id
-                    ,1 as client_id 
+   Select * from 
+(
+    Select cast(code as int64) as product_id
+          , 1 as client_id
+          ,type
+          ,value
     from collector.data_prd
     where object = 'CIRCA' 
-    and type = 'CIRCA_ON_KIT_PRODUCT'
-    qualify ROW_NUMBER() over(partition by code, object, type order by submit_id desc) = 1  
+    and (type = 'CIRCA_ON_KIT_PRODUCT'
+    or type = 'KIT_NAME')
+)
+pivot (
+max(value) for type in ('KIT_NAME', 'CIRCA_ON_KIT_PRODUCT')
+)
 )
 select distinct timestamp_add(current_timestamp(), interval 7 hour) as transformed_at
                ,pd.product_id
                ,pd.* except (product_id)
                ,case when e.product_id is not null then true else false end as is_essential
+               ,e.status as status_essential
           --   ,a.unit as retail_unit
                ,cr.convert_rate
                ,cr.convert_unit 
@@ -200,6 +208,7 @@ select distinct timestamp_add(current_timestamp(), interval 7 hour) as transform
                ,seller_sub_category_name
                ,pop.popular as is_popular
                ,case when kit.product_id is not null then true else false end as is_combo_on_kit
+               ,kit.KIT_NAME as kit_name
 from cte_product pd
 -- left join ${source.circa_os}.product_retail_unit as a on a.product_id = pd.product_id and a.unit = pd.unit
 left join ${source.platinum}.circa_online_prd_product_product as op on pd.product_id = op.product_id
