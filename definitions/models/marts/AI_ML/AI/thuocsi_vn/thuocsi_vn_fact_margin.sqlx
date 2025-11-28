@@ -1,7 +1,7 @@
 config {
     type: 'view',
     schema: "buymed_innovation",
-    description: `Margin of the Vietnam marketplace (only MEDX).`,
+    description: `Margin of the Vietnam marketplace.`,
     tags: ['AI_THUOCSI_VN']
 }
 
@@ -18,3 +18,14 @@ FROM ${source.platinum}.monitoring_prd_realtime_supply_margin_order_sku AS a
 WHERE 1=1 
     AND a.created_date >= "2025-01-01"
     AND o.created_date >= "2025-01-01"
+UNION ALL
+SELECT
+    a.created_date
+    , a.order_id
+    , CONCAT(a.product_id, "_", a.seller_code, "_", a.fc_code) AS sku_key
+    , a.product_id
+    , a.profit * quantity AS profit
+    , a.price * quantity AS total_price
+FROM gold_buymed_vn2.fact_order_item_seller_margin AS a
+WHERE 1=1 
+    AND a.created_date >= "2025-01-01"
