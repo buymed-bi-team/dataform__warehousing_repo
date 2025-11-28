@@ -72,34 +72,42 @@ with cte_product as (
 --     left join ${source.platinum}.marketplace_prd_product_v2_ingredient i ON p.ingredient_code = i.ingredient_code
 --     where ingredient_level = 1
 -- ),
-,inventory_summary AS (
-  SELECT 
-    a.product_id,
-    a.pos_id,
-    a.client_id,
-    SUM(a.on_hand_quantity) AS total_on_hand_quantity,
-    ep.name AS pos_name
-  FROM lakehouse-prod-394907.gold_buymed_vn2.cos_fact_inventory a
-  LEFT JOIN lakehouse-prod-394907.gold_buymed_vn2.circa_pos_profile ep 
-    ON a.pos_id = ep.id AND a.client_id = ep.client_id
-  WHERE ep.id IS NOT NULL
-  GROUP BY a.product_id, a.pos_id, a.client_id, ep.name
+,inventory_summary as (
+  select 
+    a.product_id
+    , a.pos_id
+    , a.client_id
+    , sum(a.on_hand_quantity) as total_on_hand_quantity
+    , ep.name as pos_name
+  from lakehouse-prod-394907.gold_buymed_vn2.cos_fact_inventory a
+  left join lakehouse-prod-394907.gold_buymed_vn2.circa_pos_profile ep 
+    on a.pos_id = ep.id 
+    and a.client_id = ep.client_id
+  where ep.id is not null
+  group by 
+    a.product_id
+    , a.pos_id
+    , a.client_id
+    , ep.name
 )
-,inventory as (
-SELECT 
-  product_id,
-  SUM(total_on_hand_quantity) AS on_hand_quantity,
-  COUNT(DISTINCT CASE 
-    WHEN client_id = 1 AND total_on_hand_quantity > 0 THEN pos_id 
-  END) AS pos_os_have_stock,
-  COUNT(DISTINCT CASE 
-    WHEN client_id <> 1 AND total_on_hand_quantity > 0 THEN pos_id 
-  END) AS pos_fs_have_stock,
-  STRING_AGG(DISTINCT pos_name, ", ") AS stock_available_in_POSs,
-  client_id
-FROM inventory_summary
-GROUP BY product_id, client_id
+, inventory as (
+  select 
+    product_id
+    , sum(total_on_hand_quantity) as on_hand_quantity
+    , count(distinct case 
+        when client_id = 1 and total_on_hand_quantity > 0 then pos_id 
+      end) as pos_os_have_stock
+    , count(distinct case 
+        when client_id <> 1 and total_on_hand_quantity > 0 then pos_id 
+      end) as pos_fs_have_stock
+    , string_agg(distinct pos_name, ', ') as stock_available_in_poss
+    , client_id
+  from inventory_summary
+  group by 
+    product_id
+    , client_id
 )
+
 ,ingregients as (
                    select distinct
                     product_id
