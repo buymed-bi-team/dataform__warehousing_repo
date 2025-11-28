@@ -50,19 +50,19 @@ with cte_product as (
                               left join ${ref('dim_product')} as tp on p.product_id = tp.product_id
                               --where p.client_id = 1
                               )
-,inventory as (
-                   select distinct a.product_id
-                              ,sum(a.on_hand_quantity) as on_hand_quantity
-                              ,count(distinct case when a.client_id = 1 and ep.client_id = 1 then a.pos_id
-                                                    end) as pos_os_have_stock
-                               ,count(distinct case when a.client_id <> 1 and ep.client_id <> 1 then a.pos_id
-                                                    end) as  pos_fs_have_stock
-                              ,STRING_AGG(distinct ep.name, ", ") as stock_available_in_POSs
-                              ,a.client_id
-                     from ${source.ref}.cos_fact_inventory a
-                             left join  ${source.ref}.circa_pos_profile as ep on a.pos_id = ep.id and a.client_id = ep.client_id 
-                             where ep.id is not null
-                             group by all)
+-- ,inventory as (
+--                    select distinct a.product_id
+--                               ,sum(a.on_hand_quantity) as on_hand_quantity
+--                               ,count(distinct case when a.client_id = 1 and ep.client_id = 1 and sum(a.on_hand_quantity) > 0 then a.pos_id
+--                                                     end) as pos_os_have_stock
+--                                ,count(distinct case when a.client_id <> 1 and ep.client_id <> 1 and sum(a.on_hand_quantity) > 0 then a.pos_id
+--                                                     end) as  pos_fs_have_stock
+--                               ,STRING_AGG(distinct ep.name, ", ") as stock_available_in_POSs
+--                               ,a.client_id
+--                      from ${source.ref}.cos_fact_inventory a
+--                              left join  ${source.ref}.circa_pos_profile as ep on a.pos_id = ep.id and a.client_id = ep.client_id 
+--                              where ep.id is not null
+--                              group by all)
 -- , ingregients as (
 --     select
 --         product_id,
@@ -72,6 +72,41 @@ with cte_product as (
 --     left join ${source.platinum}.marketplace_prd_product_v2_ingredient i ON p.ingredient_code = i.ingredient_code
 --     where ingredient_level = 1
 -- ),
+,inventory_summary as (
+  select 
+    a.product_id
+    , a.pos_id
+    , a.client_id
+    , sum(a.on_hand_quantity) as total_on_hand_quantity
+    , ep.name as pos_name
+  from lakehouse-prod-394907.gold_buymed_vn2.cos_fact_inventory a
+  left join lakehouse-prod-394907.gold_buymed_vn2.circa_pos_profile ep 
+    on a.pos_id = ep.id 
+    and a.client_id = ep.client_id
+  where ep.id is not null
+  group by 
+    a.product_id
+    , a.pos_id
+    , a.client_id
+    , ep.name
+)
+, inventory as (
+  select 
+    product_id
+    , sum(total_on_hand_quantity) as on_hand_quantity
+    , count(distinct case 
+        when client_id = 1 and total_on_hand_quantity > 0 then pos_id 
+      end) as pos_os_have_stock
+    , count(distinct case 
+        when client_id <> 1 and total_on_hand_quantity > 0 then pos_id 
+      end) as pos_fs_have_stock
+    , string_agg(distinct pos_name, ', ') as stock_available_in_poss
+    , client_id
+  from inventory_summary
+  group by 
+    product_id
+    , client_id
+)
 
 ,ingregients as (
                    select distinct
