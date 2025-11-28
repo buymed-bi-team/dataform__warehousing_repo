@@ -6,7 +6,7 @@ config {
     tags: ["alert_dataform"]
 }
 js {
-    const completed_date = `CURRENT_DATE() - INTERVAL 3 MONTH`;
+    const completed_date = `CURRENT_DATE() - INTERVAL 2 MONTH`;
 }
 
 with bypass_case as (
@@ -33,6 +33,7 @@ with bypass_case as (
     FROM ${ref(`cos_fact_order_item`)} i
     LEFT JOIN ${ref(`cos_fact_order`)} o ON i.order_id = o.order_id
     LEFT JOIN ${ref(`circa_pos_profile`)} p ON o.pos_id = p.id
+    WHERE o.status IN ('COMPLETED', 'COMPLETED_SHIPPING')
     GROUP BY ALL
 ), platinum_layer as (
     SELECT DISTINCT 
@@ -40,7 +41,9 @@ with bypass_case as (
         product_id, 
         unit, 
         sum(quantity) as total_qty_raw
-    FROM `buymed_circa_v2.order_order_item`
+    FROM `buymed_circa_v2.order_order_item` i 
+    LEFT JOIN buymed_circa_v2.order_order o ON i.order_id = o.id
+    WHERE o.status IN ('COMPLETED', 'COMPLETED_SHIPPING')
     GROUP BY ALL
 )
 SELECT a.* except(client_id,order_id ), b.total_qty_raw 
