@@ -106,6 +106,7 @@ LEFT JOIN (
         , JSON_VALUE(documents, "$.PHARMACY_ELIGIBILITY_LICENSE.date_of_issue") AS ddkkdd_date_of_issue
         , REGEXP_REPLACE(JSON_VALUE(documents, "$.PHARMACY_ELIGIBILITY_LICENSE.files.0.file_url"), r'storage.googleapis.com', "cdn-gcs.thuocsi.vn") AS ddkkdd_file_url
     FROM ${source.platinum}.platform_iam_prd_core_entity
+    QUALIFY ROW_NUMBER() OVER(PARTITION BY seller_code) = 1
 ) AS l ON l.seller_code = s.code
 post_operations {
     ALTER TABLE ${self()} ALTER COLUMN supplier_type SET DEFAULT "UNKNOWN";
