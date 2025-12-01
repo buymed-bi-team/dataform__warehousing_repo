@@ -1,0 +1,52 @@
+config {
+    type: "table",
+    description: 
+        `
+        Inbound performance with the order cut-off time;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.platinum}.warehouse_prd_picking_pick_ticket,
+            ${source.platinum}.warehouse_prd_picking_pick_ticket_item,
+            ${source.ref}.fact_inbound_ticket,
+        `,
+    tags: ["FFM_CUTOFF", "custom_1h_past5"]
+}
+
+SELECT DISTINCT
+    t.warehouse_code
+    , t.ticket_id
+    , t.so
+    , ti.admin_product_id  AS product_id
+    , ti.sku
+    , ti.name AS product_name
+    , ti.fulfilled_quantity
+    , ti.order_quantity
+    , JSON_VALUE(d, "$.po_code") AS po_code
+    , i.first_checkin_destination_fc
+    , p.end_time
+    , c.cut_off_ts
+FROM ${source.platinum}.warehouse_prd_picking_pick_ticket_item AS ti
+    , UNNEST(JSON_QUERY_ARRAY(ti.details)) AS d
+    LEFT JOIN ${source.platinum}.warehouse_prd_picking_pick_ticket AS t ON ti.ticket_id = t.ticket_id
+    LEFT JOIN ${ref('fact_inbound_ticket')} AS i ON i.po_code= JSON_VALUE(d, "$.po_code")
+    LEFT JOIN (
+        SELECT
+            JSON_VALUE(p.extra_props, "$.inbound_code") AS po_code
+            , sku
+            , MAX(COALESCE(p.end_time, p1.end_time, p.last_updated_time, p1.last_updated_time)) + INTERVAL 7 HOUR AS end_time
+        FROM ${source.platinum}.warehouse_prd_inbound_put_ticket AS p
+            , UNNEST(JSON_VALUE_ARRAY(p.extra_props, "$.skus")) AS sku
+            LEFT JOIN ${source.platinum}.warehouse_prd_inbound_put_ticket AS p1 ON p1.code = JSON_VALUE(p.extra_props, "$.parent_ref")
+        WHERE p.status <> "CANCEL"
+            AND p.created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH) - INTERVAL 2 MONTH
+        GROUP BY ALL
+    ) AS p ON p.po_code = JSON_VALUE(d, "$.po_code") AND p.sku = ti.sku
+    LEFT JOIN ${ref('dim_fulfill_cutoff_route')} AS c ON c.ticket_id = t.ticket_id
+WHERE 1=1
+    AND ti.created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH) - INTERVAL 2 MONTH
+    AND t.created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH) - INTERVAL 2 MONTH
+    AND COALESCE(JSON_VALUE(ti.extra_props, "$.first_reserved_quantity"), "0")  = "0"
+    AND t.status = "DONE"
+    AND TIMESTAMP_ADD(t.created_time, INTERVAL 7 HOUR) < i.first_checkin_destination_fc
