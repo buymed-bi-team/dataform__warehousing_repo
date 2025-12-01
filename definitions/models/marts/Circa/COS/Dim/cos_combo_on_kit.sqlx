@@ -20,6 +20,7 @@ Select distinct timestamp_add(current_timestamp(), interval 7 hour) as transform
 from  ${source.circa_os}.order_order_apply_combo o 
 where product_id  in (Select distinct cast(combo_code as int64) from ${source.ref}.dim_combo_product
                           where combo_name like '%On Kit%'
+                                and product_id not in (999900193,999900154) -- B40 
                 )
      and o.order_id in 
         (
