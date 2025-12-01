@@ -42,6 +42,10 @@ with cte_product as (
                             ,ARRAY_TO_STRING(JSON_VALUE_ARRAY(image_urls), ', ') AS image_urls
                             ,price_type
                             ,tp.chronic
+                            ,thuocsi_product_status
+                            ,thuocsi_has_stock
+                            ,thuocsi_unit
+                            ,thuocsi_quantity 
                             ,p.client_id
                      from ${source.circa_os}.product_product p
                               left join ${source.circa_os}.product_main_category mc on p.main_category_code = mc.code and p.client_id = mc.client_id
