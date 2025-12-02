@@ -374,7 +374,7 @@ SELECT
   tb4.name as main_category_name,
   IFNULL(product.is_combo,FALSE) AS is_combo,
   hmp.high_margin,
-  rp.retail_price,
+  COALESCE(rp.retail_price, SAFE_CAST(JSON_VALUE(product.retail_info.retail_ref_price) AS FLOAT64)) AS retail_price,
   op.ownbrand_portfolio,
   IF(
     chronic.chronic = "CHRONIC"
