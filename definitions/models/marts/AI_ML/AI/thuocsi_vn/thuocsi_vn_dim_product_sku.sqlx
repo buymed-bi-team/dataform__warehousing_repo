@@ -73,6 +73,7 @@ SELECT
     , CASE 
         WHEN s.fc_code = "BD" THEN "Kho Bình Dương"
         WHEN s.fc_code = "HN" THEN "Kho Bắc Ninh"
+        WHEN s.fc_code = "DN" THEN "Kho Đà Nẵng"
       END AS warehouse_name
 FROM ${ref('gold_buymed_vn2', 'dim_sku_sales_region_full')} AS s
     LEFT JOIN ${ref('gold_buymed_vn2', 'dim_product')} AS p ON s.product_id = p.product_id
