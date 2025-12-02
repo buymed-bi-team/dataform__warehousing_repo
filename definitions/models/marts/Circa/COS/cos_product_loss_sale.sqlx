@@ -23,7 +23,7 @@ Select distinct p.name
                 ,o.unit
                 ,unit_id
                 ,o.product_id
-                ,coalesce(o.product_name, td.product_name) as product_name
+                ,case when o.product_name is null or o.product_name = '' then  td.product_name else o.product_name end as  product_name
                 ,thuocsi_product_status
                 ,td.thuocsi_has_stock
                 ,td.thuocsi_unit
