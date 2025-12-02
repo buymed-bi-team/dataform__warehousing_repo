@@ -16,14 +16,14 @@ const model = new main.PlatinumModel(
     }
 );
 model.createIncremental(
-    ["0h00","12h00", "platinum_staging", "marketplace_prd_order-v2"],
+    ["platinum_0h00","platinum_12h00", "platinum_staging", "marketplace_prd_order-v2"],
     {
         has_src_created_date : false,
         ingestCutOffInterval : "INTERVAL 1 MONTH"
     }
 );
 model.assertUnique(
-    ["0h00","12h00", "platinum_unique_assertion", "marketplace_prd_order-v2"],
+    ["platinum_0h00","platinum_12h00", "platinum_unique_assertion", "marketplace_prd_order-v2"],
     {
         intervalCheckpoint : `INTERVAL 1 YEAR`,
         maxRetry: 2
@@ -38,7 +38,7 @@ model.createMismatchAssertionView(
     }
 )
 model.assertMismatch(
-    ["0h00","12h00", "platinum_staging_assertion", "marketplace_prd_order-v2"],
+    ["platinum_0h00","platinum_12h00", "platinum_staging_assertion", "marketplace_prd_order-v2"],
     {
         intervalCheckpoint: `INTERVAL 2 DAY`,
         maxRetry: 2,

@@ -23,7 +23,7 @@ model.createIncremental(
     }
 );
 model.assertUnique(
-    ["0h00","12h00", "platinum_unique_assertion", "warehouse_prd_inventory"],
+    ["platinum_0h00","platinum_12h00", "platinum_unique_assertion", "warehouse_prd_inventory"],
     {
         intervalCheckpoint : `INTERVAL 2 DAY`,
         maxRetry: 2
@@ -38,7 +38,7 @@ model.createMismatchAssertionView(
     }
 )
 model.assertMismatch(
-    ["0h00","12h00", "platinum_staging_assertion", "warehouse_prd_inventory"],
+    ["platinum_0h00","platinum_12h00", "platinum_staging_assertion", "warehouse_prd_inventory"],
     {
         intervalCheckpoint: `INTERVAL 2 DAY`,
         maxRetry: 2,
