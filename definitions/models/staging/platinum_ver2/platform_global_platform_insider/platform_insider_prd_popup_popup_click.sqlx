@@ -1,0 +1,53 @@
+config {
+    type: "view",
+    schema: "platinum_buymed_vn",
+    name: "platform_insider_prd_popup_popup_click",
+    description : `
+    PIC: minh.luu
+    Partition by: created date
+    Cluster by: ["date_index","platform"]
+    `,
+    tags:["platinum","platform_insider_prd_popup"]
+}
+
+  WITH silver AS (
+    SELECT
+      key,mg_id,popup_id,click_id,user_agent,created_time,campaign_id,project_id,date_index,user_unique_id,view_id,click_time,click_type,platform,last_updated_time,synced_at,extra_props,action,ingest_time,
+      
+        CASE
+            WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time, 'Asia/Ho_Chi_Minh'))
+            ELSE DATE( '2099-01-01' )
+        END
+     created_date,
+      CAST(null as datetime) 
+    FROM silver_buymed_vn.platform_insider_prd_popup_popup_click
+    WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 1 DAY
+    QUALIFY ROW_NUMBER() OVER (_window) = 1 
+          AND ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 16 HOUR
+          WINDOW _window AS (
+          PARTITION BY mg_id
+          ORDER BY synced_at DESC,
+          IF
+              (action='d',3,
+              IF
+              (action='u',2,1)) DESC
+          ,last_updated_time DESC)
+  ), platinum AS (
+    SELECT 
+      key,mg_id,popup_id,click_id,user_agent,created_time,campaign_id,project_id,date_index,user_unique_id,view_id,click_time,click_type,platform,last_updated_time,synced_at,extra_props,action,ingest_time,
+      created_date,
+      platinum_refresh
+    FROM ${ref(`platinum_buymed_vn__stg`, `platform_insider_prd_popup_popup_click`)}
+  )
+  SELECT p.*
+  FROM platinum p
+  LEFT JOIN silver s 
+      ON p.mg_id = s.mg_id 
+  WHERE s.mg_id is null 
+
+  UNION ALL 
+
+  SELECT s.*
+  FROM silver s
+  WHERE action <> "d"
+  
