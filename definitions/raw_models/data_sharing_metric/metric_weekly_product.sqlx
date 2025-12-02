@@ -65,6 +65,7 @@ WITH
             , MAX_BY(NULLIF(p.product_category, "Thuốc (Chưa phân loại)"), pr.price * SAFE_CAST(JSON_VALUE(s, "$.quantity") AS INT64)) AS bm_category_1
             , MAX_BY(i.category_name, pr.price * SAFE_CAST(JSON_VALUE(s, "$.quantity") AS INT64)) AS bm_category_2
             , MAX_BY(g.efficacy_name, pr.price * SAFE_CAST(JSON_VALUE(s, "$.quantity") AS INT64)) AS bm_category_3
+            , MAX_BY(p.brand, pr.price * SAFE_CAST(JSON_VALUE(s, "$.quantity") AS INT64)) AS brand
 --             , pr.price
         FROM ${source.platinum}.marketplace_prd_product_v2_product AS a
             , UNNEST(JSON_QUERY_ARRAY(sub_products)) AS s
@@ -135,7 +136,7 @@ WITH
             , COALESCE(level_4_quantity, level_3_quantity, level_2_quantity, level_1_quantity) AS pack_value
             , COALESCE(level_1_unit, level_2_unit, level_3_unit, level_4_unit) AS pack_unit
             , b.volumes AS pack_desc
-            , d.brand
+            , COALESCE(d.brand, r.brand) AS brand
             , d.manufacturer_short_name AS manufacturer
             , d.is_prescription AS prescription_status
             ,COALESCE(

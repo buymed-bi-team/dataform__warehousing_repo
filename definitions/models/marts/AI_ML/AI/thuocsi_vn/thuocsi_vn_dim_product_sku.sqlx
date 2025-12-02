@@ -5,6 +5,55 @@ config {
     tags: ['AI_THUOCSI_VN']
 }
 
+WITH
+    combo AS (
+        SELECT
+            a.product_id
+            , MAX_BY(CASE
+                WHEN p.product_category = "Thuốc kê đơn" THEN "Rx"
+                WHEN p.product_category = "Thuốc không kê đơn" THEN "OTC"
+                WHEN p.product_category = "Thuốc (Chưa phân loại)" OR p.product_category IS NULL THEN NULL
+                ELSE "Non-Drug"
+            END, pr.price * SAFE_CAST(JSON_VALUE(s, "$.quantity") AS INT64)) AS product_category
+            , MAX_BY( CASE
+                WHEN p.product_category = "Thuốc kê đơn" THEN "Rx"
+                WHEN p.product_category = "Thuốc không kê đơn" THEN "OTC"
+                WHEN p.product_category = "Thuốc (Chưa phân loại)" OR p.product_category IS NULL THEN NULL
+                ELSE "Non-Drug"
+            END, pr.price * SAFE_CAST(JSON_VALUE(s, "$.quantity") AS INT64)) AS bm_big_cat
+            , MAX_BY(NULLIF(p.product_category, "Thuốc (Chưa phân loại)"), pr.price * SAFE_CAST(JSON_VALUE(s, "$.quantity") AS INT64)) AS bm_category_1
+            , MAX_BY(i.category_name, pr.price * SAFE_CAST(JSON_VALUE(s, "$.quantity") AS INT64)) AS bm_category_2
+            , MAX_BY(g.efficacy_name, pr.price * SAFE_CAST(JSON_VALUE(s, "$.quantity") AS INT64)) AS bm_category_3
+            , MAX_BY(p.brand, pr.price * SAFE_CAST(JSON_VALUE(s, "$.quantity") AS INT64)) AS brand
+        FROM ${source.platinum}.marketplace_prd_product_v2_product AS a
+            , UNNEST(JSON_QUERY_ARRAY(sub_products)) AS s
+            LEFT JOIN ${ref('dim_product')} AS p ON SAFE_CAST(JSON_VALUE(s, "$.product_id") AS INT64) = p.product_id
+            LEFT JOIN (
+                SELECT
+                    product_id
+                    , efficacy_name
+                FROM ${ref('dim_product_efficacy')}
+                WHERE efficacy_level= 1
+            ) AS g ON p.product_id = g.product_id
+            LEFT JOIN (
+                SELECT
+                    product_id
+                    , category_name
+                FROM ${ref('dim_product_category')}
+                WHERE level = 1
+            ) AS i ON p.product_id = i.product_id
+            LEFT JOIN (
+                SELECT
+                    sku_key
+                    , MAX(sku_display_price) AS price
+                FROM ${ref('adhoc_pricing_v2')}
+                WHERE sales_region_code <> "MIENTRUNG"
+                GROUP BY 1
+            ) AS pr ON pr.sku_key = CONCAT(SAFE_CAST(JSON_VALUE(s, "$.product_id") AS STRING), "_", a.owner)
+        WHERE sub_products IS NOT NULL
+        GROUP BY ALL
+    )
+
 SELECT
     s.product_id
     , s.product_name
@@ -13,8 +62,8 @@ SELECT
     , s.seller_code
     , s.seller_class
     , sl.name AS seller_name
-    , product_category AS product_category_CAT1
-    , brand
+    , COALESCE(p.product_category, c.product_category) AS product_category_CAT1
+    , COALESCE(p.brand, c.brand) AS brand
     , manufacturer_short_name AS manufacturer_name
     , country_origin
     , pr.sku_display_price AS unit_price
@@ -29,6 +78,7 @@ FROM ${ref('gold_buymed_vn2', 'dim_sku_sales_region_full')} AS s
     LEFT JOIN ${ref('gold_buymed_vn2', 'dim_product')} AS p ON s.product_id = p.product_id
     LEFT JOIN ${source.platinum}.seller_prd_core_seller AS sl ON sl.code = s.seller_code
     LEFT JOIN ${ref('gold_buymed_vn2', 'adhoc_pricing_v2')} AS pr ON pr.sku_key_sales_region_code = s.sku_key_sales_region_code
+    LEFT JOIN combo AS c ON c.product_id = s.product_id
     -- LEFT JOIN (
     --     SELECT
     --         a.sku_code
