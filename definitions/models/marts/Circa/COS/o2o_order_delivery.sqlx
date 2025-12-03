@@ -39,6 +39,7 @@ Select
        ,del.order_code 
        ,del.sender_name
        ,DATETIME_ADD(o2o.created_time, INTERVAL 7 HOUR) as created_time_plaform
+       ,date(DATETIME_ADD(o2o.created_time, INTERVAL 7 HOUR)) as created_date_plaform
        ,DATETIME_ADD(o2o.synced_at, INTERVAL 7 HOUR) as deliver_time_plaform
        ,o2o.receiver_name as Customer_name
        ,o2o.customer_phone

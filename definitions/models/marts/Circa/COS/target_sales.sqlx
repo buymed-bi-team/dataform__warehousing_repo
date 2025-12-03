@@ -4,9 +4,47 @@ config {
     tags:["10h30"],
     name: "target_sales"
 }
+with target_old as (
+       select * from buymed_external.target_sales_v2
+       where pos_code is not null
+            and month <= '2025-11-01'
+       union all 
+       select * from buymed_external.target_sales_fs
+       where pos_code is not null
+)
+,target_from_m12 as (
+    Select * from (
+    Select code as pos_code
+           ,date(submit_at) as year_month
+           ,type
+           ,value
+    from collector.data_prd
+    where object = 'CIRCA_TARGET'
+          and type in ('ACTIVE_CUSTOMERS','TARGET_REVENUE','TARGET_MARGIN','REPEAT_CUSTOMERS','TARGET_GMV','TARGET_TRANSACTIONS')
+                  ) 
+    pivot (
+             max(value) for type in ('ACTIVE_CUSTOMERS','TARGET_REVENUE','TARGET_MARGIN','REPEAT_CUSTOMERS','TARGET_GMV','TARGET_TRANSACTIONS')
+            )
 
-select * from buymed_external.target_sales_v2
-where pos_code is not null
+)
+Select Pos_Code                               as pos_code 
+       ,Month                                 as year_month
+       ,Target_GMV                            as target_gmv
+       ,Target_Net_Rev_af_tax                 as target_rev_vat_in
+       ,Target_Margin                         as target_margin
+       ,Target_transactions                   as Target_transactions
+       ,null                                  as target_active_customers
+       ,null                                  as target_repeat_customers
+from target_old
+
 union all 
-select * from buymed_external.target_sales_fs
-where pos_code is not null
+
+Select pos_code                               as pos_code 
+       ,year_month                            as year_month
+       ,cast(TARGET_GMV as float64 )          as target_gmv
+       ,cast(TARGET_REVENUE as float64)       as target_rev_vat_in
+       ,null                                  as target_margin
+       ,cast(TARGET_TRANSACTIONS as float64)  as Target_transactions
+       ,cast(ACTIVE_CUSTOMERS as float64)     as target_active_customers
+       ,cast(REPEAT_CUSTOMERS as float64)     as target_repeat_customers
+from target_from_m12
