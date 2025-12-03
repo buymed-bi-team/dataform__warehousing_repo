@@ -38,4 +38,4 @@ from ${ref("fact_hub_order")}
 where
   status <> 'CANCEL'
 	and (do_type = 'FMPO' or sub_type = 'FMPO')
-qualify row_number() over (partition by po_code order by created_at asc) = 1
+qualify row_number() over (partition by reference_code order by created_at ) = 1
