@@ -41,10 +41,10 @@ union all
 
 Select pos_code                               as pos_code 
        ,year_month                            as year_month
-       ,cast(TARGET_GMV as float64 )          as target_gmv
+       ,cast(null as float64 )                as target_gmv
        ,cast(TARGET_REVENUE as float64)       as target_rev_vat_in
        ,null                                  as target_margin
-       ,cast(TARGET_TRANSACTIONS as float64)  as Target_transactions
-       ,cast(ACTIVE_CUSTOMERS as float64)     as target_active_customers
-       ,cast(REPEAT_CUSTOMERS as float64)     as target_repeat_customers
+       ,cast(TARGET_TRANSACTIONS as int64)    as Target_transactions
+       ,cast(ACTIVE_CUSTOMERS as int64)       as target_active_customers
+       ,cast(REPEAT_CUSTOMERS as int64)       as target_repeat_customers
 from target_from_m12
