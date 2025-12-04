@@ -9,21 +9,21 @@ WITH
     combo AS (
         SELECT
             a.product_id
-            , MAX_BY(CASE
-                WHEN p.product_category = "Thuốc kê đơn" THEN "Rx"
-                WHEN p.product_category = "Thuốc không kê đơn" THEN "OTC"
-                WHEN p.product_category = "Thuốc (Chưa phân loại)" OR p.product_category IS NULL THEN NULL
-                ELSE "Non-Drug"
-            END, pr.price * SAFE_CAST(JSON_VALUE(s, "$.quantity") AS INT64)) AS product_category
-            , MAX_BY( CASE
-                WHEN p.product_category = "Thuốc kê đơn" THEN "Rx"
-                WHEN p.product_category = "Thuốc không kê đơn" THEN "OTC"
-                WHEN p.product_category = "Thuốc (Chưa phân loại)" OR p.product_category IS NULL THEN NULL
-                ELSE "Non-Drug"
-            END, pr.price * SAFE_CAST(JSON_VALUE(s, "$.quantity") AS INT64)) AS bm_big_cat
-            , MAX_BY(NULLIF(p.product_category, "Thuốc (Chưa phân loại)"), pr.price * SAFE_CAST(JSON_VALUE(s, "$.quantity") AS INT64)) AS bm_category_1
-            , MAX_BY(i.category_name, pr.price * SAFE_CAST(JSON_VALUE(s, "$.quantity") AS INT64)) AS bm_category_2
-            , MAX_BY(g.efficacy_name, pr.price * SAFE_CAST(JSON_VALUE(s, "$.quantity") AS INT64)) AS bm_category_3
+            -- , MAX_BY(CASE
+            --     WHEN p.product_category = "Thuốc kê đơn" THEN "Rx"
+            --     WHEN p.product_category = "Thuốc không kê đơn" THEN "OTC"
+            --     WHEN p.product_category = "Thuốc (Chưa phân loại)" OR p.product_category IS NULL THEN NULL
+            --     ELSE "Non-Drug"
+            -- END, pr.price * SAFE_CAST(JSON_VALUE(s, "$.quantity") AS INT64)) AS product_category
+            -- , MAX_BY( CASE
+            --     WHEN p.product_category = "Thuốc kê đơn" THEN "Rx"
+            --     WHEN p.product_category = "Thuốc không kê đơn" THEN "OTC"
+            --     WHEN p.product_category = "Thuốc (Chưa phân loại)" OR p.product_category IS NULL THEN NULL
+            --     ELSE "Non-Drug"
+            -- END, pr.price * SAFE_CAST(JSON_VALUE(s, "$.quantity") AS INT64)) AS bm_big_cat
+            , MAX_BY(p.product_category, pr.price * SAFE_CAST(JSON_VALUE(s, "$.quantity") AS INT64)) AS product_category
+            -- , MAX_BY(i.category_name, pr.price * SAFE_CAST(JSON_VALUE(s, "$.quantity") AS INT64)) AS bm_category_2
+            -- , MAX_BY(g.efficacy_name, pr.price * SAFE_CAST(JSON_VALUE(s, "$.quantity") AS INT64)) AS bm_category_3
             , MAX_BY(p.brand, pr.price * SAFE_CAST(JSON_VALUE(s, "$.quantity") AS INT64)) AS brand
         FROM ${source.platinum}.marketplace_prd_product_v2_product AS a
             , UNNEST(JSON_QUERY_ARRAY(sub_products)) AS s
@@ -62,7 +62,7 @@ SELECT
     , s.seller_code
     , s.seller_class
     , sl.name AS seller_name
-    , COALESCE(p.product_category, c.product_category) AS product_category_CAT1
+    , NULLIF(COALESCE(p.product_category, c.product_category), "Thuốc (Chưa phân loại)") AS product_category_CAT1
     , COALESCE(p.brand, c.brand) AS brand
     , manufacturer_short_name AS manufacturer_name
     , country_origin

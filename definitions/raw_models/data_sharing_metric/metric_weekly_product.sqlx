@@ -55,18 +55,18 @@ WITH
                 WHEN p.product_category = "Thuốc không kê đơn" THEN "OTC"
                 WHEN p.product_category = "Thuốc (Chưa phân loại)" OR p.product_category IS NULL THEN NULL
                 ELSE "Non-Drug"
-            END, pr.price * SAFE_CAST(JSON_VALUE(s, "$.quantity") AS INT64)) AS product_category
+            END, COALESCE(pr.price,1) * SAFE_CAST(JSON_VALUE(s, "$.quantity") AS INT64)) AS product_category
             , MAX_BY( CASE
                 WHEN p.product_category = "Thuốc kê đơn" THEN "Rx"
                 WHEN p.product_category = "Thuốc không kê đơn" THEN "OTC"
                 WHEN p.product_category = "Thuốc (Chưa phân loại)" OR p.product_category IS NULL THEN NULL
                 ELSE "Non-Drug"
-            END, pr.price * SAFE_CAST(JSON_VALUE(s, "$.quantity") AS INT64)) AS bm_big_cat
-            , MAX_BY(NULLIF(p.product_category, "Thuốc (Chưa phân loại)"), pr.price * SAFE_CAST(JSON_VALUE(s, "$.quantity") AS INT64)) AS bm_category_1
-            , MAX_BY(i.category_name, pr.price * SAFE_CAST(JSON_VALUE(s, "$.quantity") AS INT64)) AS bm_category_2
-            , MAX_BY(g.efficacy_name, pr.price * SAFE_CAST(JSON_VALUE(s, "$.quantity") AS INT64)) AS bm_category_3
-            , MAX_BY(p.brand, pr.price * SAFE_CAST(JSON_VALUE(s, "$.quantity") AS INT64)) AS brand
---             , pr.price
+            END, COALESCE(pr.price,1) * SAFE_CAST(JSON_VALUE(s, "$.quantity") AS INT64)) AS bm_big_cat
+            , MAX_BY(NULLIF(p.product_category, "Thuốc (Chưa phân loại)"), COALESCE(pr.price,1) * SAFE_CAST(JSON_VALUE(s, "$.quantity") AS INT64)) AS bm_category_1
+            , MAX_BY(i.category_name, COALESCE(pr.price,1) * SAFE_CAST(JSON_VALUE(s, "$.quantity") AS INT64)) AS bm_category_2
+            , MAX_BY(g.efficacy_name, COALESCE(pr.price,1) * SAFE_CAST(JSON_VALUE(s, "$.quantity") AS INT64)) AS bm_category_3
+            , MAX_BY(p.brand, COALESCE(pr.price,1) * SAFE_CAST(JSON_VALUE(s, "$.quantity") AS INT64)) AS brand
+--             , COALESCE(pr.price,1)
         FROM ${source.platinum}.marketplace_prd_product_v2_product AS a
             , UNNEST(JSON_QUERY_ARRAY(sub_products)) AS s
             LEFT JOIN ${ref('dim_product')} AS p ON SAFE_CAST(JSON_VALUE(s, "$.product_id") AS INT64) = p.product_id

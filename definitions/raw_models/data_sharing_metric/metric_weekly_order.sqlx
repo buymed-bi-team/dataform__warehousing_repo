@@ -66,3 +66,4 @@ WHERE a.created_date BETWEEN "2024-01-01" AND CURRENT_DATE - 1
     AND DATE(b.created_at) BETWEEN "2024-01-01" AND CURRENT_DATE - 1
     AND b.order_status <> "CANCEL"
     AND b.channel IN ("MARKETPLACE", "CIRCA")
+QUALIFY ROW_NUMBER() OVER(PARTITION BY a.mg_id) = 1
