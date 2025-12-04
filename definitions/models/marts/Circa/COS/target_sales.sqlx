@@ -32,7 +32,7 @@ Select Pos_Code                               as pos_code
        ,Target_GMV                            as target_gmv
        ,Target_Net_Rev_af_tax                 as target_rev_vat_in
        ,Target_Margin                         as target_margin
-       ,Target_transactions                   as Target_transactions
+       ,Target_transactions                   as target_transactions
        ,null                                  as target_active_customers
        ,null                                  as target_repeat_customers
 from target_old
@@ -44,7 +44,7 @@ Select pos_code                               as pos_code
        ,cast(null as float64 )                as target_gmv
        ,cast(TARGET_REVENUE as float64)       as target_rev_vat_in
        ,null                                  as target_margin
-       ,cast(TARGET_TRANSACTIONS as int64)    as Target_transactions
+       ,cast(TARGET_TRANSACTIONS as int64)    as target_transactions
        ,cast(ACTIVE_CUSTOMERS as int64)       as target_active_customers
        ,cast(REPEAT_CUSTOMERS as int64)       as target_repeat_customers
 from target_from_m12
