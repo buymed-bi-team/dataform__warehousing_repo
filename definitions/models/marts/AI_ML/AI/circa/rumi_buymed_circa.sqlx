@@ -4,7 +4,7 @@ config {
 
 -- fact_order
 
-CREATE OR REPLACE VIEW `rumi_buymed_circa.circa_fact_orderm`
+CREATE OR REPLACE VIEW `rumi_buymed_circa.circa_fact_order`
 AS (SELECT * FROM  buymed_innovation.circa_fact_order);
 
 
