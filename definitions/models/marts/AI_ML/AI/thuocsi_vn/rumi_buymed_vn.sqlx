@@ -1,0 +1,43 @@
+config {
+    type:"operations"
+}
+
+-- fact_order_item
+
+CREATE OR REPLACE VIEW `rumi_buymed_vn.thuocsi_vn_fact_order_item`
+AS (SELECT * FROM  buymed_innovation.thuocsi_vn_fact_order_item);
+
+-- fact_target
+
+CREATE OR REPLACE VIEW `rumi_buymed_vn.thuocsi_vn_fact_target`
+AS (SELECT * FROM  buymed_innovation.thuocsi_vn_fact_target);
+
+-- fact_order_voucher
+
+CREATE OR REPLACE VIEW `rumi_buymed_vn.thuocsi_vn_fact_order_voucher`
+AS (SELECT * FROM  buymed_innovation.thuocsi_vn_fact_order_voucher);
+
+-- fact_margin
+
+CREATE OR REPLACE VIEW `rumi_buymed_vn.thuocsi_vn_fact_margin`
+AS (SELECT * FROM  buymed_innovation.thuocsi_vn_fact_margin);
+
+-- dim_customer
+
+CREATE OR REPLACE VIEW `rumi_buymed_vn.thuocsi_vn_dim_customer`
+AS (SELECT * FROM  buymed_innovation.thuocsi_vn_dim_customer);
+
+-- dim_product_sku
+
+CREATE OR REPLACE VIEW `rumi_buymed_vn.thuocsi_vn_dim_product_sku`
+AS (SELECT * FROM  buymed_innovation.thuocsi_vn_dim_product_sku);
+
+-- dim_inventory
+
+CREATE OR REPLACE VIEW `rumi_buymed_vn.thuocsi_vn_dim_inventory`
+AS (SELECT * FROM  buymed_innovation.thuocsi_vn_dim_inventory);
+
+-- agg_competitor_price
+
+CREATE OR REPLACE VIEW `rumi_buymed_vn.thuocsi_vn_agg_competitor_price`
+AS (SELECT * FROM  buymed_innovation.thuocsi_vn_agg_competitor_price)
