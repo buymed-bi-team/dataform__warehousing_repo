@@ -28,20 +28,20 @@ WITH
         FROM ${source.platinum}.marketplace_prd_product_v2_product AS a
             , UNNEST(JSON_QUERY_ARRAY(sub_products)) AS s
             LEFT JOIN ${ref('dim_product')} AS p ON SAFE_CAST(JSON_VALUE(s, "$.product_id") AS INT64) = p.product_id
-            LEFT JOIN (
-                SELECT
-                    product_id
-                    , efficacy_name
-                FROM ${ref('dim_product_efficacy')}
-                WHERE efficacy_level= 1
-            ) AS g ON p.product_id = g.product_id
-            LEFT JOIN (
-                SELECT
-                    product_id
-                    , category_name
-                FROM ${ref('dim_product_category')}
-                WHERE level = 1
-            ) AS i ON p.product_id = i.product_id
+            -- LEFT JOIN (
+            --     SELECT
+            --         product_id
+            --         , efficacy_name
+            --     FROM ${ref('dim_product_efficacy')}
+            --     WHERE efficacy_level= 1
+            -- ) AS g ON p.product_id = g.product_id
+            -- LEFT JOIN (
+            --     SELECT
+            --         product_id
+            --         , category_name
+            --     FROM ${ref('dim_product_category')}
+            --     WHERE level = 1
+            -- ) AS i ON p.product_id = i.product_id
             LEFT JOIN (
                 SELECT
                     sku_key
