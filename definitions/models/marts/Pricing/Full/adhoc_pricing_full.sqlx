@@ -9,7 +9,7 @@ config {
         Source: 
             ${source.silver}.marketplace_prd_product_v2_product_market_price
         `,
-    tags: ["custom_1h_past5", "PRICING"]
+    tags: ["gold_custom_20m", "PRICING"]
 }
 
 WITH 

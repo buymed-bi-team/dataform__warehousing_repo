@@ -13,7 +13,7 @@ config {
             ${source.platinum}.marketplace_prd_promotion_campaign_product, 
             ${source.platinum}.marketplace_prd_product_v2_deal
         `,
-    tags: ["custom_1h_past5", "PRICING"],
+    tags: ["gold_custom_20m", "PRICING"],
 
     assertions: {
       uniqueKey: ["sku_key_sales_region_code"],

@@ -9,7 +9,7 @@ config {
             ${source.platinum}.marketplace_prd_product_v2_sku,
             ${source.ref}.dim_fc_service_area
         `,
-    tags: ["custom_1h_past5", "PRODUCT_SKU_SR"]
+    tags: ["gold_custom_20m", "PRODUCT_SKU_SR"]
 }
 
 SELECT
