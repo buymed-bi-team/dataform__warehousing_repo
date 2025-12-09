@@ -24,6 +24,7 @@ WITH
             , o.entity_id AS customer_id
             , o.client_id
             , o.pos_id
+            , o.pos_code
             , p.name AS pos_name
             , IF(p.type = "FS", "FS", "COS") AS pos_type
             , o.channel
@@ -53,6 +54,7 @@ WITH
             , o.customer_id
             , o.client_id
             , o.pos_id
+            , o.pos_code
             , o.pos_name
             , o.pos_type
             , o.channel

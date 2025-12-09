@@ -1,0 +1,10 @@
+config {
+    type: 'table',
+    schema: "buymed_innovation",
+    description: `All orders item of Circa.`,
+    tags: ['AI_CIRCA', "0h30"]
+}
+
+SELECT
+    *
+FROM ${source.external}.import_target_circa
