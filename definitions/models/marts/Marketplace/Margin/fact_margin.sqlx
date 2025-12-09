@@ -236,4 +236,5 @@ WITH
 SELECT
     *
 FROM margin
+WHERE po_code NOT IN ("POHN762060", "PO762062")
 
