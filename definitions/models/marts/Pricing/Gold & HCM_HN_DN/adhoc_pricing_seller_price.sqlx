@@ -31,6 +31,26 @@ with
             , IFNULL(SAFE.PARSE_TIMESTAMP("%F %T", from_time_index), created_time) AS index
         FROM ${source.platinum}.marketplace_prd_product_v2_product_fee_config
         QUALIFY ROW_NUMBER() over (PARTITION BY product_id, location_code ORDER BY index DESC) = 1
+    ),
+
+    combo AS (
+        SELECT
+            a.sku AS combo_sku_code
+            , s.sales_region_code
+--             , a.retail_price_value AS combo_retail_price_value
+            , JSON_VALUE(ss, '$.item_code') AS sub_item_code
+            , SAFE_CAST(JSON_VALUE(ss, '$.quantity') AS INT64) AS quantity
+            , n.product_id AS sub_product_id
+            , n.retail_price_value AS sub_retail_price_value
+            , sf.fulfillment_fee_percent
+            , sf.sale_fee_percent
+            , SUM(n.retail_price_value * SAFE_CAST(JSON_VALUE(ss, '$.quantity') AS INT64)) OVER(PARTITION BY a.sku, s.sales_region_code) AS combo_retail_price_value
+        FROM ${ref('dim_sku_sales_region_current')} AS s
+            LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_sku AS a ON a.mg_id = s.mg_id
+            , UNNEST(JSON_QUERY_ARRAY(a.skus)) AS ss
+            LEFT JOIN ${ref('dim_sku_sales_region_current')} AS n ON JSON_VALUE(ss, '$.item_code') = n.sub_sku_code
+            LEFT JOIN seller_fee_config AS sf ON sf.product_id = n.product_id AND sf.location_code = s.sales_region_code
+        WHERE a.seller_class = "EXTERNAL"
     )
 
 -- step 2: get necessary columns to calculate price for seller
@@ -56,8 +76,8 @@ with
             a.delivery_region_fee_value,
             c.sku_level,
             e.product_category_code,
-            f.fulfillment_fee_percent AS fullfilment_fee_seller,
-            f.sale_fee_percent,
+            COALESCE(f.fulfillment_fee_percent, g.combo_fulfillment_fee_percent) AS fullfilment_fee_seller,
+            COALESCE(f.sale_fee_percent, g.combo_sale_fee_percent) AS sale_fee_percent,
             IF(COALESCE(campaign_price, deal_price) > display_price, NULL, COALESCE(campaign_price, deal_price)) as promotion_price,
             a.sku_key_sales_region_code,
             a.sku_key
@@ -74,6 +94,15 @@ with
             --     on concat(e.product_category_code,"_",IF(sel.supplier_type = "MARKET", "MARKET", c.sku_level)) = f.cate_level_code
             left join seller_fee_config AS f
                 on f.product_id = c.product_id and f.location_code = c.sales_region_code
+            left join (
+                SELECT
+                    combo_sku_code
+                    , sales_region_code
+                    , SUM(SAFE_DIVIDE(sub_retail_price_value * quantity * fulfillment_fee_percent, combo_retail_price_value)) AS combo_fulfillment_fee_percent
+                    , SUM(SAFE_DIVIDE(sub_retail_price_value * quantity * sale_fee_percent, combo_retail_price_value)) AS combo_sale_fee_percent
+                FROM combo
+                GROUP BY ALL
+            ) AS g ON g.combo_sku_code = a.sku_code AND g.sales_region_code = a.sales_region_code
         where sel.supplier_class = "EXTERNAL"
     )
 

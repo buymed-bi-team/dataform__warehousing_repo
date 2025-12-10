@@ -8,6 +8,9 @@ config {
 SELECT
     customer_id
     , customer_name
+    , user_created_date
+    , user_activated_date
+    , first_order_date
     , user_system_status AS customer_status
     , business_scope
     , customer_level
