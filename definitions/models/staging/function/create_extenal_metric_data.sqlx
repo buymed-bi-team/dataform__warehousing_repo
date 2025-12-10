@@ -1,0 +1,152 @@
+config {
+    type:"operations",
+    description: "create external table of metric data for validation"
+}
+
+/*
+Limitation:
+- External table doesn't scan new file
+*/
+CREATE OR REPLACE PROCEDURE buymed_external.create_gcs_metric()
+-- OPTIONS(strict_mode=false)
+BEGIN
+    /*
+    CALL buymed_external.create_gcs_metric()
+    */
+    DECLARE query STRING;
+
+    CREATE OR REPLACE EXTERNAL TABLE buymed_external.Metric_Data__Product (
+        available_status STRING,
+        bm_big_cat STRING,
+        bm_category_1 STRING,
+        bm_category_2 STRING,
+        bm_category_3 STRING,
+        brand STRING,
+        brand_origin STRING,
+        bundle_ids STRING,
+        category_code_level_1 STRING,
+        category_code_level_2 STRING,
+        category_code_level_3 STRING,
+        category_id_level_1 STRING,
+        category_id_level_2 STRING,
+        category_id_level_3 STRING,
+        contraindications STRING,
+        country STRING,
+        country_manufacturer STRING,
+        data_delivery_date STRING,
+        data_update_date STRING,
+        dosage_form STRING,
+        flag_gwp STRING,
+        flag_new_item_30d STRING,
+        flag_new_item_7d STRING,
+        indications STRING,
+        is_hidden STRING,
+        manufacturer STRING,
+        molocule STRING,
+        order_updated_at STRING,
+        pack_desc STRING,
+        pack_type STRING,
+        pack_unit STRING,
+        pack_value STRING,
+        platform STRING,
+        platform_created_at STRING,
+        prescription_status STRING,
+        price STRING,
+        price_before_discount STRING,
+        price_discount_percent STRING,
+        price_max STRING,
+        price_min STRING,
+        product_category STRING,
+        product_code STRING,
+        product_id STRING,
+        product_image_url STRING,
+        product_name STRING,
+        product_specs STRING,
+        product_url STRING,
+        product_variant_count STRING,
+        registration_number STRING,
+        sales_unit_2024_01 STRING,
+        sales_unit_2024_02 STRING,
+        sales_unit_2024_03 STRING,
+        sales_unit_2024_04 STRING,
+        sales_unit_2024_05 STRING,
+        sales_unit_2024_06 STRING,
+        sales_unit_2024_07 STRING,
+        sales_unit_2024_08 STRING,
+        sales_unit_2024_09 STRING,
+        sales_unit_2024_10 STRING,
+        sales_unit_2024_11 STRING,
+        sales_unit_2024_12 STRING,
+        sales_unit_2025_01 STRING,
+        sales_unit_2025_02 STRING,
+        sales_unit_2025_03 STRING,
+        sales_unit_2025_04 STRING,
+        sales_unit_2025_05 STRING,
+        sales_unit_2025_06 STRING,
+        sales_unit_2025_07 STRING,
+        sales_unit_30d STRING,
+        sales_unit_7d STRING,
+        sales_unit_last_month STRING,
+        sales_unit_last_week STRING,
+        sales_unit_this_month STRING,
+        sales_unit_total STRING,
+        sales_value_2024_01 STRING,
+        sales_value_2024_02 STRING,
+        sales_value_2024_03 STRING,
+        sales_value_2024_04 STRING,
+        sales_value_2024_05 STRING,
+        sales_value_2024_06 STRING,
+        sales_value_2024_07 STRING,
+        sales_value_2024_08 STRING,
+        sales_value_2024_09 STRING,
+        sales_value_2024_10 STRING,
+        sales_value_2024_11 STRING,
+        sales_value_2024_12 STRING,
+        sales_value_2025_01 STRING,
+        sales_value_2025_02 STRING,
+        sales_value_2025_03 STRING,
+        sales_value_2025_04 STRING,
+        sales_value_2025_05 STRING,
+        sales_value_2025_06 STRING,
+        sales_value_2025_07 STRING,
+        sales_value_30d STRING,
+        sales_value_7d STRING,
+        sales_value_last_month STRING,
+        sales_value_last_week STRING,
+        sales_value_this_month STRING,
+        sales_value_total STRING,
+        shop_id STRING,
+        shop_name STRING,
+        shop_platform_id STRING,
+        shop_type STRING,
+        shop_url STRING,
+        sku_id STRING,
+        sku_image_url STRING,
+        sku_name STRING,
+        sku_url STRING,
+        stock STRING,
+        therapeutic_desc STRING
+    ) OPTIONS ( 
+        format = 'JSON', 
+        uris = ['gs://bq-export-to-gcs/Metric_Data__Product/product/*']
+    );
+
+    SET query = (
+        SELECT 
+        "CREATE OR REPLACE EXTERNAL TABLE buymed_external.Metric_Data__Order (" ||
+        STRING_AGG (
+            "`"|| column_name || "` " || data_type,
+            ",\n"
+        ) ||
+        ",\n `exported_date_id` DATE "
+        " ) OPTIONS ( format = 'JSON', "
+        "uris = ['gs://bq-export-to-gcs/Metric_Data__Product/order/*']);\n"
+
+
+        FROM gold_buymed_vn2.INFORMATION_SCHEMA.COLUMNS
+        WHERE table_name like "metric_weekly_order"
+    );
+    EXECUTE IMMEDIATE query;
+
+
+END
