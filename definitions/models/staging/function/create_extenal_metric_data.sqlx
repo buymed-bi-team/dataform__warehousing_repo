@@ -138,7 +138,7 @@ BEGIN
             "`"|| column_name || "` " || data_type,
             ",\n"
         ) ||
-        ",\n `exported_date_id` DATE "
+        ",\n `export_date_id` DATE "
         " ) OPTIONS ( format = 'JSON', "
         "uris = ['gs://bq-export-to-gcs/Metric_Data__Product/order/*']);\n"
 
