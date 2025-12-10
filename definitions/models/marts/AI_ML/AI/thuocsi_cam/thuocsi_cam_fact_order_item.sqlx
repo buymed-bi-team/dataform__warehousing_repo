@@ -18,10 +18,10 @@ WITH
             , price AS gmv
             , status
             , total_discount
-            , JSON_VALUE(w.extra_props, "$.name_en") AS ward_name
-            , JSON_VALUE(d.extra_props, "$.name_en") AS district_name
-            , JSON_VALUE(p.extra_props, "$.name_en") AS province_name
-            , p.region_name
+            , JSON_VALUE(w.extra_props, "$.name_en") AS shipping_ward_name
+            , JSON_VALUE(d.extra_props, "$.name_en") AS shipping_district_name
+            , JSON_VALUE(p.extra_props, "$.name_en") AS shipping_province_name
+            , p.region_name AS shipping_region_name
             , CASE
                 WHEN REGEXP_CONTAINS(TO_JSON_STRING(a.tags), '\"ORDER_ASSIST\"') THEN 'ASSIST_ORDER' 
                 ELSE 'SELF_ORDER' 
@@ -48,10 +48,10 @@ WITH
             , s.seller_class
             , o.customer_id
             , o.status AS order_status
-            , o.ward_name
-            , o.district_name
-            , o.province_name
-            , o.region_name
+            , o.shipping_ward_name
+            , o.shipping_district_name
+            , o.shipping_province_name
+            , o.shipping_region_name
             , o.assist_order
             , o.total_discount / COUNT(1) OVER(PARTITION BY a.order_id) AS total_discount
         FROM platinum_buymed_cam.marketplace_prd_order_v2_order_item AS a

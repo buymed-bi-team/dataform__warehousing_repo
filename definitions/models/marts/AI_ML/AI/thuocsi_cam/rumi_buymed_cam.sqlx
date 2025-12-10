@@ -13,6 +13,16 @@ AS (SELECT * FROM  buymed_innovation.thuocsi_cam_fact_order_item);
 CREATE OR REPLACE VIEW `rumi_buymed_cam.thuocsi_cam_fact_margin`
 AS (SELECT * FROM  buymed_innovation.thuocsi_cam_fact_margin);
 
+-- fact_telesales_call_tracking
+
+CREATE OR REPLACE VIEW `rumi_buymed_cam.thuocsi_cam_fact_telesales_call_tracking`
+AS (SELECT * FROM  buymed_innovation.thuocsi_cam_fact_telesales_call_tracking);
+
+-- fact_salesrep_checkin
+
+CREATE OR REPLACE VIEW `rumi_buymed_cam.thuocsi_cam_fact_salesrep_checkin`
+AS (SELECT * FROM  buymed_innovation.thuocsi_cam_fact_salesrep_checkin);
+
 -- dim_customer
 
 CREATE OR REPLACE VIEW `rumi_buymed_cam.thuocsi_cam_dim_customer`

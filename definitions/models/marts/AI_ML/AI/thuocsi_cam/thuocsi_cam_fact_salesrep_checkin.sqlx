@@ -1,0 +1,9 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `Sales Rep Checkin in the Cambodia marketplace.`,
+    tags: ['AI_THUOCSI_CAM']
+}
+
+SELECT *
+FROM lakehouse-prod-394907.gold_buymed_cam.fact_salesrep_tracking

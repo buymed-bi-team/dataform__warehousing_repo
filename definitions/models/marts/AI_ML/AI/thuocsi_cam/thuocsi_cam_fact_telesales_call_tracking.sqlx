@@ -1,0 +1,10 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `Telesales in the Cambodia marketplace.`,
+    tags: ['AI_THUOCSI_CAM']
+}
+
+SELECT *
+FROM gold_buymed_cam.fact_telesales_tracking
+
