@@ -110,13 +110,13 @@ WITH
             , REGEXP_REPLACE(JSON_VALUE(b.image_urls, "$[0]"), r'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS product_image_url
             , REGEXP_REPLACE(c.description,  r'<[^>]+>', '') AS product_specs
             , COALESCE(
-                CASE
+                r.product_category
+                , CASE
                     WHEN d.product_category = "Thuốc kê đơn" THEN "Rx"
                     WHEN d.product_category = "Thuốc không kê đơn" THEN "OTC"
                     WHEN d.product_category = "Thuốc (Chưa phân loại)" OR d.product_category IS NULL THEN NULL
                     ELSE "Non-Drug"
                 END
-                , r.product_category
             ) AS product_category
             , no_of_skus AS product_variant_count
             , a.sku_code AS sku_id
@@ -140,17 +140,17 @@ WITH
             , d.manufacturer_short_name AS manufacturer
             , d.is_prescription AS prescription_status
             ,COALESCE(
-                CASE
+                r.product_category
+                , CASE
                     WHEN d.product_category = "Thuốc kê đơn" THEN "Rx"
                     WHEN d.product_category = "Thuốc không kê đơn" THEN "OTC"
                     WHEN d.product_category = "Thuốc (Chưa phân loại)" OR d.product_category IS NULL THEN NULL
                     ELSE "Non-Drug"
                 END
-                , r.bm_big_cat
              ) AS bm_big_cat
-            , COALESCE((NULLIF(d.product_category, "Thuốc (Chưa phân loại)")), r.bm_category_1) AS bm_category_1
-            , COALESCE( i.category_name, r.bm_category_2 ) AS bm_category_2
-            , COALESCE( g.efficacy_name, r.bm_category_3) AS bm_category_3
+            , COALESCE(r.bm_category_1, NULLIF(d.product_category, "Thuốc (Chưa phân loại)")) AS bm_category_1
+            , COALESCE(r.bm_category_2, i.category_name ) AS bm_category_2
+            , COALESCE(r.bm_category_3, g.efficacy_name) AS bm_category_3
             -- , a.seller_code AS shop_id
             -- , j.supplier_name AS shop_name
             -- , a.seller_id AS shop_platform_id
@@ -158,7 +158,7 @@ WITH
             , COALESCE(o.shop_name, p.shop_name, j.supplier_name) AS shop_name
             , COALESCE(o.shop_platform_id, p.shop_platform_id, a.seller_id) AS shop_platform_id
             , COALESCE(o.shop_url, p.shop_url, q.shop_url) AS shop_url
-            , IF(a.seller_code IN ("MEDX", "BML_INT"), "ENTERPRISE",
+            , IF(a.seller_code IN ("MEDX", "BML_INT", "CIRCA_INT"), "ENTERPRISE",
                  CASE j.supplier_type
                     WHEN "MARKET" THEN "BIZ_HOUSEHOLD"
                     ELSE j.supplier_type
@@ -323,7 +323,7 @@ WITH
             ) AS q ON a.seller_code = q.seller_code
             LEFT JOIN combo AS r ON a.product_id = r.product_id
         WHERE 1=1
-            AND (a.seller_code IN ("MEDX", "BML_INT") OR a.seller_class = "EXTERNAL")
+            AND (a.seller_code IN ("MEDX", "BML_INT", "CIRCA_INT") OR a.seller_class = "EXTERNAL")
             AND a.seller_code NOT IN ('I1I4OQEM8D','MEDX_E', 'MEDC', 'MED_NT', 'TENDER', 'MEDX-HN', 'DENX', 'MARKETING', '9SUUUUUUUU', 'QMQEM8DN9F', 'UQRRRRRRRR', 'TAM_GIA', 'BML_E')
         QUALIFY ROW_NUMBER() over (PARTITION BY a.sku_code) = 1
     )
