@@ -1,0 +1,30 @@
+config {
+    type: "table",
+    description: `dim_employee từ tháng 11/2025 detail PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`,
+    /*Source:
+      ${source.silver}.marketplace_prd_order_v2_order_item
+      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5,*/
+    tags: ["custom_1h_past5"],
+    name: "cos_dim_employee_comission",
+    columns: {
+        
+    }
+}
+
+
+    Select * from (
+    Select  code as pos_code_email
+           ,split(code, '_')[SAFE_OFFSET(0)]                 as pos_code
+           ,split(code, '_')[SAFE_OFFSET(1)]                 as employee_email
+           ,date(submit_at)                                  as year_month
+           ,lower(type)                                      as type
+           ,value
+           ,concat(FORMAT_DATE('%Y-%m', submit_at),"_",code) as ym_emp_pos
+    from collector.data_prd
+    where object = 'CIRCA_EMPLOYEE'
+          and type in ('POSITION','NO_WORKING_DAY')
+         qualify ROW_NUMBER() over(partition by pos_code_email, object, type order by submit_id desc) = 1
+                  ) 
+    pivot (
+             max(value) for type in ('position','no_working_day')
+            )
