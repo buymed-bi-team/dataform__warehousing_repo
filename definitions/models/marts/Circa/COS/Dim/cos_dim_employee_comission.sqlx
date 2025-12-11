@@ -30,7 +30,8 @@ with base_data as (
             )
                  )
 ,   _add_email_system as (
-    Select * 
+    Select * except (no_working_day)
+           , cast(no_working_day as int64) as no_working_day
            ,case when employee_email = 'bao.doan@buymed.com' then 'gbaugust1996@buymed.com'
                  when employee_email = 'chau.le@buymed.com' then 'chau.leminh@buymed.com'
                  when employee_email = 'lien.tranthi@buymed.com' then 'lienlientran1012@buymed.com'
