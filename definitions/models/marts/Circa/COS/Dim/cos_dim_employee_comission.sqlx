@@ -11,7 +11,7 @@ config {
     }
 }
 
-
+with base_data as (
     Select * from (
     Select  code as pos_code_email
            ,split(code, '_')[SAFE_OFFSET(0)]                 as pos_code
@@ -19,7 +19,7 @@ config {
            ,date(submit_at)                                  as year_month
            ,lower(type)                                      as type
            ,value
-           ,concat(FORMAT_DATE('%Y-%m', submit_at),"_",code) as ym_emp_pos
+
     from collector.data_prd
     where object = 'CIRCA_EMPLOYEE'
           and type in ('POSITION','NO_WORKING_DAY')
@@ -28,3 +28,20 @@ config {
     pivot (
              max(value) for type in ('position','no_working_day')
             )
+                 )
+,   _add_email_system as (
+    Select * 
+           ,case when employee_email = 'bao.doan@buymed.com' then 'gbaugust1996@buymed.com'
+                 when employee_email = 'chau.le@buymed.com' then 'chau.leminh@buymed.com'
+                 when employee_email = 'lien.tranthi@buymed.com' then 'lienlientran1012@buymed.com'
+                 when employee_email = 'oanh.nguyenkim@buymed.com' then 'cc.nguyenoanh@buymed.com'
+                 when employee_email = 'trang.vothuy@buymed.com' then 'VN280725-007@buymed.com'
+                 when employee_email = 'lytuyetbang@buymed.com' then 'bang.ly@buymed.com'
+                 else employee_email end as email_system
+          
+    from base_data
+
+)
+Select * 
+       ,concat(FORMAT_DATE('%Y-%m', year_month),"_",pos_code,"_",email_system) as ym_emp_pos
+      from _add_email_system
