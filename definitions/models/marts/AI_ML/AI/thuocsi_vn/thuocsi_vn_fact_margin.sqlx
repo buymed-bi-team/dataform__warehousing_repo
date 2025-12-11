@@ -5,27 +5,61 @@ config {
     tags: ['AI_THUOCSI_VN']
 }
 
+-- SELECT
+--     a.created_date
+--     , a.order_id
+--     , CONCAT(b.sku_key, "_", o.warehouse_code) AS sku_key
+--     , b.product_id
+--     , a.profit
+--     , a.total_price
+-- FROM ${source.platinum}.monitoring_prd_realtime_supply_margin_order_sku AS a
+--     LEFT JOIN ${source.platinum}.marketplace_prd_order_v2_order AS o ON a.order_id = o.order_id
+--     LEFT JOIN ${ref('gold_buymed_vn2','dim_sku')} AS b ON a.sku = b.sku_code
+-- WHERE 1=1 
+--     AND a.created_date >= "2025-01-01"
+--     AND o.created_date >= "2025-01-01"
+-- UNION ALL
+-- SELECT
+--     a.created_date
+--     , a.order_id
+--     , CONCAT(a.product_id, "_", a.seller_code, "_", a.fc_code) AS sku_key
+--     , a.product_id
+--     , a.profit * quantity AS profit
+--     , a.price * quantity AS total_price
+-- FROM gold_buymed_vn2.fact_order_item_seller_margin AS a
+-- WHERE 1=1 
+--     AND a.created_date >= "2025-01-01"
+
 SELECT
-    a.created_date
-    , a.order_id
-    , CONCAT(b.sku_key, "_", o.warehouse_code) AS sku_key
-    , b.product_id
-    , a.profit
-    , a.total_price
-FROM ${source.platinum}.monitoring_prd_realtime_supply_margin_order_sku AS a
-    LEFT JOIN ${source.platinum}.marketplace_prd_order_v2_order AS o ON a.order_id = o.order_id
-    LEFT JOIN ${ref('gold_buymed_vn2','dim_sku')} AS b ON a.sku = b.sku_code
-WHERE 1=1 
-    AND a.created_date >= "2025-01-01"
-    AND o.created_date >= "2025-01-01"
+    created_date
+    , order_id
+    , CONCAT(product_id, "_", seller_code, "_", fc_code) AS sku_key 
+    , product_id
+    , SUM(quantity * (price - rebate)) AS profit
+    , SUM(quantity * price) AS total_price
+FROM gold_buymed_vn2.fact_order_item_margin_internal_outbound
+WHERE created_date >= "2025-01-01"
+GROUP BY ALL
+UNION ALL
+SELECT
+    created_date
+    , order_id
+    , CONCAT(a.product_id, "_", seller_code, "_", COALESCE(NULLIF(a.warehouse_code, "TA"), "BD")) AS sku_key
+    , a.product_id
+    , SUM(quantity * (price - purchase_price)) AS profit
+    , SUM(quantity * price)
+FROM gold_buymed_vn2.fact_order_item_margin_tayau_outbound AS a
+    LEFT JOIN ${ref('gold_buymed_vn2','dim_sku')} AS b ON LEFT(a.item_code, LENGTH(a.item_code) -2) = b.sku_code
+WHERE created_date >= "2025-01-01"
+GROUP BY ALL
 UNION ALL
 SELECT
     a.created_date
     , a.order_id
     , CONCAT(a.product_id, "_", a.seller_code, "_", a.fc_code) AS sku_key
     , a.product_id
-    , a.profit * quantity AS profit
+    , (a.buyer_fee + (a.price - a.buyer_fee) * (fulfillment_rate + listing_rate + 0.01)) * quantity AS profit
     , a.price * quantity AS total_price
-FROM gold_buymed_vn2.fact_order_item_seller_margin AS a
+FROM gold_buymed_vn2.fact_order_item_margin_seller_outbound AS a
 WHERE 1=1 
     AND a.created_date >= "2025-01-01"
