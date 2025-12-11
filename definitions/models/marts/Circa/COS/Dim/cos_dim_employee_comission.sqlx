@@ -4,7 +4,7 @@ config {
     /*Source:
       ${source.silver}.marketplace_prd_order_v2_order_item
       ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5,*/
-    tags: ["custom_1h_past5"],
+    //tags: ["custom_1h_past5"],
     name: "cos_dim_employee_comission",
     columns: {
         
@@ -43,6 +43,8 @@ with base_data as (
     from base_data
 
 )
-Select * 
+Select  i.*
+       ,e.name as employee_name
        ,concat(FORMAT_DATE('%Y-%m', year_month),"_",pos_code,"_",email_system) as ym_emp_pos
-      from _add_email_system
+      from _add_email_system i 
+      left join (Select distinct email, name from `buymed_circa_v2.entity_entity` where client_id = 1) e on i.email_system = e.email
