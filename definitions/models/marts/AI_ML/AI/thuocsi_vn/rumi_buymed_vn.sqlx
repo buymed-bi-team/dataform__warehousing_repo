@@ -22,6 +22,11 @@ AS (SELECT * FROM  buymed_innovation.thuocsi_vn_fact_order_voucher);
 CREATE OR REPLACE VIEW `rumi_buymed_vn.thuocsi_vn_fact_margin`
 AS (SELECT * FROM  buymed_innovation.thuocsi_vn_fact_margin);
 
+-- fact_net_profit
+
+CREATE OR REPLACE VIEW `rumi_buymed_vn.thuocsi_vn_fact_net_profit`
+AS (SELECT * FROM  buymed_innovation.thuocsi_vn_fact_net_profit);
+
 -- dim_customer
 
 CREATE OR REPLACE VIEW `rumi_buymed_vn.thuocsi_vn_dim_customer`

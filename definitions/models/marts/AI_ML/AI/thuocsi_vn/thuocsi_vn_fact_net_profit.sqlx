@@ -5,60 +5,6 @@ config {
     tags: ['AI_THUOCSI_VN']
 }
 
--- WITH 
-    -- fact_order AS ( 
-    --     SELECT
-    --         created_date
-    --         , FORMAT_DATE("%Y-%m", created_date ) AS year_month
-    --         , DATE_TRUNC(created_date, MONTH) AS som
-    --         , DATETIME(created_time, "+7") AS created_time
-    --         , DATETIME(a.delivered_time, "+7") AS delivered_time
-    --         , order_id
-    --         , customer_id
-    --         , price AS gmv
-    --         , status
-    --         , CASE
-    --             WHEN REGEXP_CONTAINS(TO_JSON_STRING(JSON_VALUE_ARRAY(a.extra_props, '$.customer_tags')), r'\"CIRCA\"|\"CIRCACOS\"|\"CIRCAFOFO\"|\"CIRCAFOCO\"')  THEN 'CIRCA'
-    --             WHEN a.source = 'brand-portal' AND JSON_VALUE(a.extra_props, "$.brand_code") IN ('Q8HDUVQX', '2E84FW961P', 'PG961P') THEN 'TENDER'
-    --             WHEN TO_JSON_STRING(JSON_VALUE_ARRAY(a.extra_props, '$.customer_tags')) LIKE '%TENDER%' THEN 'TENDER'
-    --             WHEN a.source IN ('brand-portal', 'clinic-portal') OR customer_id IN (360299, 360439, 375375) THEN 'TENDER'
-    --             ELSE 'MARKETPLACE'
-    --         END AS channel,
-    --         CASE
-    --             WHEN SAFE_CAST(a.customer_ward_code AS integer) > 0 THEN a.customer_ward_code
-    --             ELSE a.customer_district_code
-    --         END AS shipping_ward_code,
-    --         total_discount,
-    --         a.warehouse_code
-    --     FROM ${source.platinum}.marketplace_prd_order_v2_order AS a
-    --     WHERE 1=1
-    --         -- AND created_date >= "2022-01-01"
-    --         AND status <> "CANCEL"
-    --     UNION ALL
-    --     SELECT
-    --         created_date
-    --         , FORMAT_DATE("%Y-%m", created_date ) AS year_month
-    --         , DATE_TRUNC(created_date, MONTH) AS som
-    --         , DATETIME(created_time, "+7") AS created_time
-    --         , DATETIME(a.delivered_time, "+7") AS delivered_time
-    --         , order_id
-    --         , 1000000 + receiver_id
-    --         , total_amount
-    --         -- , IF(status = 'CANCELLED','CANCEL', status) AS status
-    --         , status
-    --         , 'TENDER' AS channel
-    --         , CASE
-    --             WHEN SAFE_CAST(a.ward_code AS integer) > 0 THEN a.ward_code
-    --             ELSE a.district_code
-    --         END AS shipping_ward_code,
-    --         0,
-    --         p.fc_code
-    --     FROM ${source.platinum}.tender_prd_core_tender_orders AS a
-    --         LEFT JOIN ${ref('gold_buymed_vn2','dim_province')} AS p ON a.province_code = p.province_code
-    --     WHERE 1=1
-    --         -- AND created_date >= "2022-01-01"
-    --         AND status <> "CANCELLED"
-    -- )
 
 SELECT
     a.created_date
