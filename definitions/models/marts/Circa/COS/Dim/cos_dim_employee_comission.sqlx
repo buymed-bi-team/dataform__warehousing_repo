@@ -47,4 +47,6 @@ Select  i.*
        ,e.name as employee_name
        ,concat(FORMAT_DATE('%Y-%m', year_month),"_",pos_code,"_",email_system) as ym_emp_pos
       from _add_email_system i 
-      left join (Select distinct email, name from `buymed_circa_v2.entity_entity` where client_id = 1) e on i.email_system = e.email
+      left join (Select distinct email, name from `buymed_circa_v2.entity_entity` where client_id = 1
+      qualify ROW_NUMBER() over(partition by email, client_id order by updated_at desc) = 1
+      ) e on i.email_system = e.email
