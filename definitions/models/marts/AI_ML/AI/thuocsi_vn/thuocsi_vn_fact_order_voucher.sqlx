@@ -11,18 +11,36 @@ WITH
             a.order_id
             , a.created_date
             , a.customer_id
+            , CASE
+                WHEN REGEXP_CONTAINS(TO_JSON_STRING(JSON_VALUE_ARRAY(a.extra_props, '$.customer_tags')), r'\"CIRCA\"|\"CIRCACOS\"|\"CIRCAFOFO\"|\"CIRCAFOCO\"')  THEN 'CIRCA'
+                WHEN a.source = 'brand-portal' AND JSON_VALUE(a.extra_props, "$.brand_code") IN ('Q8HDUVQX', '2E84FW961P', 'PG961P') THEN 'TENDER'
+                WHEN TO_JSON_STRING(JSON_VALUE_ARRAY(a.extra_props, '$.customer_tags')) LIKE '%TENDER%' THEN 'TENDER'
+                WHEN a.source IN ('brand-portal', 'clinic-portal') OR customer_id IN (360299, 360439, 375375) THEN 'TENDER'
+                ELSE 'MARKETPLACE'
+            END AS channel
+            , CASE
+                WHEN SAFE_CAST(a.customer_ward_code AS INTEGER) > 0 THEN a.customer_ward_code
+                ELSE a.customer_district_code
+            END AS shipping_ward_code
             , JSON_VALUE(r, '$.code') AS voucher_code
             , SAFE_CAST(JSON_VALUE(r, '$.discount_value') AS FLOAT64) AS discount_value
         FROM ${source.platinum}.marketplace_prd_order_v2_order AS a
             , UNNEST(JSON_QUERY_ARRAY(a.redeem_apply_result)) AS r
         WHERE 1=1
             AND a.created_date >= "2025-01-01"
+            AND a.status <> "CANCEL"
     )
 
 SELECT 
-    a.*
+    a.* EXCEPT(shipping_ward_code)
+    , g.ward_name
+    , g.district_name
+    , g.province_name
+    , g.region_name
+    , g.urban_rural
+    , JSON_VALUE(v.extra_props, "$.charge_fee") AS charge_fee
     , CASE
-        -- WHEN a.created_by_user_name in ('minh.vothanh', 'dat.hoquang') THEN 'TenderPortal'
+        WHEN LOWER(v.created_by_user_name) IN ('minh.vothanh', 'dat.hoquang') THEN 'TenderPortal'
         WHEN LOWER(a.voucher_code) LIKE '%chuyenkhoan%'            THEN 'ChuyenKhoan'
         WHEN LOWER(a.voucher_code) LIKE '%tichluy%'                THEN 'TichLuy'
         WHEN LOWER(a.voucher_code) LIKE 'w25%'                     THEN 'SupOps'
@@ -65,3 +83,10 @@ SELECT
         ELSE 'Other'
     END AS voucher_code_group
 FROM cte AS a
+    LEFT JOIN (
+        SELECT
+            *
+        FROM ${source.platinum}.marketplace_prd_promotion_voucher
+        WHERE created_date >= "2024-12-01"
+    ) AS v ON a.voucher_code = v.code
+    LEFT JOIN ${ref('gold_buymed_vn2','dim_geo_location')} AS g ON a.shipping_ward_code = g.location_code

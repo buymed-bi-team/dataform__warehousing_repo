@@ -25,7 +25,7 @@ WITH
                 ELSE 'MARKETPLACE'
             END AS channel,
             CASE
-                WHEN SAFE_CAST(a.customer_ward_code AS integer) > 0 THEN a.customer_ward_code
+                WHEN SAFE_CAST(a.customer_ward_code AS INTEGER) > 0 THEN a.customer_ward_code
                 ELSE a.customer_district_code
             END AS shipping_ward_code,
             total_discount,
@@ -48,7 +48,7 @@ WITH
             , status
             , 'TENDER' AS channel
             , CASE
-                WHEN SAFE_CAST(a.ward_code AS integer) > 0 THEN a.ward_code
+                WHEN SAFE_CAST(a.ward_code AS INTEGER) > 0 THEN a.ward_code
                 ELSE a.district_code
             END AS shipping_ward_code,
             0,
