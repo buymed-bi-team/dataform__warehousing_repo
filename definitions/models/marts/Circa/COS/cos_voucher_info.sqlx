@@ -32,6 +32,7 @@ WITH t AS (
     LEFT JOIN ${source.ref}.cos_fact_order o ON CAST(JSON_EXTRACT_SCALAR(order_code) AS STRING) = o.order_code
     LEFT JOIN ${source.ref}.circa_pos_profile pr ON o.pos_id = pr.id
     WHERE gift_code NOT LIKE '%TEST%'
+          AND pr.id IS NOT NULL
 )
 
 ,map_voucher AS (
