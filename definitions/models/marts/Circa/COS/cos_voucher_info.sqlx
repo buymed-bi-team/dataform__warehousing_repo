@@ -1,6 +1,7 @@
 config {
     type: "table",
-    description: `Last 13 month| PIC: huyen.ngo; model_type: Table ;schedule: At minute 15 past hour.Circa voucher `,
+    description: `Last 13 month| PIC: huyen.ngo; model_type: Table ;schedule: At minute 15 past hour.Circa voucher - chứa tất cả các voucher, được tạo ra từ đâu, đã sử dụng hay chưa
+    sử dụng trong đơn hàng nào `,
     tags: ["custom_1h_past15"],
     name: "cos_voucher_info",
     columns: {
@@ -26,7 +27,7 @@ WITH t AS (
         ,e.phone_number                                                         AS gift_for_customer_phone
         ,e.name                                                                 AS gift_for_customer_name
         ,pr.code                                                                AS pos_code
-    FROM ${source.circa_os}.promotion_gift_voucher v
+    FROM ${source.circa_os}.promotion_gift_voucher v --  voucher dc tặng cho ai 
     LEFT JOIN UNNEST(JSON_EXTRACT_ARRAY(assigned_order_codes))                  AS order_code
     LEFT JOIN ${source.circa_os}.entity_customer e ON v.customer_id = e.id
     LEFT JOIN ${source.ref}.cos_fact_order o ON CAST(JSON_EXTRACT_SCALAR(order_code) AS STRING) = o.order_code
@@ -38,7 +39,7 @@ WITH t AS (
 ,map_voucher AS (
     SELECT DISTINCT
          TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                    AS transformed_at
-        ,us.code
+        ,us.code                                                                
         ,t.order_code_created
         ,DATETIME_ADD(us.created_at, INTERVAL 7 HOUR)                           AS created_at
         ,DATETIME_ADD(us.start_date, INTERVAL 7 HOUR)                           AS start_date
@@ -61,10 +62,10 @@ WITH t AS (
         ,COALESCE(pr.code, t.pos_code)                                          AS pos_code
         ,pr.name AS pos_name
         ,us.client_id
-    FROM ${source.circa_os}.promotion_promotion_voucher us
+    FROM ${source.circa_os}.promotion_promotion_voucher us -- bảng chứa tất cả các mã voucher
     LEFT JOIN (
         SELECT * 
-        FROM ${source.circa_os}.order_order_voucher 
+        FROM ${source.circa_os}.order_order_voucher -- voucher được apply trong đơn hàng
         WHERE is_valid = TRUE
     ) ov ON ov.voucher_id = us.id
     LEFT JOIN t ON us.code = t.voucher_code
@@ -75,7 +76,7 @@ WITH t AS (
     ) o ON ov.order_id = o.order_id
     LEFT JOIN ${source.circa_os}.entity_pos_profile pr ON o.pos_id = pr.id
     LEFT JOIN ${source.circa_os}.entity_customer e ON o.entity_id = e.id
-    LEFT JOIN ${source.circa_os}.promotion_promotion_campaign cp 
+    LEFT JOIN ${source.circa_os}.promotion_promotion_campaign cp -- thông tin campaign
         ON us.promotion_campaign_id = cp.id 
         AND us.client_id = cp.client_id
     WHERE us.is_sample = FALSE
