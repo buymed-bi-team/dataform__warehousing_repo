@@ -1,5 +1,6 @@
 config {
     type: "incremental",
+    protected: true, // prevent full refresh 
     description: `
         PIC: dong.le;
         Type: Incremental; 
