@@ -85,7 +85,7 @@ WITH
             a.pack_done_at,
             a.sku as sku_code,
             CASE
-                WHEN a.is_combo  AND i.item_type = 'IN_COMBO' THEN i.sales_price
+                WHEN a.is_combo  AND i.item_type = 'IN_COMBO' THEN COALESCE(i.sales_price, a.unit_price)
                 ELSE a.unit_price
             END AS unit_price,
             a.created_time,
@@ -97,17 +97,17 @@ WITH
             o.channel,
             o.shipping_ward_code AS location_code
         FROM pick_item AS a
-            LEFT JOIN ${ref('fact_order_item')} AS i
+            LEFT JOIN (SELECT * FROM ${ref('fact_order_item')} WHERE DATE(created_at) >= DATE_SUB(CURRENT_DATE, INTERVAL 60 DAY)) AS i
                 ON a.admin_id = i.order_id
                 AND a.sku = i.sku_code
                 AND IFNULL(a.order_quantity, 0) = i.demand_quantity
                 AND IFNULL(a.reserved_quantity, 0) = i.reserved_quantity
-            LEFT JOIN ${ref('fact_order')} AS o
+            LEFT JOIN (SELECT * FROM ${ref('fact_order')} WHERE DATE(created_at) >= DATE_SUB(CURRENT_DATE, INTERVAL 60 DAY)) AS o
                 ON a.admin_id = o.order_id
         WHERE 1=1
             AND a.created_date >= DATE(timestamp(date_sub(current_date(),interval 45 day)))
-            AND DATE(i.created_at) >= DATE_SUB(CURRENT_DATE, INTERVAL 60 DAY)
-            AND DATE(o.created_at) >= DATE_SUB(CURRENT_DATE, INTERVAL 60 DAY)
+            -- AND DATE(i.created_at) >= DATE_SUB(CURRENT_DATE, INTERVAL 60 DAY)
+            -- AND DATE(o.created_at) >= DATE_SUB(CURRENT_DATE, INTERVAL 60 DAY)
     ),
 
     -- dedup_dim_order AS (
