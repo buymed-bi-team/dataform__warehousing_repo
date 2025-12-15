@@ -45,19 +45,19 @@ WITH t AS (
         ,us.discount_value
         ,us.percent
         ,us.promotion_voucher_type
-        ,COALESCE(o.entity_id, gift_for_customer_id)                           AS customer_id
-        ,COALESCE(e.phone_number, gift_for_customer_phone)                     AS customer_phone
-        ,COALESCE(e.name, gift_for_customer_name)                              AS customer_name
-        ,voucher_created_at
-        ,DATETIME_ADD(ov.created_at, INTERVAL 7 HOUR)                          AS date_used
-        ,CASE 
-            WHEN ov.created_at IS NOT NULL THEN "Yes"
-            ELSE "No"
-         END                                                                   AS is_used
-        ,ov.order_code AS order_code_used
-        ,cp.code                                                               AS campaign_code
-        ,cp.name                                                               AS compaign_name
-        ,COALESCE(pr.code, t.pos_code)                                         AS pos_code
+        ,COALESCE(o.entity_id, gift_for_customer_id)                            AS customer_id
+        ,COALESCE(e.phone_number, gift_for_customer_phone)                      AS customer_phone
+        ,COALESCE(e.name, gift_for_customer_name)                               AS customer_name
+        ,voucher_created_at 
+        ,DATETIME_ADD(ov.created_at, INTERVAL 7 HOUR)                           AS date_used
+        ,CASE  
+            WHEN ov.created_at IS NOT NULL THEN "Yes" 
+            ELSE "No" 
+         END                                                                    AS is_used
+        ,ov.order_code AS order_code_used 
+        ,cp.code                                                                AS campaign_code
+        ,cp.name                                                                AS compaign_name
+        ,COALESCE(pr.code, t.pos_code)                                          AS pos_code
         ,pr.name AS pos_name
         ,us.client_id
     FROM ${source.circa_os}.promotion_promotion_voucher us
