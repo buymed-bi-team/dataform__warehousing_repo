@@ -27,8 +27,8 @@ Select distinct
         ,e.phone_number as gift_for_customer_phone
         ,e.name as gift_for_customer_name
         ,pr.code as pos_code
-FROM ${source.circa_os}.promotion_gift_voucher v,
-UNNEST(JSON_EXTRACT_ARRAY(assigned_order_codes)) AS order_code
+from ${source.circa_os}.promotion_gift_voucher v,
+unnest(JSON_EXTRACT_ARRAY(assigned_order_codes)) as order_code
 left join ${source.circa_os}.entity_customer e on v.customer_id = e.id
 left join ${source.ref}.cos_fact_order o on cast(JSON_EXTRACT_SCALAR(order_code) as string) = o.order_code
 left join ${source.circa_os}.entity_pos_profile pr on o.pos_id = pr.id
