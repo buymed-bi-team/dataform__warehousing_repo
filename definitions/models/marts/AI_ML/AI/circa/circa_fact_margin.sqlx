@@ -30,4 +30,5 @@ FROM ${ref('buymed_innovation', 'circa_fact_order')} AS o
 WHERE  1=1
     -- AND o.order_id IS NOT NULL
     AND o.client_id = 1
+    AND o.order_status IN ('COMPLETED', 'COMPLETED_SHIPPING')
 GROUP BY ALL
