@@ -1,6 +1,6 @@
 
 const model = new main.PlatinumModel(
-    "accounting_prd_invoice_log_hilo_factory_medx_client",
+    "accounting_prd_invoice_log_hilo_factory_tayau_e_client",
     {
         target_schema : "platinum_buymed_vn__stg", // Use for document
         // customAssertionsSchema : `dataform_playground_assertions`,
@@ -33,7 +33,7 @@ model.createMismatchAssertionView(
     {
         intervalCheckpoint: `INTERVAL 2 DAY`,
         maxRetry: 2,
-        dependencies : [{schema:"platinum_buymed_vn",name:"accounting_prd_invoice_log_hilo_factory_medx_client"}]
+        dependencies : [{schema:"platinum_buymed_vn",name:"accounting_prd_invoice_log_hilo_factory_tayau_e_client"}]
     }
 )
 model.assertMismatch(

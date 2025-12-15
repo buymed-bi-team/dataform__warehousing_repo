@@ -40,7 +40,7 @@ WITH
             so.created_date,
             so.type,
         FROM ${source.platinum}.warehouse_prd_core_sale_order so
-        WHERE so.created_date >= date_sub(current_date(),interval 45 day)
+        WHERE so.created_date >= date_sub(current_date(),interval 30 day)
         GROUP BY ALL
     ),
 
@@ -50,7 +50,7 @@ WITH
             , reference_id
             , status
         FROM ${source.platinum}.warehouse_prd_core_delivery_order
-        WHERE created_date >= date_sub(current_date(),interval 45 day)
+        WHERE created_date >= date_sub(current_date(),interval 30 day)
     ),
 
     pick_item AS (
@@ -73,8 +73,8 @@ WITH
         FROM ${source.platinum}.warehouse_prd_picking_pick_ticket_item AS ti
             LEFT JOIN ${source.platinum}.warehouse_prd_picking_pick_ticket AS t ON ti.ticket_id = t.ticket_id
         WHERE 1=1
-            AND ti.created_date >= date_sub(current_date(),interval 45 day)
-            AND t.created_date >= date_sub(current_date(),interval 45 day)
+            AND ti.created_date >= date_sub(current_date(),interval 30 day)
+            AND t.created_date >= date_sub(current_date(),interval 30 day)
 
     ),
 
@@ -85,7 +85,7 @@ WITH
             a.pack_done_at,
             a.sku as sku_code,
             CASE
-                WHEN a.is_combo  AND i.item_type = 'IN_COMBO' THEN i.sales_price
+                WHEN a.is_combo  AND i.item_type = 'IN_COMBO' THEN COALESCE(i.sales_price, a.unit_price)
                 ELSE a.unit_price
             END AS unit_price,
             a.created_time,
@@ -97,17 +97,17 @@ WITH
             o.channel,
             o.shipping_ward_code AS location_code
         FROM pick_item AS a
-            LEFT JOIN ${ref('fact_order_item')} AS i
+            LEFT JOIN (SELECT * FROM ${ref('fact_order_item')} WHERE DATE(created_at) >= DATE_SUB(CURRENT_DATE, INTERVAL 60 DAY)) AS i
                 ON a.admin_id = i.order_id
                 AND a.sku = i.sku_code
                 AND IFNULL(a.order_quantity, 0) = i.demand_quantity
                 AND IFNULL(a.reserved_quantity, 0) = i.reserved_quantity
-            LEFT JOIN ${ref('fact_order')} AS o
+            LEFT JOIN (SELECT * FROM ${ref('fact_order')} WHERE DATE(created_at) >= DATE_SUB(CURRENT_DATE, INTERVAL 60 DAY)) AS o
                 ON a.admin_id = o.order_id
         WHERE 1=1
-            AND a.created_date >= DATE(timestamp(date_sub(current_date(),interval 45 day)))
-            AND DATE(i.created_at) >= DATE_SUB(CURRENT_DATE, INTERVAL 60 DAY)
-            AND DATE(o.created_at) >= DATE_SUB(CURRENT_DATE, INTERVAL 60 DAY)
+            AND a.created_date >= DATE(timestamp(date_sub(current_date(),interval 30 day)))
+            -- AND DATE(i.created_at) >= DATE_SUB(CURRENT_DATE, INTERVAL 60 DAY)
+            -- AND DATE(o.created_at) >= DATE_SUB(CURRENT_DATE, INTERVAL 60 DAY)
     ),
 
     -- dedup_dim_order AS (
@@ -206,7 +206,7 @@ FROM agg_sale_order_item_sort
 --     p.end_time as pack_done_at
 --   FROM ${source.platinum}.warehouse_prd_core_sale_order so 
 --   LEFT JOIN ${source.platinum}.warehouse_prd_picking_pick_ticket p ON so.admin_id = p.admin_id
---   WHERE so.created_date >= DATE(timestamp(date_sub(current_date(),interval 45 day)))
+--   WHERE so.created_date >= DATE(timestamp(date_sub(current_date(),interval 30 day)))
 --   GROUP BY ALL 
 -- ),
 
@@ -237,7 +237,7 @@ FROM agg_sale_order_item_sort
 --     AND IFNULL(SAFE_CAST(JSON_VALUE(b.reserved_quantity) AS INT64), 0) = i.reserved_quantity
 --   LEFT JOIN ${ref("fact_order")} AS o 
 --     ON a.admin_id = o.order_id
---   WHERE a.created_date >= DATE(timestamp(date_sub(current_date(),interval 45 day)))
+--   WHERE a.created_date >= DATE(timestamp(date_sub(current_date(),interval 30 day)))
 -- ),
 
 -- dedup_dim_order AS (
