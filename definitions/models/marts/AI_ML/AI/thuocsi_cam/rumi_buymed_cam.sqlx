@@ -1,37 +1,38 @@
 config {
-    type:"operations"
+    type:"operations",
+    tags: ["AI_THUOCSI_CAM"]
 }
 
 -- fact_order_item
 
 CREATE OR REPLACE VIEW `rumi_buymed_cam.thuocsi_cam_fact_order_item`
-AS (SELECT * FROM  buymed_innovation.thuocsi_cam_fact_order_item);
+AS (SELECT * FROM  ${ref("buymed_innovation", "thuocsi_cam_fact_order_item")});
 
 
 -- fact_margin
 
 CREATE OR REPLACE VIEW `rumi_buymed_cam.thuocsi_cam_fact_margin`
-AS (SELECT * FROM  buymed_innovation.thuocsi_cam_fact_margin);
+AS (SELECT * FROM  ${ref("buymed_innovation", "thuocsi_cam_fact_margin")});
 
 -- fact_telesales_call_tracking
 
 CREATE OR REPLACE VIEW `rumi_buymed_cam.thuocsi_cam_fact_telesales_call_tracking`
-AS (SELECT * FROM  buymed_innovation.thuocsi_cam_fact_telesales_call_tracking);
+AS (SELECT * FROM  ${ref("buymed_innovation", "thuocsi_cam_fact_telesales_call_tracking")});
 
 -- fact_salesrep_checkin
 
 CREATE OR REPLACE VIEW `rumi_buymed_cam.thuocsi_cam_fact_salesrep_checkin`
-AS (SELECT * FROM  buymed_innovation.thuocsi_cam_fact_salesrep_checkin);
+AS (SELECT * FROM  ${ref("buymed_innovation", "thuocsi_cam_fact_salesrep_checkin")});
 
 -- dim_customer
 
 CREATE OR REPLACE VIEW `rumi_buymed_cam.thuocsi_cam_dim_customer`
-AS (SELECT * FROM  buymed_innovation.thuocsi_cam_dim_customer);
+AS (SELECT * FROM  ${ref("buymed_innovation", "thuocsi_cam_dim_customer")});
 
 -- dim_product_sku
 
 CREATE OR REPLACE VIEW `rumi_buymed_cam.thuocsi_cam_dim_product_sku`
-AS (SELECT * FROM  buymed_innovation.thuocsi_cam_dim_product_sku);
+AS (SELECT * FROM  ${ref("buymed_innovation", "thuocsi_cam_dim_product_sku")});
 
 
 

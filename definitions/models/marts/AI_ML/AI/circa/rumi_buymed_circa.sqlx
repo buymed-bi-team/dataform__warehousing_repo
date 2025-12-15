@@ -1,37 +1,38 @@
 config {
-    type:"operations"
+    type:"operations",
+    tags: ["AI_CIRCA"]
 }
 
 -- fact_order
 
 CREATE OR REPLACE VIEW `rumi_buymed_circa.circa_fact_order`
-AS (SELECT * FROM  buymed_innovation.circa_fact_order);
+AS (SELECT * FROM  ${ref("buymed_innovation", "circa_fact_order")});
 
 
 -- fact_margin
 
 CREATE OR REPLACE VIEW `rumi_buymed_circa.circa_fact_margin`
-AS (SELECT * FROM  buymed_innovation.circa_fact_margin);
+AS (SELECT * FROM  ${ref("buymed_innovation", "circa_fact_margin")});
 
 -- fact_target
 
 CREATE OR REPLACE VIEW `rumi_buymed_circa.circa_fact_target`
-AS (SELECT * FROM  buymed_innovation.circa_fact_target);
+AS (SELECT * FROM  ${ref("buymed_innovation", "circa_fact_target")});
 
 -- dim_customer
 
 CREATE OR REPLACE VIEW `rumi_buymed_circa.circa_dim_customer`
-AS (SELECT * FROM  buymed_innovation.circa_dim_customer);
+AS (SELECT * FROM  ${ref("buymed_innovation", "circa_dim_customer")});
 
 -- dim_product_sku
 
 CREATE OR REPLACE VIEW `rumi_buymed_circa.circa_dim_product`
-AS (SELECT * FROM  buymed_innovation.circa_dim_product);
+AS (SELECT * FROM  ${ref("buymed_innovation", "circa_dim_product")});
 
 -- agg_inventory
 
 CREATE OR REPLACE VIEW `rumi_buymed_circa.circa_agg_inventory`
-AS (SELECT * FROM  buymed_innovation.circa_agg_inventory);
+AS (SELECT * FROM  ${ref("buymed_innovation", "circa_agg_inventory")});
 
 
 
