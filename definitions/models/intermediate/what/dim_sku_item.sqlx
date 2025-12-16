@@ -205,7 +205,7 @@ cte_sku_fc_agg AS (
     COALESCE(
       CASE
         WHEN g.seller_class = "EXTERNAL" THEN g.retail_price_value
-        WHEN g.seller_class = "INTERNAL" THEN g.purchase_price
+        WHEN g.seller_class = "INTERNAL" THEN COALESCE(NULLIF(g.purchase_price,0), g.retail_price_value)
       END, 999) AS inventory_price,
     h.location_codes,
     i.fv_vendor_stock_days,
