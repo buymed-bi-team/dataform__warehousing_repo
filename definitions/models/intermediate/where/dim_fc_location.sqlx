@@ -49,7 +49,7 @@ cte_main as (
     warehouse_code, location_code
     from ${source.platinum}.warehouse_prd_inventory_sku_location AS a
     -- from ${dedup.dedup( source.silver + `.warehouse_prd_inventory_sku_location_merge`, "*")} a
-    where a.warehouse_code IN ("HN", "BD", "DN") and a.location_code IS NOT NULL
+    where a.warehouse_code IN ("HN", "BD", "DN", "TA") and a.location_code IS NOT NULL
     group by 1, 2
 ),
 
