@@ -51,7 +51,7 @@ _all AS (
                 WHEN convert_rate IS NULL OR convert_rate = 0 THEN 1
                 ELSE convert_rate 
             END
-        END                                                                 AS qty
+        END                                                                 AS qty -- lấy stock_qty theo tất cả đơn vị
         ,i.stock_value
         ,CONCAT(p.product_id, '_', p.client_id)                             AS product_client_id
     FROM price_tbl p
