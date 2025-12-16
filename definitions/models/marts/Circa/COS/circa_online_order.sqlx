@@ -12,7 +12,7 @@ config {
        
     },
     bigquery: {
-        partitionBy: "date(created_at)"
+        partitionBy: "date(delivery_time)"
     }
 }
 
