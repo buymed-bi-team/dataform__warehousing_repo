@@ -1,68 +1,69 @@
 config {
     type: "table",
-    description: `Last 13 month| PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour;Table này dùng để tracking những đơn hàng đã được đặt nhưng hàng chưa về, sử dụng cho report Purchase Planner`
+    description: `Last 13 month| PIC: huyen.ngo; model_type: Table ;schedule: At minute 15 every hour;Table này dùng để map giá theo từng unit và tồn kho`
     /*Source:
       ${source.silver}.marketplace_prd_order_v2_order_item
       ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
-    tags: ["custom_1h_past5"],
+    tags: ["custom_1h_past15"],
     name: "price_inventory_by_pos",
     columns: {
-        order_id: "NonNull |" + docs.order_id,
-        customer_id: "NonNull | The unique identifier for each customer"
         
     }
 }
-
-with price_tbl AS (
-  Select distinct 
-     product_id
-    ,unit
-    ,convert_rate
-    ,sale_unit_price
-    ,price_set_check
-    ,is_base_unit
-    ,seller_code
-    ,client_id
-  from gold_buymed_vn2.cos_adhoc_pos_product_client
-  where client_id = 1
-  -- WHERE
-  --   seller_code = 'CIRCA'
+WITH price_tbl AS (
+    SELECT DISTINCT
+         product_id
+        ,unit
+        ,convert_rate
+        ,sale_unit_price
+        ,price_set_check
+        ,is_base_unit
+        ,seller_code
+        ,client_id
+    FROM gold_buymed_vn2.cos_adhoc_pos_product_client
+    WHERE client_id = 1
 ),
-inv_tbl as  (
-  Select
-    pos_id
-    ,product_id
-    ,seller_code
-    ,sum(on_hand_quantity) as qty
-    ,sum(on_hand_quantity * cost_price_include_tax) as stock_value
-  from `gold_buymed_vn2.cos_fact_inventory`
-  where client_id = 1
-  group by all
-
-),_all as (
-Select
-  p.product_id
-  ,p.unit
-  ,is_base_unit
-  ,p.sale_unit_price
-  ,price_set_check
-  ,i.pos_id
-  ,pos.name as pos_name
-  ,p.seller_code
-  ,concat(p.seller_code, "_", p.client_id) as seller_client_id
-  ,case
-    when p.is_base_unit = true then i.qty
-    else i.qty/case when convert_rate is null or convert_rate = 0 then 1 else convert_rate end
-  end as qty
-  ,i.stock_value
-  ,concat(p.product_id, "_", p.client_id) as product_client_id
-from price_tbl p
-left join inv_tbl i on p.product_id = i.product_id and p.seller_code = i.seller_code
-left join `gold_buymed_vn2.circa_pos_profile` pos on i.pos_id = pos.id
-where pos.id is not null
+inv_tbl AS (
+    SELECT
+         pos_id
+        ,product_id
+        ,seller_code
+        ,SUM(on_hand_quantity)                                              AS qty
+        ,SUM(on_hand_quantity * cost_price_include_tax)                     AS stock_value
+    FROM gold_buymed_vn2.cos_fact_inventory
+    WHERE client_id = 1
+    GROUP BY ALL
+),
+_all AS (
+    SELECT
+         p.product_id
+        ,p.unit
+        ,is_base_unit
+        ,p.sale_unit_price
+        ,price_set_check
+        ,i.pos_id
+        ,pos.name AS pos_name
+        ,p.seller_code
+        ,CONCAT(p.seller_code, '_', p.client_id)                           AS seller_client_id
+        ,CASE 
+            WHEN p.is_base_unit = TRUE THEN i.qty
+            ELSE i.qty / CASE 
+                WHEN convert_rate IS NULL OR convert_rate = 0 THEN 1
+                ELSE convert_rate 
+            END
+        END                                                                 AS qty
+        ,i.stock_value
+        ,CONCAT(p.product_id, '_', p.client_id)                             AS product_client_id
+    FROM price_tbl p
+    LEFT JOIN inv_tbl i ON p.product_id = i.product_id  AND p.seller_code = i.seller_code
+    LEFT JOIN gold_buymed_vn2.circa_pos_profile pos ON i.pos_id = pos.id
+    WHERE pos.id IS NOT NULL
 )
-Select *
-      ,case when qty > 0 then 'Available'
-            else 'Unavailable' end as stock_check
-from _all
+SELECT *
+       ,CASE 
+            WHEN qty > 0 THEN 'Available'
+            ELSE 'Unavailable' 
+        END AS stock_check
+FROM _all
+
     -- and p.product_id = 1165 
