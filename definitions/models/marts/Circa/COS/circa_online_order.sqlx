@@ -1,0 +1,42 @@
+config {
+    type: "table",
+    description: `Last 13 month| PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every 2 hours.Circa online order `
+    /*Source:
+      ${source.silver}.marketplace_prd_order_v2_order_item
+      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
+    tags: ["custom_1h_past10"],
+    name: "circa_online_order",
+    columns: {
+        order_code: "NonNull |" + docs.order_code,
+        account_id: "NonNull | The unique identifier for each customer"
+       
+    },
+    bigquery: {
+        partitionBy: "date(delivery_time)"
+    }
+}
+
+
+SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                           AS transformed_at
+      ,order_code
+      ,order_id
+      ,customer_phone
+      ,receiver_code
+      ,receiver_name
+      ,receiver_phone_number
+      ,account_id                                                                    -- tạo tài khoản sẽ có account_id, ko tạo tk ~ acount_id = 0
+      ,payment_method                                                                --Banking/COD
+      ,payment_status                                                                --COMPLETED/WAIT_FOR_PAYMENT/NULL
+      ,deliver_method                                                                --FAST/NORMAL
+      ,price
+      ,total_price
+      ,total_discount
+      ,total_product
+      ,DATETIME_ADD(last_updated_time, INTERVAL 7 hour)                              AS last_updated_time
+      ,DATETIME_ADD(delivery_date, INTERVAL 7 hour)                                  AS delivery_time
+      ,DATETIME_ADD(paid_time, INTERVAL 7 hour)                                      AS paid_time
+      ,DATETIME_ADD(platinum_refresh, INTERVAL 7 hour)                               AS platinum_refresh
+      ,type                                                                          AS customer_type
+      ,status                                                                        AS o2o_status -- DELIVERED/WAIT_TO_DELIVER/WAIT_TO_CONFIRM/CANCEL  
+      ,sale_order_status                                                             --NULL/WAIT_TO_DELIVER/NEW/DELIVERED/CANCELED/FAIL_TO_DELIVER
+FROM platinum_buymed_vn.circa_online_prd_order_order    
