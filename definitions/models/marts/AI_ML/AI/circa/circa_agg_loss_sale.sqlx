@@ -1,0 +1,24 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `Loss Sale of Circa.`,
+    tags: ['AI_CIRCA']
+}
+
+SELECT
+    a.name AS pos_name
+    , a.pos_id
+    , p.code AS pos_code
+    , IF(p.type = "FS", "FS", "COS") AS pos_type
+    , a.created_date
+    , a.product_id
+    , a.product_name
+    -- , thuocsi_product_status
+    -- , thuocsi_has_stock
+    -- , thuocsi_quantity
+    -- , thuocsi_unit
+    , a.product_category
+    , a.price
+    , a.quantity
+FROM ${ref("gold_buymed_vn2", "cos_product_loss_sale")} AS a
+    LEFT JOIN buymed_circa_v2.entity_pos_profile AS p ON a.pos_id = p.id 
