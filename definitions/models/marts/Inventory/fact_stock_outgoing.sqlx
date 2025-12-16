@@ -52,4 +52,5 @@ WHERE
     a.created_date >= DATE_SUB(current_date, INTERVAL 1 MONTH)
     AND b.created_date >= DATE_SUB(current_date, INTERVAL 1 MONTH)
     AND a.status NOT IN ("DRAFT", "CANCEL")
-    AND e.order_type = "SO"
+    AND a.type = "NORMAL"
+    -- AND e.order_type = "SO"
