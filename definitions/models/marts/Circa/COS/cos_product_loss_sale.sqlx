@@ -12,30 +12,46 @@ config {
 }
 
 
+SELECT DISTINCT 
+         p.name 
+       , o.pos_id
+       , DATE(DATETIME_ADD(o.created_at, INTERVAL 7 HOUR))                        AS created_date
+       , DATETIME_ADD(o.created_at, INTERVAL 7 HOUR)                              AS created_at
+       , DATETIME_ADD(o.date_time, INTERVAL 7 HOUR)                               AS date_time
+       , DATETIME_ADD(o.updated_at, INTERVAL 7 HOUR)                              AS updated_at
+       , o.id 
+       , o.unit 
+       , unit_id 
+       , o.product_id 
+       , CASE  
+             WHEN o.product_name IS NULL OR o.product_name = ''  
+             THEN td.product_name  
+             ELSE o.product_name  
+         END                                                                      AS product_name
+       , thuocsi_product_status 
+       , td.thuocsi_has_stock 
+       , td.thuocsi_unit 
+       , td.thuocsi_quantity  
+       , CASE  
+             WHEN td.product_category IS NULL  
+             THEN 'Khác'  
+             ELSE td.product_category  
+         END                                                                      AS product_category
+       , price 
+       , quantity 
+       , total_amount 
+       , o.client_id 
+       ,CASE  
+            WHEN ls.product_id IS NOT NULL  
+            THEN TRUE 
+            ELSE FALSE 
+        END                                                                       AS is_essential
+       ,CONCAT(o.product_id, "_", o.client_id)                                    AS product_client_id
 
-Select distinct p.name 
-                ,o.pos_id
-                ,date(datetime_add(o.created_at, interval 7 hour)) as created_date
-                ,datetime_add(o.created_at, interval 7 hour) as created_at
-                ,datetime_add(o.date_time, interval 7 hour) as date_time
-                ,datetime_add(o.updated_at, interval 7 hour) as updated_at
-                ,o.id
-                ,o.unit
-                ,unit_id
-                ,o.product_id
-                ,case when o.product_name is null or o.product_name = '' then  td.product_name else o.product_name end as  product_name
-                ,thuocsi_product_status
-                ,td.thuocsi_has_stock
-                ,td.thuocsi_unit
-                ,td.thuocsi_quantity 
-                ,case when td.product_category is null then 'Khác' else td.product_category end as product_category
-                ,price
-                ,quantity
-                ,total_amount
-                ,o.client_id
-                ,concat(o.product_id, "_", o.client_id) as product_client_id
-from ${source.circa_os}.product_product_loss_sale o
-left join ${source.ref}.circa_pos_profile p on o.pos_id = p.id 
-left join  ${source.ref}.cos_dim_product td on o.product_id = td.product_id and o.client_id = td.client_id
-where p.id is not null 
+FROM ${source.circa_os}.product_product_loss_sale o
+LEFT JOIN ${source.ref}.circa_pos_profile p ON o.pos_id = p.id 
+LEFT JOIN ${source.ref}.cos_dim_product td ON o.product_id = td.product_id AND o.client_id = td.client_id
+LEFT JOIN (Select distinct product_id, client_id from ${source.ref}.cos_product_essential WHERE status = 'ACTIVE') ls ON o.product_id = ls.product_id AND o.client_id = ls.client_id
+WHERE p.id IS NOT NULL
+
      --and o.id not in ('8af8dcfb-da91-413c-9ccf-02525bd00876','c5d6fcaf-2d1d-4868-be4c-00b4ae6d7ae8','b729fb2c-7b00-455b-9d28-c5a942bc90fa','03e178f2-4bca-4dbe-9967-134d6618632d','08c9e5da-3ace-478b-a7dd-be17f1f208fb','cca7ed6c-6f2c-40f2-836c-3aad6495105a','b913b653-1268-4d59-bdbe-3b157c2ee469','51ca37f6-fbb8-4dd8-af5e-8d07c09ff8f6')
