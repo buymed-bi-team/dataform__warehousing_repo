@@ -152,7 +152,7 @@ cte_sku_item AS (
     sr.demand_classification_code
   FROM cte_sku_fc sf
   LEFT JOIN cte_sku sr
-  ON sf.sku_code = sr.sku AND sf.fc_code = sr.fc_code 
+  ON sf.sku_code = sr.sku AND COALESCE(NULLIF(sf.fc_code, "TA"), "BD") = sr.fc_code 
   -- AND sr.row_num = 1
 ),
 
