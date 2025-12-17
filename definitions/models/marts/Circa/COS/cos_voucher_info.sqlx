@@ -42,6 +42,7 @@ WITH t AS (
         ,us.code                                                                
         ,t.order_code_created
         ,DATETIME_ADD(us.created_at, INTERVAL 7 HOUR)                           AS created_at
+        ,DATE(DATETIME_ADD(us.created_at, INTERVAL 7 HOUR))                     AS created_date
         ,DATETIME_ADD(us.start_date, INTERVAL 7 HOUR)                           AS start_date
         ,DATETIME_ADD(us.end_date, INTERVAL 7 HOUR)                             AS end_date
         ,us.discount_value
