@@ -1,113 +1,133 @@
 config {
     type: "table",
-    description: `Last 13 month| PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every 2 hours.Circa OS Transaction order `
+    description: `PIC: huyen.ngo; model_type: Table ;schedule: At minute 10 every hour.Circa OS Transaction order`
     /*Source:
       ${source.silver}.marketplace_prd_order_v2_order_item
       ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
     tags: ["custom_1h_past10"],
     name: "cos_fact_order",
     columns: {
-        order_id: "NonNull |" + docs.order_id,
-        customer_id: "NonNull | The unique identifier for each customer"
+        order_id: "NonNull |" + docs.order_id
        
     },
     bigquery: {
         partitionBy: "date(created_at)"
     }
 }
-with cte_fs as
-    (select timestamp_add(current_timestamp(), interval 7 hour) as transformed_at
-       ,o.id as order_id
-       ,o.pos_id
-       , p.code as pos_code
-       ,entity_id
-       ,o.code as order_code
-       ,o.total_amount
-       ,actual_total_item_amount
-       ,o.total_item_amount
-       ,o.discount_amount
-       ,o.created_by
-       ,o.updated_by
-       ,en.name
-       ,o.status
-       ,o.note, o.type
-       ,o.source_type
-       ,delivery_type
-       ,channel
-       ,date(datetime_add(o.created_at, interval 7 hour)) as created_date
-       ,datetime_add(o.created_at, interval 7 hour) as created_at
-       ,fulfillment_status
-       ,cast (null as string) as reference_order_in_platform
-       ,cast(null as string) as origin_order_id
-       ,cast (null as timestamp) as end_pick_at
-       ,datetime_add(completed_at, interval 7 hour) as completed_at
-       ,date(datetime_add(completed_at, interval 7 hour))  as completed_date
-       ,cast (null as timestamp) as delivery_scheduled_time
-       ,cast (null as timestamp) as pre_order_scheduled_time
-       , cast (null as string) as pre_order_required
-       ,o.medicine_cutting_fee
-       ,string_agg(rt.return_codes) as return_codes
-       ,case when rt.return_codes is null then "NORMAL"
-             else "RETURN"
-             end as order_type
-       ,1 as client_id
-from ${source.circa}.order_order o
-left join ${source.ref}.cos_return_completed as rt on o.code = rt.order_code
-left join ${source.circa}.entity_pos_profile p on o.pos_id = p.id
-left join ${source.circa}.entity_entity en on o.updated_by = en.id
-where o.pos_id in ("b6c40920-af79-4fb0-bdc4-9965ddb885d2", "e737c882-e90c-4fd2-8a4f-ac6afd248a33")
-      and o.type <> 'RETURN'
-group by all)
-,cte_os as
-    (select distinct
-        timestamp_add(current_timestamp(), interval 7 hour) as transformed_at
-       ,o.id as order_id
-       ,o.pos_id
-       ,p.code as pos_code
-       ,entity_id
-       ,o.code as order_code
-       ,o.total_amount -- giá trị đơn (rev)
-       ,actual_total_item_amount --hình như giống o.total_item_amount
-       ,o.total_item_amount -- tiền hàng
-       ,o.discount_amount -- khuyến mãi
-       ,o.created_by
-       ,o.updated_by
-       ,en.name
-       ,o.status
-       ,o.note
-       ,o.type
-       ,o.source_type
-       ,delivery_type
-       ,channel
-       ,date(datetime_add(o.created_at, interval 7 hour)) as created_date
-       ,datetime_add(o.created_at, interval 7 hour) as created_at
-       ,fulfillment_status
-       ,reference_order_in_platform
-       ,o.origin_order_id
-       ,datetime_add(o.end_pick_at, interval 7 hour) as end_pick_at
-       ,coalesce(datetime_add(o.completed_at, interval 7 hour),datetime_add(o.updated_at, interval 7 hour))  as completed_at
-       ,coalesce(date(datetime_add(o.completed_at, interval 7 hour)),date(datetime_add(o.updated_at, interval 7 hour)))  as completed_date
-       ,datetime_add(delivery_scheduled_time, interval 7 hour) as delivery_scheduled_time
-       ,datetime_add(pre_order_scheduled_time, interval 7 hour) as pre_order_scheduled_time
-       ,cast(pre_order_required as string) as pre_order_required
-       ,o.medicine_cutting_fee -- tiền cắt liều
-       ,string_agg(rt.return_codes, ',') as return_codes
-       ,case when rt.return_codes is null then "NORMAL"
-             else "RETURN"
-             end as order_type
-       ,o.client_id
-from ${source.circa_os}.order_order o
-left join ${source.ref}.cos_return_completed as rt on o.code = rt.order_code
-left join ${source.ref}.circa_pos_profile p on o.pos_id = p.id and o.client_id = p.client_id
-left join ${source.circa_os}.entity_entity en on o.updated_by = en.id
-where o.type <> 'RETURN'
-      and o.status <> 'PENDING'
-      and p.id is not null
-group by all)
-Select * from cte_fs
--- where status in ('COMPLETED', 'COMPLETED_SHIPPING')
-union all
-Select * from cte_os
+WITH cte_fs AS (
+SELECT
+     TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
+    ,o.id AS order_id
+    ,o.pos_id
+    ,p.code AS pos_code
+    ,entity_id
+    ,o.code AS order_code
+    ,o.total_amount
+    ,actual_total_item_amount
+    ,o.total_item_amount
+    ,o.discount_amount
+    ,o.created_by
+    ,o.updated_by
+    ,en.name
+    ,o.status
+    ,o.note
+    ,o.type
+    ,o.source_type
+    ,delivery_type
+    ,channel
+    ,DATE(DATETIME_ADD(o.created_at, INTERVAL 7 HOUR)) AS created_date
+    ,DATETIME_ADD(o.created_at, INTERVAL 7 HOUR) AS created_at
+    ,fulfillment_status
+    ,CAST(NULL AS STRING) AS reference_order_in_platform
+    ,CAST(NULL AS STRING) AS origin_order_id
+    ,CAST(NULL AS TIMESTAMP) AS end_pick_at
+    ,DATETIME_ADD(completed_at, INTERVAL 7 HOUR) AS completed_at
+    ,DATE(DATETIME_ADD(completed_at, INTERVAL 7 HOUR)) AS completed_date
+    ,CAST(NULL AS TIMESTAMP) AS delivery_scheduled_time
+    ,CAST(NULL AS TIMESTAMP) AS pre_order_scheduled_time
+    ,CAST(NULL AS STRING) AS pre_order_required
+    ,o.medicine_cutting_fee
+    ,STRING_AGG(rt.return_codes) AS return_codes
+    ,CASE
+        WHEN rt.return_codes IS NULL THEN 'NORMAL'
+        ELSE 'RETURN'
+     END AS order_type
+    ,1 AS client_id
+FROM ${source.circa}.order_order o
+LEFT JOIN ${source.ref}.cos_return_completed rt ON o.code = rt.order_code
+LEFT JOIN ${source.circa}.entity_pos_profile p ON o.pos_id = p.id
+LEFT JOIN ${source.circa}.entity_entity en ON o.updated_by = en.id
+WHERE o.pos_id IN (
+        'b6c40920-af79-4fb0-bdc4-9965ddb885d2'
+       ,'e737c882-e90c-4fd2-8a4f-ac6afd248a33'
+      )
+  AND o.type <> 'RETURN'
+GROUP BY ALL
+)
+,cte_os AS
+(
+SELECT DISTINCT
+     TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
+    ,o.id AS order_id
+    ,o.pos_id
+    ,p.code AS pos_code
+    ,entity_id
+    ,o.code AS order_code
+    ,o.total_amount
+    ,actual_total_item_amount
+    ,o.total_item_amount
+    ,o.discount_amount
+    ,o.created_by
+    ,o.updated_by
+    ,en.name
+    ,o.status
+    ,o.note
+    ,o.type
+    ,o.source_type
+    ,delivery_type
+    ,channel
+    ,DATE(DATETIME_ADD(o.created_at, INTERVAL 7 HOUR)) AS created_date
+    ,DATETIME_ADD(o.created_at, INTERVAL 7 HOUR) AS created_at
+    ,fulfillment_status
+    ,reference_order_in_platform
+    ,o.origin_order_id
+    ,DATETIME_ADD(o.end_pick_at, INTERVAL 7 HOUR) AS end_pick_at
+    ,COALESCE(
+         DATETIME_ADD(o.completed_at, INTERVAL 7 HOUR)
+        ,DATETIME_ADD(o.updated_at, INTERVAL 7 HOUR)
+     ) AS completed_at
+    ,COALESCE(
+         DATE(DATETIME_ADD(o.completed_at, INTERVAL 7 HOUR))
+        ,DATE(DATETIME_ADD(o.updated_at, INTERVAL 7 HOUR))
+     ) AS completed_date
+    ,DATETIME_ADD(delivery_scheduled_time, INTERVAL 7 HOUR) AS delivery_scheduled_time
+    ,DATETIME_ADD(pre_order_scheduled_time, INTERVAL 7 HOUR) AS pre_order_scheduled_time
+    ,CAST(pre_order_required AS STRING) AS pre_order_required
+    ,o.medicine_cutting_fee
+    ,STRING_AGG(rt.return_codes, ',') AS return_codes
+    ,CASE
+        WHEN rt.return_codes IS NULL THEN 'NORMAL'
+        ELSE 'RETURN'
+     END AS order_type
+    ,o.client_id
+FROM ${source.circa_os}.order_order o
+LEFT JOIN ${source.ref}.cos_return_completed rt ON o.code = rt.order_code
+LEFT JOIN ${source.ref}.circa_pos_profile p ON o.pos_id = p.id AND o.client_id = p.client_id
+LEFT JOIN ${source.circa_os}.entity_entity en ON o.updated_by = en.id
+WHERE o.type <> 'RETURN'
+  AND o.status <> 'PENDING'
+  AND p.id IS NOT NULL
+GROUP BY ALL
+)
+
+SELECT *
+FROM cte_fs
+
+UNION ALL
+
+SELECT *
+FROM cte_os
+
 -- where status in ('COMPLETED', 'COMPLETED_SHIPPING')
 --       and client_id <> 1
 --gmv = Giá bán * sản phẩm + bất kì phí nào khác (hiện tại có phí cắt liều) - những đơn return hoặc return 1 phần  = total_item_amount + medicine_cutting_fee - return
