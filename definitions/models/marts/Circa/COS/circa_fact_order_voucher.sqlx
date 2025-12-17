@@ -8,18 +8,18 @@ config {
 
 
 
-select distinct timestamp_add(current_timestamp(), interval 7 hour) as transformed_at
+SELECT DISTINCT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
                 ,order_code
                 ,ov.created_at
-                , voucher_code
-                , ov.paid_source
-                , discount_amount
-                ,cp.code as Campaign_code
-                ,cp.name as Compaign_name
-from ${source.circa_os}.order_order_voucher ov
-left join ${source.circa_os}.promotion_promotion_voucher us  on ov.voucher_code = us.code
-left join ${source.circa_os}.promotion_promotion_campaign cp on us.promotion_campaign_id = cp.id
-where voucher_code not like "%TECHTEST%"
-      and cp.name not like '%Tech Test%'
+                ,voucher_code
+                ,ov.paid_source
+                ,discount_amount
+                ,cp.code AS Campaign_code
+                ,cp.name AS Compaign_name
+FROM  ${source.circa_os}.order_order_voucher ov
+LEFT JOIN ${source.circa_os}.promotion_promotion_voucher us  ON ov.voucher_code = us.code
+LEFT JOIN ${source.circa_os}.promotion_promotion_campaign cp ON us.promotion_campaign_id = cp.id
+WHERE voucher_code NOT LIKE "%TECHTEST%"
+      AND cp.name NOT LIKE'%Tech Test%'
 
 
