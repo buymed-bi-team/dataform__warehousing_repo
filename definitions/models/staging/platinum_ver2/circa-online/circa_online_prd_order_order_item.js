@@ -15,13 +15,13 @@ const model = new main.PlatinumModel(
     }
 );
 model.createIncremental(
-    ["0h00","12h00", "platinum_staging", "circa-online_prd_order"],
+    ["platinum_0h00","platinum_12h00", "platinum_staging", "circa-online_prd_order"],
     {
         has_src_created_date : false
     }
 );
 model.assertUnique(
-    ["0h00","12h00", "platinum_unique_assertion", "circa-online_prd_order"],
+    ["platinum_0h00","platinum_12h00", "platinum_unique_assertion", "circa-online_prd_order"],
     {
         intervalCheckpoint : `INTERVAL 1 YEAR`,
         maxRetry: 2
@@ -32,14 +32,13 @@ model.createMismatchAssertionView(
     {
         intervalCheckpoint: `INTERVAL 2 DAY`,
         maxRetry: 2,
-        // dependencies : [model.dependencies.assertUnique]
+        dependencies : [{schema:"platinum_buymed_vn",name:"circa_online_prd_order_order_item"}]
     }
 )
 model.assertMismatch(
-    ["0h00","12h00", "platinum_staging_assertion", "circa-online_prd_order"],
+    ["platinum_0h00","platinum_12h00", "platinum_staging_assertion", "circa-online_prd_order"],
     {
         intervalCheckpoint: `INTERVAL 2 DAY`,
         maxRetry: 2,
-        
     }
 )
