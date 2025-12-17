@@ -1,0 +1,30 @@
+config {
+    type: "table",
+    description: `PIC: huyen.ngo; model_type: Table ;schedule: At minute 15 every 2 hours.Circa account online`
+    /*Source:
+      ${source.silver}.marketplace_prd_order_v2_order_item
+      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
+    tags: ["custom_1h_past15"],
+    name: "circa_account_online",
+    columns: {
+        order_code: "NonNull |" + docs.order_code,
+        account_id: "NonNull | The unique identifier for each customer"
+       
+    },
+    bigquery: {
+        partitionBy: "date(created_time)"
+    }
+}
+
+SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                           AS transformed_at
+       ,account_id 
+       ,full_name
+       ,phone_number
+       ,status
+       ,code
+       ,customer_id
+       ,gender
+       ,DATETIME_ADD(created_time, INTERVAL 7 HOUR)                                  AS created_time
+       ,DATETIME_ADD(last_updated_time, INTERVAL 7 HOUR)                             AS last_updated_time
+       ,DATETIME_ADD(platinum_refresh, INTERVAL 7 HOUR)                              AS platinum_refresh
+FROM platinum_buymed_vn.circa_online_prd_consumer_customer
