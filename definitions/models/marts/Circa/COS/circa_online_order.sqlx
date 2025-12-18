@@ -38,14 +38,18 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                      
       ,DATETIME_ADD(delivery_date, INTERVAL 7 hour)                                  AS delivery_time
       ,DATETIME_ADD(paid_time, INTERVAL 7 hour)                                      AS paid_time
       ,DATETIME_ADD(platinum_refresh, INTERVAL 7 hour)                               AS platinum_refresh
-      ,type                                                                          AS customer_type
-      ,status                                                                        AS o2o_status -- DELIVERED/WAIT_TO_DELIVER/WAIT_TO_CONFIRM/CANCEL  
+      ,o.type                                                                        AS customer_type
+      ,o.status                                                                        AS o2o_status -- DELIVERED/WAIT_TO_DELIVER/WAIT_TO_CONFIRM/CANCEL  
       ,sale_order_status                                                             --NULL/WAIT_TO_DELIVER/NEW/DELIVERED/CANCELED/FAIL_TO_DELIVER
-      ,i.order_code                                                                  AS order_code_pos 
+      ,i.order_code                                                                  AS assigned_order_codes
+      ,i.pos_id                                                                      AS assigned_pos_id  
+      ,p.code                                                                        AS assigned_pos_code 
+      ,p.name                                                                        AS assigned_pos_name
 FROM platinum_buymed_vn.circa_online_prd_order_order o 
 LEFT JOIN (
-    SELECT DISTINCT order_code, reference_order_in_platform 
+    SELECT DISTINCT order_code, reference_order_in_platform, pos_id
     FROM ${source.ref}.cos_fact_order 
     WHERE channel = 'O2O' 
           AND status IN ('COMPLETED', 'COMPLETE_SHIPPING','AWAITING_SHIPMENT','SHIPPING','FAILED_SHIPMENT')
     ) i ON o.order_code = i.reference_order_in_platform
+LEFT JOIN ${source.ref}.circa_pos_profile p on i.pos_id = p.id
