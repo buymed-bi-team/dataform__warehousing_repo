@@ -49,7 +49,7 @@ WITH t AS (
         ,us.percent
         ,us.promotion_voucher_type
         ,COALESCE(o.entity_id, gift_for_customer_id)                            AS customer_id
-        ,COALESCE(e.phone_number, gift_for_customer_phone)                      AS customer_phone
+        ,COALESCE(e.phone_number, gift_for_customer _phone)                      AS customer_phone
         ,COALESCE(e.name, gift_for_customer_name)                               AS customer_name
         ,voucher_created_at 
         ,DATETIME_ADD(ov.created_at, INTERVAL 7 HOUR)                           AS date_used
