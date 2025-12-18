@@ -58,6 +58,7 @@ WITH t AS (
             ELSE "No" 
          END                                                                    AS is_used
         ,ov.order_code                                                          AS order_code_used 
+        ,o.channel                                                              AS channel_used
         ,ov.discount_amount                                                     AS actual_discount_amount
         ,cp.code                                                                AS campaign_code
         ,cp.name                                                                AS compaign_name
