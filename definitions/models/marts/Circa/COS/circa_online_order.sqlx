@@ -18,7 +18,7 @@ config {
 
 
 SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                           AS transformed_at
-      ,order_code
+      ,o.order_code
       ,order_id
       ,customer_phone
       ,receiver_code
@@ -41,4 +41,11 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                      
       ,type                                                                          AS customer_type
       ,status                                                                        AS o2o_status -- DELIVERED/WAIT_TO_DELIVER/WAIT_TO_CONFIRM/CANCEL  
       ,sale_order_status                                                             --NULL/WAIT_TO_DELIVER/NEW/DELIVERED/CANCELED/FAIL_TO_DELIVER
-FROM platinum_buymed_vn.circa_online_prd_order_order    
+      ,i.order_code                                                                  AS order_code_pos 
+FROM platinum_buymed_vn.circa_online_prd_order_order o 
+LEFT JOIN (
+    SELECT DISTINCT order_code, reference_order_in_platform 
+    FROM ${source.ref}.cos_fact_order 
+    WHERE channel = 'O2O' 
+          AND status IN ('COMPLETED', 'COMPLETED_SHIPPING')
+    ) i ON o.order_code = i.reference_order_in_platform
