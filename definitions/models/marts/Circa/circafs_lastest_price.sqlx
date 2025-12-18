@@ -5,54 +5,65 @@ config {
     tags: ["custom_2h_past15"],
     name: "circafs_lastest_price",
 }
- 
- with t as (
-select distinct product_id
-     ,unit_price
-     ,unit
-     ,pos_id
-     , client_id
-     , created_at as latest_order
-     , fulfillment_method
-     ,vendor as last_vendor
-     ,distributor_id
-from (
-    select i.product_id
-         ,i.unit_price
-         ,unit
-         ,pos_id
-         , o.client_id
-         , o.created_at
-         , o.fulfillment_method
-         ,o.vendor
-         ,o.distributor_id
-         , row_number() over (
-             partition by i.product_id, o.pos_id
-             order by o.created_at desc
-           ) as rn
-    from ${source.ref}.cos_purchase_order o
-    left join ${source.ref}.cos_purchase_order_item i on o.po_id = i.po_id
-    where o.client_id <> 1
-          and unit_price > 0
+
+WITH t AS (
+SELECT DISTINCT
+     product_id
+    ,unit_price
+    ,unit
+    ,pos_id
+    ,client_id
+    ,created_at AS latest_order
+    ,fulfillment_method
+    ,vendor AS last_vendor
+    ,distributor_id
+FROM (
+    SELECT
+         i.product_id
+        ,i.unit_price
+        ,unit
+        ,pos_id
+        ,o.client_id
+        ,o.created_at
+        ,o.fulfillment_method
+        ,o.vendor
+        ,o.distributor_id
+        ,ROW_NUMBER() OVER (
+             PARTITION BY i.product_id, o.pos_id
+             ORDER BY o.created_at DESC
+         ) AS rn
+    FROM ${source.ref}.cos_purchase_order o
+    LEFT JOIN ${source.ref}.cos_purchase_order_item i ON o.po_id = i.po_id
+    WHERE o.client_id <> 1
+      AND unit_price > 0
 )
-where rn = 1
-      and fulfillment_method =  'EXTERNAL'
-), sku_circa as (
-Select t.*
-,p.thuocsi_id
-,concat(product_id,'_',thuocsi_id) as product_thuocsi_id
-,p.name
-,m.customer_level
-from t
-left join ${source.ref}.circa_pos_profile p on t.pos_id = p.id
-left join ${source.ref}.dim_customer  as  m on p.thuocsi_id = m.customer_id
-where product_id in (Select distinct product_id from ${source.ref}.dim_product)
-order by p.name, latest_order desc
+WHERE rn = 1
+  AND fulfillment_method = 'EXTERNAL'
+),
+
+sku_circa AS (
+SELECT
+     t.*
+    ,p.thuocsi_id
+    ,CONCAT(product_id,'_',thuocsi_id) AS product_thuocsi_id
+    ,p.name
+    ,m.customer_level
+FROM t
+LEFT JOIN ${source.ref}.circa_pos_profile p ON t.pos_id = p.id
+LEFT JOIN ${source.ref}.dim_customer m ON p.thuocsi_id = m.customer_id
+WHERE product_id IN (
+    SELECT DISTINCT product_id
+    FROM ${source.ref}.dim_product
 )
-Select timestamp_add(current_timestamp(), interval 7 hour) as transformed_at
-     ,sku_circa.*
-     ,sku_circa.unit_price/ convert_rate as base_unit_price
-from sku_circa
-left join ${source.ref}.cos_product_convert_base_unit r on sku_circa.product_id = r.product_id 
-                                                               and sku_circa.unit = r.convert_unit
-                                                               and sku_circa.client_id = r.client_id 
+ORDER BY p.name, latest_order DESC
+)
+
+SELECT
+     TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
+    ,sku_circa.*
+    ,sku_circa.unit_price / convert_rate AS base_unit_price
+FROM sku_circa
+LEFT JOIN ${source.ref}.cos_product_convert_base_unit r ON sku_circa.product_id = r.product_id
+                                                       AND sku_circa.unit = r.convert_unit
+                                                       AND sku_circa.client_id = r.client_id
+                                                    
