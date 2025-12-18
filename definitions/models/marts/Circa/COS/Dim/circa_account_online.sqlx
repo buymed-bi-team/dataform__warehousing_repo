@@ -25,6 +25,7 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                      
        ,customer_id
        ,gender
        ,DATETIME_ADD(created_time, INTERVAL 7 HOUR)                                  AS created_time
+       ,DATE(DATETIME_ADD(created_time, INTERVAL 7 HOUR))                            AS created_date
        ,DATETIME_ADD(last_updated_time, INTERVAL 7 HOUR)                             AS last_updated_time
        ,DATETIME_ADD(platinum_refresh, INTERVAL 7 HOUR)                              AS platinum_refresh
 FROM platinum_buymed_vn.circa_online_prd_consumer_customer
