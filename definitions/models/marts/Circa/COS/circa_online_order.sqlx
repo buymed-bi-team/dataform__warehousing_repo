@@ -47,5 +47,5 @@ LEFT JOIN (
     SELECT DISTINCT order_code, reference_order_in_platform 
     FROM ${source.ref}.cos_fact_order 
     WHERE channel = 'O2O' 
-          AND status IN ('COMPLETED', 'COMPLETED_SHIPPING')
+          AND status IN ('COMPLETED', 'COMPLETED_SHIPPING','AWAITING_SHIPMENT')
     ) i ON o.order_code = i.reference_order_in_platform
