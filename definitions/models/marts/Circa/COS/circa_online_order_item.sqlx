@@ -1,0 +1,32 @@
+config {
+    type: "table",
+    description: `PIC: huyen.ngo; model_type: Table ;schedule: At minute 10 every 1 hour.Circa online order item `
+    /*Source:
+      ${source.silver}.marketplace_prd_order_v2_order_item
+      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
+    tags: ["custom_1h_past10"],
+    name: "circa_online_order_item",
+    columns: {
+       
+    },
+    bigquery: {
+        partitionBy: "created_date"
+    }
+}
+
+SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                          AS transformed_at
+      ,product_id
+      ,product_name
+      ,unit
+      ,unit_code
+      ,price
+      ,quantity    
+      ,order_id
+      ,order_code
+      ,total_price
+      ,DATETIME_ADD(created_time, INTERVAL 7 hour)                                   AS created_time
+      ,DATE(DATETIME_ADD(created_time, INTERVAL 7 hour))                             AS created_date
+      ,action
+      ,DATETIME_ADD(last_updated_time, INTERVAL 7 hour)                              AS last_updated_time
+      ,DATETIME_ADD(platinum_refresh, INTERVAL 7 hour)                               AS platinum_refresh
+FROM platinum_buymed_vn.circa_online_prd_order_order_item 
