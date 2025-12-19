@@ -9,56 +9,57 @@ config {
     tags: ["custom_1h_past20"],
     columns: {
     }}
-with inventory as (
-    Select distinct
+  WITH inventory AS (
+    SELECT DISTINCT
         a.product_id
         ,a.sku_code
         ,a.lot_date
-        ,case
-            when tax_rate <= 0 then 0 else tax_rate
-        end as tax_rate
+        ,CASE
+            WHEN tax_rate <= 0 THEN 0 ELSE tax_rate
+        END AS tax_rate
         ,a.on_hand_qty AS on_hand_quantity
         ,a.location_id
-        ,doc_code,a.cost_price_include_tax
-        ,product_id || "_" || lot_date as product_lot_date
-        ,product_id || "_" || lot_date || "_" || tax_rate || "_" || a.client_id as product_lot_date_vat_client_id
+        ,doc_code
+        ,a.cost_price_include_tax
+        ,product_id || "_" || lot_date AS product_lot_date
+        ,product_id || "_" || lot_date || "_" || tax_rate || "_" || a.client_id AS product_lot_date_vat_client_id
         ,a.client_id
         ,pos_id
-    from ${source.circa_os}.inventory_location_detail as a
-    where doc_code is not null
-          and deleted_at is null
+    FROM ${source.circa_os}.inventory_location_detail AS a
+    WHERE doc_code IS NOT NULL
+          AND deleted_at IS NULL
 )
-,_all as (
-select distinct
-     a.product_id
-    ,a.sku_code
-    ,a.lot_date
-    ,a.tax_rate
-    ,doc_code
-    ,a.cost_price_include_tax
-    ,a.location_id
-    ,product_lot_date
-    ,a.product_lot_date_vat_client_id
-    ,SUM(a.on_hand_quantity) AS on_hand_quantity
-    ,b.pos_id
-    ,location_type
-    ,b.name as location_name
-    ,a.client_id
-    ,concat(a.product_id,"_", p.code) as product_pos_code
-from inventory as a
-left join ${source.ref}.circa_pos_profile p on a.client_id = p.client_id  and a.pos_id = p.id
-left join ${source.circa_os}.inventory_location as b on a.location_id = b.id  and b.pos_id = p.id and p.client_id = b.client_id
-where p.id is not null
-group by all
+,_all AS (
+    SELECT DISTINCT
+         a.product_id
+        ,a.sku_code
+        ,a.lot_date
+        ,a.tax_rate
+        ,doc_code
+        ,a.cost_price_include_tax
+        ,a.location_id
+        ,product_lot_date
+        ,a.product_lot_date_vat_client_id
+        ,SUM(a.on_hand_quantity) AS on_hand_quantity
+        ,b.pos_id
+        ,location_type
+        ,b.name AS location_name
+        ,a.client_id
+        ,CONCAT(a.product_id,"_", p.code) AS product_pos_code
+    FROM inventory AS a
+    LEFT JOIN ${source.ref}.circa_pos_profile p ON a.client_id = p.client_id  AND a.pos_id = p.id
+    LEFT JOIN ${source.circa_os}.inventory_location AS b ON a.location_id = b.id  AND b.pos_id = p.id AND p.client_id = b.client_id
+    WHERE p.id IS NOT NULL
+    GROUP BY ALL
 )
-Select timestamp_add(current_timestamp(), interval 7 hour) as transformed_at
+SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
        ,i.*
-       ,concat(i.product_id, "_", i.client_id) as product_client_id
-       ,eo.name as owner_name
+       ,CONCAT(i.product_id, "_", i.client_id) AS product_client_id
+       ,eo.name AS owner_name
        ,eo.seller_code
-       ,o.sale_order_number as SO_code
+       ,o.sale_order_number AS SO_code
        ,o.distributor_id
        ,o.fulfillment_method
-from  _all i 
-left join ${source.circa_os}.order_purchase_order o on i.doc_code = o.code and i.client_id = o.client_id
-left join ${source.circa_os}.entity_owner eo on o.owner_id = eo.id and i.client_id = eo.client_id
+FROM _all i 
+LEFT JOIN ${source.circa_os}.order_purchase_order o ON i.doc_code = o.code AND i.client_id = o.client_id
+LEFT JOIN ${source.circa_os}.entity_owner eo ON o.owner_id = eo.id AND i.client_id = eo.client_id
