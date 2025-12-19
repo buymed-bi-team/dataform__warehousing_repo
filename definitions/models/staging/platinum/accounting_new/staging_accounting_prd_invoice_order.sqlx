@@ -12,6 +12,17 @@ config {
     bigquery: {
         partitionBy: "created_date"
     },
+    description: `
+    Internal: internal.thuocsi.vn/crm/invoice/order
+    `,
+    columns: {
+      outbound_time: "NGÀY XUẤT KHO",
+      customer_name: "TÊN ĐƠN VỊ MUA HÀNG",
+      customer_tax_code: "MÃ SỐ THUẾ",
+      is_difference_item_export: "Chênh lệch sản phẩm xuất hóa đơn (Cần xuất bù)",
+      status: "",
+      extra_props: ''
+    },
     tags: ["custom_1h_past7", "accounting_prd_invoice"]
 }
 
