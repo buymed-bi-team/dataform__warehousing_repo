@@ -47,6 +47,7 @@ WITH
             -- AND o.completed_date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 1 MONTH)
             -- AND o.status IN ('COMPLETED', 'COMPLETED_SHIPPING')
             AND o.status <> "CANCELED"
+            AND o.pos_id <> "0afdb831-b60d-4254-8822-df13e39c90e7"
     ),
 
     fact_order_item AS (
