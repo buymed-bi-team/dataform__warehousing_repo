@@ -36,6 +36,7 @@ Select Pos_Code                               as pos_code
        ,null                                  as target_active_customers
        ,null                                  as target_repeat_customers
 from target_old
+where pos_code <> 'Chưa có mã'
 
 union all 
 
@@ -48,3 +49,4 @@ Select pos_code                               as pos_code
        ,cast(ACTIVE_CUSTOMERS as int64)       as target_active_customers
        ,cast(REPEAT_CUSTOMERS as int64)       as target_repeat_customers
 from target_from_m12
+where pos_code <> 'Chưa có mã'
