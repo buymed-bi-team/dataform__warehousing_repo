@@ -10,16 +10,16 @@ config {
 }
 
 
-Select distinct
+SELECT DISTINCT
        o.id
       ,name
       ,product_id
       ,product_name
       ,i.status
       ,i.purchase_status
-      ,datetime_add(i.created_at, interval 7 hour) as created_at
-      ,datetime_add(i.updated_at, interval 7 hour) as updated_at
-      ,1 as client_id 
-from buymed_circa_v2.product_assortment_template o 
-left join buymed_circa_v2.product_assortment_template_items i on o.id = i.assortment_template_id
-where o.id = '1430759b-40e3-4d86-86b8-8b9a1d5dae27'
+      ,DATETIME_ADD(i.created_at, INTERVAL 7 HOUR) AS created_at
+      ,DATETIME_ADD(i.updated_at, INTERVAL 7 HOUR) AS updated_at
+      ,1 AS client_id 
+FROM ${source.circa_os}.product_assortment_template o 
+LEFT JOIN ${source.circa_os}.product_assortment_template_items i ON o.id = i.assortment_template_id
+WHERE o.id = '1430759b-40e3-4d86-86b8-8b9a1d5dae27'
