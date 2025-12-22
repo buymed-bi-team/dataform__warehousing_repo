@@ -15,7 +15,12 @@ config {
         partitionBy: "date(delivery_time)"
     }
 }
-
+WITH created_by AS (
+            SELECT DISTINCT order_code, event_name, action_by_name 
+            FROM platinum_buymed_vn.circa_online_prd_order_order_event
+            WHERE event_name  = 'CREATE_ORDER'
+               OR event_name = 'ADMIN_CREATE_ORDER'
+     )
 
 SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                           AS transformed_at
       ,o.order_code
@@ -24,6 +29,7 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                      
       ,receiver_code
       ,receiver_name
       ,receiver_phone_number
+      ,action_by_name                                                                AS create_order_by
       ,account_id                                                                    -- tạo tài khoản sẽ có account_id, ko tạo tk ~ acount_id = 0
       ,payment_method                                                                --Banking/COD
       ,payment_status                                                                --COMPLETED/WAIT_FOR_PAYMENT/NULL
@@ -52,4 +58,5 @@ LEFT JOIN (
     WHERE channel = 'O2O' 
           AND status IN ('COMPLETED', 'COMPLETE_SHIPPING','AWAITING_SHIPMENT','SHIPPING','FAILED_SHIPMENT')
     ) i ON o.order_code = i.reference_order_in_platform
+LEFT JOIN created_by c ON c.order_code = o.order_code
 LEFT JOIN ${source.ref}.circa_pos_profile p on i.pos_id = p.id
