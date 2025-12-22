@@ -1,8 +1,8 @@
 config {
     type: "table",
-    description: `Danh mục hàng cửa hàng nào cũng có, giao nhanh 30 phút| PIC: huyen.ngo; model_type: Table ;schedule: At 10h30`,
+    description: `List sản phẩm hot nhất thị trường | PIC: huyen.ngo; model_type: Table ;schedule: At 10h30`,
     tags: ["10h30"],
-    name: "cos_product_essential",
+    name: "cos_product_trendy",
     columns: {/*
         */
         
@@ -15,6 +15,7 @@ SELECT DISTINCT
       ,name
       ,product_id
       ,product_name
+      ,i.unit
       ,i.status
       ,i.purchase_status
       ,DATETIME_ADD(i.created_at, INTERVAL 7 HOUR) AS created_at
@@ -22,4 +23,4 @@ SELECT DISTINCT
       ,1 AS client_id 
 FROM ${source.circa_os}.product_assortment_template o 
 LEFT JOIN ${source.circa_os}.product_assortment_template_items i ON o.id = i.assortment_template_id
-WHERE o.id = '1430759b-40e3-4d86-86b8-8b9a1d5dae27'
+WHERE o.id = 'ef3d6496-d19e-4cc1-bb4d-90b4b7ff978a'

@@ -1,232 +1,187 @@
 config {
     type: "table",
-    description: `PIC: huyen.ngo; model_type: Table ;schedule: custom_1h_past20`,
+    description: `Dim product | PIC: huyen.ngo; model_type: Table ;schedule: custom_1h_past20`,
     tags: ["custom_1h_past20"],
     name: "cos_dim_product",
     columns: {/*
-        order_id: "NonNull |" + docs.order_id,
-        customer_id: "NonNull | The unique identifier for each customer"*/
+*/
         
     }
 }
 
-
-with cte_product as (
-                     select distinct p.product_id
-                            ,p.name as product_name
-                            ,tp.retail_name
-                            ,p.volumes
-                            ,p.unit
-                            ,p.length
-                            ,p.height
-                            ,p.weight
-                            ,p.width
-                            ,is_fragile
-                            ,is_frozen
-                            ,is_herb
-                            ,is_ingredient_special
-                            ,is_portable
-                            ,tp.origin
-                            ,manufacturer_short_name
-                            ,tp.registration_number
-                            ,tp.product_category_code
-                            ,tp.product_category 
-                            ,p.dosage_form
-                            ,tp.product_report_category
-                            ,mc.code as main_category_code
-                            --,tp.product_category as product_categories
-                            ,m.name as manufacture_name
-                            ,is_combo
-                            ,is_gift
-                            ,is_etc
-                            ,ARRAY_TO_STRING(JSON_VALUE_ARRAY(image_urls), ', ') AS image_urls
-                            ,price_type
-                            ,tp.chronic
-                            ,thuocsi_product_status
-                            ,thuocsi_has_stock
-                            ,thuocsi_unit
-                            ,thuocsi_quantity 
-                            ,p.client_id
-                     from ${source.circa_os}.product_product p
-                              left join ${source.circa_os}.product_main_category mc on p.main_category_code = mc.code and p.client_id = mc.client_id
-                              left join ${source.circa_os}.product_manufacturer m on p.manufacturer_code = m.code and p.client_id = m.client_id
-                              left join ${source.circa_os}.product_seller_category sc on p.seller_category_code = sc.seller_category_code and p.client_id = sc.client_id
-                              left join ${ref('dim_product')} as tp on p.product_id = tp.product_id
-                              --where p.client_id = 1
-                              )
--- ,inventory as (
---                    select distinct a.product_id
---                               ,sum(a.on_hand_quantity) as on_hand_quantity
---                               ,count(distinct case when a.client_id = 1 and ep.client_id = 1 and sum(a.on_hand_quantity) > 0 then a.pos_id
---                                                     end) as pos_os_have_stock
---                                ,count(distinct case when a.client_id <> 1 and ep.client_id <> 1 and sum(a.on_hand_quantity) > 0 then a.pos_id
---                                                     end) as  pos_fs_have_stock
---                               ,STRING_AGG(distinct ep.name, ", ") as stock_available_in_POSs
---                               ,a.client_id
---                      from ${source.ref}.cos_fact_inventory a
---                              left join  ${source.ref}.circa_pos_profile as ep on a.pos_id = ep.id and a.client_id = ep.client_id 
---                              where ep.id is not null
---                              group by all)
--- , ingregients as (
---     select
---         product_id,
---         ingredient_name,
---         JSON_VALUE(extra_props, '$.ingredients[0].ingredient_code') AS ingredient_code
---     from ${source.platinum}.pim_prd_product_product p 
---     left join ${source.platinum}.marketplace_prd_product_v2_ingredient i ON p.ingredient_code = i.ingredient_code
---     where ingredient_level = 1
--- ),
-,inventory_summary as (
-  select 
-    a.product_id
-    , a.pos_id
-    , a.client_id
-    , sum(a.on_hand_quantity) as total_on_hand_quantity
-    , ep.name as pos_name
-  from lakehouse-prod-394907.gold_buymed_vn2.cos_fact_inventory a
-  left join lakehouse-prod-394907.gold_buymed_vn2.circa_pos_profile ep 
-    on a.pos_id = ep.id 
-    and a.client_id = ep.client_id
-  where ep.id is not null
-  group by 
-    a.product_id
-    , a.pos_id
-    , a.client_id
-    , ep.name
+WITH cte_product AS (
+    SELECT DISTINCT p.product_id
+          ,p.name AS product_name
+          ,tp.retail_name
+          ,p.volumes
+          ,p.unit
+          ,p.length
+          ,p.height
+          ,p.weight
+          ,p.width
+          ,is_fragile
+          ,is_frozen
+          ,is_herb
+          ,is_ingredient_special
+          ,is_portable
+          ,tp.origin
+          ,manufacturer_short_name
+          ,tp.registration_number
+          ,tp.product_category_code
+          ,tp.product_category
+          ,p.dosage_form
+          ,tp.product_report_category
+          ,mc.code AS main_category_code
+          ,m.name AS manufacture_name
+          ,is_combo
+          ,is_gift
+          ,is_etc
+          ,ARRAY_TO_STRING(JSON_VALUE_ARRAY(image_urls), ', ') AS image_urls
+          ,price_type
+          ,tp.chronic
+          ,thuocsi_product_status
+          ,thuocsi_has_stock
+          ,thuocsi_unit
+          ,thuocsi_quantity
+          ,p.client_id
+    FROM ${source.circa_os}.product_product p
+    LEFT JOIN ${source.circa_os}.product_main_category mc ON p.main_category_code = mc.code AND p.client_id = mc.client_id
+    LEFT JOIN ${source.circa_os}.product_manufacturer m ON p.manufacturer_code = m.code AND p.client_id = m.client_id
+    LEFT JOIN ${source.circa_os}.product_seller_category sc ON p.seller_category_code = sc.seller_category_code AND p.client_id = sc.client_id
+    LEFT JOIN ${ref('dim_product')} AS tp ON p.product_id = tp.product_id
 )
-, inventory as (
-  select 
-    product_id
-    , sum(total_on_hand_quantity) as on_hand_quantity
-    , count(distinct case 
-        when client_id = 1 and total_on_hand_quantity > 0 then pos_id 
-      end) as pos_os_have_stock
-    , count(distinct case 
-        when client_id <> 1 and total_on_hand_quantity > 0 then pos_id 
-      end) as pos_fs_have_stock
-    , string_agg(distinct pos_name, ', ') as stock_available_in_poss
-    , client_id
-  from inventory_summary
-  group by 
-    product_id
-    , client_id
+,inventory_summary AS (
+    SELECT a.product_id
+          ,a.pos_id
+          ,a.client_id
+          ,SUM(a.on_hand_quantity) AS total_on_hand_quantity
+          ,ep.name AS pos_name
+    FROM lakehouse-prod-394907.gold_buymed_vn2.cos_fact_inventory a
+    LEFT JOIN lakehouse-prod-394907.gold_buymed_vn2.circa_pos_profile ep 
+           ON a.pos_id = ep.id 
+          AND a.client_id = ep.client_id
+    WHERE ep.id IS NOT NULL
+    GROUP BY a.product_id, a.pos_id, a.client_id, ep.name
 )
-
-,ingregients as (
-                   select distinct
-                    product_id
-                    ,ingredient_name
-                    ,volume
-                    ,usage
-                    ,client_id
-                   from  ${ref('cos_dim_product_ingredient')}
-                   where ingredient_level = 1
-                )
-,product_base_unit as
-      (
-      select distinct a.product_id
-            ,a.unit as base_unit
-            ,client_id
-      from ${source.circa_os}.product_retail_unit as a
-      -- right join ${source.circa_os}.product_product as b on a.product_id = b.product_id
-      where a.base_unit is true and (unit is not null or unit <> "")
-      qualify row_number() over(partition by product_id,client_id order by created_at desc ) =1
-      )
-,convert_unit as (
-      select a.product_id
-            ,convert_rate
-            ,unit as convert_unit
-            ,client_id
-      from ${source.circa_os}.product_retail_unit as a
-      -- right join ${source.circa_os}.product_product as b on a.product_id = b.product_id
-      where unit is not null or unit <> "" --and client_id = 1
-      qualify row_number() over(partition by product_id ,client_id order by convert_rate desc ) =1
-      )
-      ,brand_type as
-      (
-        select p.product_id
-               ,s.brand_type
-        from ${ref('dim_product')} p
-        left join ${ref('adhoc_pm_master_sku')} s using (product_id )
-        where fc_code like "BD"
-        qualify row_number() over(partition by p.product_id order by s.brand_type desc) = 1
-        )
-,sub_cat as (
-            select p.product_id
-            ,sc.name as seller_sub_category_name
-        from `${source.platinum}.marketplace_prd_product_v2_product` p
-        left join `${source.platinum}.marketplace_prd_product_v2_seller_sub_category` sc on p.seller_sub_category_code =sc.code
+,inventory AS (
+    SELECT product_id
+          ,SUM(total_on_hand_quantity) AS on_hand_quantity
+          ,COUNT(DISTINCT CASE WHEN client_id = 1 AND total_on_hand_quantity > 0 THEN pos_id END) AS pos_os_have_stock
+          ,COUNT(DISTINCT CASE WHEN client_id <> 1 AND total_on_hand_quantity > 0 THEN pos_id END) AS pos_fs_have_stock
+          ,STRING_AGG(DISTINCT pos_name, ', ') AS stock_available_in_poss
+          ,client_id
+    FROM inventory_summary
+    GROUP BY product_id, client_id
+)
+,ingregients AS (
+    SELECT DISTINCT product_id
+          ,ingredient_name
+          ,volume
+          ,usage
+          ,client_id
+    FROM ${ref('cos_dim_product_ingredient')}
+    WHERE ingredient_level = 1
+)
+,product_base_unit AS (
+    SELECT DISTINCT a.product_id
+          ,a.unit AS base_unit
+          ,client_id
+    FROM ${source.circa_os}.product_retail_unit AS a
+    WHERE a.base_unit IS TRUE 
+      AND (unit IS NOT NULL OR unit <> "")
+    QUALIFY ROW_NUMBER() OVER(PARTITION BY product_id, client_id ORDER BY created_at DESC) = 1
+)
+,convert_unit AS (
+    SELECT a.product_id
+          ,convert_rate
+          ,unit AS convert_unit
+          ,client_id
+    FROM ${source.circa_os}.product_retail_unit AS a
+    WHERE unit IS NOT NULL OR unit <> ""
+    QUALIFY ROW_NUMBER() OVER(PARTITION BY product_id, client_id ORDER BY convert_rate DESC) = 1
+)
+,brand_type AS (
+    SELECT p.product_id
+          ,s.brand_type
+    FROM ${ref('dim_product')} p
+    LEFT JOIN ${ref('adhoc_pm_master_sku')} s USING (product_id)
+    WHERE fc_code LIKE "BD"
+    QUALIFY ROW_NUMBER() OVER(PARTITION BY p.product_id ORDER BY s.brand_type DESC) = 1
+)
+,sub_cat AS (
+    SELECT p.product_id
+          ,sc.name AS seller_sub_category_name
+    FROM `${source.platinum}.marketplace_prd_product_v2_product` p
+    LEFT JOIN `${source.platinum}.marketplace_prd_product_v2_seller_sub_category` sc ON p.seller_sub_category_code = sc.code
 )
 ,brand_type_add AS (
-    Select 
-        SAFE_CAST(code as int64) as product_id
-        , NULLIF(value, "NAN") as brand_type
-    from collector.data_prd
-    where object = 'Product' and type = 'BRAND_TYPE'
-    qualify ROW_NUMBER() over(partition by code, object, type order by submit_id desc) = 1
-),
+    SELECT SAFE_CAST(code AS INT64) AS product_id
+          ,NULLIF(value, "NAN") AS brand_type
+    FROM collector.data_prd
+    WHERE object = 'Product' AND type = 'BRAND_TYPE'
+    QUALIFY ROW_NUMBER() OVER(PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
+)
+,popular_product AS (
+    SELECT SAFE_CAST(code AS INT64) AS product_id
+          ,NULLIF(value, "NAN") AS popular
+    FROM collector.data_prd
+    WHERE object = 'Product' AND type = 'POPULAR'
+    QUALIFY ROW_NUMBER() OVER(PARTITION BY code, object, type ORDER BY submit_id DESC) = 1  
+)
+,combo_on_kit AS (
+    SELECT * FROM (
+        SELECT CAST(code AS INT64) AS product_id
+              ,1 AS client_id
+              ,type
+              ,value
+        FROM collector.data_prd
+        WHERE object = 'CIRCA' 
+          AND (type = 'CIRCA_ON_KIT_PRODUCT' OR type = 'KIT_NAME')
+    )
+    PIVOT (
+        MAX(value) FOR type IN ('KIT_NAME', 'CIRCA_ON_KIT_PRODUCT')
+    )
+)
+SELECT DISTINCT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
+      ,pd.product_id
+      ,pd.* EXCEPT (product_id)
+      ,CASE WHEN e.product_id IS NOT NULL THEN TRUE ELSE FALSE END AS is_essential
+      ,e.status AS status_essential
+      ,CASE WHEN tr.product_id IS NOT NULL THEN TRUE ELSE FALSE END AS is_trendy
+      ,tr.status AS status_trendy
+      ,cr.convert_rate
+      ,cr.convert_unit
+      ,op.status AS medship_status
+      ,op.unit_name AS medship_unit
+      ,CASE WHEN i.on_hand_quantity > 0 THEN "Available" ELSE "Not Available" END AS stock_check
+      ,pos_os_have_stock
+      ,stock_available_in_POSs
+      ,on_hand_quantity
+      ,CASE WHEN op.product_id IS NOT NULL THEN "True" ELSE "False" END AS is_medship_product
+      ,ig.ingredient_name
+      ,ig.volume
+      ,usage
+      ,bu.base_unit
+      ,COALESCE(bt.brand_type, ba.brand_type) AS brand_type
+      ,seller_sub_category_name
+      ,pop.popular AS is_popular
+      ,CASE WHEN kit.product_id IS NOT NULL THEN TRUE ELSE FALSE END AS is_combo_on_kit
+      ,kit.KIT_NAME AS kit_name
+FROM cte_product pd
+LEFT JOIN ${source.platinum}.circa_online_prd_product_product AS op ON pd.product_id = op.product_id
+LEFT JOIN inventory i ON pd.product_id = i.product_id AND pd.client_id = i.client_id
+LEFT JOIN ingregients ig ON pd.product_id = ig.product_id AND pd.client_id = ig.client_id
+LEFT JOIN product_base_unit bu ON pd.product_id = bu.product_id AND pd.client_id = bu.client_id
+LEFT JOIN brand_type bt ON pd.product_id = bt.product_id
+LEFT JOIN convert_unit cr ON pd.product_id = cr.product_id AND pd.client_id = cr.client_id
+LEFT JOIN sub_cat ON pd.product_id = sub_cat.product_id
+LEFT JOIN brand_type_add ba ON pd.product_id = ba.product_id
+LEFT JOIN popular_product pop ON pd.product_id = pop.product_id
+LEFT JOIN combo_on_kit kit ON kit.product_id = pd.product_id AND kit.client_id = pd.client_id
+LEFT JOIN ${source.ref}.cos_product_essential e ON pd.product_id = e.product_id AND pd.client_id = e.client_id
+LEFT JOIN ${source.ref}.cos_product_trendy tr ON pd.product_id = tr.product_id AND pd.client_id = tr.client_id
+WHERE pd.product_name NOT LIKE "%[Removed]%"
 
-popular_product as (
-    Select 
-        SAFE_CAST(code as int64) as product_id
-        , NULLIF(value, "NAN") as popular
-    from collector.data_prd
-    where object = 'Product' and type = 'POPULAR'
-    qualify ROW_NUMBER() over(partition by code, object, type order by submit_id desc) = 1  
-), combo_on_kit as (
-   Select * from 
-(
-    Select cast(code as int64) as product_id
-          , 1 as client_id
-          ,type
-          ,value
-    from collector.data_prd
-    where object = 'CIRCA' 
-    and (type = 'CIRCA_ON_KIT_PRODUCT'
-    or type = 'KIT_NAME')
-)
-pivot (
-max(value) for type in ('KIT_NAME', 'CIRCA_ON_KIT_PRODUCT')
-)
-)
-select distinct timestamp_add(current_timestamp(), interval 7 hour) as transformed_at
-               ,pd.product_id
-               ,pd.* except (product_id)
-               ,case when e.product_id is not null then true else false end as is_essential
-               ,e.status as status_essential
-          --   ,a.unit as retail_unit
-               ,cr.convert_rate
-               ,cr.convert_unit 
-          --   ,a.sale_allowed as is_sale_allowed
-               ,op.status as medship_status
-               ,op.unit_name as medship_unit
-               ,case when i.on_hand_quantity > 0 then "Available" else "Not Available" end as stock_check
-               ,pos_os_have_stock
-               ,stock_available_in_POSs
-               ,on_hand_quantity
-               ,case when op.product_id is not null then "True" else "False" end as is_medship_product
-               ,ig.ingredient_name
-               ,ig.volume,usage
-               ,bu.base_unit
-               ,COALESCE(bt.brand_type, ba.brand_type) as brand_type
-               ,seller_sub_category_name
-               ,pop.popular as is_popular
-               ,case when kit.product_id is not null then true else false end as is_combo_on_kit
-               ,kit.KIT_NAME as kit_name
-from cte_product pd
--- left join ${source.circa_os}.product_retail_unit as a on a.product_id = pd.product_id and a.unit = pd.unit
-left join ${source.platinum}.circa_online_prd_product_product as op on pd.product_id = op.product_id
-left join inventory i on pd.product_id = i.product_id and pd.client_id = i.client_id
-left join ingregients ig on pd.product_id = ig.product_id and pd.client_id = ig.client_id
-left join product_base_unit bu on pd.product_id = bu.product_id and pd.client_id = bu.client_id
-left join brand_type bt on pd.product_id = bt.product_id
-left join convert_unit cr on pd.product_id = cr.product_id and pd.client_id = cr.client_id
-left join sub_cat on pd.product_id = sub_cat.product_id
-left join brand_type_add ba on pd.product_id = ba.product_id
-left join popular_product pop on pd.product_id = pop.product_id
-left join combo_on_kit kit on kit.product_id = pd.product_id and kit.client_id = pd.client_id
-left join ${source.ref}.cos_product_essential e on pd.product_id = e.product_id and pd.client_id = e.client_id 
-where pd.product_name not like "%[Removed]%"
         --and pd.product_id = 1112
        --and pd.product_id = 16149
 -- WHERE p.product_id>=1
