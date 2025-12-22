@@ -49,12 +49,12 @@ get_column as (
         , case
             when CONTAINS_SUBSTR(volumes,'ml') then CAST(REGEXP_EXTRACT(volumes, r"\d+\s*ml") as STRING) 
             when weight is not null then CAST(weight as STRING)
-            when category_for_set_limit = "khẩu trang" then 
-                if( 
-                    CONTAINS_SUBSTR(volumes,'100'),
-                    "100",
-                    "<100"
-                )
+            -- when category_for_set_limit = "khẩu trang" then 
+            --     if( 
+            --         CONTAINS_SUBSTR(volumes,'100'),
+            --         "100",
+            --         "<100"
+            --     )
          end as volumes_convert
     from (
         select a.sub_sku_code
@@ -67,8 +67,9 @@ get_column as (
             , a.max_quantity_per_order as current_limit
             , d.no_quantity_per_so
             , CASE
-                WHEN LOWER(b.product_name) LIKE '%cồn 70 độ%' THEN 'cồn 70 độ'
-                WHEN LOWER(b.product_name) LIKE '%cồn 90 độ%' THEN 'cồn 90 độ'
+                WHEN LOWER(b.product_name) LIKE '%cồn%' THEN 'cồn'
+                -- WHEN LOWER(b.product_name) LIKE '%cồn 70 độ%' THEN 'cồn 70 độ'
+                -- WHEN LOWER(b.product_name) LIKE '%cồn 90 độ%' THEN 'cồn 90 độ'
                 WHEN LOWER(b.product_name) LIKE '%oxy già%' THEN 'oxy già'
                 WHEN LOWER(b.product_name) LIKE '%povidin%' THEN 'povidin'
                 WHEN LOWER(b.product_name) LIKE '%nhỏ mắt%' THEN 'nhỏ mắt các loại'
@@ -78,6 +79,8 @@ get_column as (
                 WHEN LOWER(b.product_name) LIKE '%nước muối%' THEN 'nước muối'
                 WHEN LOWER(b.product_name) LIKE '%dịch truyền%' THEN 'dịch truyền'
                 WHEN LOWER(b.product_name) LIKE '%khẩu trang%' THEN 'khẩu trang'
+                WHEN LOWER(b.product_name) LIKE '%dầu gội%' THEN 'dầu gội'
+                WHEN LOWER(b.product_name) LIKE '%găng tay%' THEN 'găng tay'
                 WHEN c.category_code = '7E72AXHR2A' THEN 'vật tư và thiết bị y tế'
                 ELSE 'sản phẩm khác'
             END AS category_for_set_limit
@@ -92,40 +95,42 @@ get_column as (
 create_set_limit_logic as (
     select *,
         CASE
-            WHEN volumes_convert IS NOT NULL AND LOWER(volumes_convert) LIKE '%ml%' THEN
-            CASE
-                WHEN unit = 'Lốc' THEN '10'
-                WHEN unit = 'Thùng' THEN '1'
-                WHEN unit = 'Chai' THEN
-                CASE
-                    WHEN volumes_convert IS NOT NULL  
-                        AND CAST(REPLACE(volumes_convert, 'ml', '') AS INT64) < 500 
-                        AND CAST(REPLACE(volumes_convert, 'ml', '') AS INT64) >= 250 
-                     THEN '10'
-                    WHEN volumes_convert IS NOT NULL  
-                        AND CAST(REPLACE(volumes_convert, 'ml', '') AS INT64) >= 500 
-                     THEN '5'
-                    ELSE '10000'
-                END
-                ELSE '10000'
-            END
-            WHEN category_for_set_limit = 'khẩu trang' 
-                AND volumes_convert = '100' 
-                AND unit = 'Hộp' 
-                AND volumes_convert IS NOT NULL 
+            WHEN REGEXP_CONTAINS(category_for_set_limit, 'cồn|dịch truyền|nước muối|dầu gội|sữa rửa mặt|nước súc miệng')
+            THEN IF(LOWER(unit) = "thùng", '20', '2')
+            -- WHEN volumes_convert IS NOT NULL AND LOWER(volumes_convert) LIKE '%ml%' THEN
+            -- CASE
+            --     WHEN unit = 'Lốc' THEN '20'
+            --     WHEN unit = 'Thùng' THEN '2'
+            --     WHEN unit = 'Chai' THEN
+            --     CASE
+            --         WHEN volumes_convert IS NOT NULL  
+            --             AND CAST(REPLACE(volumes_convert, 'ml', '') AS INT64) < 500 
+            --             AND CAST(REPLACE(volumes_convert, 'ml', '') AS INT64) >= 250 
+            --          THEN '10'
+            --         WHEN volumes_convert IS NOT NULL  
+            --             AND CAST(REPLACE(volumes_convert, 'ml', '') AS INT64) >= 500 
+            --          THEN '5'
+            --         ELSE '10000'
+            --     END
+            --     ELSE '10000'
+            -- END
+            WHEN REGEXP_CONTAINS(category_for_set_limit, 'khẩu trang|găng tay') 
+                -- AND volumes_convert = '100' 
+                AND LOWER(unit) = 'hộp' 
+                -- AND volumes_convert IS NOT NULL 
              THEN '10'
-            WHEN category_for_set_limit = 'vật tư và thiết bị y tế' 
-                AND NOT (LOWER(volumes_convert) LIKE '%ml%') 
-                AND CAST(volumes_convert AS INT64) > 1000 
-                AND unit = 'Cái' 
-                AND volumes_convert IS NOT NULL 
-             THEN '1'
+            -- WHEN category_for_set_limit = 'vật tư và thiết bị y tế' 
+            --     AND NOT (LOWER(volumes_convert) LIKE '%ml%') 
+            --     AND CAST(volumes_convert AS INT64) > 1000 
+            --     AND unit = 'Cái' 
+            --     AND volumes_convert IS NOT NULL 
+            -- THEN '1'
             WHEN category_for_set_limit = 'sản phẩm khác' 
                 AND NOT (LOWER(volumes_convert) LIKE '%ml%') 
                 AND CAST(volumes_convert AS INT64) >= 500 
                 AND (unit = 'Chai' OR unit = 'Lốc' OR unit = 'Thùng') 
                 AND volumes_convert IS NOT NULL 
-             THEN 'Số lượng trung bình đơn hàng'
+            THEN 'Số lượng trung bình đơn hàng'
             WHEN volumes_convert IS NULL THEN 'Sản phẩm thiếu thông tin (volume, unit, ...)'
             ELSE '10000'
         END AS limit_per_SO
