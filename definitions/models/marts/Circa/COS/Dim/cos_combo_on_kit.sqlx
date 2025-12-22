@@ -1,35 +1,37 @@
 config {
     type: "table",
-    description: `Last 13 month| PIC: huyen.ngo; model_type: Table ;schedule: `,
+    description: `COMBO ON KIT PROGRAM| Last 13 month| PIC: huyen.ngo; model_type: Table ;schedule: `,
      tags: ["custom_1h_past10"],
     name: "cos_combo_on_kit"
 }
 
 
-with base_data as (
-Select distinct timestamp_add(current_timestamp(), interval 7 hour) as transformed_at
-               ,datetime_add(o.created_at, interval 7 hour) as created_at
-               ,datetime_add(o.updated_at, interval 7 hour) as updated_at
-               ,o.id as combo_id
-               ,o.order_id
-               ,o.quantity
-               ,o.product_id as combo_code
-               ,o.combo_price
-               ,o.seller_code
-               ,concat(product_id, "_", 1) as product_client_id
-from  ${source.circa_os}.order_order_apply_combo o 
-where product_id  in (Select distinct cast(combo_code as int64) from ${source.ref}.dim_combo_product
-                          where combo_name like '%On Kit%'
-                                and cast(combo_code as int64) not in (999900193,999900154) -- B40 
-                     )
-      and o.order_id in 
-        (
-        Select distinct order_id from ${source.ref}.cos_fact_order 
-        where  status in ('COMPLETED', 'COMPLETED_SHIPPING' )
-               and client_id = 1
-        )
+WITH base_data AS (
+    SELECT DISTINCT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
+          ,DATETIME_ADD(o.created_at, INTERVAL 7 HOUR) AS created_at
+          ,DATETIME_ADD(o.updated_at, INTERVAL 7 HOUR) AS updated_at
+          ,o.id AS combo_id
+          ,o.order_id
+          ,o.quantity
+          ,o.product_id AS combo_code
+          ,o.combo_price
+          ,o.seller_code
+          ,CONCAT(product_id, "_", 1) AS product_client_id
+    FROM ${source.circa_os}.order_order_apply_combo o
+    WHERE product_id IN (
+              SELECT DISTINCT CAST(combo_code AS INT64) 
+              FROM ${source.ref}.dim_combo_product
+              WHERE combo_name LIKE '%On Kit%'
+                AND CAST(combo_code AS INT64) NOT IN (999900193, 999900154)
+          )
+      AND o.order_id IN (
+              SELECT DISTINCT order_id 
+              FROM ${source.ref}.cos_fact_order 
+              WHERE status IN ('COMPLETED', 'COMPLETED_SHIPPING')
+                AND client_id = 1
+          )
 )
-Select base_data.*
-      ,p.product_name as combo_name
-from base_data 
-left join ${source.ref}.cos_dim_product p on base_data.combo_code = p.product_id 
+SELECT base_data.*
+      ,p.product_name AS combo_name
+FROM base_data 
+LEFT JOIN ${source.ref}.cos_dim_product p ON base_data.combo_code = p.product_id

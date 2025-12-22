@@ -1,52 +1,50 @@
 config {
     type: "table",
     description: `dim_employee từ tháng 11/2025 detail PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`,
-    /*Source:
-      ${source.silver}.marketplace_prd_order_v2_order_item
-      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5,*/
-    //tags: ["custom_1h_past5"],
     name: "cos_dim_employee_comission",
     columns: {
         
     }
 }
-
-with base_data as (
-    Select * from (
-    Select  code as pos_code_email
-           ,split(code, '_')[SAFE_OFFSET(0)]                 as pos_code
-           ,split(code, '_')[SAFE_OFFSET(1)]                 as employee_email
-           ,date(submit_at)                                  as year_month
-           ,lower(type)                                      as type
-           ,value
-
-    from collector.data_prd
-    where object = 'CIRCA_EMPLOYEE'
-          and type in ('POSITION','NO_WORKING_DAY')
-         qualify ROW_NUMBER() over(partition by pos_code_email, object, type order by submit_id desc) = 1
-                  ) 
-    pivot (
-             max(value) for type in ('position','no_working_day')
-            )
-                 )
-,   _add_email_system as (
-    Select * except (no_working_day)
-           , cast(no_working_day as int64) as no_working_day
-           ,case when employee_email = 'bao.doan@buymed.com' then 'gbaugust1996@buymed.com'
-                 when employee_email = 'chau.le@buymed.com' then 'chau.leminh@buymed.com'
-                 when employee_email = 'lien.tranthi@buymed.com' then 'lienlientran1012@buymed.com'
-                 when employee_email = 'oanh.nguyenkim@buymed.com' then 'cc.nguyenoanh@buymed.com'
-                 when employee_email = 'trang.vothuy@buymed.com' then 'VN280725-007@buymed.com'
-                 when employee_email = 'lytuyetbang@buymed.com' then 'bang.ly@buymed.com'
-                 else employee_email end as email_system
-          
-    from base_data
-
+WITH base_data AS (
+    SELECT * FROM (
+        SELECT code AS pos_code_email
+              ,SPLIT(code, '_')[SAFE_OFFSET(0)] AS pos_code
+              ,SPLIT(code, '_')[SAFE_OFFSET(1)] AS employee_email
+              ,DATE(submit_at) AS year_month
+              ,LOWER(type) AS type
+              ,value
+        FROM collector.data_prd
+        WHERE object = 'CIRCA_EMPLOYEE'
+          AND type IN ('POSITION', 'NO_WORKING_DAY')
+        QUALIFY ROW_NUMBER() OVER(PARTITION BY pos_code_email, object, type ORDER BY submit_id DESC) = 1
+    )
+    PIVOT (
+        MAX(value) FOR type IN ('position', 'no_working_day')
+    )
 )
-Select  i.*
-       ,e.name as employee_name
-       ,concat(FORMAT_DATE('%Y-%m', year_month),"_",pos_code,"_",email_system) as ym_emp_pos
-      from _add_email_system i 
-      left join (Select distinct email, name from `buymed_circa_v2.entity_entity` where client_id = 1
-      qualify ROW_NUMBER() over(partition by email, client_id order by updated_at desc) = 1
-      ) e on i.email_system = e.email
+,_add_email_system AS (
+    SELECT * EXCEPT(no_working_day)
+          ,CAST(no_working_day AS INT64) AS no_working_day
+          ,CASE 
+              WHEN employee_email = 'bao.doan@buymed.com' THEN 'gbaugust1996@buymed.com'
+              WHEN employee_email = 'chau.le@buymed.com' THEN 'chau.leminh@buymed.com'
+              WHEN employee_email = 'lien.tranthi@buymed.com' THEN 'lienlientran1012@buymed.com'
+              WHEN employee_email = 'oanh.nguyenkim@buymed.com' THEN 'cc.nguyenoanh@buymed.com'
+              WHEN employee_email = 'trang.vothuy@buymed.com' THEN 'VN280725-007@buymed.com'
+              WHEN employee_email = 'lytuyetbang@buymed.com' THEN 'bang.ly@buymed.com'
+              ELSE employee_email 
+           END AS email_system
+    FROM base_data
+)
+SELECT i.*
+      ,e.name AS employee_name
+      ,CONCAT(FORMAT_DATE('%Y-%m', year_month), "_", pos_code, "_", email_system) AS ym_emp_pos
+FROM _add_email_system i 
+LEFT JOIN (
+    SELECT DISTINCT email
+          ,name
+    FROM `buymed_circa_v2.entity_entity`
+    WHERE client_id = 1
+    QUALIFY ROW_NUMBER() OVER(PARTITION BY email, client_id ORDER BY updated_at DESC) = 1
+) e ON i.email_system = e.email

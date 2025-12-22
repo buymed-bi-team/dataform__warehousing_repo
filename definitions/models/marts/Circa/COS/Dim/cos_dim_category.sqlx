@@ -13,9 +13,9 @@ config {
     }
 }
 
-Select distinct code as categories_code
+SELECT DISTINCT code AS categories_code
                ,name
                ,client_id
                ,main_category_id
-               ,concat(code,'_',client_id) as  categories_code_client_id
-from ${source.circa_os}.product_main_category
+               ,CONCAT(code, '_', client_id) AS categories_code_client_id
+FROM ${source.circa_os}.product_main_category
