@@ -60,7 +60,8 @@ from ${source.platinum}.circa_online_prd_order_order o2o
 left join del on o2o.order_code = del.order_code_platform
 where  extract (year from o2o.created_date) >= 2024
 
-)Select t.*
+)
+Select t.*
        ,e.note as detail_note
        ,event_name as event_name_detail_system
        ,case when SPLIT(event_name, '/')[OFFSET(0)] = 'OPS_CANCEL_ORDER' then 'CANCEL'
