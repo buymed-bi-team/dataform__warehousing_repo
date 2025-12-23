@@ -45,7 +45,7 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                      
       ,DATETIME_ADD(paid_time, INTERVAL 7 hour)                                      AS paid_time
       ,DATETIME_ADD(platinum_refresh, INTERVAL 7 hour)                               AS platinum_refresh
       ,o.type                                                                        AS customer_type
-      ,o.status                                                                        AS o2o_status -- DELIVERED/WAIT_TO_DELIVER/WAIT_TO_CONFIRM/CANCEL  
+      ,o.status                                                                      AS o2o_status -- DELIVERED/WAIT_TO_DELIVER/WAIT_TO_CONFIRM/CANCEL  
       ,o.cancellation_type
       ,o.cancellation_note
       ,sale_order_status                                                             --NULL/WAIT_TO_DELIVER/NEW/DELIVERED/CANCELED/FAIL_TO_DELIVER
