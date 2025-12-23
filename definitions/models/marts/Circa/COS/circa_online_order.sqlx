@@ -56,7 +56,7 @@ LEFT JOIN (
     SELECT DISTINCT order_code, reference_order_in_platform, pos_id
     FROM ${source.ref}.cos_fact_order 
     WHERE channel = 'O2O' 
-          AND status IN ('COMPLETED', 'COMPLETE_SHIPPING','AWAITING_SHIPMENT','SHIPPING','FAILED_SHIPMENT')
+          AND status IN ('COMPLETED', 'COMPLETE_SHIPPING','AWAITING_SHIPMENT','SHIPPING','FAILED_SHIPMENT','PICKING')
     ) i ON o.order_code = i.reference_order_in_platform
 LEFT JOIN created_by c ON c.order_code = o.order_code
 LEFT JOIN ${source.ref}.circa_pos_profile p on i.pos_id = p.id
