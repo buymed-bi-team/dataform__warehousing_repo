@@ -65,7 +65,9 @@ cte_sku AS (
     sku_system_active AS is_active,
     sku_demand_class AS demand_classification_code,
     sales_region_code,
-    fc_code
+    fc_code,
+    max_quantity_per_order,
+    quantity_per_day
   FROM ${ref('dim_sku_sales_region_current')}
   -- UNNEST(JSON_EXTRACT_ARRAY(s.location_codes)) codes
 ),
@@ -144,6 +146,8 @@ cte_sku_item AS (
     sr.item_code,
     sr.status as item_status,
     sr.is_active as item_is_active,
+    sr.quantity_per_day,
+    sr.max_quantity_per_order,
     IF(
       sr.status IN ('NORMAL', 'LIMIT') AND sr.is_active IS TRUE,
       'ACTIVE',
