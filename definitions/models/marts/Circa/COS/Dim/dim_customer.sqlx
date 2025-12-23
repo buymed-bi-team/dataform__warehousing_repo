@@ -1,7 +1,7 @@
 
 config {
     type: "table",
-    description: `dim_customer item detail PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`,
+    description: `dim_customer PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`,
     /*Source:
       ${source.silver}.marketplace_prd_order_v2_order_item
       ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5,*/
@@ -12,50 +12,65 @@ config {
     }
 }
 
-select distinct
-     customer_v2.name as customer_name
+SELECT DISTINCT
+     customer_v2.name AS customer_name
     ,customer_v2.phone_number
     ,customer_v2.id
     ,status
-    ,date(DATETIME_ADD(created_at, interval 7 hour)) as created_date
+    ,DATETIME_ADD(created_at, INTERVAL 7 HOUR) AS created_at
+    ,DATE(DATETIME_ADD(created_at, INTERVAL 7 HOUR)) AS created_date
+    ,DATETIME_ADD(updated_at, INTERVAL 7 HOUR) AS updated_at
     ,type
     ,title
-    ,concat(title,"", name) as customer_title
-    ,case when title = 'Bà'
-            or title = 'Bác Gái'
-            or title = 'Chị'
-            or title = 'Cô' then 'Female'
-          when title = 'Anh'
-               or title = 'Bác Trai'
-               or title = 'Chú'
-               or title = 'Ông' then 'Male'
-          when title = 'Bạn' or title is null or title = '' then 'Others' 
-          end as gender
-from buymed_circa_v2.entity_customer as customer_v2
+    ,CONCAT(title, "", name) AS customer_title
+    ,CASE WHEN title = 'Bà'
+            OR title = 'Bác Gái'
+            OR title = 'Chị'
+            OR title = 'Cô' THEN 'Female'
+          WHEN title = 'Anh'
+               OR title = 'Bác Trai'
+               OR title = 'Chú'
+               OR title = 'Ông' THEN 'Male'
+          WHEN title = 'Bạn' OR title IS NULL OR title = '' THEN 'Others' 
+     END AS gender
+     ,source
+     , CASE WHEN source LIKE 'FC Circa%' OR source LIKE 'Nhà Thuốc%' OR source LIKE 'Nhà thuốc%' THEN 'FS'
+            WHEN source NOT LIKE 'FC Circa%' AND (source LIKE 'CIRCA%' OR source LIKE 'Circa%' OR source = 'Mini Circa Vincom Đồng Khởi')  THEN 'OS'
+       ELSE source END AS source_store_type
+     ,phone_last_3_digits
+     ,phone_last_4_digits
+FROM buymed_circa_v2.entity_customer AS customer_v2
+WHERE source not in ('FS Test', 'Cửa hàng Tech Test 1', 'Cửa hàng Tech Test 2')
+     
 
-union all 
+-- UNION ALL 
 
-select distinct
-     entity1.name as customer_name
-    ,entity1.phone_number
-    ,entity1.id
-    ,status
-    ,date(DATETIME_ADD(created_at, interval 7 hour)) as created_date
-    ,type
-    ,title
-    ,concat(title,"", name) as customer_title
-    ,case when title = 'Bà'
-            or title = 'Bác Gái'
-            or title = 'Chị'
-            or title = 'Cô' then 'Female'
-          when title = 'Anh'
-               or title = 'Bác Trai'
-               or title = 'Chú'
-               or title = 'Ông' then 'Male'
-          when title = 'Bạn' or title is null or title = '' then 'Others' 
-          end as gender
-from buymed_circa_v2.entity_entity as entity1
-where entity1.id <> '00000000-0000-0000-0000-000000000000'
-and entity1.id in (Select distinct entity_id from buymed_circa.order_order
-where pos_id in ("b6c40920-af79-4fb0-bdc4-9965ddb885d2", "e737c882-e90c-4fd2-8a4f-ac6afd248a33")
-)
+-- SELECT DISTINCT
+--      entity1.name AS customer_name
+--     ,entity1.phone_number
+--     ,entity1.id
+--     ,status
+--     ,DATE(DATETIME_ADD(created_at, INTERVAL 7 HOUR)) AS created_date
+--     ,type
+--     ,title
+--     ,CONCAT(title, "", name) AS customer_title
+--     ,CASE WHEN title = 'Bà'
+--             OR title = 'Bác Gái'
+--             OR title = 'Chị'
+--             OR title = 'Cô' THEN 'Female'
+--           WHEN title = 'Anh'
+--                OR title = 'Bác Trai'
+--                OR title = 'Chú'
+--                OR title = 'Ông' THEN 'Male'
+--           WHEN title = 'Bạn' OR title IS NULL OR title = '' THEN 'Others' 
+--      END AS gender
+-- FROM buymed_circa_v2.entity_entity AS entity1
+-- WHERE entity1.id <> '00000000-0000-0000-0000-000000000000'
+--   AND entity1.id IN (
+--       SELECT DISTINCT entity_id 
+--       FROM buymed_circa.order_order
+--       WHERE pos_id IN (
+--           "b6c40920-af79-4fb0-bdc4-9965ddb885d2"
+--          ,"e737c882-e90c-4fd2-8a4f-ac6afd248a33"
+--       )
+--   )

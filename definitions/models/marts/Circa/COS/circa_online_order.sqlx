@@ -21,6 +21,13 @@ WITH created_by AS (
             WHERE event_name  = 'CREATE_ORDER'
                OR event_name = 'ADMIN_CREATE_ORDER'
      )
+, delivery_time AS (
+    SELECT DISTINCT order_code
+                    ,DATETIME_ADD(synced_at, INTERVAL 7 HOUR) AS last_status_time
+    FROM platinum_buymed_vn.circa_online_prd_order_order_event
+    -- WHERE order_code = 'DH000938'
+    QUALIFY ROW_NUMBER() OVER (PARTITION BY order_code ORDER BY synced_at DESC) = 1
+)
 , online_order AS (
 SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                           AS transformed_at
       ,o.order_code
@@ -44,8 +51,11 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                      
       ,DATETIME_ADD(delivery_date, INTERVAL 7 hour)                                  AS delivery_time
       ,DATETIME_ADD(paid_time, INTERVAL 7 hour)                                      AS paid_time
       ,DATETIME_ADD(platinum_refresh, INTERVAL 7 hour)                               AS platinum_refresh
+      ,l.last_status_time
       ,o.type                                                                        AS customer_type
-      ,o.status                                                                        AS o2o_status -- DELIVERED/WAIT_TO_DELIVER/WAIT_TO_CONFIRM/CANCEL  
+      ,o.status                                                                      AS o2o_status -- DELIVERED/WAIT_TO_DELIVER/WAIT_TO_CONFIRM/CANCEL  
+      ,o.cancellation_type
+      ,o.cancellation_note
       ,sale_order_status                                                             --NULL/WAIT_TO_DELIVER/NEW/DELIVERED/CANCELED/FAIL_TO_DELIVER
       ,i.order_code                                                                  AS assigned_order_codes
       ,i.pos_id                                                                      AS assigned_pos_id  
@@ -59,6 +69,7 @@ LEFT JOIN (
           AND status IN ('COMPLETED', 'COMPLETE_SHIPPING','AWAITING_SHIPMENT','SHIPPING','FAILED_SHIPMENT','PICKING')
     ) i ON o.order_code = i.reference_order_in_platform
 LEFT JOIN created_by c ON c.order_code = o.order_code
+LEFT JOIN delivery_time l ON l.order_code = o.order_code
 LEFT JOIN ${source.ref}.circa_pos_profile p on i.pos_id = p.id
 )
 

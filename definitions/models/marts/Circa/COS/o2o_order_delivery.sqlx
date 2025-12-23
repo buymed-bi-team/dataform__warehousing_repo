@@ -1,7 +1,7 @@
 
 config {
     type: "table",
-    description: `Last 13 month| PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 past hour 6, 8, 10, 12, 14, 16, 18, 20 and 22`,
+    description: `PIC: huyen.ngo; model_type: Table ;schedule: `,
     tags:["10h30"],
     name: "o2o_order_delivery"
 }
@@ -60,7 +60,8 @@ from ${source.platinum}.circa_online_prd_order_order o2o
 left join del on o2o.order_code = del.order_code_platform
 where  extract (year from o2o.created_date) >= 2024
 
-)Select t.*
+)
+Select t.*
        ,e.note as detail_note
        ,event_name as event_name_detail_system
        ,case when SPLIT(event_name, '/')[OFFSET(0)] = 'OPS_CANCEL_ORDER' then 'CANCEL'
