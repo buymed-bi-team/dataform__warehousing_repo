@@ -21,7 +21,7 @@ WITH created_by AS (
             WHERE event_name  = 'CREATE_ORDER'
                OR event_name = 'ADMIN_CREATE_ORDER'
      )
-
+, online_order AS (
 SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                           AS transformed_at
       ,o.order_code
       ,order_id
@@ -60,3 +60,9 @@ LEFT JOIN (
     ) i ON o.order_code = i.reference_order_in_platform
 LEFT JOIN created_by c ON c.order_code = o.order_code
 LEFT JOIN ${source.ref}.circa_pos_profile p on i.pos_id = p.id
+)
+
+SELECT o.*
+       ,v.code AS voucher_code 
+FROM online_order o
+LEFT JOIN ${source.ref}.cos_voucher_info v ON o.assigned_order_codes = v.order_code_used
