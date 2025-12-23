@@ -129,7 +129,7 @@ WITH
             -- , a.price
             , a.quantity AS ordered_quantity
             , a.total_amount
-            , COALESCE(SAFE_CAST(JSON_VALUE(a.extra_props, "$.completed_quantity")  AS INT64), quantity) * price AS total_outbound
+            , LEAST(COALESCE(SAFE_CAST(JSON_VALUE(a.extra_props, "$.completed_quantity")  AS INT64), quantity), quantity) * price AS total_outbound
             , "INTERNAL" AS seller_class
             , o.channel
             , o.customer_id
