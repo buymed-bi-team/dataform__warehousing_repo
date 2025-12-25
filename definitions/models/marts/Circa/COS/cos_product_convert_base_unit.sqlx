@@ -1,53 +1,54 @@
 config {
     type: "table",
-    description: `Full convert unit. PIC: huyen.ngo; model_type: Table ;schedule: At minute 15 past hour`,
+    description: `Full convert unit of Circa. PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 past hour`,
     tags: ["custom_1h_past5"],
     name: "cos_product_convert_base_unit",
     columns: {/*
        */
         
     }
-}
 
-with cte_product as (select distinct p.product_id
-                            ,product_name
-                            ,p.volumes
-                            ,client_id
-                     --from ${source.circa_os}.product_product p
-                     from ${source.ref}.cos_dim_product p
-                     --where client_id =1
-                     )
-,product_base_unit as
-      (
-      select distinct a.product_id
-                     ,a.unit as base_unit
-                     ,client_id
-      from ${source.circa_os}.product_retail_unit as a
-      where a.base_unit is true and (unit is not null or unit <> "")
-      -- qualify row_number() over(partition by product_id order by created_at desc ) =1
-      )
-,convert_unit as
-      (
-      select distinct a.product_id
-                     -- rank () over(partition by product_id order by convert_rate desc ) as rn
-                     -- COUNT(product_id) as np
-                     ,convert_rate
-                     ,unit as convert_unit
-                     ,client_id
-      from ${source.circa_os}.product_retail_unit as a
-      -- right join ${source.circa_os}.product_product as b on a.product_id = b.product_id
-      where (unit is not null or unit <> "") and convert_rate <> 0
-      --and client_id = 1
-     -- qualify rank() over(partition by product_id  order by convert_rate desc ) =1
-      )
-select distinct pd.product_id
-    --    a.unit as retail_unit,
-              ,cr.convert_rate
-              ,cr.convert_unit
-              ,bu.base_unit
-              ,pd.client_id
-from cte_product pd
-left join product_base_unit bu on pd.product_id = bu.product_id and pd.client_id = bu.client_id
-left join convert_unit cr on pd.product_id = cr.product_id and cr.client_id = pd.client_id
---where pd.product_id = 4011
-order by  1
+}
+WITH cte_product AS (
+    SELECT DISTINCT p.product_id
+           ,product_name
+           ,p.volumes
+           ,client_id
+    --FROM ${source.circa_os}.product_product p
+    FROM ${source.ref}.cos_dim_product p
+    --WHERE client_id = 1
+)
+,product_base_unit AS (
+    SELECT DISTINCT a.product_id
+           ,a.unit AS base_unit
+           ,client_id
+    FROM ${source.circa_os}.product_retail_unit AS a
+    WHERE a.base_unit IS TRUE
+      AND (unit IS NOT NULL OR unit <> "")
+    -- QUALIFY ROW_NUMBER() OVER (PARTITION BY product_id ORDER BY created_at DESC) = 1
+)
+,convert_unit AS (
+    SELECT DISTINCT a.product_id
+           -- RANK() OVER (PARTITION BY product_id ORDER BY convert_rate DESC) AS rn
+           -- COUNT(product_id) AS np
+           ,convert_rate
+           ,unit AS convert_unit
+           ,client_id
+    FROM ${source.circa_os}.product_retail_unit AS a
+    -- RIGHT JOIN ${source.circa_os}.product_product AS b ON a.product_id = b.product_id
+    WHERE (unit IS NOT NULL OR unit <> "")
+      AND convert_rate <> 0
+    -- AND client_id = 1
+    -- QUALIFY RANK() OVER (PARTITION BY product_id ORDER BY convert_rate DESC) = 1
+)
+SELECT DISTINCT pd.product_id
+       -- a.unit AS retail_unit
+      ,cr.convert_rate
+      ,cr.convert_unit
+      ,bu.base_unit
+      ,pd.client_id
+FROM cte_product pd
+LEFT JOIN product_base_unit bu ON pd.product_id = bu.product_id AND pd.client_id = bu.client_id
+LEFT JOIN convert_unit cr ON pd.product_id = cr.product_id AND cr.client_id = pd.client_id
+-- WHERE pd.product_id = 4011
+ORDER BY 1
