@@ -1,0 +1,25 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `Voucher in the Cambodia marketplace.`,
+    tags: ['AI_THUOCSI_CAM']
+}
+
+SELECT 
+    a.order_id
+    , a.created_date
+    , a.customer_id
+    , JSON_VALUE(r, '$.code') AS voucher_code
+    , SAFE_CAST(JSON_VALUE(r, '$.discount_value') AS FLOAT64) AS discount_value
+    , JSON_VALUE(w.extra_props, "$.name_en") AS shipping_ward_name
+    , JSON_VALUE(d.extra_props, "$.name_en") AS shipping_district_name
+    , JSON_VALUE(p.extra_props, "$.name_en") AS shipping_province_name
+    , p.region_name AS shipping_region_name
+FROM platinum_buymed_cam.marketplace_prd_order_v2_order AS a
+    , UNNEST(JSON_QUERY_ARRAY(a.redeem_apply_result)) AS r
+    LEFT JOIN `platinum_buymed_cam.core_prd_master_data_ward` AS w ON w.code = a.customer_ward_code
+    LEFT JOIN `platinum_buymed_cam.core_prd_master_data_district` AS d ON d.code = a.customer_district_code
+    LEFT JOIN `platinum_buymed_cam.core_prd_master_data_province` AS p ON p.code = a.customer_province_code
+WHERE 1=1
+    AND a.created_date >= "2025-01-01"
+    AND a.status <> "CANCEL"

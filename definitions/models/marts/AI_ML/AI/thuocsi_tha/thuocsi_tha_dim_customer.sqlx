@@ -10,5 +10,13 @@ SELECT
     , customer_name
     , user_system_status AS customer_status
     , business_type AS business_scope
-    , level AS customer_level
-FROM `lakehouse-prod-394907.gold_buymed_th.dim_customer`
+    , a.level AS customer_level
+    , JSON_VALUE(w.extra_props, "$.name_en") AS customer_ward_name
+    , JSON_VALUE(d.extra_props, "$.name_en") AS customer_district_name
+    , JSON_VALUE(p.extra_props, "$.name_en") AS customer_province_name
+    , COALESCE(r.description, r.name) AS shipping_region_name
+FROM `lakehouse-prod-394907.gold_buymed_th.dim_customer` AS a
+    LEFT JOIN `platinum_buymed_th.core_prd_master_data_ward` AS w ON w.code = a.ward_code
+    LEFT JOIN `platinum_buymed_th.core_prd_master_data_district` AS d ON d.code = a.district_code
+    LEFT JOIN `platinum_buymed_th.core_prd_master_data_province` AS p ON p.code = a.province_code
+    LEFT JOIN `platinum_buymed_th.core_prd_master_data_region` AS r ON r.code = a.province_code
