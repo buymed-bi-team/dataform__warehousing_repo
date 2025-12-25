@@ -14,7 +14,6 @@ SELECT
     , JSON_VALUE(w.extra_props, "$.name_en") AS shipping_ward_name
     , JSON_VALUE(d.extra_props, "$.name_en") AS shipping_district_name
     , JSON_VALUE(p.extra_props, "$.name_en") AS shipping_province_name
-    , p.region_name AS shipping_region_name
     , COALESCE(re.description, re.name) AS shipping_region_name
 FROM platinum_buymed_th.marketplace_prd_order_v2_order AS a
     , UNNEST(JSON_QUERY_ARRAY(a.redeem_apply_result)) AS r
