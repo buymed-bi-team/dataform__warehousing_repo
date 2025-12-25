@@ -8,6 +8,10 @@ config {
 CREATE OR REPLACE VIEW `rumi_buymed_cam.thuocsi_cam_fact_order_item`
 AS (SELECT * FROM  ${ref("buymed_innovation", "thuocsi_cam_fact_order_item")});
 
+-- fact_order_voucher
+
+CREATE OR REPLACE VIEW `rumi_buymed_cam.thuocsi_cam_fact_order_voucher`
+AS (SELECT * FROM  ${ref("buymed_innovation", "thuocsi_cam_fact_order_voucher")});
 
 -- fact_margin
 

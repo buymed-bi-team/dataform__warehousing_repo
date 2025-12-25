@@ -104,10 +104,10 @@ WITH
             , o.channel
             , o.customer_id
             , o.status AS order_status
-            , g.ward_name
-            , g.district_name
-            , g.province_name
-            , g.region_name
+            , g.ward_name AS shipping_ward_name
+            , g.district_name AS shipping_district_name
+            , g.province_name AS shipping_province_name
+            , g.region_name AS shipping_region_name
             , g.urban_rural
             , o.total_discount / COUNT(1) OVER(PARTITION BY a.order_id) AS total_discount
         FROM ${source.platinum}.marketplace_prd_order_v2_order_item AS a
