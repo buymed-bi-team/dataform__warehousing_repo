@@ -1,52 +1,72 @@
 config {
     type: "table",
-    description: ` target OS PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 past hour 6, 8, 10, 12, 14, 16, 18, 20 and 22`,
-    tags:["10h30"],
+    description: ` target OS PIC: huyen.ngo; model_type: Table ;schedule: Manual`,
+    //tags:["10h30"],
     name: "target_sales"
 }
-with target_old as (
-       select * from buymed_external.target_sales_v2
-       where pos_code is not null
-            and month <= '2025-11-01'
-       union all 
-       select * from buymed_external.target_sales_fs
-       where pos_code is not null
+
+WITH target_old AS (
+    SELECT *
+    FROM buymed_external.target_sales_v2
+    WHERE pos_code IS NOT NULL
+      AND month <= '2025-11-01'
+
+    UNION ALL 
+
+    SELECT *
+    FROM buymed_external.target_sales_fs
+    WHERE pos_code IS NOT NULL
 )
-,target_from_m12 as (
-    Select * from (
-    Select code as pos_code
-           ,date(submit_at) as year_month
-           ,type
-           ,value
-    from collector.data_prd
-    where object = 'CIRCA_TARGET'
-          and type in ('ACTIVE_CUSTOMERS','TARGET_REVENUE','TARGET_MARGIN','REPEAT_CUSTOMERS','TARGET_GMV','TARGET_TRANSACTIONS')
-                  ) 
-    pivot (
-             max(value) for type in ('ACTIVE_CUSTOMERS','TARGET_REVENUE','TARGET_MARGIN','REPEAT_CUSTOMERS','TARGET_GMV','TARGET_TRANSACTIONS')
-            )
-
+,target_from_m12 AS (
+    SELECT *
+    FROM (
+        SELECT
+                code AS pos_code
+               ,DATE(submit_at) AS year_month
+               ,type
+               ,value
+        FROM collector.data_prd
+        WHERE object = 'CIRCA_TARGET'
+          AND type IN (
+                'ACTIVE_CUSTOMERS'
+               ,'TARGET_REVENUE'
+               ,'TARGET_MARGIN'
+               ,'REPEAT_CUSTOMERS'
+               ,'TARGET_GMV'
+               ,'TARGET_TRANSACTIONS'
+          )
+    )
+    PIVOT (
+        MAX(value) FOR type IN (
+            'ACTIVE_CUSTOMERS'
+           ,'TARGET_REVENUE'
+           ,'TARGET_MARGIN'
+           ,'REPEAT_CUSTOMERS'
+           ,'TARGET_GMV'
+           ,'TARGET_TRANSACTIONS'
+        )
+    )
 )
-Select Pos_Code                               as pos_code 
-       ,Month                                 as year_month
-       ,Target_GMV                            as target_gmv
-       ,Target_Net_Rev_af_tax                 as target_rev_vat_in
-       ,Target_Margin                         as target_margin
-       ,Target_transactions                   as target_transactions
-       ,null                                  as target_active_customers
-       ,null                                  as target_repeat_customers
-from target_old
-where pos_code <> 'Chưa có mã'
+SELECT Pos_Code                               AS pos_code 
+       ,Month                                 AS year_month
+       ,Target_GMV                            AS target_gmv
+       ,Target_Net_Rev_af_tax                 AS target_rev_vat_in
+       ,Target_Margin                         AS target_margin
+       ,Target_transactions                   AS target_transactions
+       ,NULL                                  AS target_active_customers
+       ,NULL                                  AS target_repeat_customers
+FROM target_old
+WHERE pos_code <> 'Chưa có mã'
 
-union all 
+UNION ALL 
 
-Select pos_code                               as pos_code 
-       ,year_month                            as year_month
-       ,cast(null as float64 )                as target_gmv
-       ,cast(TARGET_REVENUE as float64)       as target_rev_vat_in
-       ,null                                  as target_margin
-       ,cast(TARGET_TRANSACTIONS as int64)    as target_transactions
-       ,cast(ACTIVE_CUSTOMERS as int64)       as target_active_customers
-       ,cast(REPEAT_CUSTOMERS as int64)       as target_repeat_customers
-from target_from_m12
-where pos_code <> 'Chưa có mã'
+SELECT pos_code                               AS pos_code 
+       ,year_month                            AS year_month
+       ,CAST(NULL AS FLOAT64)                 AS target_gmv
+       ,CAST(TARGET_REVENUE AS FLOAT64)       AS target_rev_vat_in
+       ,NULL                                  AS target_margin
+       ,CAST(TARGET_TRANSACTIONS AS INT64)    AS target_transactions
+       ,CAST(ACTIVE_CUSTOMERS AS INT64)       AS target_active_customers
+       ,CAST(REPEAT_CUSTOMERS AS INT64)       AS target_repeat_customers
+FROM target_from_m12
+WHERE pos_code <> 'Chưa có mã'

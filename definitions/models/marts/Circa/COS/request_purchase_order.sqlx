@@ -1,9 +1,7 @@
 config {
     type: "table",
-    description: `Request purchase order PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`,
-    /*Source:
-      ${source.silver}.marketplace_prd_order_v2_order_item
-      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5,*/
+    description: `Request purchase order (request mua hàng từ các cừa hàng Circa) 
+                  PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`,
     tags: ["custom_1h_past5"],
     name: "request_purchase_order",
     columns: {
@@ -11,19 +9,18 @@ config {
     }
 }
 
-
-Select o.id
+SELECT o.id
        ,o.code
        ,o.pos_id
        ,o.status
        ,o.note
        ,o.request_reason
-       ,date_add(o.waiting_process_at, interval 7 hour) as submit_at
-       ,date(date_add(o.waiting_process_at, interval 7 hour) ) as submit_date
-       ,date_add(o.accepted_at, interval 7 hour) as accepted_at
-       ,date_add(o.denied_at, interval 7 hour) as denied_at
+       ,DATE_ADD(o.waiting_process_at, INTERVAL 7 HOUR) AS submit_at
+       ,DATE(DATE_ADD(o.waiting_process_at, INTERVAL 7 HOUR)) AS submit_date
+       ,DATE_ADD(o.accepted_at, INTERVAL 7 HOUR) AS accepted_at
+       ,DATE_ADD(o.denied_at, INTERVAL 7 HOUR) AS denied_at
        ,o.cancel_note
-       ,date_add(o.expected_time, interval 7 hour) as request_at
+       ,DATE_ADD(o.expected_time, INTERVAL 7 HOUR) AS request_at
        ,i.product_id
        ,i.unit
        ,i.amount
@@ -31,8 +28,8 @@ Select o.id
        ,i.tax_rate
        ,i.unit_price
        ,o.client_id
-       ,concat(i.product_id, "_", o.client_id) as product_client_id
-from ${source.circa_os}.order_request_purchase_order o
-left join ${source.circa_os}.order_request_purchase_order_item i on o.id = i.request_purchase_order_id
-left join ${source.ref}.circa_pos_profile p on o.pos_id = p.id
-where p.id is not null
+       ,CONCAT(i.product_id, "_", o.client_id) AS product_client_id
+FROM ${source.circa_os}.order_request_purchase_order o
+LEFT JOIN ${source.circa_os}.order_request_purchase_order_item i ON o.id = i.request_purchase_order_id
+LEFT JOIN ${source.ref}.circa_pos_profile p ON o.pos_id = p.id
+WHERE p.id IS NOT NULL

@@ -1,43 +1,38 @@
 config {
     type: "table",
-    description: `PIC: huyen.ngo; model_type: Table ;schedule: At 10h30`
-    /*Source:
-      ${source.silver}.marketplace_prd_order_v2_order_item
-      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
+    description: `PIC: huyen.ngo; model_type: Table ;schedule: At minute 15 past 2 hours`,
     name: "sku_status_thuocsi",
     tags: ["custom_1h_past15"],
-    columns: {/*
-        order_id: "NonNull |" + docs.order_id,
-        customer_id: "NonNull | The unique identifier for each customer"*/
+    columns: {/*"*/
         
     }
 }
 
-
-with base_data as (
-Select distinct product_id
-from ${source.circa_os}.order_purchase_order_item
-where (sku is not null or sku <> '')
-     and received_quantity <> 0
-) --lấy danh sách sản phẩm đã mua trong quá khứ
-, thuocsi_sku_status as 
-( select distinct
-    a.product_id
-    ,sku_system_status
-    ,row_number() over (partition by a.product_id
-      order by 
-        case a.sku_system_status
-          when 'NORMAL' then 1
-          when 'LIMIT' then 2
-          when 'OUT_OF_STOCK' then 3
-          when 'SUSPENDED' then 4
-          else 5
-        end
-    ) as row_num
-  from ${source.ref}.adhoc_pm_master_sku a
-  where product_id in (Select distinct product_id from base_data)
-        and a.fc_code = 'BD'
-        and sku_system_status <> 'GIFT'
-        )
-        Select * from thuocsi_sku_status
-        where row_num = 1
+WITH base_data AS (
+    SELECT DISTINCT product_id
+    FROM ${source.circa_os}.order_purchase_order_item
+    WHERE (sku IS NOT NULL OR sku <> '')
+      AND received_quantity <> 0
+) -- lấy danh sách sản phẩm đã mua trong quá khứ
+,thuocsi_sku_status AS (
+    SELECT DISTINCT
+            a.product_id
+           ,sku_system_status
+           ,ROW_NUMBER() OVER (
+                PARTITION BY a.product_id
+                ORDER BY CASE a.sku_system_status
+                            WHEN 'NORMAL' THEN 1
+                            WHEN 'LIMIT' THEN 2
+                            WHEN 'OUT_OF_STOCK' THEN 3
+                            WHEN 'SUSPENDED' THEN 4
+                            ELSE 5
+                         END
+            ) AS row_num
+    FROM ${source.ref}.adhoc_pm_master_sku a
+    WHERE product_id IN (SELECT DISTINCT product_id FROM base_data)
+      AND a.fc_code = 'BD'
+      AND sku_system_status <> 'GIFT'
+)
+SELECT *
+FROM thuocsi_sku_status
+WHERE row_num = 1
