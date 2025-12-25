@@ -1,12 +1,11 @@
 config {
     type: "table",
-    description: `Last 13 month| PIC: huyen.ngo; model_type: Table ;schedule: At minute 15 past hour.Circa voucher - chứa tất cả các voucher, được tạo ra từ đâu, đã sử dụng hay chưa
-    sử dụng trong đơn hàng nào `,
+    description: `PIC: huyen.ngo;
+                  model_type: Table ;
+                  schedule: At minute 15 past hour.Circa voucher - chứa tất cả các voucher, được tạo ra từ đâ, thuộc campaign nào, đã sử dụng hay chưa, sử dụng trong đơn hàng nào `,
     tags: ["custom_1h_past15"],
     name: "cos_voucher_info",
     columns: {
-        order_id: "NonNull |" + docs.order_id,
-        customer_id: "NonNull | The unique identifier for each customer"
         
     },
     bigquery: {
@@ -14,15 +13,15 @@ config {
     }
 }
 
-
-WITH t AS (
+-- Lấy những voucher được tặng cho customers
+WITH t AS ( 
     SELECT DISTINCT
          gift_id
         ,gift_code
         ,DATETIME_ADD(v.created_at, INTERVAL 7 HOUR)                            AS voucher_created_at
         ,voucher_id
         ,voucher_code
-        ,customer_id                                                            AS gift_for_customer_id
+        ,customer_id                                                            AS gift_for_customer_id 
         ,JSON_EXTRACT_SCALAR(order_code)                                        AS order_code_created
         ,e.phone_number                                                         AS gift_for_customer_phone
         ,e.name                                                                 AS gift_for_customer_name
@@ -89,7 +88,7 @@ WITH t AS (
 SELECT 
      map_voucher.*
     ,e.id AS customer_id_gift
-    ,e.phone_number AS customer_phone_gift
+    ,e.phone_number AS customer_phone_gift -- người tặng voucher
 FROM map_voucher
 LEFT JOIN ${source.ref}.cos_fact_order o ON map_voucher.order_code_created = o.order_code
 LEFT JOIN ${source.circa_os}.entity_customer e ON o.entity_id = e.id
