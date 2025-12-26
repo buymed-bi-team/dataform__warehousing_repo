@@ -46,6 +46,7 @@ WITH t AS (
         ,DATETIME_ADD(us.end_date, INTERVAL 7 HOUR)                             AS end_date
         ,us.discount_value
         ,us.percent
+        ,us.is_active
         ,us.promotion_voucher_type
         ,COALESCE(o.entity_id, gift_for_customer_id)                            AS customer_id
         ,COALESCE(e.phone_number, gift_for_customer_phone)                      AS customer_phone

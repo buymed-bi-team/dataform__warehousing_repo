@@ -1,16 +1,11 @@
 config {
     type: "table",
-    description: `PIC: huyen.ngo; model_type: Table ;schedule: At minute 15 every 2 hours.Circa account online`
-    /*Source:
-      ${source.silver}.marketplace_prd_order_v2_order_item
-      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
+    description: `PIC: huyen.ngo; 
+                  model_type: Table ;
+                  schedule: At minute 15 every 2 hours.
+                  Circa account online`,
     tags: ["custom_1h_past15"],
     name: "circa_account_online",
-    columns: {
-        order_code: "NonNull |" + docs.order_code,
-        account_id: "NonNull | The unique identifier for each customer"
-       
-    },
     bigquery: {
         partitionBy: "date(created_time)"
     }
