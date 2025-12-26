@@ -1,0 +1,22 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `Voucher in the Cambodia marketplace.`,
+    tags: ['AI_THUOCSI_CAM']
+}
+
+
+SELECT
+    voucher_code
+    , voucher_group_code
+    , display_name AS voucher_name
+    , promotion_name
+    , voucher_status
+    , NULLIF(max_usage, 0) AS max_usage
+    , discount_type
+    , voucher_discount
+    , percentage_discount
+    , COALESCE(NULLIF(SAFE_CAST(max_discount AS FLOAT64), 0), voucher_discount) AS max_discount
+    , min_total_price AS min_order_value
+FROM lakehouse-prod-394907.gold_buymed_cam.dim_voucher
+WHERE start_date >= "2025-01-01"
