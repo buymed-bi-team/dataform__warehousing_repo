@@ -18,10 +18,14 @@ SELECT  c.id
        ,DATETIME_ADD(c.updated_at, INTERVAL 7 HOUR) AS updated_at
        ,c.created_by
        ,e.name as created_by_name
-       ,updated_by
+       ,c.updated_by
        ,is_default
+       ,cl.name as client_name 
+       ,cl.client_type
 FROM ${source.circa_os}.promotion_promotion_campaign c
 LEFT JOIN ${source.circa_os}.entity_entity e ON c.created_by = e.id AND c.client_id = e.client_id
+LEFT JOIN ${source.circa_os}.entity_client cl ON c.client_id = cl.id 
 WHERE c.name NOT LIKE '%Tech Test%'
       AND c.name not in ('TECH GTHIEU KHÁCH 2', '[TECH] - Chương trình giới thiệu', 'Tech - Khachmoi','TESST','MKT_Test')
+      AND c.client_id <> 5
 ORDER BY created_at DESC
