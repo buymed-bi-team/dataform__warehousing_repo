@@ -28,6 +28,11 @@ AS (SELECT * FROM  ${ref("buymed_innovation", "thuocsi_vn_fact_margin")});
 CREATE OR REPLACE VIEW `rumi_buymed_vn.thuocsi_vn_fact_net_profit`
 AS (SELECT * FROM  ${ref("buymed_innovation", "thuocsi_vn_fact_net_profit")});
 
+-- fact_order_process
+
+CREATE OR REPLACE VIEW `rumi_buymed_vn.thuocsi_vn_fact_order_process`
+AS (SELECT * FROM  ${ref("buymed_innovation", "thuocsi_vn_fact_order_process")});
+
 -- dim_customer
 
 CREATE OR REPLACE VIEW `rumi_buymed_vn.thuocsi_vn_dim_customer`
