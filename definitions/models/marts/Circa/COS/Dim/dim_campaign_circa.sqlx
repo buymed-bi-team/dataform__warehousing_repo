@@ -5,10 +5,7 @@ config {
                   schedule: At minute 15 every 2 hours.
                   dim_campaign_circa`,
     tags: ["custom_1h_past15"],
-    name: "dim_campaign_circa",
-    bigquery: {
-        partitionBy: "date(created_time)"
-    }
+    name: "dim_campaign_circa"
 }
 
 
