@@ -1,0 +1,35 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `Order Process in the Vietnam marketplace.`,
+    tags: ['AI_THUOCSI_VN']
+}
+
+SELECT
+    ticket_id
+    , order_id
+    , order_code AS sale_order_code
+    , a.fc_code
+    , reference_code AS delivery_order_code
+    , order_created_at
+    , so_confirmed_at AS order_confirmed_at
+    , reserve_done_at AS order_reserved_done_at
+    , active_at AS order_active_at
+    , pack_done_at AS order_pack_done_at
+    , delivered_at AS order_delivered_at
+    , order_type
+    , g.ward_name AS shipping_ward_name
+    , g.district_name AS shipping_district_name
+    , g.province_name AS shipping_province_name
+    , g.region_name AS shipping_region_name
+    , g.urban_rural
+FROM ${ref("gold_buymed_vn2", "fact_outbound_ticket")} AS a
+    LEFT JOIN (
+        SELECT
+            so_code
+            , MAX(delivery_ts) AS delivered_at
+        FROM ${ref("gold_buymed_vn2", "fact_delivery_evolving")}
+        WHERE delivery_status = "DELIVERED"
+        GROUP BY so_code
+    ) AS b ON a.reference_code = b.so_code
+    LEFT JOIN ${ref('gold_buymed_vn2','dim_geo_location')} AS g ON a.shipping_ward_code = g.location_code
