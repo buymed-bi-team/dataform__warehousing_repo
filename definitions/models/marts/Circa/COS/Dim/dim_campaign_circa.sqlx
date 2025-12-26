@@ -26,4 +26,5 @@ SELECT  c.id
 FROM ${source.circa_os}.promotion_promotion_campaign c
 LEFT JOIN ${source.circa_os}.entity_entity e ON c.created_by = e.id AND c.client_id = e.client_id
 WHERE c.name NOT LIKE '%Tech Test%'
+      AND c.name not in ('TECH GTHIEU KHÁCH 2', '[TECH] - Chương trình giới thiệu', 'Tech - Khachmoi','TESST','MKT_Test')
 ORDER BY created_at DESC
