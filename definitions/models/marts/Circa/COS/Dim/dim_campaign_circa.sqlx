@@ -1,0 +1,29 @@
+config {
+    type: "table",
+    description: `PIC: huyen.ngo; 
+                  model_type: Table ;
+                  schedule: At minute 15 every 2 hours.
+                  dim_campaign_circa`,
+    tags: ["custom_1h_past15"],
+    name: "dim_campaign_circa",
+    bigquery: {
+        partitionBy: "date(created_time)"
+    }
+}
+
+
+SELECT  c.id
+       ,c.code as campaign_code
+       ,c.name as campaign_name
+       ,c.client_id
+       ,DATE(DATETIME_ADD(c.created_at, INTERVAL 7 HOUR)) AS created_date
+       ,DATETIME_ADD(c.created_at, INTERVAL 7 HOUR) AS created_at
+       ,DATETIME_ADD(c.updated_at, INTERVAL 7 HOUR) AS updated_at
+       ,c.created_by
+       ,e.name as created_by_name
+       ,updated_by
+       ,is_default
+FROM ${source.circa_os}.promotion_promotion_campaign c
+LEFT JOIN ${source.circa_os}.entity_entity e ON c.created_by = e.id AND c.client_id = e.client_id
+WHERE c.name NOT LIKE '%Tech Test%'
+ORDER BY created_at DESC
