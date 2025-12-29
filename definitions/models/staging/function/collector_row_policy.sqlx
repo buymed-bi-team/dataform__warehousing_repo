@@ -1,0 +1,35 @@
+config {
+  type: "operations"
+}
+CREATE OR REPLACE ROW ACCESS POLICY
+  access_high_security
+ON
+    collector.data_prd GRANT TO (
+        "user:hau.lecong@buymed.com",
+        "user:nguyen.tran@buymed.com",
+        "serviceAccount:nguyen-tran-service-account@lakehouse-prod-394907.iam.gserviceaccount.com",
+        "user:minh.luugia@buymed.com"
+
+    )
+FILTER USING
+( 
+TRUE
+);
+
+
+CREATE OR REPLACE ROW ACCESS POLICY 
+  medium_security
+ON 
+collector.data_prd GRANT TO (
+    "user:huong.dang@buymed.com",
+    "user:huyen.ngo@buymed.com",
+
+    "user:chien.le@buymed.com",
+    "user:trinh.nguyenbao@buymed.com",
+    "user:thach.nguyenngoc@buymed.com",
+    "user:ha.lekim@buymed.com",
+    "user:khanh.nguyenhung@buymed.com"
+)
+FILTER USING (
+object not like "EXPENSE"
+);
