@@ -95,7 +95,7 @@ SELECT
     ,e.id AS customer_id_gift
     ,e.phone_number AS customer_phone_gift -- người tặng voucher
     ,CASE WHEN end_date > TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)
-          THEN 1 ELSE 0 
+          THEN FALSE ELSE TRUE
      END                                                                   AS is_expired
 FROM map_voucher
 LEFT JOIN ${source.ref}.cos_fact_order o ON map_voucher.order_code_created = o.order_code
