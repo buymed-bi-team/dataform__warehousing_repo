@@ -8,7 +8,9 @@ ON
         "user:hau.lecong@buymed.com",
         "user:nguyen.tran@buymed.com",
         "serviceAccount:nguyen-tran-service-account@lakehouse-prod-394907.iam.gserviceaccount.com",
-        "user:minh.luugia@buymed.com"
+        "user:minh.luugia@buymed.com",
+
+        "serviceAccount:warehousing-finance-dataform@lakehouse-prod-394907.iam.gserviceaccount.com"
 
     )
 FILTER USING
@@ -28,7 +30,17 @@ collector.data_prd GRANT TO (
     "user:trinh.nguyenbao@buymed.com",
     "user:thach.nguyenngoc@buymed.com",
     "user:ha.lekim@buymed.com",
-    "user:khanh.nguyenhung@buymed.com"
+    "user:khanh.nguyenhung@buymed.com",
+
+    "serviceAccount:warehousing-dataform@lakehouse-prod-394907.iam.gserviceaccount.com",
+    "serviceAccount:buymed-transformation-dataform@lakehouse-prod-394907.iam.gserviceaccount.com",
+    "serviceAccount:staging-dataform-2@lakehouse-prod-394907.iam.gserviceaccount.com",
+    "serviceAccount:staging-dataform-3@lakehouse-prod-394907.iam.gserviceaccount.com",
+    "serviceAccount:staging-dataform@lakehouse-prod-394907.iam.gserviceaccount.com",
+
+    "serviceAccount:warehousing-dataform@lakehouse-prod-394907.iam.gserviceaccount.com",
+    "serviceAccount:warehousing-sub-dataform@lakehouse-prod-394907.iam.gserviceaccount.com"
+    
 )
 FILTER USING (
 object not like "EXPENSE"
