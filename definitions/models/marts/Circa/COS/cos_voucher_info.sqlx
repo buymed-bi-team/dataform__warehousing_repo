@@ -61,8 +61,8 @@ WITH t AS (
         ,ov.order_code                                                          AS order_code_used 
         ,o.channel                                                              AS channel_used
         ,ov.discount_amount                                                     AS actual_discount_amount
-        ,cp.code                                                                AS campaign_code
-        ,cp.name                                                                AS campaign_name
+        ,cp.campaign_code                                                       AS campaign_code
+        ,cp.campaign_name                                                       AS campaign_name
         ,pr.code                                                                AS pos_code_used
         ,pos_code_create_voucher
         ,pr.name                                                                AS pos_name_used
@@ -81,10 +81,11 @@ WITH t AS (
     ) o ON ov.order_id = o.order_id
     LEFT JOIN ${source.ref}.circa_pos_profile pr ON o.pos_id = pr.id
     LEFT JOIN ${source.circa_os}.entity_customer e ON o.entity_id = e.id
-    LEFT JOIN ${source.circa_os}.promotion_promotion_campaign cp -- thông tin campaign
+    LEFT JOIN ${source.ref}.dim_campaign_circa cp -- thông tin campaign
         ON us.promotion_campaign_id = cp.id 
         AND us.client_id = cp.client_id
     WHERE us.is_sample = FALSE
+         AND cp.id is not null
           --AND pr.id IS NOT NULL
 )
 
