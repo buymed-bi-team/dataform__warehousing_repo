@@ -5,22 +5,23 @@ config {
     tags: ["10h30"],
     name: "circa_pos_profile"
 }
-with t as (
-select p.*
-       ,s.* except (status)
-       ,case when p.code = 'POS0010' then 'Active'
-       else s.status end as actual_status
-from ${source.circa_os}.entity_pos_profile p 
-left join ( Select * from  ${source.external}.circa_store_status 
---where store_format like '%Circa%'
-) s on p.code = s.pos_code
-where type in ('CIRCA', 'FS')
-    and code not in ('POS0006','POS0024','POS0030','POS0001','POS0047','POS0020','POS0020')
-    --and s.pos_code is null
-   
+
+WITH t AS (
+SELECT p.*
+     ,s.* EXCEPT (status)
+     ,CASE WHEN p.code = 'POS0010' THEN 'Active'
+           ELSE s.status END AS actual_status
+FROM ${source.circa_os}.entity_pos_profile p 
+LEFT JOIN (SELECT * FROM ${source.external}.circa_store_status 
+           --WHERE store_format LIKE '%Circa%'
+          ) s ON p.code = s.pos_code
+WHERE type IN ('CIRCA', 'FS')
+  AND code NOT IN ('POS0006','POS0024','POS0030','POS0001','POS0047','POS0020','POS0020')
+  --AND s.pos_code IS NULL
 )
-Select timestamp_add(current_timestamp(), interval 7 hour) as transformed_at
-       ,t.*
-      ,customer_level
-from t 
-left join ${source.ref}.dim_customer m on t.thuocsi_id = m.customer_id
+
+SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
+     ,t.*
+     ,customer_level
+FROM t 
+LEFT JOIN ${source.ref}.dim_customer m ON t.thuocsi_id = m.customer_id
