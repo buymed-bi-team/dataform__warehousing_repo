@@ -15,7 +15,13 @@ SELECT
     , so_confirmed_at AS order_confirmed_at
     , reserve_done_at AS order_reserved_done_at
     , active_at AS order_active_at
+    , start_to_pick_at AS order_start_pick_at
+    , pick_done_at AS order_pick_done_at
+    , start_to_qc_at AS order_start_qc_at
+    , qc_done_at AS order_qc_done_at
+    , start_to_pack_at AS order_start_pack_at
     , pack_done_at AS order_pack_done_at
+    , do_created_at
     , delivered_at AS order_delivered_at
     , order_type
     , g.ward_name AS shipping_ward_name
