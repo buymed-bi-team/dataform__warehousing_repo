@@ -65,6 +65,7 @@ WITH t AS (
         ,cp.campaign_name                                                       AS campaign_name
         ,pr.code                                                                AS pos_code_used
         ,pos_code_create_voucher
+        ,pos_name_create_voucher
         ,pr.name                                                                AS pos_name_used
         ,us.client_id
     FROM ${source.circa_os}.promotion_promotion_voucher us -- bảng chứa tất cả các mã voucher
