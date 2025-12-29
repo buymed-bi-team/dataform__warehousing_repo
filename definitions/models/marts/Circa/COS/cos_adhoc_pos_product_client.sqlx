@@ -37,7 +37,9 @@ WITH thuosi_unit AS (
                    ,seller_code
                    ,sku_code
     FROM ${source.ref}.cos_fact_inventory a
+    LEFT JOIN ${source.ref}.circa_pos_profile p ON a.pos_id = p.id
     WHERE a.client_id = 1
+          AND p.actual_status <> "Inactive"
     GROUP BY ALL
 )
 ,full_unit AS (
