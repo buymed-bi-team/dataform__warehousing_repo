@@ -25,7 +25,8 @@ WITH t AS (
         ,JSON_EXTRACT_SCALAR(order_code)                                        AS order_code_created
         ,e.phone_number                                                         AS gift_for_customer_phone
         ,e.name                                                                 AS gift_for_customer_name
-        ,pr.code                                                                AS pos_code
+        ,pr.code                                                                AS pos_code_create_voucher
+        ,pr.name                                                                AS pos_name_create_voucher
     FROM ${source.circa_os}.promotion_gift_voucher v --  voucher dc tặng cho ai 
     LEFT JOIN UNNEST(JSON_EXTRACT_ARRAY(assigned_order_codes))                  AS order_code
     LEFT JOIN ${source.circa_os}.entity_customer e ON v.customer_id = e.id
@@ -38,7 +39,7 @@ WITH t AS (
 ,map_voucher AS (
     SELECT DISTINCT
          TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                    AS transformed_at
-        ,us.code                                                                
+        ,us.code                                                                AS voucher_code
         ,t.order_code_created
         ,DATETIME_ADD(us.created_at, INTERVAL 7 HOUR)                           AS created_at
         ,DATE(DATETIME_ADD(us.created_at, INTERVAL 7 HOUR))                     AS created_date
@@ -46,8 +47,8 @@ WITH t AS (
         ,DATETIME_ADD(us.end_date, INTERVAL 7 HOUR)                             AS end_date
         ,us.discount_value
         ,us.percent
-        ,us.is_active
         ,us.promotion_voucher_type
+        ,us.is_active
         ,COALESCE(o.entity_id, gift_for_customer_id)                            AS customer_id
         ,COALESCE(e.phone_number, gift_for_customer_phone)                      AS customer_phone
         ,COALESCE(e.name, gift_for_customer_name)                               AS customer_name
@@ -62,8 +63,9 @@ WITH t AS (
         ,ov.discount_amount                                                     AS actual_discount_amount
         ,cp.code                                                                AS campaign_code
         ,cp.name                                                                AS campaign_name
-        ,COALESCE(pr.code, t.pos_code)                                          AS pos_code
-        ,pr.name                                                                AS pos_name
+        ,pr.code                                                                AS pos_code_used
+        ,pos_code_create_voucher
+        ,pr.name                                                                AS pos_name_used
         ,us.client_id
     FROM ${source.circa_os}.promotion_promotion_voucher us -- bảng chứa tất cả các mã voucher
     LEFT JOIN (
