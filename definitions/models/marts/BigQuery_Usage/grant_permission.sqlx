@@ -10,7 +10,8 @@ ON
         "user:hau.lecong@buymed.com",
         "user:chien.le@buymed.com",
         "user:trinh.nguyenbao@buymed.com",
-        "user:thach.nguyenngoc@buymed.com"
+        "user:thach.nguyenngoc@buymed.com",
+        "user:ha.lekim@buymed.com"
     )
 FILTER USING
   (user_email = SESSION_USER() and execution_time >= CURRENT_TIMESTAMP() - INTERVAL 7 DAY );
