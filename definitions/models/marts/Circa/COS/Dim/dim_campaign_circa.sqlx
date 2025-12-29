@@ -2,8 +2,8 @@ config {
     type: "table",
     description: `PIC: huyen.ngo; 
                   model_type: Table ;
-                  schedule: At minute 15 every 2 hours.
-                  dim_campaign_circa`,
+                  schedule: At minute 15 every 1 hour.
+                  dim_campaign_circa: all campaign of Circa`,
     tags: ["custom_1h_past15"],
     name: "dim_campaign_circa"
 }
@@ -26,6 +26,7 @@ FROM ${source.circa_os}.promotion_promotion_campaign c
 LEFT JOIN ${source.circa_os}.entity_entity e ON c.created_by = e.id AND c.client_id = e.client_id
 LEFT JOIN ${source.circa_os}.entity_client cl ON c.client_id = cl.id 
 WHERE c.name NOT LIKE '%Tech Test%'
-      AND c.name NOT IN ('TECH GTHIEU KHÁCH 2', '[TECH] - Chương trình giới thiệu', 'Tech - Khachmoi','TESST','MKT_Test')
+      AND c.name NOT IN ('TECH GTHIEU KHÁCH 2', '[TECH] - Chương trình giới thiệu', 'Tech - Khachmoi','TESST','MKT_Test', 'Tech test mã', 'test2404','Test 09.04','Test 27.3','TEST2503', 'Test Voucher Gift 2'
+                         ,'Test Voucher Gift 2', 'test10k', 'Test tặng vc 10k', 'Test tặng vc 20k', 'test' )
       AND c.client_id NOT IN (5,6)
 ORDER BY created_at DESC

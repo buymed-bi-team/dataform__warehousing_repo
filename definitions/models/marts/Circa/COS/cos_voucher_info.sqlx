@@ -61,7 +61,7 @@ WITH t AS (
         ,o.channel                                                              AS channel_used
         ,ov.discount_amount                                                     AS actual_discount_amount
         ,cp.code                                                                AS campaign_code
-        ,cp.name                                                                AS compaign_name
+        ,cp.name                                                                AS campaign_name
         ,COALESCE(pr.code, t.pos_code)                                          AS pos_code
         ,pr.name                                                                AS pos_name
         ,us.client_id
