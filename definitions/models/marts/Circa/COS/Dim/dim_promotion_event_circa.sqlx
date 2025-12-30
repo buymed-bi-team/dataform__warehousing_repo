@@ -1,0 +1,39 @@
+config {
+    type: "table",
+    description: `PIC: huyen.ngo; 
+                  model_type: Table ;
+                  schedule: At minute 15 every 1 hour.
+                  dim_campaign_circa: all campaign of Circa`,
+    tags: ["custom_1h_past15"],
+    name: "dim_promotion_event_circa"
+}
+
+
+SELECT o.id
+       ,o.code AS deal_code 
+       ,o.name AS deal_name
+       ,o.pos_id
+       ,o.status
+       ,DATETIME_ADD(start_date, INTERVAL 7 HOUR) AS start_date
+       ,DATETIME_ADD(end_date, INTERVAL 7 HOUR) AS end_date
+       ,is_limit -- số lượng phát hành có giới hạn ko 
+       ,limit_value -- số lượng giới hạn
+       ,discount_type
+       ,discount_value
+       ,percent
+       ,specific_price
+       ,DATE(DATETIME_ADD(o.created_at, INTERVAL 7 HOUR)) AS created_date
+       ,DATETIME_ADD(o.created_at, INTERVAL 7 HOUR) AS created_at
+       ,DATE(DATETIME_ADD(o.updated_at, INTERVAL 7 HOUR)) AS updated_date
+       ,e.name AS created_by
+       ,o.client_id
+       ,limit_per_order -- giới hạn đặt hàng hàng mỗi đơn
+       ,is_limit_per_order
+       ,is_apply_for_pos 
+       ,is_apply_for_all_pos
+       ,is_apply_for_consumer
+       ,promotion_campaign_id
+FROM ${source.circa_os}.promotion_promotion_event o 
+LEFT JOIN ${source.circa_os}.entity_entity e ON o.created_by = e.id
+WHERE o.status = 'COMPLETED'
+     -- AND o.name <> 
