@@ -16,6 +16,9 @@ SELECT o.id
        ,o.status
        ,DATETIME_ADD(start_date, INTERVAL 7 HOUR) AS start_date
        ,DATETIME_ADD(end_date, INTERVAL 7 HOUR) AS end_date
+       ,CASE WHEN DATETIME_ADD(end_date, INTERVAL 7 HOUR) > TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) THEN FALSE 
+             ELSE TRUE
+              END                                                                   AS is_expired
        ,is_limit -- số lượng phát hành có giới hạn ko 
        ,limit_value -- số lượng giới hạn
        ,discount_type
