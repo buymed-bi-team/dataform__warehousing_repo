@@ -36,7 +36,9 @@ SELECT o.id
        ,is_apply_for_all_pos
        ,is_apply_for_consumer
        ,promotion_campaign_id
+       ,p.campaign_code
+       ,p.campaign_name
 FROM ${source.circa_os}.promotion_promotion_event o 
 LEFT JOIN ${source.circa_os}.entity_entity e ON o.created_by = e.id
+LEFT JOIN ${source.ref}.dim_campaign_circa p on o.promotion_campaign_id = p.id AND o.client_id = p.client_id
 WHERE o.status = 'COMPLETED'
-     -- AND o.name <> 
