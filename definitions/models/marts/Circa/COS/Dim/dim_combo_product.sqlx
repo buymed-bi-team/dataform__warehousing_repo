@@ -1,41 +1,36 @@
 config {
     type: "table",
-    description: `PIC: huyen.ngo; model_type: Table ;schedule: At 10h30`
-    /*Source:
-      ${source.silver}.marketplace_prd_order_v2_order_item
-      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
+    description: `PIC: huyen.ngo; model_type: Table ;schedule: At 10h30`,
     tags: ["10h30"],
-    name: "dim_combo_product",
-    columns: {/*
-        order_id: "NonNull |" + docs.order_id,
-        customer_id: "NonNull | The unique identifier for each customer"*/
-        
-    }
+    name: "dim_combo_product"
 }
-with t as (Select distinct p.code
-                         ,name
-                         ,s.sub_product_id
-                         ,quantity
-                         ,s.unit
-                        ,p.status
-                        ,p.client_id
-           from ${source.circa_os}.product_product p
-          left join ${source.circa_os}.product_sub_product s on SAFE_CAST(p.code as INT) = s.product_id
-           )
-Select distinct           t.code as combo_code
-                         ,t.name as combo_name
+
+WITH t AS (
+    SELECT DISTINCT p.code
+                   ,name
+                   ,s.sub_product_id
+                   ,quantity
+                   ,s.unit
+                   ,p.status
+                   ,p.client_id
+    FROM ${source.circa_os}.product_product p
+    LEFT JOIN ${source.circa_os}.product_sub_product s ON SAFE_CAST(p.code AS INT) = s.product_id
+)
+
+SELECT DISTINCT           t.code AS combo_code
+                         ,t.name AS combo_name
                          ,t.status
-                         ,t.sub_product_id  as product_id
-                         ,pr.name as product_name
+                         ,t.sub_product_id AS product_id
+                         ,pr.name AS product_name
                          ,t.quantity
                          ,t.unit
                          ,t.client_id
-                         ,concat(pr.product_id, "_", pr.client_id) as product_client_id
-from t
-left join ${source.circa_os}.product_product pr on pr.product_id= t.sub_product_id and t.client_id = pr.client_id
-where t.sub_product_id is not null
-      and t.name not like ('%[Tech test]%')
-      and lower(t.name) not like ('%combo tech test%')
-      and t.name not like ('%Combo Test%')
-      and t.name not like ('%Combo TechTest 2%')
-      --and t.client_id = 1
+                         ,CONCAT(pr.product_id, "_", pr.client_id) AS product_client_id
+FROM t
+LEFT JOIN ${source.circa_os}.product_product pr ON pr.product_id = t.sub_product_id AND t.client_id = pr.client_id
+WHERE t.sub_product_id IS NOT NULL
+      AND t.name NOT LIKE ('%[Tech test]%')
+      AND LOWER(t.name) NOT LIKE ('%combo tech test%')
+      AND t.name NOT LIKE ('%Combo Test%')
+      AND t.name NOT LIKE ('%Combo TechTest 2%')
+      --AND t.client_id = 1
