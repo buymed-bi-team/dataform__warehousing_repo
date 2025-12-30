@@ -97,6 +97,7 @@ SELECT
     ,CASE WHEN end_date > TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)
           THEN FALSE ELSE TRUE
      END                                                                   AS is_expired
+    ,concat(map_voucher.voucher_code, '_', map_voucher.client_id) as voucher_key
 FROM map_voucher
 LEFT JOIN ${source.ref}.cos_fact_order o ON map_voucher.order_code_created = o.order_code
 LEFT JOIN ${source.circa_os}.entity_customer e ON o.entity_id = e.id

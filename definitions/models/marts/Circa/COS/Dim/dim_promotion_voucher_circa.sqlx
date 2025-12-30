@@ -57,6 +57,7 @@ SELECT o.id
        ,promotion_campaign_id
        ,p.campaign_code
        ,p.campaign_name
+       ,concat(o.code, '_', o.client_id) as voucher_key
 FROM ${source.circa_os}.promotion_promotion_voucher o 
 LEFT JOIN ${source.circa_os}.entity_entity e ON o.created_by = e.id
 LEFT JOIN ${source.ref}.dim_campaign_circa p on o.promotion_campaign_id = p.id AND o.client_id = p.client_id
