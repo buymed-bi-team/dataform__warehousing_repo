@@ -39,6 +39,7 @@ WITH t AS (
 ,map_voucher AS (
     SELECT DISTINCT
          TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                    AS transformed_at
+         ,us.id                                                                 AS voucher_id
         ,us.code                                                                AS voucher_code
         ,t.order_code_created
         ,DATETIME_ADD(us.created_at, INTERVAL 7 HOUR)                           AS created_at

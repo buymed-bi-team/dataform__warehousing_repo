@@ -27,6 +27,7 @@ WITH order_voucher AS (
 )
 
 SELECT o.id
+       ,o.id AS voucher_id
        ,o.code AS voucher_code
        ,o.name AS voucher_name
        ,DATETIME_ADD(start_date, INTERVAL 7 HOUR) AS start_date
