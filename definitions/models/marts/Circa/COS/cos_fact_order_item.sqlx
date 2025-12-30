@@ -55,7 +55,6 @@ WITH base_unit_selection AS (
             ELSE a.tax_rate
         END AS tax_rate
         ,a.discount_amount
-        ,a.promotion_event_code
         ,CASE WHEN c.type = 'ONLINE' THEN b.lot_date ELSE a.lot_date END AS lot_date
         ,CASE WHEN c.type = 'ONLINE' THEN b.lot_id ELSE a.lot_id END AS lot_id
         ,CASE
@@ -65,14 +64,17 @@ WITH base_unit_selection AS (
             ELSE ROUND((a.unit_price / c.total_item_amount) * c.discount_amount, 4)
         END AS discount_voucher_on_item
         ,DATETIME(a.created_at, "asia/Ho_Chi_Minh") AS created_at
-        ,pos_id
+        ,c.pos_id
         ,e.name AS employee_name
         ,CAST(NULL AS STRING) AS order_apply_combo_id
+        ,a.promotion_event_code
+        ,d.name as deal_name
         ,1 AS client_id
     FROM ${source.circa}.order_order_item a
     LEFT JOIN ${source.circa}.order_so_item_detail b ON a.id = b.item_id
     LEFT JOIN ${source.circa}.order_order c ON c.id = a.order_id
     LEFT JOIN ${source.circa}.entity_entity e ON c.updated_by = e.id
+    LEFT JOIN ${source.circa}.promotion_promotion_event d ON a.promotion_event_code = d.code AND c.pos_id = d.pos_id
     WHERE DATE(c.created_at) >= "2024-11-01"
 )
 ,cte_not_online AS (
@@ -141,10 +143,11 @@ WITH base_unit_selection AS (
         ,doc_code AS po_code
         ,sale_order_number
         ,fulfillment_method
-        ,promotion_event_code
         ,distributor_id
         ,employee_name
         ,order_apply_combo_id
+        ,promotion_event_code
+        ,deal_name
         ,a.client_id
     FROM (
         SELECT * FROM cte_not_online
@@ -177,10 +180,11 @@ WITH base_unit_selection AS (
         ,po.code AS po_code
         ,po.sale_order_number
         ,po.fulfillment_method
-        ,promotion_event_code
         ,po.distributor_id
         ,e.name AS employee_name
         ,oi.order_apply_combo_id
+        ,oi.promotion_event_code
+        ,d.deal_name
         ,o.client_id
     FROM ${source.circa_os}.order_order o
     LEFT JOIN ${source.circa_os}.order_order_item oi ON o.id = oi.order_id
@@ -190,6 +194,7 @@ WITH base_unit_selection AS (
     LEFT JOIN ${source.circa_os}.entity_owner eo ON po.owner_id = eo.id AND eo.client_id = o.client_id
     LEFT JOIN base_unit cv ON cv.product_id = oi.product_id AND cv.convert_unit = oi.unit AND o.client_id = cv.client_id
     LEFT JOIN ${source.circa_os}.entity_entity e ON o.updated_by = e.id AND o.client_id = e.client_id
+    LEFT JOIN  ${source.ref}.dim_promotion_event_circa d ON oi.promotion_event_code = d.deal_code AND o.client_id = d.client_id AND o.pos_id = d.pos_id
     WHERE o.status NOT IN ('PENDING', 'CANCELED')
     GROUP BY ALL
 )
