@@ -9,7 +9,7 @@ WITH
     voucher AS (
         SELECT 
             v.order_code_used
-            , v.code AS voucher_code
+            , v.voucher_code
             , v.campaign_code
         FROM ${ref('gold_buymed_vn2','cos_voucher_info')} AS v
         QUALIFY ROW_NUMBER() OVER(PARTITION BY order_code_used) = 1
