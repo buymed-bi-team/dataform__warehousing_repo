@@ -8,6 +8,23 @@ config {
     name: "dim_campaign_circa"
 }
 
+WITH voucher AS 
+(
+    SELECT DISTINCT promotion_campaign_id
+                    ,COUNT(DISTINCT voucher_id) AS no_voucher
+                    ,client_id
+    FROM ${source.ref}.dim_promotion_voucher_circa
+    WHERE is_expired = FALSE
+    GROUP BY ALL
+           
+), deal AS (
+     SELECT DISTINCT promotion_campaign_id
+                    ,COUNT(DISTINCT id) AS no_deal
+                    ,client_id
+    FROM ${source.ref}.dim_promotion_event_circa
+    WHERE is_expired = FALSE
+    GROUP BY ALL
+)
 
 SELECT  c.id
        ,c.code as campaign_code
@@ -15,6 +32,10 @@ SELECT  c.id
        ,c.client_id
        ,cl.client_type
        ,cl.name as client_name 
+       ,no_voucher
+       ,no_deal
+       ,CASE WHEN voucher.no_voucher <> 0 OR deal.no_deal <> 0 THEN FALSE ELSE TRUE
+             END AS is_expired
        ,DATE(DATETIME_ADD(c.created_at, INTERVAL 7 HOUR)) AS created_date
        ,DATETIME_ADD(c.created_at, INTERVAL 7 HOUR) AS created_at
        ,DATETIME_ADD(c.updated_at, INTERVAL 7 HOUR) AS updated_at
@@ -25,6 +46,8 @@ SELECT  c.id
 FROM ${source.circa_os}.promotion_promotion_campaign c
 LEFT JOIN ${source.circa_os}.entity_entity e ON c.created_by = e.id AND c.client_id = e.client_id
 LEFT JOIN ${source.circa_os}.entity_client cl ON c.client_id = cl.id 
+LEFT JOIN voucher ON c.id = voucher.promotion_campaign_id AND c.client_id = voucher.client_id
+LEFT JOIN deal ON c.id = deal.promotion_campaign_id AND c.client_id = deal.client_id
 WHERE c.name NOT LIKE '%Tech Test%'
       AND c.name NOT IN ('TECH GTHIEU KHÁCH 2', '[TECH] - Chương trình giới thiệu', 'Tech - Khachmoi','TESST','MKT_Test', 'Tech test mã', 'test2404','Test 09.04','Test 27.3','TEST2503', 'Test Voucher Gift 2'
                          ,'Test Voucher Gift 2', 'test10k', 'Test tặng vc 10k', 'Test tặng vc 20k', 'test' )
