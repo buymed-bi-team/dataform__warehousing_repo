@@ -14,6 +14,7 @@ SELECT DISTINCT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transform
                 ,voucher_code
                 ,ov.paid_source
                 ,discount_amount
+                ,cp.id AS campaign_id
                 ,cp.code AS Campaign_code
                 ,cp.name AS Compaign_name
 FROM  ${source.circa_os}.order_order_voucher ov
@@ -21,5 +22,14 @@ LEFT JOIN ${source.circa_os}.promotion_promotion_voucher us  ON ov.voucher_code 
 LEFT JOIN ${source.circa_os}.promotion_promotion_campaign cp ON us.promotion_campaign_id = cp.id
 WHERE voucher_code NOT LIKE "%TECHTEST%"
       AND cp.name NOT LIKE'%Tech Test%'
+      AND cp.name NOT IN (
+          'TECH GTHIEU KHÁCH 2', '[TECH] - Chương trình giới thiệu'
+        , 'Tech - Khachmoi', 'TESST', 'MKT_Test', 'Tech test mã', 'test2404'
+        , 'Test 09.04', 'Test 27.3', 'TEST2503', 'Test Voucher Gift 2'
+        , 'test10k', 'Test tặng vc 10k', 'Test tặng vc 20k', 'test' 
+      )
+     AND cp.client_id NOT IN (5,6)
+     AND cp.id IS NOT NULL
+
 
 
