@@ -8,6 +8,7 @@ ON
         "user:hau.lecong@buymed.com",
         "user:nguyen.tran@buymed.com",
         "serviceAccount:nguyen-tran-service-account@lakehouse-prod-394907.iam.gserviceaccount.com",
+        "serviceAccount:nguyen-tran-service-account-2@lakehouse-prod-394907.iam.gserviceaccount.com",
         "user:minh.luugia@buymed.com",
 
         "serviceAccount:warehousing-finance-dataform@lakehouse-prod-394907.iam.gserviceaccount.com"
@@ -39,8 +40,8 @@ collector.data_prd GRANT TO (
     "serviceAccount:staging-dataform@lakehouse-prod-394907.iam.gserviceaccount.com",
 
     "serviceAccount:warehousing-dataform@lakehouse-prod-394907.iam.gserviceaccount.com",
-    "serviceAccount:warehousing-sub-dataform@lakehouse-prod-394907.iam.gserviceaccount.com"
-    
+    "serviceAccount:warehousing-sub-dataform@lakehouse-prod-394907.iam.gserviceaccount.com",
+    "serviceAccount:service-231189618019@gcp-sa-dataform.iam.gserviceaccount.com"
 )
 FILTER USING (
 object not like "EXPENSE"
