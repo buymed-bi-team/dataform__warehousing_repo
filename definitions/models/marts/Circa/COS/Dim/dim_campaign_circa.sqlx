@@ -39,6 +39,7 @@ SELECT
     , COALESCE(deal.no_deal, 0) AS no_deal
     , COALESCE(deal.no_deal_valid, 0) AS no_deal_valid
     , CASE 
+        WHEN  COALESCE(voucher.no_voucher, 0) <> 0 AND COALESCE(deal.no_deal, 0) <> 0 THEN 'campaign_voucher+deal'
         WHEN COALESCE(voucher.no_voucher, 0) <> 0 THEN 'campaign_voucher'
         WHEN COALESCE(deal.no_deal, 0) <> 0 THEN 'campaign_deal'
         ELSE NULL
