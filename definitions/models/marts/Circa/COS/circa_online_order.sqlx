@@ -81,7 +81,7 @@ SELECT o.*
        ,s.pos_status
        ,s.deliver_status
        ,s.delivery_carrier
-       ,v.code AS voucher_code 
+       ,v.voucher_code AS voucher_code 
 FROM online_order o
 LEFT JOIN ${source.ref}.cos_voucher_info v ON o.assigned_order_codes = v.order_code_used
 LEFT JOIN (SELECT * FROM ${source.platinum}.circa_online_prd_order_sale_order

@@ -1,60 +1,54 @@
 config {
     type: "table",
-    description: `PIC: huyen.ngo; model_type: Table ;schedule: At 10h30`
-    /*Source:
-      ${source.silver}.marketplace_prd_order_v2_order_item
-      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
+    description: `PIC: huyen.ngo; model_type: Table ;schedule: At 10h30`,
     tags: ["10h30"],
-    name: "dim_lot_vat",
-    columns: {/*
-        order_id: "NonNull |" + docs.order_id,
-        customer_id: "NonNull | The unique identifier for each customer"*/
-        
-    }
+    name: "dim_lot_vat"
+
 }
 
-with t as (
-Select distinct
+WITH t AS (
+SELECT DISTINCT
             product_id
-           ,concat(product_id, "_", "1") as product_client_id
+           ,CONCAT(product_id, "_", "1") AS product_client_id
            ,client_id
            ,lot_date
-           ,product_id || "_" || lot_date as product_lot_date
-           ,product_id || "_" || lot_date || "_" || tax_rate || "_" || client_id as product_lot_date_vat_client_id
-           ,type as vat_type
+           ,product_id || "_" || lot_date AS product_lot_date
+           ,product_id || "_" || lot_date || "_" || tax_rate || "_" || client_id AS product_lot_date_vat_client_id
+           ,type AS vat_type
            ,tax_rate
-           ,DATE(TIMESTAMP_ADD(expired_date, interval 7 hour)) as expired_date
-           ,DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, interval 7 hour)) , current_date( "+7"), day ) as gap
-           ,case
-               when DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, interval 7 hour)) , current_date( "+7"), day ) <= 0 then "Expired"
-               when DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, interval 7 hour)) , current_date( "+7"), day ) < 30  and DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, interval 7 hour)) , current_date( "+7"), day ) > 0 then "<30D"
-               when DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, interval 7 hour)) , current_date( "+7"), day ) >= 30 and DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, interval 7 hour)) , current_date( "+7"), day ) < 90 then "<90D"
-               when DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, interval 7 hour)) , current_date( "+7"), day ) >= 90 and DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, interval 7 hour)) , current_date( "+7"), day ) < 180 then "<180D"
-               when DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, interval 7 hour)) , current_date( "+7"), day ) >= 180 and DATE_DIFF( DATE(TIMESTAMP_ADD(expired_date, interval 7 hour)), current_date( "+7"),day ) < 270 then "<270D"
-               when DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, interval 7 hour)) , current_date( "+7"), day ) >= 270 and DATE_DIFF( DATE(TIMESTAMP_ADD(expired_date, interval 7 hour)), current_date( "+7"),day ) < 365 then "<365D"
-               when DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, interval 7 hour)) , current_date( "+7"), day ) >= 365 then ">= 365D"
-               end as aging
-            --  ,case
-            --    when DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, interval 7 hour)) , current_date( "+7"), day ) <= 0 then "1. Expired"
-            --    when DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, interval 7 hour)) , current_date( "+7"), month ) < 1 and DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, interval 7 hour)) , current_date( "+7"), day ) > 0  then "2. < 1 months" 
-            --    when DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, interval 7 hour)) , current_date( "+7"), month ) <= 3  and DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, interval 7 hour)) , current_date( "+7"), month ) >= 1  then "3. < 3 months" 
-            --    when DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, interval 7 hour)) , current_date( "+7"), month ) <= 6  and DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, interval 7 hour)) , current_date( "+7"), month ) > 3  then "4. < 6 months" 
-            --    when DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, interval 7 hour)) , current_date( "+7"), month ) >  6 and DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, interval 7 hour)) , current_date( "+7"), month ) <= 12 then "5. > 6 months"
-            --    when DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, interval 7 hour)) , current_date( "+7"), month ) >  12 and DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, interval 7 hour)) , current_date( "+7"), month ) <= 18 then "6. > 12 months"
-            --    when DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, interval 7 hour)) , current_date( "+7"), month ) >  18 then "6. > 18 months"
-            --    else "7. NED"
-            --  end as Aging_level
+           ,DATE(TIMESTAMP_ADD(expired_date, INTERVAL 7 HOUR)) AS expired_date
+           ,DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, INTERVAL 7 HOUR)) , CURRENT_DATE("+7"), DAY) AS gap
+           ,CASE
+               WHEN DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, INTERVAL 7 HOUR)) , CURRENT_DATE("+7"), DAY) <= 0 THEN "Expired"
+               WHEN DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, INTERVAL 7 HOUR)) , CURRENT_DATE("+7"), DAY) < 30 AND DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, INTERVAL 7 HOUR)) , CURRENT_DATE("+7"), DAY) > 0 THEN "<30D"
+               WHEN DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, INTERVAL 7 HOUR)) , CURRENT_DATE("+7"), DAY) >= 30 AND DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, INTERVAL 7 HOUR)) , CURRENT_DATE("+7"), DAY) < 90 THEN "<90D"
+               WHEN DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, INTERVAL 7 HOUR)) , CURRENT_DATE("+7"), DAY) >= 90 AND DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, INTERVAL 7 HOUR)) , CURRENT_DATE("+7"), DAY) < 180 THEN "<180D"
+               WHEN DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, INTERVAL 7 HOUR)) , CURRENT_DATE("+7"), DAY) >= 180 AND DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, INTERVAL 7 HOUR)) , CURRENT_DATE("+7"), DAY) < 270 THEN "<270D"
+               WHEN DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, INTERVAL 7 HOUR)) , CURRENT_DATE("+7"), DAY) >= 270 AND DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, INTERVAL 7 HOUR)) , CURRENT_DATE("+7"), DAY) < 365 THEN "<365D"
+               WHEN DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, INTERVAL 7 HOUR)) , CURRENT_DATE("+7"), DAY) >= 365 THEN ">= 365D"
+             END AS aging
+            --  ,CASE
+            --    WHEN DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, INTERVAL 7 HOUR)) , CURRENT_DATE("+7"), DAY) <= 0 THEN "1. Expired"
+            --    WHEN DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, INTERVAL 7 HOUR)) , CURRENT_DATE("+7"), MONTH) < 1 AND DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, INTERVAL 7 HOUR)) , CURRENT_DATE("+7"), DAY) > 0  THEN "2. < 1 months" 
+            --    WHEN DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, INTERVAL 7 HOUR)) , CURRENT_DATE("+7"), MONTH) <= 3  AND DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, INTERVAL 7 HOUR)) , CURRENT_DATE("+7"), MONTH) >= 1  THEN "3. < 3 months" 
+            --    WHEN DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, INTERVAL 7 HOUR)) , CURRENT_DATE("+7"), MONTH) <= 6  AND DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, INTERVAL 7 HOUR)) , CURRENT_DATE("+7"), MONTH) > 3  THEN "4. < 6 months" 
+            --    WHEN DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, INTERVAL 7 HOUR)) , CURRENT_DATE("+7"), MONTH) > 6 AND DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, INTERVAL 7 HOUR)) , CURRENT_DATE("+7"), MONTH) <= 12 THEN "5. > 6 months"
+            --    WHEN DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, INTERVAL 7 HOUR)) , CURRENT_DATE("+7"), MONTH) > 12 AND DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, INTERVAL 7 HOUR)) , CURRENT_DATE("+7"), MONTH) <= 18 THEN "6. > 12 months"
+            --    WHEN DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, INTERVAL 7 HOUR)) , CURRENT_DATE("+7"), MONTH) > 18 THEN "6. > 18 months"
+            --    ELSE "7. NED"
+            --  END AS Aging_level
 FROM ${source.circa_os}.product_lot
---where client_id = 1
+--WHERE client_id = 1
 )
-Select *
-       ,case
-            when aging = "Expired" then "1. Expired"
-            when aging = "<30D" then "2. < 1 months" 
-            when aging = "<90D" then "3. < 3 months" 
-            when aging = "<180D" then  "4. < 6 months" 
-            when aging = "<270D"  then "5. < 9 months"
-            when aging = "<365D" then "6. < 12 months"
-            when aging = ">= 365D" then "7. >= 12 months"
-            else "8. NED" end as Aging_level
- from t 
+SELECT *
+       ,CASE
+            WHEN aging = "Expired" THEN "1. Expired"
+            WHEN aging = "<30D" THEN "2. < 1 months" 
+            WHEN aging = "<90D" THEN "3. < 3 months" 
+            WHEN aging = "<180D" THEN "4. < 6 months" 
+            WHEN aging = "<270D" THEN "5. < 9 months"
+            WHEN aging = "<365D" THEN "6. < 12 months"
+            WHEN aging = ">= 365D" THEN "7. >= 12 months"
+            ELSE "8. NED"
+        END AS Aging_level
+FROM t

@@ -207,6 +207,19 @@ WITH
       QUALIFY ROW_NUMBER() over (PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
   )
   
+  
+  , cat_lieu AS (
+      SELECT
+          SAFE_CAST(code AS INT64) AS product_id
+          , NULLIF(value, "NAN") AS thuoc_cat_lieu
+      FROM collector.data_prd
+      WHERE DATE(submit_at) >= "2025-12-30"
+          AND submit_id >= 5900
+          AND object = "Product"
+          AND type = "THUOC_CAT_LIEU"
+      QUALIFY ROW_NUMBER() over (PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
+  )
+  
   , atc4 AS (
       SELECT
           SAFE_CAST(code AS INT64) AS product_id
@@ -382,6 +395,7 @@ SELECT
     , IF(product.seller_category_code = "AQFV2U" AND product.seller_sub_category_code = "LALT0T", "Acute", NULL)
   ) AS chronic,
   essential.essential,
+  cl.thuoc_cat_lieu,
 
   CASE
       WHEN product.seller_category_code = "AQFV2U" THEN 
@@ -420,6 +434,7 @@ LEFT JOIN brand AS br ON br.product_id = product.product_id
 LEFT JOIN ownbrand_portfolio AS op ON op.product_id = product.product_id
 LEFT JOIN chronic AS chronic ON chronic.product_id = product.product_id
 LEFT JOIN essential AS essential ON essential.product_id = product.product_id
+LEFT JOIN cat_lieu AS cl ON cl.product_id = product.product_id
 LEFT JOIN atc3 AS a3 ON a3.product_id = product.product_id
 LEFT JOIN atc4 AS a4 ON a4.product_id = product.product_id
 LEFT JOIN sub_brand AS sb ON sb.product_id = product.product_id
