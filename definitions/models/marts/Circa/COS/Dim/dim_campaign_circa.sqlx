@@ -10,50 +10,51 @@ config {
 
 WITH voucher AS (
     SELECT 
-        promotion_campaign_id,
-        client_id,
-        COUNT(DISTINCT voucher_id) AS no_voucher,
-        COUNT(DISTINCT CASE WHEN is_expired = FALSE THEN voucher_id END) AS no_voucher_valid
+          promotion_campaign_id
+        , client_id
+        , COUNT(DISTINCT voucher_id) AS no_voucher
+        , COUNT(DISTINCT CASE WHEN is_expired = FALSE THEN voucher_id END) AS no_voucher_valid
     FROM lakehouse-prod-394907.gold_buymed_vn2.dim_promotion_voucher_circa
     GROUP BY promotion_campaign_id, client_id
 ),
 deal AS (
     SELECT 
-        promotion_campaign_id,
-        client_id,
-        COUNT(DISTINCT id) AS no_deal,
-        COUNT(DISTINCT CASE WHEN is_expired = FALSE THEN id END) AS no_deal_valid
+          promotion_campaign_id
+        , client_id
+        , COUNT(DISTINCT id) AS no_deal
+        , COUNT(DISTINCT CASE WHEN is_expired = FALSE THEN id END) AS no_deal_valid
     FROM lakehouse-prod-394907.gold_buymed_vn2.dim_promotion_event_circa
     GROUP BY promotion_campaign_id, client_id
 )
 
 SELECT  
-    c.id,
-    c.code AS campaign_code,
-    c.name AS campaign_name,
-    c.client_id,
-    cl.client_type,
-    cl.name AS client_name,
-    COALESCE(voucher.no_voucher, 0) AS no_voucher,
-    COALESCE(voucher.no_voucher_valid, 0) AS no_voucher_valid,
-    COALESCE(deal.no_deal, 0) AS no_deal,
-    COALESCE(deal.no_deal_valid, 0) AS no_deal_valid,
-    CASE 
+      c.id
+    , c.code AS campaign_code
+    , c.name AS campaign_name
+    , c.client_id
+    , cl.client_type
+    , cl.name AS client_name
+    , COALESCE(voucher.no_voucher, 0) AS no_voucher
+    , COALESCE(voucher.no_voucher_valid, 0) AS no_voucher_valid
+    , COALESCE(deal.no_deal, 0) AS no_deal
+    , COALESCE(deal.no_deal_valid, 0) AS no_deal_valid
+    , CASE 
         WHEN COALESCE(voucher.no_voucher, 0) <> 0 THEN 'campaign_voucher'
         WHEN COALESCE(deal.no_deal, 0) <> 0 THEN 'campaign_deal'
         ELSE NULL
-    END AS campaign_type,
-    CASE 
+      END AS campaign_type
+    , CASE 
         WHEN COALESCE(voucher.no_voucher_valid, 0) = 0 AND COALESCE(deal.no_deal_valid, 0) = 0 
-        THEN TRUE ELSE FALSE
-    END AS is_expired,
-    DATE(DATETIME_ADD(c.created_at, INTERVAL 7 HOUR)) AS created_date,
-    DATETIME_ADD(c.created_at, INTERVAL 7 HOUR) AS created_at,
-    DATETIME_ADD(c.updated_at, INTERVAL 7 HOUR) AS updated_at,
-    c.created_by,
-    e.name AS created_by_name,
-    c.updated_by,
-    c.is_default
+            THEN TRUE 
+        ELSE FALSE
+      END AS is_expired
+    , DATE(DATETIME_ADD(c.created_at, INTERVAL 7 HOUR)) AS created_date
+    , DATETIME_ADD(c.created_at, INTERVAL 7 HOUR) AS created_at
+    , DATETIME_ADD(c.updated_at, INTERVAL 7 HOUR) AS updated_at
+    , c.created_by
+    , e.name AS created_by_name
+    , c.updated_by
+    , c.is_default
 
 FROM lakehouse-prod-394907.buymed_circa_v2.promotion_promotion_campaign c
 LEFT JOIN lakehouse-prod-394907.buymed_circa_v2.entity_entity e 
@@ -66,12 +67,12 @@ LEFT JOIN deal
     ON c.id = deal.promotion_campaign_id AND c.client_id = deal.client_id
 
 WHERE c.name NOT LIKE '%Tech Test%'
-      AND c.name NOT IN (
-            'TECH GTHIEU KHÁCH 2', '[TECH] - Chương trình giới thiệu', 
-            'Tech - Khachmoi','TESST','MKT_Test', 'Tech test mã', 'test2404',
-            'Test 09.04','Test 27.3','TEST2503', 'Test Voucher Gift 2',
-            'test10k', 'Test tặng vc 10k', 'Test tặng vc 20k', 'test' 
+  AND c.name NOT IN (
+          'TECH GTHIEU KHÁCH 2', '[TECH] - Chương trình giới thiệu'
+        , 'Tech - Khachmoi', 'TESST', 'MKT_Test', 'Tech test mã', 'test2404'
+        , 'Test 09.04', 'Test 27.3', 'TEST2503', 'Test Voucher Gift 2'
+        , 'test10k', 'Test tặng vc 10k', 'Test tặng vc 20k', 'test' 
       )
-      AND c.client_id NOT IN (5,6)
+  AND c.client_id NOT IN (5,6)
 
 ORDER BY created_at DESC
