@@ -1,0 +1,65 @@
+config {
+    type: "table",
+    description: `PIC: huyen.ngo; 
+                  model_type: Table ;
+                  schedule: At minute 15 every 1 hour.
+                  dim_promotion_gift: all campaign of Circa`,
+    tags: ["custom_1h_past15"],
+    name: "dim_promotion_gift"
+}
+
+WITH order_gift AS (
+                    SELECT DISTINCT  o.gift_code
+                                     ,o.gift_id
+                                    -- ,CASE WHEN limit_value = COUNT(DISTINCT o.order_code) THEN 'limit' ELSE 'not_limit' END AS check
+                                    -- ,limit_value
+                                    , COUNT(DISTINCT CASE 
+                                                     WHEN i.entity_id <> '00000000-0000-0000-0000-000000000000'
+                                                          AND c.phone_number IS NOT NULL
+                                                          AND c.phone_number <> ""
+                                                          AND REGEXP_REPLACE(c.phone_number, '0','') <> "" 
+                                                     THEN i.entity_id
+                                                 END) AS no_customers_used
+                                    ,COUNT(DISTINCT o.order_code ) AS cnt_order_used
+                                    ,i.client_id
+                    FROM ${source.circa_os}.order_order_gift o
+                    INNER JOIN (SELECT * FROM ${source.ref}.cos_fact_order WHERE status <> 'CANCELED') i ON o.order_code  = i.order_code 
+                    LEFT JOIN buymed_circa_v2.entity_customer AS c ON i.entity_id = c.id   
+                    WHERE is_valid = true    
+                    GROUP BY o.gift_id, o.gift_code, i.client_id
+)
+
+SELECT o.id
+       ,o.id AS gift_id
+       ,o.code AS voucher_code
+       ,o.name AS voucher_name
+       ,DATETIME_ADD(start_date, INTERVAL 7 HOUR) AS start_date
+       ,DATETIME_ADD(end_date, INTERVAL 7 HOUR) AS end_date
+       ,CASE WHEN DATETIME_ADD(end_date, INTERVAL 7 HOUR) > TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) THEN FALSE 
+             ELSE TRUE
+              END                                                                   AS is_expired
+       ,limit_value -- số lượng giới hạn
+       ,cnt_order_used
+       ,no_customers_used
+       ,min_order_apply
+       --,CASE WHEN limit_value = cnt_order_used THEN TRUE ELSE FALSE END AS is_gift_use_up
+       ,gift_item_type
+       ,DATE(DATETIME_ADD(o.created_at, INTERVAL 7 HOUR)) AS created_date
+       ,DATETIME_ADD(o.created_at, INTERVAL 7 HOUR) AS created_at
+       ,DATE(DATETIME_ADD(o.updated_at, INTERVAL 7 HOUR)) AS updated_date
+       ,e.name AS created_by
+       ,o.client_id
+       ,limit_per_customer -- giới hạn đặt hàng hàng mỗi đơn
+       ,is_apply_for_all_main_category 
+       ,is_apply_for_all_pos
+       ,first_time_order
+       ,promotion_campaign_id
+       ,p.campaign_code
+       ,p.campaign_name
+       ,concat(o.code, '_', o.client_id) as voucher_key
+FROM ${source.circa_os}.promotion_gift o 
+LEFT JOIN ${source.circa_os}.entity_entity e ON o.created_by = e.id
+LEFT JOIN ${source.ref}.dim_campaign_circa p on o.promotion_campaign_id = p.id AND o.client_id = p.client_id
+LEFT JOIN order_gift v ON o.code = v.gift_code AND o.client_id = v.client_id
+WHERE p.id IS NOT NULL
+
