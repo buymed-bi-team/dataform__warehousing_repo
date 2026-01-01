@@ -26,7 +26,16 @@ deal AS (
     FROM lakehouse-prod-394907.gold_buymed_vn2.dim_promotion_event_circa
     GROUP BY promotion_campaign_id, client_id
 )
-
+,
+gift AS (
+    SELECT 
+          promotion_campaign_id
+        , client_id
+        , COUNT(DISTINCT id) AS no_gift
+        , COUNT(DISTINCT CASE WHEN is_expired = FALSE THEN id END) AS no_gift_valid
+    FROM lakehouse-prod-394907.gold_buymed_vn2.dim_promotion_gift
+    GROUP BY promotion_campaign_id, client_id
+)
 SELECT  
       c.id
     , c.code AS campaign_code
@@ -39,9 +48,11 @@ SELECT
     , COALESCE(deal.no_deal, 0) AS no_deal
     , COALESCE(deal.no_deal_valid, 0) AS no_deal_valid
     , CASE 
-        WHEN  COALESCE(voucher.no_voucher, 0) <> 0 AND COALESCE(deal.no_deal, 0) <> 0 THEN 'campaign_voucher+deal'
-        WHEN COALESCE(voucher.no_voucher, 0) <> 0 THEN 'campaign_voucher'
-        WHEN COALESCE(deal.no_deal, 0) <> 0 THEN 'campaign_deal'
+        WHEN COALESCE(voucher.no_voucher, 0) <> 0 AND COALESCE(deal.no_deal, 0) <> 0 THEN 'voucher+deal'
+        WHEN COALESCE(voucher.no_voucher, 0) <> 0 THEN 'voucher'
+        WHEN COALESCE(deal.no_deal, 0) <> 0 THEN 'deal'
+        WHEN COALESCE(gift.no_gift, 0) <> 0 AND COALESCE(voucher.no_voucher, 0) <> 0 THEN 'voucher+gift'
+        WHEN COALESCE(gift.no_gift, 0) <> 0 AND COALESCE(voucher.no_voucher, 0) = 0 THEN 'gift'
         ELSE NULL
       END AS campaign_type
     , CASE 
@@ -66,7 +77,8 @@ LEFT JOIN voucher
     ON c.id = voucher.promotion_campaign_id AND c.client_id = voucher.client_id
 LEFT JOIN deal 
     ON c.id = deal.promotion_campaign_id AND c.client_id = deal.client_id
-
+LEFT JOIN gift
+    ON c.id = gift.promotion_campaign_id AND c.client_id = gift.client_id
 WHERE c.name NOT LIKE '%Tech Test%'
   AND c.name NOT IN (
           'TECH GTHIEU KHÁCH 2', '[TECH] - Chương trình giới thiệu'
