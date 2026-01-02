@@ -47,6 +47,7 @@ SELECT
     , COALESCE(voucher.no_voucher_valid, 0) AS no_voucher_valid
     , COALESCE(deal.no_deal, 0) AS no_deal
     , COALESCE(deal.no_deal_valid, 0) AS no_deal_valid
+    ,no_gift
     , CASE 
         WHEN COALESCE(voucher.no_voucher, 0) <> 0 AND COALESCE(deal.no_deal, 0) <> 0 THEN 'voucher+deal'
         WHEN COALESCE(voucher.no_voucher, 0) <> 0 THEN 'voucher'
