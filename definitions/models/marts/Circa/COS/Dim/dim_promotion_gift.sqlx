@@ -31,8 +31,8 @@ WITH order_gift AS (
 
 SELECT o.id
        ,o.id AS gift_id
-       ,o.code AS voucher_code
-       ,o.name AS voucher_name
+       ,o.code AS gift_code
+       ,o.name AS gift_name
        ,DATETIME_ADD(start_date, INTERVAL 7 HOUR) AS start_date
        ,DATETIME_ADD(end_date, INTERVAL 7 HOUR) AS end_date
        ,CASE WHEN DATETIME_ADD(end_date, INTERVAL 7 HOUR) > TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) THEN FALSE 
@@ -56,7 +56,6 @@ SELECT o.id
        ,promotion_campaign_id
        ,p.campaign_code
        ,p.campaign_name
-       ,concat(o.code, '_', o.client_id) as voucher_key
 FROM ${source.circa_os}.promotion_gift o 
 LEFT JOIN ${source.circa_os}.entity_entity e ON o.created_by = e.id
 LEFT JOIN ${source.ref}.dim_campaign_circa p on o.promotion_campaign_id = p.id AND o.client_id = p.client_id
