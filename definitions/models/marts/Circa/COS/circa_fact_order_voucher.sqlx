@@ -17,7 +17,7 @@ SELECT DISTINCT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transform
                 ,discount_amount
                 ,cp.id AS campaign_id
                 ,cp.code AS campaign_code
-                ,cp.name AS compaign_name
+                ,cp.name AS campaign_name
                 ,us.client_id
 FROM  ${source.circa_os}.order_order_voucher ov
 LEFT JOIN ${source.circa_os}.promotion_promotion_voucher us  ON ov.voucher_code = us.code
