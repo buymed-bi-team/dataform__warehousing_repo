@@ -1,0 +1,28 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation_confidential",
+    description: `Buymed Expense.`,
+ //   tags: ['AI_THUOCSI_VN']
+}
+
+SELECT
+    a.region_scope AS business
+    , a.scope
+    , LAST_VALUE(a.year_scope IGNORE NULLS) over (PARTITION BY a.region_scope, a.scope ORDER BY LPAD(a.excel_column, 2, '0'), LPAD(a.excel_index, 2, '0') ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW )  AS year_scope
+    , COALESCE(a.month_scope_2, a.month_scope_1) AS month_scope
+    , a.item_name AS expense_name
+    , SAFE_CAST(a.value AS FLOAT64) AS value
+    , DATE(DATE_TRUNC(a.date, MONTH )) AS month
+    , b.item_name AS parent_expense_name
+FROM gold_buymed_vn2.base_collector_excel_expense AS a
+    LEFT JOIN (
+        SELECT DISTINCT item_id AS parent_item_id
+            , item_name
+        FROM gold_buymed_vn2.base_collector_excel_expense
+        WHERE REGEXP_CONTAINS(item_id, r"\.") = FALSE
+    ) AS b ON b.parent_item_id = SPLIT(a.item_id, ".")[SAFE_OFFSET(0)]
+WHERE 1=1
+    AND (UPPER(a.item_name) = "NET REVENUE"
+        OR REGEXP_CONTAINS(a.item_id, r"\.")
+    )
+ORDER BY LPAD(a.excel_column, 2, '0'), LPAD(a.excel_index, 2, '0')
