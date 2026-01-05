@@ -16,7 +16,7 @@ config {
 -- Lấy những voucher được tặng cho customers
 WITH t AS ( 
     SELECT DISTINCT
-         gift_id
+         v.gift_id
         ,gift_code
         ,DATETIME_ADD(v.created_at, INTERVAL 7 HOUR)                            AS voucher_created_at
         ,voucher_id
@@ -99,6 +99,7 @@ SELECT
           THEN FALSE ELSE TRUE
      END                                                                   AS is_expired
     ,concat(map_voucher.voucher_code, '_', map_voucher.client_id) as voucher_key
+    ,COALESCE(pos_code_used, pos_code_create_voucher)                      AS pos_code_map
 FROM map_voucher
 LEFT JOIN ${source.ref}.cos_fact_order o ON map_voucher.order_code_created = o.order_code
 LEFT JOIN ${source.circa_os}.entity_customer e ON o.entity_id = e.id
