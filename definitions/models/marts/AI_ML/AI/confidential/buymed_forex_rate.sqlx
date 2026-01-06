@@ -1,5 +1,5 @@
 config {
-    type: 'view',
+    type: 'table',
     schema: "buymed_innovation_confidential",
     description: `Buymed Forex Rate.`,
  //   tags: ['AI_THUOCSI_VN']
