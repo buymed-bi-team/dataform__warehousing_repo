@@ -1,0 +1,10 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation_confidential",
+    description: `Buymed Forex Rate.`,
+ //   tags: ['AI_THUOCSI_VN']
+}
+
+SELECT
+    *
+FROM buymed_external.import_fx
