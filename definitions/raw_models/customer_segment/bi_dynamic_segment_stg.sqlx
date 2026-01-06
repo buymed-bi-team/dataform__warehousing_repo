@@ -25,6 +25,14 @@ WITH
         SELECT
             * EXCEPT (count_order, sum_gmv, operator)
             , IFNULL(
+                SAFE.PARSE_DATE('"%Y-%m-%d"', SPLIT(last_purchase, ",")[SAFE_OFFSET(0)])
+                , DATE_SUB(CURRENT_DATE(), INTERVAL SAFE_CAST(REGEXP_EXTRACT(SPLIT(last_purchase, ",")[SAFE_OFFSET(0)], r'[0-9]+') AS INT64) DAY)
+            ) AS start_date_last_purchase
+            , IFNULL(
+                SAFE.PARSE_DATE('"%Y-%m-%d"', SPLIT(last_purchase, ",")[SAFE_OFFSET(1)])
+                , DATE_SUB(CURRENT_DATE(), INTERVAL IFNULL(SAFE_CAST(REGEXP_EXTRACT(SPLIT(last_purchase, ",")[SAFE_OFFSET(1)], r'[0-9]+') AS INT64),0) DAY)
+            ) AS end_date_last_purchase
+            , IFNULL(
                 SAFE.PARSE_DATE('"%Y-%m-%d"', SPLIT(time_range_count_sum, ",")[SAFE_OFFSET(0)])
                 , DATE_SUB(CURRENT_DATE(), INTERVAL SAFE_CAST(REGEXP_EXTRACT(SPLIT(time_range_count_sum, ",")[SAFE_OFFSET(0)], r'[0-9]+') AS INT64) DAY)
             ) AS start_date_time_range_count_sum
@@ -163,6 +171,10 @@ WITH
             AND (sd.customer_tag_group IS NULL OR STRPOS(sd.customer_tag_group, CONCAT('"',c.customer_tag_group,'"')) > 0)
             AND (sd.customer_tag_sub_group IS NULL OR STRPOS(sd.customer_tag_sub_group, CONCAT('"',c.customer_tag_sub_group,'"')) > 0)
             AND (
+                sd.last_purchase IS NULL
+                OR DATE(c.last_purchase) BETWEEN sd.start_date_last_purchase AND sd.end_date_last_purchase
+            )
+            AND (
                 sd.start_count_order IS NULL
                 OR (sd.count_order_operator = '>' AND q.no_order > SAFE_CAST(start_count_order AS INT64))
                 OR (sd.count_order_operator = '' AND COALESCE( q.no_order,0) = SAFE_CAST(start_count_order AS INT64) )
@@ -181,17 +193,17 @@ WITH
             AND (
                 sd.operator <> '"NEW"'
                 OR ( NOT EXISTS (SELECT 1 FROM query_order1 qo WHERE qo.customer_id = c.customer_id AND qo.segment_id = sd.segment_id)
-                    AND (sd.created_at1 IS NULL OR c.last_purchase >= start_date1)
+                    -- AND (sd.created_at1 IS NULL OR c.last_purchase >= start_date1)
                 )
             )
-
+            -- Order conditions for CHURN customers
             AND (
                 sd.operator <> '"CHURN"'
                 OR ( EXISTS (SELECT 1 FROM query_order1 qo WHERE qo.customer_id = c.customer_id AND qo.segment_id = sd.segment_id)
                     AND NOT EXISTS (SELECT 1 FROM query_order2 qoo WHERE qoo.customer_id = c.customer_id AND qoo.segment_id = sd.segment_id)
                 )
             )
-
+            -- Order conditions for EXCEPT
             AND (
                 sd.operator <> '"EXCEPT"'
                 OR ( EXISTS (SELECT 1 FROM query_order1 qo WHERE qo.customer_id = c.customer_id AND qo.segment_id = sd.segment_id)
