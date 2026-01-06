@@ -33,6 +33,7 @@ SELECT
     , ioi.code AS invoice_code
     , TIMESTAMP_ADD( ioi.arising_time, interval 7 hour) AS invoice_time
     , ioi.customer_id
+    , STRING(ARRAY_REVERSE(JSON_QUERY_ARRAY(invoice_data))[SAFE_OFFSET(0)].invoice_no) AS invoice_number
 FROM ${source.platinum}.accounting_prd_invoice_order AS io
     LEFT JOIN ${source.platinum}.accounting_prd_invoice_order_invoice AS ioi
         USING(order_id)
