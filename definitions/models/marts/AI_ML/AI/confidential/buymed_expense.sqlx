@@ -13,7 +13,7 @@ SELECT
     , a.item_name AS expense_name
     , SAFE_CAST(a.value AS FLOAT64) AS value
     , DATE(DATE_TRUNC(a.date, MONTH )) AS month
-    , b.item_name AS parent_expense_name
+    , COALESCE(b.item_name, a.item_name) AS parent_expense_name
 FROM gold_buymed_vn2.base_collector_excel_expense AS a
     LEFT JOIN (
         SELECT DISTINCT item_id AS parent_item_id
