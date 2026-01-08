@@ -150,9 +150,9 @@ WITH
     ),
 
     active_customer AS (
-        SELECT
-            week_label
-            , week_start
+        SELECT DISTINCT
+            -- week_label
+            week_start
             , customer_id
             , CASE
                 WHEN is_new = 1 THEN 'NEW'

@@ -26,6 +26,7 @@ SELECT DISTINCT
     ,a.fulfillment_method
     ,a.sale_order_number AS order_id
     ,a.created_by
+    ,e.name as created_by_name
     ,a.note
     ,a.source_type
     ,a.discount_amount
@@ -67,6 +68,7 @@ LEFT JOIN (
 ) AS rt ON a.id = rt.source_id AND a.client_id = rt.client_id -- Lấy nhừng PO có trả hàng 
 LEFT JOIN ${source.ref}.circa_pos_profile p ON a.pos_id = p.id AND a.client_id = p.client_id
 LEFT JOIN ${source.ref}.os_map_idthuocsi map ON o.customer_id = map.id_thuocisi
+LEFT JOIN  ${source.circa_os}.entity_entity e on a.created_by = e.id 
 WHERE a.status <> 'CANCELED'
   AND a.status <> 'PENDING'
   AND p.id IS NOT NULL

@@ -4,7 +4,7 @@ config {
                   PIC: huyen.ngo; 
                   model_type: Table ;
                   schedule: At minute 20 every hour`,
-    tags:  ["custom_1h_past20"],
+    tags:  ["custom_1h_past23"],
     name: "cos_fact_order_item",
     columns: {
     
