@@ -1,0 +1,26 @@
+config {
+    type: "table",
+    description: `List sản phẩm hot nhất thị trường | PIC: huyen.ngo; model_type: Table ;schedule: At 10h30`,
+    tags: ["10h30"],
+    name: "cos_product_hotdeal2025",
+    columns: {/*
+        */
+        
+    }
+}
+
+
+SELECT DISTINCT
+       o.id
+      ,name
+      ,product_id
+      ,product_name
+      ,i.unit
+      ,i.status
+      ,i.purchase_status
+      ,DATETIME_ADD(i.created_at, INTERVAL 7 HOUR) AS created_at
+      ,DATETIME_ADD(i.updated_at, INTERVAL 7 HOUR) AS updated_at
+      ,1 AS client_id 
+FROM ${source.circa_os}.product_assortment_template o 
+LEFT JOIN ${source.circa_os}.product_assortment_template_items i ON o.id = i.assortment_template_id
+WHERE o.id = 'f76686db-77e0-42de-b40d-acd3fb709747'
