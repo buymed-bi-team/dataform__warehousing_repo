@@ -13,7 +13,7 @@ SELECT
     TIMESTAMP_ADD(a.created_time, INTERVAL 7 hour) AS created_ts,
     TIMESTAMP_ADD(a.due_date, INTERVAL 7 hour) AS due_ts,
     COALESCE(TIMESTAMP_ADD(a.completed_time, INTERVAL 7 hour), f.created_ts) AS completed_ts,
-    DATE(TIMESTAMP_ADD(a.completed_time, INTERVAL 7 hour)) AS completed_date,
+    DATE(COALESCE(TIMESTAMP_ADD(a.completed_time, INTERVAL 7 hour), f.created_ts)) AS completed_date,
     a.department_code AS pic_department,
     a.order_id,
     a.customer_id,
