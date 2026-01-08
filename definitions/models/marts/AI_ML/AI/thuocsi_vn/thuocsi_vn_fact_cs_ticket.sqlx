@@ -19,7 +19,7 @@ SELECT
     a.customer_id,
     a.source,
     b.reason AS reason_category,
-    a.reason_internal AS sub_reason_category,
+    IF(JSON_VALUE(a.extra_props, '$.scope') = "INTERNAL", JSON_VALUE(a.extra_props, '$.notes.0'), a.reason_internal) AS sub_reason_category,
     a.cause,
     a.type AS issue_type,
     a.status,
