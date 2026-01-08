@@ -94,7 +94,7 @@ WITH
             b.status,
             do.status AS delivery_status,
             a.channel AS order_channel,
-            CONCAT(c.sku_key, "_", b.fc_code) AS sku_fc_key,
+            CONCAT(c.sku_key, "_", b.fc_code) AS sku_key,
             a.sku_code,
             a.unit_price,
             a.order_quantity,
@@ -142,7 +142,7 @@ agg_sale_order_item_sort AS (
 )
 
 SELECT
-  *,
+  * EXCEPT(total_qty, total_amt, total_sku),
   (10 * SAFE_DIVIDE(SUM(reserved_quantity) OVER (PARTITION BY sale_order_code), total_qty))
       + (60 * SAFE_DIVIDE(SUM(reserved_amount) OVER (PARTITION BY sale_order_code), total_amt))
       + (30 * LEAST(SAFE_DIVIDE(SUM(no_reserved_skus) OVER (PARTITION BY sale_order_code), total_sku), 1))
