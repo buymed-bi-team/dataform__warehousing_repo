@@ -24,7 +24,7 @@ SELECT
     a.type AS issue_type,
     a.status,
     CAST(JSON_VALUE(a.extra_props, '$.seller_id') AS integer) AS seller_id,
-    JSON_VALUE(a.extra_props, '$.notes.0') AS notes,
+    -- JSON_VALUE(a.extra_props, '$.notes.0') AS notes,
     a.department_code,
     SAFE_CAST(JSON_VALUE(a.extra_props, '$.product_id') AS INT64) AS product_id,
     JSON_VALUE(a.extra_props, '$.sku') AS sku,
