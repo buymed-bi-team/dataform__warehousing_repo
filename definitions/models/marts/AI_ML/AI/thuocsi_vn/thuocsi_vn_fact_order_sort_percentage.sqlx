@@ -148,5 +148,5 @@ SELECT
       + (30 * LEAST(SAFE_DIVIDE(SUM(no_reserved_skus) OVER (PARTITION BY sale_order_code), total_sku), 1))
   AS actual_sort_percentage_full_order,
   IF(delivery_status NOT IN ("DELIVERING", "DELIVERED", "COMPLETED") OR delivery_status IS NULL, expected_sort - actual_sort, 0) AS potential_sort,
-  IF(delivery_status IN ("DELIVERING", "DELIVERED", "COMPLETED"), expected_sort - actual_sort, 0) AS unFF_sort
+  IF(delivery_status IN ("DELIVERING", "DELIVERED", "COMPLETED"), expected_sort - actual_sort, 0) AS unfulfill_sort
 FROM agg_sale_order_item_sort
