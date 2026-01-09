@@ -94,6 +94,7 @@ WITH
             b.status,
             do.status AS delivery_status,
             a.channel AS order_channel,
+            b.fc_code,
             CONCAT(c.sku_key, "_", b.fc_code) AS sku_key,
             a.sku_code,
             a.unit_price,
