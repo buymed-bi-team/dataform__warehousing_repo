@@ -3,6 +3,7 @@ config {
     description: `PIC: huyen.ngo; model_type: Table ;schedule: At minute 10 every hour.Circa OS Transaction order`,
     tags: ["custom_1h_past10"],
     name: "cos_fact_order_old",
+    disabled: true,
     columns: {
         order_id: "NonNull |" + docs.order_id
        
