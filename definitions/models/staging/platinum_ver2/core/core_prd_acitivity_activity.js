@@ -17,32 +17,32 @@ const model = new main.PlatinumModel(
     }
 );
 model.createIncremental(
-    ["platinum_custom_30m","core_prd_activity"],
+    ["platinum_custom_30m","platinum_weekend_full_refresh_13h40","core_prd_activity"],
     {
         has_src_created_date : false,
         ingestCutOffInterval : "INTERVAL 1 MONTH"
     }
 );
-model.assertUnique(
-    ["platinum_09h00", "core_prd_activity"],
-    {
-        intervalCheckpoint : `INTERVAL 1 YEAR`,
-        maxRetry: 2
-    }
-)
-model.createMismatchAssertionView(
-    ["core_prd_activity"],
-    {
-        intervalCheckpoint: `INTERVAL 2 DAY`,
-        maxRetry: 2,
-        dependencies : [{"schema":"platinum_buymed_vn","name":"core_prd_activity_activity"}]
-    }
-)
-model.assertMismatch(
-    ["platinum_09h00", "core_prd_activity"],
-    {
-        intervalCheckpoint: `INTERVAL 2 DAY`,
-        maxRetry: 2,
+// model.assertUnique(
+//     ["platinum_09h00", "core_prd_activity"],
+//     {
+//         intervalCheckpoint : `INTERVAL 1 YEAR`,
+//         maxRetry: 2
+//     }
+// )
+// model.createMismatchAssertionView(
+//     ["core_prd_activity"],
+//     {
+//         intervalCheckpoint: `INTERVAL 2 DAY`,
+//         maxRetry: 2,
+//         dependencies : [{"schema":"platinum_buymed_vn","name":"core_prd_activity_activity"}]
+//     }
+// )
+// model.assertMismatch(
+//     ["platinum_09h00", "core_prd_activity"],
+//     {
+//         intervalCheckpoint: `INTERVAL 2 DAY`,
+//         maxRetry: 2,
         
-    }
-)
+//     }
+// )

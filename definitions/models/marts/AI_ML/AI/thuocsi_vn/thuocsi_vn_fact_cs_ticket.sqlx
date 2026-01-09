@@ -1,0 +1,55 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `Customer Service Ticket in the Vietnam marketplace.`,
+    tags: ['AI_THUOCSI_VN']
+}
+
+SELECT
+    a.ticket_id,
+    a.code AS ticket_code,
+    JSON_VALUE(a.extra_props, '$.parent_ticket_code') AS parent_ticket_code,
+    DATE(TIMESTAMP_ADD(a.created_time, INTERVAL 7 hour)) AS created_date,
+    TIMESTAMP_ADD(a.created_time, INTERVAL 7 hour) AS created_ts,
+    TIMESTAMP_ADD(a.due_date, INTERVAL 7 hour) AS due_ts,
+    COALESCE(TIMESTAMP_ADD(a.completed_time, INTERVAL 7 hour), f.created_ts) AS completed_ts,
+    DATE(COALESCE(TIMESTAMP_ADD(a.completed_time, INTERVAL 7 hour), f.created_ts)) AS completed_date,
+    a.department_code AS pic_department,
+    a.order_id,
+    a.customer_id,
+    a.source,
+    b.reason AS reason_category,
+    IF(JSON_VALUE(a.extra_props, '$.scope') = "INTERNAL", JSON_VALUE(a.extra_props, '$.notes.0'), a.reason_internal) AS sub_reason_category,
+    a.cause,
+    a.type AS issue_type,
+    a.status,
+    CAST(JSON_VALUE(a.extra_props, '$.seller_id') AS integer) AS seller_id,
+    -- JSON_VALUE(a.extra_props, '$.notes.0') AS notes,
+    a.department_code,
+    SAFE_CAST(JSON_VALUE(a.extra_props, '$.product_id') AS INT64) AS product_id,
+    JSON_VALUE(a.extra_props, '$.sku') AS sku,
+    COALESCE(JSON_VALUE(a.extra_props, '$.scope'), "SUPPORT_CUSTOMER") || "_TICKET" AS ticket_type,
+FROM platinum_buymed_vn.marketplace_prd_ticket_ticket AS a
+    LEFT JOIN (
+        SELECT
+            code as reason_code,
+            name as reason,
+            ticket_type,
+            status,
+            department_code
+        FROM platinum_buymed_vn.marketplace_prd_ticket_reason_setting
+    ) AS b ON COALESCE(JSON_VALUE(a.reason_codes, '$[0]'),JSON_VALUE(a.extra_props, '$.tags[0]')) = b.reason_code
+    LEFT JOIN (
+        SELECT
+            f.ticket_id,
+            REGEXP_REPLACE(SPLIT(f.content, "->")[SAFE_OFFSET(1)], " STATUS_", "") AS status,
+            MAX(TIMESTAMP_ADD(f.created_time, INTERVAL 7 HOUR)) AS created_ts
+        FROM platinum_buymed_vn.marketplace_prd_ticket_ticket_feedback AS f
+        WHERE f.created_date >= "2025-01-01"
+            AND type = 'LOG'
+            AND LOWER(content) LIKE '%status%'
+        GROUP BY ALL
+    ) AS f ON f.ticket_id = a.ticket_id AND f.status = "DONE"
+WHERE 1=1
+    AND created_date >= "2025-01-01"
+    AND COALESCE(JSON_VALUE(a.extra_props, '$.scope'), "SUPPORT_CUSTOMER") <> "DRIVER"

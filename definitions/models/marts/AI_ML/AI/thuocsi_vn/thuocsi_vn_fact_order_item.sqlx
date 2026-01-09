@@ -14,6 +14,7 @@ WITH
             , DATETIME(created_time, "+7") AS created_time
             , DATETIME(a.delivered_time, "+7") AS delivered_time
             , order_id
+            , sale_order_code
             , customer_id
             , price AS gmv
             , status
@@ -43,6 +44,7 @@ WITH
             , DATETIME(created_time, "+7") AS created_time
             , DATETIME(a.delivered_time, "+7") AS delivered_time
             , order_id
+            , sale_order_code
             , 1000000 + receiver_id
             , total_amount
             -- , IF(status = 'CANCELLED','CANCEL', status) AS status
@@ -96,6 +98,7 @@ WITH
             , DATETIME(a.created_time, "+7") AS created_time
             , o.delivered_time
             , a.order_id
+            , sale_order_code
             , a.product_id
             , CONCAT(a.product_id, "_", a.seller_code, "_", o.warehouse_code) AS sku_key
             -- , a.price AS unit_price
@@ -127,6 +130,7 @@ WITH
             , DATETIME(a.created_time, "+7") AS created_time
             , o.delivered_time
             , a.order_id
+            , sale_order_code
             , a.product_id
             , CONCAT(a.product_id, "_", a.seller_code, "_", o.warehouse_code) AS sku_key
             -- , a.price
