@@ -17,17 +17,4 @@ Select b.*
       ,sum(c.base_quantity) as base_quantity
 from ${source.ref}.cos_return_completed b
 left join ${source.circa_os}.order_return_order_item c on b.id = c.return_order_id
-where pos_code not in ('POS0140','POS0184')
-group by all
-union all 
-Select b.*
-      ,c.product_id
-      ,c.unit
-      ,'' as sku_code
-      ,c.lot_date
-      ,sum(c.quantity) as quantity
-      ,sum(base_quantity) as base_quantity
-from ${source.ref}.cos_return_completed b
-left join ${source.circa}.order_order_item c on b.id = c.order_id
-where pos_code in ('POS0140','POS0184')
 group by all
