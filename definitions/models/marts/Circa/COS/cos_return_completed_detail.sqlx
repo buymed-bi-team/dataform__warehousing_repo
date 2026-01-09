@@ -1,0 +1,20 @@
+config {
+    type: "table",
+    description: `PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every 2 hours`,
+    tags: ["custom_1h_past15"],
+    name: "cos_return_completed_detail",
+    bigquery: {
+        partitionBy: "date(created_at)"
+    }
+}
+
+Select b.*
+      ,c.product_id
+      ,c.unit
+      ,c.sku_code
+      ,c.lot_date
+      ,sum(c.quantity) as quantity
+      ,sum(c.base_quantity) as base_quantity
+from ${source.ref}.cos_return_completed b
+left join ${source.circa_os}.order_return_order_item c on b.id = c.return_order_id
+group by all

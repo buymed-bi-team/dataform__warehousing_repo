@@ -73,15 +73,13 @@ WITH
             , oi.unit_price * oi.quantity AS total_item_amount
             , o.medicine_cutting_fee / COUNT(1) OVER(PARTITION BY oi.order_id) AS medicine_cutting_fee
             , o.discount_amount / COUNT(1) OVER(PARTITION BY oi.order_id) AS discount_amount
-            , COALESCE(oi.unit_price * rt.quantity, 0) AS total_return_amount
+            , COALESCE(oi.unit_price * oi.qty_rt, 0) AS total_return_amount
             , CONCAT(oi.client_id, "_", oi.product_id) AS product_id_key
             , o.voucher_code
             , o.is_referral
             , CONCAT(d.customer_phone, d.customer_name) AS o2o_customer_key
         FROM ${ref('gold_buymed_vn2','cos_fact_order_item')} AS oi
             LEFT JOIN fact_order AS o ON oi.order_id = o.order_id
-            LEFT JOIN ${ref('gold_buymed_vn2', 'cos_return_completed_detail')} AS rt 
-                ON oi.order_id = rt.order_id AND oi.product_id = rt.product_id AND oi.lot_date = rt.lot_date AND oi.sku_code = rt.sku_code
             LEFT JOIN buymed_circa_v2.order_delivery_info AS d ON d.order_id = o.order_id AND o.channel = "O2O"
         WHERE o.order_id IS NOT NULL
     ),

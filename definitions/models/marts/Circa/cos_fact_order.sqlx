@@ -1,0 +1,76 @@
+config {
+    type: "table",
+    description: `PIC: huyen.ngo; model_type: Table ;schedule: At minute 10 every hour.Circa OS Transaction order`,
+    tags: ["custom_1h_past10"],
+    name: "cos_fact_order",
+    columns: {
+        order_id: "NonNull |" + docs.order_id
+       
+    },
+    bigquery: {
+        partitionBy: "date(created_at)"
+    }
+}
+
+SELECT DISTINCT
+     TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
+    ,o.id AS order_id
+    ,o.pos_id
+    ,p.code AS pos_code
+    ,o.entity_id
+    ,o.code AS order_code
+    ,o.total_amount
+    ,actual_total_item_amount
+    ,o.total_item_amount
+    ,o.discount_amount
+    ,o.created_by
+    ,o.updated_by
+    ,en.name
+    ,o.status
+    ,o.note
+    ,o.type
+    ,o.source_type
+    ,delivery_type
+    ,channel
+    ,DATE(DATETIME_ADD(o.created_at, INTERVAL 7 HOUR)) AS created_date
+    ,DATETIME_ADD(o.created_at, INTERVAL 7 HOUR) AS created_at
+    ,fulfillment_status
+    ,reference_order_in_platform
+    ,o.origin_order_id
+    ,DATETIME_ADD(o.end_pick_at, INTERVAL 7 HOUR) AS end_pick_at
+    ,COALESCE(
+         DATETIME_ADD(o.completed_at, INTERVAL 7 HOUR)
+        ,DATETIME_ADD(o.updated_at, INTERVAL 7 HOUR)
+     ) AS completed_at
+    ,COALESCE(
+         DATE(DATETIME_ADD(o.completed_at, INTERVAL 7 HOUR))
+        ,DATE(DATETIME_ADD(o.updated_at, INTERVAL 7 HOUR))
+     ) AS completed_date
+    ,DATETIME_ADD(delivery_scheduled_time, INTERVAL 7 HOUR) AS delivery_scheduled_time
+    ,DATETIME_ADD(pre_order_scheduled_time, INTERVAL 7 HOUR) AS pre_order_scheduled_time
+    ,CAST(pre_order_required AS STRING) AS pre_order_required
+    ,o.medicine_cutting_fee
+    ,STRING_AGG(rt.return_codes, ',') AS return_codes
+    ,CASE
+        WHEN rt.return_codes IS NULL THEN 'NORMAL'
+        ELSE 'RETURN'
+     END AS order_type
+     ,g.gift_id
+     ,gift_item_type
+     ,gift_code
+    ,o.client_id
+FROM ${source.circa_os}.order_order o
+LEFT JOIN ${source.ref}.cos_return_completed rt ON o.code = rt.order_code
+LEFT JOIN ${source.ref}.circa_pos_profile p ON o.pos_id = p.id AND o.client_id = p.client_id
+LEFT JOIN (SELECT * FROM ${source.circa_os}.order_order_gift
+      QUALIFY ROW_NUMBER() OVER (PARTITION BY order_code, gift_id,gift_code, pos_id ORDER BY created_at DESC) = 1) g ON o.code = g.order_code
+LEFT JOIN ${source.circa_os}.entity_entity en ON o.updated_by = en.id
+WHERE o.type <> 'RETURN'
+  AND o.status <> 'PENDING'
+  AND p.id IS NOT NULL
+GROUP BY ALL
+
+
+-- where status in ('COMPLETED', 'COMPLETED_SHIPPING')
+--       and client_id <> 1
+--gmv = Giá bán * sản phẩm + bất kì phí nào khác (hiện tại có phí cắt liều) - những đơn return hoặc return 1 phần  = total_item_amount + medicine_cutting_fee - return

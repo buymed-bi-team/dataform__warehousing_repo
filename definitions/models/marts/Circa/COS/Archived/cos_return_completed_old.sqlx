@@ -2,7 +2,8 @@ config {
     type: "table",
     description: `Return order của Cira| PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every 2 hours`,
     tags: ["custom_1h_past15"],
-    name: "cos_return_completed",
+    name: "cos_return_completed_old",
+    disabled: true,
     columns: {    
     },
     bigquery: {
@@ -11,6 +12,20 @@ config {
 }
 
 WITH return_completed AS (
+    SELECT o.id
+          ,o.code
+          ,SUM(total_amount) AS total_amount
+          ,SUM(total_item_amount - medicine_cutting_fee) AS gmv_return
+          ,SUM(total_amount) AS rev_return
+    FROM ${source.circa}.order_order o
+    LEFT JOIN ${source.circa}.entity_pos_profile p ON o.pos_id = p.id
+    WHERE o.pos_id IN ("b6c40920-af79-4fb0-bdc4-9965ddb885d2", "e737c882-e90c-4fd2-8a4f-ac6afd248a33")
+      AND o.type = 'RETURN'
+      AND o.status = 'COMPLETED'
+    GROUP BY ALL
+
+    UNION ALL
+
     SELECT c.id
           ,c.code
           ,SUM(total_amount) AS total_amount
@@ -20,6 +35,25 @@ WITH return_completed AS (
     LEFT JOIN ${source.ref}.circa_pos_profile p ON c.pos_id = p.id
     WHERE c.status = 'COMPLETED'
       AND p.id IS NOT NULL
+    GROUP BY ALL
+)
+,cte_fs AS (
+    SELECT DISTINCT o.id AS order_id
+          ,DATETIME_ADD(o.created_at, INTERVAL 7 HOUR) AS created_at
+          ,o.pos_id
+          ,p.code AS pos_code
+          ,o.code AS order_code
+          ,o.total_amount
+          ,CAST(return_id AS STRING) AS return_codes
+          ,o.total_item_amount
+          ,o.medicine_cutting_fee
+          ,o.discount_amount
+          ,1 AS client_id
+    FROM ${source.circa}.order_order o
+    LEFT JOIN UNNEST(JSON_VALUE_ARRAY(order_return_codes)) AS return_id
+    LEFT JOIN ${source.circa}.entity_pos_profile p ON o.pos_id = p.id
+    WHERE pos_id IN ("b6c40920-af79-4fb0-bdc4-9965ddb885d2", "e737c882-e90c-4fd2-8a4f-ac6afd248a33")
+      AND o.type <> 'RETURN'
     GROUP BY ALL
 )
 ,cte_os AS (
@@ -43,8 +77,22 @@ WITH return_completed AS (
       AND rt.code IS NOT NULL
     GROUP BY ALL
 )
-          SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
-          ,o.*
+,_all AS (
+    SELECT f.*
+          ,c.id
+          ,COALESCE(SUM(c.total_amount), 0) AS total_return_amount
+          ,SUM(gmv_return) AS gmv_return
+          ,SUM(rev_return) AS rev_return
+          ,f.total_amount - COALESCE(SUM(c.rev_return), 0) AS rev_exclude_return
+          ,(f.total_item_amount + f.medicine_cutting_fee - gmv_return) AS gmv_exclude_return
+    FROM cte_fs f
+    LEFT JOIN return_completed c ON f.return_codes = c.code
+    WHERE f.return_codes IS NOT NULL
+    GROUP BY ALL
+
+    UNION ALL
+
+    SELECT o.*
           ,c.id
           ,COALESCE(SUM(c.total_amount), 0) AS total_return_amount
           ,SUM(gmv_return) AS gmv_return
@@ -55,6 +103,9 @@ WITH return_completed AS (
     LEFT JOIN return_completed c ON o.return_codes = c.code
     WHERE c.code IS NOT NULL
     GROUP BY ALL
-
+)
+SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
+      ,*
+FROM _all
 
 -- where order_code = 'DHC00255137'
