@@ -129,15 +129,15 @@ agg_sale_order_item_sort AS (
       COALESCE(10 * SAFE_DIVIDE(order_quantity, NULLIF(total_qty, 0)), 0)
           + COALESCE(60 * SAFE_DIVIDE(order_amount, NULLIF(total_amt, 0)), 0)
           + COALESCE(30 * SAFE_DIVIDE(1, NULLIF(total_sku, 0)), 0)
-      AS expected_sort,
+      AS expected_sort_percentage,
       COALESCE(10 * SAFE_DIVIDE(reserved_quantity, NULLIF(total_qty, 0)), 0)
           + COALESCE(60 * SAFE_DIVIDE(reserved_amount, NULLIF(total_amt, 0)), 0)
           + COALESCE(30 * SAFE_DIVIDE(no_reserved_skus, NULLIF(total_sku, 0)), 0)
-      AS actual_sort,
+      AS actual_sort_percentage,
       COALESCE(10 * SAFE_DIVIDE(first_reserved_quantity, NULLIF(total_qty, 0)), 0)
           + COALESCE(60 * SAFE_DIVIDE(first_reserved_amount, NULLIF(total_amt, 0)), 0)
           + COALESCE(30 * SAFE_DIVIDE(no_first_reserved_skus, NULLIF(total_sku, 0)), 0)
-      AS actual_sort_first_reserved
+      AS actual_sort_percentage_first_reserved
   FROM agg_sale_order_item
 )
 
@@ -147,6 +147,6 @@ SELECT
       + (60 * SAFE_DIVIDE(SUM(reserved_amount) OVER (PARTITION BY sale_order_code), total_amt))
       + (30 * LEAST(SAFE_DIVIDE(SUM(no_reserved_skus) OVER (PARTITION BY sale_order_code), total_sku), 1))
   AS actual_sort_percentage_full_order,
-  IF(delivery_status NOT IN ("DELIVERING", "DELIVERED", "COMPLETED") OR delivery_status IS NULL, expected_sort - actual_sort, 0) AS potential_sort,
-  IF(delivery_status IN ("DELIVERING", "DELIVERED", "COMPLETED"), expected_sort - actual_sort, 0) AS unfulfill_sort
+  IF(delivery_status NOT IN ("DELIVERING", "DELIVERED", "COMPLETED") OR delivery_status IS NULL, expected_sort_percentage - actual_sort_percentage, 0) AS potential_sort_percentage,
+  IF(delivery_status IN ("DELIVERING", "DELIVERED", "COMPLETED"), expected_sort_percentage - actual_sort_percentage, 0) AS unfulfill_sort_percentage
 FROM agg_sale_order_item_sort
