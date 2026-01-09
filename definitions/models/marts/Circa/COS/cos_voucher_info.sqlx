@@ -54,7 +54,7 @@ WITH t AS (
         ,COALESCE(e.phone_number, gift_for_customer_phone)                      AS customer_phone
         ,COALESCE(e.name, gift_for_customer_name)                               AS customer_name
         ,voucher_created_at 
-        ,DATETIME_ADD(ov.created_at, INTERVAL 7 HOUR)                           AS date_used
+        ,DATE(DATETIME_ADD(ov.created_at, INTERVAL 7 HOUR))                     AS date_used
         ,CASE  
             WHEN ov.created_at IS NOT NULL THEN "Yes" 
             ELSE "No" 
