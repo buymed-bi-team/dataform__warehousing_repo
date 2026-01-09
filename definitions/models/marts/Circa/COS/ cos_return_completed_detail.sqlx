@@ -18,6 +18,7 @@ config {
 
 Select b.*
       ,c.product_id
+      ,c.unit
       ,c.sku_code
       ,c.lot_date
       ,sum(c.quantity) as quantity
@@ -29,6 +30,7 @@ group by all
 union all 
 Select b.*
       ,c.product_id
+      ,c.unit
       ,'' as sku_code
       ,c.lot_date
       ,sum(c.quantity) as quantity
