@@ -11,63 +11,63 @@ config {
         partitionBy: "date(created_at)"
     }
 }
-WITH cte_fs AS (
-SELECT
-     TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
-    ,o.id AS order_id
-    ,o.pos_id
-    ,p.code AS pos_code
-    ,o.entity_id
-    ,o.code AS order_code
-    ,o.total_amount
-    ,actual_total_item_amount
-    ,o.total_item_amount
-    ,o.discount_amount
-    ,o.created_by
-    ,o.updated_by
-    ,en.name
-    ,o.status
-    ,o.note
-    ,o.type
-    ,o.source_type
-    ,delivery_type
-    ,channel
-    ,DATE(DATETIME_ADD(o.created_at, INTERVAL 7 HOUR)) AS created_date
-    ,DATETIME_ADD(o.created_at, INTERVAL 7 HOUR) AS created_at
-    ,fulfillment_status
-    ,CAST(NULL AS STRING) AS reference_order_in_platform
-    ,CAST(NULL AS STRING) AS origin_order_id
-    ,CAST(NULL AS TIMESTAMP) AS end_pick_at
-    ,DATETIME_ADD(completed_at, INTERVAL 7 HOUR) AS completed_at
-    ,DATE(DATETIME_ADD(completed_at, INTERVAL 7 HOUR)) AS completed_date
-    ,CAST(NULL AS TIMESTAMP) AS delivery_scheduled_time
-    ,CAST(NULL AS TIMESTAMP) AS pre_order_scheduled_time
-    ,CAST(NULL AS STRING) AS pre_order_required
-    ,o.medicine_cutting_fee
-    ,STRING_AGG(rt.return_codes) AS return_codes
-    ,CASE
-        WHEN rt.return_codes IS NULL THEN 'NORMAL'
-        ELSE 'RETURN'
-     END AS order_type
-     ,g.gift_id
-     ,'' AS gift_item_type
-     ,g.gift_code
-    ,1 AS client_id
-FROM ${source.circa}.order_order o
-LEFT JOIN ${source.ref}.cos_return_completed rt ON o.code = rt.order_code
-LEFT JOIN ${source.circa}.entity_pos_profile p ON o.pos_id = p.id
-LEFT JOIN (SELECT * FROM ${source.circa}.order_order_gift
-      QUALIFY ROW_NUMBER() OVER (PARTITION BY order_code, gift_id, pos_id ORDER BY created_at DESC) = 1) g ON o.code = g.order_code
-LEFT JOIN ${source.circa}.entity_entity en ON o.updated_by = en.id
-WHERE o.pos_id IN (
-        'b6c40920-af79-4fb0-bdc4-9965ddb885d2'
-       ,'e737c882-e90c-4fd2-8a4f-ac6afd248a33'
-      )
-  AND o.type <> 'RETURN'
-GROUP BY ALL
-)
-,cte_os AS
-(
+-- WITH cte_fs AS (
+-- SELECT
+--      TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
+--     ,o.id AS order_id
+--     ,o.pos_id
+--     ,p.code AS pos_code
+--     ,o.entity_id
+--     ,o.code AS order_code
+--     ,o.total_amount
+--     ,actual_total_item_amount
+--     ,o.total_item_amount
+--     ,o.discount_amount
+--     ,o.created_by
+--     ,o.updated_by
+--     ,en.name
+--     ,o.status
+--     ,o.note
+--     ,o.type
+--     ,o.source_type
+--     ,delivery_type
+--     ,channel
+--     ,DATE(DATETIME_ADD(o.created_at, INTERVAL 7 HOUR)) AS created_date
+--     ,DATETIME_ADD(o.created_at, INTERVAL 7 HOUR) AS created_at
+--     ,fulfillment_status
+--     ,CAST(NULL AS STRING) AS reference_order_in_platform
+--     ,CAST(NULL AS STRING) AS origin_order_id
+--     ,CAST(NULL AS TIMESTAMP) AS end_pick_at
+--     ,DATETIME_ADD(completed_at, INTERVAL 7 HOUR) AS completed_at
+--     ,DATE(DATETIME_ADD(completed_at, INTERVAL 7 HOUR)) AS completed_date
+--     ,CAST(NULL AS TIMESTAMP) AS delivery_scheduled_time
+--     ,CAST(NULL AS TIMESTAMP) AS pre_order_scheduled_time
+--     ,CAST(NULL AS STRING) AS pre_order_required
+--     ,o.medicine_cutting_fee
+--     ,STRING_AGG(rt.return_codes) AS return_codes
+--     ,CASE
+--         WHEN rt.return_codes IS NULL THEN 'NORMAL'
+--         ELSE 'RETURN'
+--      END AS order_type
+--      ,g.gift_id
+--      ,'' AS gift_item_type
+--      ,g.gift_code
+--     ,1 AS client_id
+-- FROM ${source.circa}.order_order o
+-- LEFT JOIN ${source.ref}.cos_return_completed rt ON o.code = rt.order_code
+-- LEFT JOIN ${source.circa}.entity_pos_profile p ON o.pos_id = p.id
+-- LEFT JOIN (SELECT * FROM ${source.circa}.order_order_gift
+--       QUALIFY ROW_NUMBER() OVER (PARTITION BY order_code, gift_id, pos_id ORDER BY created_at DESC) = 1) g ON o.code = g.order_code
+-- LEFT JOIN ${source.circa}.entity_entity en ON o.updated_by = en.id
+-- WHERE o.pos_id IN (
+--         'b6c40920-af79-4fb0-bdc4-9965ddb885d2'
+--        ,'e737c882-e90c-4fd2-8a4f-ac6afd248a33'
+--       )
+--   AND o.type <> 'RETURN'
+-- GROUP BY ALL
+-- )
+-- ,cte_os AS
+-- (
 SELECT DISTINCT
      TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
     ,o.id AS order_id
@@ -125,15 +125,15 @@ WHERE o.type <> 'RETURN'
   AND o.status <> 'PENDING'
   AND p.id IS NOT NULL
 GROUP BY ALL
-)
+-- )
 
-SELECT *
-FROM cte_fs
+-- SELECT *
+-- FROM cte_fs
 
-UNION ALL
+-- UNION ALL
 
-SELECT *
-FROM cte_os
+-- SELECT *
+-- FROM cte_os
 
 -- where status in ('COMPLETED', 'COMPLETED_SHIPPING')
 --       and client_id <> 1
