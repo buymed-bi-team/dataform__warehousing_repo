@@ -27,4 +27,5 @@ WHERE 1=1
     -- )
     AND UPPER(a.item_name) <> "NET REVENUE"
     AND REGEXP_CONTAINS(COALESCE(a.month_scope_2, a.month_scope_1), 'AOP') = FALSE
+    AND a.date >= "2025-01-01"
 ORDER BY LPAD(a.excel_column, 2, '0'), LPAD(a.excel_index, 2, '0')
