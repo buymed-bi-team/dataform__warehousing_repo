@@ -1,5 +1,6 @@
 config {
-  type: "operations"
+  type: "operations",
+  tags: ["00h00"]
 }
 CREATE OR REPLACE ROW ACCESS POLICY
   access_high_security
