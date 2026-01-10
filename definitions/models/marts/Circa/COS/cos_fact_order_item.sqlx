@@ -106,6 +106,7 @@ WITH base_unit_selection AS (
 )
 SELECT DISTINCT
      TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
+    ,fo.order_code
     ,i.*
     ,base_unit_cost_price * convert_rate AS unit_cost_price
 FROM final i
