@@ -22,10 +22,10 @@ FROM gold_buymed_vn2.base_collector_excel_expense AS a
         WHERE REGEXP_CONTAINS(item_id, r"\.") = FALSE
     ) AS b ON b.parent_item_id = SPLIT(a.item_id, ".")[SAFE_OFFSET(0)]
 WHERE 1=1
-    AND /*(UPPER(a.item_name) = "NET REVENUE"
-        OR*/ REGEXP_CONTAINS(a.item_id, r"\.")
-    -- )
-    AND UPPER(a.item_name) <> "NET REVENUE"
+    AND (a.item_id IS NULL
+        OR REGEXP_CONTAINS(a.item_id, r"\.")
+    )
+    AND UPPER(a.item_name) NOT IN ("NET REVENUE", "SG&A DETAILS")
     AND REGEXP_CONTAINS(COALESCE(a.month_scope_2, a.month_scope_1), 'AOP') = FALSE
     AND a.date >= "2025-01-01"
 ORDER BY LPAD(a.excel_column, 2, '0'), LPAD(a.excel_index, 2, '0')
