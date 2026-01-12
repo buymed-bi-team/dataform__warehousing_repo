@@ -111,12 +111,16 @@ WITH
         product_id,
         max(case when level = 1 then unit end) as level_1_unit,
         sum(case when level = 1 then quantity end) as level_1_quantity,
+        max(case when level = 1 then is_sale end) as level_1_allowed,
         max(case when level = 2 then unit end) as level_2_unit,
         sum(case when level = 2 then quantity end) as level_2_quantity,
+        max(case when level = 2 then is_sale end) as level_2_allowed,
         max(case when level = 3 then unit end) as level_3_unit,
         sum(case when level = 3 then quantity end) as level_3_quantity,
+        max(case when level = 3 then is_sale end) as level_3_allowed,
         max(case when level = 4 then unit end) as level_4_unit,
         sum(case when level = 4 then quantity end) as level_4_quantity,
+        max(case when level = 4 then is_sale end) as level_4_allowed,
         min_by(unit, case when is_sale = true then level end) as unit_sale_allowed,
         min_by(convert_qty, case when is_sale = true then level end) as convert_qty_unit_sale_allowed
     FROM (
@@ -351,12 +355,16 @@ SELECT
 
   tb2.level_1_unit,
   tb2.level_1_quantity,
+  tb2.level_1_allowed,
   tb2.level_2_unit,
   tb2.level_2_quantity,
+  tb2.level_2_allowed,
   tb2.level_3_unit,
   tb2.level_3_quantity,
+  tb2.level_3_allowed,
   tb2.level_4_unit,
   tb2.level_4_quantity,
+  tb2.level_4_allowed,
 
   tb2.unit_sale_allowed,
   tb2.convert_qty_unit_sale_allowed,
