@@ -49,10 +49,12 @@ SELECT
     , COALESCE(deal.no_deal_valid, 0) AS no_deal_valid
     , COALESCE(gift.no_gift, 0) AS no_gift
     , CASE 
-        WHEN COALESCE(voucher.no_voucher, 0) <> 0 AND COALESCE(deal.no_deal, 0) <> 0 THEN 'voucher+deal'
-        WHEN COALESCE(voucher.no_voucher, 0) <> 0 THEN 'voucher'
-        WHEN COALESCE(deal.no_deal, 0) <> 0 THEN 'deal'
-        WHEN COALESCE(gift.no_gift, 0) <> 0 AND COALESCE(voucher.no_voucher, 0) <> 0 THEN 'voucher+gift'
+        WHEN COALESCE(voucher.no_voucher, 0) <> 0 AND COALESCE(deal.no_deal, 0) <> 0 AND COALESCE(gift.no_gift, 0) <> 0  THEN 'voucher+deal+gift'
+        WHEN COALESCE(voucher.no_voucher, 0) <> 0 AND COALESCE(deal.no_deal, 0) <> 0 AND COALESCE(gift.no_gift, 0) = 0  THEN 'voucher+deal'
+        WHEN COALESCE(gift.no_gift, 0) <> 0 AND COALESCE(voucher.no_voucher, 0) <> 0 AND COALESCE(deal.no_deal, 0) = 0 THEN 'voucher+gift'
+        WHEN COALESCE(gift.no_gift, 0) <> 0 AND COALESCE(voucher.no_voucher, 0) = 0 AND COALESCE(deal.no_deal, 0) <> 0 THEN 'gift+deal'
+        WHEN COALESCE(voucher.no_voucher, 0) <> 0 AND COALESCE(deal.no_deal, 0) = 0 AND COALESCE(gift.no_gift, 0) = 0 THEN 'voucher'
+        WHEN COALESCE(deal.no_deal, 0) <> 0  AND COALESCE(voucher.no_voucher, 0) = 0 AND COALESCE(gift.no_gift, 0) = 0 THEN 'deal' 
         WHEN COALESCE(gift.no_gift, 0) <> 0 AND COALESCE(voucher.no_voucher, 0) = 0 THEN 'gift'
         ELSE NULL
       END AS campaign_type
