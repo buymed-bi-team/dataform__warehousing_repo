@@ -22,7 +22,7 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                      
       ,JSON_VALUE(extra_props, '$.promotion_event_id') AS promotion_event_id
       ,unit
       ,unit_code
-      ,price as unit_price
+      ,price --as unit_price
       ,quantity    
       ,order_id
       ,order_code
@@ -35,7 +35,7 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                      
 FROM platinum_buymed_vn.circa_online_prd_order_order_item 
 )
 SELECT a.*
-       ,origin_price - unit_price AS discount_amount
+       ,origin_price - price AS discount_amount
        ,d.deal_code
        ,d.deal_name
        ,d.campaign_code
