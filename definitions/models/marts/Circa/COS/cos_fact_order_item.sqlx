@@ -74,7 +74,7 @@ WITH base_unit_selection AS (
     LEFT JOIN ${source.circa_os}.entity_owner eo ON po.owner_id = eo.id AND eo.client_id = o.client_id
     --LEFT JOIN base_unit cv ON cv.product_id = oi.product_id AND cv.convert_unit = oi.unit AND o.client_id = cv.client_id
     LEFT JOIN ${source.circa_os}.entity_entity e ON o.updated_by = e.id AND o.client_id = e.client_id
-    LEFT JOIN ${source.ref}.dim_promotion_event_circa d ON oi.promotion_event_code = d.deal_code AND o.client_id = d.client_id AND o.pos_id = d.pos_id
+    LEFT JOIN (SELECT DISTINCT deal_code, deal_name ,campaign_code ,campaign_name, client_id FROM ${source.ref}.dim_promotion_event_circa ) d ON oi.promotion_event_code = d.deal_code AND o.client_id = d.client_id -- AND o.pos_id = d.pos_id
     WHERE o.status NOT IN ('PENDING', 'CANCELED')
     --GROUP BY ALL
 )

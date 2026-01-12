@@ -25,7 +25,7 @@ WITH base_data AS (
 )
 ,_add_email_system AS (
     SELECT * EXCEPT(no_working_day)
-          ,CAST(no_working_day AS INT64) AS no_working_day
+          ,CAST(no_working_day AS NUMERIC) AS no_working_day
           ,CASE 
               WHEN employee_email = 'bao.doan@buymed.com' THEN 'gbaugust1996@buymed.com'
               WHEN employee_email = 'chau.le@buymed.com' THEN 'chau.leminh@buymed.com'
@@ -48,3 +48,5 @@ LEFT JOIN (
     WHERE client_id = 1
     QUALIFY ROW_NUMBER() OVER(PARTITION BY email, client_id ORDER BY updated_at DESC) = 1
 ) e ON i.email_system = e.email
+
+
