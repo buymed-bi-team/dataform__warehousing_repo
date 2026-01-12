@@ -34,14 +34,14 @@ WITH base_unit_selection AS (
 ,cte_os AS (
     SELECT DISTINCT
          COALESCE(DATE(DATETIME_ADD(o.completed_at, INTERVAL 7 HOUR)), DATE(DATETIME_ADD(o.updated_at, INTERVAL 7 HOUR))) AS completed_date
-        ,order_id
+        ,oi.order_id
         ,oi.product_id
         ,oi.sku_code
         ,al.item_ref_id
         ,CASE WHEN oi.product_id = 1 THEN oi.quantity
                     ELSE ROUND(oi.quantity * (al.base_quantity / NULLIF(SUM(al.base_quantity) OVER (PARTITION BY oi.id), 0)), 6) END AS quantity
-        ,unit
-        ,unit_price
+        ,oi.unit
+        ,oi.unit_price
         ,oi.discount_amount
         ,(oi.discount_amount + oi.unit_price) AS unit_price_before_discount
         ,oi.lot_date
@@ -60,10 +60,14 @@ WITH base_unit_selection AS (
         ,po.distributor_id
         ,e.name AS employee_name
         ,oi.order_apply_combo_id
-        ,oi.promotion_event_code
-        ,d.deal_name
-        ,d.campaign_code
-        ,d.campaign_name
+        ,CASE WHEN o.channel <> 'O2O' THEN oi.promotion_event_code
+              ELSE ol.deal_code END AS promotion_event_code
+        , CASE WHEN o.channel <> 'O2O' THEN d.deal_name
+               ELSE ol.deal_name END AS deal_name
+        ,CASE WHEN o.channel <> 'O2O' THEN d.campaign_code
+                ELSE ol.campaign_code END AS campaign_code
+        ,CASE WHEN o.channel <> 'O2O' THEN d.campaign_name
+               ELSE ol.campaign_name END AS campaign_name
         ,o.client_id
     FROM ${source.circa_os}.order_order o
     LEFT JOIN ${source.circa_os}.order_order_item oi ON o.id = oi.order_id
@@ -75,6 +79,7 @@ WITH base_unit_selection AS (
     --LEFT JOIN base_unit cv ON cv.product_id = oi.product_id AND cv.convert_unit = oi.unit AND o.client_id = cv.client_id
     LEFT JOIN ${source.circa_os}.entity_entity e ON o.updated_by = e.id AND o.client_id = e.client_id
     LEFT JOIN (SELECT DISTINCT deal_code, deal_name ,campaign_code ,campaign_name, client_id FROM ${source.ref}.dim_promotion_event_circa ) d ON oi.promotion_event_code = d.deal_code AND o.client_id = d.client_id -- AND o.pos_id = d.pos_id
+    LEFT JOIN ${source.ref}.circa_online_order_item ol ON o.reference_order_in_platform = ol.order_code AND oi.product_id = ol.product_id AND oi.unit = ol.unit --AND oi.lot_date = ol.lot_date AND oi.sku_code = ol.sku_code
     WHERE o.status NOT IN ('PENDING', 'CANCELED')
     --GROUP BY ALL
     -- lấy cột origin_price và promotion_event_id, tách thành 2 cột riêng biệt
