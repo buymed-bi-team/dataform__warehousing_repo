@@ -33,6 +33,9 @@ WITH base_data AS (
               WHEN employee_email = 'oanh.nguyenkim@buymed.com' THEN 'cc.nguyenoanh@buymed.com'
               WHEN employee_email = 'trang.vothuy@buymed.com' THEN 'VN280725-007@buymed.com'
               WHEN employee_email = 'lytuyetbang@buymed.com' THEN 'bang.ly@buymed.com'
+              WHEN employee_email = 'ly.tuyetbang@.buymed.com' THEN 'bang.ly@buymed.com'
+              WHEN employee_email = 'Huyen.huynh@buymed.com' THEN 'huyen.huynh@buymed.com'
+              WHEN employee_email = 'khavy.mx2002@gmail.com' THEN 'khavy.mx2002@buymed.com'
               ELSE employee_email 
            END AS email_system
     FROM base_data
