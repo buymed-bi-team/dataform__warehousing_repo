@@ -20,8 +20,7 @@ WITH thuosi_unit AS (
                    ,sale_allowed
                    ,purchase_allowed
     FROM ${source.circa_os}.product_retail_unit
-    WHERE sale_allowed IS TRUE
-      AND client_id = 1
+    WHERE client_id = 1
 )
 ,count_ord AS (
     SELECT DISTINCT oi.product_id
