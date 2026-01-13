@@ -37,7 +37,7 @@ SELECT DISTINCT
        --  END AS PO_item_amount
        ,b.quantity * a.unit_price                                                                                         AS PO_item_amount
        ,b.lot_date
-       ,a.product_id || "_" || lot_date || "_" || b.tax_rate || "_" || c.client_id                                        AS product_lot_date_vat_client_id
+       ,a.product_id || "_" || lot_date || "_" ||  c.client_id                                                            AS product_lot_date_vat_client_id
        ,a.sku || "_" || lot_date || "_" || b.tax_rate                                                                     AS sku_lotdate_vat
        ,il.location_type
        -- ,a.discount_amount

@@ -51,7 +51,7 @@ WITH base_unit_selection AS (
                    ELSE oi.quantity * cv.convert_rate * (al.base_quantity / NULLIF(SUM(al.base_quantity) OVER (PARTITION BY oi.id), 0)) END)
             , 6) AS base_quantity
         ,oi.tax_rate
-        ,oi.product_id || '_' || oi.lot_date || '_' || oi.tax_rate || '_' || o.client_id AS product_lot_date_vat_client_id
+        ,oi.product_id || '_' || oi.lot_date || '_'  || o.client_id AS product_lot_date_vat_client_id
         ,oi.sku_code || '_' || oi.lot_date || '_' || oi.tax_rate AS sku_lotdate_vat
         ,al.cost_price_include_tax AS base_unit_cost_price
         ,eo.name AS owner_name

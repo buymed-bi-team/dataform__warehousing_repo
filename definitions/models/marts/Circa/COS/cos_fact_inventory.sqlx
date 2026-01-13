@@ -22,7 +22,7 @@ config {
         ,doc_code
         ,a.cost_price_include_tax
         ,product_id || "_" || lot_date AS product_lot_date
-        ,product_id || "_" || lot_date || "_" || tax_rate || "_" || a.client_id AS product_lot_date_vat_client_id
+        ,product_id || "_" || lot_date || "_" || a.client_id AS product_lot_date_vat_client_id
         ,a.client_id
         ,pos_id
     FROM ${source.circa_os}.inventory_location_detail AS a

@@ -13,8 +13,8 @@ SELECT DISTINCT
            ,client_id
            ,lot_date
            ,product_id || "_" || lot_date AS product_lot_date
-           ,product_id || "_" || lot_date || "_" || "_" || client_id AS product_lot_date_client_id
-           ,type AS vat_type
+           ,product_id || "_" || lot_date || "_" || client_id AS product_lot_date_vat_client_id
+           --,type AS vat_type
            --,tax_rate
            ,DATE(TIMESTAMP_ADD(expired_date, INTERVAL 7 HOUR)) AS expired_date
            ,DATE_DIFF(DATE(TIMESTAMP_ADD(expired_date, INTERVAL 7 HOUR)) , CURRENT_DATE("+7"), DAY) AS gap
