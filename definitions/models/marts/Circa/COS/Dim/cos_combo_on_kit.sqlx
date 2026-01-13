@@ -22,7 +22,7 @@ WITH base_data AS (
               SELECT DISTINCT CAST(combo_code AS INT64) 
               FROM ${source.ref}.dim_combo_product
               WHERE combo_name LIKE '%On Kit%'
-                AND CAST(combo_code AS INT64) NOT IN (999900193, 999900154)
+                --AND CAST(combo_code AS INT64) NOT IN (999900193, 999900154)
           )
       AND o.order_id IN (
               SELECT DISTINCT order_id 
