@@ -45,7 +45,7 @@ WITH
         WHERE 1=1
             AND o.completed_date IS NOT NULL
             -- AND o.completed_date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 1 MONTH)
-            -- AND o.status IN ('COMPLETED', 'COMPLETED_SHIPPING')
+            AND o.status IN ('COMPLETED', 'COMPLETED_SHIPPING')
             AND o.status <> "CANCELED"
             AND o.pos_id <> "0afdb831-b60d-4254-8822-df13e39c90e7"
     ),
@@ -78,6 +78,7 @@ WITH
             , o.voucher_code
             , o.is_referral
             , CONCAT(d.customer_phone, d.customer_name) AS o2o_customer_key
+            -- , IF(order_status IN ("COMPLETED", "COMPLETE_SHIPPING"), CONCAT(d.customer_phone, d.customer_name), NULL) AS o2o_customer_key
         FROM ${ref('gold_buymed_vn2','cos_fact_order_item')} AS oi
             LEFT JOIN fact_order AS o ON oi.order_id = o.order_id
             LEFT JOIN buymed_circa_v2.order_delivery_info AS d ON d.order_id = o.order_id AND o.channel = "O2O"
