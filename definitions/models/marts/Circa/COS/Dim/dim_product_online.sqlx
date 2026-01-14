@@ -1,0 +1,32 @@
+config {
+    type: "table",
+    description: `Dim product | PIC: huyen.ngo; model_type: Table ;schedule: custom_1h_past15`,
+    tags: ["custom_1h_past15"],
+    name: "dim_product_online",
+    columns: {/*
+*/
+        
+    }
+}
+
+
+SELECT 
+      TIMESTAMP_ADd(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
+     ,product_id 
+     , name AS product_name
+     ,category_codes
+     ,DATETIME_ADD(created_time, INTERVAL 7 HOUR) AS created_time
+     ,DATE(DATETIME_ADD(created_time, INTERVAL 7 HOUR)) AS created_date
+     ,efficacy_codes
+     ,is_prescription
+     ,DATETIME_ADD(last_updated_time, INTERVAL 7 HOUR) AS last_updated_time
+     ,DATE(DATETIME_ADD(platinum_refresh, INTERVAL 7 HOUR)) AS platinum_refresh
+     ,manufacturer_code
+     ,origin
+     ,seller_sub_category_code
+     ,unit
+     ,status
+     ,updated_by_id
+     ,updated_by_name
+     ,DATETIME_ADD(synced_at, INTERVAL 7 HOUR) AS synced_at
+FROM ${source.platinum}.circa_online_prd_product_product_filter
