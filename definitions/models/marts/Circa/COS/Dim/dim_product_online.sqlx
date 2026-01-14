@@ -11,7 +11,7 @@ config {
 
 
 SELECT 
-      TIMESTAMP_ADd(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)
+      TIMESTAMP_ADd(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
      ,product_id 
      , name AS product_name
      ,category_codes
