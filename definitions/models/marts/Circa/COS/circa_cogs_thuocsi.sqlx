@@ -17,6 +17,7 @@ SELECT
             , order_id
             , seller_class
             , CONCAT(product_id, "_", seller_code, "_", fc_code) AS sku_key 
+            , sub_sku
             , product_id
             , SUM(outbound_quantity * (price - COALESCE(rebate,0))) AS profit
             , SUM(outbound_quantity * rebate) AS cogs_after_rebate
@@ -30,6 +31,7 @@ SELECT
             , a.order_id
             , seller_class
             , CONCAT(a.product_id, "_", a.seller_code, "_", a.fc_code) AS sku_key
+            , sku
             , a.product_id
             , (a.buyer_fee + (a.price - a.buyer_fee) * (fulfillment_rate + listing_rate + 0.01)) * outbound_quantity AS profit
             , (a.price - a.buyer_fee) * (1 - fulfillment_rate - listing_rate - 0.01) * outbound_quantity AS cogs_after_rebate
