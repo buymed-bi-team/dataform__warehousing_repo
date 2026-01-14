@@ -18,6 +18,7 @@ SELECT
     , a.urban_rural
     , a.gross_profit AS gross_profit
     , a.gross_profit - COALESCE(o.total_discount, 0) AS net_profit
+    , COALESCE(o.total_discount, 0) AS total_discount
     , a.total_price AS total_price
     , a.cogs_after_rebate AS cogs_after_rebate
 FROM (
