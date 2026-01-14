@@ -1,0 +1,39 @@
+
+config {
+    type: "table",
+    description: `Circa OS Transaction order item detail 
+                  PIC: huyen.ngo; 
+                  model_type: Table ;
+                  schedule: At minute 20 every hour`,
+    tags:  ["custom_1h_past20"],
+    name: "circa_cogs_thuocsi",
+    columns: {
+    
+    }
+}
+
+SELECT
+            created_date
+            , order_id
+            , seller_class
+            , CONCAT(product_id, "_", seller_code, "_", fc_code) AS sku_key 
+            , product_id
+            , SUM(outbound_quantity * (price - COALESCE(rebate,0))) AS profit
+            , SUM(outbound_quantity * rebate) AS cogs_after_rebate
+            , SUM(outbound_quantity * price) AS total_price
+        FROM gold_buymed_vn2.fact_order_item_margin_internal_outbound
+        WHERE created_date >= "2025-01-01"
+        GROUP BY ALL
+        UNION ALL
+        SELECT
+            a.created_date
+            , a.order_id
+            , seller_class
+            , CONCAT(a.product_id, "_", a.seller_code, "_", a.fc_code) AS sku_key
+            , a.product_id
+            , (a.buyer_fee + (a.price - a.buyer_fee) * (fulfillment_rate + listing_rate + 0.01)) * outbound_quantity AS profit
+            , (a.price - a.buyer_fee) * (1 - fulfillment_rate - listing_rate - 0.01) * outbound_quantity AS cogs_after_rebate
+            , a.price * outbound_quantity AS total_price
+        FROM gold_buymed_vn2.fact_order_item_margin_seller_outbound AS a
+        WHERE 1=1 
+            AND a.created_date >= "2025-01-01"
