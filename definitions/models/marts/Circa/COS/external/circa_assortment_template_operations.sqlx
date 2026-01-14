@@ -1,0 +1,44 @@
+config {
+    name: "circa_assortment_template_operations",
+    type: "operations",
+    description: "PIC: minh.luu & giau.vo",
+    tags: ["00h00"]
+}
+
+CREATE OR REPLACE EXTERNAL TABLE
+  buymed_external.circa_assortment_template_onkit( 
+    name STRING,
+    notes STRING,
+    cluster_code STRING,
+    product_id INT64,
+    product_name STRING,
+    status_product_in_cluster STRING
+  ) OPTIONS ( format = 'GOOGLE_SHEETS',
+    uris = ['https://docs.google.com/spreadsheets/d/1UsWJ6NURx1bkojViMUv6jtQPzu9TnQVC8QT1bAT6-eo/edit?usp=sharing'],
+    sheet_range = 'CIRCA_ONKIT',
+    skip_leading_rows = 1);
+CREATE OR REPLACE TABLE 
+  ${source.gold}.circa_assortment_template_onkit
+AS (
+  SELECT *
+  FROM buymed_external.circa_assortment_template_onkit
+);
+
+CREATE OR REPLACE EXTERNAL TABLE
+  buymed_external.circa_assortment_template_oem( 
+    name STRING,
+    notes STRING,
+    cluster_code STRING,
+    product_id INT64,
+    product_name STRING,
+    status_product_in_cluster STRING
+  ) OPTIONS ( format = 'GOOGLE_SHEETS',
+    uris = ['https://docs.google.com/spreadsheets/d/1UsWJ6NURx1bkojViMUv6jtQPzu9TnQVC8QT1bAT6-eo/edit?usp=sharing'],
+    sheet_range = 'CIRCA_OEM',
+    skip_leading_rows = 1);
+CREATE OR REPLACE TABLE 
+  ${source.gold}.circa_assortment_template_oem
+AS (
+  SELECT *
+  FROM buymed_external.circa_assortment_template_oem
+);
