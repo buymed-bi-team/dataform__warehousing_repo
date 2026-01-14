@@ -11,14 +11,18 @@ SELECT
     , p.name AS pos_name
     , b.net_revenue
     , a.target_rev_vat_in AS target_revenue
+    , b.transactions
+    , a.target_transactions
+    , b.active_customer
+    , a.target_active_customers
 FROM ${ref("gold_buymed_vn2", "target_sales")} AS a
     LEFT JOIN (
         SELECT
             DATE_TRUNC(o.completed_date, MONTH) AS year_month
             , o.pos_code
             , SUM(o.total_amount - COALESCE(r.rev_return,0)) AS net_revenue
-            -- , COUNT(DISTINCT o.order_id) AS transactions
-            -- , COUNT(DISTINCT o.customer_id) AS active_customer
+            , COUNT(DISTINCT o.order_id) AS transactions
+            , COUNT(DISTINCT o.entity_id) AS active_customer
             -- , 
         FROM ${ref('gold_buymed_vn2','cos_fact_order')} AS o
             LEFT JOIN ${ref('gold_buymed_vn2','cos_return_completed')} AS r ON o.order_code = r.order_code
@@ -27,4 +31,4 @@ FROM ${ref("gold_buymed_vn2", "target_sales")} AS a
         GROUP BY ALL
     ) AS b ON a.pos_code = b.pos_code AND a.year_month = b.year_month
     LEFT JOIN buymed_circa_v2.entity_pos_profile AS p ON a.pos_code = p.code
-WHERE a.year_month = "2025-12-01"
+WHERE a.year_month >= "2025-12-01"
