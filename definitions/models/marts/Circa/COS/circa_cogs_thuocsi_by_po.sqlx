@@ -1,0 +1,66 @@
+config {
+    type: "table",
+    description: `circa_cogs_thuocsi_by_po
+                  PIC: huyen.ngo; 
+                  model_type: Table ;
+                  schedule: At minute 20 every hour`,
+    tags:  ["custom_1h_past23"],
+    name: "circa_cogs_thuocsi_by_po",
+    columns: {
+    
+    }
+}
+
+WITH base_unit_selection AS (
+    SELECT DISTINCT
+         product_id
+        ,client_id
+        ,base_unit
+        ,ROW_NUMBER() OVER (PARTITION BY product_id, client_id ORDER BY COUNT(*) DESC) AS rn
+    FROM lakehouse-prod-394907.gold_buymed_vn2.cos_product_convert_base_unit
+    GROUP BY product_id, client_id, base_unit
+)
+,base_unit AS (
+    SELECT a.*
+    FROM lakehouse-prod-394907.gold_buymed_vn2.cos_product_convert_base_unit a
+    LEFT JOIN base_unit_selection b 
+        ON a.product_id = b.product_id
+        AND a.client_id = b.client_id
+        AND a.base_unit = b.base_unit
+    WHERE b.rn = 1
+)
+,t AS (
+    SELECT DISTINCT o.po_code
+                   ,o.client_id
+                   ,o.po_status
+                   ,o.order_id
+                   ,i.product_id
+                   ,i.unit
+                   ,i.sku_code
+                   ,SUM(quantity) AS qty
+                   ,unit_price 
+    FROM `gold_buymed_vn2.cos_purchase_order_item` i
+    LEFT JOIN gold_buymed_vn2.cos_purchase_order o 
+        ON o.po_id = i.po_id
+    WHERE fulfillment_method = 'SO_THUOCSI'
+          AND o.client_id = 1
+          AND o.po_status NOT IN ('SEPERATED','PENDING', 'WAIT_FOR_ORDER','CANCELED')
+          AND i.unit_price <> 0
+    GROUP BY ALL
+)
+
+SELECT t.*
+      ,convert_rate
+      ,base_unit
+      ,(cogs_after_rebate / outbound_quantity) / convert_rate AS cogs_base_unit
+      ,p.* EXCEPT(product_id)
+FROM t
+LEFT JOIN `gold_buymed_vn2.circa_cogs_thuocsi` p 
+    ON t.order_id = CAST(p.order_id AS STRING) 
+    AND t.product_id = p.product_id 
+    AND t.unit_price = p.price
+LEFT JOIN base_unit cv  
+    ON t.client_id = cv.client_id 
+    AND t.product_id = cv.product_id 
+    AND t.unit = cv.convert_unit
+-- WHERE t.code = 'PO00064214' AND t.product_id = 15630
