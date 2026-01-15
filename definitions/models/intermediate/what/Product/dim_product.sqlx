@@ -227,7 +227,7 @@ WITH
   , atc4 AS (
       SELECT
           SAFE_CAST(code AS INT64) AS product_id
-          , NULLIF(value, "NAN") AS atc_4
+          , NULLIF(UPPER(value), "NAN") AS atc_4
       FROM collector.data_prd
       WHERE DATE(submit_at) >= "2025-08-13"
           AND submit_id >= 5623
@@ -239,7 +239,7 @@ WITH
   , atc3 AS (
       SELECT
           SAFE_CAST(code AS INT64) AS product_id
-          , NULLIF(value, "NAN") AS atc_3
+          , NULLIF(UPPER(value), "NAN") AS atc_3
       FROM collector.data_prd
       WHERE DATE(submit_at) >= "2025-08-13"
           AND submit_id >= 5624
@@ -251,7 +251,7 @@ WITH
   , sub_brand AS (
       SELECT
           SAFE_CAST(code AS INT64) AS product_id
-          , INITCAP(NULLIF(value, "NAN")) AS sub_brand
+          , INITCAP(NULLIF(UPPER(value), "NAN")) AS sub_brand
       FROM ${source.collector}.data_prd
       WHERE DATE(submit_at) >= "2025-11-21"
           AND submit_id >= 5818
