@@ -1,0 +1,42 @@
+
+config {
+    type: "table",
+    description: `Dim product | PIC: huyen.ngo; model_type: Table ;schedule: custom_1h_past20`,
+    tags: ["custom_1h_past20"],
+    name: "product_price_online",
+    columns: {/*
+*/
+        
+    }
+}
+
+
+WITH base_data AS (
+SELECT
+  t.* EXCEPT(retail_units, unit_name, unit_code,price,code)
+  ,JSON_VALUE(unit, '$.code') AS code
+  ,JSON_VALUE(unit, '$.is_default') AS is_default
+  ,JSON_VALUE(unit, '$.status') AS unit_status
+  ,JSON_VALUE(unit, '$.unit_code') AS unit_code
+  ,JSON_VALUE(unit, '$.unit_name') AS unit_name
+  ,JSON_VALUE(unit, '$.value') AS unit_value
+  ,JSON_VALUE(unit, '$.price') AS unit_price
+FROM
+ platinum_buymed_vn.circa_online_prd_product_product t,
+  UNNEST(JSON_EXTRACT_ARRAY(t.retail_units)) AS unit
+)
+
+SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
+       ,product_id
+       ,code
+       ,unit_code
+       ,unit_name
+       ,is_default
+       ,unit_value
+       ,unit_price
+       ,updated_by_id
+       ,updated_by_name
+       ,DATETIME_ADD(created_time, INTERVAL 7 HOUR) AS created_time
+       ,DATETIME_ADD(last_updated_time, INTERVAL 7 HOUR) AS last_updated_time
+       ,DATE(DATETIME_ADD(synced_at, INTERVAL 7 HOUR)) AS synced_at
+FROM base_data
