@@ -159,6 +159,10 @@ WITH thuosi_unit AS (
     GROUP BY ALL
 )
 SELECT a.*
+      ,pro.unit_name as web_unit
+      ,pro.is_default as is_default_web
+      ,pro.unit_price as unit_price_web
+      ,pro.unit_status
       ,CONCAT(a.product_id,"_", convert_rate) AS key_compare
       ,CONCAT(a.product_id, "_", client_id) AS product_client_id
       ,MIN(p.min_cost_price_include_tax * a.convert_rate) AS min_cost_price_include_tax
@@ -167,6 +171,7 @@ FROM _all a
 LEFT JOIN ${source.circa_os}.inventory_cost_price p ON a.seller_code = p.seller_code 
                                                     AND a.product_id = p.product_id
                                                     AND a.sku_code = p.sku_code
+LEFT JOIN  ${source.ref}.product_price_online pro ON a.product_id = pro.product_id AND a.unit = pro.unit_name
 GROUP BY ALL
 
 
