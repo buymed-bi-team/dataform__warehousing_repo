@@ -25,7 +25,7 @@ SELECT
             , SUM(outbound_quantity * rebate) AS cogs_after_rebate
             , SUM(outbound_quantity * price) AS total_price
         FROM gold_buymed_vn2.fact_order_item_margin_internal_outbound
-        WHERE created_date >= "2025-01-01"
+        WHERE created_date >= "2024-10-01"
         GROUP BY ALL
         UNION ALL
         SELECT
@@ -42,5 +42,5 @@ SELECT
             , SUM(a.price * outbound_quantity) AS total_price
         FROM gold_buymed_vn2.fact_order_item_margin_seller_outbound AS a
         WHERE 1=1 
-            AND a.created_date >= "2025-01-01"
+            AND a.created_date >= "2024-10-01"
         GROUP BY ALL
