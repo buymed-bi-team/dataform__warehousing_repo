@@ -29,7 +29,7 @@ with
             , a.value
         FROM (
             SELECT
-                code
+                REGEXP_REPLACE(code, '[^A-Z0-9_]', '') AS code
                 , type
                 , NULLIF(UPPER(value), 'NAN') as value
             FROM ${source.collector}.data_prd
