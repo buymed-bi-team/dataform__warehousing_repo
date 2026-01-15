@@ -202,7 +202,7 @@ WITH
   , essential AS (
       SELECT
           SAFE_CAST(code AS INT64) AS product_id
-          , NULLIF(value, "NAN") AS essential
+          , NULLIF(UPPER(value), "NAN") AS essential
       FROM collector.data_prd
       WHERE DATE(submit_at) >= "2025-06-18"
           AND submit_id >= 5539
