@@ -21,6 +21,7 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                      
       ,CASE WHEN SAFE_CAST(JSON_VALUE(extra_props, '$.origin_price') AS INT64) IS NULL THEN price
             ELSE SAFE_CAST(JSON_VALUE(extra_props, '$.origin_price') AS INT64) END AS origin_price
       ,JSON_VALUE(extra_props, '$.promotion_event_id') AS promotion_event_id
+      ,JSON_VALUE(extra_props, '$.tag') AS tag
       ,unit
       ,unit_code
       ,price --as unit_price
