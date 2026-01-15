@@ -18,7 +18,7 @@ CREATE OR REPLACE EXTERNAL TABLE
     sheet_range = 'CIRCA_ONKIT',
     skip_leading_rows = 1);
 CREATE OR REPLACE TABLE 
-  ${source.gold}.circa_assortment_template_onkit
+  ${source.ref}.circa_assortment_template_onkit
 AS (
   SELECT *
   FROM buymed_external.circa_assortment_template_onkit
@@ -37,7 +37,7 @@ CREATE OR REPLACE EXTERNAL TABLE
     sheet_range = 'CIRCA_OEM',
     skip_leading_rows = 1);
 CREATE OR REPLACE TABLE 
-  ${source.gold}.circa_assortment_template_oem
+  ${source.ref}.circa_assortment_template_oem
 AS (
   SELECT *
   FROM buymed_external.circa_assortment_template_oem

@@ -40,3 +40,14 @@ config {
   )
   SELECT p.*
   FROM platinum p
+  LEFT JOIN silver s 
+    ON p.mg_id = s.mg_id 
+  WHERE s.mg_id is null 
+
+  UNION ALL 
+
+  SELECT s.*
+  FROM silver s
+  WHERE action <> "d"
+  
+
