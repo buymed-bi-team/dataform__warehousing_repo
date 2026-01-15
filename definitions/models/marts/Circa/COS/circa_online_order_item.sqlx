@@ -15,33 +15,46 @@ config {
 }
 
 WITH base_data AS (
-SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                          AS transformed_at
-      ,product_id
-      ,product_name
-      ,CASE WHEN SAFE_CAST(JSON_VALUE(extra_props, '$.origin_price') AS INT64) IS NULL THEN price
-            ELSE SAFE_CAST(JSON_VALUE(extra_props, '$.origin_price') AS INT64) END AS origin_price
-      ,JSON_VALUE(extra_props, '$.promotion_event_id') AS promotion_event_id
-      ,JSON_VALUE(extra_props, '$.tag') AS tag
-      ,unit
-      ,unit_code
-      ,price --as unit_price
-      ,quantity    
-      ,order_id
-      ,order_code
-      ,total_price --= unit_price * quanitty
-      ,DATETIME_ADD(created_time, INTERVAL 7 hour)                                   AS created_time
-      ,DATE(DATETIME_ADD(created_time, INTERVAL 7 hour))                             AS created_date
-      ,action
-      ,DATETIME_ADD(last_updated_time, INTERVAL 7 hour)                              AS last_updated_time
-      ,DATETIME_ADD(platinum_refresh, INTERVAL 7 hour)                               AS platinum_refresh
-FROM platinum_buymed_vn.circa_online_prd_order_order_item 
+  SELECT
+      TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                             AS transformed_at
+    , t.product_id
+    , t.product_name
+    , CASE 
+          WHEN SAFE_CAST(JSON_VALUE(t.extra_props, '$.origin_price') AS INT64) IS NULL 
+               THEN t.price
+          ELSE SAFE_CAST(JSON_VALUE(t.extra_props, '$.origin_price') AS INT64)
+      END                                                                             AS origin_price
+    , JSON_VALUE(t.extra_props, '$.promotion_event_id')                               AS promotion_event_id
+    , ARRAY_TO_STRING(
+          ARRAY(
+              SELECT JSON_EXTRACT_SCALAR(tag)
+              FROM UNNEST(JSON_EXTRACT_ARRAY(t.extra_props, '$.tags')) AS tag
+          ), 
+          ' ,'
+      )                                                                               AS tag_list
+    , t.unit
+    , t.unit_code
+    , t.price
+    , t.quantity
+    , t.order_id
+    , t.order_code
+    , t.total_price
+    , DATETIME_ADD(t.created_time, INTERVAL 7 HOUR)                                   AS created_time
+    , DATE(DATETIME_ADD(t.created_time, INTERVAL 7 HOUR))                             AS created_date
+    , t.action
+    , DATETIME_ADD(t.last_updated_time, INTERVAL 7 HOUR)                              AS last_updated_time
+    , DATETIME_ADD(t.platinum_refresh, INTERVAL 7 HOUR)                               AS platinum_refresh
+  FROM platinum_buymed_vn.circa_online_prd_order_order_item t
 )
-SELECT a.*
-       ,origin_price - price AS discount_amount
-       ,d.deal_code
-       ,d.deal_name
-       ,d.campaign_code
-       ,d.campaign_name
-FROM base_data a 
-LEFT JOIN ${source.ref}.dim_promotion_event_circa d ON a.promotion_event_id = d.id 
 
+SELECT
+    a.* 
+  , CASE WHEN tag_list like '%deal_1000%' THEN TRUE ELSE FALSE END                   AS is_deal1k 
+  , origin_price - price                                                             AS discount_amount
+  , d.deal_code
+  , d.deal_name
+  , d.campaign_code
+  , d.campaign_name
+FROM base_data a
+LEFT JOIN ${source.ref}.dim_promotion_event_circa d
+  ON a.promotion_event_id = d.id
