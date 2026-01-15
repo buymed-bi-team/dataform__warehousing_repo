@@ -68,7 +68,7 @@ LEFT JOIN (
     SELECT DISTINCT order_code, reference_order_in_platform, pos_id
     FROM ${source.ref}.cos_fact_order 
     WHERE channel = 'O2O' 
-          AND status IN ('COMPLETED', 'COMPLETE_SHIPPING','AWAITING_SHIPMENT','SHIPPING','FAILED_SHIPMENT','PICKING')
+         -- AND status IN ('COMPLETED', 'COMPLETE_SHIPPING','AWAITING_SHIPMENT','SHIPPING','FAILED_SHIPMENT','PICKING')
    QUALIFY ROW_NUMBER() OVER (PARTITION BY reference_order_in_platform ORDER BY order_code DESC) = 1
     ) i ON o.order_code = i.reference_order_in_platform
 LEFT JOIN created_by c ON c.order_code = o.order_code
