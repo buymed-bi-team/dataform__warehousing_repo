@@ -48,12 +48,12 @@ WITH base_unit_selection AS (
           AND o.po_status NOT IN ('SEPERATED','PENDING', 'WAIT_FOR_ORDER','CANCELED')
           AND i.unit_price <> 0
     GROUP BY ALL
-)
+), final AS (
 
 SELECt DISTINCT t.*
       ,convert_rate
       ,base_unit
-      ,(cogs_after_rebate / outbound_quantity) / convert_rate AS cogs_base_unit
+      ,SAFE_DIVIDE(unit_cost_price, convert_rate) AS cogs_base_unit_ts
       ,p.* EXCEPT(product_id, order_id, created_date)
       ,p.created_date as so_created_date
 FROM t
@@ -66,3 +66,7 @@ LEFT JOIN base_unit cv
     AND t.product_id = cv.product_id 
     AND t.unit = cv.convert_unit
 -- WHERE t.code = 'PO00064214' AND t.product_id = 15630
+)
+SELECT * 
+FROM final
+-- WHERE cogs_base_unit_ts IS NULL

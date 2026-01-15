@@ -22,6 +22,7 @@ SELECT
             , price
             , SUM(outbound_quantity) AS outbound_quantity
             , SUM(outbound_quantity * (price - COALESCE(rebate,0))) AS profit
+            , SUM (rebate) AS unit_cost_price
             , SUM(outbound_quantity * rebate) AS cogs_after_rebate
             , SUM(outbound_quantity * price) AS total_price
         FROM gold_buymed_vn2.fact_order_item_margin_internal_outbound
@@ -38,6 +39,7 @@ SELECT
             , price
             , SUM(outbound_quantity) AS outbound_quantity
             , SUM((a.buyer_fee + (a.price - a.buyer_fee) * (fulfillment_rate + listing_rate + 0.01)) * outbound_quantity) AS profit
+            , SUM((a.price - a.buyer_fee) * (1 - fulfillment_rate - listing_rate - 0.01)) unit_cost_price
             , SUM((a.price - a.buyer_fee) * (1 - fulfillment_rate - listing_rate - 0.01) * outbound_quantity) AS cogs_after_rebate
             , SUM(a.price * outbound_quantity) AS total_price
         FROM gold_buymed_vn2.fact_order_item_margin_seller_outbound AS a
