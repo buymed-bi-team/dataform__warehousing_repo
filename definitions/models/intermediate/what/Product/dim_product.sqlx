@@ -189,7 +189,7 @@ WITH
   , chronic AS (
       SELECT
           SAFE_CAST(code AS INT64) AS product_id
-          , IF(value <> "CHRONIC", NULL, value) AS chronic
+          , IF(UPPER(value) <> "CHRONIC", NULL, value) AS chronic
       FROM ${source.collector}.data_prd
       WHERE DATE(submit_at) >= "2025-06-18"
           AND submit_id >= 5539
@@ -202,7 +202,7 @@ WITH
   , essential AS (
       SELECT
           SAFE_CAST(code AS INT64) AS product_id
-          , NULLIF(value, "NAN") AS essential
+          , NULLIF(UPPER(value), "NAN") AS essential
       FROM collector.data_prd
       WHERE DATE(submit_at) >= "2025-06-18"
           AND submit_id >= 5539
@@ -215,7 +215,7 @@ WITH
   , cat_lieu AS (
       SELECT
           SAFE_CAST(code AS INT64) AS product_id
-          , NULLIF(value, "NAN") AS thuoc_cat_lieu
+          , NULLIF(UPPER(value), "NAN") AS thuoc_cat_lieu
       FROM collector.data_prd
       WHERE DATE(submit_at) >= "2025-12-30"
           AND submit_id >= 5900
