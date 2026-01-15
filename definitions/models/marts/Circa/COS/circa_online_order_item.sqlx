@@ -49,6 +49,7 @@ WITH base_data AS (
 
 SELECT
     a.*
+  , CASE WHEN tag_list like '%deal_1000%' THEN TRUE ELSE FALSE END                   AS is_deal1k 
   , origin_price - price                                                             AS discount_amount
   , d.deal_code
   , d.deal_name
