@@ -60,7 +60,7 @@ FROM t
 LEFT JOIN `gold_buymed_vn2.circa_cogs_thuocsi` p 
     ON t.order_id = CAST(p.order_id AS STRING) 
     AND t.product_id = p.product_id 
-    AND t.unit_price = p.price
+    AND t.unit_price = ROUND(p.price)
 LEFT JOIN base_unit cv  
     ON t.client_id = cv.client_id 
     AND t.product_id = cv.product_id 
