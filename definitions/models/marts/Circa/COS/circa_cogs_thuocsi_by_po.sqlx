@@ -39,6 +39,7 @@ WITH base_unit_selection AS (
                    ,i.sku_code
                    ,SUM(quantity) AS qty
                    ,unit_price 
+                   ,o.created_date
     FROM `gold_buymed_vn2.cos_purchase_order_item` i
     LEFT JOIN gold_buymed_vn2.cos_purchase_order o 
         ON o.po_id = i.po_id
