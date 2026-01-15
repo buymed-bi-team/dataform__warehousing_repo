@@ -31,6 +31,7 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
        ,code
        ,unit_code
        ,unit_name
+       ,unit_status
        ,is_default
        ,unit_value
        ,unit_price
