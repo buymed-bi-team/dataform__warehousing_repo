@@ -18,7 +18,7 @@ SELECT
             , seller_class
             , CONCAT(product_id, "_", seller_code, "_", fc_code) AS sku_key 
             , sub_sku
-            , product_id
+            , sub_product_id AS product_id
             , price
             , SUM(outbound_quantity) AS outbound_quantity
             , SUM(outbound_quantity * (price - COALESCE(rebate,0))) AS profit
