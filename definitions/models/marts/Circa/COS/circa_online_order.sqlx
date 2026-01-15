@@ -69,13 +69,15 @@ LEFT JOIN (
     FROM ${source.ref}.cos_fact_order 
     WHERE channel = 'O2O' 
           AND status IN ('COMPLETED', 'COMPLETE_SHIPPING','AWAITING_SHIPMENT','SHIPPING','FAILED_SHIPMENT','PICKING')
+   QUALIFY ROW_NUMBER() OVER (PARTITION BY reference_order_in_platform ORDER BY order_code DESC) = 1
     ) i ON o.order_code = i.reference_order_in_platform
 LEFT JOIN created_by c ON c.order_code = o.order_code
 LEFT JOIN delivery_time l ON l.order_code = o.order_code
 LEFT JOIN ${source.ref}.circa_pos_profile p on i.pos_id = p.id
+
 )
 
-SELECT o.*
+SELECT DISTINCT o.*
        ,s.sender_name
        ,s.status
        ,s.pick_address
