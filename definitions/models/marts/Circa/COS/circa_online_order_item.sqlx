@@ -30,7 +30,7 @@ WITH base_data AS (
               SELECT JSON_EXTRACT_SCALAR(tag)
               FROM UNNEST(JSON_EXTRACT_ARRAY(t.extra_props, '$.tags')) AS tag
           ), 
-          ','
+          ' ,'
       )                                                                               AS tag_list
     , t.unit
     , t.unit_code
@@ -48,7 +48,7 @@ WITH base_data AS (
 )
 
 SELECT
-    a.*
+    a.* 
   , CASE WHEN tag_list like '%deal_1000%' THEN TRUE ELSE FALSE END                   AS is_deal1k 
   , origin_price - price                                                             AS discount_amount
   , d.deal_code
