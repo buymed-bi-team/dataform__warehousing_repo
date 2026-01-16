@@ -8,6 +8,9 @@ config {
     name: "circa_cogs_thuocsi_by_po",
     columns: {
     
+    },
+    bigquery: {
+        partitionBy: "created_date"
     }
 }
 
@@ -70,11 +73,15 @@ LEFT JOIN base_unit cv
 ),
 filled_cogs AS (
     SELECT 
-        a.* except (cogs_base_unit_ts)
+        a.* except (cogs_base_unit_ts, unit_cost_price)
         ,COALESCE(
             a.cogs_base_unit_ts
-            ,ANY_VALUE(a.cogs_base_unit_ts) OVER (PARTITION BY a.po_code, a.order_id, a.product_id, a.unit, a.sku_code, a.lot_date)
+            ,MIN(a.cogs_base_unit_ts) OVER (PARTITION BY a.po_code, a.order_id, a.product_id, a.unit, a.sku_code, a.lot_date)
         ) AS cogs_base_unit_ts
+        ,COALESCE( 
+            a.cogs_base_unit_ts
+            ,MIN(a.unit_cost_price) OVER (PARTITION BY a.po_code, a.order_id, a.product_id, a.unit, a.sku_code, a.lot_date)
+                  ) AS unit_cost_price
     FROM final a
 )
 SELECT * 

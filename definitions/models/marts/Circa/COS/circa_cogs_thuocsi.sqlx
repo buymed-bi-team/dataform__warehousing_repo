@@ -9,6 +9,9 @@ config {
     name: "circa_cogs_thuocsi",
     columns: {
     
+    },
+    bigquery: {
+        partitionBy: "created_date"
     }
 }
 
