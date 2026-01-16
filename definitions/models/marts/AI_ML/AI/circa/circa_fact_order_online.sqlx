@@ -6,5 +6,5 @@ config {
 }
 
 
-SELECT * FROM gold_buymed_vn2.circa_online_order
+SELECT * FROM ${ref("gold_buymed_vn2", "circa_online_order")}
 
