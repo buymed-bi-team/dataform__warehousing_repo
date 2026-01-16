@@ -67,7 +67,16 @@ LEFT JOIN base_unit cv
     AND t.product_id = cv.product_id 
     AND t.unit = cv.convert_unit
 -- WHERE t.code = 'PO00064214' AND t.product_id = 15630
+),
+filled_cogs AS (
+    SELECT 
+        a.* except (cogs_base_unit_ts)
+        ,COALESCE(
+            a.cogs_base_unit_ts
+            ,ANY_VALUE(a.cogs_base_unit_ts) OVER (PARTITION BY a.po_code, a.order_id, a.product_id, a.unit, a.sku_code, a.lot_date)
+        ) AS cogs_base_unit_ts
+    FROM final a
 )
 SELECT * 
-FROM final
+FROM filled_cogs
 -- WHERE cogs_base_unit_ts IS NULL
