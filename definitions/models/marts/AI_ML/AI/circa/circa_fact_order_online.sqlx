@@ -1,0 +1,23 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `All online orders of Circa.`,
+    tags: ['AI_CIRCA']
+}
+
+
+SELECT 
+    o.*
+    , oi.product_id
+    , oi.product_name
+    , oi.unit
+    , oi.price AS unit_price
+    , oi.quantity
+    , oi.origin_price
+    , is_deal1k
+    , deal_name
+    , campaign_name
+FROM ${ref("gold_buymed_vn2", "circa_online_order_item")} AS oi
+    LEFT JOIN ${ref("gold_buymed_vn2", "circa_online_order")} AS o USING(order_code)
+
+
