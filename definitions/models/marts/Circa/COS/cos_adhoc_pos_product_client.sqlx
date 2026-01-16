@@ -84,6 +84,7 @@ WITH thuosi_unit AS (
                    ,sale_allowed
                    ,purchase_allowed
                    ,MAX(DATETIME(pd.updated_at, "Asia/Ho_Chi_Minh")) AS last_updated_at
+                   ,pr.web_status
     FROM ${source.circa_os}.product_price_sheet_sku_detail AS pd
     LEFT JOIN ${source.circa_os}.product_price_sheet_sku AS s ON pd.price_sheet_sku_id = s.id
     LEFT JOIN ${source.circa_os}.product_price_sheet AS ps ON s.price_sheet_id = ps.id
@@ -108,6 +109,7 @@ WITH thuosi_unit AS (
                    ,is_purchase_unit
                    ,sale_allowed
                    ,purchase_allowed
+                   ,web_status
                    ,i.base_unit AS is_base_unit
                    ,p.last_updated_at
                    ,p.purchase_price
@@ -162,7 +164,6 @@ SELECT a.*
       ,pro.unit_name as web_unit
       ,pro.is_default as is_default_web
       ,pro.unit_price as unit_price_web
-      ,pro.unit_status AS web_status
       ,CONCAT(a.product_id,"_", convert_rate) AS key_compare
       ,CONCAT(a.product_id, "_", client_id) AS product_client_id
       ,MIN(p.min_cost_price_include_tax * a.convert_rate) AS min_cost_price_include_tax
