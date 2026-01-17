@@ -14,8 +14,7 @@ config {
 
 WITH base_data AS (
 SELECT DISTINCT
-     TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
-    ,o.id AS order_id
+     o.id AS order_id
     ,o.pos_id
     ,p.code as pos_code
     ,o.entity_id
@@ -72,7 +71,8 @@ WHERE o.type <> 'RETURN'
 GROUP BY ALL
 )
 
-SELECT *
+SELECT  TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
+       ,o.*
        ,CASE
            WHEN o.order_type = 'RETURN' then 'True'
            ELSE 'False' END AS is_returned
