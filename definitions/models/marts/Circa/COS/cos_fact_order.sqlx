@@ -12,15 +12,16 @@ config {
     }
 }
 
+WITH base_data AS (
 SELECT DISTINCT
      TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
     ,o.id AS order_id
     ,o.pos_id
-    ,p.code AS pos_code
+    ,p.code as pos_code
     ,o.entity_id
     ,o.code AS order_code
     ,o.total_amount
-    ,actual_total_item_amount
+    --,actual_total_item_amount
     ,o.total_item_amount
     ,o.discount_amount
     ,o.created_by
@@ -69,6 +70,22 @@ WHERE o.type <> 'RETURN'
   AND o.status <> 'PENDING'
   AND p.id IS NOT NULL
 GROUP BY ALL
+)
+
+SELECT *
+       ,CASE
+           WHEN o.order_type = 'RETURN' then 'True'
+           ELSE 'False' END AS is_returned
+       ,CASE WHEN o.channel = 'O2O' THEN i.customer_phone ELSE e.phone_number END AS customer_phone
+       ,e.title
+       ,concat(o.pos_code, "_", FORMAT_DATE('%Y-%m', o.completed_date)) as target_id
+       ,concat(FORMAT_DATE('%Y-%m', coalesce(o.completed_date,o.created_date)), "_", o.pos_code,"_", o.updated_by) as  ym_emp_pos
+       ,concat(FORMAT_DATE('%Y-%m', coalesce(o.completed_date,o.created_date)), "_", o.updated_by) as  ym_emp
+       ,concat(o.pos_code,"_", o.updated_by) as emp_pos_id  
+       ,concat(o.updated_by,"_", o.client_id) as updated_by_client_id
+FROM base_data o
+LEFT JOIN ${source.ref}.circa_online_order i ON o.reference_order_in_platform = i.order_code
+LEFT JOIN ${source.circa_os}.entity_customer e ON o.entity_id = e.id 
 
 
 -- where status in ('COMPLETED', 'COMPLETED_SHIPPING')
