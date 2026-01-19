@@ -44,7 +44,8 @@ base_unit AS (
 
 t AS (
     SELECT
-         i.po_code
+        created_date
+        ,i.po_code
         ,o.client_id
         ,o.order_id
         ,i.product_id
@@ -58,12 +59,7 @@ t AS (
       AND o.client_id = 1
       AND o.po_status NOT IN ('SEPERATED','PENDING','WAIT_FOR_ORDER','CANCELED')
       AND i.unit_price <> 0
-    GROUP BY
-         i.po_code
-        ,o.client_id
-        ,o.order_id
-        ,i.product_id
-        ,i.unit
+    GROUP BY ALL
 ),
 
 p AS (
@@ -78,8 +74,9 @@ p AS (
 ),
 
 final AS (
-    SELECT
-         t.po_code
+    SELECT DISTINCT
+          created_date
+         ,t.po_code
         ,t.client_id
         ,t.order_id
         ,t.product_id
