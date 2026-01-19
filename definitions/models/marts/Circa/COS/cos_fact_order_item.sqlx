@@ -125,6 +125,7 @@ SELECT DISTINCT
     ,fo.order_code
     ,i.*
     ,base_unit_cost_price * convert_rate AS unit_cost_price
+    ,convert_rate
 FROM final i
 LEFT JOIN ${ref('cos_fact_order')} fo ON i.order_id = fo.order_id
 LEFT JOIN base_unit cv ON cv.product_id = i.product_id AND cv.convert_unit = i.unit AND i.client_id = cv.client_id
