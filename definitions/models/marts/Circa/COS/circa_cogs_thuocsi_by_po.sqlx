@@ -16,111 +16,90 @@ config {
 }
 
 WITH base_unit_selection AS (
-    SELECT DISTINCT
+    SELECT
          product_id
         ,client_id
         ,base_unit
-        ,ROW_NUMBER() OVER (PARTITION BY product_id, client_id ORDER BY COUNT(*) DESC) AS rn
-    FROM lakehouse-prod-394907.gold_buymed_vn2.cos_product_convert_base_unit
-    GROUP BY product_id, client_id, base_unit
+        ,ROW_NUMBER() OVER (
+            PARTITION BY product_id, client_id
+            ORDER BY COUNT(*) DESC
+        ) AS rn
+    FROM `lakehouse-prod-394907.gold_buymed_vn2.cos_product_convert_base_unit`
+    GROUP BY
+         product_id
+        ,client_id
+        ,base_unit
 ),
+
 base_unit AS (
-    SELECT a.*
-    FROM lakehouse-prod-394907.gold_buymed_vn2.cos_product_convert_base_unit a
-    LEFT JOIN base_unit_selection b 
-        ON a.product_id = b.product_id
-        AND a.client_id = b.client_id
-        AND a.base_unit = b.base_unit
+    SELECT
+         a.*
+    FROM `lakehouse-prod-394907.gold_buymed_vn2.cos_product_convert_base_unit` a
+    JOIN base_unit_selection b
+      ON a.product_id = b.product_id
+     AND a.client_id  = b.client_id
+     AND a.base_unit  = b.base_unit
     WHERE b.rn = 1
 ),
+
 t AS (
-    SELECT DISTINCT 
-           i.po_code,
-           o.client_id,
-           o.po_status,
-           o.order_id,
-           i.product_id,
-           i.unit,
-           i.sku_code,
-           lot_date,
-           SUM(quantity) AS qty,
-           unit_price,
-           o.created_date
-    FROM `gold_buymed_vn2.cos_purchase_order_item` i
-    LEFT JOIN gold_buymed_vn2.cos_purchase_order o 
-        ON o.po_id = i.po_id
-    WHERE fulfillment_method = 'SO_THUOCSI'
-          AND o.client_id = 1
-          AND o.po_status NOT IN ('SEPERATED','PENDING', 'WAIT_FOR_ORDER','CANCELED')
-          AND i.unit_price <> 0
-    GROUP BY ALL
-),
-t_price_cnt AS (
-    SELECT 
-        order_id
-        ,product_id
-        ,COUNT(DISTINCT unit_price) AS t_price_cnt
-    FROM t
-    GROUP BY order_id, product_id
-),
-p_price_cnt AS (
     SELECT
-        CAST(order_id AS STRING) AS order_id
+         i.po_code
+        ,o.client_id
+        ,o.order_id
+        ,i.product_id
+        ,i.unit
+        ,SUM(i.quantity)   AS qty
+        ,AVG(i.unit_price) AS avg_unit_price
+    FROM `gold_buymed_vn2.cos_purchase_order_item` i
+    JOIN `gold_buymed_vn2.cos_purchase_order` o
+      ON o.po_id = i.po_id
+    WHERE o.fulfillment_method = 'SO_THUOCSI'
+      AND o.client_id = 1
+      AND o.po_status NOT IN ('SEPERATED','PENDING','WAIT_FOR_ORDER','CANCELED')
+      AND i.unit_price <> 0
+    GROUP BY
+         i.po_code
+        ,o.client_id
+        ,o.order_id
+        ,i.product_id
+        ,i.unit
+),
+
+p AS (
+    SELECT
+         CAST(order_id AS STRING) AS order_id
         ,product_id
-        ,COUNT(DISTINCT unit_cost_price) AS p_price_cnt
-        ,MAX(unit_cost_price) AS unit_cost_price
+        ,AVG(unit_cost_price) AS avg_unit_cost_price
     FROM `gold_buymed_vn2.circa_cogs_thuocsi`
-    GROUP BY order_id, product_id
-),
-agg_t AS (
-    SELECT 
-        po_code
-        ,client_id
-        ,po_status
-        ,order_id
+    GROUP BY
+         order_id
         ,product_id
-        ,unit
-        ,sku_code
-        ,lot_date
-        ,SUM(qty) AS qty
-        ,created_date
-        ,unit_price AS unit_price
-    FROM t
-    GROUP BY ALL
 ),
+
 final AS (
-    SELECT 
-        agg_t.po_code
-        ,agg_t.client_id
-        ,agg_t.po_status
-        ,agg_t.order_id
-        ,agg_t.product_id
-        ,agg_t.unit
-        ,agg_t.sku_code
-        ,agg_t.lot_date
-        ,agg_t.created_date
-        ,SUM(qty) AS qty
+    SELECT
+         t.po_code
+        ,t.client_id
+        ,t.order_id
+        ,t.product_id
+        ,t.unit
+        ,t.qty
+        ,t.avg_unit_price
+        ,p.avg_unit_cost_price
         ,cv.convert_rate
         ,cv.base_unit
-        ,CASE 
-            WHEN tpc.t_price_cnt > 1 
-                 AND ppc.p_price_cnt = 1 
-            THEN ppc.unit_cost_price
-            ELSE agg_t.unit_price
-        END AS unit_price
-        ,p.created_date AS so_created_date
-        ,ppc.unit_cost_price
-    FROM agg_t
-    LEFT JOIN t_price_cnt tpc ON agg_t.order_id = tpc.order_id AND agg_t.product_id = tpc.product_id
-    LEFT JOIN p_price_cnt ppc ON agg_t.order_id = ppc.order_id AND agg_t.product_id = ppc.product_id
-    LEFT JOIN `gold_buymed_vn2.circa_cogs_thuocsi` p ON agg_t.order_id = CAST(p.order_id AS STRING) AND agg_t.product_id = p.product_id
-    LEFT JOIN base_unit cv ON agg_t.client_id = cv.client_id AND agg_t.product_id = cv.product_id AND agg_t.unit = cv.convert_unit
-    GROUP BY ALL
+    FROM t
+    LEFT JOIN p
+      ON t.order_id  = p.order_id
+     AND t.product_id = p.product_id
+    LEFT JOIN base_unit cv
+      ON t.client_id  = cv.client_id
+     AND t.product_id = cv.product_id
+     AND t.unit       = cv.convert_unit
 )
 
-
-SELECT  * 
-      ,SAFE_DIVIDE(unit_cost_price, convert_rate) AS cogs_base_unit_ts
+SELECT
+     *
+    ,SAFE_DIVIDE(avg_unit_cost_price, convert_rate) AS cogs_base_unit_ts
 FROM final
-
--- WHERE cogs_base_unit_ts IS NULL
