@@ -46,6 +46,7 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                      
       ,total_price
       ,total_discount
       ,delivery_method_fee
+      ,JSON_VALUE(o.extra_props, '$.discount_delivery_fee')                          AS discount_delivery_fee
       ,total_product
       ,DATETIME_ADD(created_time, INTERVAL 7 hour)                                   AS created_time
       ,DATE(DATETIME_ADD(created_time, INTERVAL 7 hour))                             AS created_date
