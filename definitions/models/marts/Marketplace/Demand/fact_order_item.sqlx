@@ -71,6 +71,7 @@ cte_order_item as (
         , oi.reserved_quantity
         , oi.outbound_quantity
         , oi.returned_quantity
+        , oi.completed_quantity
         , oi.seller_price
         , oi.source
         , oi.vat
@@ -128,6 +129,7 @@ cte_combo_item as (
     , oi.reserved_quantity
     , oi.outbound_quantity
     , oi.returned_quantity
+    , oi.completed_quantity
     , oi.source
     , coalesce(
         safe_cast( json_extract_scalar( bom.none_vat ) as BOOL )
@@ -179,6 +181,7 @@ cte_combo_item_pricing as (
     , reserved_quantity * bom_quantity as reserved_quantity
     , outbound_quantity * bom_quantity as outbound_quantity
     , returned_quantity * bom_quantity as returned_quantity
+    , completed_quantity * bom_quantity as completed_quantity
     , bom_price * LEAST(
         (combo_price / sum(bom_quantity * bom_price) over (partition by order_id, sku_code))
         , 1
@@ -245,6 +248,7 @@ cte_normal_item as (
     , oi.reserved_quantity
     , oi.outbound_quantity
     , oi.returned_quantity
+    , oi.completed_quantity
     , oi.sales_price
     , oi.price_after_discount
     , oi.sales_price as sales_price_original
