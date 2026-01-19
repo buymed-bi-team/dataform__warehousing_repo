@@ -7,7 +7,8 @@ config {
 
 
 SELECT 
-    o.*
+    o.* EXCEPT (status, deliver_status, pos_status)
+    , o2o_status AS status
     , oi.product_id
     , oi.product_name
     , oi.unit
