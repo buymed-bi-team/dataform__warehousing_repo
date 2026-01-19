@@ -58,6 +58,7 @@ SELECT DISTINCT
      ,g.gift_id
      ,gift_item_type
      ,gift_code
+     ,o.delivery_amount
     ,o.client_id
 FROM ${source.circa_os}.order_order o
 LEFT JOIN ${source.ref}.cos_return_completed rt ON o.code = rt.order_code
