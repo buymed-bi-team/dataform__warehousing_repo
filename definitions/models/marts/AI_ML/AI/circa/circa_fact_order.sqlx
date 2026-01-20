@@ -69,6 +69,7 @@ WITH
             , o.province_name
             , oi.product_id
             , oi.quantity
+            , oi.unit
             -- , oi.total_item_amount
             , oi.unit_price * oi.quantity AS total_item_amount
             , o.medicine_cutting_fee / COUNT(1) OVER(PARTITION BY oi.order_id) AS medicine_cutting_fee
