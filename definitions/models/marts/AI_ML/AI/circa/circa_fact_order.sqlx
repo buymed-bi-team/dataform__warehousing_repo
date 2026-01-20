@@ -163,10 +163,17 @@ WITH
     )
 
 SELECT
-    oi.*
-    , oi.total_item_amount + oi.medicine_cutting_fee - oi.total_return_amount AS gmv_circa
+    oi.* EXCEPT(total_item_amount, total_return_amount, medicine_cutting_fee, discount_amount, quantity)
+    , SUM(oi.quantity) AS quantity
+    , SUM(oi.total_item_amount) AS total_item_amount
+    , SUM(oi.medicine_cutting_fee) AS medicine_cutting_fee
+    , SUM(oi.total_return_amount) AS total_return_amount
+    , SUM(oi.discount_amount) AS discount_amount
+    , SUM(oi.total_item_amount) + SUM(oi.medicine_cutting_fee) - SUM(oi.total_return_amount) AS gmv_circa
     , ac.customer_active_type
+    , CONCAT(oi.order_id, oi.product_id_key, oi.unit) AS order_product_unit_key
 FROM fact_order_item AS oi
     LEFT JOIN active_customer AS ac 
         ON oi.customer_id = ac.customer_id
         AND DATE_TRUNC(oi.date, WEEK(MONDAY)) = ac.week_start
+GROUP BY ALL
