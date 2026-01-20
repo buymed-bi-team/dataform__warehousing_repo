@@ -31,21 +31,21 @@ SELECT
         FROM gold_buymed_vn2.fact_order_item_margin_internal_outbound
         WHERE created_date >= "2024-10-01"
         GROUP BY ALL
-        -- UNION ALL
-        -- SELECT
-        --     a.created_date
-        --     , a.order_id
-        --     , seller_class
-        --     , CONCAT(a.product_id, "_", a.seller_code, "_", a.fc_code) AS sku_key
-        --     , sku
-        --     , a.product_id
-        --     , price
-        --     , SUM(outbound_quantity) AS outbound_quantity
-        --     , SUM((a.buyer_fee + (a.price - a.buyer_fee) * (fulfillment_rate + listing_rate + 0.01)) * outbound_quantity) AS profit
-        --     , SUM((a.price - a.buyer_fee) * (1 - fulfillment_rate - listing_rate - 0.01)) unit_cost_price
-        --     , SUM((a.price - a.buyer_fee) * (1 - fulfillment_rate - listing_rate - 0.01) * outbound_quantity) AS cogs_after_rebate
-        --     , SUM(a.price * outbound_quantity) AS total_price
-        -- FROM gold_buymed_vn2.fact_order_item_margin_seller_outbound AS a
-        -- WHERE 1=1 
-        --     AND a.created_date >= "2024-10-01"
-        -- GROUP BY ALL
+        UNION ALL
+        SELECT
+            a.created_date
+            , a.order_id
+            , seller_class
+            , CONCAT(a.product_id, "_", a.seller_code, "_", a.fc_code) AS sku_key
+            , sku
+            , a.product_id
+            , price
+            , SUM(outbound_quantity) AS outbound_quantity
+            , SUM((a.buyer_fee + (a.price - a.buyer_fee) * (fulfillment_rate + listing_rate + 0.01)) * outbound_quantity) AS profit
+            , SUM((a.price - a.buyer_fee) * (1 - fulfillment_rate - listing_rate - 0.01)) unit_cost_price
+            , SUM((a.price - a.buyer_fee) * (1 - fulfillment_rate - listing_rate - 0.01) * outbound_quantity) AS cogs_after_rebate
+            , SUM(a.price * outbound_quantity) AS total_price
+        FROM gold_buymed_vn2.fact_order_item_margin_seller_outbound AS a
+        WHERE 1=1 
+            AND a.created_date >= "2024-10-01"
+        GROUP BY ALL
