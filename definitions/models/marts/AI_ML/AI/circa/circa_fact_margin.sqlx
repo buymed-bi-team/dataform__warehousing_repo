@@ -9,7 +9,7 @@ WITH
     cogs AS (
         SELECT  
             i.order_id
-            ,SUM(i.unit_cost_price *  (i.quantity - i.qty_rt )) AS cogs
+            ,SUM(i.unit_cost_price *  (i.quantity - COALESCE(i.qty_rt,0) )) AS cogs
         FROM ${ref('gold_buymed_vn2','cos_fact_order_item')} AS i
         WHERE owner_name = 'CIRCA'
         GROUP BY ALL
