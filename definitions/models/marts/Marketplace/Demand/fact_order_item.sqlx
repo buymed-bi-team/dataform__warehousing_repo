@@ -66,7 +66,7 @@ cte_order_item as (
         , oi.deal_code
         , oi.quantity as demand_quantity
         , oi.price as sales_price
-        , SAFE_CAST(JSON_VALUE(oi.extra_props, '$.price_after_discount') AS INT64) AS price_after_discount
+        , COALESCE(SAFE_CAST(JSON_VALUE(oi.extra_props, '$.price_after_discount') AS INT64), oi.price) AS price_after_discount
         , oi.charge_deal_fee_value
         , oi.reserved_quantity
         , oi.outbound_quantity
