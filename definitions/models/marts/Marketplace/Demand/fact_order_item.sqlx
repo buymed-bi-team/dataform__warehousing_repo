@@ -79,6 +79,7 @@ cte_order_item as (
         , to_json_string(oi.tags) as tag_code
         , oi.sku_status
         , DATETIME(oi.cart_item_created_time, "Asia/Ho_Chi_Minh") AS incart_at
+        , page
         , event_source
         , event_screen
         , JSON_VALUE(extra_props, '$.block_code') AS block_code
@@ -143,6 +144,7 @@ cte_combo_item as (
     , sku_status
     , incart_at
     , TO_JSON_STRING(JSON_QUERY(bom, '$.tags')) AS sub_tag_code
+    , page
     , event_source
     , event_screen
     , block_code
@@ -204,6 +206,7 @@ cte_combo_item_pricing as (
     , extra_props
     , incart_at
     , sub_tag_code
+    , page
     , event_source
     , event_screen
     , block_code
@@ -264,6 +267,7 @@ cte_normal_item as (
     , extra_props
     , incart_at
     , tag_code AS sub_tag_code
+    , page
     , event_source
     , event_screen
     , block_code
