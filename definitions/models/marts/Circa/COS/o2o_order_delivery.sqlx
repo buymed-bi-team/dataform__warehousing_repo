@@ -57,8 +57,8 @@ where pos_code is not null
 --  SELECT * FROM t
 --  WHERE order_code_platform ='DH001828'
 Select *
-       ,CASE WHEN event_name_detail IN ('CREATE_ORDER','WAIT_TO_CONFIRM', 'ADMIN_CREATE_ORDER', 'WAIT_FOR_PAYMENT') THEN "1. CREATED_ORDER"
-                      WHEN event_name_detail IN ('RECEIVE_PAYMENT') THEN "2. RECEIVE_PAYMENT"
+       ,CASE WHEN event_name_detail IN ('CREATE_ORDER','WAIT_TO_CONFIRM', 'ADMIN_CREATE_ORDER') THEN "1. CREATED_ORDER"
+                      WHEN event_name_detail IN ('RECEIVE_PAYMENT' , 'WAIT_FOR_PAYMENT') THEN "2. RECEIVE_PAYMENT"
                       WHEN event_name_detail IN ('CONFIRM_ORDER', 'PROCESS_ORDER') THEN '3. CONFIRM_ORDER'
                     --   WHEN event_name_detail IN ('OPS_RESET_STORE' ) THEN "4. RESET_STORE"
                       WHEN event_name_detail IN ('CREATE_POS_ORDER','SYNC_POS_ORDER', 'PROCESS_ORDER/WAIT_TO_PACK', 'PROCESS_ORDER/WAIT_TO_DELIVER', 'SYNC_POS_ORDER/CALLBACK', 'SYNC_POS_ORDER/SUCCESS','OPS_RESET_STORE', 'POS_PROCESSING_EXPIRED', 'RETRY_SYNC_POS_ORDER' ) THEN "4. POS_PROCESS"
