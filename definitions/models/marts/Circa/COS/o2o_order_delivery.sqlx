@@ -57,14 +57,14 @@ where pos_code is not null
 --  SELECT * FROM t
 --  WHERE order_code_platform ='DH001828'
 Select *
-       ,CASE WHEN event_name_detail IN ('CREATE_ORDER','WAIT_TO_CONFIRM', 'ADMIN_CREATE_ORDER', 'WAIT_FOR_PAYMENT') THEN "1. created_order"
-                      WHEN event_name_detail IN ('RECEIVE_PAYMENT') THEN "2. recceive_payment"
-                      WHEN event_name_detail IN ('CONFIRM_ORDER', 'PROCESS_ORDER') THEN '3. confirm_order'
-                      WHEN event_name_detail IN ('OPS_RESET_STORE' ) THEN "4. reset_store"
-                      WHEN event_name_detail IN ('CREATE_POS_ORDER','SYNC_POS_ORDER', 'PROCESS_ORDER/WAIT_TO_PACK', 'PROCESS_ORDER/WAIT_TO_DELIVER', 'SYNC_POS_ORDER/CALLBACK', 'SYNC_POS_ORDER/SUCCESS', 'POS_PROCESSING_EXPIRED', 'RETRY_SYNC_POS_ORDER' ) THEN "5. pos_process"
-                      WHEN event_name_detail IN ('BOOK_3PL','WAIT_TO_DELIVER', 'SYNC_POS_ORDER/WAIT_TO_DELIVER', 'BOOK_3PL_FAILED' ) THEN "6. book_deliver"
-                      WHEN event_name_detail IN ('3PL_ORDER_PICKING','3PL_ORDER_DELIVERING', '3PL_ORDER_PICKED', '3PL_ORDER_WAIT_TO_DELIVER', 'FAIL_TO_DELIVER','CANCEL_ORDER','3PL_ORDER_FAIL_TO_DELIVER'  ) THEN "7. delivering"
-                      WHEN event_name_detail IN ( 'DELIVERED') THEN '8. delivered'
+       ,CASE WHEN event_name_detail IN ('CREATE_ORDER','WAIT_TO_CONFIRM', 'ADMIN_CREATE_ORDER', 'WAIT_FOR_PAYMENT') THEN "1. CREATED_ORDER"
+                      WHEN event_name_detail IN ('RECEIVE_PAYMENT') THEN "2. RECEIVE_PAYMENT"
+                      WHEN event_name_detail IN ('CONFIRM_ORDER', 'PROCESS_ORDER') THEN '3. CONFIRM_ORDER'
+                      WHEN event_name_detail IN ('OPS_RESET_STORE' ) THEN "4. RESET_STORE"
+                      WHEN event_name_detail IN ('CREATE_POS_ORDER','SYNC_POS_ORDER', 'PROCESS_ORDER/WAIT_TO_PACK', 'PROCESS_ORDER/WAIT_TO_DELIVER', 'SYNC_POS_ORDER/CALLBACK', 'SYNC_POS_ORDER/SUCCESS', 'POS_PROCESSING_EXPIRED', 'RETRY_SYNC_POS_ORDER' ) THEN "5. POS_PROCESS"
+                      WHEN event_name_detail IN ('BOOK_3PL','WAIT_TO_DELIVER', 'SYNC_POS_ORDER/WAIT_TO_DELIVER', 'BOOK_3PL_FAILED' ) THEN "6. BOOK_DELEVER"
+                      WHEN event_name_detail IN ('3PL_ORDER_PICKING','3PL_ORDER_DELIVERING', '3PL_ORDER_PICKED', '3PL_ORDER_WAIT_TO_DELIVER', 'FAIL_TO_DELIVER','CANCEL_ORDER','3PL_ORDER_FAIL_TO_DELIVER'  ) THEN "7. DELIVERING"
+                      WHEN event_name_detail IN ( 'DELIVERED') THEN '8. DELIVERED'
                  END AS group_event
  from map_event
  where order_status = 'DELIVERED'
