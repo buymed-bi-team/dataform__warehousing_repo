@@ -13,6 +13,7 @@ SELECT
   ,MAX(event_name_detail_time) AS end_time
 FROM ${ref("o2o_order_delivery")}
 WHERE group_event IS NOT NULL
+      AND group_event <> "1. CREATED_ORDER"
 GROUP BY all
 )
  SELECT * except(end_time)
