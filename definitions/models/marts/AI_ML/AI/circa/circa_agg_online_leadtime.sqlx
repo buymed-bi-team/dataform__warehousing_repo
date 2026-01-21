@@ -11,7 +11,7 @@ SELECT
   ,group_event AS stage
   ,MIN(event_name_detail_time) AS start_time
   ,MAX(event_name_detail_time) AS end_time
-FROM ${source.ref}.o2o_order_delivery
+FROM ${ref("o2o_order_delivery")}
 WHERE group_event IS NOT NULL
 GROUP BY all
 )
