@@ -49,7 +49,7 @@ BEGIN
         );
 
         SET query = FORMAT("""
-        CREATE TEMP TABLE silver 
+        CREATE TEMP TABLE silver_%s 
         AS (
             SELECT
                 mg_id,
@@ -89,6 +89,7 @@ BEGIN
             GROUP BY mg_id HAVING action != "d"
         )
         """
+        , main_table_name
         , IF(has_last_updated_time, ", last_updated_time DESC", "")
         , IF(has_created_time, "created_time", "CURRENT_TIMESTAMP()")
         , IF(has_last_updated_time, ", last_updated_time DESC", "")
@@ -106,7 +107,7 @@ BEGIN
         (
             SELECT %s
             FROM %s m
-            LEFT JOIN silver s 
+            LEFT JOIN silver_%s s 
                 ON m.mg_id = s.mg_id
             WHERE s.mg_id IS NULL 
             %s
@@ -116,6 +117,7 @@ BEGIN
         , ARRAY_TO_STRING( column_list, ",\n ")
         , ARRAY_TO_STRING( ARRAY(SELECT  "m." || c FROM UNNEST(column_list) c ), ", \n ")
         , silver_dataset || "." || migrate_table_name
+        , main_table_name
         , IF(
             has_last_updated_time, 
             "OR m.last_updated_time > s.last_updated_time", 
@@ -137,7 +139,7 @@ BEGIN
                 "d" action
                 %s
             FROM %s m
-            RIGHT JOIN silver s 
+            RIGHT JOIN silver_%s s 
                 ON m.mg_id = s.mg_id
             WHERE m.mg_id is null
             AND s.mg_id BETWEEN 
@@ -152,6 +154,7 @@ BEGIN
             ", DATE(silver_buymed_vn.MONGOID_TIMESTAMP(s.mg_id)) created_date"),
             "")
         , silver_dataset || "." || migrate_table_name
+        , main_table_name
         , silver_dataset || "." || migrate_table_name
         , silver_dataset || "." || migrate_table_name
         );
