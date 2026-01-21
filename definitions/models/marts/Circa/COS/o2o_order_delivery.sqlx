@@ -13,7 +13,7 @@ Select
        ,i.order_code as order_code_platform
        ,i.sender_name
        ,i.status as deliver_status
-       ,o.status as order_status
+       ,o.o2o_status as order_status
        -- ,o.canceled_by_user_type
        ,o.cancellation_type
        ,o.cancellation_note
@@ -33,7 +33,7 @@ where i.sender_name not like '%FC Circa%'
         and i.sender_name <> 'Tech - Cao Lăm Miền Nam'
         and extract (year from o.created_date) >= 2024
         --and reference_order_in_platform = 'DH000458'
-       qualify row_number () over (PARTITION BY i.order_code order by expired_time desc) = 1
+      -- qualify row_number () over (PARTITION BY i.order_code order by expired_time desc) = 1
 ), map_event as (
 Select t.*
        ,e.note as detail_note
@@ -53,7 +53,9 @@ Select t.*
 from t
 left join ${source.platinum}.circa_online_prd_order_order_event e on t.order_code_platform = e.order_code
 where pos_code is not null
-)
+) 
+--  SELECT * FROM t
+--  WHERE order_code_platform ='DH001828'
 Select *
        ,CASE WHEN event_name_detail IN ('CREATE_ORDER','WAIT_TO_CONFIRM', 'ADMIN_CREATE_ORDER', 'WAIT_FOR_PAYMENT') THEN "1. created_order"
                       WHEN event_name_detail IN ('RECEIVE_PAYMENT') THEN "2. recceive_payment"
@@ -62,7 +64,7 @@ Select *
                       WHEN event_name_detail IN ('CREATE_POS_ORDER','SYNC_POS_ORDER', 'PROCESS_ORDER/WAIT_TO_PACK', 'PROCESS_ORDER/WAIT_TO_DELIVER', 'SYNC_POS_ORDER/CALLBACK', 'SYNC_POS_ORDER/SUCCESS', 'POS_PROCESSING_EXPIRED', 'RETRY_SYNC_POS_ORDER' ) THEN "5. pos_process"
                       WHEN event_name_detail IN ('BOOK_3PL','WAIT_TO_DELIVER', 'SYNC_POS_ORDER/WAIT_TO_DELIVER', 'BOOK_3PL_FAILED' ) THEN "6. book_deliver"
                       WHEN event_name_detail IN ('3PL_ORDER_PICKING','3PL_ORDER_DELIVERING', '3PL_ORDER_PICKED', '3PL_ORDER_WAIT_TO_DELIVER', 'FAIL_TO_DELIVER','CANCEL_ORDER','3PL_ORDER_FAIL_TO_DELIVER'  ) THEN "7. delivering"
-                      WHEN event_name_detail IN ( 'DELIVERED', '3PL_ORDER_CANCEL') THEN '8. delivered'
+                      WHEN event_name_detail IN ( 'DELIVERED') THEN '8. delivered'
                  END AS group_event
  from map_event
  where order_status = 'DELIVERED'
