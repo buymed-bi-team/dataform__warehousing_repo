@@ -1,0 +1,21 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `All online orders of Circa.`,
+    tags: ['AI_CIRCA']
+}
+
+WITH t AS (
+SELECT 
+  order_code_platform
+  ,group_event
+  ,MIN(event_name_detail_time) AS start_time
+  ,MAX(event_name_detail_time) AS end_time
+FROM ${source.ref}.o2o_order_delivery
+WHERE group_event IS NOT NULL
+GROUP BY all
+)
+ SELECT * except(end_time)
+         , COALESCE (LEAD(start_time) OVER (PARTITION BY order_code_platform ORDER BY group_event), end_time) AS end_time
+  FROM t
+ ORDER BY order_code_platform DESC, group_event
