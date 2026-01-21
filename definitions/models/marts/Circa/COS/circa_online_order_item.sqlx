@@ -18,7 +18,6 @@ WITH base_data AS (
   SELECT
       TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                             AS transformed_at
     , t.product_id
-    , t.product_name
     , CASE 
           WHEN SAFE_CAST(JSON_VALUE(t.extra_props, '$.origin_price') AS INT64) IS NULL 
                THEN t.price
@@ -55,6 +54,8 @@ SELECT
   , d.deal_name
   , d.campaign_code
   , d.campaign_name
+  ,product_name
 FROM base_data a
-LEFT JOIN ${source.ref}.dim_promotion_event_circa d
-  ON a.promotion_event_id = d.id
+LEFT JOIN ${source.ref}.dim_promotion_event_circa d  ON a.promotion_event_id = d.id
+LEFT JOIN (SELECT * FROM ${source.ref}.cos_dim_product WHERE client_id = 1) p on a.product_id = p.product_id
+ 
