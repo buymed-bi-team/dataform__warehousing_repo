@@ -2,7 +2,7 @@
 config {
     type: "table",
     description: `PIC: huyen.ngo; model_type: Table ;schedule: `,
-    tags:["10h30"],
+    tags:["custom_1h_past15"],
     name: "o2o_order_delivery"
 }
 
