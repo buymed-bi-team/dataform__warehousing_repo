@@ -48,7 +48,7 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                      
       ,DATETIME_ADD(created_time, INTERVAL 7 hour)                                   AS created_time
       ,DATE(DATETIME_ADD(created_time, INTERVAL 7 hour))                             AS created_date
       ,DATETIME_ADD(last_updated_time, INTERVAL 7 hour)                              AS last_updated_time
-      ,DATETIME_ADD(delivery_date, INTERVAL 7 hour)                                  AS delivery_time
+     -- ,DATETIME_ADD(delivery_date, INTERVAL 7 hour)                                  AS delivery_time
       ,DATETIME_ADD(paid_time, INTERVAL 7 hour)                                      AS paid_time
       ,DATETIME_ADD(platinum_refresh, INTERVAL 7 hour)                               AS platinum_refresh
       ,l.last_status_time
