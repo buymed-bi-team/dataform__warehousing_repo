@@ -7,7 +7,10 @@ config {
 
 
 SELECT 
-    o.* EXCEPT (status, deliver_status, pos_status)
+    o.* EXCEPT (status, deliver_status, pos_status, price, total_price)
+    -- , price AS or
+    , o.price AS total_item_amount
+    , o.total_price AS order_amount
     , o2o_status AS status
     , oi.product_id
     , oi.product_name
