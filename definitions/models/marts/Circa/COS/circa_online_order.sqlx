@@ -9,7 +9,7 @@ config {
        
     },
     bigquery: {
-        partitionBy: "date(delivery_time)"
+        partitionBy: "date(created_time)"
     }
 }
 WITH created_by AS (
