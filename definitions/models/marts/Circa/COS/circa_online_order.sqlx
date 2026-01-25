@@ -30,6 +30,7 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                      
       ,o.order_code
       ,order_id
       ,customer_phone
+      ,customer_name
       ,receiver_code
       ,receiver_name
       ,receiver_phone_number

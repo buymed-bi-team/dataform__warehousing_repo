@@ -50,17 +50,17 @@ WITH t AS (
         ,us.percent
         ,us.promotion_voucher_type
         ,us.is_active
-        ,COALESCE(o.entity_id, gift_for_customer_id)                            AS customer_id
-        ,COALESCE(e.phone_number, gift_for_customer_phone)                      AS customer_phone
-        ,COALESCE(e.name, gift_for_customer_name)                               AS customer_name
+        ,COALESCE(ov.entity_id, gift_for_customer_id)                            AS customer_id
+        ,COALESCE(ov.customer_phone, gift_for_customer_phone)                    AS customer_phone
+        ,COALESCE(ov.customer_name, gift_for_customer_name)                      AS customer_name
         ,voucher_created_at 
-        ,DATE(DATETIME_ADD(ov.created_at, INTERVAL 7 HOUR))                     AS date_used
+        ,DATE(DATETIME_ADD(ov.created_at, INTERVAL 7 HOUR))                      AS date_used
         ,CASE  
             WHEN ov.created_at IS NOT NULL THEN "Yes" 
             ELSE "No" 
          END                                                                    AS is_used
         ,ov.order_code                                                          AS order_code_used 
-        ,o.channel                                                              AS channel_used
+        ,ov.channel                                                             AS channel_used
         ,ov.discount_amount                                                     AS actual_discount_amount
         ,cp.campaign_code                                                       AS campaign_code
         ,cp.campaign_name                                                       AS campaign_name
@@ -71,18 +71,20 @@ WITH t AS (
         ,us.client_id
     FROM ${source.circa_os}.promotion_promotion_voucher us -- bảng chứa tất cả các mã voucher
     LEFT JOIN (
-        SELECT * 
-        FROM ${source.circa_os}.order_order_voucher -- voucher được apply trong đơn hàng
+        SELECT v.*
+              ,o.pos_id
+              ,o.entity_id
+              ,o.channel
+              ,o.customer_phone 
+              ,o.customer_name
+        FROM ${source.circa_os}.order_order_voucher v -- voucher được apply trong đơn hàng
+        LEFT JOIN ${source.ref}.cos_fact_order  o ON v.order_code = o.order_code
         WHERE is_valid = TRUE
+             AND status <> 'CANCELED'
     ) ov ON ov.voucher_id = us.id
     LEFT JOIN t ON us.code = t.voucher_code
-    LEFT JOIN (
-        SELECT * 
-        FROM ${source.ref}.cos_fact_order 
-        WHERE status <> 'CANCELED'
-    ) o ON ov.order_id = o.order_id
-    LEFT JOIN ${source.ref}.circa_pos_profile pr ON o.pos_id = pr.id
-    LEFT JOIN ${source.circa_os}.entity_customer e ON o.entity_id = e.id
+    LEFT JOIN ${source.ref}.circa_pos_profile pr ON ov.pos_id = pr.id
+    --LEFT JOIN ${source.circa_os}.entity_customer e ON ov.entity_id = e.id
     LEFT JOIN ${source.ref}.dim_campaign_circa cp -- thông tin campaign
         ON us.promotion_campaign_id = cp.id 
         AND us.client_id = cp.client_id

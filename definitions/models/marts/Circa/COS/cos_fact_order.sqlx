@@ -78,6 +78,7 @@ SELECT  TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
            WHEN o.order_type = 'RETURN' then 'True'
            ELSE 'False' END AS is_returned
        ,CASE WHEN o.channel = 'O2O' THEN i.customer_phone ELSE e.phone_number END AS customer_phone
+       ,CASE WHEN o.channel = 'O2O' THEN i.customer_name ELSE e.name END AS customer_name
        ,e.title
        ,concat(o.pos_code, "_", FORMAT_DATE('%Y-%m', o.completed_date)) as target_id
        ,concat(FORMAT_DATE('%Y-%m', coalesce(o.completed_date,o.created_date)), "_", o.pos_code,"_", o.updated_by) as  ym_emp_pos
