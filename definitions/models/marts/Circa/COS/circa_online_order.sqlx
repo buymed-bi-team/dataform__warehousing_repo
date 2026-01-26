@@ -73,6 +73,7 @@ LEFT JOIN (
 LEFT JOIN created_by c ON c.order_code = o.order_code
 LEFT JOIN delivery_time l ON l.order_code = o.order_code
 LEFT JOIN ${source.ref}.circa_pos_profile p on i.pos_id = p.id
+WHERE sender_name <> 'Cửa hàng Tech Test 1'
 
 )
 
