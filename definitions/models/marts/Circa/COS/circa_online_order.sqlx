@@ -73,7 +73,7 @@ LEFT JOIN (
 LEFT JOIN created_by c ON c.order_code = o.order_code
 LEFT JOIN delivery_time l ON l.order_code = o.order_code
 LEFT JOIN ${source.ref}.circa_pos_profile p on i.pos_id = p.id
-WHERE sender_name <> 'Cửa hàng Tech Test 1'
+
 
 )
 
@@ -90,3 +90,4 @@ LEFT JOIN ${source.ref}.cos_voucher_info v ON o.assigned_order_codes = v.order_c
 LEFT JOIN (SELECT * FROM ${source.platinum}.circa_online_prd_order_sale_order
            QUALIFY ROW_NUMBER () OVER (PARTITION BY order_code ORDER BY created_time DESC) = 1       
         ) s ON o.order_code = s.order_code 
+WHERE sender_name <> 'Cửa hàng Tech Test 1'
