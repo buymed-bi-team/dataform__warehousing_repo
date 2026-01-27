@@ -17,7 +17,7 @@ config {
         sku: "NonNull | seller_code + product_code" ,
         sku_fc_code: "NonNull | product_id + seller_code + sale_region"
     },
-    tags: ["0h30"]
+    tags: ["custom_1h_past10"]
 }
 
 with region as (
