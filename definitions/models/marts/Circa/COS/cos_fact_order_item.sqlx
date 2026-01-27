@@ -45,6 +45,7 @@ WITH base_unit_selection AS (
         ,oi.discount_amount
         ,CASE WHEN o.channel <> 'O2O' THEN (oi.discount_amount + oi.unit_price) 
               ELSE ol.origin_price END AS unit_price_before_discount
+        ,system_price
         --,oi.discount_amount + oi.unit_price AS unit_price_before_discount
         ,oi.lot_date
          ,ROUND(
