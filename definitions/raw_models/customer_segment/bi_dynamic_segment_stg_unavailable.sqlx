@@ -211,6 +211,12 @@ WITH
                     AND NOT EXISTS (SELECT 1 FROM query_order2 qoo WHERE qoo.customer_id = c.customer_id AND qoo.segment_id = sd.segment_id)
                 )
             )
+            -- Order conditions for REPEAT
+            AND (
+                sd.operator <> '"REPEAT"'
+                OR ( EXISTS (SELECT 1 FROM query_order1 qo WHERE qo.customer_id = c.customer_id AND qo.segment_id = sd.segment_id)
+                )
+            )
     )
 
 SELECT
