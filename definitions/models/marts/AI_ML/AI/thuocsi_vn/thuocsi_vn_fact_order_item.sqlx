@@ -101,7 +101,7 @@ WITH
             , sale_order_code
             , a.product_id
             , CONCAT(a.product_id, "_", a.seller_code, "_", o.warehouse_code) AS sku_key
-            -- , a.price AS unit_price
+            , a.price AS unit_price
             , a.quantity AS ordered_quantity
             , a.total_price
             , a.price * a.outbound_quantity AS total_outbound
@@ -133,7 +133,7 @@ WITH
             , sale_order_code
             , a.product_id
             , CONCAT(a.product_id, "_", a.seller_code, "_", o.warehouse_code) AS sku_key
-            -- , a.price
+            , a.price
             , a.quantity AS ordered_quantity
             , a.total_amount
             , LEAST(COALESCE(SAFE_CAST(JSON_VALUE(a.extra_props, "$.completed_quantity")  AS INT64), quantity), quantity) * price AS total_outbound
