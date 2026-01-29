@@ -74,6 +74,7 @@ WITH cte_date AS (
 	first_location AS (
 		SELECT
 			po_code
+			, MIN(received_ts) AS first_received
 			, MIN_BY(hub_code, received_ts) AS first_received_location
             -- , MIN(IF(hub_code NOT IN ('HN','BD','DN'), received_ts, NULL)) AS first_received_time_at_hub
 		FROM ${ref('fact_inbound_receipts')}
@@ -123,6 +124,7 @@ WITH cte_date AS (
 			p.bill_status as po_bill_status,
 			c.received_ts AS first_received_check_in,
 			l.first_received_location,
+			l.first_received AS first_received_ts,
 			r.first_received_time_at_hub,
 			c.receipt_fc_code,
 			f.first_checkin_destination_fc,
