@@ -350,7 +350,7 @@ SELECT
   a3.atc_3 AS act_3,
   a4.atc_4,
   JSON_EXTRACT_SCALAR(product.retail_info, '$.retail_name') as retail_name,
-  tb1.name as retail_categogy_name,
+  tb1.name as retail_category_name,
 
 
   tb2.level_1_unit,
@@ -432,7 +432,7 @@ LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_seller_sub_category AS s
 LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_manufacturer AS manufacturer ON manufacturer.code = product.manufacturer_code
 LEFT JOIN ${source.platinum}.core_prd_master_data_atc AS atc2 ON product.atc2_code = atc2.code
 LEFT JOIN ${source.platinum}.core_prd_master_data_atc AS atc3 ON product.atc3_code = atc3.code
-LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_product AS tb1 ON tb1.code = JSON_EXTRACT_SCALAR(product.extra_props, '$.retail_category_codes.0')
+LEFT JOIN ${source.platinum}.pim_prd_product_cat4_categories AS tb1 ON tb1.code = JSON_EXTRACT_SCALAR(product.retail_info, '$.retail_category_codes.0')
 LEFT JOIN product_retail_unit AS tb2 ON tb2.product_id = product.product_id
 LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_country_translation_config AS tb3 ON tb3.code = product.origin
 LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_main_category AS tb4 ON tb4.code = product.main_category_code
