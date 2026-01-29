@@ -180,12 +180,24 @@ BEGIN
     -- If ANY error occurs in the block above (between BEGIN TRANSACTION and COMMIT),
     -- the code jumps here automatically.
     -- This is the crucial step: undo all changes made since BEGIN TRANSACTION.
-    ROLLBACK TRANSACTION;
-
-    -- (Optional but recommended) You can re-raise the error to notify the caller
-    -- that the procedure failed.
-    RAISE USING MESSAGE = CONCAT("Procedure failed. Transaction was rolled back. Original error: ", @@error.message);
-
+        IF (@@error.message like "Not found: Table%") THEN
+            COMMIT TRANSACTION;
+            EXECUTE IMMEDIATE FORMAT(
+                """
+                ALTER TABLE %s.%s
+                RENAME TO %s;
+                """,
+                silver_dataset,
+                migrate_table_name,
+                main_table_name
+            );
+        ELSE
+            ROLLBACK TRANSACTION;
+            -- (Optional but recommended) You can re-raise the error to notify the caller
+            -- that the procedure failed.
+    
+            RAISE USING MESSAGE = CONCAT("Procedure failed. Transaction was rolled back. Original error: ", @@error.message);
+        END IF;
     END;
 END;
 
