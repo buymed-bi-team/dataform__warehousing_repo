@@ -76,7 +76,10 @@ WITH
 
 SELECT
     completed_date
-    ,pos_id
+    -- ,pos_id
+    , p.code AS pos_code
+    , p.name AS pos_name
+    , IF(p.type = "FS", "FS", "COS") AS pos_type
     ,order_code
     ,gmv
     ,cogs
@@ -85,4 +88,5 @@ SELECT
     ,voucher_gift AS cogs_voucher_gift
     ,net_profit
     ,SAFE_DIVIDE(net_profit, gmv) AS net_margin
-FROM final
+FROM final AS a
+    LEFT JOIN buymed_circa_v2.entity_pos_profile AS p ON a.pos_id = p.id
