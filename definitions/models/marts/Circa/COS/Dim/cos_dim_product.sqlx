@@ -43,6 +43,7 @@ WITH cte_product AS (
           ,thuocsi_has_stock
           ,thuocsi_unit
           ,thuocsi_quantity
+          ,tp.retail_category_name as cat4
           ,p.client_id
     FROM ${source.circa_os}.product_product p
     LEFT JOIN ${source.circa_os}.product_main_category mc ON p.main_category_code = mc.code AND p.client_id = mc.client_id
