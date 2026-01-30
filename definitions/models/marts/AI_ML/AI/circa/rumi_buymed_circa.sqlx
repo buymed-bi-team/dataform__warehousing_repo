@@ -14,6 +14,11 @@ AS (SELECT * FROM  ${ref("buymed_innovation", "circa_fact_order")});
 CREATE OR REPLACE VIEW `rumi_buymed_circa.circa_fact_margin`
 AS (SELECT * FROM  ${ref("buymed_innovation", "circa_fact_margin")});
 
+-- fact_net_margin
+
+CREATE OR REPLACE VIEW `rumi_buymed_circa.circa_fact_net_margin`
+AS (SELECT * FROM  ${ref("buymed_innovation", "circa_fact_net_margin")});
+
 -- fact_target
 
 CREATE OR REPLACE VIEW `rumi_buymed_circa.circa_fact_target`

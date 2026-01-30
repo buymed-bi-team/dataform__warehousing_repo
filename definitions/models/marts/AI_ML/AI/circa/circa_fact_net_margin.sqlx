@@ -1,0 +1,88 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: "Margin of Circa COS.",
+    tags: ['AI_CIRCA']
+}
+
+WITH
+    cogs AS (
+        SELECT
+            i.order_code
+            ,SUM(
+                CASE
+                    WHEN i.owner_name <>  'CIRCA MARKETING'
+                         AND i.gift_code IS NOT NULL
+                         AND i.gift_code <> ''
+                    THEN i.unit_cost_price * (i.quantity - COALESCE(i.qty_rt, 0))
+                    ELSE 0
+                END
+            ) AS cogs_circa_gift
+            ,SUM(
+                CASE
+                    WHEN i.owner_name = 'CIRCA MARKETING'
+                    THEN i.unit_cost_price * (i.quantity - COALESCE(i.qty_rt, 0))
+                    ELSE 0
+                END
+            ) AS cogs_mkt
+            ,SUM(
+                CASE
+                    WHEN i.owner_name <>  'CIRCA MARKETING'
+                         AND (i.gift_code IS NULL OR i.gift_code = '' )
+                    THEN i.unit_cost_price * (i.quantity - COALESCE(i.qty_rt, 0))
+                    ELSE 0
+                END
+            ) AS cogs_circa
+        FROM ${ref("gold_buymed_vn2", "cos_fact_order_item")} AS i
+        WHERE i.client_id = 1
+        GROUP BY i.order_code
+    ),
+
+    gmv AS (
+        SELECT DISTINCT
+            o.pos_id
+            , completed_date
+            , o.order_code
+            , SUM(o.total_item_amount + o.medicine_cutting_fee) - SUM(COALESCE(c.gmv_return, 0)) AS GMV
+            , SUM(
+                  CASE WHEN o.is_returned = 'False'
+                  THEN i.discount_amount ELSE 0
+                  END
+            ) AS voucher_discount
+        FROM ${ref("gold_buymed_vn2", "cos_fact_order")} o
+        LEFT JOIN ${ref("gold_buymed_vn2", "cos_return_completed")} c on o.order_code = c.order_code
+        LEFT JOIN ${ref("gold_buymed_vn2", "circa_fact_order_voucher")} i on o.order_code = i.order_code
+        WHERE 1=1
+            AND o.client_id = 1
+            AND status IN ('COMPLETED', 'COMPLETED_SHIPPING')
+        GROUP BY ALL
+
+    ),
+    final AS (
+        SELECT
+            a.completed_date
+           ,a.pos_id
+           ,a.order_code
+           ,a.gmv
+           ,b.cogs_circa as cogs
+           ,SUM(a.gmv) - coalesce(SUM(b.cogs_circa),0) AS profit
+           ,coalesce(SUM(a.voucher_discount),0) + coalesce(SUM(b.cogs_circa_gift),0) + coalesce(SUM(b.cogs_mkt),0) AS voucher_gift
+           ,SUM(a.gmv) - coalesce(SUM(b.cogs_circa),0) - coalesce(SUM(a.voucher_discount),0) - coalesce(SUM(b.cogs_circa_gift),0) - coalesce(SUM(b.cogs_mkt),0) AS net_profit
+       FROM gmv a
+       LEFT JOIN cogs b ON a.order_code = b.order_code
+       WHERE a.order_code IS NOT NULL
+       GROUP BY ALL
+    )
+
+SELECT
+    completed_date
+    ,pos_id
+    ,order_code
+    ,gmv
+    ,cogs
+    ,SAFE_DIVIDE(profit, gmv) AS gross_margin
+    ,profit AS gross_profit
+    ,voucher_gift AS cogs_voucher_gift
+    ,net_profit
+    ,SAFE_DIVIDE(net_profit, gmv) AS net_margin
+FROM final
