@@ -16,7 +16,7 @@ SELECT
   t.* EXCEPT(retail_units, unit_name, unit_code,price,code)
   ,JSON_VALUE(unit, '$.code') AS code
   ,JSON_VALUE(unit, '$.is_default') AS is_default
-  ,JSON_VALUE(unit, '$.status') AS unit_status
+  ,JSON_VALUE(unit, '$.status') AS web_unit_status
   ,JSON_VALUE(unit, '$.unit_code') AS unit_code
   ,JSON_VALUE(unit, '$.unit_name') AS unit_name
   ,JSON_VALUE(unit, '$.value') AS unit_value
@@ -31,8 +31,8 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
        ,code
        ,unit_code
        ,unit_name
-       ,unit_status
        ,is_default
+       ,web_unit_status
        ,unit_value
        ,unit_price
        ,updated_by_id

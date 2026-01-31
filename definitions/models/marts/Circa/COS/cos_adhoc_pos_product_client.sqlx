@@ -163,6 +163,7 @@ WITH thuosi_unit AS (
 SELECT a.*
       ,pro.unit_name as web_unit
       ,pro.is_default as is_default_web
+      ,pro.web_unit_status
       ,pro.unit_price as unit_price_web
       ,CONCAT(a.product_id,"_", convert_rate) AS key_compare
       ,CONCAT(a.product_id, "_", client_id) AS product_client_id
