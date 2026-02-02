@@ -41,7 +41,7 @@ WITH t AS (
          TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                    AS transformed_at
          ,us.id                                                                 AS voucher_id
         ,us.code                                                                AS voucher_code
-        ,t.order_code_created
+        ,t.order_code_created 
         ,DATETIME_ADD(us.created_at, INTERVAL 7 HOUR)                           AS created_at
         ,DATE(DATETIME_ADD(us.created_at, INTERVAL 7 HOUR))                     AS created_date
         ,DATETIME_ADD(us.start_date, INTERVAL 7 HOUR)                           AS start_date
@@ -61,6 +61,9 @@ WITH t AS (
          END                                                                    AS is_used
         ,ov.order_code                                                          AS order_code_used 
         ,ov.channel                                                             AS channel_used
+        ,ov.status                                                              AS order_used_status
+        ,receiver_name
+        ,receiver_full_address
         ,ov.discount_amount                                                     AS actual_discount_amount
         ,cp.campaign_code                                                       AS campaign_code
         ,cp.campaign_name                                                       AS campaign_name
@@ -77,6 +80,9 @@ WITH t AS (
               ,o.channel
               ,o.customer_phone 
               ,o.customer_name
+              ,o.status
+              ,receiver_name
+              ,receiver_full_address
         FROM ${source.circa_os}.order_order_voucher v -- voucher được apply trong đơn hàng
         LEFT JOIN ${source.ref}.cos_fact_order  o ON v.order_code = o.order_code
         WHERE is_valid = TRUE
