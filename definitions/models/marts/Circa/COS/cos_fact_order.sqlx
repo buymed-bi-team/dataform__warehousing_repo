@@ -74,6 +74,8 @@ GROUP BY ALL
 
 SELECT  TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
        ,o.*
+       ,i.receiver_name
+       ,receiver_full_address
        ,CASE
            WHEN o.order_type = 'RETURN' then 'True'
            ELSE 'False' END AS is_returned
