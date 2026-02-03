@@ -34,6 +34,8 @@ collector.data_prd GRANT TO (
     "user:ha.lekim@buymed.com",
     "user:khanh.nguyenhung@buymed.com",
 
+    "user:panida.t@buymed.com",
+
     "serviceAccount:warehousing-dataform@lakehouse-prod-394907.iam.gserviceaccount.com",
     "serviceAccount:buymed-transformation-dataform@lakehouse-prod-394907.iam.gserviceaccount.com",
     "serviceAccount:staging-dataform-2@lakehouse-prod-394907.iam.gserviceaccount.com",
