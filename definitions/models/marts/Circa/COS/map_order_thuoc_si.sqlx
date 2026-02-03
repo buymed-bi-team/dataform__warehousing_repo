@@ -55,6 +55,7 @@ select o.order_id
              when p.id is null and o.customer_id = 409603 and o.customer_name = 'Chị Lệ - Medly - Store Manager' then 'bd0a5c91-c25f-4d49-92b4-7fe5ea174a5f'
              else ''
             end as pos_id
+       ,SPLIT(o.note,'-')[OFFSET(0)] AS pos_code
        ,o.customer_name
        ,customer_id
        ,o.tags as order_tag
