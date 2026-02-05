@@ -57,12 +57,13 @@ WITH cte_product AS (
           ,a.client_id
           ,SUM(a.on_hand_quantity) AS total_on_hand_quantity
           ,ep.name AS pos_name
-    FROM lakehouse-prod-394907.gold_buymed_vn2.cos_fact_inventory a
-    LEFT JOIN lakehouse-prod-394907.gold_buymed_vn2.circa_pos_profile ep 
+    FROM ${source.ref}.cos_fact_inventory a
+    LEFT JOIN ${source.ref}.circa_pos_profile ep 
            ON a.pos_id = ep.id 
           AND a.client_id = ep.client_id
+          AND ep.actual_status <> 'Inactive'
     WHERE ep.id IS NOT NULL
-    GROUP BY a.product_id, a.pos_id, a.client_id, ep.name
+    GROUP BY ALL
 )
 ,inventory AS (
     SELECT product_id
