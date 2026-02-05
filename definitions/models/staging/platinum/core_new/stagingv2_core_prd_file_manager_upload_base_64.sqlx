@@ -6,7 +6,8 @@ config {
          uniqueKey: 'mg_id'
      },
     bigquery: {
-        partitionBy: "created_date"
+        partitionBy: "created_date",
+        clusterBy: ["ref_id"]
     },
     tags: ["platinum_custom_1h_past7","core_prd_file_manager"]
 }
