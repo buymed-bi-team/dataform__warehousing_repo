@@ -32,21 +32,26 @@ BEGIN
 
         SET migrate_table_name = main_table_name || "_migrate";
 
-        SET (
-        has_last_updated_time,
-        has_created_time,
-        has_created_date,
-        column_list
-        ) = (
+        SET query = FORMAT(
+        """
         SELECT AS STRUCT
             MAX(column_name like 'last_updated_time') has_last_updated_time,
             MAX(column_name like 'created_time') has_created_time,
             MAX(column_name like 'created_date') has_created_date,
             ARRAY_AGG( column_name ) column_list
-        FROM `region-asia-southeast1`.INFORMATION_SCHEMA.COLUMNS
-        WHERE table_schema = silver_dataset
-            AND table_name = main_table_name
+        FROM %s.INFORMATION_SCHEMA.COLUMNS
+        WHERE table_name = "%s"
+        """,
+        silver_dataset,
+        main_table_name
         );
+
+        EXECUTE IMMEDIATE query INTO 
+        has_last_updated_time,
+        has_created_time,
+        has_created_date,
+        column_list
+        ;
 
         SET query = FORMAT("""
         CREATE TEMP TABLE silver_%s 
