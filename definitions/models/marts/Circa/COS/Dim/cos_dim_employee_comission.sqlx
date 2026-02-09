@@ -43,6 +43,7 @@ WITH base_data AS (
               WHEN employee_email = 'Hoang.nguyenkim@buymed.com' THEN 'hoang.nguyenkim@buymed.com'
               WHEN employee_email = 'phuong.ledai@buymmed.com' THEN 'phuong.ledai@buymed.com'
               WHEN employee_email = 'vy.nguyenkha@buymed.com' THEN 'khavy.mx2002@buymed.com'
+              ELSE employee_email
            END AS email_system
     FROM base_data
     WHERE pos_code_email <> 'POS0066_ly.diep@buymed.com'
