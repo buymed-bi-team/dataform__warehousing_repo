@@ -47,6 +47,7 @@ WITH base_data AS (
            END AS email_system
     FROM base_data
     WHERE pos_code_email <> 'POS0066_ly.diep@buymed.com'
+          AND  pos_code_email <> 'POS0079_kha.quach@buymed.com'
 )
 SELECT i.*
       ,e.name AS employee_name
