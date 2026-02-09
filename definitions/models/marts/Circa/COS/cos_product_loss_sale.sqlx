@@ -11,7 +11,7 @@ config {
     }
 }
 
-WITH t as (
+WITH t AS  (
 SELECT DISTINCT 
          p.name 
        , o.pos_id
@@ -46,6 +46,7 @@ SELECT DISTINCT
             THEN TRUE 
             ELSE FALSE 
         END                                                                       AS is_essential
+        ,td.on_hand_quantity
        ,CONCAT(o.product_id, "_", o.client_id)                                    AS product_client_id
 
 FROM ${source.circa_os}.product_product_loss_sale o
