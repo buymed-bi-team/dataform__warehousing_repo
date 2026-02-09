@@ -27,6 +27,7 @@ SELECT DISTINCT  i.promotion_event_id
                  ,p.code AS campaign_code
                  ,p.name AS campaign_name
                  ,CONCAT(i.product_id,'_', o.client_id) AS product_client_id
+                 ,CONCAT(i.product_id,'_', o.client_id,'_',p.code ) AS key_product_campaign
 FROM  ${source.circa_os}.promotion_promotion_event_item i 
 LEFT JOIN ${source.circa_os}.promotion_promotion_event o ON i. promotion_event_id = o.id
 LEFT JOIN ${source.circa_os}.promotion_promotion_campaign p ON o.promotion_campaign_id = p.id
