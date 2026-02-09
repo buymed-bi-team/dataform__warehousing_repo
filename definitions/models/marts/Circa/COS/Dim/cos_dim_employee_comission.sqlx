@@ -30,6 +30,7 @@ WITH base_data AS (
               WHEN employee_email = 'bao.doan@buymed.com' THEN 'gbaugust1996@buymed.com'
               WHEN employee_email = 'chau.le@buymed.com' THEN 'chau.leminh@buymed.com'
               WHEN employee_email = 'lien.tranthi@buymed.com' THEN 'lienlientran1012@buymed.com'
+              WHEN employee_email = 'lien.tranthi@buymned.com' THEN 'lienlientran1012@buymed.com'
               WHEN employee_email = 'oanh.nguyenkim@buymed.com' THEN 'cc.nguyenoanh@buymed.com'
               WHEN employee_email = 'trang.vothuy@buymed.com' THEN 'VN280725-007@buymed.com'
               WHEN employee_email = 'lytuyetbang@buymed.com' THEN 'bang.ly@buymed.com'
@@ -40,7 +41,8 @@ WITH base_data AS (
               WHEN employee_email = 'Oanh.hoang@buymed.com' THEN 'oanh.hoang@buymed.com'
               WHEN employee_email = 'ly.diep@buymed.com' THEN 'dieply195@buymed.com'
               WHEN employee_email = 'Hoang.nguyenkim@buymed.com' THEN 'hoang.nguyenkim@buymed.com'
-              ELSE employee_email 
+              WHEN employee_email = 'phuong.ledai@buymmed.com' THEN 'phuong.ledai@buymed.com'
+              WHEN employee_email = 'vy.nguyenkha@buymed.com' THEN 'khavy.mx2002@buymed.com'
            END AS email_system
     FROM base_data
     WHERE pos_code_email <> 'POS0066_ly.diep@buymed.com'
