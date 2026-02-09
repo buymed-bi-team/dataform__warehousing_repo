@@ -1,0 +1,32 @@
+config {
+    type: "table",
+    description: `PIC: huyen.ngo; 
+                  model_type: Table ;
+                  schedule: At minute 15 every 1 hour.
+                  pomotion_event_item: detail deal`,
+    tags: ["custom_1h_past15"],
+    name: "dim_promotion_event_item_circa"
+}
+
+
+SELECT DISTINCT  i.promotion_event_id
+                 ,o.code
+                 ,i.product_id
+                 ,i.unit
+                 ,i.sku_code
+                 ,i.seller_code
+                 ,o.percent
+                 ,o.client_id
+                 ,o.is_active
+                 ,DATETIME_ADD(o.start_date, INTERVAL 7 HOUR) AS start_date    
+                 ,DATETIME_ADD(o.end_date, INTERVAL 7 HOUR) AS end_date
+                 ,source_type
+                 ,o.status
+                 ,discount_type
+                 ,o.promotion_campaign_id
+                 ,p.code AS campaign_code
+                 ,p.name AS campaign_name
+                 ,CONCAT(i.product_id,'_', o.client_id) AS product_client_id
+FROM  ${source.circa_os}.promotion_promotion_event_item i 
+LEFT JOIN ${source.circa_os}.promotion_promotion_event o ON i. promotion_event_id = o.id
+LEFT JOIN ${source.circa_os}.promotion_promotion_campaign p ON o.promotion_campaign_id = p.id
