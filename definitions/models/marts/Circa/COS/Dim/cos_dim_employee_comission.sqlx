@@ -14,6 +14,8 @@ WITH base_data AS (
               ,DATE(submit_at) AS year_month
               ,LOWER(type) AS type
               ,value
+              ,submit_id
+              ,DENSE_RANK() OVER (PARTITION BY submit_at ORDER BY submit_id DESC) AS rn
         FROM collector.data_prd
         WHERE object = 'CIRCA_EMPLOYEE'
           AND type IN ('POSITION', 'NO_WORKING_DAY')
@@ -24,7 +26,9 @@ WITH base_data AS (
     )
 )
 ,_add_email_system AS (
-    SELECT * EXCEPT(no_working_day)
+    SELECT * EXCEPT(no_working_day, position)
+          ,CASE WHEN position = 'NIGHT SHIFT' THEN 'PHARMACIST'
+                  ELSE position END AS position
           ,CAST(no_working_day AS NUMERIC) AS no_working_day
           ,CASE 
               WHEN employee_email = 'bao.doan@buymed.com' THEN 'gbaugust1996@buymed.com'
@@ -46,8 +50,7 @@ WITH base_data AS (
               ELSE employee_email
            END AS email_system
     FROM base_data
-    WHERE pos_code_email <> 'POS0066_ly.diep@buymed.com'
-          AND  pos_code_email <> 'POS0079_kha.quach@buymed.com'
+    WHERE rn = 1
 )
 SELECT i.*
       ,e.name AS employee_name
