@@ -57,6 +57,11 @@ SELECT o.id
        ,apply_for_product_type 
        ,is_apply_for_all_pos
        ,first_time_order
+       ,CASE
+             WHEN lower(conditions_of_use) like '%sản phẩm%' then 'PRODUCT'
+             WHEN lower(conditions_of_use) like '%brand%' then 'PRODUCT'
+             ELSE 'ORDER'
+        END AS voucher_type
        ,allow_include_delivery_discount
        ,promotion_campaign_id
        ,p.campaign_code
