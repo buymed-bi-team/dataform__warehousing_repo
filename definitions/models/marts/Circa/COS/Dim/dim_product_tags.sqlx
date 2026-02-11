@@ -1,0 +1,20 @@
+config {
+    type: "table",
+    description: `Dim product | PIC: huyen.ngo; model_type: Table ;schedule: custom_1h_past15`,
+    tags: ["custom_1h_past15"],
+    name: "dim_product_tags",
+    columns: {/*
+*/
+        
+    }
+}
+
+
+SELECT 
+      TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
+     ,product_id 
+     ,tag_value
+     ,tag_type
+     ,tag_name
+     ,status 
+FROM ${source.platinum}.circa_online_prd_product_product_tags
