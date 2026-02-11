@@ -5,38 +5,47 @@ config {
     tags: ['AI_THUOCSI_VN']
 }
 
+WITH
+    cte AS (
+        SELECT
+            a.customer_id
+            , a.user_activated_at
+            , a.user_last_login
+            , a.customer_name
+            , a.customer_status
+            , a.business_scope
+            , b.customer_tag_priority
+            -- , customer_tag_sub_group AS customer_tag_sub_priority
+            , customer_level
+            , a.address AS customer_address
+            , c.ward_name AS customer_ward_name
+            , c.district_name AS customer_district_name
+            , c.province_name AS customer_province_name
+            , c.region_name AS customer_region_name
+        FROM ${ref('gold_buymed_vn2', 'dim_customer')} AS a
+            LEFT JOIN gold_buymed_vn2.dim_customer_tag_priority AS b USING(customer_id)
+            LEFT JOIN ${ref("gold_buymed_vn2", "dim_geo_location")} AS c ON a.location_code = c.location_code
+        UNION ALL
+        SELECT
+            1000000 + beneficiary_id
+            , NULL
+            , NULL
+            , name
+            , status
+            , "HOSPITAL"
+            , "3. TENDER"
+            -- , "TENDER"
+            , "TENDER"
+            , address
+            , ""
+            , ""
+            , ""
+            , ""
+        FROM platinum_buymed_vn.tender_prd_core_tender_beneficiaries
+    )
+
 SELECT
-    a.customer_id
-    , a.user_activated_at
-    , a.user_last_login
-    , a.customer_name
-    , a.customer_status
-    , a.business_scope
-    , b.customer_tag_priority
-    -- , customer_tag_sub_group AS customer_tag_sub_priority
-    , customer_level
-    , a.address AS customer_address
-    , c.ward_name AS customer_ward_name
-    , c.district_name AS customer_district_name
-    , c.province_name AS customer_province_name
-    , c.region_name AS customer_region_name
-FROM ${ref('gold_buymed_vn2', 'dim_customer')} AS a
-    LEFT JOIN gold_buymed_vn2.dim_customer_tag_priority AS b USING(customer_id)
-    LEFT JOIN ${ref("gold_buymed_vn2", "dim_geo_location")} AS c ON a.location_code = c.location_code
-UNION ALL
-SELECT
-    1000000 + beneficiary_id
-    , NULL
-    , NULL
-    , name
-    , status
-    , "HOSPITAL"
-    , "3. TENDER"
-    -- , "TENDER"
-    , "TENDER"
-    , address
-    , ""
-    , ""
-    , ""
-    , ""
-FROM platinum_buymed_vn.tender_prd_core_tender_beneficiaries
+    cte.*
+    , b.pharmacy_name
+FROM cte 
+    LEFT JOIN ${ref('gold_buymed_vn2', 'pharmacy_name')} AS b ON cte.customer_id = b.customer_id
