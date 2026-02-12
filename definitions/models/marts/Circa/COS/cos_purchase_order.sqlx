@@ -51,6 +51,12 @@ SELECT DISTINCT
         WHEN TO_JSON_STRING(o.order_tag) LIKE '%vip%' THEN 'vip'
         ELSE 'others'
      END AS vip_tag
+    ,CASE WHEN fulfillment_method = 'SO_THUOCSI' 
+                              AND (Vendor like '%MEDX%' OR (Vendor like '%Buymed%')) THEN 'MEDX'
+                              WHEN fulfillment_method = 'IMPORT_STOCK' THEN 'IMPORT_STOCK'
+                              WHEN fulfillment_method = 'EXTERNAL' THEN 'EXTERNAL'
+                              WHEN fulfillment_method = 'SO_THUOCSI'AND Vendor NOT LIKE '%MEDX%' AND Vendor NOT LIKE '%Buymed%' THEN 'SELLER' 
+                              END AS vendor_type
     ,so_code
     ,eo.name AS owner_name
     ,dis.name AS Vendor
