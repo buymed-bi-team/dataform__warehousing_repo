@@ -1,9 +1,6 @@
 config {
     type: "table",
-    description: `PIC: huyen.ngo; model_type: Table ;schedule: At minute 10 every 1 hour.Circa online order item `
-    /*Source:
-      ${source.silver}.marketplace_prd_order_v2_order_item
-      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
+    description: `PIC: huyen.ngo; model_type: Table ;schedule: At minute 10 every 1 hour.Circa online order item `,
     tags: ["custom_1h_past20"],
     name: "circa_online_order_item",
     columns: {
@@ -44,10 +41,30 @@ WITH base_data AS (
     , DATETIME_ADD(t.last_updated_time, INTERVAL 7 HOUR)                              AS last_updated_time
     , DATETIME_ADD(t.platinum_refresh, INTERVAL 7 HOUR)                               AS platinum_refresh
   FROM platinum_buymed_vn.circa_online_prd_order_order_item t
+), base_unit_selection AS (
+    SELECT DISTINCT
+         product_id
+        ,client_id
+        ,base_unit
+        ,ROW_NUMBER() OVER (PARTITION BY product_id, client_id ORDER BY COUNT(*) DESC) AS rn
+    FROM ${source.ref}.cos_product_convert_base_unit
+    WHERE client_id = 1
+    GROUP BY product_id, client_id, base_unit
+)
+,base_unit AS (
+    SELECT a.*
+    FROM ${source.ref}.cos_product_convert_base_unit a
+    LEFT JOIN base_unit_selection b 
+        ON a.product_id = b.product_id
+        AND a.client_id = b.client_id
+        AND a.base_unit = b.base_unit
+    WHERE b.rn = 1
 )
 
 SELECT
     a.* 
+  , a.quantity * cv.convert_rate AS base_quantity
+  , cv.base_unit
   , CASE WHEN tag_list like '%deal_1000%' AND price = 1000 THEN TRUE ELSE FALSE END                   AS is_deal1k 
   , origin_price - price                                                             AS discount_amount
   , d.deal_code
@@ -58,4 +75,5 @@ SELECT
 FROM base_data a
 LEFT JOIN ${source.ref}.dim_promotion_event_circa d  ON a.promotion_event_id = d.id
 LEFT JOIN (SELECT * FROM ${source.ref}.cos_dim_product WHERE client_id = 1) p on a.product_id = p.product_id
+LEFT JOIN base_unit cv ON a.product_id = cv.product_id AND a.unit = cv.convert_unit
  
