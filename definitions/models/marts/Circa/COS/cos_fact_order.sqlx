@@ -90,7 +90,7 @@ SELECT  TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
 FROM base_data o
 LEFT JOIN ${source.ref}.circa_online_order i ON o.reference_order_in_platform = i.order_code
 LEFT JOIN ${source.circa_os}.entity_customer e ON o.entity_id = e.id 
-LEFT JOIN ${source.circa_os}.entity_entity n ON o.updated_by = n.id
+LEFT JOIN ${source.circa_os}.entity_entity n ON o.updated_by = n.id AND o.client_id = n.client_id
 
 -- where status in ('COMPLETED', 'COMPLETED_SHIPPING')
 --       and client_id <> 1
