@@ -70,8 +70,7 @@ WHERE o.type <> 'RETURN'
   AND o.status <> 'PENDING'
   AND p.id IS NOT NULL
 GROUP BY ALL
-)
-
+), map_inf AS (
 SELECT  TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
        ,o.*
        ,i.receiver_name
@@ -91,6 +90,32 @@ FROM base_data o
 LEFT JOIN ${source.ref}.circa_online_order i ON o.reference_order_in_platform = i.order_code
 LEFT JOIN ${source.circa_os}.entity_customer e ON o.entity_id = e.id 
 LEFT JOIN ${source.circa_os}.entity_entity n ON o.updated_by = n.id AND o.client_id = n.client_id
+), clean_phone AS (
+SELECT
+   DISTINCT order_code
+  ,CASE
+    WHEN last_number IS NULL THEN NULL
+    WHEN STARTS_WITH(last_number, '84') THEN CONCAT('0', SUBSTR(last_number, 3))
+    WHEN LENGTH(last_number) = 9 THEN CONCAT('0', last_number)
+    WHEN LENGTH(last_number) = 10 AND STARTS_WITH(last_number, '0') THEN last_number
+    ELSE NULL
+  END AS customer_phone_cleaned
+FROM (
+  SELECT DISTINCT order_code
+    ,ARRAY_REVERSE(REGEXP_EXTRACT_ALL(customer_phone, r'[0-9]{9,11}'))[SAFE_OFFSET(0)] AS last_number
+  FROM map_inf
+  WHERE client_id = 1
+    AND status IN ('COMPLETED', 'COPMPLETE_SHIPPING')
+    AND customer_phone IS NOT NULL
+    AND customer_phone <> ""
+    AND REGEXP_REPLACE(customer_phone, '0','') <> ""
+) t
+)
+
+SELECT a.*
+       ,b.customer_phone_cleaned
+FROM map_inf a
+LEFT JOIN clean_phone b ON a.order_code = b.order_code 
 
 -- where status in ('COMPLETED', 'COMPLETED_SHIPPING')
 --       and client_id <> 1
