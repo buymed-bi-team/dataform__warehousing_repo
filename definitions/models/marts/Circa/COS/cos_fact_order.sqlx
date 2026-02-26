@@ -1,6 +1,8 @@
 config {
     type: "table",
-    description: `PIC: huyen.ngo; model_type: Table ;schedule: At minute 10 every hour.Circa OS Transaction order`,
+    description: `PIC: huyen.ngo; 
+                  model_type: Table ;
+                  schedule: At minute 10 every hour.Circa OS Transaction order`,
     tags: ["custom_1h_past10"],
     name: "cos_fact_order",
     columns: {
@@ -104,9 +106,10 @@ FROM (
   SELECT DISTINCT order_code
     ,ARRAY_REVERSE(REGEXP_EXTRACT_ALL(customer_phone, r'[0-9]{9,11}'))[SAFE_OFFSET(0)] AS last_number
   FROM map_inf
-  WHERE client_id = 1
-    AND status IN ('COMPLETED', 'COPMPLETE_SHIPPING')
-    AND customer_phone IS NOT NULL
+  WHERE
+  -- client_id = 1
+    --AND status IN ('COMPLETED', 'COPMPLETE_SHIPPING')
+    customer_phone IS NOT NULL
     AND customer_phone <> ""
     AND REGEXP_REPLACE(customer_phone, '0','') <> ""
 ) t
