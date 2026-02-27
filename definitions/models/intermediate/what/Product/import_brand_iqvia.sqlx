@@ -1,0 +1,12 @@
+config {
+    type: "table", 
+    description: 
+        `PIC: nguyen.tran; 
+        Type: Table; 
+        `,
+    tags: ["custom_1h_past5"],
+}
+
+SELECT
+*
+FROM ${source.external}.import_brand_iqvia
