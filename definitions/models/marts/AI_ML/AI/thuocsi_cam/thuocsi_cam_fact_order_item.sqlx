@@ -58,8 +58,8 @@ WITH
             LEFT JOIN platinum_buymed_cam.seller_prd_core_seller AS s ON a.seller_code = s.code
             LEFT JOIN fact_order AS o ON a.order_id = o.order_id
         WHERE 1=1
-            AND a.created_date >= "2025-01-01"
-            AND o.created_date >= "2025-01-01"
+           -- AND a.created_date >= "2025-01-01"
+           -- AND o.created_date >= "2025-01-01"
             -- AND o.status <> "CANCEL"
     )
 
