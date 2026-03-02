@@ -24,7 +24,7 @@ SELECT o.id
        ,o.created_by as created_id
        ,e.name as created_by
        ,DATETIME_ADD(o.started_at, INTERVAL 7 HOUR) as started_at
-       ,DATETIME_ADD(o.updated_at, INTERVAL 7 HOUR) as started_at
+       ,DATETIME_ADD(o.updated_at, INTERVAL 7 HOUR) as updated_at
        ,DATETIME_ADD(o.completed_at, INTERVAL 7 HOUR) as completed_at
        , current_step --AUTO_PURCHASE, (BLANK)
        ,failed_items
