@@ -1,0 +1,36 @@
+config {
+    type: "table",
+    description: `Circa OS auto_purchase_session
+                  PIC: huyen.ngo;
+                  model_type: Table;
+                  schedule: At minute 10 every hour`,
+    tags: ["custom_1h_past10"],
+    name: "cos_auto_purchase_session",
+    columns: {
+        
+    }
+}
+
+SELECT o.id
+       ,code 
+       ,o.source
+       ,o.status --(COMPLETED, CANCELLED, FAILED, DRAFT)
+       ,o.client_id
+       ,o.source_id
+       --,total_pos
+       ,auto_start
+       ,DATETIME_ADD(o.created_at, INTERVAL 7 HOUR) as created_at
+       ,DATE(DATETIME_ADD(o.created_at, INTERVAL 7 HOUR)) as created_date
+       ,o.created_by as created_id
+       ,e.name as created_by
+       ,DATETIME_ADD(o.started_at, INTERVAL 7 HOUR) as started_at
+       ,DATETIME_ADD(o.updated_at, INTERVAL 7 HOUR) as started_at
+       ,DATETIME_ADD(o.completed_at, INTERVAL 7 HOUR) as completed_at
+       , current_step --AUTO_PURCHASE, (BLANK)
+       ,failed_items
+       ,processed_items
+       ,CAST(JSON_VALUE(step_progress,'$.AUTO_PURCHASE.pos_created' ) AS INT64) AS pos_created
+      , CAST(JSON_VALUE(step_progress, '$.AUTO_PURCHASE.processed_pos') AS INT64) AS processed_pos
+FROM `buymed_circa_v2.order_auto_purchase_session` o 
+LEFT JOIN `buymed_circa_v2.entity_entity` e ON o.created_by = e.id 
+
