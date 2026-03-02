@@ -1,0 +1,33 @@
+config {
+    type: "table",
+    description: `Circa OS auto_purchase_session_item
+                  PIC: huyen.ngo;
+                  model_type: Table;
+                  schedule: At minute 10 every hour`,
+    tags: ["custom_1h_past10"],
+    name: "cos_auto_purchase_session_item",
+    columns: {
+        
+    }
+}
+
+SELECT DISTINCT 
+      session_id
+      ,product_id
+      ,i.pos_id
+      ,i.status AS product_status
+      ,channel
+      ,unit_id
+      ,requested_quantity -- Số lượng yêu cầu
+      ,unit_price
+      ,actual_quantity -- số lượng thực tế
+      ,vendor_id
+      ,vendor_name
+      ,buymed_sku
+      ,i.actual_total_amount -- tổng tiền thực tế
+      ,actual_unit_price -- giá thực tế
+      ,purchase_order_id
+      ,p.code AS  po_code
+FROM ${source.circa_os}.order_auto_purchase_session_item i 
+LEFT JOIN ${source.circa_os}.order_auto_purchase_session o ON i.session_id = o.id
+LEFT JOIN ${source.circa_os}.order_purchase_order p ON i.purchase_order_id = p.id

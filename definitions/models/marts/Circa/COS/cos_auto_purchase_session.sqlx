@@ -31,6 +31,6 @@ SELECT o.id
        ,processed_items
        ,CAST(JSON_VALUE(step_progress,'$.AUTO_PURCHASE.pos_created' ) AS INT64) AS pos_created
       , CAST(JSON_VALUE(step_progress, '$.AUTO_PURCHASE.processed_pos') AS INT64) AS processed_pos
-FROM `buymed_circa_v2.order_auto_purchase_session` o 
-LEFT JOIN `buymed_circa_v2.entity_entity` e ON o.created_by = e.id 
+FROM ${source.circa_os}.order_auto_purchase_session o 
+LEFT JOIN ${source.circa_os}.entity_entity e ON o.created_by = e.id 
 
