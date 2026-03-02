@@ -155,8 +155,8 @@ WHERE o.id = 'e9a5a24c-8b54-41a3-9b21-2ad63149eb3d'
 SELECT DISTINCT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
       ,pd.product_id
       ,pd.* EXCEPT (product_id)
-      ,CASE WHEN e.product_id IS NOT NULL THEN TRUE ELSE FALSE END AS is_essential
-      ,e.status AS status_essential
+      ,CASE WHEN e.product_id IS NOT NULL THEN TRUE ELSE FALSE END AS is_allstore
+      ,e.status AS status_allstore
       ,CASE WHEN tr.product_id IS NOT NULL THEN TRUE ELSE FALSE END AS is_trendy
       ,tr.status AS status_trendy
       ,CASE WHEN h.product_id IS NOT NULL THEN TRUE ELSE FALSE END AS is_hotdeal2025
