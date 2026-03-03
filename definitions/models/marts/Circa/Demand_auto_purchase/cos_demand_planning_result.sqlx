@@ -1,0 +1,48 @@
+config {
+    type: "table",
+    description: `Circa OS -- Chi tiết kết quả phiên dự báo mua hàng 
+                  PIC: huyen.ngo;
+                  model_type: Table;
+                  schedule: At minute 10 every hour`,
+    tags: ["custom_1h_past15"],
+    name: "cos_demand_planning_result",
+    columns: {
+        
+    }
+}
+
+SELECT  
+        o.id AS sesion_id
+        ,o.code
+        ,o.status
+        ,pos_id
+        ,product_id
+        ,abc_class
+        ,store_mode
+        -- chỉ số cửa hàng
+        ,total_days --tổng số ngày
+        ,DATE(DATETIME_ADD(i.open_date, INTERVAL 7 HOUR)) AS open_date -- ngày mở cửa
+        ,DATE(DATETIME_ADD(i.effective_open_date, INTERVAL 7 HOUR)) AS effective_open_date -- ngày có hiệu lực
+        ,DATE(DATETIME_ADD(i.last_sale_date, INTERVAL 7 HOUR)) AS last_sale_date -- ngày bán cuối cùng
+        -- Dữ liệ bán lịch sử
+        ,total_quantity -- tổng số lượng bán 
+        ,total_orders -- tổng số đơn
+        ,days_with_orders -- Số ngày có bán 
+        ---
+        ,current_stock -- tồn hiện tại
+        ,safety_stock -- tồn an toàn
+        ,target_stock -- tồn mục tiêu
+        ,daily_avg_demand --nhu cầu/ngày
+        ,quantity_to_buy -- số lượng cần mua 
+        ,inventory_status -- Trạng thái tồn
+        ,keep_stock -- tồn giữ lại
+        ,available_quantity_for_transfer -- SL có thể chuyển
+        ,purchase_unit -- đơn vị mua
+        ,unit_convert_rate
+        ,is_hub -- có phải hub ko 
+        ,allow_give_transfer -- 
+ FROM `buymed_circa_v2.demand_planning_demand_planning_session` o 
+ LEFT JOIN buymed_circa_v2.demand_planning_demand_planning_result i ON o.id = i.session_id -- Danh sách nhu cầu
+--  WHERE o.code = 'DEMAND_SESSION_83'
+--  and product_id = 216272
+--       and poS_id = 'ef29a397-72d8-40c3-9602-e1cbbc5d1da1'
