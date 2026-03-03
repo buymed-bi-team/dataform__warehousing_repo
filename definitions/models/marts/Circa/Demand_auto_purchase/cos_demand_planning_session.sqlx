@@ -1,6 +1,6 @@
 config {
     type: "table",
-    description: `Circa OS cos_demand_planning_session
+    description: `Circa OS Phiên dự báo mua hàng
                   PIC: huyen.ngo;
                   model_type: Table;
                   schedule: At minute 10 every hour`,
@@ -12,7 +12,7 @@ config {
 }
 
 SELECT DISTINCT 
-        o.id AS sesion_id
+        o.id AS session_id
         ,o.code
         ,o.status
         ,o.client_id 
@@ -27,5 +27,9 @@ SELECT DISTINCT
        ,current_step
        ,processed_pos
        ,DATETIME_ADD(o.calculation_date, INTERVAL 7 HOUR) AS calculation_date -- ngày tính demand 
+       ,enable_auto_purchase
+       ,auto_purchase_session_id
+       ,auto_purchase_session_code
+       ,enable_transfer_creation_auto
  FROM ${source.circa_os}.demand_planning_demand_planning_session o 
  LEFT JOIN ${source.circa_os}.entity_entity e ON o.created_by = e.id 
