@@ -32,6 +32,7 @@ WITH base_data AS (
     , t.unit_code
     , t.price
     , t.quantity
+    , JSON_value(t.extra_props, '$.reserved_quantity')                              AS reserved_quantity
     , t.order_id
     , t.order_code
     , t.total_price
@@ -66,7 +67,7 @@ SELECT
   , a.quantity * cv.convert_rate AS base_quantity
   , cv.base_unit
   , CASE WHEN tag_list like '%deal_1000%' AND price = 1000 THEN TRUE ELSE FALSE END                   AS is_deal1k 
-  , origin_price - price                                                             AS discount_amount
+  , origin_price - price                                                                              AS discount_amount
   , d.deal_code
   , d.deal_name
   , d.campaign_code
