@@ -11,7 +11,7 @@ SELECT
     -- , price AS or
     , o.price AS total_item_amount
     , o.total_price AS order_amount
-    , o2o_status AS status
+    , o.o2o_status AS status
     , oi.product_id
     , oi.product_name
     , oi.unit
