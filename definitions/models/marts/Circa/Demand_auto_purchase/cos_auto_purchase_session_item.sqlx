@@ -4,15 +4,16 @@ config {
                   PIC: huyen.ngo;
                   model_type: Table;
                   schedule: At minute 10 every hour`,
-    tags: ["custom_1h_past10"],
+    tags: ["custom_1h_past15"],
     name: "cos_auto_purchase_session_item",
     columns: {
         
     }
 }
 
-SELECT DISTINCT 
-      session_id
+SELECT DISTINCT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
+      ,session_id
+      ,DATE(DATETIME_ADD(o.created_at, INTERVAL 7 HOUR)) as created_date
       ,product_id
       ,i.pos_id
       ,i.status AS product_status

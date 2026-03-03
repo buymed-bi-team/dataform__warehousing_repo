@@ -11,8 +11,8 @@ config {
     }
 }
 
-SELECT DISTINCT 
-        o.id AS session_id
+SELECT DISTINCT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
+        ,o.id AS session_id
         ,o.code
         ,o.status
         ,o.client_id 
@@ -33,3 +33,5 @@ SELECT DISTINCT
        ,enable_transfer_creation_auto
  FROM ${source.circa_os}.demand_planning_demand_planning_session o 
  LEFT JOIN ${source.circa_os}.entity_entity e ON o.created_by = e.id 
+ WHERE DATE(TIMESTAMP_ADD(o.created_at, INTERVAL 7 HOUR)) 
+      >= DATE_SUB(CURRENT_DATE(), INTERVAL 7 DAY)
