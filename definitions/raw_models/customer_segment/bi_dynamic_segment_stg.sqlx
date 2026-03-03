@@ -158,6 +158,7 @@ WITH
             sd.submit_id,
             TIMESTAMP_TRUNC(CURRENT_TIMESTAMP() + INTERVAL 7 HOUR, HOUR) AS processed_at
         FROM ${ref('dim_customer')} c
+            LEFT JOIN gold_buymed_vn2.dim_customer_tag_priority AS t ON c.customer_id = t.customer_id
             LEFT JOIN ${ref('dim_geo_location')} AS g ON c.location_code= g.location_code
             CROSS JOIN  get_start_end sd
             LEFT JOIN query_order AS q ON q.customer_id = c.customer_id AND q.segment_id = sd.segment_id
@@ -168,8 +169,8 @@ WITH
             AND (sd.config_fc IS NULL OR STRPOS(sd.config_fc, CONCAT('"',c.config_fc,'"')) > 0)
             AND (sd.province_name IS NULL OR STRPOS(sd.province_name, CONCAT('"',UPPER(g.province_name),'"')) >0)
             AND (sd.region_name IS NULL OR STRPOS(sd.region_name, CONCAT('"',UPPER(g.region_name),'"')) >0)
-            AND (sd.customer_tag_group IS NULL OR STRPOS(sd.customer_tag_group, CONCAT('"',c.customer_tag_group,'"')) > 0)
-            AND (sd.customer_tag_sub_group IS NULL OR STRPOS(sd.customer_tag_sub_group, CONCAT('"',c.customer_tag_sub_group,'"')) > 0)
+            AND (sd.customer_tag_group IS NULL OR STRPOS(sd.customer_tag_group, CONCAT('"',t.customer_tag_priority,'"')) > 0)
+            AND (sd.customer_tag_sub_group IS NULL OR STRPOS(sd.customer_tag_sub_group, CONCAT('"',t.customer_tag_priority_sub,'"')) > 0)
             AND (
                 sd.last_purchase IS NULL
                 OR DATE(c.last_purchase) BETWEEN sd.start_date_last_purchase AND sd.end_date_last_purchase
