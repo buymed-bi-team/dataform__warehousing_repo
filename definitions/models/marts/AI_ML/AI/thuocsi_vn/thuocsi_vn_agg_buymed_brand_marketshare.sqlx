@@ -1,0 +1,10 @@
+config {
+    type: 'table',
+    schema: "buymed_innovation",
+    description: `Buymed's Brand market share .`,
+    tags: ['AI_THUOCSI_VN']
+}
+
+SELECT
+    *
+FROM ${source.external}.import_market_share_buymed_brand
