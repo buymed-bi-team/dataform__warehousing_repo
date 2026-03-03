@@ -12,7 +12,7 @@ config {
 }
 
 SELECT DISTINCT 
-        o.id AS sesion_id
+        o.id AS session_id
         ,o.code
         ,o.status
         ,o.client_id 

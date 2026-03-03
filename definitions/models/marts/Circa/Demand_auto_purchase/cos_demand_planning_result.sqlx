@@ -12,7 +12,7 @@ config {
 }
 
 SELECT  
-        o.id AS sesion_id
+         i.session_id
         ,o.code
         ,o.status
         ,pos_id
@@ -28,7 +28,6 @@ SELECT
         ,total_quantity -- tổng số lượng bán 
         ,total_orders -- tổng số đơn
         ,days_with_orders -- Số ngày có bán 
-        ---
         ,current_stock -- tồn hiện tại
         ,safety_stock -- tồn an toàn
         ,target_stock -- tồn mục tiêu
@@ -41,7 +40,7 @@ SELECT
         ,unit_convert_rate
         ,is_hub -- có phải hub ko 
         ,allow_give_transfer -- 
- FROM `buymed_circa_v2.demand_planning_demand_planning_session` o 
+ FROM buymed_circa_v2.demand_planning_demand_planning_session o 
  LEFT JOIN buymed_circa_v2.demand_planning_demand_planning_result i ON o.id = i.session_id -- Danh sách nhu cầu
 --  WHERE o.code = 'DEMAND_SESSION_83'
 --  and product_id = 216272
