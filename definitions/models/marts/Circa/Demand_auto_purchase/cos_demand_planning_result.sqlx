@@ -13,6 +13,7 @@ config {
 
 SELECT  TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
         ,i.session_id
+        ,DATETIME_ADD(o.created_at, INTERVAL 7 HOUR) AS created_at
         ,o.code
         ,o.status
         ,pos_id
