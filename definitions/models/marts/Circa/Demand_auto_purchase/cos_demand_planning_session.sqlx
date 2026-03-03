@@ -1,0 +1,31 @@
+config {
+    type: "table",
+    description: `Circa OS cos_demand_planning_session
+                  PIC: huyen.ngo;
+                  model_type: Table;
+                  schedule: At minute 10 every hour`,
+    tags: ["custom_1h_past10"],
+    name: "cos_demand_planning_session",
+    columns: {
+        
+    }
+}
+
+SELECT DISTINCT 
+        o.id AS sesion_id
+        ,o.code
+        ,o.status
+        ,o.client_id 
+        ,total_pos
+        ,DATETIME_ADD(o.created_at, INTERVAL 7 HOUR) AS created_at
+        ,DATE(DATETIME_ADD(o.created_at, INTERVAL 7 HOUR)) AS created_date
+        ,o.created_by AS created_by_id
+        ,e.name AS created_by
+        ,DATETIME_ADD(o.started_at, INTERVAL 7 HOUR) AS started_at
+       ,DATETIME_ADD(o.updated_at, INTERVAL 7 HOUR) AS updated_at
+       ,DATETIME_ADD(o.completed_at, INTERVAL 7 HOUR) AS completed_at
+       ,current_step
+       ,processed_pos
+       ,DATETIME_ADD(o.calculation_date, INTERVAL 7 HOUR) AS calculation_date -- ngày tính demand 
+ FROM ${source.circa_os}.demand_planning_demand_planning_session o 
+ LEFT JOIN ${source.circa_os}.entity_entity e ON o.created_by = e.id 
