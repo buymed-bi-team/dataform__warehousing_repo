@@ -1,0 +1,34 @@
+config {
+    type: "table",
+    description: `Circa OS -- Chi tiết kết quả phiên dự báo mua hàng 
+                  PIC: huyen.ngo;
+                  model_type: Table;
+                  schedule: At minute 10 every hour`,
+    tags: ["custom_1h_past15"],
+    name: "cos_demand_planning_internal_transfer",
+    columns: {
+        
+    }
+}
+
+SELECT  TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
+        ,i.session_id
+        ,DATETIME_ADD(o.created_at, INTERVAL 7 HOUR) AS created_at
+        ,o.code
+        ,o.status AS session_status
+        ,from_pos_name
+        ,to_pos_name
+        ,product_id
+        ,transfer_unit
+        ,transfer_quantity
+        ,i.status AS transfer_status
+        ,priority_score
+        ,transfer_request_code
+        ,CONCAT(i.product_id, "_", i.client_id) AS product_client_id
+ FROM buymed_circa_v2.demand_planning_demand_planning_session o 
+ LEFT JOIN buymed_circa_v2.demand_planning_internal_transfer i ON o.id = i.session_id -- Danh sách nhu cầu
+ WHERE DATE(TIMESTAMP_ADD(o.created_at, INTERVAL 7 HOUR)) 
+      >= DATE_SUB(CURRENT_DATE(), INTERVAL 7 DAY)
+--  WHERE o.code = 'DEMAND_SESSION_83'
+--  and product_id = 216272
+--       and poS_id = 'ef29a397-72d8-40c3-9602-e1cbbc5d1da1'
