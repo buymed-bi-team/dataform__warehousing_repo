@@ -94,13 +94,44 @@ WITH cte_product AS (
     QUALIFY ROW_NUMBER() OVER(PARTITION BY product_id, client_id ORDER BY created_at DESC) = 1
 )
 ,convert_unit AS (
-    SELECT a.product_id
+     WITH only_all_false AS (
+          SELECT
+            product_id
+            ,client_id
+          FROM  ${source.circa_os}.product_retail_unit
+          GROUP BY product_id, client_id
+          HAVING
+            COUNTIF(purchase_allowed = TRUE) = 0
+            AND COUNT(*) > 0
+),filtered AS (
+         SELECT
+            a.product_id
+           ,a.convert_rate
+           ,a.unit AS convert_unit
+           ,a.client_id
+         FROM  ${source.circa_os}.product_retail_unit a
+         JOIN only_all_false b USING (product_id, client_id)
+         WHERE a.unit IS NOT NULL AND a.unit != ""
+)
+SELECT
+   product_id
+  ,convert_rate
+  ,convert_unit
+  ,client_id
+FROM filtered
+QUALIFY ROW_NUMBER() OVER ( PARTITION BY product_id, client_id  ORDER BY convert_rate DESC) = 1
+UNION ALL
+  SELECT a.product_id
           ,convert_rate
           ,unit AS convert_unit
           ,client_id
-    FROM ${source.circa_os}.product_retail_unit AS a
-    WHERE unit IS NOT NULL OR unit <> ""
+    FROM lakehouse-prod-394907.buymed_circa_v2.product_retail_unit AS a
+    WHERE (unit IS NOT NULL OR unit <> "")
+          AND purchase_allowed is true
+         -- and client_id = 1
+          --and product_id = 84855
     QUALIFY ROW_NUMBER() OVER(PARTITION BY product_id, client_id ORDER BY convert_rate DESC) = 1
+
 )
 ,brand_type AS (
     SELECT p.product_id
