@@ -2,7 +2,7 @@ config {
     type: "table",
     description: `Lấy giá mua hàng ngoài của FS, dùng để compare với giá thuốc sỉ
              PIC: huyen.ngo; model_type: Table ;schedule: At minute 15 past 2 hours`,
-    tags: ["custom_2h_past15"],
+    tags: ["custom_1h_past15"],
     name: "circafs_lastest_price",
 }
 
