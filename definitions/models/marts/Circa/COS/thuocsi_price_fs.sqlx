@@ -21,7 +21,6 @@ where (a.seller_code = 'MEDX' or a.seller_class = 'EXTERNAL')
   and a.fc_code in ('HN', 'BD')
 qualify row_number() over(partition by a.product_id, a.fc_code order by a.price_after_discount asc) = 1
 )
-,price AS (
     SELECT DISTINCT
             t.*
            ,CONCAT(t.product_id, '_', t.fc_code) AS product_fc_code
@@ -29,22 +28,4 @@ qualify row_number() over(partition by a.product_id, a.fc_code order by a.price_
     LEFT JOIN ${source.ref}.circafs_lastest_price p ON t.product_id = p.product_id AND t.fc_code = p.fc_code
     --WHERE CONCAT(t.product_id, '_', fc_code) IN (SELECT DISTINCT product_thuocsi_id FROM ${source.ref}.circafs_lastest_price)
     GROUP BY ALL
-)
-,_all AS (
-    SELECT price.*
-           ,CONCAT(product_id, '_', LOWER(thuocsi_unit)) AS productid_unit
-           ,p.client_id
-    FROM price
-    LEFT JOIN ${source.ref}.circa_pos_profile p ON price.customer_id = p.thuocsi_id
-)
-SELECT DISTINCT p.*
-       ,po.name
-       ,r.* EXCEPT (product_id, client_id)
-       ,p.min_price / convert_rate AS base_unit_price_thuocsi
-FROM _all p 
-LEFT JOIN gold_buymed_vn2.circa_pos_profile po ON p.customer_id = po.thuocsi_id
-LEFT JOIN gold_buymed_vn2.cos_product_convert_base_unit r ON p.product_id = r.product_id
-                                                        AND LOWER(p.thuocsi_unit) = LOWER(r.convert_unit)
-                                                        AND po.client_id = r.client_id
--- WHERE r.convert_rate IS NULL
-ORDER BY po.name
+format lại, đổi dấu , ra phía trước
