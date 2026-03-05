@@ -2,7 +2,7 @@ config {
     type: "table",
     description: `compare_price_fs_thuocsi
              PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 past hour 6, 8, 10, 12, 14, 16, 18, 20 and 22`,
-    tags: ["custom_2h_past5"],
+    tags: ["custom_1h_past23"],
     name: "compare_price_fs_thuocsi",
 }
 
