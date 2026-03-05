@@ -47,6 +47,7 @@ SELECT
     ,p.thuocsi_id
     ,CONCAT(product_id,'_',thuocsi_id) AS product_thuocsi_id
     ,p.name
+    ,config_fc
     ,m.customer_level
 FROM t
 LEFT JOIN ${source.ref}.circa_pos_profile p ON t.pos_id = p.id
