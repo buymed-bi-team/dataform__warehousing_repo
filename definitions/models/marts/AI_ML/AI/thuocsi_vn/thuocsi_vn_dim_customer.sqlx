@@ -22,6 +22,7 @@ WITH
             , c.district_name AS customer_district_name
             , c.province_name AS customer_province_name
             , c.region_name AS customer_region_name
+            , REGEXP_REPLACE(tags, r'[\[\]\"]', '') AS tags
         FROM ${ref('gold_buymed_vn2', 'dim_customer')} AS a
             LEFT JOIN gold_buymed_vn2.dim_customer_tag_priority AS b USING(customer_id)
             LEFT JOIN ${ref("gold_buymed_vn2", "dim_geo_location")} AS c ON a.location_code = c.location_code
@@ -37,6 +38,7 @@ WITH
             -- , "TENDER"
             , "TENDER"
             , address
+            , ""
             , ""
             , ""
             , ""
