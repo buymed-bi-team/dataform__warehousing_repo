@@ -62,7 +62,7 @@ ORDER BY p.name, latest_order DESC
 SELECT
      TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
     ,sku_circa.*
-    ,sku_circa.unit_price / convert_rate AS base_unit_price
+    ,round(sku_circa.unit_price / convert_rate) AS base_unit_price
     ,CASE WHEN config_fc = 'MIENNAM' THEN 'BD' 
           WHEN config_fc = 'MIENBAC' THEN 'HN' 
           END AS fc_code
