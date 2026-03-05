@@ -63,6 +63,9 @@ SELECT
      TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
     ,sku_circa.*
     ,sku_circa.unit_price / convert_rate AS base_unit_price
+    ,CASE WHEN config_fc = 'MIENNAM' THEN 'BD' 
+          WHEN config_fc = 'MIENBAC' THEN 'HN' 
+          END AS fc_code
 FROM sku_circa
 LEFT JOIN ${source.ref}.cos_product_convert_base_unit r ON sku_circa.product_id = r.product_id
                                                        AND sku_circa.unit = r.convert_unit
