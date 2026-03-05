@@ -6,26 +6,32 @@ config {
     name: "thuocsi_price_fs",
 }
  
-with t as (
-select
-  a.product_id,
-  a.fc_code,
-  a.price_after_discount as min_price_thuocsi,
-  CASE WHEN td.unit = 'Tube' THEN 'Tuýp' ELSE td.unit END AS thuocsi_unit
-from `gold_buymed_vn2.dim_product_sku_pricing` a
-left join `platinum_buymed_vn.marketplace_prd_product_v2_sku` b on a.item_code = b.item_code
-left join gold_buymed_vn2.dim_product td ON td.product_id = a.product_id
-where (a.seller_code = 'MEDX' or a.seller_class = 'EXTERNAL')
-  and b.status in ('NORMAL', 'LIMIT')
-  and b.is_active
-  and a.fc_code in ('HN', 'BD')
-qualify row_number() over(partition by a.product_id, a.fc_code order by a.price_after_discount asc) = 1
+WITH t AS (
+    SELECT
+          a.product_id
+        , a.fc_code
+        , a.price_after_discount AS min_price_thuocsi
+        , CASE 
+            WHEN td.unit = 'Tube' THEN 'Tuýp' 
+            ELSE td.unit 
+          END AS thuocsi_unit
+    FROM `gold_buymed_vn2.dim_product_sku_pricing` a
+    LEFT JOIN `platinum_buymed_vn.marketplace_prd_product_v2_sku` b ON a.item_code = b.item_code
+    LEFT JOIN `gold_buymed_vn2.dim_product` td  ON td.product_id = a.product_id
+    WHERE (a.seller_code = 'MEDX' OR a.seller_class = 'EXTERNAL')
+      AND b.status IN ('NORMAL', 'LIMIT')
+      AND b.is_active
+      AND a.fc_code IN ('HN', 'BD')
+    QUALIFY ROW_NUMBER() OVER (PARTITION BY a.product_id, a.fc_code 
+            ORDER BY a.price_after_discount ASC
+        ) = 1
 )
-    SELECT DISTINCT
-            t.*
-           ,CONCAT(t.product_id, '_', t.fc_code) AS product_fc_code
-    FROM t
-    LEFT JOIN ${source.ref}.circafs_lastest_price p ON t.product_id = p.product_id AND t.fc_code = p.fc_code
-    --WHERE CONCAT(t.product_id, '_', fc_code) IN (SELECT DISTINCT product_thuocsi_id FROM ${source.ref}.circafs_lastest_price)
-    GROUP BY ALL
-format lại, đổi dấu , ra phía trước
+
+SELECT DISTINCT
+      t.*
+    , CONCAT(t.product_id, '_', t.fc_code) AS product_fc_code
+FROM t
+LEFT JOIN ${source.ref}.circafs_lastest_price p ON t.product_id = p.product_id 
+                                           AND t.fc_code = p.fc_code
+
+GROUP BY ALL
