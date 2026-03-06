@@ -30,7 +30,7 @@ FROM ${ref('fact_order_item')} AS oi
     LEFT JOIN ${ref('fact_order_voucher')} AS ov 
         ON oi.order_id = ov.order_id
     LEFT JOIN 
-        (SELECT DISTINCT voucher_code, product_id, campaign_brand, seller_code
+        (SELECT DISTINCT voucher_code, product_id, campaign_brand, seller_code, tag_code
         FROM ${ref('dim_voucher_product')}
         ) AS vp 
         ON vp.voucher_code = ov.redeem_code 

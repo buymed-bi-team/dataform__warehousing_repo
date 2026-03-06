@@ -21,6 +21,7 @@ SELECT
     , JSON_VALUE(p.product_condition.seller_code) as seller_code
     , v.campaign_brand
     , v.charge_fee
+    , '' AS tag_code
 FROM ${ref('dim_voucher')} as v
     , UNNEST(JSON_QUERY_ARRAY(and_conditions, '$.PRODUCT.and_conditions')) AS p
 UNION DISTINCT
@@ -32,6 +33,7 @@ SELECT DISTINCT
     , COALESCE(JSON_VALUE(p.product_tag_condition.seller_code), s.seller_code) as seller_code
     , v.campaign_brand
     , v.charge_fee
+    , JSON_VALUE(p.product_tag_condition.tag_code) AS tag_code
 FROM ${ref('dim_voucher')} as v
     , UNNEST(JSON_QUERY_ARRAY(and_conditions, '$.PRODUCT_TAG.and_conditions')) AS p
 LEFT JOIN ${ref('dim_sku_tag')} AS s ON JSON_VALUE(p.product_tag_condition.tag_code) = s.tag_code
@@ -44,6 +46,7 @@ SELECT
     , JSON_VALUE(p.product_condition.seller_code) as seller_code
     , v.campaign_brand
     , v.charge_fee
+    , '' AS tag_code
 FROM ${ref('dim_voucher')} as v
     , UNNEST(JSON_QUERY_ARRAY(and_conditions, '$.PRODUCT.or_conditions')) AS p
 UNION DISTINCT
@@ -55,6 +58,7 @@ SELECT DISTINCT
     , COALESCE(JSON_VALUE(p.product_tag_condition.seller_code), s.seller_code) as seller_code
     , v.campaign_brand
     , v.charge_fee
+    , JSON_VALUE(p.product_tag_condition.tag_code) AS tag_code
 FROM ${ref('dim_voucher')} as v
     , UNNEST(JSON_QUERY_ARRAY(and_conditions, '$.PRODUCT_TAG.or_conditions')) AS p
 LEFT JOIN ${ref('dim_sku_tag')} AS s ON JSON_VALUE(p.product_tag_condition.tag_code) = s.tag_code
