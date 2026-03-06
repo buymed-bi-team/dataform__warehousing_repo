@@ -30,11 +30,11 @@ FROM ${ref('fact_order_item')} AS oi
     LEFT JOIN ${ref('fact_order_voucher')} AS ov 
         ON oi.order_id = ov.order_id
     LEFT JOIN 
-        (SELECT DISTINCT voucher_code, product_id, campaign_brand, seller_code
+        (SELECT DISTINCT voucher_code, product_id, campaign_brand, seller_code, tag_code
         FROM ${ref('dim_voucher_product')}
         ) AS vp 
         ON vp.voucher_code = ov.redeem_code 
-            AND vp.product_id = oi.product_original_id 
+            AND (vp.product_id = oi.product_original_id OR STRPOS(oi.tag_code, CONCAT('"',vp.tag_code, '"')) > 0)
             AND vp.seller_code = oi.seller_code
 WHERE
     vp.voucher_code IS NOT NULL
