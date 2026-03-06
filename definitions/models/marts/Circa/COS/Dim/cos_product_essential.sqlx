@@ -23,3 +23,4 @@ SELECT DISTINCT
 FROM ${source.circa_os}.product_assortment_template o 
 LEFT JOIN ${source.circa_os}.product_assortment_template_items i ON o.id = i.assortment_template_id
 WHERE o.id = '1430759b-40e3-4d86-86b8-8b9a1d5dae27'
+     AND i.status <> 'INACTIVE'
