@@ -33,7 +33,8 @@ WITH
             , b.sku_key_fc_code
         FROM ${ref("gold_buymed_vn2", "dim_sku_tag")} AS a
             LEFT JOIN ${ref("gold_buymed_vn2", "dim_sku_sales_region_current")} AS b ON a.sku_sales_region_code = b.sku_sales_region_code
-        WHERE tag_code IN ("V2U1", "NEAR_EXPIRATION", "ECLT", "PROMOTION", "BMSE", "FBLT", "khan-hang", "hang-benh-vien", "2BCL", "PABC", "BATBUOCLAYHOADON", "X7GB")
+        WHERE 1=1
+            -- AND tag_code IN ("V2U1", "NEAR_EXPIRATION", "ECLT", "PROMOTION", "BMSE", "FBLT", "khan-hang", "hang-benh-vien", "2BCL", "PABC", "BATBUOCLAYHOADON", "X7GB")
             AND b.sku_key_fc_code IS NOT NULL
         GROUP BY ALL
     )
