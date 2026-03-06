@@ -7,7 +7,12 @@ config {
 }
 
 WITH t AS (
-SELECT p.*
+SELECT p.* except(thuocsi_id)
+     ,CASE WHEN code = 'POS0042' THEN 30365
+           WHEN code = 'POS0043' THEN 56487
+           WHEN code = 'POS0046' THEN 89
+           WHEN code = 'POS0054' THEN 362470
+     ELSE thuocsi_id END AS thuocsi_id
      ,s.* EXCEPT (status)
      ,CASE WHEN p.code = 'POS0010' THEN 'Active'
            ELSE s.status END AS actual_status
@@ -22,6 +27,7 @@ WHERE type IN ('CIRCA', 'FS')
 
 SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
      ,t.*
+     
      ,customer_level
 FROM t 
 LEFT JOIN ${source.ref}.dim_customer m ON t.thuocsi_id = m.customer_id
