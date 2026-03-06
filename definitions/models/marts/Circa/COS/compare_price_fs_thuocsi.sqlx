@@ -7,30 +7,37 @@ config {
 }
 
 Select o.*
-      ,i.* except (client_id, name,product_id,product_thuocsi_id)
-      ,case when unit_price > min_price then '> thuocsi_price'
-            when unit_price < min_price then '< thuocsi_price'
-            when unit_price = min_price then '= thuocsi_price'
+      ,r.base_unit
+      ,t.* except(product_id, fc_code)
+      ,round(t.min_price_thuocsi / convert_rate) AS min_base_unit_price_thuocsi
+      ,case when unit_price >  min_price_thuocsi then '> thuocsi_price'
+            when unit_price <  min_price_thuocsi then '< thuocsi_price'
+            when unit_price =  min_price_thuocsi then '= thuocsi_price'
             else null end as compare_price
        ,concat(o.product_id, "_", o.client_id) as product_client_id
        ,'yes' as is_same_unit
 from  ${source.ref}.circafs_lastest_price o 
-left join  ${source.ref}.thuocsi_price_by_level i on o.product_thuocsi_id = i.product_thuocsi_id
-where i.customer_id is not null
-       and o.unit = lower(i.thuocsi_unit)
+left join ${source.ref}.thuocsi_price_fs t on o.product_id = t.product_id AND o.fc_code = t.fc_code 
+LEFT JOIN ${source.ref}.cos_product_convert_base_unit r ON o.product_id = r.product_id
+                                                        AND o.unit  = r.convert_unit
+                                                        AND o.client_id = r.client_id
+where o.unit = lower(t.thuocsi_unit)
+
 union all
 
-
  Select o.*
-      ,i.* except (client_id, name,product_id,product_thuocsi_id)
-      ,case when round(o.base_unit_price) > round(i.base_unit_price_thuocsi) then '> thuocsi_price'
-            when  round(o.base_unit_price) < round(i.base_unit_price_thuocsi) then '< thuocsi_price'
-            when  round(o.base_unit_price) = round(i.base_unit_price_thuocsi) then '= thuocsi_price'
+      ,r.base_unit
+      ,t.* except(product_id, fc_code)
+      ,round(t.min_price_thuocsi / convert_rate) AS min_base_unit_price_thuocsi
+      ,case when round(o.base_unit_price) > round(t.min_price_thuocsi / convert_rate) then '> thuocsi_price'
+            when round(o.base_unit_price) < round(t.min_price_thuocsi / convert_rate) then '< thuocsi_price'
+            when round(o.base_unit_price) = round(t.min_price_thuocsi / convert_rate) then '= thuocsi_price'
             else 'can_not_convert_unit' end as compare_price
        ,concat(o.product_id, "_", o.client_id) as product_client_id
        ,'no' as is_same_unit
-from  ${source.ref}.circafs_lastest_price o 
-left join  ${source.ref}.thuocsi_price_by_level i on o.product_thuocsi_id = i.product_thuocsi_id
-where i.customer_id is not null
-       and o.unit <> lower(i.thuocsi_unit)
-
+from ${source.ref}.circafs_lastest_price o 
+left join ${source.ref}.thuocsi_price_fs t on o.product_id = t.product_id AND o.fc_code = t.fc_code 
+LEFT JOIN ${source.ref}.cos_product_convert_base_unit r ON o.product_id = r.product_id
+                                                        AND lower(t.thuocsi_unit) = lower(r.convert_unit)
+                                                        AND o.client_id = r.client_id
+where o.unit <> lower(t.thuocsi_unit)
