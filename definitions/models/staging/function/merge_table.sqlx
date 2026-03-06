@@ -119,7 +119,8 @@ BEGIN
         );
         """
         , silver_dataset || "." || main_table_name
-        , ARRAY_TO_STRING( column_list, ",\n ")
+        /*, ARRAY_TO_STRING( column_list, ",\n ")*/
+        , ARRAY_TO_STRING(  ARRAY(SELECT FORMAT("`%s`", c) FROM UNNEST(column_list) c),  ",\n ")
         , ARRAY_TO_STRING( ARRAY(SELECT  "m." || c FROM UNNEST(column_list) c ), ", \n ")
         , silver_dataset || "." || migrate_table_name
         , main_table_name
