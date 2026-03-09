@@ -19,9 +19,11 @@ SELECT DISTINCT r.id
               ,DATETIME_ADD(r.completed_at, INTERVAL 7 HOUR) AS completed_at
               ,dest_pos_id
               ,r.status
+              ,r.note
               ,actual_total_amount
               ,product_id
               ,unit
+              ,SUM(ri.quantity) AS tranfer_qty
               ,SUM(rid.quantity) AS quantity
               ,SUM(rid.base_quantity) AS base_qty_transfer
               ,rid.unit_price
