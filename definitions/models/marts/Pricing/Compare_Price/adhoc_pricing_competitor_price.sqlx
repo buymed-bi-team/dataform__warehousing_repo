@@ -26,6 +26,7 @@ WITH
                 , null
                 , LOWER(JSON_VALUE(a.extra_props, '$.market_data.unit'))
             ) AS competitor_unit
+            , JSON_VALUE(a.extra_props, "$.market_data.url") AS competitor_url
             , IFNULL(SAFE_CAST(JSON_VALUE(a.extra_props, '$.is_checked') AS BOOL), FALSE) AS is_checked
             , IFNULL(SAFE_CAST(JSON_VALUE(a.extra_props, '$.is_checked_manual') AS BOOL), FALSE) AS is_verified
             , JSON_VALUE(a.extra_props, '$.qc') AS qc
