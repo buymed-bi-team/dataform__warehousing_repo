@@ -6,3 +6,4 @@ config {
 }
 
 select * from buymed_external.pharmacy
+QUALIFY ROW_NUMBER() OVER(PARTITION BY customer_id ORDER BY updated_time DESC) = 1
