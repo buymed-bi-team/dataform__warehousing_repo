@@ -1,0 +1,90 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: "Tracking Circa COS.",
+    tags: ['AI_CIRCA']
+}
+
+WITH fact_order_item AS (
+    SELECT
+          i.order_code
+        , SUM(i.unit_price_before_discount * (i.quantity - COALESCE(i.qty_rt, 0))) AS gmv_product_raw
+    FROM ${ref("gold_buymed_vn2", "cos_fact_order_item")} i
+    WHERE i.client_id = 1
+    GROUP BY ALL
+)
+
+, base_data AS (
+    SELECT DISTINCT
+          o.*
+        , SUM(COALESCE(c.total_return_amount, 0)) AS total_return_amount
+        , o.total_amount - SUM(COALESCE(c.rev_return, 0))  - SUM(COALESCE(delivery_amount, 0)) AS pos_amount
+        , GREATEST(COALESCE(f.gmv_product_raw, 0), 0)
+            + COALESCE(o.medicine_cutting_fee, 0) AS gmv
+    FROM ${ref("gold_buymed_vn2", "cos_fact_order")} o
+    LEFT JOIN${ref("gold_buymed_vn2", "cos_return_completed")} c ON o.order_code = c.order_code
+    LEFT JOIN fact_order_item f ON o.order_code = f.order_code
+    WHERE o.client_id = 1
+      AND o.status IN ('COMPLETED', 'COMPLETED_SHIPPING')
+    AND o.pos_id <> '0afdb831-b60d-4254-8822-df13e39c90e7'
+    GROUP BY ALL
+)
+
+, valid_order AS (
+    SELECT DISTINCT
+          i.order_code
+    FROM ${ref("gold_buymed_vn2", "cos_fact_order_item")} i
+    INNER JOIN base_data o ON i.order_code = o.order_code
+    WHERE (i.quantity - COALESCE(i.qty_rt, 0)) > 0
+)
+
+, order_base AS (
+    SELECT
+        created_date 
+        ,pos_id
+        , order_code
+        , pos_amount
+        , gmv
+        , CASE
+            WHEN entity_id = '00000000-0000-0000-0000-000000000000'
+              OR entity_id = '0'
+            THEN CONCAT(entity_id, order_code)
+            ELSE entity_id
+          END AS new_customer_id
+    FROM base_data
+)
+
+, product_base AS (
+    SELECT
+          o.created_date
+          ,o.pos_id
+        , COUNT(DISTINCT i.product_id) AS no_product
+    FROM ${ref("gold_buymed_vn2", "cos_fact_order_item")} i
+    LEFT JOIN base_data o ON i.order_code = o.order_code
+    WHERE (i.quantity - COALESCE(i.qty_rt, 0)) > 0
+           AND o.order_code is not null
+    GROUP BY ALL
+), final AS (
+SELECT
+      o.created_date
+      ,o.pos_id
+    , round(SUM(o.gmv)) AS gmv
+    , COUNT(DISTINCT CASE WHEN v.order_code IS NOT NULL THEN o.order_code END) AS no_orders
+    , COUNT(DISTINCT CASE WHEN v.order_code IS NOT NULL THEN o.new_customer_id END) AS no_customers
+    , SAFE_DIVIDE(
+          SUM(o.gmv)
+        , COUNT(DISTINCT CASE WHEN v.order_code IS NOT NULL THEN o.order_code END)
+      ) AS aov
+    , p.no_product
+FROM order_base o
+LEFT JOIN valid_order v ON o.order_code = v.order_code
+LEFT JOIN product_base p ON o.created_date = p.created_date AND o.pos_id = p.pos_id
+GROUP BY ALL
+ORDER BY o.created_date DESC
+)
+SELECT p.code AS pos_code
+    , p.name AS pos_name
+    , IF(p.type = "FS", "FS", "COS") AS pos_type 
+    , a.* except (pos_id)
+FROM final a
+LEFT JOIN ${ref("gold_buymed_vn2", "circa_pos_profile")} p ON a.pos_id = p.id
