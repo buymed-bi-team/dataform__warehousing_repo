@@ -38,8 +38,18 @@ WITH base_unit_selection AS (
         ,oi.product_id
         ,oi.sku_code
         ,al.item_ref_id
-        ,CASE WHEN oi.product_id = 1 THEN oi.quantity
-                    ELSE ROUND(oi.quantity * (al.base_quantity / NULLIF(SUM(al.base_quantity) OVER (PARTITION BY oi.id), 0)), 6) END AS quantity
+         ,COALESCE(
+                CASE 
+                    WHEN oi.product_id = 1 THEN oi.quantity
+                    ELSE ROUND(
+                        oi.quantity * (
+                            al.base_quantity / NULLIF(SUM(al.base_quantity) OVER (PARTITION BY oi.id), 0)
+                        ),
+                        6
+                    )
+                END,
+                oi.quantity      
+                  ) AS quantity
         ,oi.unit
         ,oi.unit_price
         ,oi.discount_amount
@@ -48,10 +58,18 @@ WITH base_unit_selection AS (
         ,system_price
         --,oi.discount_amount + oi.unit_price AS unit_price_before_discount
         ,oi.lot_date
-         ,ROUND(
-               (CASE WHEN oi.product_id = 1 THEN 1 
-                   ELSE oi.quantity * cv.convert_rate * (al.base_quantity / NULLIF(SUM(al.base_quantity) OVER (PARTITION BY oi.id), 0)) END)
-            , 6) AS base_quantity
+         ,CASE 
+               WHEN oi.product_id = 1 THEN 1
+               ELSE ROUND(
+                   COALESCE(
+                       oi.quantity * cv.convert_rate * (
+                           al.base_quantity / NULLIF(SUM(al.base_quantity) OVER (PARTITION BY oi.id), 0)
+                       ),
+                       oi.quantity * cv.convert_rate
+                   ),
+                   6
+               )
+            END AS base_quantity
         ,oi.tax_rate
         ,oi.product_id || '_' || oi.lot_date || '_'  || o.client_id AS product_lot_date_vat_client_id
         ,oi.sku_code || '_' || oi.lot_date || '_' || oi.tax_rate AS sku_lotdate_vat
