@@ -4,16 +4,58 @@ config {
     description: "Margin of Circa COS.",
     tags: ['AI_CIRCA']
 }
-
-WITH
-    cogs AS (
+WITH fact_order_item AS (
+    SELECT
+          i.order_code
+        , SUM(
+            i.unit_price_before_discount * (i.quantity - COALESCE(i.qty_rt, 0))
+        ) AS gmv_product_raw
+    FROM ${ref("gold_buymed_vn2", "cos_fact_order_item")} i
+    WHERE i.client_id = 1
+    GROUP BY
+          i.order_code
+)
+, voucher_discount AS (
+    SELECT
+          o.order_code
+        , SUM(
+            CASE
+                WHEN o.is_returned = 'False' THEN v.discount_amount
+                ELSE 0
+            END
+        ) AS voucher_discount
+    FROM ${ref("gold_buymed_vn2", "cos_fact_order")} o
+    LEFT JOIN ${ref("gold_buymed_vn2", "circa_fact_order_voucher")} v
+        ON o.order_code = v.order_code
+    WHERE o.client_id = 1
+      AND o.status IN ('COMPLETED', 'COMPLETED_SHIPPING')
+    GROUP BY
+          o.order_code
+), gmv AS (
+SELECT DISTINCT
+      o.pos_id
+    , o.created_date
+    , o.order_code
+    , GREATEST(COALESCE(f.gmv_product_raw, 0), 0) + COALESCE(o.medicine_cutting_fee, 0) AS GMV
+    , COALESCE(vd.voucher_discount, 0) AS voucher_discount
+FROM ${ref("gold_buymed_vn2", "cos_fact_order")} o
+LEFT JOIN fact_order_item f
+    ON o.order_code = f.order_code
+LEFT JOIN voucher_discount vd
+    ON o.order_code = vd.order_code
+WHERE o.client_id = 1
+  AND o.status IN ('COMPLETED', 'COMPLETED_SHIPPING')
+) ,cogs AS (
         SELECT
             i.order_code
+            ,SUM(i.discount_amount * (i.quantity - COALESCE(i.qty_rt, 0))) AS discount_deal
             ,SUM(
                 CASE
                     WHEN i.owner_name <>  'CIRCA MARKETING'
                          AND i.gift_code IS NOT NULL
                          AND i.gift_code <> ''
+                         AND unit_price = 0
+                         AND product_id NOT IN (941832, 941878, 1101283, 2003919, 2004189)
                     THEN i.unit_cost_price * (i.quantity - COALESCE(i.qty_rt, 0))
                     ELSE 0
                 END
@@ -21,62 +63,44 @@ WITH
             ,SUM(
                 CASE
                     WHEN i.owner_name = 'CIRCA MARKETING'
+                        AND product_id NOT IN (941832, 941878, 1101283, 2003919, 2004189)
                     THEN i.unit_cost_price * (i.quantity - COALESCE(i.qty_rt, 0))
                     ELSE 0
                 END
             ) AS cogs_mkt
             ,SUM(
                 CASE
-                    WHEN i.owner_name <>  'CIRCA MARKETING'
+                    WHEN i.owner_name <> 'CIRCA MARKETING'
                          AND (i.gift_code IS NULL OR i.gift_code = '' )
+                         AND unit_price <> 0
                     THEN i.unit_cost_price * (i.quantity - COALESCE(i.qty_rt, 0))
                     ELSE 0
                 END
             ) AS cogs_circa
         FROM ${ref("gold_buymed_vn2", "cos_fact_order_item")} AS i
+         left join ${ref("gold_buymed_vn2", "cos_fact_order")} o on i.order_id = o.order_id 
         WHERE i.client_id = 1
+              and pos_id <> '0afdb831-b60d-4254-8822-df13e39c90e7'
         GROUP BY i.order_code
-    ),
-
-    gmv AS (
-        SELECT DISTINCT
-            o.pos_id
-            , completed_date
-            , o.order_code
-            , SUM(o.total_item_amount + o.medicine_cutting_fee) - SUM(COALESCE(c.gmv_return, 0)) AS GMV
-            , SUM(
-                  CASE WHEN o.is_returned = 'False'
-                  THEN i.discount_amount ELSE 0
-                  END
-            ) AS voucher_discount
-        FROM ${ref("gold_buymed_vn2", "cos_fact_order")} o
-        LEFT JOIN ${ref("gold_buymed_vn2", "cos_return_completed")} c on o.order_code = c.order_code
-        LEFT JOIN ${ref("gold_buymed_vn2", "circa_fact_order_voucher")} i on o.order_code = i.order_code
-        WHERE 1=1
-            AND o.client_id = 1
-            AND status IN ('COMPLETED', 'COMPLETED_SHIPPING')
-        GROUP BY ALL
-
-    ),
-    final AS (
+    ),   final AS (
         SELECT
-            a.completed_date
+            a.created_date
            ,a.pos_id
            ,a.order_code
            ,a.gmv
            ,b.cogs_circa as cogs
            ,SUM(a.gmv) - coalesce(SUM(b.cogs_circa),0) AS profit
            ,coalesce(SUM(a.voucher_discount),0) + coalesce(SUM(b.cogs_circa_gift),0) + coalesce(SUM(b.cogs_mkt),0) AS voucher_gift
-           ,SUM(a.gmv) - coalesce(SUM(b.cogs_circa),0) - coalesce(SUM(a.voucher_discount),0) - coalesce(SUM(b.cogs_circa_gift),0) - coalesce(SUM(b.cogs_mkt),0) AS net_profit
+           ,coalesce(SUM(b.discount_deal),0) AS deal
+           ,SUM(a.gmv) - coalesce(SUM(b.cogs_circa),0) - coalesce(SUM(a.voucher_discount),0) - coalesce(SUM(b.cogs_circa_gift),0) - coalesce(SUM(b.cogs_mkt),0) -coalesce(SUM(b.discount_deal),0)  AS net_profit
        FROM gmv a
        LEFT JOIN cogs b ON a.order_code = b.order_code
        WHERE a.order_code IS NOT NULL
        GROUP BY ALL
     )
-
-SELECT
-    completed_date
+        SELECT
     -- ,pos_id
+    a.created_date
     , p.code AS pos_code
     , p.name AS pos_name
     , IF(p.type = "FS", "FS", "COS") AS pos_type
@@ -86,7 +110,10 @@ SELECT
     ,SAFE_DIVIDE(profit, gmv) AS gross_margin
     ,profit AS gross_profit
     ,voucher_gift AS cogs_voucher_gift
+    ,deal
     ,net_profit
     ,SAFE_DIVIDE(net_profit, gmv) AS net_margin
 FROM final AS a
-    LEFT JOIN buymed_circa_v2.entity_pos_profile AS p ON a.pos_id = p.id
+    LEFT JOIN ${ref("gold_buymed_vn2", "circa_pos_profile")} AS p ON a.pos_id = p.id
+    where p.type = 'CIRCA'
+          and p.code <> 'POS0074'
