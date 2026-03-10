@@ -38,20 +38,38 @@ WITH base_unit_selection AS (
         ,oi.product_id
         ,oi.sku_code
         ,al.item_ref_id
-        ,CASE WHEN oi.product_id = 1 THEN oi.quantity
-                    ELSE ROUND(oi.quantity * (al.base_quantity / NULLIF(SUM(al.base_quantity) OVER (PARTITION BY oi.id), 0)), 6) END AS quantity
+         ,COALESCE(
+                CASE 
+                    WHEN oi.product_id = 1 THEN oi.quantity
+                    ELSE ROUND(
+                        oi.quantity * (
+                            al.base_quantity / NULLIF(SUM(al.base_quantity) OVER (PARTITION BY oi.id), 0)
+                        ),
+                        6
+                    )
+                END,
+                oi.quantity      
+                  ) AS quantity
         ,oi.unit
         ,oi.unit_price
-        ,oi.discount_amount
+        ,CASE WHEN o.channel = 'O2O' THEN  ol.origin_price - ol.price ELSE oi.discount_amount END AS discount_amount
         ,CASE WHEN o.channel <> 'O2O' THEN (oi.discount_amount + oi.unit_price) 
               ELSE ol.origin_price END AS unit_price_before_discount
         ,system_price
         --,oi.discount_amount + oi.unit_price AS unit_price_before_discount
         ,oi.lot_date
-         ,ROUND(
-               (CASE WHEN oi.product_id = 1 THEN 1 
-                   ELSE oi.quantity * cv.convert_rate * (al.base_quantity / NULLIF(SUM(al.base_quantity) OVER (PARTITION BY oi.id), 0)) END)
-            , 6) AS base_quantity
+         ,CASE 
+               WHEN oi.product_id = 1 THEN 1
+               ELSE ROUND(
+                   COALESCE(
+                       oi.quantity * cv.convert_rate * (
+                           al.base_quantity / NULLIF(SUM(al.base_quantity) OVER (PARTITION BY oi.id), 0)
+                       ),
+                       oi.quantity * cv.convert_rate
+                   ),
+                   6
+               )
+            END AS base_quantity
         ,oi.tax_rate
         ,oi.product_id || '_' || oi.lot_date || '_'  || o.client_id AS product_lot_date_vat_client_id
         ,oi.sku_code || '_' || oi.lot_date || '_' || oi.tax_rate AS sku_lotdate_vat
@@ -124,9 +142,7 @@ WITH base_unit_selection AS (
 SELECT DISTINCT
      TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
     ,fo.order_code
-    ,i.* except (discount_amount)
-    ,CASE WHEN i.is_deal1k = true THEN unit_price_before_discount - unit_price 
-     ELSE i.discount_amount END AS discount_amount
+    ,i.*
     ,base_unit_cost_price * convert_rate AS unit_cost_price
     ,convert_rate
 FROM final i
