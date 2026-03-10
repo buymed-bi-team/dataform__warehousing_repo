@@ -22,13 +22,28 @@ config {
 WITH cte_date AS (
     SELECT
 		  date_sub(timestamp(date_trunc(date_sub( current_date('+7'), interval 4 month), month)) , interval 7 hour) as start_date
-)
+),
+
+    manual_checking AS (
+        SELECT
+            b.po_code
+            , a.sku
+            , SUM(a.done_quantity) AS check_app_quantity
+        FROM ${source.platinum}.warehouse_prd_inbound_receipt_item AS a
+            LEFT JOIN ${source.platinum}.warehouse_prd_inbound_receipt AS b ON a.receipt_code = b.code
+        WHERE a.created_date >= (select DATE(start_date) from cte_date)
+            AND b.created_date >= (select DATE(start_date) from cte_date)
+            AND b.type = "MANUAL_CHECKING"
+        GROUP BY ALL
+    )
 
 select
 	a.ticket_id,
     a.po_code as parent_code,
 	a.sku as sku_code,
 	a.demand_quantity as qty_start,
-	a.inbound_quantity as qty_done
+	a.inbound_quantity as qty_done,
+    b.check_app_quantity AS qty_check_app
 from ${source.platinum}.warehouse_prd_inbound_inbound_ticket_item as a
+    LEFT JOIN manual_checking AS b ON a.po_code = b.po_code AND a.sku = b.sku
 where created_date >= (select DATE(start_date) from cte_date)
