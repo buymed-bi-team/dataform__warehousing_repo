@@ -39,6 +39,8 @@ SELECT
     , g.region_name
     , g.urban_rural
     , JSON_VALUE(v.extra_props, "$.charge_fee") AS charge_fee
+    , v.promotion_id
+    , v.promotion_name
     , CASE
         WHEN LOWER(v.created_by_user_name) IN ('minh.vothanh', 'dat.hoquang') THEN 'TenderPortal'
         WHEN LOWER(a.voucher_code) LIKE '%chuyenkhoan%'            THEN 'ChuyenKhoan'
