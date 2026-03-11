@@ -1,0 +1,29 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `Product of Circa COS.`,
+    tags: ['AI_CIRCA']
+}
+
+SELECT deal_code 
+       ,deal_name
+       ,pos_id
+       ,p.code AS pos_code
+       ,p.name AS pos_name
+       ,o.status
+       ,start_date
+       ,end_date
+       ,is_expired
+       ,is_limit -- số lượng phát hành có giới hạn ko 
+       ,limit_value -- số lượng giới hạn
+       ,discount_type
+       ,discount_value
+       ,percent
+       ,created_date
+       ,created_by
+       ,o.client_id
+       ,limit_per_order -- giới hạn đặt hàng hàng mỗi đơn
+       ,campaign_code
+       ,campaign_name
+FROM ${ref('gold_buymed_vn2', 'dim_promotion_event_circa')} o
+LEFT JOIN ${ref('gold_buymed_vn2', 'circa_pos_profile')} p ON o.pos_id = p.id 
