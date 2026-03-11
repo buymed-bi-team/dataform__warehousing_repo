@@ -75,6 +75,7 @@ WITH map_cogs_buymed AS (
     SELECT DISTINCT
           o.pos_id
         , o.created_date
+        , client_id
         , f.order_code
         , f.product_id
         , GREATEST(COALESCE(f.gmv_product_raw, 0), 0) AS gmv
@@ -159,6 +160,7 @@ WITH map_cogs_buymed AS (
     SELECT
           a.created_date
         , a.pos_id
+        , a.client_id
         , a.order_code
         , a.product_id
         , a.gmv
@@ -179,6 +181,7 @@ WITH map_cogs_buymed AS (
 
 SELECT
       a.created_date
+    , a.client_id
     , p.code AS pos_code
     , p.name AS pos_name
     , IF(p.type = 'FS', 'FS', 'COS') AS pos_type
@@ -198,6 +201,7 @@ SELECT
     , a.net_profit_buymed
     , SAFE_DIVIDE(a.net_profit_circa, a.gmv) AS net_margin_circa
     , SAFE_DIVIDE(a.net_profit_buymed, a.gmv) AS net_margin_buymed
+    , CONCAT(a.client_id, "_", a.product_id) AS product_id_key
 FROM final AS a
 LEFT JOIN ${ref("gold_buymed_vn2", "circa_pos_profile")} AS p ON a.pos_id = p.id
 WHERE p.type = 'CIRCA'
