@@ -29,6 +29,7 @@ SELECT DISTINCT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transform
       ,actual_unit_price -- giá thực tế
       ,purchase_order_id
       ,p.code AS  po_code
+      ,CONCAT(i.product_id, "_", o.client_id) AS product_client_id
 FROM ${source.circa_os}.order_auto_purchase_session_item i 
 LEFT JOIN ${source.circa_os}.order_auto_purchase_session o ON i.session_id = o.id
 LEFT JOIN ${source.circa_os}.order_purchase_order p ON i.purchase_order_id = p.id
