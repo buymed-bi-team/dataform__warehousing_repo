@@ -1,0 +1,23 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `Product of Circa COS.`,
+    tags: ['AI_CIRCA']
+}
+
+SELECT voucher_code
+       ,voucher_name
+       ,start_date
+       ,end_date
+       ,is_expired
+       ,is_limit -- số lượng phát hành có giới hạn ko 
+       ,limit_value -- số lượng giới hạn
+       ,promotion_voucher_type
+       ,discount_value
+       ,percent
+       ,created_date
+       ,created_by
+       ,client_id
+       ,campaign_code
+       ,campaign_name
+FROM ${ref('gold_buymed_vn2', 'dim_promotion_voucher_circa')} 
