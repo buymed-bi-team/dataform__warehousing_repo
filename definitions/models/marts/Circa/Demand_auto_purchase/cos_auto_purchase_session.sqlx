@@ -33,5 +33,5 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
        ,CAST(JSON_VALUE(step_progress,'$.AUTO_PURCHASE.pos_created' ) AS INT64) AS pos_created
       , CAST(JSON_VALUE(step_progress, '$.AUTO_PURCHASE.processed_pos') AS INT64) AS processed_pos
 FROM ${source.circa_os}.order_auto_purchase_session o 
-LEFT JOIN ${source.circa_os}.entity_entity e ON o.created_by = e.id 
+LEFT JOIN ${source.circa_os}.entity_entity e ON o.created_by = e.id and o.client_id = e.client_id 
 
