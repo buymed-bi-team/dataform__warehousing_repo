@@ -47,7 +47,6 @@ WITH fact_order_item AS (
 SELECT DISTINCT
       o.pos_code
     , o.created_date
-    , o.order_code
     ,type AS order_type
     , GREATEST(COALESCE(f.gmv_product_raw, 0), 0) + COALESCE(o.medicine_cutting_fee, 0) AS actual_gmv
 FROM ${ref("gold_buymed_vn2", "cos_fact_order")} o
@@ -61,8 +60,8 @@ SELECT a.date
       ,p.name AS pos_name
       ,channel
       ,target AS target_gmv
-      ,b.actual_gmv
-      ,p.name AS pos_name
+      ,SUM(b.actual_gmv) AS actual_gmv
 FROM buymed_external.target_circa_2026 AS a
-LEFT JOIN gmv b ON a.pos_code = b.pos_code AND a.date = b.created_date AND a.pos_code = b.pos_code AND a.channel = b.order_type
+LEFT JOIN gmv b ON a.pos_code = b.pos_code AND a.date = b.created_date AND a.channel = b.order_type
 LEFT JOIN buymed_circa_v2.entity_pos_profile AS p ON a.pos_code = p.code
+GROUP BY ALL
