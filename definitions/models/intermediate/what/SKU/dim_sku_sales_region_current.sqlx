@@ -102,13 +102,13 @@ SELECT
     CONCAT(s.product_id,"_",coalesce(cte.fc_code,"")) AS product_fc_code,
     CONCAT(s.product_id, "_", s.seller_code, "_", cte.sales_region_code) AS sku_key_sales_region_code,
     CONCAT(s.product_id, "_", s.seller_code, "_", cte.fc_code) AS sku_key_fc_code,
-    sv.vendor_code AS fv_code,
-    sv.vendor_name AS fv_name,
-    sv.vendor_type AS sku_trading_by_fv,
+    fv.vendor_code AS fv_code,
+    fv.vendor_name AS fv_name,
+    fv.vendor_type AS sku_trading_by_fv,
     vd.line_manager_combine AS fv_line_manager_code,
     COALESCE(sv.purchase_status, "Off") AS purchase_status ,
-    sv.min_per_step,
-    CONCAT(sv.vendor_code,"_",cte.fc_code) AS vendor_fc_code,
+    fv.min_per_step,
+    CONCAT(fv.vendor_code,"_",cte.fc_code) AS vendor_fc_code,
     s.status AS sku_system_status,
     s.is_active AS sku_system_active,
     s.level AS sku_level,
@@ -185,8 +185,13 @@ FROM cte_full AS cte
         ON isd.sku = cte.sku_code AND isd.warehouse_code = cte.fc_code
     LEFT JOIN ${ref('dim_inventory_sku')} AS ins
         ON ins.sku = cte.sku_code AND ins.fc_code = cte.fc_code
-    LEFT JOIN ${ref('dim_sku_item_vendors')} AS sv
-        ON sv.sku_code = cte.sku_code AND sv.fc_code = cte.fc_code AND sv.vendor_priority = 0
+    LEFT JOIN (
+        SELECT DISTINCT sku_code, fc_code, purchase_status
+        FROM ${ref('dim_sku_item_vendors')} 
+    ) AS sv
+        ON sv.sku_code = cte.sku_code AND sv.fc_code = cte.fc_code
+    LEFT JOIN ${ref('dim_sku_item_vendors')} AS fv
+        ON fv.sku_code = cte.sku_code AND fv.fc_code = cte.fc_code AND fv.vendor_priority = 0
     LEFT JOIN (
         SELECT * 
         FROM ${source.platinum}.marketplace_prd_product_v2_sku_limit
@@ -201,11 +206,11 @@ FROM cte_full AS cte
     LEFT JOIN ${ref('dim_supplier')} AS sup
         ON sup.supplier_code = s.seller_code
     LEFT JOIN ${ref('dim_supplier_fc')} AS fv_vendor_fc
-        ON CONCAT(sv.vendor_code, "_", cte.fc_code) = fv_vendor_fc.supplier_fc_code
+        ON CONCAT(fv.vendor_code, "_", cte.fc_code) = fv_vendor_fc.supplier_fc_code
     LEFT JOIN ${ref('dim_product_sales_region')} AS psr 
         ON psr.product_id = s.product_id AND psr.fc_code = cte.fc_code
     LEFT JOIN ${ref('dim_vendor')} AS vd
-        ON vd.supplier_code = sv.vendor_code
+        ON vd.supplier_code = fv.vendor_code
 WHERE 
     cte.sales_region_code IS NOT NULL
 QUALIFY ROW_NUMBER() OVER(PARTITION BY sku_key_sales_region_code) = 1
