@@ -14,6 +14,7 @@ SELECT
   , unit
   , manufacture_name
   , CONCAT(client_id, "_", product_id) AS product_id_key
-  , is_essential
+  , is_allstore AS is_essential
+  , is_allstore
 FROM ${ref('gold_buymed_vn2', 'cos_dim_product')}
 QUALIFY ROW_NUMBER() OVER(PARTITION BY product_id_key) = 1
