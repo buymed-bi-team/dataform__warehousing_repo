@@ -109,8 +109,8 @@ WITH
             NULL AS district_name,
             dedup_province.code as province_code,
             dedup_province.province_name,
-            IF(dedup_province.code = "02", "6PB4LEU4ABC",dedup_region.code) as region_code,
-            IF(dedup_province.code = "02", "Tây Bắc",dedup_region.region_name)  as region_name
+            dedup_region.code as region_code,
+            dedup_region.region_name
         FROM dedup_province
         LEFT JOIN dedup_region
             ON dedup_region.code = dedup_province.region_code
@@ -132,7 +132,7 @@ WITH
         FROM dedup_region
     )
 
-SELECT a.*,
+SELECT a.* EXCEPT(region_code, region_name), 
     case
         when lower(district_name) = 'quận 12' or lower(district_name) = 'quận 9' then 'Rural'
         when lower(district_name) LIKE 'quận%' or lower(district_name) LIKE 'thành phố%' then 'Urban'
@@ -140,6 +140,8 @@ SELECT a.*,
     end urban_rural
     , fc.fc_code
     , fc.sales_region_code
+    , IF(province_code = "02", "Đông Bắc",region_name) AS region_name
+    , IF(province_code = "02", "2GRTBAEQDX4",region_code) AS region_code
 FROM tbl AS a
     LEFT JOIN ${ref('dim_fc_service_area')} AS fc 
         ON a.province_code = fc.service_area_code
