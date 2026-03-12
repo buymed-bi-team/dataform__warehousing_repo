@@ -59,8 +59,8 @@ WITH
         GROUP BY ALL
     ),
 
-               fact_order_item AS (
-                  SELECT
+    fact_order_item AS (
+            SELECT
                o.date
              , o.order_completed_at
              , o.order_code
@@ -197,7 +197,7 @@ SELECT
     , SUM(total_item_amount) + SUM(oi.medicine_cutting_fee)  AS gmv_circa
     , SUM(total_item_amount_before_deal) + SUM(oi.medicine_cutting_fee)  AS gmv_circa_before_deal
     , ac.customer_active_type
-    , CONCAT(oi.order_id, oi.product_id_key, oi.unit) AS order_product_unit_key
+    , CONCAT(oi.order_code, oi.product_id_key) AS order_product_unit_key
 FROM fact_order_item AS oi
     LEFT JOIN active_customer AS ac 
         ON oi.customer_id = ac.customer_id

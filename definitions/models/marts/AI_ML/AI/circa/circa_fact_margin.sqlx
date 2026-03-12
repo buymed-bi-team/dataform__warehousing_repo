@@ -32,7 +32,8 @@ WITH
     , cogs_buymed AS (
         SELECT
             i.order_code
-            , i.product_id
+            , i.order_id
+            , CONCAT(i.client_id, "_", i.product_id) AS product_id_key
             , SUM(i.discount_amount * (i.quantity - COALESCE(i.qty_rt, 0))) AS discount_deal
             , SUM(
                 CASE
@@ -95,35 +96,47 @@ WITH
         WHERE i.client_id = 1
         AND o.pos_id <> '0afdb831-b60d-4254-8822-df13e39c90e7'
         GROUP BY ALL
+    ),
+
+    final AS (
+        SELECT
+            o.date
+            , o.order_id
+            , o.order_code
+            , o.customer_id
+            , o.product_id_key
+            -- , o.unit
+            , o.pos_name
+            , o.pos_type
+            , SUM(o.gmv_circa) AS gmv_circa
+            , SUM(cogs.cogs) AS total_cost
+            , CONCAT(o.order_code, o.product_id_key) AS order_product_unit_key
+        FROM (
+            SELECT
+                date
+                , order_id
+                , order_code
+                , customer_id
+                , product_id_key
+                , unit
+                , SUM(gmv_circa) AS gmv_circa
+                , pos_name
+                , pos_type
+            FROM ${ref('buymed_innovation', 'circa_fact_order')} 
+            WHERE 1=1
+                AND client_id = 1
+                AND order_status IN ('COMPLETED', 'COMPLETED_SHIPPING')
+            GROUP BY ALL
+        ) AS o
+            LEFT JOIN cogs ON o.order_id = cogs.order_id AND o.product_id_key = cogs.product_id_key AND o.unit = cogs.unit
+        WHERE  1=1
+        GROUP BY ALL
     )
 
 SELECT
-    o.date
-    , o.order_id
-    , o.customer_id
-    , o.product_id_key
-    , o.unit
-    , o.pos_name
-    , o.pos_type
-    , o.gmv_circa AS gmv_circa
-    , cogs.cogs AS total_cost
-    , CONCAT(o.order_id, o.product_id_key, o.unit) AS order_product_unit_key
-FROM (
-    SELECT
-        date
-        , order_id
-        , customer_id
-        , product_id_key
-        , unit
-        , SUM(gmv_circa) AS gmv_circa
-        , pos_name
-        , pos_type
-    FROM ${ref('buymed_innovation', 'circa_fact_order')} 
-    WHERE 1=1
-        AND client_id = 1
-        AND order_status IN ('COMPLETED', 'COMPLETED_SHIPPING')
-    GROUP BY ALL
-) AS o
-    LEFT JOIN cogs ON o.order_id = cogs.order_id AND o.product_id_key = cogs.product_id_key AND o.unit = cogs.unit
-WHERE  1=1
-GROUP BY ALL
+    a.*
+    , b.cogs_buymed
+FROM final AS a
+    LEFT JOIN cogs_buymed AS  b ON a.order_id = b.order_id AND a.product_id_key = b.product_id_key
+
+
