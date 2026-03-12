@@ -102,12 +102,12 @@ WITH
     )
 
     , valid_order AS (
-    SELECT DISTINCT
-          i.order_code
-    FROM ${ref("gold_buymed_vn2", "cos_fact_order_item")} i
-    INNER JOIN fact_order o ON i.order_code = o.order_code
-    WHERE (i.quantity - COALESCE(i.qty_rt, 0)) > 0
-     )
+        SELECT DISTINCT
+            i.order_code
+        FROM ${ref("gold_buymed_vn2", "cos_fact_order_item")} i
+        INNER JOIN fact_order o ON i.order_code = o.order_code
+        WHERE (i.quantity - COALESCE(i.qty_rt, 0)) > 0
+    )
 
    , orders_weekly AS (
         SELECT
@@ -144,6 +144,7 @@ WITH
         FROM orders_weekly o
         LEFT JOIN customer_first_order i
             ON o.customer_id = i.customer_id
+        WHERE o.week_start >= "2028-01-01"
     ),
 
     labeled_customers AS (
