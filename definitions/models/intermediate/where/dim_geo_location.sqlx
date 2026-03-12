@@ -109,8 +109,8 @@ WITH
             NULL AS district_name,
             dedup_province.code as province_code,
             dedup_province.province_name,
-            dedup_region.code as region_code,
-            dedup_region.region_name
+            IF(dedup_province.code = "02", "6PB4LEU4ABC",dedup_region.code) as region_code,
+            IF(dedup_province.code = "02", "Tây Bắc",dedup_region.region_name)  as region_name
         FROM dedup_province
         LEFT JOIN dedup_region
             ON dedup_region.code = dedup_province.region_code

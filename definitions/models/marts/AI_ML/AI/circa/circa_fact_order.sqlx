@@ -34,6 +34,7 @@ WITH
             , p.name AS pos_name
             , IF(p.type = "FS", "FS", "COS") AS pos_type
             , o.channel
+            , o.type AS online_or_offline_order
             , g.ward_name
             , g.district_name
             , g.province_name
@@ -91,6 +92,7 @@ WITH
              , o.voucher_code
              , o.is_referral
              , CONCAT(d.customer_phone, d.customer_name) AS o2o_customer_key
+             , o.online_or_offline_order
            FROM ${ref('gold_buymed_vn2','cos_fact_order_item')} oi
            LEFT JOIN fact_order o ON oi.order_id = o.order_id
            LEFT JOIN buymed_circa_v2.order_delivery_info d ON d.order_id = o.order_id AND o.channel = "O2O"
@@ -185,7 +187,7 @@ WITH
     )
 
 SELECT
-    oi.* EXCEPT(total_item_amount , medicine_cutting_fee, discount_voucher, quantity)
+    oi.* EXCEPT(total_item_amount , medicine_cutting_fee, discount_voucher, quantity, total_item_amount_before_deal, discount_deal )
     , SUM(oi.quantity - COALESCE(oi.qty_rt, 0)) AS quantity
     , SUM(oi.total_item_amount) AS total_item_amount
     , SUM(oi.total_item_amount_before_deal) AS total_item_amount_before_deal
