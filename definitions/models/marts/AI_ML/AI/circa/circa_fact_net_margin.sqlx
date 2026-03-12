@@ -195,7 +195,7 @@ SELECT
     , a.profit_buymed AS gross_profit_buymed
     , SAFE_DIVIDE(a.profit_circa, a.gmv) AS gross_margin_circa
     , SAFE_DIVIDE(a.profit_buymed, a.gmv) AS gross_margin_buymed
-    , a.voucher_gift_circa AS cogs_voucher_gift_circa
+    , a.voucher_gift_circa AS cogs_voucher_gift
     , a.voucher_gift_buymed AS cogs_voucher_gift_buymed
     , a.deal
     , a.net_profit_circa AS net_profit
