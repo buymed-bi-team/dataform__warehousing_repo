@@ -57,6 +57,18 @@ SELECT o.id
        ,apply_for_product_type 
        ,is_apply_for_all_pos
        ,first_time_order
+       ,TRIM(
+                REGEXP_REPLACE(
+                  REGEXP_REPLACE(
+                    REGEXP_REPLACE(
+                      REGEXP_REPLACE(conditions_of_use, r'<[^>]*>', ''), -- remove HTML tags
+                      r'&nbsp;', ' '                                     -- replace nbsp
+                    ),
+                    r'ccp_infra.*', ''                                   -- remove metadata
+                  ),
+                  r'\s+', ' '                                            -- normalize spaces
+                )
+              ) AS conditions_of_use
        ,CASE
              WHEN lower(conditions_of_use) like '%sản phẩm%' then 'PRODUCT'
              WHEN lower(conditions_of_use) like '%brand%' then 'PRODUCT'
