@@ -198,9 +198,9 @@ SELECT
     , a.voucher_gift_circa AS cogs_voucher_gift
     , a.voucher_gift_buymed AS cogs_voucher_gift_buymed
     , a.deal
-    , a.net_profit_circa AS net_profit
+    , a.net_profit_circa
     , a.net_profit_buymed
-    , SAFE_DIVIDE(a.net_profit_circa, a.gmv) AS net_margin
+    , SAFE_DIVIDE(a.net_profit_circa, a.gmv) AS net_margin_circa
     , SAFE_DIVIDE(a.net_profit_buymed, a.gmv) AS net_margin_buymed
     , CONCAT(a.client_id, "_", a.product_id) AS product_id_key
     , CONCAT(a.order_code, CONCAT(a.client_id, "_", a.product_id)) AS order_product_unit_key
