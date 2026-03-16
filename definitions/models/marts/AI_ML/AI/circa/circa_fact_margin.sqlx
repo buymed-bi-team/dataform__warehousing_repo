@@ -1,8 +1,8 @@
 config {
-    type: 'view',
+    type: 'table',
     schema: "buymed_innovation",
     description: "Margin of Circa COS.",
-    tags: ['AI_CIRCA']
+    tags: ['AI_CIRCA', "custom_1h_past10"]
 }
 
 WITH map_cogs_buymed AS (
@@ -80,6 +80,7 @@ WITH map_cogs_buymed AS (
         , f.product_id
         , GREATEST(COALESCE(f.gmv_product_raw, 0), 0) AS gmv
         , COALESCE(va.voucher_discount, 0) AS voucher_discount
+        , o.type AS online_or_offline_order
     FROM ${ref("gold_buymed_vn2", "cos_fact_order")} o
     LEFT JOIN fact_order_item f ON o.order_code = f.order_code
     LEFT JOIN voucher_divide va ON f.order_code = va.order_code
@@ -163,6 +164,7 @@ WITH map_cogs_buymed AS (
         , a.client_id
         , a.order_code
         , a.product_id
+        , a.online_or_offline_order
         , a.gmv
         , b.cogs_circa
         , b.cogs_buymed
@@ -186,6 +188,7 @@ SELECT
     , p.name AS pos_name
     , IF(p.type = 'FS', 'FS', 'COS') AS pos_type
     , a.order_code
+    , a.online_or_offline_order
     -- , a.order_id
     , a.product_id
     , a.gmv
