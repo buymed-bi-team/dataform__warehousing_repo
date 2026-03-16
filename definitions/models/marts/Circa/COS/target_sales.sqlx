@@ -62,11 +62,11 @@ UNION ALL
 
 SELECT pos_code                               AS pos_code 
        ,year_month                            AS year_month
-       ,CAST(NULL AS FLOAT64)                 AS target_gmv
-       ,CAST(TARGET_REVENUE AS FLOAT64)       AS target_rev_vat_in
-       ,NULL                                  AS target_margin
-       ,CAST(TARGET_TRANSACTIONS AS INT64)    AS target_transactions
-       ,CAST(ACTIVE_CUSTOMERS AS INT64)       AS target_active_customers
-       ,CAST(REPEAT_CUSTOMERS AS INT64)       AS target_repeat_customers
+       , SAFE_CAST(NULLIF(LOWER(TRIM(TARGET_GMV)), 'nan') AS FLOAT64) AS target_gmv
+       , SAFE_CAST(NULLIF(LOWER(TRIM(TARGET_REVENUE)), 'nan') AS FLOAT64) AS target_rev_vat_in
+       , SAFE_CAST(NULLIF(LOWER(TRIM(TARGET_MARGIN)), 'nan') AS FLOAT64) AS target_margin
+       , SAFE_CAST(NULLIF(LOWER(TRIM(TARGET_TRANSACTIONS)), 'nan') AS INT64) AS target_transactions
+       , SAFE_CAST(NULLIF(LOWER(TRIM(ACTIVE_CUSTOMERS)), 'nan') AS INT64) AS target_active_customers
+       , SAFE_CAST(NULLIF(LOWER(TRIM(REPEAT_CUSTOMERS)), 'nan') AS INT64) AS target_repeat_customers
 FROM target_from_m12
 WHERE pos_code <> 'Chưa có mã'
