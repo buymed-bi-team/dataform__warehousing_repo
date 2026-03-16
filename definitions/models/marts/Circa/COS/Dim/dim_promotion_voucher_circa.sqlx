@@ -44,6 +44,7 @@ SELECT o.id
        ,no_customers_used
        ,actual_discount_amount
        ,CASE WHEN limit_value = cnt_order_used THEN TRUE ELSE FALSE END AS is_voucher_use_up -- đã sử dụng hết hay chưa
+       ,is_active
        ,promotion_voucher_type
        ,discount_value
        ,percent
