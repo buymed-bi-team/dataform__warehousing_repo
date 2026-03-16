@@ -144,7 +144,7 @@ WITH
         FROM orders_weekly o
         LEFT JOIN customer_first_order i
             ON o.customer_id = i.customer_id
-        WHERE o.week_start >= "2028-01-01"
+        WHERE o.week_start >= "2018-01-01"
     ),
 
     labeled_customers AS (
@@ -205,5 +205,5 @@ FROM fact_order_item AS oi
     LEFT JOIN active_customer AS ac 
         ON oi.customer_id = ac.customer_id
         AND DATE_TRUNC(oi.date, WEEK(MONDAY)) = ac.week_start
-        WHERE oi.quantity - COALESCE(oi.qty_rt, 0) > 0 
+WHERE oi.quantity - COALESCE(oi.qty_rt, 0) > 0 
 GROUP BY ALL
