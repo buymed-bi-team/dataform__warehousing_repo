@@ -146,7 +146,7 @@ WITH
             , g.province_name
             , g.region_name
             , g.urban_rural
-            , o.total_discount
+            , o.total_discount/ COUNT(1) OVER(PARTITION BY a.order_id) AS total_discount
             , invoice_request
         FROM ${source.platinum}.tender_prd_core_tender_order_items AS a
             LEFT JOIN fact_order AS o ON a.order_id = o.order_id
