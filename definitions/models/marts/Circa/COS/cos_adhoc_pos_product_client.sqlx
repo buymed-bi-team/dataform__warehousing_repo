@@ -76,6 +76,8 @@ WITH thuosi_unit AS (
                    ,CASE WHEN cost_price > 0 AND market_price > 0 THEN (pd.cost_price - pd.market_price)/ pd.cost_price ELSE NULL END AS gap_ts_market
                    ,CASE WHEN td.price_type = 'DYNAMIC' THEN pd.auto_sale_price
                          WHEN td.price_type <> 'DYNAMIC' THEN pd.sale_price ELSE NULL END AS final_sale_price
+                   ,CASE WHEN td.price_type = 'DYNAMIC' THEN 'DYNAMIC'
+                         WHEN td.price_type <> 'DYNAMIC' THEN 'MANUAL' END AS price_type
                    ,pd.unit
                    ,bu.base_unit
                    ,bu.convert_rate
@@ -118,6 +120,7 @@ WITH thuosi_unit AS (
                    ,p.auto_sale_price
                    ,p.sale_price AS sale_unit_price
                    ,final_sale_price
+                   ,price_type
                    ,gap_ts_market
                    ,CASE WHEN on_hand_quantity > 0 THEN purchase_price ELSE cost_price END AS exp_cost_price
                    ,CASE WHEN i.on_hand_quantity > 0 THEN "Available" ELSE "Unavailable" END AS have_stock
