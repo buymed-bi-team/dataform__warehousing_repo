@@ -64,5 +64,4 @@ SELECT a.date
 FROM buymed_external.target_circa_2026 AS a
 LEFT JOIN gmv b ON a.pos_code = b.pos_code AND a.date = b.created_date AND a.channel = b.order_type
 LEFT JOIN buymed_circa_v2.entity_pos_profile AS p ON a.pos_code = p.code
-WHERE date = CURRENT_DATE
 GROUP BY ALL
