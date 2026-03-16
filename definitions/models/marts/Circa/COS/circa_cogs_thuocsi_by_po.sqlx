@@ -50,6 +50,7 @@ t AS (
         ,o.order_id
         ,i.product_id
         ,CASE WHEN o.po_code = 'PO00026356' AND product_id = 5398 THEN 'hộp'
+              WHEN o.po_code = 'PO00031215' AND product_id = 5398 THEN 'hộp'
               ELSE i.unit END AS unit
         ,SUM(i.quantity)  AS qty
         ,AVG(i.unit_price) AS avg_unit_price
