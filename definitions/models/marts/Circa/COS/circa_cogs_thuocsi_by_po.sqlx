@@ -49,12 +49,12 @@ t AS (
         ,o.client_id
         ,o.order_id
         ,i.product_id
-        ,i.unit
-        ,SUM(i.quantity)   AS qty
+        ,CASE WHEN o.po_code = 'PO00026356' AND product_id = 5398 THEN 'hộp'
+              ELSE i.unit END AS unit
+        ,SUM(i.quantity)  AS qty
         ,AVG(i.unit_price) AS avg_unit_price
     FROM `gold_buymed_vn2.cos_purchase_order_item` i
-    JOIN `gold_buymed_vn2.cos_purchase_order` o
-      ON o.po_id = i.po_id
+    JOIN `gold_buymed_vn2.cos_purchase_order` o ON o.po_id = i.po_id
     WHERE o.fulfillment_method = 'SO_THUOCSI'
       AND o.client_id = 1
       AND o.po_status NOT IN ('SEPERATED','PENDING','WAIT_FOR_ORDER','CANCELED')
@@ -87,13 +87,10 @@ final AS (
         ,cv.convert_rate
         ,cv.base_unit
     FROM t
-    LEFT JOIN p
-      ON t.order_id  = p.order_id
-     AND t.product_id = p.product_id
-    LEFT JOIN base_unit cv
-      ON t.client_id  = cv.client_id
-     AND t.product_id = cv.product_id
-     AND t.unit       = cv.convert_unit
+    LEFT JOIN p ON t.order_id  = p.order_id AND t.product_id = p.product_id
+    LEFT JOIN base_unit cv ON t.client_id  = cv.client_id
+                             AND t.product_id = cv.product_id
+                             AND t.unit       = cv.convert_unit
 )
 
 SELECT
