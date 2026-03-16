@@ -1,8 +1,8 @@
 config {
-    type: 'view',
+    type: 'table',
     schema: "buymed_innovation",
     description: `All online orders of Circa.`,
-    tags: ['AI_CIRCA']
+    tags: ['AI_CIRCA', "custom_1h_past10"]
 }
 
 
