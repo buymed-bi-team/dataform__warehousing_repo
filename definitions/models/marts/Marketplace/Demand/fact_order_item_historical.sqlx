@@ -61,7 +61,7 @@ cte_order_item as (
     FROM ${source.platinum}.marketplace_prd_order_v2_order_item as oi
     where
         created_date BETWEEN '2018-01-01' AND DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), YEAR ), INTERVAL 1 DAY)
-        AND (seller_code IN ("MEDX", "MEDX-HN", "MEDX_E") OR seller_class = "EXTERNAL")
+        -- AND (seller_code IN ("MEDX", "MEDX-HN", "MEDX_E") OR seller_class = "EXTERNAL")
 ),
 
 cte_combo_item as (
@@ -262,4 +262,6 @@ SELECT
 FROM final AS oi 
     LEFT JOIN ${ref('fact_order')} AS o ON oi.order_id = o.order_id
     LEFT JOIN ${ref('dim_fc_service_area')} AS fc ON fc.service_area_code = o.shipping_province_code
+    LEFT JOIN ${ref('dim_supplier')} AS s ON oi.seller_code = s.supplier_code
 WHERE o.order_status <> 'CANCEL'
+    AND (s.supplier_code IN ("MEDX", "MEDX-HN", "MEDX_E") OR s.supplier_class = "EXTERNAL")
