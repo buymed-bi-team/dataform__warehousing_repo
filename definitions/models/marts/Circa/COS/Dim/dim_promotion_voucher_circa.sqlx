@@ -23,7 +23,7 @@ END) AS no_customers_used
                                     ,SUM(o.discount_amount) AS actual_discount_amount
                                     ,i.client_id
                     FROM ${source.circa_os}.order_order_voucher o
-                    INNER JOIN (SELECT * FROM ${source.ref}.cos_fact_order WHERE status <> 'CANCELED') i ON o.order_code  = i.order_code 
+                    INNER JOIN (SELECT * FROM ${source.ref}.cos_fact_order WHERE status IN ('COMPLETED', 'COMPLETE_SHIPPING')) i ON o.order_code  = i.order_code 
                     LEFT JOIN buymed_circa_v2.entity_customer AS c ON i.entity_id = c.id       
                     GROUP BY o.voucher_code, i.client_id
 )
@@ -58,18 +58,27 @@ SELECT o.id
        ,apply_for_product_type 
        ,is_apply_for_all_pos
        ,first_time_order
-       ,TRIM(
-                REGEXP_REPLACE(
-                  REGEXP_REPLACE(
-                    REGEXP_REPLACE(
-                      REGEXP_REPLACE(conditions_of_use, r'<[^>]*>', ''), -- remove HTML tags
-                      r'&nbsp;', ' '                                     -- replace nbsp
-                    ),
-                    r'ccp_infra.*', ''                                   -- remove metadata
-                  ),
-                  r'\s+', ' '                                            -- normalize spaces
-                )
-              ) AS conditions_of_use
+       ,REGEXP_EXTRACT(
+                 TRIM(
+                   REGEXP_REPLACE(
+                     REGEXP_REPLACE(
+                       REGEXP_REPLACE(
+                         REGEXP_REPLACE(
+                           REGEXP_REPLACE(
+                             conditions_of_use,
+                             r'<[^>]*>', ' '                       -- remove HTML tags
+                           ),
+                           r'&nbsp;|&#160;', ' '                  -- replace nbsp
+                         ),
+                         r'(table|tr|td|col)\s*\{[^}]*\}', ' '    -- remove CSS text blocks
+                       ),
+                       r'ccp_infra.*', ' '                        -- remove metadata
+                     ),
+                     r'\s+', ' '                                  -- normalize spaces
+                   )
+                 ),
+                 r'Áp dụng cho sản phẩm:.*'
+  ) AS conditions_of_use
        ,CASE
              WHEN lower(conditions_of_use) like '%sản phẩm%' then 'PRODUCT'
              WHEN lower(conditions_of_use) like '%brand%' then 'PRODUCT'
