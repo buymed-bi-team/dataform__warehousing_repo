@@ -49,6 +49,8 @@ SELECT o.id
        ,discount_value
        ,percent
        ,voucher_generation_type
+       ,min_order_apply
+       ,min_product_amount_apply
        ,DATE(DATETIME_ADD(o.created_at, INTERVAL 7 HOUR)) AS created_date
        ,DATETIME_ADD(o.created_at, INTERVAL 7 HOUR) AS created_at
        ,DATE(DATETIME_ADD(o.updated_at, INTERVAL 7 HOUR)) AS updated_date
