@@ -35,6 +35,7 @@ WITH target_old AS (
                ,'TARGET_GMV'
                ,'TARGET_TRANSACTIONS'
           )
+            QUALIFY ROW_NUMBER() OVER(PARTITION BY year_month, object, pos_code, type ORDER BY submit_id DESC) = 1
     )
     PIVOT (
         MAX(value) FOR type IN (
