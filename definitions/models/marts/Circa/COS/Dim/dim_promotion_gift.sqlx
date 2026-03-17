@@ -23,7 +23,7 @@ WITH order_gift AS (
                                     ,COUNT(DISTINCT o.order_code ) AS cnt_order_used
                                     ,i.client_id
                     FROM ${source.circa_os}.order_order_gift o
-                    INNER JOIN (SELECT * FROM ${source.ref}.cos_fact_order WHERE status <> 'CANCELED') i ON o.order_code  = i.order_code 
+                    INNER JOIN (SELECT * FROM ${source.ref}.cos_fact_order WHERE status IN ('COMPLETED', 'COMPLETE_SHIPPING')) i ON o.order_code  = i.order_code 
                     LEFT JOIN buymed_circa_v2.entity_customer AS c ON i.entity_id = c.id   
                     WHERE is_valid = true    
                     GROUP BY o.gift_id, o.gift_code, i.client_id
@@ -33,6 +33,7 @@ SELECT o.id
        ,o.id AS gift_id
        ,o.code AS gift_code
        ,o.name AS gift_name
+       ,is_active
        ,DATETIME_ADD(start_date, INTERVAL 7 HOUR) AS start_date
        ,DATETIME_ADD(end_date, INTERVAL 7 HOUR) AS end_date
        ,CASE WHEN DATETIME_ADD(end_date, INTERVAL 7 HOUR) > TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) THEN FALSE 
