@@ -2,7 +2,7 @@ config {
     type: 'view',
     schema: "buymed_innovation",
     description: "Margin of Circa COS.",
-    tags: ['AI_CIRCA']
+    //tags: ['AI_CIRCA']
 }
 
 WITH map_cogs_buymed AS (
