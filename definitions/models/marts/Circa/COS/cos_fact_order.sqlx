@@ -125,7 +125,7 @@ SELECT a.*
                 PARTITION BY b.customer_phone_cleaned, a.type
                 ORDER BY a.created_at, a.order_code
             ) = 1
-        END AS is_first_order_by_type
+        END AS is_first_order
 FROM map_inf a
 LEFT JOIN clean_phone b ON a.order_code = b.order_code 
 
