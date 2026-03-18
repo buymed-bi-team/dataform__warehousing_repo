@@ -23,4 +23,5 @@ SELECT DISTINCT
       ,1 AS client_id 
 FROM ${source.circa_os}.product_assortment_template o 
 LEFT JOIN ${source.circa_os}.product_assortment_template_items i ON o.id = i.assortment_template_id
-WHERE o.id = 'ef3d6496-d19e-4cc1-bb4d-90b4b7ff978a'
+WHERE o.id = 'ef3d6496-d19e-4cc1-bb4d-90b4b7ff978a' 
+     AND i.status = 'ACTIVE'
