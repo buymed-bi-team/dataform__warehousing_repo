@@ -182,6 +182,7 @@ UNION ALL
 FROM ${source.circa_os}.product_assortment_template o 
 LEFT JOIN ${source.circa_os}.product_assortment_template_items i ON o.id = i.assortment_template_id
 WHERE o.id = 'e9a5a24c-8b54-41a3-9b21-2ad63149eb3d'
+      AND i.status = 'ACTIVE'
 
 )
 SELECT DISTINCT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
