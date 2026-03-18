@@ -38,6 +38,6 @@ LEFT JOIN
   UNNEST(JSON_EXTRACT_ARRAY(s.vendors)) AS vendor
 LEFT JOIN
   ${ref("dim_fc")} f ON s.purchaser_code = f.purchaser_code
-LEFT JOIN ${ref('dim_supplier')} AS v ON  v.supplier_code = JSON_VALUE(vendor, "$.vendor_code")
-  WHERE
-    v.supplier_class = 'VENDOR'
+LEFT JOIN ${ref('dim_supplier')} AS v ON  v.supplier_code = JSON_VALUE(vendor, "$.vendor_code") AND v.supplier_class = "VENDOR"
+  WHERE 1=1
+    -- AND v.supplier_class = 'VENDOR'
