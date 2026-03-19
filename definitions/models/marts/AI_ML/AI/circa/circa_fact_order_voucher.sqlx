@@ -18,6 +18,7 @@ WITH order_voucher AS (
                           ) AS voucher_discount
                 ,'VOUCHER_DISCOUNT' AS voucher_type 
                 ,o.client_id
+                ,concat(v.voucher_code, o.client_id) AS voucher_key
           FROM ${ref("gold_buymed_vn2", "cos_fact_order")} o
           LEFT JOIN ${ref("gold_buymed_vn2", "circa_fact_order_voucher")} v ON o.order_code = v.order_code
           WHERE o.client_id = 1
@@ -32,6 +33,7 @@ WITH order_voucher AS (
                  ,SUM((quantity - coalesce(qty_rt,0)) * unit_cost_price) AS voucher_cost
                  ,'VOUCHER_GIFT' AS voucher_type 
                  ,client_id
+                 ,concat(gift_code, client_id) AS voucher_key
   FROM ${ref("gold_buymed_vn2", "cos_fact_order_item")}
   WHERE gift_code IS NOT NULL AND gift_code <> ''
         AND client_id = 1
