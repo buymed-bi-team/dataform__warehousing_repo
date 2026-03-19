@@ -1,0 +1,42 @@
+config {
+    type: 'table',
+    schema: "buymed_innovation",
+    description: "Margin of Circa COS.",
+    tags: ['AI_CIRCA', "custom_1h_past10"]
+}
+
+WITH order_voucher AS (
+        SELECT DISTINCT 
+                 o.created_date
+                ,o.order_code
+                ,v.voucher_code
+                , SUM(
+                            CASE
+                                WHEN o.is_returned = 'False' THEN v.discount_amount
+                                ELSE 0
+                            END
+                          ) AS voucher_discount
+                ,'VOUCHER_DISCOUNT' AS type 
+                ,o.client_id
+          FROM ${ref("gold_buymed_vn2", "cos_fact_order")} o
+          LEFT JOIN ${ref("gold_buymed_vn2", "circa_fact_order_voucher")} v ON o.order_code = v.order_code
+          WHERE o.client_id = 1
+                AND o.status IN ('COMPLETED', 'COMPLETED_SHIPPING')
+                AND v.voucher_code IS NOT NULL 
+          GROUP BY ALL
+)
+, order_gift AS (
+  SELECT distinct created_date
+                 ,order_code
+                 ,gift_code
+                 ,SUM((quantity - coalesce(qty_rt,0)) * unit_cost_price) AS voucher_cost
+                 ,'VOUCHER_GIFT' AS type 
+                 ,client_id
+  FROM ${ref("gold_buymed_vn2", "cos_fact_order_item")}
+  WHERE gift_code IS NOT NULL AND gift_code <> ''
+        AND client_id = 1
+  GROUP BY ALL
+)
+SELECT * FROM order_voucher
+UNION ALL
+SELECT * FROM order_gift
