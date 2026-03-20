@@ -62,22 +62,13 @@ WITH base AS (
         STRUCT('huyen.nguyen',     'BI-core' ,          ['huyennguyen','huyen.nguyen','huyen-nguyen']),
         STRUCT('nguyen.tran',      'BI-core' ,          ['nguyentran','nguyen.tran','nguyen-tran']),
         STRUCT('huyen.ngo',        'BI-core' ,          ['huyenngo','huyen.ngo','huyen-ngo']),
-        STRUCT('minh.ly',          'BI-fin' ,           ['minhly','minh.ly','minh-ly']),
-        STRUCT('van.le',           'BI-fin' ,           ['vanle','van.le','van-le']),
         STRUCT('hau.le',           'BI-fin',            ['haule','hau.le','hau-le']),
         STRUCT('chien.le',         'BI-growth',         ['chienle','chien.le','chien-le']),
         STRUCT('thach.nguyenngoc', 'BI-growth',         ['thachnguyen','thach.nguyen','thach-nguyen']),
-        STRUCT('matthew.s',        'Product Director',  ['matthews','matthew.s','matthew-s']),
         STRUCT('khanh.nguyenhung', 'BI-warehouse',      ['khanhnguyenhung','khanh.nguyenhung','khanh-nguyen-hung','khanh.nguyen','khanh-nguyen']),
-        STRUCT('nhan.tran',        'Infra',             ['nhantran','nhan.tran','nhan-tran']),
-        STRUCT('tin.nguyen',       'BI-fin' ,           ['tinnguyen','tin.nguyen','tin-nguyen']),
         STRUCT('pakawat.k',        'BI-cam',            ['pakawatk','pakawat.k','pakawat-k']),
         STRUCT('supeerana.p',      'BI-th',             ['supeeranap','supeerana.p','supeerana-p']),
-        STRUCT('tanawin.b',        'BA-th',             ['tanawinb','tanawin.b','tanawin-b']),
-        STRUCT('tien.ho',          'Infra',             ['tienho','tien.ho','tien-ho']),
-        STRUCT('thi.nguyen',       'AI',                ['thinguyen','thi.nguyen','thi-nguyen']),
-        STRUCT('phuoc.le',         'AI',                ['phuocle','phuoc.le','phuoc-le']),
-        STRUCT('hung.vo',          'AI',                ['hungvo','hung.vo','hung-vo'])
+        STRUCT('tanawin.b',        'BA-th',             ['tanawinb','tanawin.b','tanawin-b'])
     ]) i
 )
 
@@ -85,7 +76,9 @@ SELECT
     user_email,
     last_execution_time,
     checkpoint_time AS refresh_time,
-    COALESCE(bu.name, SPLIT(LOWER(user_email),"@")[0] ) AS user_name, 
+    IF(user_email = "nguyen-tran-service-account-2@lakehouse-prod-394907.iam.gserviceaccount.com"
+        , "chatbot-rumi-manus-all"
+        , COALESCE(bu.name, SPLIT(LOWER(user_email),"@")[0] )) AS user_name, 
     CASE
         WHEN LOWER(user_email) like "%serviceaccount%" AND LOWER(user_email) like "%dataform%"  THEN "Dataform"
         WHEN LOWER(user_email) like "%serviceaccount%" THEN "Service Account"
