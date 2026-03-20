@@ -65,7 +65,7 @@ SELECT
       END AS warehouse_name
     , t.tag_codes
     , t.tag_names
-    , s.sku_demand_class
+    , s.sku_demand_class AS sku_demand_classification
 FROM ${ref('gold_buymed_vn2', 'dim_sku_sales_region_full')} AS s
     LEFT JOIN ${ref('gold_buymed_vn2', 'dim_product')} AS p ON s.product_id = p.product_id
     LEFT JOIN ${source.platinum}.seller_prd_core_seller AS sl ON sl.code = s.seller_code
