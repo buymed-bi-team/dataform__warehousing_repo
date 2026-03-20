@@ -4,10 +4,12 @@ config {
                   PIC: huyen.ngo;
                   model_type: Table;
                   schedule: At minute 10 every hour`,
-    tags: ["custom_1h_past15"],
+    tags: ["3h30"],
     name: "cos_demand_planning_result",
     columns: {
         
+    },bigquery: {
+        partitionBy: "date(created_at)"
     }
 }
 

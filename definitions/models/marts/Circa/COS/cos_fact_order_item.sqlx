@@ -9,6 +9,10 @@ config {
     columns: {
     
     }
+    
+    ,bigquery: {
+        partitionBy: "date(created_at)"
+    }
 }
 
 
