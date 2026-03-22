@@ -11,7 +11,7 @@ config {
     }
     
     ,bigquery: {
-        partitionBy: "date(created_at)"
+        partitionBy: "created_date"
     }
 }
 
