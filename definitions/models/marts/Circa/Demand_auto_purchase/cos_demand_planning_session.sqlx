@@ -32,6 +32,6 @@ SELECT DISTINCT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transform
        ,auto_purchase_session_code
        ,enable_transfer_creation_auto
  FROM ${source.circa_os}.demand_planning_demand_planning_session o 
- LEFT JOIN ${source.circa_os}.entity_entity e ON o.created_by = e.id 
+ LEFT JOIN ${source.circa_os}.entity_entity e ON o.created_by = e.id AND o.client_id = e.client_id
 --  WHERE DATE(TIMESTAMP_ADD(o.created_at, INTERVAL 7 HOUR)) 
 --       >= DATE_SUB(CURRENT_DATE(), INTERVAL 7 DAY)
