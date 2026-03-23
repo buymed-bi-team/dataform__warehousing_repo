@@ -29,72 +29,87 @@ WITH
         WHERE 1=1
             AND a.created_date >= "2025-01-01"
             AND a.status <> "CANCEL"
+    ),
+
+    final AS (
+        SELECT 
+            a.* EXCEPT(shipping_ward_code)
+            , g.ward_name
+            , g.district_name
+            , g.province_name
+            , g.region_name
+            , g.urban_rural
+            , JSON_VALUE(v.extra_props, "$.charge_fee") AS charge_fee
+            , v.promotion_id
+            , v.promotion_name
+            , CASE
+                WHEN LOWER(v.created_by_user_name) IN ('minh.vothanh', 'dat.hoquang') THEN 'TenderPortal'
+                WHEN LOWER(a.voucher_code) LIKE '%chuyenkhoan%'            THEN 'ChuyenKhoan'
+                WHEN LOWER(a.voucher_code) LIKE '%tichluy%'                THEN 'TichLuy'
+                WHEN LOWER(a.voucher_code) LIKE 'w25%'                     THEN 'SupOps'
+                WHEN STARTS_WITH(LOWER(a.voucher_code), 'trogia_')         THEN 'TroGia'
+                WHEN LOWER(a.voucher_code) LIKE 'p25%'                     THEN 'Personalize'
+                WHEN LOWER(a.voucher_code) LIKE 'newbie%'                  THEN 'Newbie'
+                WHEN LOWER(a.voucher_code) LIKE 'c25%'                     THEN 'Churn3M'
+                WHEN LOWER(a.voucher_code) LIKE 'newbie%'                  THEN 'Newbie'
+                WHEN STARTS_WITH(LOWER(a.voucher_code), 'sanofi_')         THEN 'Brand'
+                WHEN LOWER(a.voucher_code) LIKE 'lendon%'                  THEN 'CTTT'
+                WHEN STARTS_WITH(LOWER(a.voucher_code), 'vip_')            THEN 'CusLevel'
+                WHEN STARTS_WITH(LOWER(a.voucher_code), 'sptt')            THEN 'SPTT'
+            
+                WHEN STARTS_WITH(LOWER(a.voucher_code), 'sep25_adhoc_')    THEN 'AdhocCampaign'
+                WHEN STARTS_WITH(LOWER(a.voucher_code), 'adhoc_28jul_')    THEN 'AdhocProduct'
+                WHEN STARTS_WITH(LOWER(a.voucher_code), 'adhoc_combo')     THEN 'AdhocProduct'
+                WHEN STARTS_WITH(LOWER(a.voucher_code), 'adhoc_product')   THEN 'AdhocProduct'
+                WHEN STARTS_WITH(LOWER(a.voucher_code), 'adhoc-prd-')      THEN 'PushOrder'
+                WHEN STARTS_WITH(LOWER(a.voucher_code), 'adhoc_')          THEN 'Adhoc'
+            
+                WHEN STARTS_WITH(LOWER(a.voucher_code), 'prd_aug')         THEN 'DoubleDown'
+                WHEN STARTS_WITH(LOWER(a.voucher_code), 'prd_jul')         THEN 'DoubleDown'
+                WHEN STARTS_WITH(LOWER(a.voucher_code), 'prd_sep')         THEN 'DoubleDown'
+                WHEN STARTS_WITH(LOWER(a.voucher_code), 'prd_oct')         THEN 'DoubleDown'
+                WHEN STARTS_WITH(LOWER(a.voucher_code), 'ddmedx-')         THEN 'DoubleDown'
+                WHEN STARTS_WITH(LOWER(a.voucher_code), 'ddseller-')       THEN 'DoubleDown'
+                WHEN STARTS_WITH(LOWER(a.voucher_code), 'prd_oct')         THEN 'DoubleDown'
+                WHEN STARTS_WITH(LOWER(a.voucher_code), 'prd_churn')       THEN 'ChurnCus'
+                WHEN STARTS_WITH(LOWER(a.voucher_code), 'prd_adhoc_oct')   THEN 'MinusMargin'
+                WHEN STARTS_WITH(LOWER(a.voucher_code), 'prd_')            THEN 'PushAC'
+            
+                WHEN LOWER(a.voucher_code) LIKE '%bmse%'                   THEN 'BMSELECTED'
+            
+                WHEN STARTS_WITH(LOWER(a.voucher_code), 'medx_')           THEN 'Commercial'
+                WHEN LOWER(a.voucher_code) LIKE '%clinic%'                 THEN 'ClinicEcom'
+            
+                WHEN LOWER(a.voucher_code) LIKE 'hmprd%'                   THEN 'HighMargin'
+                WHEN LOWER(a.voucher_code) LIKE 'hm_prd_ws%'               THEN 'HighMarginWS'
+            
+                ELSE 'Other'
+            END AS voucher_code_group
+            , CASE
+        --         WHEN (JSON_QUERY(and_conditions, "$.PRODUCT") IS NOT NULL OR JSON_QUERY(and_conditions, "$.PRODUCT_TAG") IS NOT NULL) AND JSON_QUERY(and_conditions, "$.ORDER_VALUE") IS NOT NULL THEN "PRODUCT_AND_ORDER"
+                WHEN JSON_QUERY(and_conditions, "$.PRODUCT") IS NOT NULL OR JSON_QUERY(and_conditions, "$.PRODUCT_TAG") IS NOT NULL THEN "PRODUCT"
+                WHEN JSON_QUERY(and_conditions, "$.ORDER_VALUE") IS NOT NULL THEN "ORDER"
+                ELSE "OTHER"
+            END AS condition_type
+        FROM cte AS a
+            LEFT JOIN (
+                SELECT
+                    *
+                FROM ${source.platinum}.marketplace_prd_promotion_voucher
+                WHERE created_date >= "2024-12-01"
+            ) AS v ON a.voucher_code = v.code
+            LEFT JOIN ${ref('gold_buymed_vn2','dim_geo_location')} AS g ON a.shipping_ward_code = g.location_code
     )
 
-SELECT 
-    a.* EXCEPT(shipping_ward_code)
-    , g.ward_name
-    , g.district_name
-    , g.province_name
-    , g.region_name
-    , g.urban_rural
-    , JSON_VALUE(v.extra_props, "$.charge_fee") AS charge_fee
-    , v.promotion_id
-    , v.promotion_name
+SELECT
+    *
     , CASE
-        WHEN LOWER(v.created_by_user_name) IN ('minh.vothanh', 'dat.hoquang') THEN 'TenderPortal'
-        WHEN LOWER(a.voucher_code) LIKE '%chuyenkhoan%'            THEN 'ChuyenKhoan'
-        WHEN LOWER(a.voucher_code) LIKE '%tichluy%'                THEN 'TichLuy'
-        WHEN LOWER(a.voucher_code) LIKE 'w25%'                     THEN 'SupOps'
-        WHEN STARTS_WITH(LOWER(a.voucher_code), 'trogia_')         THEN 'TroGia'
-        WHEN LOWER(a.voucher_code) LIKE 'p25%'                     THEN 'Personalize'
-        WHEN LOWER(a.voucher_code) LIKE 'newbie%'                  THEN 'Newbie'
-        WHEN LOWER(a.voucher_code) LIKE 'c25%'                     THEN 'Churn3M'
-        WHEN LOWER(a.voucher_code) LIKE 'newbie%'                  THEN 'Newbie'
-        WHEN STARTS_WITH(LOWER(a.voucher_code), 'sanofi_')         THEN 'Brand'
-        WHEN LOWER(a.voucher_code) LIKE 'lendon%'                  THEN 'CTTT'
-        WHEN STARTS_WITH(LOWER(a.voucher_code), 'vip_')            THEN 'CusLevel'
-        WHEN STARTS_WITH(LOWER(a.voucher_code), 'sptt')            THEN 'SPTT'
-    
-        WHEN STARTS_WITH(LOWER(a.voucher_code), 'sep25_adhoc_')    THEN 'AdhocCampaign'
-        WHEN STARTS_WITH(LOWER(a.voucher_code), 'adhoc_28jul_')    THEN 'AdhocProduct'
-        WHEN STARTS_WITH(LOWER(a.voucher_code), 'adhoc_combo')     THEN 'AdhocProduct'
-        WHEN STARTS_WITH(LOWER(a.voucher_code), 'adhoc_product')   THEN 'AdhocProduct'
-        WHEN STARTS_WITH(LOWER(a.voucher_code), 'adhoc-prd-')      THEN 'PushOrder'
-        WHEN STARTS_WITH(LOWER(a.voucher_code), 'adhoc_')          THEN 'Adhoc'
-    
-        WHEN STARTS_WITH(LOWER(a.voucher_code), 'prd_aug')         THEN 'DoubleDown'
-        WHEN STARTS_WITH(LOWER(a.voucher_code), 'prd_jul')         THEN 'DoubleDown'
-        WHEN STARTS_WITH(LOWER(a.voucher_code), 'prd_sep')         THEN 'DoubleDown'
-        WHEN STARTS_WITH(LOWER(a.voucher_code), 'prd_oct')         THEN 'DoubleDown'
-        WHEN STARTS_WITH(LOWER(a.voucher_code), 'ddmedx-')         THEN 'DoubleDown'
-        WHEN STARTS_WITH(LOWER(a.voucher_code), 'ddseller-')       THEN 'DoubleDown'
-        WHEN STARTS_WITH(LOWER(a.voucher_code), 'prd_oct')         THEN 'DoubleDown'
-        WHEN STARTS_WITH(LOWER(a.voucher_code), 'prd_churn')       THEN 'ChurnCus'
-        WHEN STARTS_WITH(LOWER(a.voucher_code), 'prd_adhoc_oct')   THEN 'MinusMargin'
-        WHEN STARTS_WITH(LOWER(a.voucher_code), 'prd_')            THEN 'PushAC'
-    
-        WHEN LOWER(a.voucher_code) LIKE '%bmse%'                   THEN 'BMSELECTED'
-    
-        WHEN STARTS_WITH(LOWER(a.voucher_code), 'medx_')           THEN 'Commercial'
-        WHEN LOWER(a.voucher_code) LIKE '%clinic%'                 THEN 'ClinicEcom'
-    
-        WHEN LOWER(a.voucher_code) LIKE 'hmprd%'                   THEN 'HighMargin'
-        WHEN LOWER(a.voucher_code) LIKE 'hm_prd_ws%'               THEN 'HighMarginWS'
-    
-        ELSE 'Other'
-    END AS voucher_code_group
-    , CASE
---         WHEN (JSON_QUERY(and_conditions, "$.PRODUCT") IS NOT NULL OR JSON_QUERY(and_conditions, "$.PRODUCT_TAG") IS NOT NULL) AND JSON_QUERY(and_conditions, "$.ORDER_VALUE") IS NOT NULL THEN "PRODUCT_AND_ORDER"
-        WHEN JSON_QUERY(and_conditions, "$.PRODUCT") IS NOT NULL OR JSON_QUERY(and_conditions, "$.PRODUCT_TAG") IS NOT NULL THEN "PRODUCT"
-        WHEN JSON_QUERY(and_conditions, "$.ORDER_VALUE") IS NOT NULL THEN "ORDER"
+        WHEN LOWER(voucher_code_group) = "tichluy" THEN "LOYALTY"
+        WHEN charge_fee = "COMMERCIAL_BRANDED_SPONSORSHIP" THEN "SPONSORSHIP"
+        WHEN LOWER(voucher_code_group) = "chuyenkhoan" THEN "PTTT"
+        WHEN condition_type = "PRODUCT" THEN "PRODUCT"
+        WHEN condition_type = "ORDER" THEN "ORDER"
         ELSE "OTHER"
-    END AS condition_type
-FROM cte AS a
-    LEFT JOIN (
-        SELECT
-            *
-        FROM ${source.platinum}.marketplace_prd_promotion_voucher
-        WHERE created_date >= "2024-12-01"
-    ) AS v ON a.voucher_code = v.code
-    LEFT JOIN ${ref('gold_buymed_vn2','dim_geo_location')} AS g ON a.shipping_ward_code = g.location_code
+    END AS voucher_classification
+FROM final 
+
