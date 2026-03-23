@@ -84,6 +84,12 @@ SELECT
     
         ELSE 'Other'
     END AS voucher_code_group
+    , CASE
+--         WHEN (JSON_QUERY(and_conditions, "$.PRODUCT") IS NOT NULL OR JSON_QUERY(and_conditions, "$.PRODUCT_TAG") IS NOT NULL) AND JSON_QUERY(and_conditions, "$.ORDER_VALUE") IS NOT NULL THEN "PRODUCT_AND_ORDER"
+        WHEN JSON_QUERY(and_conditions, "$.PRODUCT") IS NOT NULL OR JSON_QUERY(and_conditions, "$.PRODUCT_TAG") IS NOT NULL THEN "PRODUCT"
+        WHEN JSON_QUERY(and_conditions, "$.ORDER_VALUE") IS NOT NULL THEN "ORDER"
+        ELSE "OTHER"
+    END AS condition_type
 FROM cte AS a
     LEFT JOIN (
         SELECT
