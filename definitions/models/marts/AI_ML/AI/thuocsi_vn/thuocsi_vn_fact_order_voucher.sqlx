@@ -10,6 +10,7 @@ WITH
         SELECT 
             a.order_id
             , a.created_date
+            , a.created_time + INTERVAL 7 HOUR AS created_time
             , a.customer_id
             , CASE
                 WHEN REGEXP_CONTAINS(TO_JSON_STRING(JSON_VALUE_ARRAY(a.extra_props, '$.customer_tags')), r'\"CIRCA\"|\"CIRCACOS\"|\"CIRCAFOFO\"|\"CIRCAFOCO\"')  THEN 'CIRCA'
