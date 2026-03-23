@@ -66,6 +66,7 @@ SELECT
     , applied_customers IS NULL AND customer_apply_type = "ALL"  AS all_customer 
     , scopes
     , JSON_QUERY(and_conditions, "$.ORDER_VALUE") IS NOT NULL AS is_order_value_condition
+    , v.voucher_group_code
 FROM ${source.platinum}.marketplace_prd_promotion_voucher AS v
     LEFT JOIN UNNEST(JSON_QUERY_ARRAY(rewards)) AS r
     LEFT JOIN ${ref('dim_promotion')} AS p ON v.promotion_id = p.promotion_id
