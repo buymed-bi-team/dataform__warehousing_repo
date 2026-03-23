@@ -346,7 +346,7 @@ WITH
     ois.oiid,
     ois.order_id,
     ois.customer_id,
-    COALESCE(sale_order_code, '') as sale_order_code,
+    sale_order_code,
     ois.shipping_ward_code,
     ois.order_status,
     ois.commercial_type,
