@@ -20,12 +20,14 @@ SELECT
     , s.sku_status
     , s.sku_active
     , t.tags
-    , s.demand_classification_code AS sku_demand_classification
+    , t.demand_classification_code AS sku_demand_classification
 FROM `lakehouse-prod-394907.gold_buymed_th.dim_sku` AS s
     LEFT JOIN `lakehouse-prod-394907.gold_buymed_th.dim_product` AS p ON s.product_id = p.product_id
     LEFT JOIN lakehouse-prod-394907.platinum_buymed_th.seller_prd_core_seller AS sl ON sl.code = s.seller_code
     LEFT JOIN (
         SELECT
-            sku, REGEXP_REPLACE(TO_JSON_STRING(tags), r'[\[\{\}\]]', '') AS tags
+            sku
+            , REGEXP_REPLACE(TO_JSON_STRING(tags), r'[\[\{\}\]]', '') AS tags
+            , JSON_VALUE(extra_props, "$.demand_classification_code") AS demand_classification_code
         FROM platinum_buymed_th.marketplace_prd_product_v2_sku
     ) AS t ON s.sku_code = t.sku
