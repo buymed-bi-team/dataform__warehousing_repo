@@ -76,7 +76,7 @@ SELECT
     user_email,
     last_execution_time,
     checkpoint_time AS refresh_time,
-    IF(user_email = "nguyen-tran-service-account-2@lakehouse-prod-394907.iam.gserviceaccount.com"
+    IF(user_email = "nguyen-tran-service-account@lakehouse-prod-394907.iam.gserviceaccount.com"
         , "chatbot-rumi-manus-all"
         , COALESCE(bu.name, SPLIT(LOWER(user_email),"@")[0] )) AS user_name, 
     CASE
