@@ -1,6 +1,6 @@
 config {
     type: "table",
-    tags: ["adhoc-office"],
+    //tags: ["adhoc-office"],
     description: "SKU status history by hours ( 1 day ) || PIC: tu.dang, anh.letam;  model_type: table; schedule: hourly",
     name: "fact_sku_status_day_by_hour_v2",
     dependencies: ["staging_sku_status_history"],
@@ -33,7 +33,7 @@ WITH status_history_location AS (
     a.is_active,
     a.created_time,
     b.sales_region_code as location_code,
-    a.ingest_time,
+    -- a.ingest_time,
     a.key
   FROM
     ${ref("staging_sku_status_history")} a
@@ -96,7 +96,7 @@ SELECT
       -- CASE WHEN status = "OUT_OF_STOCK" THEN "OFF"
       -- ELSE "ON"
       -- END AS active
-      ingest_time,
+      -- ingest_time,
       key
     FROM status_history_location ss
     LEFT JOIN gold_buymed_vn.dim_sales_region_service_area AS b ON b.service_area_code = ss.location_code)
