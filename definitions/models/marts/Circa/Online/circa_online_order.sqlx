@@ -9,7 +9,8 @@ config {
        
     },
     bigquery: {
-        partitionBy: "date(created_time)"
+        partitionBy: "DATE_TRUNC(created_date, MONTH)"
+
     }
 }
 WITH created_by AS (
