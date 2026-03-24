@@ -21,7 +21,7 @@ config {
             ${source.ref}.dim_sku_location
 
         `,
-    tags: ["gold_custom_20m", "PRODUCT_SKU_SR"],
+    tags: ["custom_1h_past10", "PRODUCT_SKU_SR"],
     columns: {
         sku_created_at                 : "The time ItemCode was created",
         sku_approved_at                : "The time ItemCode was approved",

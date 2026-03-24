@@ -12,7 +12,7 @@ config {
             ${source.platinum}.seller_prd_purchasing_contract_price,
             ${source.platinum}.seller_prd_promotion_log_price_after_rebate
         `,
-    tags: ["gold_custom_20m", "PRICING"],
+    tags: ["custom_1h_past10", "PRICING"],
 
     assertions: {
       uniqueKey: ["product_sales_region_code", "sku_key_sales_region_code"],

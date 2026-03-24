@@ -12,7 +12,7 @@ config {
             ${source.platinum}.marketplace_prd_pricing_v2_price_level, 
             ${source.platinum}.marketplace_prd_pricing_v2_dynamic_level
         `,
-    tags: ["gold_custom_20m", "PRICING"]
+    tags: ["custom_1h_past10", "PRICING"]
 }
 
 with
