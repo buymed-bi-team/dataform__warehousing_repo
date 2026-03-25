@@ -42,9 +42,13 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                      
     --   ,TRIM(REGEXP_EXTRACT(receiver_full_address, r'[^,]+,\s*([^,]+)$')) AS province
       ,action_by_name                                                                AS create_order_by
       ,account_id                                                                    -- tạo tài khoản sẽ có account_id, ko tạo tk ~ acount_id = 0
-      ,payment_method                                                                --Banking/COD
+      ,payment_method                                                                --Banking/COD/PAYOO/BUSINESS_WALLET
       ,payment_status                                                                --COMPLETED/WAIT_FOR_PAYMENT/NULL
       ,deliver_method                                                                --FAST/NORMAL
+      ,JSON_VALUE(o.extra_props, '$.is_split_payment')                               AS is_split_payment
+      ,JSON_VALUE(o.extra_props, '$.wallet_paid_amount')                             AS wallet_paid_amount
+      ,JSON_VALUE(o.extra_props, '$.secondary_pay_amount')                           AS secondary_pay_amount
+      ,JSON_VALUE(o.extra_props, '$.secondary_pay_method')                           AS secondary_pay_method
       ,price
       ,total_price
       ,total_discount
