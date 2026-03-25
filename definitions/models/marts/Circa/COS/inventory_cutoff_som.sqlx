@@ -20,6 +20,7 @@ SELECT DISTINCT
            WHEN DATE(DATETIME_ADD(a.updated_at, INTERVAL 7 HOUR)) > DATE(a.cutoff_date_index) THEN 0 
            ELSE 1
        END AS is_same_day
+     , CONCAT(a.product_id, "_", b.client_id) AS product_client_id
 FROM buymed_circa_v2.inventory_location_detail_historical_cut_off AS a
 LEFT JOIN lakehouse-prod-394907.buymed_circa_v2.inventory_location AS b 
        ON a.location_id = b.id 
