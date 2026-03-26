@@ -54,6 +54,7 @@ SELECT DISTINCT rcv.id
               ,product_id
               ,lot_id
               ,rid.doc_code
+              ,unit_price
 FROM ${source.circa_os}.inventory_transfer_request rcv 
 LEFT JOIN ${source.circa_os}.inventory_transfer_item ri ON rcv.id = ri.transfer_request_id
 LEFT JOIN ${source.circa_os}.inventory_transfer_item_detail rid ON ri.id = rid.transfer_item_id 
@@ -72,5 +73,6 @@ LEFT JOIN rcv ON trf.id = rcv.related_transfer_request_id
              AND trf.product_id = rcv.product_id
              AND trf.lot_id = rcv.lot_id
              AND trf.doc_code = rcv.doc_code
+             AND trf.unit_price = rcv.unit_price
 LEFT JOIN ${source.ref}.circa_pos_profile p ON trf.dest_pos_id = p.id
 WHERE rcv_status <> 'CANCELED'
