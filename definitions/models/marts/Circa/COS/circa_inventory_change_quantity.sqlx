@@ -15,6 +15,7 @@ SELECT DISTINCT o.id
                ,o.pos_id 
                ,o.reason
                ,DATETIME_ADD (o.created_at, INTERVAL 7 HOUR) AS created_at 
+               ,DATE(DATETIME_ADD (o.created_at, INTERVAL 7 HOUR)) AS created_date
                ,DATETIME_ADD(o.updated_at, INTERVAL 7 HOUR) AS updated_at
                ,DATETIME_ADD(o.completed_at, INTERVAL 7 HOUR) AS completed_at
                ,e.name AS updated_by
