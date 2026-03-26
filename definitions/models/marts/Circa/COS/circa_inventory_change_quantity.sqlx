@@ -45,5 +45,5 @@ LEFT JOIN `buymed_circa_v2.inventory_location_detail` d ON d.location_id = l.id 
 GROUP BY ALL
 )
 SELECT *
-       ,base_quantity_change * cost_price_include_tax
+       ,base_quantity_change * cost_price_include_tax AS stock_change_value
  FROM t
