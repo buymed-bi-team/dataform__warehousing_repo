@@ -9,7 +9,8 @@ config {
     }
 }
 
-SELECT o.id
+SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                     AS transformed_at
+       ,o.id
        ,o.code
        ,o.pos_id
        ,o.status
