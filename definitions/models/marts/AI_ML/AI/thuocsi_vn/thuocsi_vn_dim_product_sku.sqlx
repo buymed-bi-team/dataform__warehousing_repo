@@ -44,6 +44,7 @@ SELECT
     , s.product_name
     , s.sku_code
     , s.sku_key_fc_code AS sku_key
+    , s.seller_id
     , s.seller_code
     , s.seller_class
     , sl.name AS seller_name
