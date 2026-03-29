@@ -10,7 +10,7 @@ config {
 
    SELECT
      DATETIME_ADD(rto.created_at, INTERVAL 7 HOUR)                                                                       AS created_at
-     ,DATE(DATETIME_ADD(rto.created_at, INTERVAL 7 HOUR)     )                                                           AS created_DATE
+     ,DATE(DATETIME_ADD(rto.created_at, INTERVAL 7 HOUR)     )                                                           AS created_date
     ,rto.source_id
     ,rto.client_id
     ,rti.product_id
