@@ -25,7 +25,7 @@ SELECT DISTINCT
        ,b.received_quantity
        ,b.received_quantity - COALESCE(x.quantity,0)                                                                      AS actual_quantity
        ,b.base_quantity
-       ,b.base_quantity - COALESCE(x.base_quantity,0)                                                                     AS actual_base_quantity
+       ,(b.received_quantity - COALESCE(x.quantity,0)  )  * rt.convert_rate                                               AS actual_base_quantity
        ,CASE
             WHEN b.tax_rate <= 0 THEN 0
             ELSE b.tax_rate
@@ -37,7 +37,7 @@ SELECT DISTINCT
        --      WHEN a.amount <> 0 THEN a.amount
        --      WHEN a.amount = 0 THEN b.quantity * a.unit_price
        --  END AS PO_item_amount
-       ,b.received_quantity * a.unit_price                                                                                         AS PO_item_amount
+       ,b.received_quantity * a.unit_price                                                                                AS PO_item_amount
        ,(b.received_quantity - COALESCE(x.quantity,0)  ) * a.unit_price                                                   AS actual_po_item_amount
        ,b.lot_date
        ,a.product_id || "_" || lot_date || "_" ||  c.client_id                                                            AS product_lot_date_vat_client_id
