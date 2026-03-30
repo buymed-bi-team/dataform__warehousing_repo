@@ -44,7 +44,7 @@ SELECT DISTINCT t.* except (product_id)
                 ,p.sale_price
                ,t.sub_product_id AS product_id
                ,pr.name AS product_name
-               ,CONCAT(pr.product_id, "_", pr.client_id) AS product_client_id
+               ,CONCAT(t.product_id, "_", t.client_id) AS product_client_id
 FROM t
 LEFT JOIN retail_price p ON t.product_id = p.product_id AND t.sku_code = p.sku_code AND t.seller_code = p.seller_code AND t.client_id = p.client_id
 LEFT JOIN ${source.circa_os}.product_product pr ON pr.product_id = t.sub_product_id AND t.client_id = pr.client_id
