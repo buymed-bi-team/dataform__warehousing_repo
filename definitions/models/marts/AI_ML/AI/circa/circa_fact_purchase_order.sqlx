@@ -1,0 +1,31 @@
+config {
+    type: 'table',
+    schema: "buymed_innovation",
+    description: `All online orders of Circa.`,
+    tags: ['AI_CIRCA', "custom_1h_past10"]
+}
+
+
+SELECT  created_at
+       ,po_code
+       ,product_id
+       ,sku_code
+       ,status 
+       ,actual_quantity
+       ,actual_base_quantity
+       ,actual_po_item_amount
+       ,tax_rate
+       ,unit
+       ,unit_price
+       ,product_id
+       ,lot_date
+       ,item_discount_amt
+       ,name AS owner_name
+       ,Vendor AS Vendor
+       ,Channel AS channel
+       ,pos_code
+       ,client_id
+FROM ${ref("gold_buymed_vn2", "cos_purchase_order_item")} AS oi
+
+
+
