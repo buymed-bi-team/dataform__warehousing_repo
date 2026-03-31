@@ -48,6 +48,11 @@ AS (SELECT * FROM  ${ref("buymed_innovation", "thuocsi_vn_fact_order_sort_percen
 CREATE OR REPLACE VIEW `rumi_buymed_vn.thuocsi_vn_fact_inbound_ticket`
 AS (SELECT * FROM  ${ref("buymed_innovation", "thuocsi_vn_fact_inbound_ticket")});
 
+-- fact_inbound_ticket
+
+CREATE OR REPLACE VIEW `rumi_buymed_vn.thuocsi_vn_fact_user_event`
+AS (SELECT * FROM  ${ref("buymed_innovation", "thuocsi_vn_fact_user_event")});
+
 -- dim_customer
 
 CREATE OR REPLACE VIEW `rumi_buymed_vn.thuocsi_vn_dim_customer`

@@ -1,0 +1,21 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `User events in the Vietnam marketplace.`,
+    tags: ['AI_THUOCSI_VN']
+}
+
+SELECT
+    created_date
+    , created_time
+    , event
+    , platform
+    , customer_id
+    , search_content
+    , search_status
+    , b.sku_key_fc_code
+FROM ${ref("gold_buymed_vn2", "fact_user_event_tracking")} AS a
+    LEFT JOIN ${ref("gold_buymed_vn2", "dim_sku_sales_region_current")} AS b ON a.sku_fc_code = b.sku_key_sales_region_code
+WHERE 1=1
+    AND DATE(created_time) >= CURRENT_DATE("+7") - INTERVAL 14 DAY
+    AND event IN ("SEARCH", "ADD_TO_CART", "CHECKOUT")
