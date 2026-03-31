@@ -46,7 +46,7 @@ SELECT
         WHEN i.status = "IN_TRANSIT" THEN "IN-HUB"
         ELSE "IN-FC"
     END as incoming_type
-FROM lakehouse-prod-394907.platinum_buymed_vn.warehouse_prd_inbound_inbound_ticket AS i
+FROM ${source.platinum}.warehouse_prd_inbound_inbound_ticket AS i
     LEFT JOIN (
         SELECT
             inbound_code
@@ -58,15 +58,15 @@ FROM lakehouse-prod-394907.platinum_buymed_vn.warehouse_prd_inbound_inbound_tick
     ) AS ii ON i.code = ii.inbound_code
     LEFT JOIN (
         SELECT *
-        FROM lakehouse-prod-394907.platinum_buymed_vn.seller_prd_purchasing_purchase_order
+        FROM ${source.platinum}.seller_prd_purchasing_purchase_order
         WHERE created_date >= "2025-01-01"
     ) AS po ON i.po_code = po.po_code
     LEFT JOIN (
         SELECT *
-        FROM lakehouse-prod-394907.platinum_buymed_vn.seller_prd_wis_inbound
+        FROM ${source.platinum}.seller_prd_wis_inbound
         WHERE created_date >= "2025-01-01"
     ) AS pgh ON i.po_code = pgh.inbound_code
-    LEFT JOIN lakehouse-prod-394907.platinum_buymed_vn.seller_prd_core_seller AS s ON i.seller_code = s.code
-    LEFT JOIN gold_buymed_vn2.dim_sku_sales_region_current AS sr ON sr.sku_code = ii.sku AND sr.fc_code = i.warehouse_code
+    LEFT JOIN ${source.platinum}.seller_prd_core_seller AS s ON i.seller_code = s.code
+    LEFT JOIN ${ref("gold_buymed_vn2", "dim_sku_sales_region_current")} AS sr ON sr.sku_code = ii.sku AND sr.fc_code = i.warehouse_code
 WHERE 1=1
     AND i.created_date >= "2025-01-01"
