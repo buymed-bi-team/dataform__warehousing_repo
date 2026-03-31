@@ -31,3 +31,10 @@ AS (SELECT * FROM  ${ref("buymed_innovation", "thuocsi_tha_dim_product_sku")});
 
 
 
+-- dim_inventory
+
+CREATE OR REPLACE VIEW `rumi_buymed_th.thuocsi_tha_dim_inventory`
+AS (SELECT * FROM  ${ref("buymed_innovation", "thuocsi_tha_dim_inventory")});
+
+
+
