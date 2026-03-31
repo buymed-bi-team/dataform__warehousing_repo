@@ -19,7 +19,7 @@ SELECT
     END partner_code,
     s.seller_id,
     s.name AS seller_name,
-    CASE 
+    CASE
         WHEN i.external_type = 'PURCHASE_SYS' THEN 'PO'
         WHEN i.external_type = 'SELLER' THEN 'PGH'
         WHEN i.external_type = 'TRANSFER' THEN 'TO'
@@ -36,11 +36,37 @@ SELECT
     COALESCE(po.status, pgh.status) as po_pgh_status,
     i.total_sku,
     i.total_item,
-FROM ${source.platinum}.warehouse_prd_inbound_inbound_ticket AS i
-    LEFT JOIN ${source.platinum}.seller_prd_purchasing_purchase_order AS po ON i.po_code = po.po_code
-    LEFT JOIN ${source.platinum}.seller_prd_wis_inbound AS pgh ON i.po_code = pgh.inbound_code
-    LEFT JOIN ${source.platinum}.seller_prd_core_seller AS s ON i.seller_code = s.code
+    sku,
+    sr.sku_key_fc_code AS sku_key,
+    ii.demand_quantity,
+    ii.inbound_quantity,
+    IF(i.status NOT IN ("DRAFT", "CANCEL", "COMPLETED"), ii.demand_quantity - ii.inbound_quantity,0) AS incoming_quantity,
+    CASE
+        WHEN i.status = "WAITING" THEN "IN-PARTNER"
+        WHEN i.status = "IN_TRANSIT" THEN "IN-HUB"
+        ELSE "IN-FC"
+    END as incoming_type
+FROM lakehouse-prod-394907.platinum_buymed_vn.warehouse_prd_inbound_inbound_ticket AS i
+    LEFT JOIN (
+        SELECT
+            inbound_code
+            , sku
+            , demand_quantity
+            , inbound_quantity
+        FROM platinum_buymed_vn.warehouse_prd_inbound_inbound_ticket_item
+        WHERE created_date >= "2025-01-01"
+    ) AS ii ON i.code = ii.inbound_code
+    LEFT JOIN (
+        SELECT *
+        FROM lakehouse-prod-394907.platinum_buymed_vn.seller_prd_purchasing_purchase_order
+        WHERE created_date >= "2025-01-01"
+    ) AS po ON i.po_code = po.po_code
+    LEFT JOIN (
+        SELECT *
+        FROM lakehouse-prod-394907.platinum_buymed_vn.seller_prd_wis_inbound
+        WHERE created_date >= "2025-01-01"
+    ) AS pgh ON i.po_code = pgh.inbound_code
+    LEFT JOIN lakehouse-prod-394907.platinum_buymed_vn.seller_prd_core_seller AS s ON i.seller_code = s.code
+    LEFT JOIN gold_buymed_vn2.dim_sku_sales_region_current AS sr ON sr.sku_code = ii.sku AND sr.fc_code = i.warehouse_code
 WHERE 1=1
     AND i.created_date >= "2025-01-01"
-    AND po.created_date >= "2025-01-01"
-    AND pgh.created_date >= "2025-01-01"
