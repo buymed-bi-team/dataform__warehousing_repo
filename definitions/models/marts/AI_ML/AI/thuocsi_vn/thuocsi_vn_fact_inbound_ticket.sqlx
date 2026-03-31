@@ -1,0 +1,46 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `Inbound Ticket Vietnam marketplace.`,
+    tags: ['AI_THUOCSI_VN']
+}
+
+SELECT
+    i.created_date AS inbound_ticket_created_date,
+    TIMESTAMP_ADD(i.created_time, INTERVAL 7 HOUR) AS po_confirmed_time,
+    COALESCE(TIMESTAMP_ADD(po.created_time, INTERVAL 7 HOUR), TIMESTAMP_ADD(pgh.created_time, INTERVAL 7 HOUR)) AS po_pgh_created_time,
+    i.ticket_id,
+    i.warehouse_code AS fc_code,
+    i.code AS inbound_code,
+    i.po_code AS po_pgh_code,
+    CASE
+        WHEN i.seller_code in ('MEDX-HN', 'MEDX', 'MED_NT', 'MEDX_E', 'MARKETING', 'TENDER') THEN po.vendor_code
+        ELSE i.seller_code
+    END partner_code,
+    s.seller_id,
+    s.name AS seller_name,
+    CASE 
+        WHEN i.external_type = 'PURCHASE_SYS' THEN 'PO'
+        WHEN i.external_type = 'SELLER' THEN 'PGH'
+        WHEN i.external_type = 'TRANSFER' THEN 'TO'
+        ELSE 'OTHER'
+    END as order_type,
+    CASE
+        WHEN i.external_type = 'PURCHASE_SYS' THEN 'INTERNAL'
+        WHEN i.external_type = 'SELLER' THEN 'EXTERNAL'
+        WHEN i.external_type = 'TRANSFER' THEN 'TO'
+    END AS seller_class,
+    i.type as inbound_type,
+    i.priority as inbound_priority,
+    i.status as inbound_status,
+    COALESCE(po.status, pgh.status) as po_pgh_status,
+    i.total_sku,
+    i.total_item,
+FROM ${source.platinum}.warehouse_prd_inbound_inbound_ticket AS i
+    LEFT JOIN ${source.platinum}.seller_prd_purchasing_purchase_order AS po ON i.po_code = po.po_code
+    LEFT JOIN ${source.platinum}.seller_prd_wis_inbound AS pgh ON i.po_code = pgh.inbound_code
+    LEFT JOIN ${source.platinum}.seller_prd_core_seller AS s ON i.seller_code = s.code
+WHERE 1=1
+    AND i.created_date >= "2025-01-01"
+    AND po.created_date >= "2025-01-01"
+    AND pgh.created_date >= "2025-01-01"
