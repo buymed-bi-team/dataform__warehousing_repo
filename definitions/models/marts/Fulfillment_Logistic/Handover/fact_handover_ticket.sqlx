@@ -51,7 +51,7 @@ select
     a.status,
     a.created_by as handover_employee_id,
     a.driver_id,
-    a.driver_name,
+    COALESCE(a.driver_name,REGEXP_EXTRACT( TO_JSON_STRING(logs), r'\"(?:ownerName|ownername|owner_name)\":\"([^\"]+)\"')) AS driver_name,
     JSON_VALUE(a.extra_props, '$.carrier_name') AS carrier_name,
     -- case when b.pod is null then 'Updating' else 'With attached image' end as delivery_image,
     -- case when b.pop is null then 'Updating' else 'With attached image' end as pick_up_image,
@@ -65,7 +65,7 @@ select
     SAFE_CAST(json_value(a_l,"$.weight") AS FLOAT64) as weight,
     json_value(a_l, "$.status") as original_status,
     array_length(json_extract_array(a_l,"$.baskets")) as num_bin,
-    JSON_VALUE(t.truck, "$.license_plate") AS license_plate
+    COALESCE(JSON_VALUE(t.truck, "$.license_plate"), REGEXP_EXTRACT( TO_JSON_STRING(logs), r'\"(?:licensePlate|licenseplate|license_plate)\":\"([^\"]+)\"')) AS license_plate
 from ${source.platinum}.delivery_prd_transporting_handover_ticket AS a
    , unnest(json_extract_array(a.so_list)) AS a_l
    left join ${source.platinum}.delivery_prd_transporting_trip AS t ON t.trip_code = a.trip_code AND t.trip_code IS NOT NULL
