@@ -47,6 +47,7 @@ SELECT
     , s.seller_id
     , s.seller_code
     , s.seller_class
+    , s.retail_price_type
     , sl.name AS seller_name
     , NULLIF(COALESCE(p.product_category, c.product_category), "Thuốc (Chưa phân loại)") AS product_category_CAT1
     , COALESCE(p.brand, c.brand) AS brand
