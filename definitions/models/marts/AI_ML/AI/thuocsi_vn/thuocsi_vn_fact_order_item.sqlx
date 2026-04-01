@@ -1,8 +1,23 @@
 config {
-    type: 'view',
+    type: 'incremental',
     schema: "buymed_innovation",
     description: `All orders item in the Vietnam marketplace (including tender orders).`,
-    tags: ['AI_THUOCSI_VN']
+    tags: ['AI_THUOCSI_VN', "innovation_10m"],
+    bigquery: {
+        partitionBy: "DATE(created_time)",
+        clusterBy: ["product_id", "sku_key","seller_class", "channel"]
+    },
+}
+
+pre_operations {
+    ${when(
+        incremental(),
+        `     
+            DELETE FROM ${self()}
+            WHERE DATE(created_time) >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 1 MONTH);            
+        `
+        )
+    }
 }
 
 WITH
@@ -35,6 +50,7 @@ WITH
         FROM ${source.platinum}.marketplace_prd_order_v2_order AS a
         WHERE 1=1
             -- AND created_date >= "2022-01-01"
+            AND a.created_date >= ${when(incremental(), `DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 1 MONTH)`, `"2025-01-01"`)}
             AND status <> "CANCEL"
         UNION ALL
         SELECT
@@ -61,6 +77,7 @@ WITH
             LEFT JOIN ${ref('gold_buymed_vn2','dim_province')} AS p ON a.province_code = p.province_code
         WHERE 1=1
             -- AND created_date >= "2022-01-01"
+            AND a.created_date >= ${when(incremental(), `DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 1 MONTH)`, `"2025-01-01"`)}
             AND status <> "CANCELLED"
     )
 
@@ -121,7 +138,8 @@ WITH
             LEFT JOIN fact_order AS o ON a.order_id = o.order_id
             LEFT JOIN ${ref('gold_buymed_vn2','dim_geo_location')} AS g ON o.shipping_ward_code = g.location_code
         WHERE 1=1
-            AND a.created_date >= "2025-01-01"
+            -- AND a.created_date >= "2025-01-01"
+            AND a.created_date >= ${when(incremental(), `DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 1 MONTH)`, `"2025-01-01"`)}
             AND o.created_date >= "2025-01-01"
             -- AND o.status <> "CANCEL"
         UNION ALL
@@ -152,7 +170,8 @@ WITH
             LEFT JOIN fact_order AS o ON a.order_id = o.order_id
             LEFT JOIN ${ref('gold_buymed_vn2','dim_geo_location')} AS g ON o.shipping_ward_code = g.location_code
         WHERE 1=1
-            AND a.created_date >= "2025-01-01"
+            -- AND a.created_date >= "2025-01-01"
+            AND a.created_date >= ${when(incremental(), `DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 1 MONTH)`, `"2025-01-01"`)}
             AND o.created_date >= "2025-01-01"
     )
 
