@@ -96,7 +96,7 @@ WITH
              , o.online_or_offline_order
            FROM ${ref('gold_buymed_vn2','cos_fact_order_item')} oi
            LEFT JOIN fact_order o ON oi.order_id = o.order_id
-           LEFT JOIN buymed_circa_v2.order_delivery_info d ON d.order_id = o.order_id AND o.channel = "O2O"
+           LEFT JOIN buymed_circa_v2.order_delivery_info d ON d.order_id = o.order_id AND o.channel = "ONLINE"
            WHERE o.order_id IS NOT NULL
     
     )
