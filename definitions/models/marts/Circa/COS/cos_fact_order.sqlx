@@ -85,7 +85,7 @@ SELECT  TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
            ELSE 'False' END AS is_returned
        ,CASE WHEN o.channel = 'O2O' THEN i.customer_phone ELSE e.phone_number END AS customer_phone
        ,CASE WHEN o.channel = 'O2O' THEN i.customer_name ELSE e.name END AS customer_name
-       ,CASE WHEN o.channel = 'O2O' AND is_split_payment = 'true' THEN i.payment_method 
+       ,CASE WHEN o.channel = 'O2O' THEN i.payment_method 
                 ELSE o.payment_method END AS first_payment_method
         ,CASE WHEN o.channel = 'O2O' AND is_split_payment = 'true' THEN i.secondary_pay_method 
               ELSE NULL END AS secondary_pay_method
