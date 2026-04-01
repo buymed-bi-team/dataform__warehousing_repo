@@ -34,7 +34,7 @@ WITH
             , p.name AS pos_name
             , IF(p.type = "FS", "FS", "COS") AS pos_type
             -- , o.channel
-            -- , o.type AS online_or_offline_order
+            , o.type AS online_or_offline_order
             , o.type AS channel
             , g.ward_name
             , g.district_name
