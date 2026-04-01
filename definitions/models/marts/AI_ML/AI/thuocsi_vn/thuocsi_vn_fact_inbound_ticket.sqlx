@@ -10,7 +10,11 @@ SELECT
     TIMESTAMP_ADD(i.created_time, INTERVAL 7 HOUR) AS po_confirmed_time,
     COALESCE(TIMESTAMP_ADD(po.created_time, INTERVAL 7 HOUR), TIMESTAMP_ADD(pgh.created_time, INTERVAL 7 HOUR)) AS po_pgh_created_time,
     i.ticket_id,
-    i.warehouse_code AS fc_code,
+    i.warehouse_code,
+    CASE 
+        WHEN i.warehouse_code = "BD" THEN "Kho Bình Dương"
+        WHEN i.warehouse_code = "HN" THEN "Kho Bắc Ninh"
+    END AS warehouse_name,
     i.code AS inbound_code,
     i.po_code AS po_pgh_code,
     CASE
