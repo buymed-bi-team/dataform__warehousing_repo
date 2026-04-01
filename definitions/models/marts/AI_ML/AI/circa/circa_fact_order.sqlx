@@ -45,6 +45,9 @@ WITH
             , IF(v.campaign_code = "CAMPAIGN000165", true, false) AS is_referral
             , o.status AS order_status
             , SUM(o.total_amount)- SUM(COALESCE(c.rev_return, 0))  - SUM(COALESCE(delivery_amount, 0)) AS revenue
+            , first_payment_method
+            , secondary_pay_method
+            , secondary_pay_amount
             -- , IF(o.order_code IN (SELECT order_code_used FROM referral ), true, false) AS is_referral
         FROM ${ref('gold_buymed_vn2','cos_fact_order')} AS o
         LEFT JOIN ${ref("gold_buymed_vn2", "cos_return_completed")} c ON o.order_code = c.order_code
@@ -94,6 +97,9 @@ WITH
              , o.voucher_code
              , o.is_referral
              , CONCAT(d.customer_phone, d.customer_name) AS o2o_customer_key
+             , first_payment_method
+             , secondary_pay_method
+             , secondary_pay_amount
             --  , o.online_or_offline_order
            FROM ${ref('gold_buymed_vn2','cos_fact_order_item')} oi
            LEFT JOIN fact_order o ON oi.order_id = o.order_id
