@@ -278,7 +278,7 @@ SELECT
   SAFE_CAST(JSON_VALUE(product.extra_props, "$.related_product_id") AS INT64) as related_product_id,
   JSON_VALUE(product.extra_props, "$.status_reason") as status_reason,
 
-  seller.code as owner_code,
+  COALESCE(product.owner, "MEDX") as owner_code,
   seller.name as owner_name,
 
   manufacturer.code as manufacturer_code,
@@ -427,7 +427,7 @@ SELECT
 
 
 FROM ${source.platinum}.marketplace_prd_product_v2_product AS product
-LEFT JOIN  ${source.platinum}.seller_prd_core_seller AS seller on product.owner = seller.code
+LEFT JOIN  ${source.platinum}.seller_prd_core_seller AS seller on COALESCE(product.owner, "MEDX") = seller.code
 LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_seller_category AS seller_category ON seller_category.code = product.seller_category_code
 LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_seller_sub_category AS seller_sub_category ON seller_sub_category.code = product.seller_sub_category_code
 LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_manufacturer AS manufacturer ON manufacturer.code = product.manufacturer_code
