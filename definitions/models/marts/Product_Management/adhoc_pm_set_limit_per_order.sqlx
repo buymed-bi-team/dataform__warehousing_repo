@@ -8,7 +8,7 @@ config {
 
 -- step 1: get necessary columns to make logic
 WITH target_date AS (
-  SELECT TIMESTAMP_TRUNC(TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 100 DAY), MONTH) AS start_date
+  SELECT DATE_TRUNC(DATE_SUB(CURRENT_DATE("+7"), INTERVAL 100 DAY), MONTH) AS start_date
 ),
 
 no_orders as (
@@ -36,7 +36,7 @@ no_orders as (
                 product_id,
                 order_quantity
             from ${source.platinum}.warehouse_prd_core_sale_order_item
-            where created_time >= (select start_date from target_date)
+            where created_date >= (select start_date from target_date)
         ) as b on b.admin_id = c.admin_id
         -- where  b.created_time >= (select start_date from target_date)
         group by b.sku, c.warehouse_code, b.product_id

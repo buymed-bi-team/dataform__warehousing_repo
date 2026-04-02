@@ -2,7 +2,7 @@ config {
     type: "table",
     description: "Fact stock balance lotdate for skus in near expired location | Schedule: hourly | PIC: huyen.nguyenthu",
     name: "fact_stock_balance_lotdate",
-    tags: ["custom_1h_past5"],
+    tags: ["custom_2h_past10"],
     columns: {
         sku_code: "unique sku identifier",
         fc: "warehouse code",
