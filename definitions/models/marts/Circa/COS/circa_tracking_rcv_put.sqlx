@@ -1,9 +1,8 @@
 config {
     type: "table",
-    description: `"tracking_purchase_put PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`,
-    /*Source:
-      ${source.silver}.marketplace_prd_order_v2_order_item
-      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5,*/
+    description: `"tracking_purchase_put 
+                     PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour
+                     Bảng này dùng để kiểm tra hàng nhận từ luân chuẩn đã put lên kệ chưa, put có chênh lệch số lượng nhận không`,
     tags: ["custom_1h_past5"],
     name: "circa_tracking_rcv_put",
     columns: {
@@ -11,97 +10,121 @@ config {
     }
 }
 
-
-
-with base_unit_selection as (
-  select
-    product_id
-    ,client_id
-    ,base_unit
-    ,row_number() over (partition by product_id, client_id order by count(*) desc) as rn
-  from  ${source.ref}.cos_product_convert_base_unit
-  where client_id = 1
-  group by product_id, client_id, base_unit
-), base_unit as (
-select a.*
-from  ${source.ref}.cos_product_convert_base_unit a
-left join  base_unit_selection b on a.product_id = b.product_id
-                                    and a.client_id = b.client_id
-                                    and a.base_unit = b.base_unit
-where b.rn = 1
-), rcv  as (
-Select distinct r.code
-                ,r.status
-                ,r.id
-                ,ri.id as ref_item_id
-                ,dest_pos_id as pos_id
-                ,p.name as pos_name
-                ,datetime_add(r.created_at, interval 7 hour) as created_at
-                ,date(datetime_add(r.created_at, interval 7 hour)) as created_date
-                ,ri.product_id
-                ,ri.unit_id 
-                ,sum(rid.quantity) as demand_quantity
-                ,unit as rcv_unit
-                ,sum(rid.received_quantity) as received_quantity
-                ,r.client_id
-                ,p.code as pos_code
-                ,'TRANSFER_IN' as fulfillment_method
- from ${source.circa_os}.inventory_transfer_request r 
- left join ${source.circa_os}.inventory_transfer_item ri on r.id = ri.transfer_request_id 
- left join ${source.circa_os}.inventory_transfer_item_detail rid on ri.id = rid.transfer_item_id 
-left join ${source.ref}.circa_pos_profile p on r.dest_pos_id = p.id and r.client_id = p.client_id
-where p.id is not null
-      and r.type = 'TRANSFER_IN'
-      and r.status <> 'CANCELED'
-      and r.status <> 'PROCESSING'
-      --and r.code = 'RCV00006775'
-     and r.client_id = 1
-group by all
-),t as (
-    select distinct put.ref_id
-                    ,putd.ref_id as ref_item_id
-                   ,putd.product_id 
-                   ,sum(putd.quantity)  as put_quantity
-                   ,putd.unit as put_unit
-                   ,put.status as put_status
-                   ,put.client_id
- from ${source.circa_os}.inventory_put_ticket put 
-    left join  ${source.circa_os}.inventory_put_ticket_item putd  on putd.put_ticket_id = put.id 
-    where put.client_id = 1
-    --where put.code = 'PUT22073'
-   group by all
-),base_tracking as(
-select distinct rcv.*
-               ,put_quantity
-               ,put_unit
-               ,put_quantity * cv.convert_rate as put_base_qty 
-from rcv
-left join t on rcv.id = t.ref_id
-              and rcv.ref_item_id = t.ref_item_id
-              and rcv.product_id = t.product_id   
-              and rcv.client_id = t.client_id
-left join  ${source.ref}.cos_dim_product td on t.product_id = td.product_id
-left join  base_unit cv on cv.product_id = t.product_id
-                        and Put_unit = cv.convert_unit
-                                                                                              
-where rcv.id is not null                                                                                                 
-group by all
-),to_check as (
-Select distinct base_tracking.* except (pos_id,put_quantity,put_base_qty)
-      ,sum(put_quantity) as total_put_quantity
-      ,sum(put_base_qty) as put_base_qty
-      ,base_tracking.received_quantity  * cv.convert_rate as po_base_qty
-from base_tracking
-left join base_unit cv on cv.product_id = base_tracking.product_id and rcv_unit = cv.convert_unit 
-group by all
+-- quy đổi lấy đơn vị base_unit
+WITH base_unit_selection AS (
+    SELECT
+        product_id
+        , client_id
+        , base_unit
+        , ROW_NUMBER() OVER (
+            PARTITION BY product_id, client_id
+            ORDER BY COUNT(*) DESC
+        ) AS rn
+    FROM ${source.ref}.cos_product_convert_base_unit
+    WHERE client_id = 1
+    GROUP BY ALL
 )
-Select to_check.* except (unit_id,ref_item_id)
-       ,concat(product_id,"_", pos_code) as product_pos_code
-       ,concat(product_id, "_", client_id) as product_client_id
-       ,case when to_check.put_base_qty <> po_base_qty then 'true'
-            when to_check.total_put_quantity is null and to_check.received_quantity > 0 then 'not_yet_put'
-            when  to_check.total_put_quantity is null and to_check.received_quantity  =  0 then 'not_yet_have_item'
-            else 'false' end as is_difference
-from to_check
+
+, base_unit AS (
+    SELECT
+        a.*
+    FROM ${source.ref}.cos_product_convert_base_unit a
+    LEFT JOIN base_unit_selection b ON a.product_id = b.product_id
+        AND a.client_id = b.client_id
+        AND a.base_unit = b.base_unit
+    WHERE b.rn = 1
+)
+--Lấy số lượng nhận từ các phiếu transfer
+, rcv AS (
+    SELECT DISTINCT
+        r.code
+        , r.status
+        , r.id
+        , ri.id AS ref_item_id
+        , dest_pos_id AS pos_id
+        , p.name AS pos_name
+        , DATETIME_ADD(r.created_at, INTERVAL 7 HOUR) AS created_at
+        , DATE(DATETIME_ADD(r.created_at, INTERVAL 7 HOUR)) AS created_date
+        , ri.product_id
+        , ri.unit_id
+        , SUM(rid.quantity) AS demand_quantity
+        , unit AS rcv_unit
+        , SUM(rid.received_quantity) AS received_quantity
+        , r.client_id
+        , p.code AS pos_code
+        , 'TRANSFER_IN' AS fulfillment_method
+    FROM ${source.circa_os}.inventory_transfer_request r
+    LEFT JOIN ${source.circa_os}.inventory_transfer_item ri ON r.id = ri.transfer_request_id
+    LEFT JOIN ${source.circa_os}.inventory_transfer_item_detail rid ON ri.id = rid.transfer_item_id
+    LEFT JOIN ${source.ref}.circa_pos_profile p ON r.dest_pos_id = p.id
+        AND r.client_id = p.client_id
+    WHERE p.id IS NOT NULL
+        AND r.type = 'TRANSFER_IN'
+        AND r.status <> 'CANCELED'
+        AND r.status <> 'PROCESSING'
+        -- AND r.code = 'RCV00006775'
+        AND r.client_id = 1
+    GROUP BY ALL
+)
+-- số lượng từ các phiếu put lên kệ
+, t AS (
+    SELECT DISTINCT
+        put.ref_id
+        , putd.ref_id AS ref_item_id
+        , putd.product_id
+        , SUM(putd.quantity) AS put_quantity
+        , putd.unit AS put_unit
+        , put.status AS put_status
+        , put.client_id
+    FROM ${source.circa_os}.inventory_put_ticket put
+    LEFT JOIN ${source.circa_os}.inventory_put_ticket_item putd
+        ON putd.put_ticket_id = put.id
+    WHERE put.client_id = 1
+        -- WHERE put.code = 'PUT22073'
+    GROUP BY ALL
+)
+-- quy đổi sang base_unit
+, base_tracking AS (
+    SELECT DISTINCT
+        rcv.*
+        , put_quantity
+        , put_unit
+        , put_quantity * cv.convert_rate AS put_base_qty
+    FROM rcv
+    LEFT JOIN t ON rcv.id = t.ref_id
+                AND rcv.ref_item_id = t.ref_item_id
+                AND rcv.product_id = t.product_id
+                AND rcv.client_id = t.client_id
+    LEFT JOIN ${source.ref}.cos_dim_product td ON t.product_id = td.product_id
+    LEFT JOIN base_unit cv ON cv.product_id = t.product_id AND put_unit = cv.convert_unit
+    WHERE rcv.id IS NOT NULL
+    GROUP BY ALL
+)
+
+, to_check AS (
+    SELECT DISTINCT
+        base_tracking.* EXCEPT (pos_id, put_quantity, put_base_qty)
+        , SUM(put_quantity) AS total_put_quantity
+        , SUM(put_base_qty) AS put_base_qty
+        , base_tracking.received_quantity * cv.convert_rate AS po_base_qty
+    FROM base_tracking
+    LEFT JOIN base_unit cv ON cv.product_id = base_tracking.product_id
+                          AND rcv_unit = cv.convert_unit
+    GROUP BY ALL
+)
+
+SELECT
+    to_check.* EXCEPT (unit_id, ref_item_id)
+    , CONCAT(product_id, "_", pos_code) AS product_pos_code
+    , CONCAT(product_id, "_", client_id) AS product_client_id
+    , CASE
+        WHEN to_check.put_base_qty <> po_base_qty THEN 'true'
+        WHEN to_check.total_put_quantity IS NULL
+            AND to_check.received_quantity > 0 THEN 'not_yet_put'
+        WHEN to_check.total_put_quantity IS NULL
+            AND to_check.received_quantity = 0 THEN 'not_yet_have_item'
+        ELSE 'false'
+    END AS is_difference
+FROM to_check
 -- where code = 'RCV00008634'
 --       and product_id = 2302
