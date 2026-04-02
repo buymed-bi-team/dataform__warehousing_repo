@@ -1,5 +1,5 @@
 config {
-    type: "table",
+    type: "incremental",
     description: 
         `
         Log of changing status of a SO;
@@ -25,6 +25,30 @@ config {
     }
 }
 
+pre_operations {
+    ${
+        when(incremental(),
+        `
+        DECLARE new_records ARRAY<STRING>;
+        DECLARE checkpoint_date ARRAY<DATE>;
+        DECLARE checkpoint_delivery DATE;
+        SET (new_records, checkpoint_date, checkpoint_delivery) = (
+            SELECT AS STRUCT
+                ARRAY_AGG(DISTINCT so) AS new_records,
+                ARRAY_AGG(DISTINCT created_date) AS checkpoint_date,
+                MIN(created_date) AS checkpoint_delivery
+            FROM platinum_buymed_vn.integration_prd_tpl_callback_callback 
+            WHERE created_date >= date_trunc(date_sub(current_date(),interval 7 month), month)
+                AND last_updated_time >= CURRENT_TIMESTAMP() - INTERVAL 2 HOUR);
+        
+        DELETE FROM ${self()}
+        WHERE so_code IN UNNEST(new_records);
+
+        `
+
+    )}
+}
+
 with cte_date as (
 	select  date_trunc(date_sub(current_date(),interval 7 month), month) as date_scan_2
 )
@@ -38,7 +62,14 @@ with cte_date as (
 		logs,
         hub_code
 	from ${source.platinum}.integration_prd_tpl_callback_callback
-	where created_date >= (select date_scan_2 from cte_date)
+	where 
+        ${when(incremental(), 
+        `created_date IN UNNEST(checkpoint_date) 
+        AND created_date >= checkpoint_delivery
+        AND so IN UNNEST(new_records)`
+        , 
+        `created_date >= (select date_scan_2 from cte_date)`
+        )}
 )
 
 select  
