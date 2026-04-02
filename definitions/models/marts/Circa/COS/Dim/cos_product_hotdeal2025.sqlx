@@ -1,6 +1,6 @@
 config {
     type: "table",
-    description: `List sản phẩm hot nhất thị trường | PIC: huyen.ngo; model_type: Table ;schedule: At 10h30`,
+    description: `List sản phẩm hot dealthansg 1 2025 | PIC: huyen.ngo; model_type: Table ;schedule: At 10h30`,
     tags: ["10h30"],
     name: "cos_product_hotdeal2025",
     columns: {/*
