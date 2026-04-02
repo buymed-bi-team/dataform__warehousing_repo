@@ -1,7 +1,6 @@
 config {
     type: "table",
     description: `Tracking việc luân chuyển tồn kho giữa hub và cả store PIC: huyen.ngo; model_type: Table ;schedule: At minute 15 every hour`,
-    /**/
     tags: ["custom_1h_past15"],
     name: "transfer_request",
     columns: {
@@ -9,7 +8,7 @@ config {
     }
 }
 
-WITH trf AS (
+WITH trf AS ( -- phiếu luân chuyển
 SELECT DISTINCT r.id
               ,r.code
               ,r.src_pos_id
@@ -43,7 +42,7 @@ WHERE p.id IS NOT NULL
       --  AND r.code = 'TRF00002258'
       --  AND product_id = 65050
 GROUP BY ALL
-), rcv AS (
+), rcv AS ( -- phiếu nhận
 SELECT DISTINCT rcv.id
               ,rcv.status AS rcv_status
               ,rcv.related_transfer_request_id
