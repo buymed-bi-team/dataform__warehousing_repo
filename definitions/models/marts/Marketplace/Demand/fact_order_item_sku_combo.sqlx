@@ -11,7 +11,7 @@ config {
 }
 
 with cte_date as (
-  select DATE_SUB(CURRENT_DATE(), INTERVAL 15 MONTH)  as start_date
+  select DATE_SUB(CURRENT_DATE(), INTERVAL 12 MONTH)  as start_date
   --select date_sub( timestamp( date_trunc( date_sub( current_date('+7'), interval 12 month) , month ) ) , interval 7 hour ) as start_date
   -- select date_sub( timestamp( date_trunc( current_date('+7'), month ) ) , interval 7 hour ) as start_date
 --   SELECT date_sub( timestamp( date_trunc( date_sub( current_date('+7'), interval 1 day) , day ) ) , interval 7 hour ) as start_date

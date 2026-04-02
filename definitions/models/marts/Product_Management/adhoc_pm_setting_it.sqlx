@@ -31,8 +31,7 @@ with get_sku_from_it_list as (
         SELECT *
         FROM ${source.platinum}.warehouse_prd_picking_pick_ticket
         WHERE 
-            ingest_time >= TIMESTAMP_SUB(TIMESTAMP(DATE_SUB(current_date(), interval 3 day)), interval 7 hour)
-            AND (created_time >= TIMESTAMP_SUB(TIMESTAMP(DATE_SUB(current_date(), interval 3 day)), interval 7 hour) OR created_time is null)
+            created_date >= DATE_SUB(current_date(), interval 3 day)
 
     ) b 
     WHERE date(TIMESTAMP_ADD(b.created_time, interval 7 hour )) between current_date () - 3 and current_date ()
@@ -44,9 +43,7 @@ with get_sku_from_it_list as (
             SELECT * 
             FROM ${source.platinum}.warehouse_prd_picking_pick_ticket_item
             WHERE 
-                ingest_time >= TIMESTAMP_SUB(TIMESTAMP(DATE_SUB(current_date(), interval 3 day)), interval 7 hour)
-                AND (created_time >= TIMESTAMP_SUB(TIMESTAMP(DATE_SUB(current_date(), interval 3 day)), interval 7 hour)
-                    OR created_time is null)
+                created_date >= DATE_SUB(current_date(), interval 3 day)
         ) a
         where date(TIMESTAMP_ADD(a.created_time, interval 7 hour )) between current_date () - 3 and current_date ()
     ) a ON a.ticket_id = b.ticket_id
