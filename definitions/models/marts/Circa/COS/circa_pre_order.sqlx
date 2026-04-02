@@ -1,14 +1,9 @@
 config {
     type: "table",
-    description: `Last 13 month| PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every 2 hours.Circa Pre_order `
-    /*Source:
-      ${source.silver}.marketplace_prd_order_v2_order_item
-      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
-    tags: ["custom_1h_past15"],
+    description: `LASt 13 month| PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every 2 hours.Circa Pre_order `,
+    tags: ["custom_1h_pASt15"],
     name: "circa_pre_order",
     columns: {
-        order_id: "NonNull |" + docs.order_id,
-        customer_id: "NonNull | The unique identifier for each customer"
         
     },
     bigquery: {
@@ -17,24 +12,24 @@ config {
 }
 
 
-Select o.*
-        ,coalesce(i.product_id, d.product_id) as product_id
-        ,coalesce(p.product_name, d.product_name) as product_name 
-        ,d.quantity as demand_quantity
-        ,d.unit as demand_unit
-        ,i.quantity as sales_qty
-        ,i.unit as sales_unit 
+SELECT o.*
+        ,coalesce(i.product_id, d.product_id) AS product_id
+        ,coalesce(p.product_name, d.product_name) AS product_name 
+        ,d.quantity AS demand_quantity
+        ,d.unit AS demand_unit
+        ,i.quantity AS sales_qty
+        ,i.unit AS sales_unit 
         ,i.unit_price
         ,i.unit_cost_price
-        ,sum (i.quantity * i.unit_price) as item_amount
+        ,sum (i.quantity * i.unit_price) AS item_amount
         ,i.lot_date
         ,i.po_code
         ,i.owner_name
         ,i.distributor_id
-        ,concat(coalesce(i.product_id, d.product_id), "_",i.client_id) as product_client_id
- from  ${source.ref}.cos_fact_order o 
- left join  ${source.ref}.cos_fact_order_item i on o.order_id = i.order_id
- left join  ${source.ref}.cos_dim_product p on i.product_id = p.product_id and o.client_id = p.client_id
- left join  ${source.ref}.cos_order_item_demand d on o.order_id = d.order_id
- where delivery_scheduled_time is not null
- group by all 
+        ,CONCAT(coalesce(i.product_id, d.product_id), "_",i.client_id) AS product_client_id
+ FROM  ${source.ref}.cos_fact_order o 
+LEFT JOIN  ${source.ref}.cos_fact_order_item i ON o.order_id = i.order_id
+LEFT JOIN  ${source.ref}.cos_dim_product p ON i.product_id = p.product_id AND o.client_id = p.client_id
+LEFT JOIN  ${source.ref}.cos_order_item_demand d on o.order_id = d.order_id
+WHERE delivery_scheduled_time IS NOT NULL
+GROUP BY ALL
