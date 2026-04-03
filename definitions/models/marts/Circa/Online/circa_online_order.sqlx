@@ -38,8 +38,6 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                      
       ,receiver_full_address
       ,district_code
       ,province_code
-    --   ,TRIM(REGEXP_EXTRACT(receiver_full_address, r'([^,]+),\s*[^,]+$')) AS district
-    --   ,TRIM(REGEXP_EXTRACT(receiver_full_address, r'[^,]+,\s*([^,]+)$')) AS province
       ,action_by_name                                                                AS create_order_by
       ,account_id                                                                    -- tạo tài khoản sẽ có account_id, ko tạo tk ~ acount_id = 0
       ,payment_method                                                                --Banking/COD/PAYOO/BUSINESS_WALLET
