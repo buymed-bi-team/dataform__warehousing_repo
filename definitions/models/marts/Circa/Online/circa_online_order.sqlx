@@ -5,7 +5,7 @@ config {
     name: "circa_online_order",
     columns: {
         order_code: "NonNull |" + docs.order_code,
-        account_id: "NonNull | The unique identifier for each customer"
+        customer_phone: "NonNull | The unique identifier for each customer"
        
     },
     bigquery: {
