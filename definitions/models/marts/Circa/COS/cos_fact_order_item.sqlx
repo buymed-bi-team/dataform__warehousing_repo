@@ -98,6 +98,7 @@ WITH base_unit_selection AS (
         ,gift_code
         ,tag_list
         ,CASE WHEN tag_list like '%deal_1000%' AND unit_price = 1000 THEN TRUE ELSE FALSE END AS is_deal1k 
+        ,al.location_detail_id
     FROM ${source.circa_os}.order_order o
     LEFT JOIN ${source.circa_os}.order_order_item oi ON o.id = oi.order_id
     LEFT JOIN base_unit cv ON o.client_id = cv.client_id AND oi.product_id = cv.product_id AND oi.unit = cv.convert_unit
