@@ -46,13 +46,13 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                      
       ,payment_status                                                                --COMPLETED/WAIT_FOR_PAYMENT/NULL
       ,deliver_method                                                                --FAST/NORMAL
       ,JSON_VALUE(o.extra_props, '$.is_split_payment')                               AS is_split_payment
-      ,JSON_VALUE(o.extra_props, '$.wallet_paid_amount')                             AS wallet_paid_amount
-      ,JSON_VALUE(o.extra_props, '$.secondary_pay_amount')                           AS secondary_pay_amount
+      ,CAST(JSON_VALUE(o.extra_props, '$.wallet_paid_amount') AS INT64)              AS wallet_paid_amount
+      ,CAST(JSON_VALUE(o.extra_props, '$.secondary_pay_amount') AS INT64)            AS secondary_pay_amount
       ,JSON_VALUE(o.extra_props, '$.secondary_pay_method')                           AS secondary_pay_method
       ,price
       ,total_price
       ,total_discount
-      ,delivery_method_fee - CAST(JSON_VALUE(o.extra_props, '$.discount_delivery_fee') as int64 ) AS delivery_method_fee
+      ,delivery_method_fee - CAST(JSON_VALUE(o.extra_props, '$.discount_delivery_fee') AS INT64 ) AS delivery_method_fee
       ,JSON_VALUE(o.extra_props, '$.discount_delivery_fee')                          AS discount_delivery_fee
       ,total_product
       ,DATETIME_ADD(created_time, INTERVAL 7 hour)                                   AS created_time
