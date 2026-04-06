@@ -51,6 +51,7 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                      
       ,total_price
       ,total_discount
       ,delivery_method_fee - CAST(JSON_VALUE(o.extra_props, '$.discount_delivery_fee') AS INT64 ) AS delivery_method_fee
+      ,JSON_VALUE(o.extra_props, '$.delivery_tags')                                  AS delivery_tags
       ,JSON_VALUE(o.extra_props, '$.discount_delivery_fee')                          AS discount_delivery_fee
       ,total_product
       ,DATETIME_ADD(created_time, INTERVAL 7 hour)                                   AS created_time
