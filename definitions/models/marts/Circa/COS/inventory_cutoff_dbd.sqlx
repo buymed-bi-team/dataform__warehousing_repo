@@ -1,7 +1,6 @@
 config {
     type: "table",
     description: `inventory_cutoff_dbd PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`,
-    disabled: true,
     tags: ["8h30"],
     name: "inventory_cutoff_dbd",
     columns: {
@@ -9,8 +8,7 @@ config {
     }
 }
 
-select distinct
-
+SELECT DISTINCT
       a.cutoff_date_index
       ,b.pos_id
       ,sum(on_hand_qty) as on_hand_qty
@@ -21,5 +19,5 @@ select distinct
           end as is_same_day
 from ${source.circa_os}.inventory_location_detail_historical_cut_off as a
 left join ${source.circa_os}.inventory_location as b on a.location_id = b.id and a.client_id = b.client_id
---where a.client_id = 1 
+WHERE cutoff_date_index >= '2026-01-01'
 group by all
