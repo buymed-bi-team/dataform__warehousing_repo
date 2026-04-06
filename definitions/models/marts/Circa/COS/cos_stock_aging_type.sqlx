@@ -6,7 +6,7 @@ config {
 }
 
 
-WITH count_ord AS (
+WITH count_ord AS ( -- đếm số lượng đơn 
      SELECT DISTINCT o.pos_id
                     ,oi.product_id
                     ,MAX(o.created_date) AS latest_ord
@@ -15,14 +15,13 @@ WITH count_ord AS (
                     ,SUM(unit_cost_price * quantity) AS cogs
                     ,o.client_id
      FROM  ${source.ref}.cos_fact_order o
-     LEFT JOIN  ${source.ref}.cos_fact_order_item oi
-               ON o.order_id = oi.order_id
+     LEFT JOIN  ${source.ref}.cos_fact_order_item oi ON o.order_id = oi.order_id
      WHERE status LIKE "%COMPLETE%"
            AND o.client_id = 1
            AND owner_name NOT IN ('CIRCA MARKETING')
      GROUP BY ALL
 )
-,first_time_have_inventory AS (
+,first_time_have_inventory AS ( -- ngày đầu tiên có tồn kho
      SELECT DISTINCT l.pos_id
                      ,p.name AS pos_name
                      ,a.product_id
@@ -41,7 +40,7 @@ WITH count_ord AS (
            AND ld.seller_code NOT IN ('CIRCA_MKP', 'MARKETING')
      GROUP BY ALL
 )
-,lastdate_pur AS (
+,lastdate_pur AS ( -- lần cuối mua hàng
      SELECT DISTINCT o.pos_id
                      ,i.product_id
                      ,MAX(DATE(i.created_at)) AS lastdate_pur
@@ -53,7 +52,7 @@ WITH count_ord AS (
            AND o.client_id = 1
      GROUP BY ALL
 )
-,inventory AS (
+,inventory AS ( -- tồn kho hiện tại
      SELECT DISTINCT 
             pos_id
            ,product_id
