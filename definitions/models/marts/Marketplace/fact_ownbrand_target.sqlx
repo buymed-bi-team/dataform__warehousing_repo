@@ -7,7 +7,7 @@ config {
         Type: Table; 
         Refresh Schedule: daily at 8h30;
         `,
-    tags: ["8h30"]
+    tags: ["8h30", "OWNBRAND_TARGET"]
 }
 
 SELECT
