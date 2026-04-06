@@ -140,6 +140,13 @@ SELECT a.*
                 ORDER BY a.created_at, a.order_code
             ) = 1
         END AS is_first_channel_order
+        ,CASE
+            WHEN b.customer_phone_cleaned IS NULL THEN TRUE
+            ELSE ROW_NUMBER() OVER (
+                PARTITION BY b.customer_phone_cleaned, a.pos_id
+                ORDER BY a.created_at, a.order_code
+            ) = 1
+        END AS is_first_pos_order
 FROM map_inf a
 LEFT JOIN clean_phone b ON a.order_code = b.order_code 
 
