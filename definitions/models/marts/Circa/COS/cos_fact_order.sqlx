@@ -128,6 +128,7 @@ SELECT a.*
        ,b.customer_phone_cleaned
        ,CASE
             WHEN b.customer_phone_cleaned IS NULL THEN TRUE
+            WHEN a.status NOT IN ('COMPLETED', 'COMPLETE_SHIPPING') THEN FALSE
             ELSE ROW_NUMBER() OVER (
                 PARTITION BY b.customer_phone_cleaned
                 ORDER BY a.created_at, a.order_code
@@ -135,6 +136,7 @@ SELECT a.*
         END AS is_first_order
         ,CASE
             WHEN b.customer_phone_cleaned IS NULL THEN TRUE
+            WHEN a.status NOT IN ('COMPLETED', 'COMPLETE_SHIPPING') THEN FALSE
             ELSE ROW_NUMBER() OVER (
                 PARTITION BY b.customer_phone_cleaned, a.type
                 ORDER BY a.created_at, a.order_code
@@ -142,6 +144,7 @@ SELECT a.*
         END AS is_first_channel_order
         ,CASE
             WHEN b.customer_phone_cleaned IS NULL THEN TRUE
+            WHEN a.status NOT IN ('COMPLETED', 'COMPLETE_SHIPPING') THEN FALSE
             ELSE ROW_NUMBER() OVER (
                 PARTITION BY b.customer_phone_cleaned, a.pos_id
                 ORDER BY a.created_at, a.order_code
@@ -149,6 +152,8 @@ SELECT a.*
         END AS is_first_pos_order
 FROM map_inf a
 LEFT JOIN clean_phone b ON a.order_code = b.order_code 
+
+
 
 -- where status in ('COMPLETED', 'COMPLETED_SHIPPING')
 --       and client_id <> 1
