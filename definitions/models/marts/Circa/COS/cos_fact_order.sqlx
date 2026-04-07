@@ -126,29 +126,44 @@ FROM (
 
 SELECT a.*
        ,b.customer_phone_cleaned
-       ,CASE
-            WHEN b.customer_phone_cleaned IS NULL THEN TRUE
-            WHEN a.status NOT IN ('COMPLETED', 'COMPLETE_SHIPPING') THEN FALSE
-            ELSE ROW_NUMBER() OVER (
-                PARTITION BY b.customer_phone_cleaned
-                ORDER BY a.created_at, a.order_code
-            ) = 1
-        END AS is_first_order
         ,CASE
+               WHEN customer_phone_cleaned IS NULL THEN FALSE
+               WHEN status IN ('COMPLETED', 'COMPLETE_SHIPPING')
+                    AND COUNTIF(status IN ('COMPLETED', 'COMPLETE_SHIPPING')) OVER (
+                          PARTITION BY customer_phone_cleaned
+                          ORDER BY a.created_at, a.order_code
+                          ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+                        ) = 1
+               THEN TRUE
+               ELSE FALSE
+             END AS is_first_order
+                   ,CASE
             WHEN b.customer_phone_cleaned IS NULL THEN TRUE
             WHEN a.status NOT IN ('COMPLETED', 'COMPLETE_SHIPPING') THEN FALSE
-            ELSE ROW_NUMBER() OVER (
-                PARTITION BY b.customer_phone_cleaned, a.type
-                ORDER BY a.created_at, a.order_code
-            ) = 1
+             AND COUNTIF(status IN ('COMPLETED', 'COMPLETE_SHIPPING')) OVER (
+        PARTITION BY 
+            b.customer_phone_cleaned
+        ORDER BY 
+            CASE 
+                WHEN a.status IN ('COMPLETED', 'COMPLETE_SHIPPING')
+                THEN a.created_at
+            END,
+            a.order_code, type
+    ) = 1
         END AS is_first_channel_order
         ,CASE
             WHEN b.customer_phone_cleaned IS NULL THEN TRUE
             WHEN a.status NOT IN ('COMPLETED', 'COMPLETE_SHIPPING') THEN FALSE
-            ELSE ROW_NUMBER() OVER (
-                PARTITION BY b.customer_phone_cleaned, a.pos_id
-                ORDER BY a.created_at, a.order_code
-            ) = 1
+              AND COUNTIF(status IN ('COMPLETED', 'COMPLETE_SHIPPING')) OVER (
+        PARTITION BY 
+            b.customer_phone_cleaned
+        ORDER BY 
+            CASE 
+                WHEN a.status IN ('COMPLETED', 'COMPLETE_SHIPPING')
+                THEN a.created_at
+            END,
+            a.order_code, pos_id
+    ) = 1
         END AS is_first_pos_order
 FROM map_inf a
 LEFT JOIN clean_phone b ON a.order_code = b.order_code 
