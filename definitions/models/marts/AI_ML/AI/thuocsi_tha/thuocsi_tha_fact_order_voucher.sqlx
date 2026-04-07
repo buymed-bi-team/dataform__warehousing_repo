@@ -15,12 +15,15 @@ SELECT
     , JSON_VALUE(d.extra_props, "$.name_en") AS shipping_district_name
     , JSON_VALUE(p.extra_props, "$.name_en") AS shipping_province_name
     , COALESCE(re.description, re.name) AS shipping_region_name
+    , v.promotion_id
+    , v.promotion_name
 FROM platinum_buymed_th.marketplace_prd_order_v2_order AS a
     , UNNEST(JSON_QUERY_ARRAY(a.redeem_apply_result)) AS r
     LEFT JOIN `platinum_buymed_th.core_prd_master_data_ward` AS w ON w.code = a.customer_ward_code
     LEFT JOIN `platinum_buymed_th.core_prd_master_data_district` AS d ON d.code = a.customer_district_code
     LEFT JOIN `platinum_buymed_th.core_prd_master_data_province` AS p ON p.code = a.customer_province_code
     LEFT JOIN `platinum_buymed_th.core_prd_master_data_region` AS re ON re.code = p.region_code
+    LEFT JOIN `platinum_buymed_th.marketplace_prd_promotion_voucher` AS v ON v.code = JSON_VALUE(r, '$.code')
 WHERE 1=1
     AND a.created_date >= "2025-01-01"
     AND a.status <> "CANCEL"
