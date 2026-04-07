@@ -1,7 +1,7 @@
 
 config {
     type: "table",
-    description: `dim_sku_stock  item detail PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`,
+    description: `dim_sku_stock item detail PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`,
     tags: ["custom_1h_past5"],
     name: "dim_sku_stock",
     columns: {
@@ -12,6 +12,7 @@ config {
 WITH inventory AS (
     SELECT a.product_id
            ,SUM(a.on_hand_qty) AS on_hand_quantity
+           ,SUM(a.available_qty) AS available_qty
            ,b.pos_id
            ,a.seller_code
            ,sku_code
@@ -27,6 +28,7 @@ SELECT
     ,s.product_id
     ,s.sku_code
     ,i.on_hand_quantity
+    ,i.available_qty
     ,IF(i.on_hand_quantity > 0, "Available", "Unavailable") AS status
     ,CONCAT(s.product_id, "_", s.client_id) AS product_client_id
     ,s.client_id
