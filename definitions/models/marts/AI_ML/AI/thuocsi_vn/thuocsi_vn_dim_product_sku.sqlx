@@ -81,7 +81,13 @@ SELECT
     , d.division_names
     , s.sku_demand_class AS sku_demand_classification
     , s.sub_sku_code AS item_code
-    , IF(s.seller_code IN ("MEDX", "BML_INT"), s.cic_name, NULL) AS cic_name
+    , CASE
+        -- WHEN s.cic_name IN ("dat.hoquang", "tra.pham") THEN NULL
+        WHEN s.seller_code IN ("MEDX", "BML_INT", "MEDX_INT") AND u.status = "ACTIVE" AND s.cic_name NOT IN ("dat.hoquang", "tra.pham", "ngoc.vu")
+            THEN s.cic_name 
+        -- WHEN s.seller_code IN ("MEDX", "BML_INT", "MEDX_INT") THEN NULL
+        WHEN s.seller_class = "EXTERNAL" THEN sp.pic
+      END AS cic_name
 FROM ${ref('gold_buymed_vn2', 'dim_sku_sales_region_full')} AS s
     LEFT JOIN ${ref('gold_buymed_vn2', 'dim_product')} AS p ON s.product_id = p.product_id
     LEFT JOIN ${source.platinum}.seller_prd_core_seller AS sl ON sl.code = s.seller_code
@@ -89,4 +95,19 @@ FROM ${ref('gold_buymed_vn2', 'dim_sku_sales_region_full')} AS s
     LEFT JOIN combo AS c ON c.product_id = s.product_id
     LEFT JOIN tag AS t ON t .sku_key_fc_code = s.sku_key_fc_code
     LEFT JOIN division AS d ON d.product_id = s.product_id
+    LEFT JOIN (
+        SELECT
+            username
+            , status
+        FROM ${source.platinum}.core_prd_account_account
+        QUALIFY ROW_NUMBER() OVER(PARTITION BY username) = 1
+    ) AS u ON s.cic_name = u.username
+    LEFT JOIN (
+        SELECT
+            product_id
+            , fc_code
+            , pic
+        FROM buymed_external.seller_pic
+        QUALIFY ROW_NUMBER() OVER(PARTITION BY product_id, fc_code) = 1
+    ) AS sp ON sp.product_id = s.product_id AND sp.fc_code = s.fc_code
 WHERE sl.code NOT IN ('MEDC', 'MED_NT', 'TENDER', 'MEDX-HN', 'DENX', '9SUUUUUUUU', 'QMQEM8DN9F', 'UQRRRRRRRR', 'TAM_GIA', 'I1I4OQEM8D')
