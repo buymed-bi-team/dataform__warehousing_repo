@@ -75,9 +75,11 @@ WHERE o.type <> 'RETURN'
 GROUP BY ALL
 ), map_inf AS (
 SELECT  TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
-       ,o.* except (created_date, payment_method)
+       ,o.* except (created_date, payment_method, created_at)
        ,CASE WHEN o.type = 'ONLINE' THEN i.created_date
              ELSE o.created_date END AS created_date
+       ,CASE WHEN o.type = 'ONLINE' THEN i.created_time
+             ELSE o.created_at END AS created_at
        ,i.receiver_name
        ,i.receiver_full_address
        ,CASE
