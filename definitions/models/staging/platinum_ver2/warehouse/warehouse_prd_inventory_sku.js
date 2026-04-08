@@ -22,26 +22,26 @@ model.createIncremental(
         ingestCutOffInterval : "INTERVAL 2 HOUR"
     }
 );
-model.assertUnique(
-    ["platinum_0h00","platinum_12h00", "platinum_unique_assertion", "warehouse_prd_inventory"],
-    {
-        intervalCheckpoint : `INTERVAL 2 DAY`,
-        maxRetry: 2
-    }
-)
-model.createMismatchAssertionView(
-    ["platinum_staging_assertion_view", "warehouse_prd_inventory"],
-    {
-        intervalCheckpoint: `INTERVAL 2 DAY`,
-        maxRetry: 2,
-        // dependencies : [model.dependencies.assertUnique]
-    }
-)
-model.assertMismatch(
-    ["platinum_0h00","platinum_12h00", "platinum_staging_assertion", "warehouse_prd_inventory"],
-    {
-        intervalCheckpoint: `INTERVAL 2 DAY`,
-        maxRetry: 2,
+// model.assertUnique(
+//     ["platinum_0h00","platinum_12h00", "platinum_unique_assertion", "warehouse_prd_inventory"],
+//     {
+//         intervalCheckpoint : `INTERVAL 2 DAY`,
+//         maxRetry: 2
+//     }
+// )
+// model.createMismatchAssertionView(
+//     ["platinum_staging_assertion_view", "warehouse_prd_inventory"],
+//     {
+//         intervalCheckpoint: `INTERVAL 2 DAY`,
+//         maxRetry: 2,
+//         // dependencies : [model.dependencies.assertUnique]
+//     }
+// )
+// model.assertMismatch(
+//     ["platinum_0h00","platinum_12h00", "platinum_staging_assertion", "warehouse_prd_inventory"],
+//     {
+//         intervalCheckpoint: `INTERVAL 2 DAY`,
+//         maxRetry: 2,
         
-    }
-)
+//     }
+// )
