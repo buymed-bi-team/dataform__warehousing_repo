@@ -46,7 +46,8 @@ WITH
             END AS shipping_ward_code,
             total_discount,
             a.warehouse_code,
-            SAFE_CAST(JSON_VALUE(a.invoice, '$.invoice_request') AS BOOLEAN) AS invoice_request
+            SAFE_CAST(JSON_VALUE(a.invoice, '$.invoice_request') AS BOOLEAN) AS invoice_request,
+            payment_method,
         FROM ${source.platinum}.marketplace_prd_order_v2_order AS a
         WHERE 1=1
             -- AND created_date >= "2022-01-01"
@@ -72,7 +73,8 @@ WITH
             END AS shipping_ward_code,
             0,
             p.fc_code,
-            TRUE
+            TRUE,
+            payment_method
         FROM ${source.platinum}.tender_prd_core_tender_orders AS a
             LEFT JOIN ${ref('gold_buymed_vn2','dim_province')} AS p ON a.province_code = p.province_code
         WHERE 1=1
@@ -133,6 +135,7 @@ WITH
             , g.urban_rural
             , o.total_discount / COUNT(1) OVER(PARTITION BY a.order_id) AS total_discount
             , invoice_request
+            , payment_method
         FROM ${source.platinum}.marketplace_prd_order_v2_order_item AS a
             LEFT JOIN ${source.platinum}.seller_prd_core_seller AS s ON a.seller_code = s.code
             LEFT JOIN fact_order AS o ON a.order_id = o.order_id
@@ -166,6 +169,7 @@ WITH
             , g.urban_rural
             , o.total_discount/ COUNT(1) OVER(PARTITION BY a.order_id) AS total_discount
             , invoice_request
+            , payment_method
         FROM ${source.platinum}.tender_prd_core_tender_order_items AS a
             LEFT JOIN fact_order AS o ON a.order_id = o.order_id
             LEFT JOIN ${ref('gold_buymed_vn2','dim_geo_location')} AS g ON o.shipping_ward_code = g.location_code
