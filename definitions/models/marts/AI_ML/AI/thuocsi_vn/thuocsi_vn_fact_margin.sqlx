@@ -5,30 +5,6 @@ config {
     tags: ['AI_THUOCSI_VN']
 }
 
--- SELECT
---     a.created_date
---     , a.order_id
---     , CONCAT(b.sku_key, "_", o.warehouse_code) AS sku_key
---     , b.product_id
---     , a.profit
---     , a.total_price
--- FROM ${source.platinum}.monitoring_prd_realtime_supply_margin_order_sku AS a
---     LEFT JOIN ${source.platinum}.marketplace_prd_order_v2_order AS o ON a.order_id = o.order_id
---     LEFT JOIN ${ref('gold_buymed_vn2','dim_sku')} AS b ON a.sku = b.sku_code
--- WHERE 1=1 
---     AND a.created_date >= "2025-01-01"
---     AND o.created_date >= "2025-01-01"
--- UNION ALL
--- SELECT
---     a.created_date
---     , a.order_id
---     , CONCAT(a.product_id, "_", a.seller_code, "_", a.fc_code) AS sku_key
---     , a.product_id
---     , a.profit * outbound_quantity AS profit
---     , a.price * outbound_quantity AS total_price
--- FROM gold_buymed_vn2.fact_order_item_seller_margin AS a
--- WHERE 1=1 
---     AND a.created_date >= "2025-01-01"
 
 WITH 
     fact_order AS ( 
@@ -43,10 +19,10 @@ WITH
             , price AS gmv
             , status
             , CASE
-                WHEN REGEXP_CONTAINS(TO_JSON_STRING(JSON_VALUE_ARRAY(a.extra_props, '$.customer_tags')), r'\"CIRCA\"|\"CIRCACOS\"|\"CIRCAFOFO\"|\"CIRCAFOCO\"')  THEN 'CIRCA'
-                WHEN a.source = 'brand-portal' AND JSON_VALUE(a.extra_props, "$.brand_code") IN ('Q8HDUVQX', '2E84FW961P', 'PG961P') THEN 'TENDER'
+                WHEN REGEXP_CONTAINS(TO_JSON_STRING(JSON_VALUE_ARRAY(a.extra_props, '$.customer_tags')), r'\"CIRCA\"|\"CIRCACOS\"|\"CIRCAFOFO\"|\"CIRCAFOCO\"|\"CIRCA_FS\"')  THEN 'CIRCA'
+                WHEN a.source = 'brAND-portal' AND JSON_VALUE(a.extra_props, "$.brAND_code") IN ('Q8HDUVQX', '2E84FW961P', 'PG961P') THEN 'TENDER'
                 WHEN TO_JSON_STRING(JSON_VALUE_ARRAY(a.extra_props, '$.customer_tags')) LIKE '%TENDER%' THEN 'TENDER'
-                WHEN a.source IN ('brand-portal', 'clinic-portal') OR customer_id IN (360299, 360439, 375375) THEN 'TENDER'
+                WHEN a.source IN ('brAND-portal', 'clinic-portal') OR customer_id IN (360299, 360439, 375375) THEN 'TENDER'
                 ELSE 'MARKETPLACE'
             END AS channel,
             CASE
@@ -105,8 +81,8 @@ WITH
             , a.seller_class
             , CONCAT(a.product_id, "_", seller_code, "_", COALESCE(NULLIF(a.warehouse_code, "TA"), "BD")) AS sku_key
             , a.product_id
-            , SUM(outbound_quantity * (price - COALESCE(purchase_price,0))) AS profit
-            , SUM(outbound_quantity * purchase_price) AS cogs_after_rebate
+            , SUM(outbound_quantity * (price - COALESCE(purchASe_price,0))) AS profit
+            , SUM(outbound_quantity * purchASe_price) AS cogs_after_rebate
             , SUM(outbound_quantity * price)
         FROM gold_buymed_vn2.fact_order_item_margin_tayau_outbound AS a
             LEFT JOIN ${ref('gold_buymed_vn2','dim_sku')} AS b ON LEFT(a.item_code, LENGTH(a.item_code) -2) = b.sku_code
@@ -125,6 +101,31 @@ WITH
         FROM gold_buymed_vn2.fact_order_item_margin_seller_outbound AS a
         WHERE 1=1 
             AND a.created_date >= "2025-01-01"
+    )
+
+    , voucher_internal AS (
+        SELECT
+            *,
+            CONCAT(order_id, '_', main_product_id, '_', item_code, '_', price) pk_int,
+        FROM gold_buymed_vn2.fact_order_item_margin_internal_voucher
+        WHERE 1=1
+            AND main_product_id = product_id
+            AND order_id = 37630891
+    )
+    , voucher_internal_combo AS (
+        SELECT
+            *,
+            CONCAT(order_id, '_combo_', main_product_id, '_', item_code, '_', quantity) pk_int_combo,
+        FROM gold_buymed_vn2.fact_order_item_margin_internal_voucher
+        WHERE 1=1
+            AND main_product_id <> product_id
+    )
+    , voucher_external AS (
+        SELECT
+            *,
+            CONCAT(order_id, '_', product_id, '_', item_code, '_', price) pk_ext,
+        FROM gold_buymed_vn2.fact_order_item_margin_seller_voucher
+        WHERE 1=1
     )
 
 SELECT
