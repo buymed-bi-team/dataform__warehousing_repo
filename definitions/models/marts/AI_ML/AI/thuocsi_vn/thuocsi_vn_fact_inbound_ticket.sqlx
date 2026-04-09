@@ -57,7 +57,7 @@ FROM ${source.platinum}.warehouse_prd_inbound_inbound_ticket AS i
             , sku
             , demand_quantity
             , inbound_quantity
-        FROM platinum_buymed_vn.warehouse_prd_inbound_inbound_ticket_item
+        FROM ${source.platinum}.warehouse_prd_inbound_inbound_ticket_item
         WHERE created_date >= "2025-01-01"
     ) AS ii ON i.code = ii.inbound_code
     LEFT JOIN (
