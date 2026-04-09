@@ -133,6 +133,21 @@ UNION ALL
           --and product_id = 84855
     QUALIFY ROW_NUMBER() OVER(PARTITION BY product_id, client_id ORDER BY convert_rate DESC) = 1
 
+), ts_unit AS (
+    SELECT DISTINCT
+        o.product_id
+        ,o.convert_unit
+        ,convert_rate
+        ,client_id
+      --  ,lower(i.unit) AS thuocsi_unit
+    FROM gold_buymed_vn2.cos_product_convert_base_unit o
+    LEFT JOIN (SELECT DISTINCT product_id
+                               ,CASE WHEN unit = 'Tube' THEN  'Tuýp'
+                                 ELSE unit END AS unit
+              FROM gold_buymed_vn2.dim_product ) i
+        ON o.product_id = i.product_id
+       AND lower(o.convert_unit) = lower(i.unit)
+    WHERE lower(i.unit) IS NOT NULL
 )
 ,brand_type AS (
     SELECT p.product_id
@@ -188,6 +203,10 @@ WHERE o.id = 'e9a5a24c-8b54-41a3-9b21-2ad63149eb3d'
 SELECT DISTINCT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
       ,pd.product_id
       ,pd.* EXCEPT (product_id)
+      ,CASE WHEN ts.convert_unit IS NOT NULL THEN ts.convert_unit 
+            ELSE cr.convert_unit END AS ts_unit
+      ,CASE WHEN ts.convert_unit IS NOT NULL THEN ts.convert_rate
+            ELSE cr.convert_rate END AS ts_convert_rate
       ,CASE WHEN e.product_id IS NOT NULL THEN TRUE ELSE FALSE END AS is_allstore
       ,e.status AS status_allstore
       ,CASE WHEN tr.product_id IS NOT NULL THEN TRUE ELSE FALSE END AS is_trendy
@@ -231,6 +250,7 @@ LEFT JOIN ${source.ref}.cos_product_trendy tr ON pd.product_id = tr.product_id--
 LEFT JOIN ${source.ref}.cos_product_hotdeal2025 h ON pd.product_id = h.product_id AND pd.client_id = h.client_id
 LEFT JOIN ${source.ref}.cos_product_hot_deal_jan hd ON pd.product_id = hd.product_id AND pd.client_id = hd.client_id
 LEFT JOIN posm ON pd.product_id = posm.product_id
+LEFT JOIN ts_unit ts ON ts.product_id = pd.product_id and pd.client_id = ts.client_id
 --WHERE pd.product_name NOT LIKE "%[Removed]%"
 
         --and pd.product_id = 1112
