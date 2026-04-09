@@ -1,7 +1,7 @@
 config {
     type: "table",
     description: `Dim product | PIC: huyen.ngo; model_type: Table ;schedule: custom_1h_past20`,
-    //tags: ["custom_1h_past20"],
+    tags: ["custom_1h_past20"],
     name: "cos_dim_product",
     columns: {/*
 */
