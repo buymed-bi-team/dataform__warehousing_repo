@@ -27,10 +27,16 @@ SELECT DISTINCT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transform
        ,current_step
        ,processed_pos
        ,DATETIME_ADD(o.calculation_date, INTERVAL 7 HOUR) AS calculation_date -- ngày tính demand 
-       ,enable_auto_purchase
+       ,enable_auto_purchase -- Auto Mua hàng tự động
+       ,enable_transfer_creation_auto -- Auto luân chuyển
+       ,enable_store_assortment -- Nguồn Store Assortment
+       ,enable_daily_sale_input -- Nguồn  Dữ liệu bán hàng theo ngày 
+       ,enable_internal_transfer -- Nguồn Luân chuyển nội bộ
+       ,enable_purchase_request_demand -- Nguồn Phiếu yêu cầu mua hàng (PR)
+       ,enable_online_order_demand -- Nguồn Đơn online (đơn chờ hàng)
        ,auto_purchase_session_id
-       ,auto_purchase_session_code
-       ,enable_transfer_creation_auto
+       ,auto_purchase_session_code -- Auto mua hàng
+      
  FROM ${source.circa_os}.demand_planning_demand_planning_session o 
  LEFT JOIN ${source.circa_os}.entity_entity e ON o.created_by = e.id AND o.client_id = e.client_id
 --  WHERE DATE(TIMESTAMP_ADD(o.created_at, INTERVAL 7 HOUR)) 
