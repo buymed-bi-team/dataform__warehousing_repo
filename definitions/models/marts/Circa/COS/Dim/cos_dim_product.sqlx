@@ -231,7 +231,7 @@ LEFT JOIN ${source.ref}.cos_product_trendy tr ON pd.product_id = tr.product_id A
 LEFT JOIN ${source.ref}.cos_product_hotdeal2025 h ON pd.product_id = h.product_id AND pd.client_id = h.client_id
 LEFT JOIN ${source.ref}.cos_product_hot_deal_jan hd ON pd.product_id = hd.product_id AND pd.client_id = hd.client_id
 LEFT JOIN posm ON pd.product_id = posm.product_id
-WHERE pd.product_name NOT LIKE "%[Removed]%"
+--WHERE pd.product_name NOT LIKE "%[Removed]%"
 
         --and pd.product_id = 1112
        --and pd.product_id = 16149
