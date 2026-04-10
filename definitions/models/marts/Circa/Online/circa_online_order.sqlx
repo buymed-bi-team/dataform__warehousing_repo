@@ -110,3 +110,4 @@ SELECT o.*
        ,m.province_name
 FROM map_deliver o
 LEFT JOIN location m ON o.district_code = m.district_code AND o.province_code = m.province_code
+WHERE order_code NOT IN (SELECT DISTINCT order_code FROM map_deliver WHERE  sender_name IN ( 'Cửa hàng Tech Test 1'))
