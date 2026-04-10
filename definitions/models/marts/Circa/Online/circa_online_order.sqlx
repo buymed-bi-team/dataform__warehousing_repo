@@ -97,7 +97,7 @@ LEFT JOIN ${source.ref}.cos_voucher_info v ON o.assigned_order_codes = v.order_c
 LEFT JOIN (SELECT * FROM ${source.platinum}.circa_online_prd_order_sale_order
            QUALIFY ROW_NUMBER () OVER (PARTITION BY order_code ORDER BY created_time DESC) = 1       
         ) s ON o.order_code = s.order_code 
-WHERE sender_name <> 'Cửa hàng Tech Test 1'
+--WHERE sender_name <> 'Cửa hàng Tech Test 1'
 ), location as (
      SELECT distinct district_code
                    , district_name
