@@ -3,8 +3,8 @@ config {
     description: `Circa OS -- Chi tiết kết quả phiên dự báo mua hàng 
                   PIC: huyen.ngo;
                   model_type: Table;
-                  schedule: At minute 10 every hour`,
-    tags: ["custom_1h_past15"],
+                  schedule: At minute 15 every hour`,
+    tags: ["3h30"],
     name: "cos_demand_planning_internal_transfer",
     columns: {
         

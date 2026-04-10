@@ -35,3 +35,4 @@ SELECT
 FROM ${source.circa_os}.product_sku_in_pos s 
 LEFT JOIN inventory i ON s.pos_id = i.pos_id AND s.sku_code = i.sku_code AND s.client_id = i.client_id
 GROUP BY ALL
+-- Tồn kho hiện tại theo từng loại sku 
