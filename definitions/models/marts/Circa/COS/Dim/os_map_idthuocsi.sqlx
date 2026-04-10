@@ -1,8 +1,8 @@
 
 config {
     type: "table",
-    description: `dim_sku_stock  item detail PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`,
-    tags: ["10h30"],
+    description: `dim_sku_stock  item detail PIC: huyen.ngo; model_type: Table ;schedule: Refresh manual`,
+    //tags: ["10h30"],
     name: "os_map_idthuocsi",
     columns: {
         
