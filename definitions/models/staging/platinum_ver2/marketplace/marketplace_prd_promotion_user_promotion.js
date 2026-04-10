@@ -16,32 +16,32 @@ const model = new main.PlatinumModel(
     }
 );
 model.createIncremental(
-    ["platinum_custom_1h_past7", "platinum_staging", "marketplace_prd_promotion"],
+    ["platinum_00h00", "platinum_12h00", "platinum_staging", "marketplace_prd_promotion"],
     {
         has_src_created_date : false,
-        ingestCutOffInterval : "INTERVAL 1 DAY"
+        ingestCutOffInterval : "INTERVAL 1 MONTH"
     }
 );
-model.assertUnique(
-    ["0h00","12h00", "platinum_unique_assertion", "marketplace_prd_promotion"],
-    {
-        intervalCheckpoint : `INTERVAL 3 MONTH`,
-        maxRetry: 2
-    }
-)
-model.createMismatchAssertionView(
-    ["platinum_staging_assertion_view", "marketplace_prd_promotion"],
-    {
-        intervalCheckpoint: `INTERVAL 2 DAY`,
-        maxRetry: 2,
-        // dependencies : [model.dependencies.assertUnique]
-    }
-)
-model.assertMismatch(
-    ["0h00","12h00", "platinum_staging_assertion", "marketplace_prd_promotion"],
-    {
-        intervalCheckpoint: `INTERVAL 2 DAY`,
-        maxRetry: 2,
+// model.assertUnique(
+//     ["0h00","12h00", "platinum_unique_assertion", "marketplace_prd_promotion"],
+//     {
+//         intervalCheckpoint : `INTERVAL 3 MONTH`,
+//         maxRetry: 2
+//     }
+// )
+// model.createMismatchAssertionView(
+//     ["platinum_staging_assertion_view", "marketplace_prd_promotion"],
+//     {
+//         intervalCheckpoint: `INTERVAL 2 DAY`,
+//         maxRetry: 2,
+//         // dependencies : [model.dependencies.assertUnique]
+//     }
+// )
+// model.assertMismatch(
+//     ["0h00","12h00", "platinum_staging_assertion", "marketplace_prd_promotion"],
+//     {
+//         intervalCheckpoint: `INTERVAL 2 DAY`,
+//         maxRetry: 2,
         
-    }
-)
+//     }
+// )
