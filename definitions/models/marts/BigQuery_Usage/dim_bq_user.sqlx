@@ -6,7 +6,7 @@ config {
 }
 
 js {
-    const start_date = `CURRENT_TIMESTAMP() - INTERVAL 7 DAY`
+    const start_date = `CURRENT_TIMESTAMP() - INTERVAL 5 DAY`
     const refresh_interval = `INTERVAL 1 DAY`
 }
 
@@ -68,7 +68,8 @@ WITH base AS (
         STRUCT('khanh.nguyenhung', 'BI-warehouse',      ['khanhnguyenhung','khanh.nguyenhung','khanh-nguyen-hung','khanh.nguyen','khanh-nguyen']),
         STRUCT('pakawat.k',        'BI-cam',            ['pakawatk','pakawat.k','pakawat-k']),
         STRUCT('supeerana.p',      'BI-th',             ['supeeranap','supeerana.p','supeerana-p']),
-        STRUCT('tanawin.b',        'BA-th',             ['tanawinb','tanawin.b','tanawin-b'])
+        STRUCT('tanawin.b',        'BA-th',             ['tanawinb','tanawin.b','tanawin-b']),
+        STRUCT('duy.nguyenduc',    'BI-warehouse',      ['duy.buymed'])
     ]) i
 )
 
@@ -82,7 +83,8 @@ SELECT
     CASE
         WHEN LOWER(user_email) like "%serviceaccount%" AND LOWER(user_email) like "%dataform%"  THEN "Dataform"
         WHEN LOWER(user_email) like "%serviceaccount%" THEN "Service Account"
-        WHEN LOWER(user_email) like "%@buymed.com" THEN "User"
+        -- WHEN LOWER(user_email) like "%@buymed.com" THEN "User"
+        ELSE "User"
     END AS type,
     -- CASE 
     --     WHEN LOWER(user_)

@@ -25,12 +25,12 @@ WITH
             , a.exp_date
         FROM (
             SELECT * FROM ${ref('fact_outbound_item_historical')}
-            WHERE DATE(created_at) BETWEEN "2024-01-01" AND "2024-12-31"
+            WHERE DATE(created_at) BETWEEN "2024-01-01" AND DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), YEAR), INTERVAL 1 DAY)
         ) AS a
             LEFT JOIN (
                 SELECT *
                 FROM ${ref('platinum_buymed_vn','warehouse_prd_core_delivery_order')}
-                WHERE created_date BETWEEN "2024-01-01" AND "2025-01-31"
+                WHERE created_date BETWEEN "2024-01-01" AND DATE_ADD(DATE_TRUNC(CURRENT_DATE("+7"), YEAR), INTERVAL 1 MONTH)
             ) AS b 
                 ON a.do_code = b.delivery_order_code
     )
@@ -63,7 +63,7 @@ WITH
                 AND p.product_category_code = JSON_VALUE(c.extra_props, '$.category_code')
             LEFT JOIN ${ref('dim_supplier')} AS s
                 ON s.supplier_code = oi.seller_code
-        WHERE DATE(oi.created_at) BETWEEN "2024-01-01" AND "2024-12-31"
+        WHERE DATE(oi.created_at) BETWEEN "2024-01-01" AND DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), YEAR), INTERVAL 1 DAY)
     )
 
     , po_price AS (
