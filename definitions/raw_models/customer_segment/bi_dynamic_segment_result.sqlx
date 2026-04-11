@@ -1,7 +1,7 @@
 config {
     type: "table",
     description: "Result of Dynamic Segment (For customers eligible to use the voucher)",
-    tags: ["11h30", "CUSTOMER_SEGMENT", "0h30"]
+    tags: ["CUSTOMER_SEGMENT", "0h30"]
 }
 
 SELECT
