@@ -26,6 +26,9 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                     A
        ,i.unit
        ,i.amount
        ,i.quantity
+       ,i.ordered_quantity
+       ,i.accepted_quantity
+       ,CAST(JSON_VALUE(accepted_quantity_history, '$.PoCode') AS STRING)        AS po_code
        ,i.tax_rate
        ,i.unit_price
        ,o.client_id
