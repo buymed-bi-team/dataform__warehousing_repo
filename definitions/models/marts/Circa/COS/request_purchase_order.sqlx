@@ -28,7 +28,10 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                     A
        ,i.quantity
        ,i.ordered_quantity
        ,i.accepted_quantity
-       ,CAST(JSON_VALUE(accepted_quantity_history, '$.PoCode') AS STRING)        AS po_code
+       ,JSON_VALUE(accepted_quantity_history, '$[1].PoCode')   AS po_code
+       ,JSON_VALUE(accepted_quantity_history, '$[1].so_code')  AS so_code
+       ,JSON_VALUE(accepted_quantity_history, '$[1].Status')   AS so_status
+       ,JSON_VALUE(accepted_quantity_history, '$[1].SourceType') AS source_type
        ,i.tax_rate
        ,i.unit_price
        ,o.client_id
