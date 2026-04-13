@@ -34,3 +34,5 @@ FROM ${source.circa_os}.order_request_purchase_order o
 LEFT JOIN ${source.circa_os}.order_request_purchase_order_item i ON o.id = i.request_purchase_order_id
 LEFT JOIN ${source.ref}.circa_pos_profile p ON o.pos_id = p.id
 WHERE p.id IS NOT NULL
+      AND o.status <> 'PENDING'
+
