@@ -206,6 +206,7 @@ SELECT DISTINCT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transform
       ,CASE WHEN ts.convert_unit IS NOT NULL THEN ts.convert_unit 
             ELSE cr.convert_unit END AS ts_unit
       ,CASE WHEN ts.convert_unit IS NOT NULL THEN ts.convert_rate
+            WHEN pd.unit = 'combo' THEN 1
             ELSE cr.convert_rate END AS ts_convert_rate
       ,CASE WHEN e.product_id IS NOT NULL THEN TRUE ELSE FALSE END AS is_allstore
       ,e.status AS status_allstore
