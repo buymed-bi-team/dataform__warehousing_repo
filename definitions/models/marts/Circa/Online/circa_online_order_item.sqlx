@@ -65,6 +65,7 @@ WITH base_data AS (
 SELECT
     a.* 
   , a.quantity * cv.convert_rate AS base_quantity
+  , CONCAT(a.product_id, "_", 1) AS product_client_id
   , cv.base_unit
   , CASE WHEN tag_list like '%deal_1000%' AND price = 1000 THEN TRUE ELSE FALSE END                   AS is_deal1k 
   , origin_price - price                                                                              AS discount_amount
@@ -72,7 +73,7 @@ SELECT
   , d.deal_name
   , d.campaign_code
   , d.campaign_name
-  ,product_name
+  , product_name
 FROM base_data a
 LEFT JOIN ${source.ref}.dim_promotion_event_circa d  ON a.promotion_event_id = d.id
 LEFT JOIN (SELECT * FROM ${source.ref}.cos_dim_product WHERE client_id = 1) p on a.product_id = p.product_id
