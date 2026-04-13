@@ -14,6 +14,17 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                     A
        ,o.code
        ,o.pos_id
        ,o.status
+       ,CASE
+             WHEN o.status = 'CANCELED' THEN 'Đã hủy'
+             WHEN o.status = 'DENIED' THEN 'Từ chối'
+             WHEN o.status = 'ORDERED' THEN 'Đã đặt hàng'
+             WHEN o.status = 'PARTIAL_ORDERED' THEN 'Đặt thiếu hàng'
+             WHEN o.status = 'PENDING' THEN 'Nháp'
+             WHEN o.status = 'PO_CREATED' THEN 'Đã tạo PO'
+             WHEN o.status = 'PROCESSED' THEN 'Đã kiểm duyệt'
+             WHEN o.status = 'WAITING_PROCESS' THEN 'Chờ kiểm duyệt'
+             ELSE 'Khác'
+        END AS status_vn
        ,o.note
        ,o.request_reason
        ,DATE_ADD(o.waiting_process_at, INTERVAL 7 HOUR) AS submit_at
