@@ -83,10 +83,12 @@ SELECT
     , s.sub_sku_code AS item_code
     , CASE
         -- WHEN s.cic_name IN ("dat.hoquang", "tra.pham") THEN NULL
-        WHEN s.seller_code IN ("MEDX", "BML_INT", "MEDX_INT") AND u.status = "ACTIVE" AND s.cic_name NOT IN ("dat.hoquang", "tra.pham", "ngoc.vu")
+        WHEN s.seller_code IN ("MEDX_E", "BML_E", "TAYAU_E") THEN "dat.hoquang"
+        WHEN s.seller_code IN ("TAYAU", "TENDER") THEN "trang.nguyenthi1"
+        WHEN (s.seller_code IN ("MEDX", "BML_INT", "MEDX_INT") or s.seller_class = "EXTERNAL") AND u.status = "ACTIVE" AND s.cic_name NOT IN ("dat.hoquang", "tra.pham", "ngoc.vu")
             THEN s.cic_name 
         -- WHEN s.seller_code IN ("MEDX", "BML_INT", "MEDX_INT") THEN NULL
-        WHEN s.seller_class = "EXTERNAL" THEN sp.pic
+        WHEN s.seller_class = "EXTERNAL" THEN "lan.tran"
       END AS cic_name
     , s.fv_code AS favorite_vendor_code
     , s.favourite_vendor AS favorite_vendor_name
