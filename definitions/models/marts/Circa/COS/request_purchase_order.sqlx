@@ -39,6 +39,7 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                     A
        ,i.quantity
        ,i.ordered_quantity
        ,i.accepted_quantity
+       ,i.convert_rate
        ,JSON_VALUE(accepted_quantity_history, '$[1].PoCode')   AS po_code
        ,JSON_VALUE(accepted_quantity_history, '$[1].so_code')  AS so_code
        ,JSON_VALUE(accepted_quantity_history, '$[1].Status')   AS so_status
