@@ -189,7 +189,7 @@ WITH
   , chronic AS (
       SELECT
           SAFE_CAST(code AS INT64) AS product_id
-          , IF(UPPER(value) <> "CHRONIC", NULL, value) AS chronic
+          , IF(UPPER(value) NOT IN ("CHRONIC", "ACUTE"), NULL, value) AS chronic
       FROM ${source.collector}.data_prd
       WHERE DATE(submit_at) >= "2025-06-18"
           AND submit_id >= 5539
@@ -397,12 +397,13 @@ SELECT
   hmp.high_margin,
   COALESCE(rp.retail_price, SAFE_CAST(JSON_VALUE(product.retail_info.retail_ref_price) AS FLOAT64)) AS retail_price,
   op.ownbrand_portfolio,
-  IF(
-    chronic.chronic = "CHRONIC"
-    , "Chronic"
-    ,  NULL
-    -- , IF(product.seller_category_code = "AQFV2U" AND product.seller_sub_category_code = "LALT0T", "Acute", NULL)
-  ) AS chronic,
+  chronic.chronic AS chronic,
+--   IF(
+--     chronic.chronic = "CHRONIC"
+--     , "Chronic"
+--     ,  NULL
+--     -- , IF(product.seller_category_code = "AQFV2U" AND product.seller_sub_category_code = "LALT0T", "Acute", NULL)
+--   ) AS chronic,
   -- essential.essential,
   IF(JSON_VALUE(product.extra_props, "$.is_essential_drug")="true", "ESSENTIAL", NULL) AS essential,
   cl.thuoc_cat_lieu,
