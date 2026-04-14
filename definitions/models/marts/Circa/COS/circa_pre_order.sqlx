@@ -1,7 +1,7 @@
 config {
     type: "table",
     description: `LASt 13 month| PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every 2 hours.Circa Pre_order `,
-    tags: ["custom_1h_pASt15"],
+    tags: ["custom_1h_past15"],
     name: "circa_pre_order",
     columns: {
         
