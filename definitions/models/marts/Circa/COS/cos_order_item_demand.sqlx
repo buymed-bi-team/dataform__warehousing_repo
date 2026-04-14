@@ -32,6 +32,7 @@ with t as
                 ,sale_quantity
                 ,unfulfilled_quantity
                 ,s.code
+                ,s.reference_order_in_platform
                 ,s.status as order_status 
                 , JSON_VALUE(JSON_QUERY_ARRAY(purchase_history)[OFFSET(0)], '$.po_code') AS po_code
                 , JSON_VALUE(JSON_QUERY_ARRAY(purchase_history)[OFFSET(0)], '$.so_code') AS so_code
