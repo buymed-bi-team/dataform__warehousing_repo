@@ -33,6 +33,10 @@ with t as
                 ,unfulfilled_quantity
                 ,s.code
                 ,s.status as order_status 
+                , JSON_VALUE(JSON_QUERY_ARRAY(purchase_history)[OFFSET(0)], '$.po_code') AS po_code
+                , JSON_VALUE(JSON_QUERY_ARRAY(purchase_history)[OFFSET(0)], '$.so_code') AS so_code
+                , JSON_VALUE(JSON_QUERY_ARRAY(purchase_history)[OFFSET(0)], '$.quantity') AS ordered_quantity
+                , JSON_VALUE(JSON_QUERY_ARRAY(purchase_history)[OFFSET(0)], '$.source_type') AS source_type
                 ,datetime_add(s.pre_order_scheduled_time, interval 7 hour) as pre_order_scheduled_time
                 ,concat(product_id, "_", o.client_id) as product_client_id
 from ${source.circa_os}.order_order_item_demand o
