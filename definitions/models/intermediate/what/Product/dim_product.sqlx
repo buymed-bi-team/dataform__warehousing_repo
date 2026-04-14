@@ -400,7 +400,8 @@ SELECT
   IF(
     chronic.chronic = "CHRONIC"
     , "Chronic"
-    , IF(product.seller_category_code = "AQFV2U" AND product.seller_sub_category_code = "LALT0T", "Acute", NULL)
+    ,  NULL
+    -- , IF(product.seller_category_code = "AQFV2U" AND product.seller_sub_category_code = "LALT0T", "Acute", NULL)
   ) AS chronic,
   -- essential.essential,
   IF(JSON_VALUE(product.extra_props, "$.is_essential_drug")="true", "ESSENTIAL", NULL) AS essential,
