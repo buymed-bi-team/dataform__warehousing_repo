@@ -13,42 +13,56 @@ config {
     }
 }
 
+WITH _order AS(
+    SELECT DISTINCT id
+                ,code 
+                ,reference_order_in_platform
+                ,status
+                ,pre_order_scheduled_time
+   FROM ${source.circa_os}.order_order
+   WHERE type = 'OFFLINE'
+   UNION ALL 
+    SELECT DISTINCT id
+                ,code 
+                ,reference_order_in_platform
+                ,status
+                ,pre_order_scheduled_time
+   FROM ${source.circa_os}.order_order
+   WHERE type = 'ONLINE'
+   QUALIFY ROW_NUMBER() OVER (PARTITION BY reference_order_in_platform ORDER BY code DESC) = 1 
+)
 
-
-with t as 
-(Select distinct p.name 
-                ,o.pos_id
-                ,date(datetime_add(o.created_at, interval 7 hour)) as created_date
-                ,datetime_add(o.created_at, interval 7 hour) as created_at
-                ,o.order_id
-                ,o.status 
-                ,unit_id
-                ,product_id
-                ,product_name
-                ,unit
-                ,unit_price
-                ,platform_price
-                ,quantity
-                ,sale_quantity
-                ,unfulfilled_quantity
-                ,s.code
-                ,s.reference_order_in_platform
-                ,s.status as order_status 
+    SELECT DISTINCT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
+                , p.name
+                , o.pos_id
+                , DATE(DATETIME_ADD(o.created_at, INTERVAL 7 HOUR)) AS created_date
+                , DATETIME_ADD(o.created_at, INTERVAL 7 HOUR) AS created_at
+                , o.order_id
+                , o.status
+                , unit_id
+                , product_id
+                , product_name
+                , unit
+                , unit_price
+                , platform_price
+                , quantity
+                , sale_quantity
+                , unfulfilled_quantity
+                , s.code
+                , s.reference_order_in_platform
+                , s.status AS order_status
                 , JSON_VALUE(JSON_QUERY_ARRAY(purchase_history)[OFFSET(0)], '$.po_code') AS po_code
                 , JSON_VALUE(JSON_QUERY_ARRAY(purchase_history)[OFFSET(0)], '$.so_code') AS so_code
                 , JSON_VALUE(JSON_QUERY_ARRAY(purchase_history)[OFFSET(0)], '$.quantity') AS ordered_quantity
                 , JSON_VALUE(JSON_QUERY_ARRAY(purchase_history)[OFFSET(0)], '$.source_type') AS source_type
-                ,datetime_add(s.pre_order_scheduled_time, interval 7 hour) as pre_order_scheduled_time
-                ,concat(product_id, "_", o.client_id) as product_client_id
-from ${source.circa_os}.order_order_item_demand o
-left join ${source.ref}.circa_pos_profile p on o.pos_id = p.id 
-left join ${source.circa_os}.order_order s on o.order_id = s.id
-where o.status is not null
-      and o.status <> 'DRAFT'
-      and s.status <> 'CANCELED'
-      and p.id is not null 
-      and quantity > 0 
-)
-Select *
-       ,timestamp_add(current_timestamp(), interval 7 hour) as transformed_at
-from t
+                , DATETIME_ADD(s.pre_order_scheduled_time, INTERVAL 7 HOUR) AS pre_order_scheduled_time
+                , CONCAT(product_id, "_", o.client_id) AS product_client_id
+    FROM ${source.circa_os}.order_order_item_demand o
+    LEFT JOIN ${source.ref}.circa_pos_profile p  ON o.pos_id = p.id
+    LEFT JOIN _order s ON o.order_id = s.id
+    -- LEFT JOIN ${source.circa_os}.order_order sON o.order_id = s.id
+    WHERE o.status IS NOT NULL
+      AND o.status <> 'DRAFT'
+      AND s.status <> 'CANCELED'
+      AND p.id IS NOT NULL
+      AND quantity > 0
