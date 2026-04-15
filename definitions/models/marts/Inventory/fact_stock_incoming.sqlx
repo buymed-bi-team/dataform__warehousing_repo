@@ -56,9 +56,9 @@ SELECT
     , b.fc_code
     , b.demand_quantity
     , b.inbound_quantity
-    , b.demand_quantity - b.inbound_quantity as incoming_quantity
+    , IF(a.status NOT IN ("DRAFT", "CANCEL", "COMPLETED"), b.demand_quantity - b.inbound_quantity, NULL) as incoming_quantity
 
 FROM dedup_inbound_ticket_item b
 LEFT JOIN dedup_inbound_ticket a on b.ticket_id = a.ticket_id
 LEFT JOIN ${ref("dim_sku")} c on b.sku_code = c.sku_code
-WHERE a.status NOT IN ("DRAFT", "CANCEL", "COMPLETED")
+WHERE a.status NOT IN ("DRAFT", "CANCEL")

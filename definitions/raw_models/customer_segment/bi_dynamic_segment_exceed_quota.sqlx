@@ -25,7 +25,7 @@ WITH
     )
 
 SELECT
-    a.*  EXCEPT (customer_list)
+    a.*
 FROM cte AS a
     LEFT JOIN ${ref("bi_dynamic_segment")} AS b ON a.voucher_code = b.segment_id
 WHERE 1=1
