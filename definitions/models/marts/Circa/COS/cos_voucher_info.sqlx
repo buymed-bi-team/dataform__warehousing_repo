@@ -90,13 +90,12 @@ WITH t AS (
     ) ov ON ov.voucher_id = us.id
     LEFT JOIN t ON us.code = t.voucher_code
     LEFT JOIN ${source.ref}.circa_pos_profile pr ON ov.pos_id = pr.id
-    --LEFT JOIN ${source.circa_os}.entity_customer e ON ov.entity_id = e.id
     LEFT JOIN ${source.ref}.dim_campaign_circa cp -- thông tin campaign
         ON us.promotion_campaign_id = cp.id 
         AND us.client_id = cp.client_id
     WHERE us.is_sample = FALSE
          AND cp.id is not null
-          --AND pr.id IS NOT NULL
+
 )
 
 SELECT 
