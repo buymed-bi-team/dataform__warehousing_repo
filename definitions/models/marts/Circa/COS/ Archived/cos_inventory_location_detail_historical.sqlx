@@ -3,7 +3,7 @@ config {
     description: 
         `PIC: huyen.ngo; 
          model_type: table ;
-         schedule: At minute 10 every hour;
+         schedule: At minute 5 every hour;
     Source:
       ${source.circa_os}.inventory_allocation,
       ${source.circa_os}.inventory_location,

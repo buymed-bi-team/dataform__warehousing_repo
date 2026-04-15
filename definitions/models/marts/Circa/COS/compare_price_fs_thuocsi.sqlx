@@ -1,43 +1,55 @@
 config {
     type: "table",
     description: `compare_price_fs_thuocsi
-             PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 past hour 6, 8, 10, 12, 14, 16, 18, 20 and 22`,
+             PIC: huyen.ngo; model_type: Table ;schedule: At minute 23 past hour`,
     tags: ["custom_1h_past23"],
     name: "compare_price_fs_thuocsi",
 }
 
-Select o.*
-      ,r.base_unit
-      ,t.* except(product_id, fc_code)
-      ,round(t.min_price_thuocsi / convert_rate) AS min_base_unit_price_thuocsi
-      ,case when unit_price >  min_price_thuocsi then '> thuocsi_price'
-            when unit_price <  min_price_thuocsi then '< thuocsi_price'
-            when unit_price =  min_price_thuocsi then '= thuocsi_price'
-            else null end as compare_price
-       ,concat(o.product_id, "_", o.client_id) as product_client_id
-       ,'yes' as is_same_unit
-from  ${source.ref}.circafs_lastest_price o 
-left join ${source.ref}.thuocsi_price_fs t on o.product_id = t.product_id AND o.fc_code = t.fc_code 
-LEFT JOIN ${source.ref}.cos_product_convert_base_unit r ON o.product_id = r.product_id
-                                                        AND o.unit  = r.convert_unit
-                                                        AND o.client_id = r.client_id
-where o.unit = lower(t.thuocsi_unit)
+SELECT
+    o.*
+    , r.base_unit
+    , t.* EXCEPT(product_id, fc_code)
+    , ROUND(t.min_price_thuocsi / convert_rate) AS min_base_unit_price_thuocsi
+    , CASE
+        WHEN unit_price > min_price_thuocsi THEN '> thuocsi_price'
+        WHEN unit_price < min_price_thuocsi THEN '< thuocsi_price'
+        WHEN unit_price = min_price_thuocsi THEN '= thuocsi_price'
+        ELSE NULL
+      END AS compare_price
+    , CONCAT(o.product_id, "_", o.client_id) AS product_client_id
+    , 'yes' AS is_same_unit
+FROM ${source.ref}.circafs_lastest_price o
+LEFT JOIN ${source.ref}.thuocsi_price_fs t
+    ON o.product_id = t.product_id
+    AND o.fc_code = t.fc_code
+LEFT JOIN ${source.ref}.cos_product_convert_base_unit r
+    ON o.product_id = r.product_id
+    AND o.unit = r.convert_unit
+    AND o.client_id = r.client_id
+WHERE o.unit = LOWER(t.thuocsi_unit)
 
-union all
+UNION ALL
 
- Select o.*
-      ,r.base_unit
-      ,t.* except(product_id, fc_code)
-      ,round(t.min_price_thuocsi / convert_rate) AS min_base_unit_price_thuocsi
-      ,case when round(o.base_unit_price) > round(t.min_price_thuocsi / convert_rate) then '> thuocsi_price'
-            when round(o.base_unit_price) < round(t.min_price_thuocsi / convert_rate) then '< thuocsi_price'
-            when round(o.base_unit_price) = round(t.min_price_thuocsi / convert_rate) then '= thuocsi_price'
-            else 'can_not_convert_unit' end as compare_price
-       ,concat(o.product_id, "_", o.client_id) as product_client_id
-       ,'no' as is_same_unit
-from ${source.ref}.circafs_lastest_price o 
-left join ${source.ref}.thuocsi_price_fs t on o.product_id = t.product_id AND o.fc_code = t.fc_code 
-LEFT JOIN ${source.ref}.cos_product_convert_base_unit r ON o.product_id = r.product_id
-                                                        AND lower(t.thuocsi_unit) = lower(r.convert_unit)
-                                                        AND o.client_id = r.client_id
-where o.unit <> lower(t.thuocsi_unit)
+SELECT
+    o.*
+    , r.base_unit
+    , t.* EXCEPT(product_id, fc_code)
+    , ROUND(t.min_price_thuocsi / convert_rate) AS min_base_unit_price_thuocsi
+    , CASE
+        WHEN ROUND(o.base_unit_price) > ROUND(t.min_price_thuocsi / convert_rate) THEN '> thuocsi_price'
+        WHEN ROUND(o.base_unit_price) < ROUND(t.min_price_thuocsi / convert_rate) THEN '< thuocsi_price'
+        WHEN ROUND(o.base_unit_price) = ROUND(t.min_price_thuocsi / convert_rate) THEN '= thuocsi_price'
+        ELSE 'can_not_convert_unit'
+      END AS compare_price
+    , CONCAT(o.product_id, "_", o.client_id) AS product_client_id
+    , 'no' AS is_same_unit
+FROM ${source.ref}.circafs_lastest_price o
+LEFT JOIN ${source.ref}.thuocsi_price_fs t
+    ON o.product_id = t.product_id
+    AND o.fc_code = t.fc_code
+LEFT JOIN ${source.ref}.cos_product_convert_base_unit r
+    ON o.product_id = r.product_id
+    AND LOWER(t.thuocsi_unit) = LOWER(r.convert_unit)
+    AND o.client_id = r.client_id
+WHERE o.unit <> LOWER(t.thuocsi_unit)
