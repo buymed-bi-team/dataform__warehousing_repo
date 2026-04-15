@@ -58,10 +58,6 @@ WITH base_data AS (
             AND oi.client_id = rt.client_id
     WHERE o.completed_date IS NOT NULL
       AND o.client_id = 1
-     -- AND o.entity_id <> '00000000-0000-0000-0000-000000000000'
-    --   AND e.phone_number IS NOT NULL
-    --   AND e.phone_number <> ''
-    --   AND REGEXP_REPLACE(e.phone_number, '0', '') <> ''
       AND o.status IN ('COMPLETED', 'COMPLETED_SHIPPING')
       AND owner_name NOT IN ('CIRCA MARKETING')
       AND o.completed_date >= CURRENT_DATE() - INTERVAL 1 MONTH

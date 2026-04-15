@@ -1,7 +1,8 @@
 config {
     type: "table",
     description: `List sản phẩm hot nhất thị trường | PIC: huyen.ngo; model_type: Table ;schedule: At 10h30`,
-    tags: ["10h30"],
+    //tags: ["10h30"],
+    disabled: true,
     name: "cos_product_hot_deal_jan",
     columns: {/*
         */
@@ -24,3 +25,4 @@ SELECT DISTINCT
 FROM ${source.circa_os}.product_assortment_template o 
 LEFT JOIN ${source.circa_os}.product_assortment_template_items i ON o.id = i.assortment_template_id
 WHERE o.id = '08d6b130-1189-4bdf-bc8b-dc70c6da861d'
+
