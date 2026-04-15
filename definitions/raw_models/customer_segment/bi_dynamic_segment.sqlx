@@ -1,7 +1,7 @@
 config {
     type: "table",
     description: "Get Segment's Condition from Import Form",
-    tags: ["custom_1h_past10", "CUSTOMER_SEGMENT"]
+    tags: ["custom_1h_past10", "CUSTOMER_SEGMENT", "11h30"]
 }
 WITH 
     cte AS (
