@@ -15,16 +15,6 @@ pre_operations {
 }
 
 WITH
-
-    active_voucher AS (
-        SELECT DISTINCT
-            a.segment_id
-        FROM ${ref("bi_dynamic_segment")} AS a
-            LEFT JOIN ${ref("dim_voucher")} AS b ON a.segment_id = b.voucher_code
-        WHERE b.end_date >= CURRENT_DATE("+7")
-            AND b.voucher_status = "ACTIVE"
-    ),
-
     segment_data AS (
         SELECT
             a.*
