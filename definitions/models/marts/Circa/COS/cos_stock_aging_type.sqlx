@@ -11,8 +11,8 @@ WITH count_ord AS ( -- đếm số lượng đơn
                     ,oi.product_id
                     ,MAX(o.created_date) AS latest_ord
                     ,COUNT(DISTINCT o.order_id) AS no_ord
-                    ,SUM(unit_price * quantity) AS GMV
-                    ,SUM(unit_cost_price * quantity) AS cogs
+                    ,SUM(unit_price_before_discount * (quantity - COALESCE(qty_rt, 0))) AS GMV
+                    ,SUM(unit_cost_price * (quantity - COALESCE(qty_rt, 0))) AS cogs
                     ,o.client_id
      FROM  ${source.ref}.cos_fact_order o
      LEFT JOIN  ${source.ref}.cos_fact_order_item oi ON o.order_id = oi.order_id
@@ -42,8 +42,7 @@ WITH count_ord AS ( -- đếm số lượng đơn
                      ,i.product_id
                      ,MAX(DATE(i.created_at)) AS lastdate_pur
      FROM ${source.ref}.cos_purchase_order o 
-     LEFT JOIN ${source.ref}.cos_purchase_order_item i 
-               ON o.po_id = i.po_id
+     LEFT JOIN ${source.ref}.cos_purchase_order_item i ON o.po_id = i.po_id
      WHERE received_quantity > 0 
            AND i.seller_code NOT IN ('CIRCA_MKP', 'MARKETING')
            AND o.client_id = 1
@@ -85,13 +84,10 @@ WITH count_ord AS ( -- đếm số lượng đơn
                 WHEN b.latest_ord IS NULL AND DATE_DIFF(CURRENT_DATE("Asia/Ho_Chi_Minh"), DATE(firstime_have_inventory), DAY) > 90 THEN "> 90D" 
            END AS latest_date_order_range
      FROM first_time_have_inventory a
-     LEFT JOIN count_ord b 
-           ON a.pos_id = b.pos_id AND a.product_id = b.product_id
-     LEFT JOIN inventory i 
-           ON a.pos_id = i.pos_id AND a.product_id = i.product_id 
-     LEFT JOIN lastdate_pur p 
-           ON a.pos_id = p.pos_id AND a.product_id = p.product_id 
-     WHERE a.pos_id NOT IN ('9dd83081-9919-4bc3-84bd-f5dfece10049')
+     LEFT JOIN count_ord b  ON a.pos_id = b.pos_id AND a.product_id = b.product_id
+     LEFT JOIN inventory i  ON a.pos_id = i.pos_id AND a.product_id = i.product_id 
+     LEFT JOIN lastdate_pur p  ON a.pos_id = p.pos_id AND a.product_id = p.product_id 
+    -- WHERE a.pos_id NOT IN ('9dd83081-9919-4bc3-84bd-f5dfece10049')
 )
 SELECT *
       ,CONCAT(product_id, "_", client_id) AS product_client_id
