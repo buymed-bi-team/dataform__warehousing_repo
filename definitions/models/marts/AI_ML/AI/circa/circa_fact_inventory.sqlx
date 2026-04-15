@@ -1,0 +1,34 @@
+config {
+    type: 'table',
+    schema: "buymed_innovation",
+    description: `All orders item of Circa.`,
+    tags: ['AI_CIRCA', "custom_1h_past10"]
+}
+
+SELECT 
+        product_id
+      , sku_code
+      , lot_date
+      , tax_rate
+      , doc_code
+      , cost_price_include_tax
+      , on_hand_quantity
+      --, available_qty
+      , p.code as pos_code
+      , p.name AS pos_name
+      ,  IF(p.type = "FS", "FS", "COS") AS pos_type
+      , location_type
+      , location_name
+      , o.client_id
+      , product_pos_code
+      , product_client_id
+      , owner_name
+      , o.seller_code AS owner_code
+      , SO_code AS so_code
+      , d.name as vendor_name
+      , fulfillment_method
+FROM ${ref("gold_buymed_vn2", "cos_fact_inventory")} o 
+LEFT JOIN ${source.circa_os}.entity_distributor d on o.distributor_id = d.id AND o.client_id = d.client_id 
+LEFT JOIN ${ref("gold_buymed_vn2", "circa_pos_profile")} p ON o.pos_id = p.id 
+WHERE p.id IS NOT NULL
+       AND p.actual_status <> 'Inactive' 
