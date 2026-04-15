@@ -3,8 +3,8 @@ config {
     description: "Result of Dynamic Segment (For customers eligible to use the voucher)",
     tags: ["CUSTOMER_SEGMENT", "0h30", "11h30"]
 }
-WITH 
-    cte AS (
+-- WITH 
+    -- cte AS (
         SELECT
             segment_id AS voucher_code
             , voucher_id
@@ -21,14 +21,14 @@ WITH
             AND voucher_id IS NOT NULL
         QUALIFY ROW_NUMBER() OVER(PARTITION BY segment_id ORDER BY processed_at DESC, submit_id DESC) = 1
             AND FIRST_VALUE(total_customers) over (PARTITION BY segment_id ORDER BY processed_at DESC) <= 32000
-    )
+    -- )
 
-SELECT
-    a.* 
-FROM cte AS a
-    LEFT JOIN ${ref("bi_dynamic_segment")} AS b ON a.voucher_code = b.segment_id
-WHERE 1=1
-    AND (
-        (EXTRACT(HOUR FROM CURRENT_TIMESTAMP + INTERVAL 7 HOUR) = 11 AND b.submit_date = CURRENT_DATE)
-        OR (EXTRACT(HOUR FROM CURRENT_TIMESTAMP + INTERVAL 7 HOUR) <> 11)
-    )
+-- SELECT
+--     a.* 
+-- FROM cte AS a
+--     LEFT JOIN ${ref("bi_dynamic_segment")} AS b ON a.voucher_code = b.segment_id
+-- WHERE 1=1
+--     AND (
+--         (EXTRACT(HOUR FROM CURRENT_TIMESTAMP + INTERVAL 7 HOUR) = 11 AND b.submit_date = CURRENT_DATE)
+--         OR (EXTRACT(HOUR FROM CURRENT_TIMESTAMP + INTERVAL 7 HOUR) <> 11)
+--     )
