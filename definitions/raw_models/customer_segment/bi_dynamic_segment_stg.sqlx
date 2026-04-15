@@ -38,7 +38,7 @@ WITH
                                     FROM ${self()} AS b 
                                     WHERE a.segment_id = b.segment_id 
                                     AND DATE(b.processed_at) = CURRENT_DATE("+7")
-                                    AND EXTRACT(HOUR FROM CURRENT_TIMESTAMP + INTERVAL 7 HOUR) NOT IN (0, 11)
+                                    --AND EXTRACT(HOUR FROM CURRENT_TIMESTAMP + INTERVAL 7 HOUR) NOT IN (0, 11)
                                     AND a.submit_id = b.submit_id )`
                 )
             }
