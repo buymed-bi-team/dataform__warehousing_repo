@@ -1,0 +1,6 @@
+config {
+    type: "table"
+}
+
+SELECT *
+FROM ${source.external}.import_customer_opella
