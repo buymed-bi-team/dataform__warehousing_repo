@@ -28,15 +28,15 @@ SELECT  TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
         ,DATE(DATETIME_ADD(i.effective_open_date, INTERVAL 7 HOUR)) AS effective_open_date -- ngày có hiệu lực
         ,DATE(DATETIME_ADD(i.last_sale_date, INTERVAL 7 HOUR)) AS last_sale_date -- ngày bán cuối cùng
         -- Dữ liệ bán lịch sử
-        ,total_quantity -- tổng số lượng bán 
-        ,total_orders -- tổng số đơn
-        ,days_with_orders -- Số ngày có bán 
-        ,current_stock -- tồn hiện tại
-        ,safety_stock -- tồn an toàn
-        ,target_stock -- tồn mục tiêu
-        ,daily_avg_demand --nhu cầu/ngày
-        ,quantity_to_buy -- số lượng cần mua 
-        ,inventory_status -- Trạng thái tồn
+        ,total_quantity AS 'tổng số lượng bán'
+        ,total_orders AS 'tổng số đơn'
+        ,days_with_orders AS 'số ngày có bán'
+        ,current_stock AS 'tồn hiện tại'
+        ,safety_stock AS 'tồn an toàn'
+        ,target_stock AS 'tồn mục tiêu'
+        ,daily_avg_demand AS 'nhu cầu/ngày'
+        ,quantity_to_buy AS 'số lượng cần mua' 
+        ,inventory_status AS 'Trạng thái tồn'
         ,CASE inventory_status
             WHEN 'DEAD_STOCK' THEN 'Hàng tồn kho chết'
             WHEN 'HEALTHY' THEN 'Đủ hàng'
@@ -48,8 +48,8 @@ SELECT  TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
             WHEN 'X_CLASS_OVERSTOCK' THEN 'Tồn cao (X)'
             ELSE inventory_status
         END AS inventory_status_vn
-        ,keep_stock -- tồn giữ lại
-        ,available_quantity_for_transfer -- SL có thể chuyển
+        ,keep_stock 'tồn giữ lại'
+        ,available_quantity_for_transfer 'số lượng có thể chuyển'
         ,purchase_unit -- đơn vị mua
         ,unit_convert_rate
         ,is_hub -- có phải hub ko 
