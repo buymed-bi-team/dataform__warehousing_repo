@@ -4,7 +4,7 @@ config {
                   PIC: huyen.ngo;
                   model_type: Table;
                   schedule: At 3h30AM`,
-    tags: ["3h30"],
+    tags: ["3h30", "10h30"],
     name: "cos_demand_planning_result",
     columns: {
         
@@ -37,6 +37,17 @@ SELECT  TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
         ,daily_avg_demand --nhu cầu/ngày
         ,quantity_to_buy -- số lượng cần mua 
         ,inventory_status -- Trạng thái tồn
+        ,CASE inventory_status
+            WHEN 'DEAD_STOCK' THEN 'Hàng tồn kho chết'
+            WHEN 'HEALTHY' THEN 'Đủ hàng'
+            WHEN 'NOISE_STOCK' THEN 'Hàng nhiễu'
+            WHEN 'NO_SALES_NO_STOCK' THEN 'Không bán không tồn'
+            WHEN 'OUT_OF_STOCK' THEN 'Hết hàng'
+            WHEN 'OVERSTOCK' THEN 'Tồn cao'
+            WHEN 'SLOW_MOVING' THEN 'Luân chuyển chậm'
+            WHEN 'X_CLASS_OVERSTOCK' THEN 'Tồn cao (X)'
+            ELSE inventory_status
+        END AS inventory_status_vn
         ,keep_stock -- tồn giữ lại
         ,available_quantity_for_transfer -- SL có thể chuyển
         ,purchase_unit -- đơn vị mua
