@@ -27,16 +27,15 @@ SELECT  TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
         ,DATE(DATETIME_ADD(i.open_date, INTERVAL 7 HOUR)) AS open_date -- ngày mở cửa
         ,DATE(DATETIME_ADD(i.effective_open_date, INTERVAL 7 HOUR)) AS effective_open_date -- ngày có hiệu lực
         ,DATE(DATETIME_ADD(i.last_sale_date, INTERVAL 7 HOUR)) AS last_sale_date -- ngày bán cuối cùng
-        -- Dữ liệ bán lịch sử
-        ,total_quantity AS 'tổng số lượng bán'
-        ,total_orders AS 'tổng số đơn'
-        ,days_with_orders AS 'số ngày có bán'
-        ,current_stock AS 'tồn hiện tại'
-        ,safety_stock AS 'tồn an toàn'
-        ,target_stock AS 'tồn mục tiêu'
-        ,daily_avg_demand AS 'nhu cầu/ngày'
-        ,quantity_to_buy AS 'số lượng cần mua' 
-        ,inventory_status AS 'Trạng thái tồn'
+        -- ,total_quantity AS `tổng số lượng bán`
+        -- ,total_orders AS `tổng số đơn`
+        -- ,days_with_orders AS `số ngày có bán`
+        ,current_stock AS `tồn hiện tại`
+        ,safety_stock AS `tồn an toàn`
+        ,target_stock AS `tồn mục tiêu`
+        ,daily_avg_demand AS `nhu cầu trung bình ngày`
+        ,quantity_to_buy AS `số lượng cần mua`
+        ,inventory_status AS inventory_status
         ,CASE inventory_status
             WHEN 'DEAD_STOCK' THEN 'Hàng tồn kho chết'
             WHEN 'HEALTHY' THEN 'Đủ hàng'
@@ -47,18 +46,19 @@ SELECT  TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
             WHEN 'SLOW_MOVING' THEN 'Luân chuyển chậm'
             WHEN 'X_CLASS_OVERSTOCK' THEN 'Tồn cao (X)'
             ELSE inventory_status
-        END AS inventory_status_vn
-        ,keep_stock 'tồn giữ lại'
-        ,available_quantity_for_transfer 'số lượng có thể chuyển'
+        END AS `trạng thái tồn`
+        --,keep_stock AS `tồn giữ lại`
+       -- ,available_quantity_for_transfer AS `số lượng có thể chuyển`
         ,purchase_unit -- đơn vị mua
         ,unit_convert_rate
-        ,is_hub -- có phải hub ko 
-        ,allow_give_transfer -- 
+        --,is_hub -- có phải hub ko 
+        --,allow_give_transfer -- 
         ,CONCAT(i.product_id, "_", i.client_id) AS product_client_id
  FROM buymed_circa_v2.demand_planning_demand_planning_session o 
  LEFT JOIN buymed_circa_v2.demand_planning_demand_planning_result i ON o.id = i.session_id -- Danh sách nhu cầu
  WHERE DATE(TIMESTAMP_ADD(o.created_at, INTERVAL 7 HOUR)) 
       >= DATE_SUB(CURRENT_DATE(), INTERVAL 7 DAY)
+
 --  WHERE o.code = 'DEMAND_SESSION_83'
 --  and product_id = 216272
 --       and poS_id = 'ef29a397-72d8-40c3-9602-e1cbbc5d1da1'
