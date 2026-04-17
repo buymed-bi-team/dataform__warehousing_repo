@@ -43,6 +43,7 @@ WITH
             promotion_id
             , voucher_code
             , max_usage_per_customer
+            , voucher_discount
             , voucher_status
             , end_date
         FROM ${ref("dim_voucher")}
@@ -65,10 +66,10 @@ WITH
             a.customer_id
             , a.voucher_code
             , _order_id
-            , ov.discount_value
+            -- , ov.discount_value
         FROM ${source.platinum}.marketplace_prd_promotion_user_promotion AS a
             LEFT JOIN UNNEST(JSON_VALUE_ARRAY(order_ids)) AS _order_id
-            LEFT JOIN order_voucher AS ov ON ov.order_id = SAFE_CAST(_order_id AS INT64) AND ov.voucher_code = a.voucher_code
+            -- LEFT JOIN order_voucher AS ov ON ov.order_id = SAFE_CAST(_order_id AS INT64) AND ov.voucher_code = a.voucher_code
         WHERE 1=1
             AND promotion_id IN (5165, 5160, 5121, 5120, 5118, 5117,  5116, 5115)
             AND created_date >= "2026-03-01"
@@ -78,14 +79,22 @@ SELECT
     c.customer_id
     , c.opella_location_id
     , c.customer_name
-    , c.customer_tag_priority
+--     , c.customer_tag_priority
     , v.voucher_code
-    , vu.total_discount_value
+    , v.voucher_discount
+--     , vu.total_discount_value
     , p.promotion_type AS product_type
     , NULLIF(v.max_usage_per_customer,0) AS max_usage_per_customer
     , vu.total_redeemed_orders
     , v.max_usage_per_customer - COALESCE(vu.total_redeemed_orders, 0) AS remaining_redemptions
-    , v.voucher_status
+    , v.voucher_discount * total_redeemed_orders AS total_issued_voucher_value
+    , v.voucher_discount * (v.max_usage_per_customer - COALESCE(vu.total_redeemed_orders, 0)) AS total_remaining_voucher_value
+    , CASE
+        WHEN v.end_date < CURRENT_DATE("+7") THEN "Đã hết hạn"
+        WHEN v.voucher_status = "HIDE" THEN "Đã tắt"
+        WHEN v.max_usage_per_customer - COALESCE(vu.total_redeemed_orders, 0) = 0 THEN "Đã sử dụng"
+        ELSE "Hoạt động"
+    END AS voucher_status
     , v.end_date
     , c.region_name
     , c.province_name
@@ -97,10 +106,11 @@ FROM customer AS c
             customer_id
             , voucher_code
             , COUNT(DISTINCT _order_id) AS total_redeemed_orders
-            , SUM(discount_value) AS total_discount_value
+            -- , SUM(discount_value) AS total_discount_value
         FROM voucher_used
         GROUP BY customer_id, voucher_code
     ) AS vu ON c.customer_id = vu.customer_id
     LEFT JOIN voucher AS v ON vu.voucher_code = v.voucher_code
     LEFT JOIN promotion AS p ON v.promotion_id = p.promotion_id
 WHERE 1=1
+    AND v.voucher_code IS NOT NULL
