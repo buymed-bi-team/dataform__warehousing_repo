@@ -31,6 +31,7 @@ WITH
         SELECT
             promotion_id
             , promotion_name
+            , PARSE_DATE("%Y-%b", SPLIT(promotion_name, '-CTTT-')[SAFE_OFFSET(0)]) AS promotion_month
             , INITCAP( ARRAY_REVERSE( SPLIT(REGEXP_REPLACE( TRIM(promotion_name), '_', '-'), "-"))[SAFE_OFFSET(0)]) AS promotion_type
         FROM ${ref("dim_promotion")}
         WHERE 1=1
@@ -89,6 +90,7 @@ SELECT
     , c.region_name
     , c.province_name
     , c.district_name
+    , p.promotion_month AS month
 FROM customer AS c
     LEFT JOIN (
         SELECT
