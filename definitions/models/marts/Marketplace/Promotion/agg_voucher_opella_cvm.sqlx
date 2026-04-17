@@ -76,34 +76,34 @@ WITH
     )
 
 SELECT
-    c.customer_id
-    , c.opella_location_id
-    , c.customer_name
+    c.customer_id AS Customer_ID
+    , c.opella_location_id AS Opella_Location_ID
+    , c.customer_name AS Ten_Khach_Hang
 --     , c.customer_tag_priority
-    , v.voucher_code
-    , v.voucher_discount
+    , v.voucher_code AS Ma_Voucher
+    , v.voucher_discount AS Gia_tri_su_dung
 --     , vu.total_discount_value
-    , p.promotion_type AS product_type
-    , NULLIF(v.max_usage_per_customer,0) AS max_usage_per_customer
-    , vu.total_redeemed_orders
-    , v.max_usage_per_customer - COALESCE(vu.total_redeemed_orders, 0) AS remaining_redemptions
-    , IF(v.voucher_status = "HIDE", 0, v.voucher_discount * v.max_usage_per_customer) AS total_issued_voucher_value
+    , p.promotion_type AS Nhom_san_pham
+    , NULLIF(v.max_usage_per_customer,0) AS Tong_so_lan_su_dung
+    , vu.total_redeemed_orders AS So_lan_da_su_dung
+    , v.max_usage_per_customer - COALESCE(vu.total_redeemed_orders, 0) AS So_luot_dung_con_lai
+    , IF(v.voucher_status = "HIDE", 0, v.voucher_discount * v.max_usage_per_customer) AS Tong_gia_tri_phat_hanh
     , CASE
         WHEN v.end_date < CURRENT_DATE("+7") THEN 0
         WHEN v.voucher_status = "HIDE" THEN 0
         WHEN v.max_usage_per_customer - COALESCE(vu.total_redeemed_orders, 0) = 0 THEN 0
         ELSE v.voucher_discount * (v.max_usage_per_customer - COALESCE(vu.total_redeemed_orders, 0))
-    END AS total_remaining_voucher_value
+    END AS Tong_gia_tri_con_lai
     , CASE
         WHEN v.end_date < CURRENT_DATE("+7") THEN "Đã hết hạn"
         WHEN v.voucher_status = "HIDE" THEN "Đã tắt"
         WHEN v.max_usage_per_customer - COALESCE(vu.total_redeemed_orders, 0) = 0 THEN "Đã sử dụng"
         ELSE "Hoạt động"
-    END AS voucher_status
-    , v.end_date
-    , c.region_name
-    , c.province_name
-    , c.district_name
+    END AS Trang_thai_voucher
+    , v.end_date AS Han_su_dung
+    , c.region_name 
+    , c.province_name 
+    , c.district_name 
     , p.promotion_month AS month
 FROM customer AS c
     LEFT JOIN (
