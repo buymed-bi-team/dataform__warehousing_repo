@@ -1,0 +1,51 @@
+
+config {
+  type: "view",
+  schema: "platinum_buymed_vn",
+  name: "circa_online_prd_consumer_business_contract",
+  description : `
+  PIC: LongNguyen
+  Partition by: created date
+  `,
+  tags:["platinum","circa-online_prd_consumer"]
+}
+
+WITH silver AS (
+  SELECT
+    key, mg_id, created_by_id, company_code, status, industry, uses_wallet_system, is_trial, company_name, company_address, contact_name, contact_phone, contact_position, deposit_balance, last_updated_time, contract_code, tax_code, company_size, contact_email, profile_complete, monthly_budget_cap, created_time, entity_id, welcome_voucher_enabled, trial_converted, effective_date, expiry_date, period_end, period_start, period_type, admin_account_ids, logo_url, synced_at, extra_props, action, ingest_time,
+    CASE
+      WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time, 'Asia/Ho_Chi_Minh'))
+      ELSE DATE('2099-01-01')
+    END created_date,
+    CAST(NULL AS DATETIME) AS platinum_refresh
+  FROM silver_buymed_vn.circa_online_prd_consumer_business_contract
+  WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 1 DAY
+  QUALIFY ROW_NUMBER() OVER (_window) = 1
+    AND ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 16 HOUR
+  WINDOW _window AS (
+    PARTITION BY mg_id
+    ORDER BY synced_at DESC,
+      IF(action='d',3, IF(action='u',2,1)) DESC,
+      last_updated_time DESC
+  )
+),
+
+platinum AS (
+  SELECT
+    key, mg_id, created_by_id, company_code, status, industry, uses_wallet_system, is_trial, company_name, company_address, contact_name, contact_phone, contact_position, deposit_balance, last_updated_time, contract_code, tax_code, company_size, contact_email, profile_complete, monthly_budget_cap, created_time, entity_id, welcome_voucher_enabled, trial_converted, effective_date, expiry_date, period_end, period_start, period_type, admin_account_ids, logo_url, synced_at, extra_props, action, ingest_time,
+    created_date,
+    platinum_refresh
+  FROM ${ref(`platinum_buymed_vn__stg`, `circa_online_prd_consumer_business_contract`)}
+)
+
+SELECT p.*
+FROM platinum p
+LEFT JOIN silver s
+  ON p.mg_id = s.mg_id
+WHERE s.mg_id IS NULL
+
+UNION ALL
+
+SELECT s.*
+FROM silver s
+WHERE action <> "d"

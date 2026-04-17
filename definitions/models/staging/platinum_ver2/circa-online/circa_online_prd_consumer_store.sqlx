@@ -1,0 +1,51 @@
+
+config {
+  type: "view",
+  schema: "platinum_buymed_vn",
+  name: "circa_online_prd_consumer_store",
+  description : `
+  PIC: LongNguyen
+  Partition by: created date
+  `,
+  tags:["platinum","circa-online_prd_consumer"]
+}
+
+WITH silver AS (
+  SELECT
+    key, mg_id, address_detail, created_time, last_updated_time, status, name, country_code, ward_code, full_address, store_id, entity_id, consumer_id, location, district_code, created_by_id, hash_tag, phone_number, province_code, created_by_name, code, updated_by_id, updated_by_name, synced_at, extra_props, action, ingest_time,
+    CASE
+      WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time, 'Asia/Ho_Chi_Minh'))
+      ELSE DATE('2099-01-01')
+    END created_date,
+    CAST(NULL AS DATETIME) AS platinum_refresh
+  FROM silver_buymed_vn.circa_online_prd_consumer_store
+  WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 1 DAY
+  QUALIFY ROW_NUMBER() OVER (_window) = 1
+    AND ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 16 HOUR
+  WINDOW _window AS (
+    PARTITION BY mg_id
+    ORDER BY synced_at DESC,
+      IF(action='d',3, IF(action='u',2,1)) DESC,
+      last_updated_time DESC
+  )
+),
+
+platinum AS (
+  SELECT
+    key, mg_id, address_detail, created_time, last_updated_time, status, name, country_code, ward_code, full_address, store_id, entity_id, consumer_id, location, district_code, created_by_id, hash_tag, phone_number, province_code, created_by_name, code, updated_by_id, updated_by_name, synced_at, extra_props, action, ingest_time,
+    created_date,
+    platinum_refresh
+  FROM ${ref(`platinum_buymed_vn__stg`, `circa_online_prd_consumer_store`)}
+)
+
+SELECT p.*
+FROM platinum p
+LEFT JOIN silver s
+  ON p.mg_id = s.mg_id
+WHERE s.mg_id IS NULL
+
+UNION ALL
+
+SELECT s.*
+FROM silver s
+WHERE action <> "d"
