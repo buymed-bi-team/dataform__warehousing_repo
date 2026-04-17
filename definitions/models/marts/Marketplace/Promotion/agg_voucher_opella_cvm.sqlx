@@ -88,7 +88,12 @@ SELECT
     , vu.total_redeemed_orders
     , v.max_usage_per_customer - COALESCE(vu.total_redeemed_orders, 0) AS remaining_redemptions
     , IF(v.voucher_status = "HIDE", 0, v.voucher_discount * v.max_usage_per_customer) AS total_issued_voucher_value
-    , v.voucher_discount * (v.max_usage_per_customer - COALESCE(vu.total_redeemed_orders, 0)) AS total_remaining_voucher_value
+    , CASE
+        WHEN v.end_date < CURRENT_DATE("+7") THEN 0
+        WHEN v.voucher_status = "HIDE" THEN 0
+        WHEN v.max_usage_per_customer - COALESCE(vu.total_redeemed_orders, 0) = 0 THEN 0
+        ELSE v.voucher_discount * (v.max_usage_per_customer - COALESCE(vu.total_redeemed_orders, 0))
+    END AS total_remaining_voucher_value
     , CASE
         WHEN v.end_date < CURRENT_DATE("+7") THEN "Đã hết hạn"
         WHEN v.voucher_status = "HIDE" THEN "Đã tắt"
