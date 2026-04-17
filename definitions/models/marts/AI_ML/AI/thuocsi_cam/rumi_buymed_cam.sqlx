@@ -43,5 +43,10 @@ AS (SELECT * FROM  ${ref("buymed_innovation", "thuocsi_cam_dim_product_sku")});
 CREATE OR REPLACE VIEW `rumi_buymed_cam.thuocsi_cam_dim_voucher`
 AS (SELECT * FROM  ${ref("buymed_innovation", "thuocsi_cam_dim_voucher")});
 
+-- dim_inventory
+
+CREATE OR REPLACE VIEW `rumi_buymed_cam.thuocsi_cam_dim_inventory`
+AS (SELECT * FROM  ${ref("buymed_innovation", "thuocsi_cam_dim_inventory")});
+
 
 

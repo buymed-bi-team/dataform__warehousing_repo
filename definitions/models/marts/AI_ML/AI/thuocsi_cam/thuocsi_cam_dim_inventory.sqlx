@@ -1,0 +1,30 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `Inventory  Cambodia marketplace.`,
+    tags: ['AI_THUOCSI_CAM']
+}
+
+WITH
+    avg_demand AS (
+        SELECT
+            sku_code
+            , SUM(quantity) / 30 AS avg_demand_l30d
+        FROM ${ref("buymed_innovation", "thuocsi_cam_fact_order_item")}
+        WHERE created_date BETWEEN CURRENT_DATE("+7") - 30 AND CURRENT_DATE("+7") - 1
+        GROUP BY 1
+    )
+
+SELECT
+    product_id
+    , a.sku AS sku_code
+    , seller_code
+    , seller_class
+    , warehouse_code
+    , stock_quantity
+    , available_quantity
+    , avg_demand_l30d AS avg_daily_demand_l30d
+    , SAFE_DIVIDE(stock_quantity, avg_demand_l30d) AS stock_days
+FROM platinum_buymed_cam.warehouse_prd_inventory_sku AS a
+    LEFT JOIN platinum_buymed_cam.seller_prd_core_seller AS b ON a.seller_code = b.code
+    LEFT JOIN avg_demand AS c ON a.sku = c.sku_code

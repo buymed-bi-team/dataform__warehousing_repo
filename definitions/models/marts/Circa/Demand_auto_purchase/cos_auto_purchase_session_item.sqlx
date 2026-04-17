@@ -4,7 +4,7 @@ config {
                   PIC: huyen.ngo;
                   model_type: Table;
                   schedule: At minute 10 every hour`,
-    tags: ["custom_1h_past15"],
+    tags: ["custom_1h_past20"],
     name: "cos_auto_purchase_session_item",
     columns: {
         
@@ -16,6 +16,7 @@ SELECT DISTINCT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transform
       ,DATE(DATETIME_ADD(o.created_at, INTERVAL 7 HOUR)) as created_date
       ,product_id
       ,i.pos_id
+      ,pos.name as pos_name
       ,i.status AS product_status
       ,channel
       ,unit_id
@@ -35,3 +36,4 @@ SELECT DISTINCT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transform
 FROM ${source.circa_os}.order_auto_purchase_session_item i 
 LEFT JOIN ${source.circa_os}.order_auto_purchase_session o ON i.session_id = o.id 
 LEFT JOIN ${source.circa_os}.order_purchase_order p ON i.purchase_order_id = p.id AND o.client_id = p.client_id 
+LEFT JOIN ${source.ref}.circa_pos_profile pos ON i.pos_id = pos.id 

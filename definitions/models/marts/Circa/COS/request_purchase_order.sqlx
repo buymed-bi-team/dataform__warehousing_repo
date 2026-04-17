@@ -9,10 +9,22 @@ config {
     }
 }
 
-SELECT o.id
+SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                     AS transformed_at
+       ,o.id
        ,o.code
        ,o.pos_id
        ,o.status
+       ,CASE
+             WHEN o.status = 'CANCELED' THEN 'Đã hủy'
+             WHEN o.status = 'DENIED' THEN 'Từ chối'
+             WHEN o.status = 'ORDERED' THEN 'Đã đặt hàng'
+             WHEN o.status = 'PARTIAL_ORDERED' THEN 'Đặt thiếu hàng'
+             WHEN o.status = 'PENDING' THEN 'Nháp'
+             WHEN o.status = 'PO_CREATED' THEN 'Đã tạo PO'
+             WHEN o.status = 'PROCESSED' THEN 'Đã kiểm duyệt'
+             WHEN o.status = 'WAITING_PROCESS' THEN 'Chờ kiểm duyệt'
+             ELSE 'Khác'
+        END AS status_vn
        ,o.note
        ,o.request_reason
        ,DATE_ADD(o.waiting_process_at, INTERVAL 7 HOUR) AS submit_at
@@ -25,6 +37,13 @@ SELECT o.id
        ,i.unit
        ,i.amount
        ,i.quantity
+       ,i.ordered_quantity
+       ,i.accepted_quantity
+       ,i.convert_rate
+       ,JSON_VALUE(accepted_quantity_history, '$[1].PoCode')   AS po_code
+       ,JSON_VALUE(accepted_quantity_history, '$[1].so_code')  AS so_code
+       ,JSON_VALUE(accepted_quantity_history, '$[1].Status')   AS so_status
+       ,JSON_VALUE(accepted_quantity_history, '$[1].SourceType') AS source_type
        ,i.tax_rate
        ,i.unit_price
        ,o.client_id
@@ -33,3 +52,5 @@ FROM ${source.circa_os}.order_request_purchase_order o
 LEFT JOIN ${source.circa_os}.order_request_purchase_order_item i ON o.id = i.request_purchase_order_id
 LEFT JOIN ${source.ref}.circa_pos_profile p ON o.pos_id = p.id
 WHERE p.id IS NOT NULL
+      AND o.status <> 'PENDING'
+

@@ -1,0 +1,12 @@
+config {
+    type: "table",
+    tags: ["custom_1h_past5"],
+    name: "pharmacy_name"
+}
+
+select 
+    pharmacy_name
+    , id AS customer_id
+    , updated_date
+from buymed_external.import_pharmacy_name
+QUALIFY ROW_NUMBER() OVER(PARTITION BY customer_id ORDER BY updated_date DESC) = 1

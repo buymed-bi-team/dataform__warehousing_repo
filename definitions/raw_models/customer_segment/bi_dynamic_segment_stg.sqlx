@@ -1,24 +1,37 @@
 config {
     type: "incremental",
     description: "Voucher Segment - Generate a list of customers who are allowed to use the voucher",
-    tags: ["CUSTOMER_SEGMENT", "0h30", "11h30"]
+    tags: ["CUSTOMER_SEGMENT", "0h30", "11h30"],
+    bigquery: {
+        partitionBy: "DATE(processed_at)",
+        clusterBy: ["segment_id"]
+    }
+}
+
+pre_operations {
+    ${when(incremental(),
+    `DELETE FROM ${self()} WHERE DATE(processed_at)< CURRENT_DATE("+7") - INTERVAL 3 DAY`
+    )}
 }
 
 WITH
     segment_data AS (
         SELECT
-            *
+            a.*
         FROM ${ref('bi_dynamic_segment')} AS a
-        WHERE type = '"AVAILABLE"' OR type IS NULL
-        ${when(incremental(),
-            `AND NOT EXISTS ( SELECT 1 
-                                FROM ${self()} AS b 
-                                WHERE a.segment_id = b.segment_id 
-                                AND DATE(b.processed_at) = CURRENT_DATE("+7")
-                                AND EXTRACT(HOUR FROM CURRENT_TIMESTAMP + INTERVAL 7 HOUR) NOT IN (0, 11)
-                                AND a.submit_id = b.submit_id )`
-            )
-        }
+            LEFT JOIN ${ref("dim_voucher")} AS b ON a.segment_id = b.voucher_code
+        WHERE b.end_date >= CURRENT_DATE("+7")
+            AND b.voucher_status = "ACTIVE"
+            AND COALESCE(type, '"AVAILABLE"') = '"AVAILABLE"'
+            ${when(incremental(),
+                `AND NOT EXISTS ( SELECT 1 
+                                    FROM ${self()} AS b 
+                                    WHERE a.segment_id = b.segment_id 
+                                    AND DATE(b.processed_at) = CURRENT_DATE("+7")
+                                    --AND EXTRACT(HOUR FROM CURRENT_TIMESTAMP + INTERVAL 7 HOUR) NOT IN (0, 11)
+                                    AND a.submit_id = b.submit_id )`
+                )
+            }
     ),
 
     get_start_end AS (

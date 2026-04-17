@@ -19,6 +19,7 @@ WITH thuosi_unit AS (
                    ,convert_rate
                    ,sale_allowed
                    ,purchase_allowed
+                   ,list_price
     FROM ${source.circa_os}.product_retail_unit
     WHERE client_id = 1
 )
@@ -49,6 +50,7 @@ WITH thuosi_unit AS (
                    ,ru.convert_rate
                    ,seller_code
                    ,ru.base_unit
+                   ,ru.list_price
     FROM inventory AS i
     JOIN product_base_unit AS ru ON i.product_id = ru.product_id
     GROUP BY ALL
@@ -61,6 +63,7 @@ WITH thuosi_unit AS (
                    ,i.sku_code
                    ,i.seller_code
                    ,u.base_unit
+                   ,u.list_price
     FROM inventory i
     LEFT JOIN full_unit u ON i.product_id = u.product_id
 )
@@ -73,6 +76,7 @@ WITH thuosi_unit AS (
                    ,pd.market_price
                    ,pd.auto_sale_price
                    ,pd.sale_price
+                   ,bu.list_price
                    ,CASE WHEN cost_price > 0 AND market_price > 0 THEN (pd.cost_price - pd.market_price)/ pd.cost_price ELSE NULL END AS gap_ts_market
                    ,CASE WHEN td.price_type = 'DYNAMIC' THEN pd.auto_sale_price
                          WHEN td.price_type <> 'DYNAMIC' THEN pd.sale_price ELSE NULL END AS final_sale_price
@@ -117,6 +121,7 @@ WITH thuosi_unit AS (
                    ,p.purchase_price
                    ,p.cost_price
                    ,p.market_price
+                   ,p.list_price
                    ,p.auto_sale_price
                    ,p.sale_price AS sale_unit_price
                    ,final_sale_price

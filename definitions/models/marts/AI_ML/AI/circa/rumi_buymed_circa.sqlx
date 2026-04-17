@@ -24,6 +24,16 @@ AS (SELECT * FROM  ${ref("buymed_innovation", "circa_fact_net_margin")});
 CREATE OR REPLACE VIEW `rumi_buymed_circa.circa_fact_target`
 AS (SELECT * FROM  ${ref("buymed_innovation", "circa_fact_target")});
 
+-- fact_purchase_order
+
+CREATE OR REPLACE VIEW `rumi_buymed_circa.circa_fact_purchase_order`
+AS (SELECT * FROM  ${ref("buymed_innovation", "circa_fact_purchase_order")});
+
+-- fact_inventory
+
+CREATE OR REPLACE VIEW `rumi_buymed_circa.circa_fact_inventory`
+AS (SELECT * FROM  ${ref("buymed_innovation", "circa_fact_inventory")});
+
 -- fact_order_online
 
 CREATE OR REPLACE VIEW `rumi_buymed_circa.circa_fact_order_online`

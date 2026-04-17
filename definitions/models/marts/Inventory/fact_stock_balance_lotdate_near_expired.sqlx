@@ -2,7 +2,7 @@ config {
     type: "table",
     description: "Schedule: hourly | PIC: huyen.nguyenthu",
     name: "fact_stock_balance_lotdate_near_expired",
-    tags: ["custom_1h_past5"],
+    //tags: ["custom_1h_past5"],
     columns: {
         sku_code: "unique sku identifier",
         fc: "warehouse code",

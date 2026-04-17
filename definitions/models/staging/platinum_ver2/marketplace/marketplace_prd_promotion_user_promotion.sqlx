@@ -10,5 +10,42 @@ config {
     tags:["platinum","marketplace_prd_promotion"]
 }
  
-SELECT *
-FROM platinum_buymed_vn__stg.marketplace_prd_promotion_user_promotion
+WITH silver AS (
+    SELECT
+        key, mg_id, created_by, version_no, status, amount, created_time, customer_id, promotion_id, voucher_code, used_time, order_ids, updated_by, customer_apply_type, system_note, voucher_status, last_updated_time, synced_at, extra_props, action, ingest_time,
+        CASE
+            WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time, 'Asia/Ho_Chi_Minh'))
+            ELSE DATE( '2099-01-01' )
+        END
+        created_date,
+        CAST(null as datetime) 
+    FROM silver_buymed_vn.marketplace_prd_promotion_user_promotion
+    WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 12 HOUR
+    QUALIFY ROW_NUMBER() OVER (_window) = 1 
+        AND ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 9 HOUR
+    WINDOW _window AS (
+        PARTITION BY mg_id
+        ORDER BY synced_at DESC,
+        IF
+            (action='d',3,
+            IF
+            (action='u',2,1)) DESC
+        ,last_updated_time DESC)
+), platinum AS (
+    SELECT 
+        key, mg_id, created_by, version_no, status, amount, created_time, customer_id, promotion_id, voucher_code, used_time, order_ids, updated_by, customer_apply_type, system_note, voucher_status, last_updated_time, synced_at, extra_props, action, ingest_time,
+        created_date,
+        platinum_refresh
+    FROM ${ref(`platinum_buymed_vn__stg`, `marketplace_prd_promotion_user_promotion`)}
+)
+SELECT p.*
+FROM platinum p
+LEFT JOIN silver s 
+    ON p.mg_id = s.mg_id 
+WHERE s.mg_id is null 
+
+UNION ALL 
+
+SELECT s.*
+FROM silver s
+WHERE action != "d"

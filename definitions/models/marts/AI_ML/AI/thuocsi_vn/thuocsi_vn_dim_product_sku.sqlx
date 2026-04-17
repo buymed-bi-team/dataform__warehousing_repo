@@ -37,6 +37,15 @@ WITH
             -- AND tag_code IN ("V2U1", "NEAR_EXPIRATION", "ECLT", "PROMOTION", "BMSE", "FBLT", "khan-hang", "hang-benh-vien", "2BCL", "PABC", "BATBUOCLAYHOADON", "X7GB")
             AND b.sku_key_fc_code IS NOT NULL
         GROUP BY ALL
+    ),
+
+    division  AS (
+        SELECT 
+            product_id
+            , STRING_AGG(SAFE_CAST(division_id AS STRING), ", ") AS division_ids
+            , STRING_AGG(division_name, ", ") AS division_names
+        FROM ${ref("gold_buymed_vn2", "dim_product_division")}
+        GROUP BY ALL
     )
 
 SELECT
@@ -44,8 +53,10 @@ SELECT
     , s.product_name
     , s.sku_code
     , s.sku_key_fc_code AS sku_key
+    , s.seller_id
     , s.seller_code
     , s.seller_class
+    , s.retail_price_type
     , sl.name AS seller_name
     , NULLIF(COALESCE(p.product_category, c.product_category), "Thuốc (Chưa phân loại)") AS product_category_CAT1
     , COALESCE(p.brand, c.brand) AS brand
@@ -58,6 +69,7 @@ SELECT
     , s.sku_system_status AS sku_status
     , s.sku_system_active AS sku_active
     , s.fc_code AS warehouse_code
+    , s.sales_region_code AS sales_region
     , CASE 
         WHEN s.fc_code = "BD" THEN "Kho Bình Dương"
         WHEN s.fc_code = "HN" THEN "Kho Bắc Ninh"
@@ -65,11 +77,43 @@ SELECT
       END AS warehouse_name
     , t.tag_codes
     , t.tag_names
+    , d.division_ids
+    , d.division_names
     , s.sku_demand_class AS sku_demand_classification
+    , s.sub_sku_code AS item_code
+    , CASE
+        -- WHEN s.cic_name IN ("dat.hoquang", "tra.pham") THEN NULL
+        WHEN s.seller_code IN ("MEDX_E", "BML_E", "TAYAU_E") THEN "dat.hoquang"
+        WHEN s.seller_code IN ("TAYAU", "TENDER") THEN "trang.nguyenthi1"
+        WHEN (s.seller_code IN ("MEDX", "BML_INT", "MEDX_INT") or s.seller_class = "EXTERNAL") AND u.status = "ACTIVE" AND s.cic_name NOT IN ("dat.hoquang", "tra.pham", "ngoc.vu")
+            THEN s.cic_name 
+        -- WHEN s.seller_code IN ("MEDX", "BML_INT", "MEDX_INT") THEN NULL
+        WHEN s.seller_class = "EXTERNAL" THEN "lan.tran"
+      END AS cic_name
+    , s.fv_code AS favorite_vendor_code
+    , s.favourite_vendor AS favorite_vendor_name
+    , s.catm_group
+    , s.brand_type
 FROM ${ref('gold_buymed_vn2', 'dim_sku_sales_region_full')} AS s
     LEFT JOIN ${ref('gold_buymed_vn2', 'dim_product')} AS p ON s.product_id = p.product_id
     LEFT JOIN ${source.platinum}.seller_prd_core_seller AS sl ON sl.code = s.seller_code
     LEFT JOIN ${ref('gold_buymed_vn2', 'adhoc_pricing_v2')} AS pr ON pr.sku_key_sales_region_code = s.sku_key_sales_region_code
     LEFT JOIN combo AS c ON c.product_id = s.product_id
     LEFT JOIN tag AS t ON t .sku_key_fc_code = s.sku_key_fc_code
+    LEFT JOIN division AS d ON d.product_id = s.product_id
+    LEFT JOIN (
+        SELECT
+            username
+            , status
+        FROM ${source.platinum}.core_prd_account_account
+        QUALIFY ROW_NUMBER() OVER(PARTITION BY username) = 1
+    ) AS u ON s.cic_name = u.username
+    LEFT JOIN (
+        SELECT
+            product_id
+            , fc_code
+            , pic
+        FROM buymed_external.seller_pic
+        QUALIFY ROW_NUMBER() OVER(PARTITION BY product_id, fc_code) = 1
+    ) AS sp ON sp.product_id = s.product_id AND sp.fc_code = s.fc_code
 WHERE sl.code NOT IN ('MEDC', 'MED_NT', 'TENDER', 'MEDX-HN', 'DENX', '9SUUUUUUUU', 'QMQEM8DN9F', 'UQRRRRRRRR', 'TAM_GIA', 'I1I4OQEM8D')

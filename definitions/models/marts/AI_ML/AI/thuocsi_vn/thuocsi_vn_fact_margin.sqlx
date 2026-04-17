@@ -5,30 +5,6 @@ config {
     tags: ['AI_THUOCSI_VN']
 }
 
--- SELECT
---     a.created_date
---     , a.order_id
---     , CONCAT(b.sku_key, "_", o.warehouse_code) AS sku_key
---     , b.product_id
---     , a.profit
---     , a.total_price
--- FROM ${source.platinum}.monitoring_prd_realtime_supply_margin_order_sku AS a
---     LEFT JOIN ${source.platinum}.marketplace_prd_order_v2_order AS o ON a.order_id = o.order_id
---     LEFT JOIN ${ref('gold_buymed_vn2','dim_sku')} AS b ON a.sku = b.sku_code
--- WHERE 1=1 
---     AND a.created_date >= "2025-01-01"
---     AND o.created_date >= "2025-01-01"
--- UNION ALL
--- SELECT
---     a.created_date
---     , a.order_id
---     , CONCAT(a.product_id, "_", a.seller_code, "_", a.fc_code) AS sku_key
---     , a.product_id
---     , a.profit * outbound_quantity AS profit
---     , a.price * outbound_quantity AS total_price
--- FROM gold_buymed_vn2.fact_order_item_seller_margin AS a
--- WHERE 1=1 
---     AND a.created_date >= "2025-01-01"
 
 WITH 
     fact_order AS ( 
@@ -92,6 +68,7 @@ WITH
             , seller_class
             , CONCAT(product_id, "_", seller_code, "_", fc_code) AS sku_key 
             , product_id
+            , seller_code
             , SUM(outbound_quantity * (price - COALESCE(rebate,0))) AS profit
             , SUM(outbound_quantity * rebate) AS cogs_after_rebate
             , SUM(outbound_quantity * price) AS total_price
@@ -103,13 +80,14 @@ WITH
             created_date
             , order_id
             , a.seller_class
-            , CONCAT(a.product_id, "_", seller_code, "_", COALESCE(NULLIF(a.warehouse_code, "TA"), "BD")) AS sku_key
+            , CONCAT(a.product_id, "_", SPLIT(item_code, ".")[SAFE_OFFSET(0)], "_", COALESCE(NULLIF(a.warehouse_code, "TA"), "BD")) AS sku_key
             , a.product_id
+            , SPLIT(item_code, ".")[SAFE_OFFSET(0)] AS seller_code
             , SUM(outbound_quantity * (price - COALESCE(purchase_price,0))) AS profit
             , SUM(outbound_quantity * purchase_price) AS cogs_after_rebate
             , SUM(outbound_quantity * price)
         FROM gold_buymed_vn2.fact_order_item_margin_tayau_outbound AS a
-            LEFT JOIN ${ref('gold_buymed_vn2','dim_sku')} AS b ON LEFT(a.item_code, LENGTH(a.item_code) -2) = b.sku_code
+            -- LEFT JOIN ${ref('gold_buymed_vn2','dim_sku')} AS b ON LEFT(a.item_code, LENGTH(a.item_code) -2) = b.sku_code
         WHERE created_date >= "2025-01-01"
         GROUP BY ALL
         UNION ALL
@@ -119,6 +97,7 @@ WITH
             , seller_class
             , CONCAT(a.product_id, "_", a.seller_code, "_", a.fc_code) AS sku_key
             , a.product_id
+            , a.seller_code
             , (a.buyer_fee + (a.price - a.buyer_fee) * (fulfillment_rate + listing_rate + 0.01)) * outbound_quantity AS profit
             , (a.price - a.buyer_fee) * (1 - fulfillment_rate - listing_rate - 0.01) * outbound_quantity AS cogs_after_rebate
             , a.price * outbound_quantity AS total_price
@@ -127,8 +106,55 @@ WITH
             AND a.created_date >= "2025-01-01"
     )
 
+    , voucher_internal AS (
+        SELECT
+            order_id
+            , CONCAT(main_product_id, SPLIT(item_code, ".")[SAFE_OFFSET(0)]) AS product_seller_code
+            , SUM(voucher_order_discount) AS voucher_order_discount
+            , SUM(voucher_product_discount) AS voucher_product_discount
+        FROM gold_buymed_vn2.fact_order_item_margin_internal_voucher
+        WHERE 1=1
+            AND main_product_id = product_id
+        GROUP BY ALL
+    )
+    , voucher_internal_combo AS (
+        SELECT
+            order_id
+            , CONCAT(main_product_id, SPLIT(item_code, ".")[SAFE_OFFSET(0)]) AS product_seller_code
+            , SUM(voucher_order_discount) AS voucher_order_discount
+            , SUM(voucher_product_discount) AS voucher_product_discount
+        FROM gold_buymed_vn2.fact_order_item_margin_internal_voucher
+        WHERE 1=1
+            AND main_product_id <> product_id
+        GROUP BY ALL
+    )
+    , voucher_external AS (
+        SELECT
+            order_id
+            , CONCAT(product_id, SPLIT(item_code, ".")[SAFE_OFFSET(0)]) AS product_seller_code
+            , SUM(voucher_order_discount) AS voucher_order_discount
+            , SUM(voucher_product_discount) AS voucher_product_discount
+        FROM gold_buymed_vn2.fact_order_item_margin_seller_voucher
+        WHERE 1=1
+        GROUP BY ALL
+    ),
+
+    net_margin AS (
+        SELECT
+            m.*
+            , COALESCE(vi.voucher_order_discount, vic.voucher_order_discount, ve.voucher_order_discount, 0) AS voucher_order_discount
+            , COALESCE(vi.voucher_product_discount, vic.voucher_product_discount, ve.voucher_product_discount, 0) AS voucher_product_discount
+        FROM margin AS m
+            LEFT JOIN voucher_internal AS  vi ON m.order_id = vi.order_id AND CONCAT(m.product_id, m.seller_code) = vi.product_seller_code
+            LEFT JOIN voucher_internal_combo AS  vic ON m.order_id = vic.order_id AND CONCAT(m.product_id, m.seller_code) = vic.product_seller_code
+            LEFT JOIN voucher_external AS ve ON m.order_id = ve.order_id AND CONCAT(m.product_id, m.seller_code) = ve.product_seller_code
+        GROUP BY ALL
+    )
+
 SELECT
-    a.*
+    a.* EXCEPT(voucher_order_discount, voucher_product_discount)
+    , voucher_order_discount + voucher_product_discount AS voucher_discount
+    , profit - voucher_order_discount - voucher_product_discount AS net_profit
     , o.channel
     , o.customer_id
     , o.status AS order_status
@@ -137,7 +163,7 @@ SELECT
     , g.province_name
     , g.region_name
     , g.urban_rural
-FROM margin AS a
+FROM net_margin AS a
     LEFT JOIN fact_order AS o ON a.order_id = o.order_id
     LEFT JOIN ${ref('gold_buymed_vn2','dim_geo_location')} AS g ON o.shipping_ward_code = g.location_code
 WHERE o.order_id IS NOT NULL

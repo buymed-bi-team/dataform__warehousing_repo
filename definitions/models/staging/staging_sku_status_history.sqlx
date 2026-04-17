@@ -1,6 +1,6 @@
 config {
-    type: "table",
-    description: "item_code status change history || PIC: minh.luu;  model_type: table; schedule: hourly past 5",
+    type: "incremental",
+    description: "item_code status change history || PIC: nguyen.tran;  model_type: table; schedule: hourly past 10",
     name: "staging_sku_status_history",
     bigquery: {
         partitionBy: "DATE(created_time)",
@@ -23,30 +23,32 @@ config {
 }
 
 -- extract sku, item_code and status, and filter the time status of item_cod changed
-js {
-    const checkpoint = `CURRENT_TIMESTAMP() - INTERVAL 12 HOUR`;
-    const mode = "prd";
+-- js {
+--     const checkpoint = `CURRENT_DATE("+7") - INTERVAL 1 DAY`;
+--     const mode = "prd";
 
-    let incremental_bound;
-    let full_refresh_bound;
-    if (mode == "stg") {
-        incremental_bound = `AND synced_at >= TIMESTAMP("2025-11-02") AND synced_at <= TIMESTAMP("2025-11-03")`;
-        // full_refresh_bound = `AND synced_at >= TIMESTAMP("2025-11-01") AND synced_at <= TIMESTAMP("2025-11-02")`;
-        full_refresh_bound = ``
-    } else if (mode == "prd") {
-        incremental_bound = `AND synced_at > ${checkpoint}`;
-        full_refresh_bound = `AND synced_at > "2024-01-01" AND created_time > "2024-01-01"`;
-    }
+--     let incremental_bound;
+--     let full_refresh_bound;
+--     if (mode == "stg") {
+--         incremental_bound = `AND synced_at >= TIMESTAMP("2025-11-02") AND synced_at <= TIMESTAMP("2025-11-03")`;
+--         // full_refresh_bound = `AND synced_at >= TIMESTAMP("2025-11-01") AND synced_at <= TIMESTAMP("2025-11-02")`;
+--         full_refresh_bound = ``
+--     } else if (mode == "prd") {
+--         incremental_bound = `AND created_date > ${checkpoint}`;
+--         full_refresh_bound = `AND created_date > "2025-01-01" `;
+--     }
+-- }
+pre_operations {
+  ${when(incremental()
+    , `DELETE FROM ${self()} WHERE DATE(created_time) >= CURRENT_DATE("+7") - INTERVAL 1 DAY;`
+    )}
 }
 
 SELECT
     product_id,
     JSON_VALUE(extra_props, "$.sku") AS sku,
     JSON_VALUE(extra_props, "$.item_code") AS item_code,
-    CASE 
-        WHEN created_time IS NULL THEN DATE("2099-01-01")
-        ELSE DATE(created_time + INTERVAL 7 HOUR )
-    END AS created_date,
+    created_date,
     created_time,
     JSON_VALUE(next, "$.status") AS status,
     cast(JSON_VALUE(next, "$.is_active") as boolean ) as is_active,
@@ -55,40 +57,43 @@ SELECT
 FROM
     ${source.platinum}.marketplace_prd_product_v2_history_update_price  a
 WHERE json_value(a.extra_props.action_mg) in ('UPDATE_SKU', 'CREATE_SKU')
-${ when(incremental(), incremental_bound, full_refresh_bound)}
+-- ${ when(incremental(), incremental_bound, full_refresh_bound)}
+AND ${when(incremental(), 
+    `created_date >= CURRENT_DATE("+7") - INTERVAL 1 DAY
+    --  AND created_time > (SELECT MAX(created_time) FROM ${self()} )
+     `
+    ,`created_date >= "2025-01-01"`
+    )}
 
 QUALIFY status <> LAG(status) OVER (w) OR LAG(status) OVER(w) IS NULL
 WINDOW w AS (
     PARTITION BY item_code
-    ORDER BY created_time ASC, 
-        synced_at ASC -- Because this Mongo Collection will only be append, not upđate value
+    ORDER BY created_time, synced_at
 )
 
--- Use Platinum_Incremental strategy
-
--- post_operations {
---   ${
---     when(incremental(),
---         `
---         CREATE TEMP TABLE tbl AS (
---             SELECT key, item_code, created_time,status
---             FROM ${self()}
---             QUALIFY  status = LEAD(status) OVER(w)
---                 AND LEAD(status) OVER(w) IS NOT NULL
---             WINDOW w AS (
---                 PARTITION BY item_code
---                 ORDER BY created_time DESC, 
---                     synced_at DESC -- Because this Mongo Collection will only be append, not upđate value
---             )
---         );
---         DELETE FROM ${self()}
---         WHERE key IN (
---             SELECT key
---             FROM tbl
---         ) AND item_code IN ( select DISTINCT item_code FROM tbl)
---         `,
---         ``
---     )
---   }
--- }
-
+post_operations {
+  ${
+    when(incremental(),
+      `
+      CREATE TEMP TABLE tbl AS (
+            SELECT key, item_code, created_time,status
+            FROM ${self()}
+            QUALIFY  status = LEAD(status) OVER(w)
+                AND LEAD(status) OVER(w) IS NOT NULL
+            WINDOW w AS (
+                PARTITION BY item_code
+                ORDER BY created_time DESC, synced_at DESC 
+            )
+        );
+        DELETE FROM ${self()}
+        WHERE CONCAT(key,item_code) IN (
+            SELECT DISTINCT CONCAT(key, item_code)
+            FROM tbl
+        ) 
+        --AND item_code IN ( select DISTINCT item_code FROM tbl)
+        ;
+      `,
+      ``
+    )
+  }
+}

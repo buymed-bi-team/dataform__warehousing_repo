@@ -75,24 +75,105 @@ WITH cte_province_without_accent AS (
         STRUCT('37' AS province_code, 'Ninh Binh' AS province_without_accent),
         STRUCT('58' AS province_code, 'Ninh Thuan' AS province_without_accent)
     ]) AS record
-)
+),
 
-SELECT
-    g.location_code AS province_code
-    , g.province_name
-    , g.region_code
-    , g.region_name 
-    , p.province_without_accent
-    , g.region_code AS area
-    , CASE
-        WHEN g.province_code = "01" THEN "HN"
-        WHEN g.province_code = "79" THEN "HCM"
-        WHEN g.province_code = "48" THEN "DN"
-        ELSE "OTHER"
-    END picking_rule_location_code
-    , sales_region_code
-    , fc_code
-FROM ${ref('dim_geo_location')} AS g
-    LEFT JOIN cte_province_without_accent AS p
-        ON g.location_code = p.province_code
-WHERE g.location_class = 'PROVINCE'
+    current_province AS (
+        SELECT *
+        FROM UNNEST([
+            STRUCT('92' AS current_province_code, '92' AS previous_province_code),
+            STRUCT('92','94'),
+            STRUCT('92','93'),
+            STRUCT('01','01'),
+            STRUCT('31','31'),
+            STRUCT('31','30'),
+            STRUCT('79','77'),
+            STRUCT('79','74'),
+            STRUCT('79','79'),
+            STRUCT('48','48'),
+            STRUCT('48','49'),
+            STRUCT('89','89'),
+            STRUCT('89','91'),
+            STRUCT('27','24'),
+            STRUCT('27','27'),
+            STRUCT('04','04'),
+            STRUCT('96','96'),
+            STRUCT('96','95'),
+            STRUCT('64','64'),
+            STRUCT('64','52'),
+            STRUCT('42','42'),
+            STRUCT('33','33'),
+            STRUCT('33','34'),
+            STRUCT('56','56'),
+            STRUCT('56','58'),
+            STRUCT('12','12'),
+            STRUCT('10','10'),
+            STRUCT('10','15'),
+            STRUCT('68','60'),
+            STRUCT('68','67'),
+            STRUCT('68','68'),
+            STRUCT('20','20'),
+            STRUCT('40','40'),
+            STRUCT('37','35'),
+            STRUCT('37','36'),
+            STRUCT('37','37'),
+            STRUCT('25','26'),
+            STRUCT('25','17'),
+            STRUCT('25','25'),
+            STRUCT('51','62'),
+            STRUCT('51','51'),
+            STRUCT('22','22'),
+            STRUCT('45','44'),
+            STRUCT('45','45'),
+            STRUCT('14','14'),
+            STRUCT('38','38'),
+            STRUCT('19','19'),
+            STRUCT('19','06'),
+            STRUCT('46','46'),
+            STRUCT('08','02'),
+            STRUCT('08','08'),
+            STRUCT('72','80'),
+            STRUCT('72','72'),
+            STRUCT('86','86'),
+            STRUCT('86','84'),
+            STRUCT('86','83'),
+            STRUCT('11','11'),
+            STRUCT('66','66'),
+            STRUCT('66','54'),
+            STRUCT('75','75'),
+            STRUCT('75','70'),
+            STRUCT('87','87'),
+            STRUCT('87','82')
+        ]) 
+    ),
+
+    province AS (
+        SELECT
+            g.location_code AS province_code
+            , g.province_name
+            , g.region_code
+            , g.region_name 
+            , p.province_without_accent
+            , g.region_code AS area
+            , CASE
+                WHEN g.province_code = "01" THEN "HN"
+                WHEN g.province_code = "79" THEN "HCM"
+                WHEN g.province_code = "48" THEN "DN"
+                ELSE "OTHER"
+            END picking_rule_location_code
+            , sales_region_code
+            , fc_code
+            , c.current_province_code
+        FROM ${ref('dim_geo_location')} AS g
+            LEFT JOIN cte_province_without_accent AS p
+                ON g.location_code = p.province_code
+            LEFT JOIN current_province AS c 
+                ON c.previous_province_code = g.location_code
+        WHERE g.location_class = 'PROVINCE'
+    )
+
+SELECT 
+    a.*
+    , b.province_name AS current_province_name
+FROM province AS a
+    LEFT JOIN province AS b ON a.current_province_code = b.province_code
+

@@ -4,7 +4,7 @@ config {
                   PIC: huyen.ngo;
                   model_type: Table;
                   schedule: At minute 10 every hour`,
-    tags: ["custom_1h_past10"],
+    tags: ["custom_1h_past20"],
     name: "cos_auto_purchase_session",
     columns: {
         
@@ -28,6 +28,7 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
        ,DATETIME_ADD(o.updated_at, INTERVAL 7 HOUR) as updated_at
        ,DATETIME_ADD(o.completed_at, INTERVAL 7 HOUR) as completed_at
        , current_step --AUTO_PURCHASE, (BLANK)
+       ,total_items
        ,failed_items
        ,processed_items
        ,CAST(JSON_VALUE(step_progress,'$.AUTO_PURCHASE.pos_created' ) AS INT64) AS pos_created

@@ -7,10 +7,10 @@ config {
 
 
 SELECT 
-    o.* EXCEPT (status, deliver_status, pos_status, price, total_price)
+   o.* EXCEPT (status, deliver_status, pos_status, price, total_price)
     -- , price AS or
-    , o.price AS total_item_amount
-    , o.total_price AS order_amount
+    , SUM(oi.quantity * oi.price) AS revenue
+    , SUM(oi.origin_price * oi.quantity) AS gmv
     , o.o2o_status AS status
     , oi.product_id
     , oi.product_name
@@ -23,5 +23,6 @@ SELECT
     , campaign_name
 FROM ${ref("gold_buymed_vn2", "circa_online_order_item")} AS oi
     LEFT JOIN ${ref("gold_buymed_vn2", "circa_online_order")} AS o USING(order_code)
+    GROUP BY ALL
 
 

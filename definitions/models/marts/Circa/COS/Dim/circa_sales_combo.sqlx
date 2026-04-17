@@ -1,0 +1,51 @@
+config {
+    type: "table",
+    description: `PIC: huyen.ngo; model_type: Table ;schedule: At 10h30`,
+    tags: ["10h30"]
+ 
+}
+
+WITH t AS (
+    SELECT DISTINCT p.id
+                   ,p.product_id
+                   ,type 
+                   ,status
+                   ,sku_code
+                   ,seller_code
+                   ,DATETIME_ADD (created_at, INTERVAL 7 HOUR)   AS created_at
+                   ,DATETIME_ADD (start_time, INTERVAL 7 HOUR)   AS start_time
+                   ,DATETIME_ADD (expired_time, INTERVAL 7 HOUR)   AS expired_time
+                   ,price_type
+                   ,s.sub_product_id
+                   ,s.unit
+                   ,s.quantity
+                   ,p.client_id
+    FROM ${source.circa_os}.product_sku p
+    LEFT JOIN ${source.circa_os}.product_sub_product s ON SAFE_CAST(p.product_id AS INT) = s.product_id AND p.client_id = s.client_id
+    WHERE p.client_id = 1
+          AND p.type = 'COMBO'
+          
+), retail_price AS 
+(
+SELECT DISTINCT s.product_id
+                  ,sku_code
+                  ,seller_code
+                  ,sale_price
+                  ,client_id
+    FROM  ${source.circa_os}.product_price_sheet_sku_detail AS pd
+    LEFT JOIN  ${source.circa_os}.product_price_sheet_sku AS s ON pd.price_sheet_sku_id = s.id
+    LEFT JOIN  ${source.circa_os}.product_price_sheet AS ps ON s.price_sheet_id = ps.id
+    WHERE unit = 'combo'
+           and client_id = 1
+)
+
+SELECT DISTINCT t.* except (product_id)
+                ,t.product_id AS combo_code
+                ,p.sale_price
+               ,t.sub_product_id AS product_id
+               ,pr.name AS product_name
+               ,CONCAT(t.product_id, "_", t.client_id) AS product_client_id
+FROM t
+LEFT JOIN retail_price p ON t.product_id = p.product_id AND t.sku_code = p.sku_code AND t.seller_code = p.seller_code AND t.client_id = p.client_id
+LEFT JOIN ${source.circa_os}.product_product pr ON pr.product_id = t.sub_product_id AND t.client_id = pr.client_id
+

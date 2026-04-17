@@ -1,0 +1,46 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `Inbound Ticket Thailand marketplace.`,
+    tags: ['AI_THUOCSI_TH']
+}
+
+SELECT
+    i.created_date AS inbound_ticket_created_date,
+    TIMESTAMP_ADD(i.created_time, INTERVAL 7 HOUR) AS po_confirmed_time,
+    TIMESTAMP_ADD(po.created_time, INTERVAL 7 HOUR) AS po_pgh_created_time,
+    i.ticket_id,
+    i.warehouse_code,
+    i.code AS inbound_code,
+    i.po_code,
+    s.name AS vendor_name,
+    po.vendor_code,
+    s.name AS seller_name,
+    i.type AS inbound_type,
+    i.priority AS inbound_priority,
+    i.status AS inbound_status,
+    po.status AS po_status,
+    i.total_sku,
+    i.total_item,
+    sku,
+    ii.demand_quantity,
+    ii.inbound_quantity,
+    IF(i.status NOT IN ("DRAFT", "CANCEL", "COMPLETED"), ii.demand_quantity - ii.inbound_quantity,0) AS incoming_quantity,
+FROM platinum_buymed_th.warehouse_prd_inbound_inbound_ticket AS i
+    LEFT JOIN (
+        SELECT
+            inbound_code
+            , sku
+            , demand_quantity
+            , inbound_quantity
+        FROM platinum_buymed_th.warehouse_prd_inbound_inbound_ticket_item
+        WHERE created_date >= "2025-01-01"
+    ) AS ii ON i.code = ii.inbound_code
+    LEFT JOIN (
+        SELECT *
+        FROM platinum_buymed_th.seller_prd_purchasing_purchase_order
+        WHERE created_date >= "2025-01-01"
+    ) AS po ON i.po_code = po.po_code
+    LEFT JOIN platinum_buymed_th.seller_prd_core_seller AS s ON po.vendor_code = s.code
+WHERE 1=1
+    AND i.created_date >= "2025-01-01"

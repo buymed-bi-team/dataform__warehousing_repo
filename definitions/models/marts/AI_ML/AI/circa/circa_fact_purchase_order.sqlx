@@ -1,0 +1,33 @@
+config {
+    type: 'table',
+    schema: "buymed_innovation",
+    description: `Purchase orders of Circa.`,
+    tags: ['AI_CIRCA', "custom_1h_past10"]
+}
+
+
+SELECT  
+    oi.created_at
+    , oi.po_code
+    , oi.product_id
+    , oi.sku_code
+    , oi.status 
+    , oi.actual_quantity
+    , oi.actual_base_quantity
+    , oi.actual_po_item_amount
+    , oi.tax_rate
+    , oi.unit
+    , oi.unit_price
+    , oi.lot_date
+    , oi.item_discount_amt
+    , oi.name AS owner_name
+    , oi.Vendor AS vendor
+    , oi.Channel AS channel
+    , oi.pos_code
+    , oi.client_id
+    , IF(p.type = "FS", "FS", "COS") AS pos_type
+FROM ${ref("gold_buymed_vn2", "cos_purchase_order_item")} AS oi
+    LEFT JOIN buymed_circa_v2.entity_pos_profile AS p ON  oi.pos_code = p.code
+
+
+

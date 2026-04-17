@@ -1,0 +1,72 @@
+config {
+    type: "incremental",
+    tags: ["custom_1h_past5"],
+    description: "SKU is_active change history|| PIC: anh.letam;  model_type: table; schedule: hourly",
+    name: "staging_sku_is_active_history",
+    bigquery: {
+        partitionBy: "DATE(created_time)",
+        clusterBy: ["item_code"]
+    }
+    
+}
+
+-- extract sku, item_code and status, and filter the time status of item_cod changed
+
+
+
+pre_operations {
+  ${when(incremental()
+    , `DELETE FROM ${self()} WHERE DATE(created_time) >= CURRENT_DATE("+7") - INTERVAL 1 DAY;`
+    )}
+}
+
+SELECT
+  JSON_VALUE(extra_props, "$.sku") AS sku,
+  JSON_VALUE(extra_props, "$.item_code") AS item_code,
+  created_time,
+  JSON_VALUE(next, "$.status") AS status,
+  JSON_VALUE(next, "$.seller_class") AS seller_class,
+  cast(JSON_VALUE(next, "$.is_active") as boolean ) as is_active,
+  ingest_time,
+  key
+FROM ${source.platinum}.marketplace_prd_product_v2_history_update_price  a
+WHERE json_value(a.extra_props.action_mg) in ('UPDATE_SKU', 'CREATE_SKU')
+-- ${ when(incremental(), incremental_bound, full_refresh_bound)}
+  AND ${when(incremental(), 
+    `created_date >= CURRENT_DATE("+7") - INTERVAL 1 DAY
+    --  AND created_time > (SELECT MAX(created_time) FROM ${self()} )
+     `
+    ,`created_date >= "2025-01-01"`
+    )}
+QUALIFY is_active != LAG(is_active) OVER (_window) 
+  OR LAG(is_active) OVER (_window) IS NULL
+WINDOW _window AS (
+  PARTITION BY item_code ORDER BY created_time
+)
+
+post_operations {
+  ${
+    when(incremental(),
+      `
+      CREATE TEMP TABLE tbl AS (
+            SELECT key, item_code
+            FROM ${self()}
+            QUALIFY  is_active = LEAD(is_active) OVER(w)
+                AND LEAD(is_active) OVER(w) IS NOT NULL
+            WINDOW w AS (
+                PARTITION BY item_code
+                ORDER BY created_time DESC
+            )
+        );
+        DELETE FROM ${self()}
+        WHERE CONCAT(key,item_code) IN (
+            SELECT DISTINCT CONCAT(key, item_code)
+            FROM tbl
+        ) 
+        --AND item_code IN ( select DISTINCT item_code FROM tbl)
+        ;
+      `,
+      ``
+    )
+  }
+}

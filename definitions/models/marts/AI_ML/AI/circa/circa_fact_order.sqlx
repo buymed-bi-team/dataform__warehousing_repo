@@ -33,8 +33,9 @@ WITH
             , o.pos_code
             , p.name AS pos_name
             , IF(p.type = "FS", "FS", "COS") AS pos_type
-            , o.channel
+            -- , o.channel
             , o.type AS online_or_offline_order
+            , o.type AS channel
             , g.ward_name
             , g.district_name
             , g.province_name
@@ -44,6 +45,9 @@ WITH
             , IF(v.campaign_code = "CAMPAIGN000165", true, false) AS is_referral
             , o.status AS order_status
             , SUM(o.total_amount)- SUM(COALESCE(c.rev_return, 0))  - SUM(COALESCE(delivery_amount, 0)) AS revenue
+            , first_payment_method
+            , secondary_pay_method
+            , secondary_pay_amount
             -- , IF(o.order_code IN (SELECT order_code_used FROM referral ), true, false) AS is_referral
         FROM ${ref('gold_buymed_vn2','cos_fact_order')} AS o
         LEFT JOIN ${ref("gold_buymed_vn2", "cos_return_completed")} c ON o.order_code = c.order_code
@@ -72,7 +76,7 @@ WITH
              , o.pos_id
              , o.pos_code
              , o.pos_name
-             , o.pos_type
+             , o.pos_type             
              , o.channel
              , o.ward_name
              , o.district_name
@@ -93,10 +97,14 @@ WITH
              , o.voucher_code
              , o.is_referral
              , CONCAT(d.customer_phone, d.customer_name) AS o2o_customer_key
+             , first_payment_method
+             , secondary_pay_method
+             , secondary_pay_amount
+            --  , o.online_or_offline_order
              , o.online_or_offline_order
            FROM ${ref('gold_buymed_vn2','cos_fact_order_item')} oi
            LEFT JOIN fact_order o ON oi.order_id = o.order_id
-           LEFT JOIN buymed_circa_v2.order_delivery_info d ON d.order_id = o.order_id AND o.channel = "O2O"
+           LEFT JOIN buymed_circa_v2.order_delivery_info d ON d.order_id = o.order_id AND o.channel = "ONLINE"
            WHERE o.order_id IS NOT NULL
     
     )

@@ -6,23 +6,22 @@ config {
 }
 
 
-WITH count_ord AS (
+WITH count_ord AS ( -- đếm số lượng đơn 
      SELECT DISTINCT o.pos_id
                     ,oi.product_id
                     ,MAX(o.created_date) AS latest_ord
                     ,COUNT(DISTINCT o.order_id) AS no_ord
-                    ,SUM(unit_price * quantity) AS GMV
-                    ,SUM(unit_cost_price * quantity) AS cogs
+                    ,SUM(unit_price_before_discount * (quantity - COALESCE(qty_rt, 0))) AS GMV
+                    ,SUM(unit_cost_price * (quantity - COALESCE(qty_rt, 0))) AS cogs
                     ,o.client_id
      FROM  ${source.ref}.cos_fact_order o
-     LEFT JOIN  ${source.ref}.cos_fact_order_item oi
-               ON o.order_id = oi.order_id
+     LEFT JOIN  ${source.ref}.cos_fact_order_item oi ON o.order_id = oi.order_id
      WHERE status LIKE "%COMPLETE%"
            AND o.client_id = 1
            AND owner_name NOT IN ('CIRCA MARKETING')
      GROUP BY ALL
 )
-,first_time_have_inventory AS (
+,first_time_have_inventory AS ( -- ngày đầu tiên có tồn kho
      SELECT DISTINCT l.pos_id
                      ,p.name AS pos_name
                      ,a.product_id
@@ -30,30 +29,26 @@ WITH count_ord AS (
                      ,a.client_id
                      ,p.code AS pos_code
      FROM ${source.circa_os}.inventory_allocation a
-     LEFT JOIN ${source.circa_os}.inventory_location_detail ld 
-               ON a.location_detail_id = ld.id AND a.client_id = ld.client_id
-     LEFT JOIN ${source.circa_os}.inventory_location l 
-               ON ld.location_id = l.id AND a.client_id = l.client_id
-     LEFT JOIN ${source.ref}.circa_pos_profile p 
-               ON l.pos_id = p.id AND a.client_id = p.client_id
+     LEFT JOIN ${source.circa_os}.inventory_location_detail ld  ON a.location_detail_id = ld.id AND a.client_id = ld.client_id
+     LEFT JOIN ${source.circa_os}.inventory_location l  ON ld.location_id = l.id AND a.client_id = l.client_id
+     LEFT JOIN ${source.ref}.circa_pos_profile p  ON l.pos_id = p.id AND a.client_id = p.client_id
      WHERE a.client_id = 1 
            AND p.id IS NOT NULL
            AND ld.seller_code NOT IN ('CIRCA_MKP', 'MARKETING')
      GROUP BY ALL
 )
-,lastdate_pur AS (
+,lastdate_pur AS ( -- lần cuối mua hàng
      SELECT DISTINCT o.pos_id
                      ,i.product_id
                      ,MAX(DATE(i.created_at)) AS lastdate_pur
      FROM ${source.ref}.cos_purchase_order o 
-     LEFT JOIN ${source.ref}.cos_purchase_order_item i 
-               ON o.po_id = i.po_id
+     LEFT JOIN ${source.ref}.cos_purchase_order_item i ON o.po_id = i.po_id
      WHERE received_quantity > 0 
            AND i.seller_code NOT IN ('CIRCA_MKP', 'MARKETING')
            AND o.client_id = 1
      GROUP BY ALL
 )
-,inventory AS (
+,inventory AS ( -- tồn kho hiện tại
      SELECT DISTINCT 
             pos_id
            ,product_id
@@ -89,13 +84,10 @@ WITH count_ord AS (
                 WHEN b.latest_ord IS NULL AND DATE_DIFF(CURRENT_DATE("Asia/Ho_Chi_Minh"), DATE(firstime_have_inventory), DAY) > 90 THEN "> 90D" 
            END AS latest_date_order_range
      FROM first_time_have_inventory a
-     LEFT JOIN count_ord b 
-           ON a.pos_id = b.pos_id AND a.product_id = b.product_id
-     LEFT JOIN inventory i 
-           ON a.pos_id = i.pos_id AND a.product_id = i.product_id 
-     LEFT JOIN lastdate_pur p 
-           ON a.pos_id = p.pos_id AND a.product_id = p.product_id 
-     WHERE a.pos_id NOT IN ('9dd83081-9919-4bc3-84bd-f5dfece10049')
+     LEFT JOIN count_ord b  ON a.pos_id = b.pos_id AND a.product_id = b.product_id
+     LEFT JOIN inventory i  ON a.pos_id = i.pos_id AND a.product_id = i.product_id 
+     LEFT JOIN lastdate_pur p  ON a.pos_id = p.pos_id AND a.product_id = p.product_id 
+    -- WHERE a.pos_id NOT IN ('9dd83081-9919-4bc3-84bd-f5dfece10049')
 )
 SELECT *
       ,CONCAT(product_id, "_", client_id) AS product_client_id

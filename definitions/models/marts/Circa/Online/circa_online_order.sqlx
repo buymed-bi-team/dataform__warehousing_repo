@@ -5,7 +5,7 @@ config {
     name: "circa_online_order",
     columns: {
         order_code: "NonNull |" + docs.order_code,
-        account_id: "NonNull | The unique identifier for each customer"
+        customer_phone: "NonNull | The unique identifier for each customer"
        
     },
     bigquery: {
@@ -38,21 +38,20 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                      
       ,receiver_full_address
       ,district_code
       ,province_code
-    --   ,TRIM(REGEXP_EXTRACT(receiver_full_address, r'([^,]+),\s*[^,]+$')) AS district
-    --   ,TRIM(REGEXP_EXTRACT(receiver_full_address, r'[^,]+,\s*([^,]+)$')) AS province
       ,action_by_name                                                                AS create_order_by
       ,account_id                                                                    -- tạo tài khoản sẽ có account_id, ko tạo tk ~ acount_id = 0
       ,payment_method                                                                --Banking/COD/PAYOO/BUSINESS_WALLET
       ,payment_status                                                                --COMPLETED/WAIT_FOR_PAYMENT/NULL
       ,deliver_method                                                                --FAST/NORMAL
       ,JSON_VALUE(o.extra_props, '$.is_split_payment')                               AS is_split_payment
-      ,JSON_VALUE(o.extra_props, '$.wallet_paid_amount')                             AS wallet_paid_amount
-      ,JSON_VALUE(o.extra_props, '$.secondary_pay_amount')                           AS secondary_pay_amount
+      ,CAST(JSON_VALUE(o.extra_props, '$.wallet_paid_amount') AS INT64)              AS wallet_paid_amount
+      ,CAST(JSON_VALUE(o.extra_props, '$.secondary_pay_amount') AS INT64)            AS secondary_pay_amount
       ,JSON_VALUE(o.extra_props, '$.secondary_pay_method')                           AS secondary_pay_method
       ,price
       ,total_price
       ,total_discount
-      ,delivery_method_fee - CAST(JSON_VALUE(o.extra_props, '$.discount_delivery_fee') as int64 ) AS delivery_method_fee
+      ,delivery_method_fee - CAST(JSON_VALUE(o.extra_props, '$.discount_delivery_fee') AS INT64 ) AS delivery_method_fee
+      ,JSON_VALUE(o.extra_props, '$.delivery_tags')                                  AS delivery_tags
       ,JSON_VALUE(o.extra_props, '$.discount_delivery_fee')                          AS discount_delivery_fee
       ,total_product
       ,DATETIME_ADD(created_time, INTERVAL 7 hour)                                   AS created_time
@@ -98,7 +97,7 @@ LEFT JOIN ${source.ref}.cos_voucher_info v ON o.assigned_order_codes = v.order_c
 LEFT JOIN (SELECT * FROM ${source.platinum}.circa_online_prd_order_sale_order
            QUALIFY ROW_NUMBER () OVER (PARTITION BY order_code ORDER BY created_time DESC) = 1       
         ) s ON o.order_code = s.order_code 
-WHERE sender_name <> 'Cửa hàng Tech Test 1'
+--WHERE sender_name <> 'Cửa hàng Tech Test 1'
 ), location as (
      SELECT distinct district_code
                    , district_name
@@ -111,3 +110,4 @@ SELECT o.*
        ,m.province_name
 FROM map_deliver o
 LEFT JOIN location m ON o.district_code = m.district_code AND o.province_code = m.province_code
+WHERE order_code NOT IN (SELECT DISTINCT order_code FROM map_deliver WHERE  sender_name IN ( 'Cửa hàng Tech Test 1'))

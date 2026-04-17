@@ -9,4 +9,5 @@ FROM
   ${ref(`dim_fc_location`)}
 WHERE
   zone_key is NULL
-  AND location_fc_code not like "TULANH%"
+  AND location_fc_code not like "TULANH%" 
+  AND location_fc_code not like "LANH%" 

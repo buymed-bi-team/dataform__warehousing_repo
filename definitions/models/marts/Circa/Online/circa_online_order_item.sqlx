@@ -60,21 +60,29 @@ WITH base_data AS (
         AND a.client_id = b.client_id
         AND a.base_unit = b.base_unit
     WHERE b.rn = 1
-)
-
+), final AS (
 SELECT
     a.* 
-  , a.quantity * cv.convert_rate AS base_quantity
-  , cv.base_unit
-  , CASE WHEN tag_list like '%deal_1000%' AND price = 1000 THEN TRUE ELSE FALSE END                   AS is_deal1k 
-  , origin_price - price                                                                              AS discount_amount
-  , d.deal_code
-  , d.deal_name
-  , d.campaign_code
-  , d.campaign_name
+  ,a.quantity * cv.convert_rate AS base_quantity
+  ,CONCAT(a.product_id, "_", 1) AS product_client_id
+  ,cv.base_unit
+  ,CASE WHEN tag_list like '%deal_1000%' AND price = 1000 THEN TRUE ELSE FALSE END                   AS is_deal1k 
+  ,origin_price - price                                                                              AS discount_amount
+  ,d.deal_code
+  ,d.deal_name
+  ,d.campaign_code
+  ,d.campaign_name
   ,product_name
+  
 FROM base_data a
 LEFT JOIN ${source.ref}.dim_promotion_event_circa d  ON a.promotion_event_id = d.id
 LEFT JOIN (SELECT * FROM ${source.ref}.cos_dim_product WHERE client_id = 1) p on a.product_id = p.product_id
 LEFT JOIN base_unit cv ON a.product_id = cv.product_id AND a.unit = cv.convert_unit
- 
+)
+SELECT i.*
+       ,po_code
+       ,so_code
+       ,ordered_quantity
+       ,source_type
+FROM final i
+LEFT JOIN  ${source.ref}.cos_order_item_demand o ON i.order_code = o.reference_order_in_platform AND i.product_client_id = o.product_client_id AND i.unit = o.unit

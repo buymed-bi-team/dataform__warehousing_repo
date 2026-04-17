@@ -2,9 +2,6 @@
 config {
     type: "table",
     description: `map_order_thuoc_si  item detail PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`,
-    /*Source:
-      ${source.silver}.marketplace_prd_order_v2_order_item
-      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5,*/
     tags: ["custom_1h_past5"],
     name: "fact_loyalty_log",
     columns: {
@@ -12,17 +9,20 @@ config {
     }
 }
 
-Select
-    o.created_date
-    ,o.pos_id
-    ,o.order_id
-    ,o.entity_id
-    ,o.order_code
-    ,o.order_type 
-    ,t.change_loyalty_point
-    , case when t.change_loyalty_point < 0 THEN "redeemed"
-           when t.change_loyalty_point > 0 THEN "earned"
-           end as  loyalty_point_type
-from ${source.ref}.cos_fact_order o
-left join ${source.circa_os}.entity_entity_wallet_transaction t on o.order_id = t.ref_id
-where t.ref_id is not null and o.order_type <> "RETURN"
+SELECT
+      o.created_date
+    , o.pos_id
+    , o.order_id
+    , o.entity_id
+    , o.order_code
+    , o.order_type
+    , t.change_loyalty_point
+    , CASE
+          WHEN t.change_loyalty_point < 0 THEN 'redeemed'
+          WHEN t.change_loyalty_point > 0 THEN 'earned'
+      END AS loyalty_point_type
+FROM ${source.ref}.cos_fact_order o
+LEFT JOIN ${source.circa_os}.entity_entity_wallet_transaction t
+    ON o.order_id = t.ref_id
+WHERE t.ref_id IS NOT NULL
+  AND o.order_type <> 'RETURN'

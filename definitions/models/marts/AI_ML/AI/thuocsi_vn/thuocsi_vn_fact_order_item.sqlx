@@ -1,8 +1,23 @@
 config {
-    type: 'view',
+    type: 'incremental',
     schema: "buymed_innovation",
     description: `All orders item in the Vietnam marketplace (including tender orders).`,
-    tags: ['AI_THUOCSI_VN']
+    tags: ['AI_THUOCSI_VN', "innovation_10m"],
+    bigquery: {
+        partitionBy: "DATE(created_time)",
+        clusterBy: ["product_id", "sku_key","seller_class", "channel"]
+    },
+}
+
+pre_operations {
+    ${when(
+        incremental(),
+        `     
+            DELETE FROM ${self()}
+            WHERE DATE(created_time) >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 1 MONTH);            
+        `
+        )
+    }
 }
 
 WITH
@@ -31,10 +46,12 @@ WITH
             END AS shipping_ward_code,
             total_discount,
             a.warehouse_code,
-            SAFE_CAST(JSON_VALUE(a.invoice, '$.invoice_request') AS BOOLEAN) AS invoice_request
+            SAFE_CAST(JSON_VALUE(a.invoice, '$.invoice_request') AS BOOLEAN) AS invoice_request,
+            payment_method,
         FROM ${source.platinum}.marketplace_prd_order_v2_order AS a
         WHERE 1=1
             -- AND created_date >= "2022-01-01"
+            AND a.created_date >= ${when(incremental(), `DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 1 MONTH)`, `"2025-01-01"`)}
             AND status <> "CANCEL"
         UNION ALL
         SELECT
@@ -56,11 +73,13 @@ WITH
             END AS shipping_ward_code,
             0,
             p.fc_code,
-            TRUE
+            TRUE,
+            payment_method
         FROM ${source.platinum}.tender_prd_core_tender_orders AS a
             LEFT JOIN ${ref('gold_buymed_vn2','dim_province')} AS p ON a.province_code = p.province_code
         WHERE 1=1
             -- AND created_date >= "2022-01-01"
+            AND a.created_date >= ${when(incremental(), `DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 1 MONTH)`, `"2025-01-01"`)}
             AND status <> "CANCELLED"
     )
 
@@ -116,12 +135,14 @@ WITH
             , g.urban_rural
             , o.total_discount / COUNT(1) OVER(PARTITION BY a.order_id) AS total_discount
             , invoice_request
+            , payment_method
         FROM ${source.platinum}.marketplace_prd_order_v2_order_item AS a
             LEFT JOIN ${source.platinum}.seller_prd_core_seller AS s ON a.seller_code = s.code
             LEFT JOIN fact_order AS o ON a.order_id = o.order_id
             LEFT JOIN ${ref('gold_buymed_vn2','dim_geo_location')} AS g ON o.shipping_ward_code = g.location_code
         WHERE 1=1
-            AND a.created_date >= "2025-01-01"
+            -- AND a.created_date >= "2025-01-01"
+            AND a.created_date >= ${when(incremental(), `DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 1 MONTH)`, `"2025-01-01"`)}
             AND o.created_date >= "2025-01-01"
             -- AND o.status <> "CANCEL"
         UNION ALL
@@ -148,11 +169,13 @@ WITH
             , g.urban_rural
             , o.total_discount/ COUNT(1) OVER(PARTITION BY a.order_id) AS total_discount
             , invoice_request
+            , payment_method
         FROM ${source.platinum}.tender_prd_core_tender_order_items AS a
             LEFT JOIN fact_order AS o ON a.order_id = o.order_id
             LEFT JOIN ${ref('gold_buymed_vn2','dim_geo_location')} AS g ON o.shipping_ward_code = g.location_code
         WHERE 1=1
-            AND a.created_date >= "2025-01-01"
+            -- AND a.created_date >= "2025-01-01"
+            AND a.created_date >= ${when(incremental(), `DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 1 MONTH)`, `"2025-01-01"`)}
             AND o.created_date >= "2025-01-01"
     )
 

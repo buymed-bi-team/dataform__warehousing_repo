@@ -1,0 +1,26 @@
+config {
+    type: "table",
+    description: `Circa OS purchase order item detail PIC: huyen.ngo; model_type: Table ;schedule: At minute 15 every hour`,
+    tags: ["custom_1h_past15"],
+    name: "cos_purchase_order_return",
+    columns: {
+        
+    }
+}
+
+   SELECT
+     DATETIME_ADD(rto.created_at, INTERVAL 7 HOUR)                                                                       AS created_at
+     ,DATE(DATETIME_ADD(rto.created_at, INTERVAL 7 HOUR)     )                                                           AS created_date
+    ,rto.source_id
+    ,pos_id
+    ,rto.client_id
+    ,rti.product_id
+    ,rti.unit_id
+    ,SUM(rti.quantity) AS quantity
+    ,SUM(rti.base_quantity) AS base_quantity
+    ,SUM(rti.amount) AS amount
+    ,CONCAT(product_id, "_", client_id)                                                                                 AS product_client_id
+  FROM ${source.circa_os}.order_return_po rto
+  JOIN ${source.circa_os}.order_return_po_item rti ON rto.id = rti.return_po_id
+  WHERE rto.status NOT IN ('PENDING', 'CANCELED')
+  GROUP BY ALL

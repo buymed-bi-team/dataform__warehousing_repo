@@ -21,8 +21,8 @@ SELECT DISTINCT
            ELSE 1
        END AS is_same_day
      , CONCAT(a.product_id, "_", b.client_id) AS product_client_id
-FROM buymed_circa_v2.inventory_location_detail_historical_cut_off AS a
-LEFT JOIN lakehouse-prod-394907.buymed_circa_v2.inventory_location AS b 
+FROM ${source.circa_os}.inventory_location_detail_historical_cut_off AS a
+LEFT JOIN ${source.circa_os}.inventory_location AS b 
        ON a.location_id = b.id 
       AND a.client_id = b.client_id
 WHERE  a.cutoff_date_index >= '2025-12-30'
@@ -33,3 +33,83 @@ WHERE  a.cutoff_date_index >= '2025-12-30'
       , '2026-03-31'
   )
 GROUP BY ALL
+
+UNION ALL
+
+SELECT DISTINCT
+       a.cutoff_date_index
+     , DATE_TRUNC(a.cutoff_date_index, MONTH) AS som
+     , b.pos_id
+     , a.product_id
+     , SUM(on_hand_qty) AS on_hand_qty
+     , SUM(on_hand_qty * cost_price_include_tax) AS stock_value
+     , a.client_id
+     , CASE 
+           WHEN DATE(DATETIME_ADD(a.updated_at, INTERVAL 7 HOUR)) > DATE(a.cutoff_date_index) THEN 0 
+           ELSE 1
+       END AS is_same_day
+     , CONCAT(a.product_id, "_", b.client_id) AS product_client_id
+FROM ${source.circa_os}.inventory_location_detail_historical_cut_off AS a
+LEFT JOIN ${source.circa_os}.inventory_location AS b 
+       ON a.location_id = b.id 
+      AND a.client_id = b.client_id
+WHERE  a.cutoff_date_index >= '2026-03-20'
+  AND a.cutoff_date_index IN (
+       '2026-03-20'
+  )
+      AND a.client_id = 38
+GROUP BY ALL
+
+UNION ALL
+
+SELECT DISTINCT
+       a.cutoff_date_index
+     , DATE_TRUNC(a.cutoff_date_index, MONTH) AS som
+     , b.pos_id
+     , a.product_id
+     , SUM(on_hand_qty) AS on_hand_qty
+     , SUM(on_hand_qty * cost_price_include_tax) AS stock_value
+     , a.client_id
+     , CASE 
+           WHEN DATE(DATETIME_ADD(a.updated_at, INTERVAL 7 HOUR)) > DATE(a.cutoff_date_index) THEN 0 
+           ELSE 1
+       END AS is_same_day
+     , CONCAT(a.product_id, "_", b.client_id) AS product_client_id
+FROM ${source.circa_os}.inventory_location_detail_historical_cut_off AS a
+LEFT JOIN ${source.circa_os}.inventory_location AS b 
+       ON a.location_id = b.id 
+      AND a.client_id = b.client_id
+WHERE  a.cutoff_date_index >= '2026-03-13'
+  AND a.cutoff_date_index IN (
+       '2026-03-13'
+  )
+      AND a.client_id = 39
+GROUP BY ALL
+
+
+UNION ALL
+
+SELECT DISTINCT
+       a.cutoff_date_index
+     , DATE_TRUNC(a.cutoff_date_index, MONTH) AS som
+     , b.pos_id
+     , a.product_id
+     , SUM(on_hand_qty) AS on_hand_qty
+     , SUM(on_hand_qty * cost_price_include_tax) AS stock_value
+     , a.client_id
+     , CASE 
+           WHEN DATE(DATETIME_ADD(a.updated_at, INTERVAL 7 HOUR)) > DATE(a.cutoff_date_index) THEN 0 
+           ELSE 1
+       END AS is_same_day
+     , CONCAT(a.product_id, "_", b.client_id) AS product_client_id
+FROM ${source.circa_os}.inventory_location_detail_historical_cut_off AS a
+LEFT JOIN ${source.circa_os}.inventory_location AS b 
+       ON a.location_id = b.id 
+      AND a.client_id = b.client_id
+WHERE  a.cutoff_date_index >= '2026-03-27'
+  AND a.cutoff_date_index IN (
+       '2026-03-27'
+  )
+      AND a.client_id = 40
+GROUP BY ALL
+

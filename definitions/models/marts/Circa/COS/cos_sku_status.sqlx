@@ -1,75 +1,89 @@
  config {
     type: "table",
-    description: `PIC: huyen.ngo; model_type: Table ;schedule: At 10h30`
-    /*Source:
-      ${source.silver}.marketplace_prd_order_v2_order_item
-      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
+    description: `PIC: huyen.ngo; model_type: Table ;schedule: At 10h30`,
     name: "cos_sku_status",
-    tags: ["custom_1h_past15"],
-    columns: {/*
-        order_id: "NonNull |" + docs.order_id,
-        customer_id: "NonNull | The unique identifier for each customer"*/
-        
-    }
-}
-with base_data as (
-Select distinct product_id
-from ${source.circa_os}.order_purchase_order_item
-where (sku is not null or sku <> '')
-     and received_quantity <> 0
-) --lấy danh sách sản phẩm đã mua trong quá khứ
-,inventory_by_product as (
-Select distinct v.product_id
-                ,pos_id
-                ,sum(v.on_hand_quantity) as current_stock_by_product
-                ,td.convert_rate
-                ,td.unit 
-                ,sum(v.on_hand_quantity)/td.convert_rate as stock_qty
-                ,sum(cost_price_include_tax * v.on_hand_quantity) as current_stock_value
-                ,p.client_id
-from ${source.ref}.cos_fact_inventory v
-left join ${source.ref}.circa_pos_profile p on v.pos_id = p.id 
-left join ${source.ref}.cos_dim_product td on v.product_id = td.product_id
-where p.type = 'CIRCA'
-      and p.id is not null
-      and seller_code not in ( 'CIRCA_MKP', 'MARKETING')
-      and v.location_type <> 'CANCELLED'
-      and td.client_id = 1
-group by all
----- tổng tồn kho hiện tại theo product , pos
-), customer as ( select distinct o.pos_id
-                        ,oi.product_id
-                        ,count(distinct o.entity_id) as no_customers
-                        ,sum(oi.unit_price * oi.quantity) -  coalesce(sum(oi.unit_price *  rt.quantity),0) as GMV
-                        ,sum(unit_cost_price *  oi.quantity ) -  coalesce(sum(unit_cost_price *  rt.quantity),0) as cogs
-                        ,o.client_id
-             from  ${source.ref}.cos_fact_order o
-             left join  ${source.ref}.cos_fact_order_item oi on o.order_id = oi.order_id
-             left join buymed_circa_v2.entity_customer e on o.entity_id = e.id
-             left join  ${source.ref}.cos_return_completed_detail rt on oi.order_id = rt.order_id and oi.sku_code = rt.sku_code and oi.lot_date = rt.lot_date and oi.client_id = rt.client_id
+    tags: ["custom_1h_past15"]
 
-             where o.completed_date is not null
-                   and o.client_id = 1
-                   and o.entity_id <> '00000000-0000-0000-0000-000000000000'
-                   and e.phone_number is not null and e.phone_number <> ''
-                   and regexp_replace(e.phone_number, '0', '') <> ''
-                   and o.status in ('COMPLETED', 'COMPLETED_SHIPPING')
-                   and owner_name not in ('CIRCA MARKETING')
-                   and o.completed_date >= CURRENT_DATE() - INTERVAL 1 MONTH
-             group by all)
-, by_product as (
-Select distinct o.product_id
-            , o.* except (product_id)
-            ,c.no_customers
-            ,c.GMV
-            ,concat(o.product_id, "_", o.client_id) as product_client_id
-            ,case when o.current_stock_by_product > 0 then 'NORMAL'
-                    else 'OOS' END AS product_status
-from inventory_by_product o
-left join customer c on o.product_id = c.product_id and o.pos_id = c.pos_id and c.client_id = o.client_id
-left join base_data on o.product_id = base_data.product_id 
--- lấy trạng thái hiện tại của sản phẩm theo tồn kho, detail by sku
+}
+
+WITH base_data AS (
+    SELECT DISTINCT product_id
+    FROM ${source.circa_os}.order_purchase_order_item
+    WHERE (sku IS NOT NULL OR sku <> '')
+      AND received_quantity > 0
+) -- lấy danh sách sản phẩm đã mua trong quá khứ
+
+, inventory_by_product AS (
+    SELECT DISTINCT
+          v.product_id
+        , pos_id
+        , SUM(v.on_hand_quantity) AS current_stock_by_product
+        , td.convert_rate
+        , td.unit
+        , SUM(v.on_hand_quantity) / td.convert_rate AS stock_qty
+        , SUM(cost_price_include_tax * v.on_hand_quantity) AS current_stock_value
+        , p.client_id
+    FROM ${source.ref}.cos_fact_inventory v
+    LEFT JOIN ${source.ref}.circa_pos_profile p ON v.pos_id = p.id
+    LEFT JOIN ${source.ref}.cos_dim_product td ON v.product_id = td.product_id AND v.client_id = td.client_id
+    WHERE p.type = 'CIRCA'
+      AND p.id IS NOT NULL
+      AND seller_code NOT IN ('CIRCA_MKP', 'MARKETING')
+      AND v.location_type <> 'CANCELLED'
+      AND v.client_id = 1
+    GROUP BY ALL
+) -- tổng tồn kho hiện tại theo product, pos
+
+, customer AS (
+    SELECT DISTINCT
+          o.pos_id
+        , oi.product_id
+        , COUNT(
+                 DISTINCT CASE
+                     WHEN entity_id = '00000000-0000-0000-0000-000000000000'
+                       OR entity_id = '0'
+                     THEN CONCAT(entity_id, o.order_code)
+                     ELSE entity_id
+                 END
+            ) AS no_customers
+        , SUM(oi.unit_price * oi.quantity) - COALESCE(SUM(oi.unit_price * rt.quantity), 0) AS GMV
+        , SUM(unit_cost_price * oi.quantity) - COALESCE(SUM(unit_cost_price * rt.quantity), 0) AS cogs
+        , o.client_id
+    FROM ${source.ref}.cos_fact_order o
+    LEFT JOIN ${source.ref}.cos_fact_order_item oi ON o.order_id = oi.order_id
+    LEFT JOIN buymed_circa_v2.entity_customer e ON o.entity_id = e.id
+    LEFT JOIN ${source.ref}.cos_return_completed_detail rt ON oi.order_id = rt.order_id
+            AND oi.sku_code = rt.sku_code
+            AND oi.lot_date = rt.lot_date
+            AND oi.client_id = rt.client_id
+    WHERE o.completed_date IS NOT NULL
+      AND o.client_id = 1
+      AND o.status IN ('COMPLETED', 'COMPLETED_SHIPPING')
+      AND owner_name NOT IN ('CIRCA MARKETING')
+      AND o.completed_date >= CURRENT_DATE() - INTERVAL 1 MONTH
+    GROUP BY ALL
 )
-Select p.*
-        ,ts.sku_system_status as thuocsi_status from by_product p 
-left join ${source.ref}.sku_status_thuocsi ts on p.product_id =  ts.product_id
+
+, by_product AS (
+    SELECT DISTINCT
+          o.product_id
+        , o.* EXCEPT (product_id)
+        , c.no_customers
+        , c.GMV
+        , CONCAT(o.product_id, "_", o.client_id) AS product_client_id
+        , CASE
+              WHEN o.current_stock_by_product > 0 THEN 'NORMAL'
+              ELSE 'OOS'
+          END AS product_status
+    FROM inventory_by_product o
+    LEFT JOIN customer c ON o.product_id = c.product_id
+       AND o.pos_id = c.pos_id
+       AND c.client_id = o.client_id
+    LEFT JOIN base_data ON o.product_id = base_data.product_id
+) -- lấy trạng thái hiện tại của sản phẩm theo tồn kho, detail by sku
+
+SELECT
+      p.*
+    , ts.sku_system_status AS thuocsi_status
+FROM by_product p
+LEFT JOIN ${source.ref}.sku_status_thuocsi ts ON p.product_id = ts.product_id

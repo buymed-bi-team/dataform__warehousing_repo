@@ -62,6 +62,7 @@ SELECT DISTINCT
      ,gift_code
      ,o.delivery_amount
     ,o.client_id
+    ,o.payment_method
 FROM ${source.circa_os}.order_order o
 LEFT JOIN ${source.ref}.cos_return_completed rt ON o.code = rt.order_code
 LEFT JOIN ${source.ref}.circa_pos_profile p ON o.pos_id = p.id AND o.client_id = p.client_id
@@ -74,9 +75,11 @@ WHERE o.type <> 'RETURN'
 GROUP BY ALL
 ), map_inf AS (
 SELECT  TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
-       ,o.* except (created_date)
+       ,o.* except (created_date, payment_method, created_at)
        ,CASE WHEN o.type = 'ONLINE' THEN i.created_date
              ELSE o.created_date END AS created_date
+       ,CASE WHEN o.type = 'ONLINE' THEN i.created_time
+             ELSE o.created_at END AS created_at
        ,i.receiver_name
        ,i.receiver_full_address
        ,CASE
@@ -84,6 +87,12 @@ SELECT  TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
            ELSE 'False' END AS is_returned
        ,CASE WHEN o.channel = 'O2O' THEN i.customer_phone ELSE e.phone_number END AS customer_phone
        ,CASE WHEN o.channel = 'O2O' THEN i.customer_name ELSE e.name END AS customer_name
+       ,CASE WHEN o.channel = 'O2O' THEN i.payment_method 
+                ELSE o.payment_method END AS first_payment_method
+        ,CASE WHEN o.channel = 'O2O' AND is_split_payment = 'true' THEN i.secondary_pay_method 
+              ELSE NULL END AS secondary_pay_method
+        ,CASE WHEN o.channel = 'O2O' AND is_split_payment = 'true' THEN i.secondary_pay_amount 
+        ELSE NULL END AS secondary_pay_amount
        ,e.title
        ,concat(o.pos_code, "_", FORMAT_DATE('%Y-%m', o.completed_date)) as target_id
        ,concat(FORMAT_DATE('%Y-%m', coalesce(o.completed_date,o.created_date)), "_", o.pos_code,"_", n.email) as  ym_emp_pos
@@ -119,15 +128,37 @@ FROM (
 
 SELECT a.*
        ,b.customer_phone_cleaned
-       ,CASE
-            WHEN b.customer_phone_cleaned IS NULL THEN TRUE
-            ELSE ROW_NUMBER() OVER (
-                PARTITION BY b.customer_phone_cleaned, a.type
-                ORDER BY a.created_at, a.order_code
-            ) = 1
-        END AS is_first_order
+        ,CASE
+             WHEN customer_phone_cleaned IS NULL THEN TRUE
+             WHEN status NOT IN ('COMPLETED', 'COMPLETE_SHIPPING') THEN FALSE
+             WHEN COUNTIF(status IN ('COMPLETED', 'COMPLETE_SHIPPING')) OVER (
+                 PARTITION BY customer_phone_cleaned
+                 ORDER BY created_at
+             ) = 1 THEN TRUE
+             ELSE FALSE
+             END AS is_first_order
+        ,CASE
+             WHEN customer_phone_cleaned IS NULL THEN TRUE
+             WHEN status NOT IN ('COMPLETED', 'COMPLETE_SHIPPING') THEN FALSE
+             WHEN COUNTIF(status IN ('COMPLETED', 'COMPLETE_SHIPPING')) OVER (
+                 PARTITION BY customer_phone_cleaned
+                 ORDER BY created_at, a.order_code, type
+             ) = 1 THEN TRUE
+             ELSE FALSE
+         END AS is_first_channel_order
+        ,CASE
+             WHEN customer_phone_cleaned IS NULL THEN TRUE
+             WHEN status NOT IN ('COMPLETED', 'COMPLETE_SHIPPING') THEN FALSE
+             WHEN COUNTIF(status IN ('COMPLETED', 'COMPLETE_SHIPPING')) OVER (
+                 PARTITION BY customer_phone_cleaned
+                 ORDER BY created_at, a.order_code, pos_id
+             ) = 1 THEN TRUE
+             ELSE FALSE
+          END AS is_first_pos_order
 FROM map_inf a
 LEFT JOIN clean_phone b ON a.order_code = b.order_code 
+
+
 
 -- where status in ('COMPLETED', 'COMPLETED_SHIPPING')
 --       and client_id <> 1

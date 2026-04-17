@@ -9,6 +9,7 @@ SELECT
     product_id
     , sku AS sku_code
     , CONCAT(product_id, "_", seller_code, "_", warehouse_code) AS sku_key
+    , b.seller_id
     , seller_code
     , seller_class
     , warehouse_code

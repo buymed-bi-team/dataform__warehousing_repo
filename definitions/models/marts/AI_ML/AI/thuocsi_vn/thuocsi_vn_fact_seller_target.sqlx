@@ -1,0 +1,14 @@
+config {
+    type: 'table',
+    schema: "buymed_innovation",
+    description: `Seller Target  Vietnam marketplace.`,
+    tags: ['AI_THUOCSI_VN', "custom_1h_past10"]
+}
+
+SELECT 
+    TRIM(brand) AS brand
+    , target_gmv
+    , target_net_profit
+    , warehouse_code
+    , year_month
+FROM ${source.external}.import_target_seller

@@ -22,6 +22,7 @@ SELECT
     , seller_class
     , warehouse_code
     , stock_quantity
+    , available_quantity
     , avg_demand_l30d AS avg_daily_demand_l30d
     , SAFE_DIVIDE(stock_quantity, avg_demand_l30d) AS stock_days
 FROM platinum_buymed_th.warehouse_prd_inventory_sku AS a

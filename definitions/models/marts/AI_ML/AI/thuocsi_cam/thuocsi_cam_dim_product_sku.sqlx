@@ -20,6 +20,9 @@ SELECT
     , s.sku_status
     , s.sku_active
     , s.sku_classification AS sku_demand_classification
+    , IF(s.vat > 0, "TRADING", "NON-TRADING") AS trading_type
+    , item_code
 FROM `lakehouse-prod-394907.gold_buymed_cam.dim_sku` AS s
     LEFT JOIN `lakehouse-prod-394907.gold_buymed_cam.dim_product` AS p ON s.product_id = p.product_id
     LEFT JOIN lakehouse-prod-394907.platinum_buymed_cam.seller_prd_core_seller AS sl ON sl.code = s.seller_code
+    -- LEFT JOIN platinum_buymed_cam.marketplace_prd_product_v2_sku AS sku ON sku.sku = s.sku_code

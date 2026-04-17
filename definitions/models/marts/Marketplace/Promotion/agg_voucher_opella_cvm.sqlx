@@ -1,0 +1,116 @@
+config {
+    type: "table", 
+    description: 
+        `
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        `,
+    tags: ["custom_1h_past5", "PROMOTION_MKP"]
+}
+
+WITH
+    customer AS (
+        SELECT
+            c.customer_id
+            , c.customer_name
+            , ct.customer_tag_priority
+            , g.district_name
+            , g.province_name
+            , g.region_name
+            , co.location_id AS opella_location_id
+        FROM ${ref("dim_customer")} AS c
+            LEFT JOIN ${ref("dim_geo_location")} AS g ON c.location_code = g.location_code
+            LEFT JOIN gold_buymed_vn2.dim_customer_tag_priority AS ct ON c.customer_id = ct.customer_id
+            LEFT JOIN ${ref("dim_customer_opella")} AS co ON c.customer_id = co.customer_id
+        WHERE 1=1
+            AND REGEXP_CONTAINS(c.tags, r'\"SHARE_OPELLA\"')
+    ),
+
+    promotion AS (
+        SELECT
+            promotion_id
+            , promotion_name
+            , PARSE_DATE("%Y-%b", SPLIT(promotion_name, '-CTTT-')[SAFE_OFFSET(0)]) AS promotion_month
+            , INITCAP( ARRAY_REVERSE( SPLIT(REGEXP_REPLACE( TRIM(promotion_name), '_', '-'), "-"))[SAFE_OFFSET(0)]) AS promotion_type
+        FROM ${ref("dim_promotion")}
+        WHERE 1=1
+            AND promotion_id IN (5165, 5160, 5121, 5120, 5118, 5117,  5116, 5115)
+    ),
+
+    voucher AS (
+        SELECT
+            promotion_id
+            , voucher_code
+            , max_usage_per_customer
+            , voucher_discount
+            , voucher_status
+            , end_date
+        FROM ${ref("dim_voucher")}
+        WHERE promotion_id IN (5165, 5160, 5121, 5120, 5118, 5117,  5116, 5115)
+    ),
+
+    order_voucher AS (
+        SELECT
+            o.order_id
+            , JSON_VALUE(r, "$.code") AS voucher_code
+            , SAFE_CAST(JSON_VALUE(r, '$.discount_value') AS FLOAT64) AS discount_value
+        FROM ${ref("fact_order")} AS o
+            , UNNEST(JSON_QUERY_ARRAY(o.redeem_apply_result)) AS r
+        WHERE 1=1
+            AND DATE(o.created_at) >= "2026-03-01"
+    ),
+
+    voucher_used AS (
+        SELECT
+            a.customer_id
+            , a.voucher_code
+            , _order_id
+            -- , ov.discount_value
+        FROM ${source.platinum}.marketplace_prd_promotion_user_promotion AS a
+            LEFT JOIN UNNEST(JSON_VALUE_ARRAY(order_ids)) AS _order_id
+            -- LEFT JOIN order_voucher AS ov ON ov.order_id = SAFE_CAST(_order_id AS INT64) AND ov.voucher_code = a.voucher_code
+        WHERE 1=1
+            AND promotion_id IN (5165, 5160, 5121, 5120, 5118, 5117,  5116, 5115)
+            AND created_date >= "2026-03-01"
+    )
+
+SELECT
+    c.customer_id
+    , c.opella_location_id
+    , c.customer_name
+--     , c.customer_tag_priority
+    , v.voucher_code
+    , v.voucher_discount
+--     , vu.total_discount_value
+    , p.promotion_type AS product_type
+    , NULLIF(v.max_usage_per_customer,0) AS max_usage_per_customer
+    , vu.total_redeemed_orders
+    , v.max_usage_per_customer - COALESCE(vu.total_redeemed_orders, 0) AS remaining_redemptions
+    , v.voucher_discount * total_redeemed_orders AS total_issued_voucher_value
+    , v.voucher_discount * (v.max_usage_per_customer - COALESCE(vu.total_redeemed_orders, 0)) AS total_remaining_voucher_value
+    , CASE
+        WHEN v.end_date < CURRENT_DATE("+7") THEN "Đã hết hạn"
+        WHEN v.voucher_status = "HIDE" THEN "Đã tắt"
+        WHEN v.max_usage_per_customer - COALESCE(vu.total_redeemed_orders, 0) = 0 THEN "Đã sử dụng"
+        ELSE "Hoạt động"
+    END AS voucher_status
+    , v.end_date
+    , c.region_name
+    , c.province_name
+    , c.district_name
+    , p.promotion_month AS month
+FROM customer AS c
+    LEFT JOIN (
+        SELECT
+            customer_id
+            , voucher_code
+            , COUNT(DISTINCT _order_id) AS total_redeemed_orders
+            -- , SUM(discount_value) AS total_discount_value
+        FROM voucher_used
+        GROUP BY customer_id, voucher_code
+    ) AS vu ON c.customer_id = vu.customer_id
+    LEFT JOIN voucher AS v ON vu.voucher_code = v.voucher_code
+    LEFT JOIN promotion AS p ON v.promotion_id = p.promotion_id
+WHERE 1=1
+    AND v.voucher_code IS NOT NULL
