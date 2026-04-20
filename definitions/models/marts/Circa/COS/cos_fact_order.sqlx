@@ -111,7 +111,7 @@ SELECT
     WHEN STARTS_WITH(last_number, '84') THEN CONCAT('0', SUBSTR(last_number, 3))
     WHEN LENGTH(last_number) = 9 THEN CONCAT('0', last_number)
     WHEN LENGTH(last_number) = 10 AND STARTS_WITH(last_number, '0') THEN last_number
-    ELSE NULL
+    ELSE last_number
   END AS customer_phone_cleaned
 FROM (
   SELECT DISTINCT order_code

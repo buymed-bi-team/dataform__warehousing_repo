@@ -47,6 +47,6 @@ SELECT * EXCEPT(phone_number_cleaned)
             WHEN STARTS_WITH(phone_number_cleaned, '84') THEN CONCAT('0', SUBSTR(phone_number_cleaned, 3))
             WHEN LENGTH(phone_number_cleaned) = 9 THEN CONCAT('0', phone_number_cleaned)
             WHEN LENGTH(phone_number_cleaned) = 10 AND STARTS_WITH(phone_number_cleaned, '0') THEN phone_number_cleaned
-            ELSE NULL
+            ELSE phone_number_cleaned
         END AS customer_phone_cleaned
 FROM t
