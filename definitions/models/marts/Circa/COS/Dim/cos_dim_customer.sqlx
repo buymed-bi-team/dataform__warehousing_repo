@@ -39,7 +39,7 @@ SELECT DISTINCT
      ,phone_last_3_digits
      ,phone_last_4_digits
 FROM buymed_circa_v2.entity_customer AS customer_v2
-WHERE source not in ('FS Test', 'Cửa hàng Tech Test 1', 'Cửa hàng Tech Test 2')
+--WHERE source not in ('FS Test', 'Cửa hàng Tech Test 1', 'Cửa hàng Tech Test 2')
 )
 SELECT * EXCEPT(phone_number_cleaned)
        ,CASE
