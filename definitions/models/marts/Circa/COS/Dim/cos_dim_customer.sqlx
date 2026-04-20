@@ -35,7 +35,7 @@ SELECT DISTINCT
      , CASE WHEN source LIKE 'FC Circa%' OR source LIKE 'Nhà Thuốc%' OR source LIKE 'Nhà thuốc%' THEN 'FS'
             WHEN source NOT LIKE 'FC Circa%' AND (source LIKE 'CIRCA%' OR source LIKE 'Circa%' OR source = 'Mini Circa Vincom Đồng Khởi')  THEN 'OS'
        ELSE source END AS source_store_type
-     ,ARRAY_REVERSE(REGEXP_EXTRACT_ALL(phone_number, r'[0-9]{9,11}'))[SAFE_OFFSET(0)] AS phone_number_cleaned
+     ,ARRAY_REVERSE(REGEXP_EXTRACT_ALL(phone_number, r'[0-9]{6,11}'))[SAFE_OFFSET(0)] AS phone_number_cleaned
      ,phone_last_3_digits
      ,phone_last_4_digits
 FROM buymed_circa_v2.entity_customer AS customer_v2

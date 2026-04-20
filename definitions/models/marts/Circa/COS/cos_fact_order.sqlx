@@ -115,7 +115,7 @@ SELECT
   END AS customer_phone_cleaned
 FROM (
   SELECT DISTINCT order_code
-    ,ARRAY_REVERSE(REGEXP_EXTRACT_ALL(customer_phone, r'[0-9]{9,11}'))[SAFE_OFFSET(0)] AS last_number
+    ,ARRAY_REVERSE(REGEXP_EXTRACT_ALL(customer_phone, r'[0-9]{6,11}'))[SAFE_OFFSET(0)] AS last_number
   FROM map_inf
   WHERE
   -- client_id = 1
