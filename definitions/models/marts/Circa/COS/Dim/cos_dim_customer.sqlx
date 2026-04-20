@@ -3,12 +3,13 @@ config {
     type: "table",
     description: `dim_customer PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`,
     tags: ["custom_1h_past5"],
-    name: "dim_customer_v2",
+    name: "cos_dim_customer",
     columns: {
         
     }
 }
 
+WITH t AS (
 SELECT DISTINCT
      customer_v2.name AS customer_name
     ,customer_v2.phone_number
@@ -34,40 +35,18 @@ SELECT DISTINCT
      , CASE WHEN source LIKE 'FC Circa%' OR source LIKE 'Nhà Thuốc%' OR source LIKE 'Nhà thuốc%' THEN 'FS'
             WHEN source NOT LIKE 'FC Circa%' AND (source LIKE 'CIRCA%' OR source LIKE 'Circa%' OR source = 'Mini Circa Vincom Đồng Khởi')  THEN 'OS'
        ELSE source END AS source_store_type
+     ,ARRAY_REVERSE(REGEXP_EXTRACT_ALL(phone_number, r'[0-9]{6,11}'))[SAFE_OFFSET(0)] AS phone_number_cleaned
      ,phone_last_3_digits
      ,phone_last_4_digits
 FROM buymed_circa_v2.entity_customer AS customer_v2
-WHERE source not in ('FS Test', 'Cửa hàng Tech Test 1', 'Cửa hàng Tech Test 2')
-     
-
--- UNION ALL 
-
--- SELECT DISTINCT
---      entity1.name AS customer_name
---     ,entity1.phone_number
---     ,entity1.id
---     ,status
---     ,DATE(DATETIME_ADD(created_at, INTERVAL 7 HOUR)) AS created_date
---     ,type
---     ,title
---     ,CONCAT(title, "", name) AS customer_title
---     ,CASE WHEN title = 'Bà'
---             OR title = 'Bác Gái'
---             OR title = 'Chị'
---             OR title = 'Cô' THEN 'Female'
---           WHEN title = 'Anh'
---                OR title = 'Bác Trai'
---                OR title = 'Chú'
---                OR title = 'Ông' THEN 'Male'
---           WHEN title = 'Bạn' OR title IS NULL OR title = '' THEN 'Others' 
---      END AS gender
--- FROM buymed_circa_v2.entity_entity AS entity1
--- WHERE entity1.id <> '00000000-0000-0000-0000-000000000000'
---   AND entity1.id IN (
---       SELECT DISTINCT entity_id 
---       FROM buymed_circa.order_order
---       WHERE pos_id IN (
---           "b6c40920-af79-4fb0-bdc4-9965ddb885d2"
---          ,"e737c882-e90c-4fd2-8a4f-ac6afd248a33"
---       )
---   )
+--WHERE source not in ('FS Test', 'Cửa hàng Tech Test 1', 'Cửa hàng Tech Test 2')
+)
+SELECT * EXCEPT(phone_number_cleaned)
+       ,CASE
+            WHEN phone_number_cleaned IS NULL THEN NULL
+            WHEN STARTS_WITH(phone_number_cleaned, '84') THEN CONCAT('0', SUBSTR(phone_number_cleaned, 3))
+            WHEN LENGTH(phone_number_cleaned) = 9 THEN CONCAT('0', phone_number_cleaned)
+            WHEN LENGTH(phone_number_cleaned) = 10 AND STARTS_WITH(phone_number_cleaned, '0') THEN phone_number_cleaned
+            ELSE phone_number_cleaned
+        END AS customer_phone_cleaned
+FROM t

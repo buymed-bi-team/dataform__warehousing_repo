@@ -1,0 +1,33 @@
+config {
+    type: "table",
+    description: `PIC: huyen.ngo; 
+                  model_type: Table ;
+                  schedule: At minute 10 every hour.Circa OS Transaction order`,
+    tags: ["custom_1h_past10"],
+    name: "cos_fact_customer",
+    columns: {
+        order_id: "NonNull |" + docs.order_id
+       
+    },
+    bigquery: {
+
+    }
+}
+  
+
+SELECT DISTINCT customer_phone_cleaned
+                ,COUNT(DISTINCT order_code) total_orders
+                ,MAX(customer_name) AS customer_name
+                ,COUNT(DISTINCT CASE WHEN type = 'OFFLINE' THEN order_code END) cnt_offline
+                ,MIN( CASE WHEN type = 'OFFLINE' THEN created_date END) first_offline
+                ,MAX( CASE WHEN type = 'OFFLINE' THEN created_date END)last_offline
+                ,COUNT(DISTINCT CASE WHEN type = 'ONLINE' THEN order_code END) cnt_online
+                ,MIN( CASE WHEN type = 'ONLINE' THEN created_date END) first_online
+                ,MAX( CASE WHEN type = 'ONLINE' THEN created_date END) last_online
+               
+from ${source.ref}.cos_fact_order o
+where status IN ('COMPLETED', 'COMPLETE_SHIPPING')
+       and customer_phone_cleaned is not null
+GROUP BY ALL
+ORDER by cnt_online desc
+
