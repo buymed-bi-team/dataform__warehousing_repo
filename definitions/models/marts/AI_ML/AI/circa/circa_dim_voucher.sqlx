@@ -20,21 +20,21 @@ SELECT voucher_code
 
 FROM ${ref('gold_buymed_vn2', 'dim_promotion_voucher_circa')} 
 
-UNION ALL 
+-- UNION ALL 
 
 
-SELECT gift_code
-       ,start_date
-       ,end_date
-       ,is_expired
-       ,limit_value -- số lượng giới hạn
-       ,created_date
-       ,created_by
-       ,client_id
-       ,campaign_code
-       ,campaign_name
-       ,'VOUCHER_GIFT' AS voucher_type 
-       ,concat(gift_code, client_id) AS voucher_key
-FROM ${ref('gold_buymed_vn2', 'dim_promotion_gift')} 
+-- SELECT gift_code
+--        ,start_date
+--        ,end_date
+--        ,is_expired
+--        ,limit_value -- số lượng giới hạn
+--        ,created_date
+--        ,created_by
+--        ,client_id
+--        ,campaign_code
+--        ,campaign_name
+--        ,'VOUCHER_GIFT' AS voucher_type 
+--        ,concat(gift_code, client_id) AS voucher_key
+-- FROM ${ref('gold_buymed_vn2', 'dim_promotion_gift')} 
 
 
