@@ -209,7 +209,7 @@ cte_sku_fc_agg AS (
     COALESCE(
       CASE
         WHEN g.seller_class = "EXTERNAL" THEN g.retail_price_value
-        WHEN g.seller_class = "INTERNAL" THEN COALESCE(NULLIF(g.purchase_price,0), g.retail_price_value)
+        WHEN g.seller_class = "INTERNAL" THEN COALESCE(NULLIF(g.purchase_price,0), NULLIF(r.price_after_rebate_with_adhoc_promotion, 0), NULLIF(g.retail_price_value,0))
       END, 999) AS inventory_price,
     h.location_codes,
     i.fv_vendor_stock_days,
@@ -239,6 +239,8 @@ cte_sku_fc_agg AS (
   ON a.sku_fc_key = h.sku_fc_key
   LEFT JOIN ${ref("dim_sku_sales_region_current")} i 
   ON a.sku_code = i.sku_code AND a.fc_code = i.fc_code
+  LEFT JOIN ${ref("adhoc_pricing_price_after_rebate")} AS r 
+    ON i.sku_key_sales_region_code = r.sku_key_sales_region_code
 ----------------nguyen.tran added---------------
   LEFT JOIN gmv_l30d AS gl 
     ON gl.sku_code = a.sku_code AND gl.sales_region_code = a.sales_region_code
