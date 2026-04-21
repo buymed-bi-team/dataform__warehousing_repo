@@ -19,7 +19,8 @@ model.createIncremental(
     ["platinum_00h00","platinum_12h00", "platinum_staging", "warehouse_prd_picking"],
     {
         has_src_created_date : false,
-        ingestCutOffInterval : "INTERVAL 1 MONTH"
+        ingestCutOffInterval : "INTERVAL 1 MONTH",
+        ignore_deletion: true
     }
 );
 model.assertUnique(

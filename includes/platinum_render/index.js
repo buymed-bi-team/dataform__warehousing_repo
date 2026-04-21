@@ -41,6 +41,8 @@ class PlatinumModel {
             assertions = {},
             ingestCutOffInterval = ``,
             disabled = false,
+            ignore_deletion = false,
+            ignore_query=``
         } = {}
     ) {
         createIncremental({
@@ -49,7 +51,9 @@ class PlatinumModel {
             tags,
             assertions,
             ingestCutOffInterval,
-            disabled
+            disabled,
+            ignore_deletion,
+            ignore_query
         });
         this.config.has_src_created_date = has_src_created_date
     }
