@@ -1,17 +1,10 @@
 config {
     type: "table",
-    description: `Last 13 month| PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour;Table này dùng để tracking những đơn hàng đã được đặt nhưng hàng chưa về, sử dụng cho report Purchase Planner`
-    /*Source:
-      ${source.silver}.marketplace_prd_order_v2_order_item
-      ${source.silver}.marketplace_prd_order_v2_order ,custom_2h_past5*/,
+    description: `Last 13 month| PIC: huyen.ngo; model_type: Table ;
+                  schedule: At minute 5 every hour;Table này dùng để tracking những đơn hàng đã được đặt nhưng hàng chưa về, sử dụng cho report Purchase Planner`,
     tags: ["custom_1h_past15"],
     disabled: true,
     name: "cos_pending_purchase",
-    columns: {
-        order_id: "NonNull |" + docs.order_id,
-        customer_id: "NonNull | The unique identifier for each customer"
-        
-    },
     bigquery: {
         partitionBy: "date(created_at)"
     }
