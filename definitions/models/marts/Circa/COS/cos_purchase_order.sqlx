@@ -54,7 +54,7 @@ SELECT DISTINCT
         ELSE 'others'
      END AS vip_tag
     ,CASE WHEN fulfillment_method = 'SO_THUOCSI' 
-                              AND (dis.name like '%MEDX%' OR (dis.name like '%Buymed%')) THEN 'MEDX'
+                              AND (dis.name like '%MEDX%' OR dis.name like '%Buymed%') THEN 'MEDX'
                               WHEN fulfillment_method = 'IMPORT_STOCK' THEN 'IMPORT_STOCK'
                               WHEN fulfillment_method = 'EXTERNAL' THEN 'EXTERNAL'
                               WHEN fulfillment_method = 'SO_THUOCSI'AND dis.name NOT LIKE '%MEDX%' AND dis.name NOT LIKE '%Buymed%' THEN 'SELLER' 
