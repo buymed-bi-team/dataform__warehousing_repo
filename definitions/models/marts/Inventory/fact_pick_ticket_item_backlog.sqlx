@@ -22,7 +22,7 @@ SELECT
     pti.sku as sku_code,
     pti.erp_product_id as product_id,
     pti.created_date,
-    pti.created_time,
+    pti.created_time + INTERVAL 7 HOUR AS created_time,
     CURRENT_TIMESTAMP() AS current_time,
     TIMESTAMP_DIFF(CURRENT_TIMESTAMP(), pti.created_time, HOUR) AS reserving_hours,
     pti.order_quantity as demand_quantity,
