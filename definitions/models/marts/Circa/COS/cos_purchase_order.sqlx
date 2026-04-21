@@ -16,10 +16,11 @@ SELECT DISTINCT
     ,a.source_id
     ,a.code AS po_code
     ,a.status AS po_status
-    ,a.total_item_amount AS po_amount
-    ,SUM(a.total_item_amount - COALESCE(rt.total_item_amount, 0)) AS actual_po_amount_item_af_rt
-    ,a.actual_total_amount AS actual_po_amount
-    ,SUM(a.actual_total_amount - COALESCE(rt.actual_total_amount, 0)) AS actual_po_amount_af_rt
+    ,SUM(a.discount_amount) AS discount_amount
+    --,a.total_item_amount AS po_amount
+    ,SUM(a.total_item_amount - COALESCE(rt.total_item_amount, 0)) AS actual_po_amount_item_af_rt -- thực nhận tiền hàng
+    --,a.actual_total_amount AS actual_po_amount
+    ,SUM(a.actual_total_amount - COALESCE(rt.actual_total_amount, 0)) AS actual_po_amount_af_rt -- thực nhận tổng đơn, đã trừ discount
     ,DATE(DATETIME_ADD(a.created_at, INTERVAL 7 HOUR)) AS created_date
     ,DATE(DATETIME_ADD(a.completed_at, INTERVAL 7 HOUR)) AS completed_date
     ,DATETIME_ADD(a.created_at, INTERVAL 7 HOUR) AS created_at
