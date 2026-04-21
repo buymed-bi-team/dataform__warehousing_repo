@@ -6,6 +6,9 @@ config {
     name: "circa_pos_profile"
 }
 
+
+
+
 WITH t AS (
 SELECT p.* except(thuocsi_id)
      ,CASE WHEN code = 'POS0042' THEN 30365
@@ -15,7 +18,8 @@ SELECT p.* except(thuocsi_id)
      ELSE thuocsi_id END AS thuocsi_id
      ,s.* EXCEPT (status)
      ,CASE WHEN p.code = 'POS0010' THEN 'Active'
-           ELSE s.status END AS actual_status
+           WHEN client_id = 1 THEN s.status
+           WHEN client_id <> 1 THEN NULL END AS actual_status
 FROM ${source.circa_os}.entity_pos_profile p 
 LEFT JOIN (SELECT * FROM ${source.external}.circa_store_status 
            --WHERE store_format LIKE '%Circa%'
