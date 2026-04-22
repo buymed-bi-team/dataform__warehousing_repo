@@ -25,8 +25,8 @@ WITH
     area AS (
         SELECT
             voucher_code
-            , COALESCE(
-                CASE
+            -- , COALESCE(
+               , CASE
                     WHEN b LIKE "%MIENBAC%" THEN "MIENBAC"
                     -- WHEN b LIKE "%MB_ADM%" THEN "MIENBAC"
                     -- WHEN b LIKE "%113RVDTCV2U1%"THEN "MIENBAC"
@@ -40,9 +40,9 @@ WITH
                     -- WHEN b LIKE "%528UQP72U1Y%" THEN "MIENTRUNG"
                     -- WHEN b LIKE "%48%" THEN "MIENTRUNG"
                     ELSE c.sales_region_code
-                END,
-                "00"
-              ) AS area_code
+                END
+                -- "00"
+               AS area_code
         FROM ${ref('dim_voucher')}
             , UNNEST(JSON_QUERY_ARRAY(scopes)) AS a
             LEFT JOIN UNNEST(JSON_VALUE_ARRAY(a, "$.area_codes")) AS b
