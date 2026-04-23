@@ -70,6 +70,7 @@ WITH base_data AS (
           o.product_id
         , o.* EXCEPT (product_id)
         , c.no_customers
+        , c.orders
         , c.GMV
         , CONCAT(o.product_id, "_", o.client_id) AS product_client_id
         , CASE
