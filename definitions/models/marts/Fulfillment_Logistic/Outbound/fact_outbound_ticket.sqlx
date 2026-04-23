@@ -232,4 +232,4 @@ SELECT
 
 FROM outbound_ticket AS ot
 	LEFT JOIN ${ref('dim_fulfill_cutoff_route')} AS f ON ot.ticket_id = f.ticket_id
-QUALIFY ROW_NUMBER() OVER(PARTITION BY ticket_id) = 1
+-- QUALIFY ROW_NUMBER() OVER(PARTITION BY ticket_id) = 1

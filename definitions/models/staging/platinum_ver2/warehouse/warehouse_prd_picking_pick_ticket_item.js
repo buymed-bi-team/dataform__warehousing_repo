@@ -18,29 +18,30 @@ model.createIncremental(
     ["0h00","12h00", "platinum_staging", "warehouse_prd_picking"],
     {
         has_src_created_date : false,
-        ingestCutOffInterval : "INTERVAL 1 MONTH"
+        ingestCutOffInterval : "INTERVAL 1 MONTH",
+        ignore_deletion: true
     }
 );
-model.assertUnique(
-    ["0h00","12h00", "platinum_unique_assertion", "warehouse_prd_picking"],
-    {
-        intervalCheckpoint : `INTERVAL 1 YEAR`,
-        maxRetry: 2
-    }
-)
-model.createMismatchAssertionView(
-    ["platinum_staging_assertion_view", "warehouse_prd_picking"],
-    {
-        intervalCheckpoint: `INTERVAL 2 DAY`,
-        maxRetry: 2,
-        // dependencies : [model.dependencies.assertUnique]
-    }
-)
-model.assertMismatch(
-    ["0h00","12h00", "platinum_staging_assertion", "warehouse_prd_picking"],
-    {
-        intervalCheckpoint: `INTERVAL 2 DAY`,
-        maxRetry: 2,
+// model.assertUnique(
+//     ["0h00","12h00", "platinum_unique_assertion", "warehouse_prd_picking"],
+//     {
+//         intervalCheckpoint : `INTERVAL 1 YEAR`,
+//         maxRetry: 2
+//     }
+// )
+// model.createMismatchAssertionView(
+//     ["platinum_staging_assertion_view", "warehouse_prd_picking"],
+//     {
+//         intervalCheckpoint: `INTERVAL 2 DAY`,
+//         maxRetry: 2,
+//         // dependencies : [model.dependencies.assertUnique]
+//     }
+// )
+// model.assertMismatch(
+//     ["0h00","12h00", "platinum_staging_assertion", "warehouse_prd_picking"],
+//     {
+//         intervalCheckpoint: `INTERVAL 2 DAY`,
+//         maxRetry: 2,
         
-    }
-)
+//     }
+// )

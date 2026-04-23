@@ -3,10 +3,17 @@ function createIncremental_preOps({
     ctx,
     has_src_created_date = false,
     ingestCutOffInterval = ``,
+    ignore_deletion = false,
+    ignore_query = ``
 }) {
     let preOperation = ``;
+    // let ignore_query =``;
     if (ingestCutOffInterval != ``) {
         ingestCutOffInterval = `WHERE created_date >= CURRENT_DATE() - ${ingestCutOffInterval}`
+    }
+
+    if (ignore_deletion == true) {
+        ignore_query = `AND NOT (action = 'd' AND ingest_time BETWEEN '2026-04-19 17:00:00' AND '2026-04-26 17:00:00')`
     }
 
     if (ctx.incremental()) {
@@ -41,12 +48,14 @@ function createIncremental_preOps({
                 COUNTIF( action = 'd' ) > 0 AS has_delete_data
             FROM ${config.source_schema}.${config.tableName}
             WHERE ingest_time > Ingest_checkpoint
+                ${ignore_query}
         );
 
         CREATE TEMP TABLE new_records AS (
           SELECT DISTINCT mg_id
           FROM ${config.source_schema}.${config.tableName}
           WHERE ingest_time > Ingest_checkpoint
+            ${ignore_query}
         );
 
         IF ( has_new_data = TRUE ) THEN
@@ -77,7 +86,12 @@ function createIncremental_query({
     ctx,
     has_src_created_date = false,
     ingestCutOffInterval = ``,
+    ignore_deletion = false,
+    ignore_query =``
 }) {
+    if (ignore_deletion == true) {
+        ignore_query = `AND NOT (action = 'd' AND ingest_time BETWEEN '2026-04-19 17:00:00' AND '2026-04-26 17:00:00')`
+    }
     const selectQuery = `
     WITH over_tbl AS (
         SELECT
@@ -102,7 +116,8 @@ function createIncremental_query({
         ${ctx.incremental() ? `
         WHERE ingest_time > Ingest_checkpoint - INTERVAL 2 HOUR
         AND mg_id IN (SELECT n.mg_id FROM new_records n)
-        ` : ""}
+        ${ignore_query}
+        ` : `WHERE 1=1 ${ignore_query}`}
         GROUP BY mg_id HAVING action != "d"
     )
     SELECT
@@ -114,7 +129,7 @@ function createIncremental_query({
         CURRENT_DATETIME() AS platinum_refresh
     FROM ${config.source_schema}.${config.tableName}
     WHERE key IN (SELECT o.key FROM over_tbl o)
-    ${ctx.incremental() ? `AND ingest_time > Ingest_checkpoint - INTERVAL 2 HOUR` : ""}
+    ${ctx.incremental() ? `AND ingest_time > Ingest_checkpoint - INTERVAL 2 HOUR ${ignore_query}` : `${ignore_query}`}
 
     -- For stituation that key is dedup because of manual import
     QUALIFY ROW_NUMBER() OVER(w) = 1
@@ -136,6 +151,8 @@ function createIncremental({
     has_src_created_date = false,
     disabled = false,
     ingestCutOffInterval = ``,
+    ignore_deletion = false,
+    ignore_query =``
 }) {
     return publish(config.tableName, {
         type: "incremental",
@@ -152,6 +169,8 @@ function createIncremental({
             ctx,
             has_src_created_date,
             ingestCutOffInterval,
+            ignore_deletion,
+            ignore_query
         })
     ).query (
         ctx => createIncremental_query({
@@ -159,6 +178,8 @@ function createIncremental({
             ctx,
             has_src_created_date,
             ingestCutOffInterval,
+            ignore_deletion,
+            ignore_query
         })
     )
 }
