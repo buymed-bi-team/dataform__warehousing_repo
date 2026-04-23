@@ -40,6 +40,7 @@ WITH
                     -- WHEN b LIKE "%528UQP72U1Y%" THEN "MIENTRUNG"
                     -- WHEN b LIKE "%48%" THEN "MIENTRUNG"
                     WHEN b = "00" THEN "00"
+                    WHEN b IS NULL THEN "00"
                     ELSE c.sales_region_code
                 END
                 -- "00")
