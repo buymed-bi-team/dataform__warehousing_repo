@@ -46,6 +46,7 @@ WITH base_data AS (
                      ELSE entity_id
                  END
             ) AS no_customers
+        , COUNT(DISTINCT o.order_code) AS orders
         , SUM(oi.unit_price * oi.quantity) - COALESCE(SUM(oi.unit_price * rt.quantity), 0) AS GMV
         , SUM(unit_cost_price * oi.quantity) - COALESCE(SUM(unit_cost_price * rt.quantity), 0) AS cogs
         , o.client_id
