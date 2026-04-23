@@ -23,6 +23,7 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                     A
              WHEN o.status = 'PO_CREATED' THEN 'Đã tạo PO'
              WHEN o.status = 'PROCESSED' THEN 'Đã kiểm duyệt'
              WHEN o.status = 'WAITING_PROCESS' THEN 'Chờ kiểm duyệt'
+             WHEN o.status = 'PROCESSING' THEN 'Đang kiểm duyệt'
              ELSE 'Khác'
         END AS status_vn
        ,o.note
