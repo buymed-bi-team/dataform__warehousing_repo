@@ -1,6 +1,10 @@
 config {
     type: "table",
-    description: `Last 13 month| PIC: huyen.ngo; model_type: Table ;schedule: At minute 15 every hour;Table này dùng để map giá theo từng unit và tồn kho`,
+    description: `Last 13 month
+                  PIC: huyen.ngo; 
+                  model_type: Table ;
+                  schedule: At minute 15 every hour;
+                  Table này dùng để map giá theo từng unit và tồn kho`,
     tags: ["custom_1h_past15"],
     name: "price_inventory_by_pos",
     columns: {
@@ -17,7 +21,7 @@ WITH price_tbl AS (
         ,is_base_unit
         ,seller_code
         ,client_id
-    FROM gold_buymed_vn2.cos_adhoc_pos_product_client
+    FROM ${source.ref}.cos_adhoc_pos_product_client
     WHERE client_id = 1
 ),
 inv_tbl AS (
@@ -27,7 +31,7 @@ inv_tbl AS (
         ,seller_code
         ,SUM(on_hand_quantity)                                              AS qty
         ,SUM(on_hand_quantity * cost_price_include_tax)                     AS stock_value
-    FROM gold_buymed_vn2.cos_fact_inventory
+    FROM ${source.ref}.cos_fact_inventory
     WHERE client_id = 1
     GROUP BY ALL
 ),
@@ -53,7 +57,7 @@ _all AS (
         ,CONCAT(p.product_id, '_', p.client_id)                             AS product_client_id
     FROM price_tbl p
     LEFT JOIN inv_tbl i ON p.product_id = i.product_id  AND p.seller_code = i.seller_code
-    LEFT JOIN gold_buymed_vn2.circa_pos_profile pos ON i.pos_id = pos.id
+    LEFT JOIN ${source.ref}.circa_pos_profile pos ON i.pos_id = pos.id
     WHERE pos.id IS NOT NULL
 )
 SELECT *
