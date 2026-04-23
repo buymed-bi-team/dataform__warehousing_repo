@@ -47,16 +47,12 @@ WITH base_data AS (
                  END
             ) AS no_customers
         , COUNT(DISTINCT o.order_code) AS orders
-        , SUM(oi.unit_price * oi.quantity) - COALESCE(SUM(oi.unit_price * rt.quantity), 0) AS GMV
-        , SUM(unit_cost_price * oi.quantity) - COALESCE(SUM(unit_cost_price * rt.quantity), 0) AS cogs
+        , SUM(oi.unit_price * oi.quantity) - COALESCE(SUM(oi.unit_price * qty_rt), 0) AS GMV
+        , SUM(unit_cost_price * oi.quantity) - COALESCE(SUM(unit_cost_price * qty_rt), 0) AS cogs
         , o.client_id
     FROM ${source.ref}.cos_fact_order o
     LEFT JOIN ${source.ref}.cos_fact_order_item oi ON o.order_id = oi.order_id
     LEFT JOIN buymed_circa_v2.entity_customer e ON o.entity_id = e.id
-    LEFT JOIN ${source.ref}.cos_return_completed_detail rt ON oi.order_id = rt.order_id
-            AND oi.sku_code = rt.sku_code
-            AND oi.lot_date = rt.lot_date
-            AND oi.client_id = rt.client_id
     WHERE o.completed_date IS NOT NULL
       AND o.client_id = 1
       AND o.status IN ('COMPLETED', 'COMPLETED_SHIPPING')
