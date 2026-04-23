@@ -1,7 +1,7 @@
 config {
     type: "table",
     description: `inventory_cutoff_demand_planning PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`,
-    tags: ["8h30"],
+    disabled: true,
     name: "inventory_cutoff_demand_planning",
     columns: {
         
