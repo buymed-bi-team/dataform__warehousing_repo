@@ -76,5 +76,3 @@ WITH
 
 SELECT *
 FROM final
-WHERE product_id = 2019039
-
