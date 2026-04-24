@@ -65,6 +65,7 @@ WITH
             , discount_type
             , c.area_code
             , b.charge_fee
+            , b.max_discount
         FROM ${ref('dim_voucher_product')} AS a
             LEFT JOIN ${ref('dim_voucher')} AS b USING(voucher_code)
             LEFT JOIN area AS c USING(voucher_code)
@@ -74,7 +75,7 @@ WITH
             AND b.is_specific
             AND b.all_customer
             AND c.area_code IS NOT NULL
-        QUALIFY ROW_NUMBER() over (PARTITION BY product_id, a.seller_code, area_code ORDER BY mov1, a.min_sku_quantity, voucher_discount DESC) = 1
+        QUALIFY ROW_NUMBER() over (PARTITION BY product_id, a.seller_code, area_code ORDER BY mov1, a.min_sku_quantity, voucher_discount DESC, max_discount DESC ) = 1
     ),
 
     -- discount_value AS (
