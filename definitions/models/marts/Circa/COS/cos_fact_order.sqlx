@@ -24,7 +24,7 @@ SELECT DISTINCT
     ,o.total_amount
     --,actual_total_item_amount
     ,o.total_item_amount
-    ,o.discount_amount
+    ,SUM(COALESCE(loyalty_discount_amount,0 ) + COALESCE (o.discount_amount, 0)) AS discount_amount
     ,o.created_by
     ,o.updated_by
     ,en.name
