@@ -21,23 +21,60 @@ config {
 }
 
 
-SELECT 
-    rebate_date AS rebate_date_get_at,
-    last_updated_at,
-    ingest_at,
-    product_id,
-    sku_code,
-    sales_region_code,
-    vendor_code,
-    price_after_rebate,
-    price_after_rebate_with_adhoc_promotion,
-    price_contract,
-    price_expected_on_bill,
-    rebate,
-    contract_price_id,
-    product_sales_region_code,
-    sku_key_sales_region_code,
-    rebate_reserve
-FROM ${ref('fact_price_after_rebate_fv_vendor')}
-WHERE rebate_date >= DATE_SUB(CURRENT_DATE("+7"), INTERVAL 2 DAY)
-QUALIFY ROW_NUMBER() OVER(PARTITION BY sku_code, sales_region_code ORDER BY last_updated_at DESC) = 1
+WITH 
+    cte AS (
+        SELECT 
+            rebate_date AS rebate_date_get_at,
+            last_updated_at,
+            ingest_at,
+            product_id,
+            sku_code,
+            sales_region_code,
+            vendor_code,
+            price_after_rebate,
+            price_after_rebate_with_adhoc_promotion,
+            price_contract,
+            price_expected_on_bill,
+            rebate,
+            contract_price_id,
+            product_sales_region_code,
+            sku_key_sales_region_code,
+            rebate_reserve
+        FROM ${ref('fact_price_after_rebate_fv_vendor')}
+        WHERE rebate_date >= DATE_SUB(CURRENT_DATE("+7"), INTERVAL 2 DAY)
+        QUALIFY ROW_NUMBER() OVER(PARTITION BY sku_code, sales_region_code ORDER BY last_updated_at DESC) = 1
+    ), 
+
+    combo AS (
+        SELECT
+            MAX(rebate_date_get_at) AS rebate_date_get_at,
+            MAX(last_updated_at)  AS last_updated_at,
+            MAX(ingest_at) AS ingest_at,
+            s.combo_product_id,
+            s.combo_sku_code,
+            s.sales_region_code,
+            MAX(vendor_code) AS vendor_code,
+            SUM(p.price_after_rebate * SAFE_CAST(s.quantity AS INT64)) AS price_after_rebate,
+            SUM(p.price_after_rebate_with_adhoc_promotion * SAFE_CAST(s.quantity AS INT64)) AS price_after_rebate_with_adhoc_promotion,
+            NULL,
+            NULL,
+            NULL,
+            NULL,
+            CONCAT(s.combo_product_id, "_", s.sales_region_code),
+            s.sku_key_sales_region_code,
+            NULL
+        FROM ${ref("dim_sku_sales_region_combo")} AS s
+            LEFT JOIN cte AS p ON s.sku_code = p.sku_code AND s.sales_region_code = p.sales_region_code
+        GROUP BY ALL
+    ),
+
+    final AS (
+        SELECT * FROM cte
+        UNION ALL
+        SELECT * FROM combo
+    )
+
+SELECT *
+FROM final
+WHERE product_id = 2019039
+
