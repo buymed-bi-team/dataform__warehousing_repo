@@ -24,8 +24,9 @@ config {
       CAST(null as datetime) 
     FROM silver_buymed_vn.warehouse_prd_inbound_put_ticket_item
     WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 1 DAY
+      AND NOT (action = 'd' AND ingest_time BETWEEN '2026-04-19 17:00:00' AND '2026-04-26 17:00:00')
     QUALIFY ROW_NUMBER() OVER (_window) = 1 
-          AND ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 16 HOUR
+          -- AND ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 16 HOUR
           WINDOW _window AS (
           PARTITION BY mg_id
           ORDER BY synced_at DESC,
