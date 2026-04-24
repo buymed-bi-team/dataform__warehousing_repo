@@ -26,6 +26,7 @@ WITH
                 WHEN REGEXP_CONTAINS(TO_JSON_STRING(a.tags), '\"ORDER_ASSIST\"') THEN 'ASSIST_ORDER' 
                 ELSE 'SELF_ORDER' 
             END AS assist_order
+            , a.source
         FROM platinum_buymed_cam.marketplace_prd_order_v2_order AS a
             LEFT JOIN `platinum_buymed_cam.core_prd_master_data_ward` AS w ON w.code = a.customer_ward_code
             LEFT JOIN `platinum_buymed_cam.core_prd_master_data_district` AS d ON d.code = a.customer_district_code
@@ -54,6 +55,7 @@ WITH
             , o.shipping_province_name
             , o.shipping_region_name
             , o.assist_order
+            , o.source
             , o.total_discount / COUNT(1) OVER(PARTITION BY a.order_id) AS total_discount
             , IF(a.vat > 0, "TRADING", "NON-TRADING") AS trading_type
         FROM platinum_buymed_cam.marketplace_prd_order_v2_order_item AS a

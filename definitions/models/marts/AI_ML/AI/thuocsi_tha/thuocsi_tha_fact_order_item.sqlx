@@ -23,6 +23,7 @@ WITH
             , JSON_VALUE(d.extra_props, "$.name_en") AS shipping_district_name
             , JSON_VALUE(p.extra_props, "$.name_en") AS shipping_province_name
             , COALESCE(r.description, r.name) AS shipping_region_name
+            , a.source
         FROM platinum_buymed_th.marketplace_prd_order_v2_order AS a
             LEFT JOIN `platinum_buymed_th.core_prd_master_data_ward` AS w ON w.code = a.customer_ward_code
             LEFT JOIN `platinum_buymed_th.core_prd_master_data_district` AS d ON d.code = a.customer_district_code
@@ -63,6 +64,7 @@ WITH
             , o.shipping_province_name
             , o.shipping_region_name
             , o.total_discount / COUNT(1) OVER(PARTITION BY a.order_id) AS total_discount
+            , o.source
         FROM platinum_buymed_th.marketplace_prd_order_v2_order_item AS a
             LEFT JOIN platinum_buymed_th.seller_prd_core_seller AS s ON a.seller_code = s.code
             LEFT JOIN fact_order AS o ON a.order_id = o.order_id
