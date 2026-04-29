@@ -24,6 +24,8 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                     A
              WHEN o.status = 'PROCESSED' THEN 'Đã kiểm duyệt'
              WHEN o.status = 'WAITING_PROCESS' THEN 'Chờ kiểm duyệt'
              WHEN o.status = 'PROCESSING' THEN 'Đang kiểm duyệt'
+             WHEN o.status = 'COMPLETED' THEN 'Đã hoàn tất'
+             WHEN o.status = 'ORDER_FAILED' THEN 'Thất bại'
              ELSE NULL
         END AS status_vn
        ,o.note
