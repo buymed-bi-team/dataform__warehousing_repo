@@ -58,7 +58,7 @@ WITH as_t AS (
         
 ), others AS (
        SELECT DISTINCT
-        'Others' AS assortment_template
+        'Circa Online Only' AS assortment_template
         , product_id
         , 5 AS sort
     FROM `gold_buymed_vn2.cos_fact_inventory`
