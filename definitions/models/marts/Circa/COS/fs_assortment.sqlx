@@ -54,7 +54,7 @@ WITH as_t AS (
           AND product_id NOT IN  ( SELECT product_id FROM as_t)
           AND product_id NOT IN  ( SELECT product_id FROM online)
           AND product_id IN (SELECT DISTINCT product_id FROM gold_buymed_vn2.sku_status_thuocsi
-          WHERE sku_system_status IN ('SUSPENDED', 'OUT_OF_STOCK')) 
+          WHERE sku_system_status NOT IN ('NORMAL', 'LIMIT')) 
         
 ), others AS (
        SELECT DISTINCT
