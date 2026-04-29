@@ -45,7 +45,7 @@ WITH as_t AS (
         )
 ), fs_only AS (
     SELECT
-        'FS_Only' AS assortment_template
+        'FS Only' AS assortment_template
         , product_id
         , 4 AS sort
     FROM `gold_buymed_vn2.cos_fact_inventory`
