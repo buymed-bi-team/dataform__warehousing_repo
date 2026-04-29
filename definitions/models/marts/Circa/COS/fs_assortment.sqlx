@@ -53,6 +53,20 @@ WITH as_t AS (
           --AND on_hand_quantity > 0 
           AND product_id NOT IN  ( SELECT product_id FROM as_t)
           AND product_id NOT IN  ( SELECT product_id FROM online)
+          AND product_id IN (SELECT DISTINCT product_id FROM gold_buymed_vn2.sku_status_thuocsi
+          WHERE sku_system_status IN ('SUSPENDED', 'OUT_OF_STOCK')) 
+        
+), others AS (
+       SELECT DISTINCT
+        'Others' AS assortment_template
+        , product_id
+        , 5 AS sort
+    FROM `gold_buymed_vn2.cos_fact_inventory`
+    WHERE client_id <> 1
+          --AND on_hand_quantity > 0 
+          AND product_id NOT IN  ( SELECT product_id FROM as_t)
+          AND product_id NOT IN  ( SELECT product_id FROM online)
+          AND product_id NOT IN  ( SELECT product_id FROM fs_only)
         
 )
 
@@ -68,3 +82,8 @@ UNION ALL
 
 SELECT *
 FROM fs_only
+
+UNION ALL
+
+SELECT *
+FROM others
