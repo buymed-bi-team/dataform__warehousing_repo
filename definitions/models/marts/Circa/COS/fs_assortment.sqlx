@@ -44,13 +44,13 @@ WITH as_t AS (
             FROM as_t
         )
 ), fs_only AS (
-    SELECT
+    SELECT DISTINCT
         'FS Only' AS assortment_template
         , product_id
         , 4 AS sort
     FROM `gold_buymed_vn2.cos_fact_inventory`
     WHERE client_id <> 1
-          AND on_hand_quantity > 0 
+          --AND on_hand_quantity > 0 
           AND product_id NOT IN  ( SELECT product_id FROM as_t)
           AND product_id NOT IN  ( SELECT product_id FROM online)
         
