@@ -1,0 +1,70 @@
+
+config {
+    type: "table",
+    description: `fs_assortment detail
+                  PIC: huyen.ngo;
+                  model_type: Table ;
+                  schedule: At minute 5 every hour`,
+    tags: ["custom_2h_past5"],
+    name: "fs_assortment",
+    columns: {
+        
+    }
+}
+
+WITH as_t AS (
+    SELECT
+         o.name AS assortment_template
+        , i.product_id
+        , CASE
+            WHEN o.name = 'All Stores' THEN 1
+            WHEN o.name = 'Selective stores' THEN 2
+            ELSE 4
+          END AS sort
+    FROM ${source.circa_os}.product_assortment_template o
+    LEFT JOIN ${source.circa_os}.product_assortment_template_items i
+        ON o.id = i.assortment_template_id
+    WHERE 1 = 1
+        AND i.status = 'ACTIVE'
+        AND o.status = 'ACTIVE'
+        AND o.name <> 'Inactive - Store Level'
+    GROUP BY ALL
+    ORDER BY 2
+)
+
+, online AS (
+    SELECT
+        'Circa Online Only' AS assortment_template
+        , product_id
+        , 3 AS sort
+    FROM platinum_buymed_vn.circa_online_prd_product_product_filter a
+    WHERE status = 'ACTIVE'
+        AND product_id NOT IN (
+            SELECT product_id
+            FROM as_t
+        )
+), fs_only AS (
+    SELECT
+        'FS_Only' AS assortment_template
+        , product_id
+        , 4 AS sort
+    FROM `gold_buymed_vn2.cos_fact_inventory`
+    WHERE client_id <> 1
+          AND on_hand_quantity > 0 
+          AND product_id NOT IN  ( SELECT product_id FROM as_t)
+          AND product_id NOT IN  ( SELECT product_id FROM online)
+        
+)
+
+SELECT *
+FROM as_t
+
+UNION ALL
+
+SELECT *
+FROM online
+
+UNION ALL
+
+SELECT *
+FROM fs_only
