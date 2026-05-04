@@ -31,7 +31,7 @@ WITH
         SELECT
             promotion_id
             , promotion_name
-            , PARSE_DATE("%Y-%b", SPLIT(promotion_name, '-CTTT-')[SAFE_OFFSET(0)]) AS promotion_month
+            -- , PARSE_DATE("%Y-%b", SPLIT(promotion_name, '-CTTT-')[SAFE_OFFSET(0)]) AS promotion_month
             , INITCAP( ARRAY_REVERSE( SPLIT(REGEXP_REPLACE( TRIM(promotion_name), '_', '-'), "-"))[SAFE_OFFSET(0)]) AS promotion_type
         FROM ${ref("dim_promotion")}
         WHERE 1=1
@@ -46,6 +46,7 @@ WITH
             , voucher_discount
             , voucher_status
             , end_date
+            , CONCAT("2026-", RIGHT(REGEXP_EXTRACT(voucher_code, r'CVM[0-9]+'),2)) AS promotion_month
         FROM ${ref("dim_voucher")}
         WHERE promotion_id IN (5165, 5160, 5121, 5120, 5118, 5117,  5116, 5115)
     ),
@@ -104,7 +105,7 @@ SELECT
     , c.region_name 
     , c.province_name 
     , c.district_name 
-    , p.promotion_month AS month
+    , v.promotion_month AS month
 FROM customer AS c
     LEFT JOIN (
         SELECT
