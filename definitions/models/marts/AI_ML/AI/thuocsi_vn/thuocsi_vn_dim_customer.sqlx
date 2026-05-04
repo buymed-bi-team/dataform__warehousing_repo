@@ -1,8 +1,8 @@
 config {
-    type: 'view',
+    type: 'table',
     schema: "buymed_innovation",
     description: `Customer in the Vietnam marketplace.`,
-    tags: ['AI_THUOCSI_VN']
+    tags: ['AI_THUOCSI_VN', 'custom_1h_past_10']
 }
 
 WITH
@@ -49,5 +49,7 @@ WITH
 SELECT
     cte.*
     , b.pharmacy_name
+    , c.segment_name AS adhoc_segment_mkt
 FROM cte 
     LEFT JOIN ${ref('gold_buymed_vn2', 'pharmacy_name')} AS b ON cte.customer_id = b.customer_id
+    LEFT JOIN buymed_external.import_adhoc_customer_segment_MKT AS c ON cte.customer_id = c.customer_id
