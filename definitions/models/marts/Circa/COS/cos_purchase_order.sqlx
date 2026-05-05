@@ -31,7 +31,7 @@ SELECT DISTINCT
     ,e.name as created_by_name
     ,a.note
     ,a.source_type
-    ,a.discount_amount
+    --,a.discount_amount
     ,a.delivery_fee_amount
     ,a.sub_payment_method
     ,a.sub_type
