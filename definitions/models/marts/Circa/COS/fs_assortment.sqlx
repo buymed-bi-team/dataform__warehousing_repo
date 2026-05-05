@@ -60,7 +60,7 @@ WITH as_t AS (
        SELECT DISTINCT
         'Circa Online Only' AS assortment_template
         , product_id
-        , 5 AS sort
+        , 3 AS sort
     FROM `gold_buymed_vn2.cos_fact_inventory`
     WHERE client_id <> 1
           --AND on_hand_quantity > 0 
