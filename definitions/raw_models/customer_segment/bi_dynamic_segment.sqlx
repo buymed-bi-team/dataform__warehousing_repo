@@ -43,6 +43,7 @@ SELECT
     MAX(CASE WHEN table = 'CUSTOMER' AND field = 'sum_gmv' THEN REGEXP_REPLACE(value, r' ', '') END) AS sum_gmv,
     MAX(CASE WHEN table = 'CUSTOMER' AND field = 'order_status' THEN value END) AS customer_order_status,
     MAX(CASE WHEN table = 'CUSTOMER' AND field = 'time_range_count_sum' THEN REGEXP_REPLACE(value, r' ', '') END) AS time_range_count_sum,
+    MAX(CASE WHEN table = 'CUSTOMER' AND field = 'month_of_birth' THEN REGEXP_REPLACE(value, r' ', '') END) AS month_of_birth,
 
     -- Order1 fields
     MAX(CASE WHEN table = 'ORDER1' AND field = 'created_at' THEN REGEXP_REPLACE(value, r' ', '') END) AS created_at1,

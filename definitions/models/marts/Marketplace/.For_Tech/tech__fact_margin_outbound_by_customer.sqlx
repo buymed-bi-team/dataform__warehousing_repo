@@ -1,0 +1,12 @@
+config {
+    type: "view",
+    description: 
+        `Gross, Net Margin Outbound by Customer in Vietnam Market;
+        PIC: nguyen.tran; 
+        Type: View; 
+        `,
+    schema: "buymed_tech"
+}
+
+SELECT *
+FROM gold_buymed_vn2.fact_margin_outbound_by_customer

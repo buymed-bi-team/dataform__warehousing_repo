@@ -25,24 +25,26 @@ WITH
     area AS (
         SELECT
             voucher_code
-            , COALESCE(
-                CASE
+            -- , COALESCE(
+                ,CASE
                     WHEN b LIKE "%MIENBAC%" THEN "MIENBAC"
-                    WHEN b LIKE "%MB_ADM%" THEN "MIENBAC"
-                    WHEN b LIKE "%113RVDTCV2U1%"THEN "MIENBAC"
-                    WHEN b LIKE "%01%" THEN "MIENBAC"
+                    -- WHEN b LIKE "%MB_ADM%" THEN "MIENBAC"
+                    -- WHEN b LIKE "%113RVDTCV2U1%"THEN "MIENBAC"
+                    -- WHEN b LIKE "%01%" THEN "MIENBAC"
                     WHEN b LIKE "%MIENNAM%" THEN "MIENNAM"
-                    WHEN b LIKE "%MN_ADM%" THEN "MIENNAM"
-                    WHEN b LIKE "%107TQTAR1Y7G%" THEN "MIENNAM"
-                    WHEN b LIKE "%79%" THEN "MIENNAM"
-                    WHEN b LIKE "%MIENTRUNG%" THEN "MIENTRUNG"
-                    WHEN b LIKE "%MT_ADM%" THEN "MIENTRUNG"
-                    WHEN b LIKE "%528UQP72U1Y%" THEN "MIENTRUNG"
-                    WHEN b LIKE "%48%" THEN "MIENTRUNG"
+                    -- WHEN b LIKE "%MN_ADM%" THEN "MIENNAM"
+                    -- WHEN b LIKE "%107TQTAR1Y7G%" THEN "MIENNAM"
+                    -- WHEN b LIKE "%79%" THEN "MIENNAM"
+                    -- WHEN b LIKE "%MIENTRUNG%" THEN "MIENTRUNG"
+                    -- WHEN b LIKE "%MT_ADM%" THEN "MIENTRUNG"
+                    -- WHEN b LIKE "%528UQP72U1Y%" THEN "MIENTRUNG"
+                    -- WHEN b LIKE "%48%" THEN "MIENTRUNG"
+                    WHEN b = "00" THEN "00"
+                    WHEN b IS NULL THEN "00"
                     ELSE c.sales_region_code
-                END,
-                "00"
-              ) AS area_code
+                END
+                -- "00")
+               AS area_code
         FROM ${ref('dim_voucher')}
             , UNNEST(JSON_QUERY_ARRAY(scopes)) AS a
             LEFT JOIN UNNEST(JSON_VALUE_ARRAY(a, "$.area_codes")) AS b
@@ -63,6 +65,7 @@ WITH
             , discount_type
             , c.area_code
             , b.charge_fee
+            , b.max_discount
         FROM ${ref('dim_voucher_product')} AS a
             LEFT JOIN ${ref('dim_voucher')} AS b USING(voucher_code)
             LEFT JOIN area AS c USING(voucher_code)
@@ -72,7 +75,7 @@ WITH
             AND b.is_specific
             AND b.all_customer
             AND c.area_code IS NOT NULL
-        QUALIFY ROW_NUMBER() over (PARTITION BY product_id, a.seller_code, area_code ORDER BY mov1, a.min_sku_quantity, voucher_discount DESC) = 1
+        QUALIFY ROW_NUMBER() over (PARTITION BY product_id, a.seller_code, area_code ORDER BY mov1, a.min_sku_quantity, voucher_discount DESC, max_discount DESC ) = 1
     ),
 
     -- discount_value AS (
@@ -141,11 +144,11 @@ SELECT
         , -2
     ) AS price_after_discount_exclude_sponsorship
     , c.voucher_code
-
+    -- , c.area_code
 FROM final_price AS a
     LEFT JOIN voucher AS c 
         ON c.product_id = a.product_id AND c.seller_code = a.seller_code 
             AND (c.area_code ="00" OR c.area_code = a.sales_region_code)
+WHERE 1=1
+    AND a.sales_region_code <> "MIENTRUNG"
 QUALIFY ROW_NUMBER() OVER(PARTITION BY sku_key_sales_region_code) = 1
-
-

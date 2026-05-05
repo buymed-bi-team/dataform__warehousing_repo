@@ -1,6 +1,6 @@
 
 const model = new main.PlatinumModel(
-    "warehouse_prd_picking_pick_ticket_item",
+    "warehouse_prd_core_sale_order",
     {
         target_schema : "platinum_buymed_vn__stg", // Use for document
         // customAssertionsSchema : `dataform_playground_assertions`,
@@ -15,7 +15,7 @@ const model = new main.PlatinumModel(
     }
 );
 model.createIncremental(
-    ["0h00","12h00", "platinum_staging", "warehouse_prd_picking"],
+    ["0h00","12h00", "platinum_staging", "warehouse_prd_core"],
     {
         has_src_created_date : false,
         ingestCutOffInterval : "INTERVAL 1 MONTH",
@@ -23,14 +23,14 @@ model.createIncremental(
     }
 );
 // model.assertUnique(
-//     ["0h00","12h00", "platinum_unique_assertion", "warehouse_prd_picking"],
+//     ["0h00","12h00", "platinum_unique_assertion", "warehouse_prd_core"],
 //     {
 //         intervalCheckpoint : `INTERVAL 1 YEAR`,
 //         maxRetry: 2
 //     }
 // )
 // model.createMismatchAssertionView(
-//     ["platinum_staging_assertion_view", "warehouse_prd_picking"],
+//     ["platinum_staging_assertion_view", "warehouse_prd_core"],
 //     {
 //         intervalCheckpoint: `INTERVAL 2 DAY`,
 //         maxRetry: 2,
@@ -38,7 +38,7 @@ model.createIncremental(
 //     }
 // )
 // model.assertMismatch(
-//     ["0h00","12h00", "platinum_staging_assertion", "warehouse_prd_picking"],
+//     ["0h00","12h00", "platinum_staging_assertion", "warehouse_prd_core"],
 //     {
 //         intervalCheckpoint: `INTERVAL 2 DAY`,
 //         maxRetry: 2,

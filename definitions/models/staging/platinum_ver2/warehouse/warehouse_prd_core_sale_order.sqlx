@@ -1,0 +1,52 @@
+config {
+    type: "view",
+    schema: "platinum_buymed_vn",
+    name: "warehouse_prd_core_sale_order",
+    description : `
+    PIC: nguyen.tran
+    Partition by: created date
+    `,
+    tags:["platinum","warehouse_prd_core"]
+}
+
+  WITH silver AS (
+    SELECT
+      key, mg_id, sale_order_code, admin_id, collect_on_delivery, create_source, created_time, customer, discount_amount, estimate_delivered_time, ex_shipping_date, fee, has_purchased, invoice_request, is_tag_migrate, last_updated_time, logs, order_price, payment_method, payment_method_name, priority, reference_code, sale_order_time, status, total_amount, total_item, total_sku, type, version_no, warehouse_code, warehouse_codes, action_time, pick_ticket_infos, updated_by, increased_reserved_total_amount, reserved_total_amount, sort, total_reserved_item, total_reserved_sku, is_split_delivery_order, split_type, is_sync_scanned_details, calculated_cod_amount, cod_amount, delivery_amount, delivery_order_codes, external_tpl_name, tpl_code, tracking_code, expire_pickup_delivery_level, delivery_time, delivered_time, completed_time, point, order_note, callback_url, tags, is_sync_return_details, additional_time, source_location, destination_warehouse_code, is_half_order_cancel, is_merge_do, merge_do_status, is_first_order_month_of_customer, voucher_code, synced_at, extra_props, action, ingest_time,
+      
+        CASE
+            WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time, 'Asia/Ho_Chi_Minh'))
+            ELSE DATE( '2099-01-01' )
+        END
+     created_date,
+      CAST(null as datetime) 
+    FROM silver_buymed_vn.warehouse_prd_core_sale_order
+    WHERE DATE(ingest_time) >= CURRENT_DATE("+7") - INTERVAL 1 DAY
+        AND NOT (action = 'd' AND ingest_time BETWEEN '2026-04-19 17:00:00' AND '2026-04-26 17:00:00')
+    QUALIFY ROW_NUMBER() OVER (_window) = 1 
+          -- AND ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 16 HOUR
+    WINDOW _window AS (
+    PARTITION BY mg_id
+    ORDER BY synced_at DESC,
+        IF
+        (action='d',3,
+        IF
+        (action='u',2,1)) DESC
+    ,last_updated_time DESC)
+  ), platinum AS (
+    SELECT 
+      key, mg_id, sale_order_code, admin_id, collect_on_delivery, create_source, created_time, customer, discount_amount, estimate_delivered_time, ex_shipping_date, fee, has_purchased, invoice_request, is_tag_migrate, last_updated_time, logs, order_price, payment_method, payment_method_name, priority, reference_code, sale_order_time, status, total_amount, total_item, total_sku, type, version_no, warehouse_code, warehouse_codes, action_time, pick_ticket_infos, updated_by, increased_reserved_total_amount, reserved_total_amount, sort, total_reserved_item, total_reserved_sku, is_split_delivery_order, split_type, is_sync_scanned_details, calculated_cod_amount, cod_amount, delivery_amount, delivery_order_codes, external_tpl_name, tpl_code, tracking_code, expire_pickup_delivery_level, delivery_time, delivered_time, completed_time, point, order_note, callback_url, tags, is_sync_return_details, additional_time, source_location, destination_warehouse_code, is_half_order_cancel, is_merge_do, merge_do_status, is_first_order_month_of_customer, voucher_code, synced_at, extra_props, action, ingest_time,
+      created_date,
+      platinum_refresh
+    FROM ${ref(`platinum_buymed_vn__stg`, `warehouse_prd_core_sale_order`)}
+  )
+  SELECT p.*
+  FROM platinum p
+  LEFT JOIN silver s 
+      ON p.mg_id = s.mg_id 
+  WHERE s.mg_id is null 
+
+  UNION ALL 
+
+  SELECT s.*
+  FROM silver s
+  WHERE action <> "d"

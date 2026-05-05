@@ -184,6 +184,7 @@ with cte_date as (
 			do_1.extra_props,
 			so.total_item,
 			so.total_sku,
+			REGEXP_REPLACE(REGEXP_REPLACE(TO_JSON_STRING(JSON_QUERY_ARRAY(do_1.extra_info, "$.pod")), r'[\[\]\"]',  r''), 'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS delivery_image,
 			ARRAY_LENGTH(JSON_QUERY_ARRAY(do_1.extra_props, '$.baskets')) AS no_bins
 		from (
 			select *
@@ -232,4 +233,4 @@ SELECT
 
 FROM outbound_ticket AS ot
 	LEFT JOIN ${ref('dim_fulfill_cutoff_route')} AS f ON ot.ticket_id = f.ticket_id
-QUALIFY ROW_NUMBER() OVER(PARTITION BY ticket_id) = 1
+-- QUALIFY ROW_NUMBER() OVER(PARTITION BY ticket_id) = 1

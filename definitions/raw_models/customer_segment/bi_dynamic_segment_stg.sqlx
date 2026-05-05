@@ -36,7 +36,8 @@ WITH
 
     get_start_end AS (
         SELECT
-            * EXCEPT (count_order, sum_gmv, operator)
+            * EXCEPT (count_order, sum_gmv, operator, month_of_birth)
+            , SAFE_CAST(REGEXP_REPLACE(month_of_birth, r'[^0-9]+', '') AS INT64) AS month_of_birth
             , IFNULL(
                 SAFE.PARSE_DATE('"%Y-%m-%d"', SPLIT(last_purchase, ",")[SAFE_OFFSET(0)])
                 , DATE_SUB(CURRENT_DATE(), INTERVAL SAFE_CAST(REGEXP_EXTRACT(SPLIT(last_purchase, ",")[SAFE_OFFSET(0)], r'[0-9]+') AS INT64) DAY)
@@ -184,6 +185,7 @@ WITH
             AND (sd.region_name IS NULL OR STRPOS(sd.region_name, CONCAT('"',UPPER(g.region_name),'"')) >0)
             AND (sd.customer_tag_group IS NULL OR STRPOS(sd.customer_tag_group, CONCAT('"',t.customer_tag_priority,'"')) > 0)
             AND (sd.customer_tag_sub_group IS NULL OR STRPOS(sd.customer_tag_sub_group, CONCAT('"',t.customer_tag_priority_sub,'"')) > 0)
+            AND (sd.month_of_birth IS NULL OR EXTRACT(MONTH FROM c.date_of_birth) = sd.month_of_birth)
             AND (
                 sd.last_purchase IS NULL
                 OR DATE(c.last_purchase) BETWEEN sd.start_date_last_purchase AND sd.end_date_last_purchase

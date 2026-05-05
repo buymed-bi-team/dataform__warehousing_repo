@@ -1,12 +1,13 @@
 config {
     type: "table",
-    description: `Circa OS purchase order PIC: huyen.ngo; model_type: Table ;schedule: At minute 10 every hour`,
+    description: `Circa OS purchase order
+                  PIC: huyen.ngo; 
+                  model_type: Table ;schedule: At minute 10 every hour`,
     tags: ["custom_1h_past10"],
-    name: "cos_purchase_order",
-    columns: {
-        
-    }
+    name: "cos_purchase_order"
+
 }
+
 SELECT DISTINCT
      TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
     ,a.id AS po_id
@@ -15,10 +16,11 @@ SELECT DISTINCT
     ,a.source_id
     ,a.code AS po_code
     ,a.status AS po_status
-    ,a.total_item_amount AS po_amount
-    ,SUM(a.total_item_amount - COALESCE(rt.total_item_amount, 0)) AS actual_po_amount_item_af_rt
-    ,a.actual_total_amount AS actual_po_amount
-    ,SUM(a.actual_total_amount - COALESCE(rt.actual_total_amount, 0)) AS actual_po_amount_af_rt
+    ,SUM(a.discount_amount) AS discount_amount
+    --,a.total_item_amount AS po_amount
+    ,SUM(a.total_item_amount - COALESCE(rt.total_item_amount, 0)) AS actual_po_amount_item_af_rt -- thực nhận tiền hàng
+    --,a.actual_total_amount AS actual_po_amount
+    ,SUM(a.actual_total_amount - COALESCE(rt.actual_total_amount, 0)) AS actual_po_amount_af_rt -- thực nhận tổng đơn, đã trừ discount
     ,DATE(DATETIME_ADD(a.created_at, INTERVAL 7 HOUR)) AS created_date
     ,DATE(DATETIME_ADD(a.completed_at, INTERVAL 7 HOUR)) AS completed_date
     ,DATETIME_ADD(a.created_at, INTERVAL 7 HOUR) AS created_at
@@ -52,7 +54,7 @@ SELECT DISTINCT
         ELSE 'others'
      END AS vip_tag
     ,CASE WHEN fulfillment_method = 'SO_THUOCSI' 
-                              AND (dis.name like '%MEDX%' OR (dis.name like '%Buymed%')) THEN 'MEDX'
+                              AND (dis.name like '%MEDX%' OR dis.name like '%Buymed%') THEN 'MEDX'
                               WHEN fulfillment_method = 'IMPORT_STOCK' THEN 'IMPORT_STOCK'
                               WHEN fulfillment_method = 'EXTERNAL' THEN 'EXTERNAL'
                               WHEN fulfillment_method = 'SO_THUOCSI'AND dis.name NOT LIKE '%MEDX%' AND dis.name NOT LIKE '%Buymed%' THEN 'SELLER' 
@@ -68,9 +70,10 @@ LEFT JOIN ${source.ref}.map_order_thuoc_si AS o ON a.sale_order_number = SAFE_CA
 LEFT JOIN ${source.circa_os}.entity_owner AS eo ON a.owner_id = eo.id AND a.client_id = eo.client_id
 LEFT JOIN ${source.circa_os}.entity_distributor dis ON a.distributor_id = dis.id AND a.client_id = dis.client_id
 LEFT JOIN (
-    SELECT *
+    SELECT DISTINCT source_id, client_id, SUM(actual_total_amount) AS actual_total_amount,  SUM(total_item_amount) AS total_item_amount
     FROM ${source.circa_os}.order_return_po
     WHERE status NOT IN ('PENDING', 'CANCELED')
+    GROUP BY ALL
 ) AS rt ON a.id = rt.source_id AND a.client_id = rt.client_id -- Lấy nhừng PO có trả hàng 
 LEFT JOIN ${source.ref}.circa_pos_profile p ON a.pos_id = p.id AND a.client_id = p.client_id
 LEFT JOIN ${source.ref}.os_map_idthuocsi map ON o.customer_id = map.id_thuocisi

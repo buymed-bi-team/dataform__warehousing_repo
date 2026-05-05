@@ -43,6 +43,7 @@ with
                 END  as expired_date_convert
             , TIMESTAMP_ADD(a.last_updated_time, interval 7 hour)  as put_done_at
             , b.done_quantity
+            , b.location_details
         from (
             select *
             from ${source.platinum}.warehouse_prd_inbound_put_ticket

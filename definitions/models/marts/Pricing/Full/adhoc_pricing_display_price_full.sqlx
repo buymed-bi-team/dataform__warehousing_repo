@@ -115,7 +115,7 @@ with
             ((a.retail_price_value >= coalesce(c.from_price,0) and a.retail_price_value <= c.to_price)
             or ((a.retail_price_value is null or a.retail_price_value > 100000000) and c.flag = true))
             AND sku_system_status IN ("NORMAL", "LIMIT", "OUT_OF_STOCK")
-            AND (seller_code IN ("MEDX", "BML_INT", "CIRCA_INT") OR seller_class = "EXTERNAL")
+            AND (seller_code IN ("MEDX", "BML_INT", "CIRCA_INT", "MEDX_INT") OR seller_class = "EXTERNAL")
             AND a.sales_region_code <> "MIENTRUNG"
     ),
 
