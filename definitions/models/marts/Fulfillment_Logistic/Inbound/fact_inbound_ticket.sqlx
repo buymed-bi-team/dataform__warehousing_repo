@@ -141,7 +141,8 @@ WITH cte_date AS (
 			END AS po_urgent,
 			p.type AS po_type,
 			COALESCE(TIMESTAMP_ADD(p.created_time, interval 7 hour), TIMESTAMP_ADD(ps.created_time, interval 7 hour)) AS po_created_ts,
-			JSON_VALUE(ps.delivery_info, "$.delivery_method") AS pgh_delivery_method
+			JSON_VALUE(ps.delivery_info, "$.delivery_method") AS pgh_delivery_method,
+			p.total_without_vat_price
 		from (
 			select *
 			from ${source.platinum}.warehouse_prd_inbound_inbound_ticket
