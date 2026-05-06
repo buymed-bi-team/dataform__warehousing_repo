@@ -46,6 +46,7 @@ WITH cte_product AS (
           ,tp.retail_category_name as cat4
           ,tp.brand 
           ,p.client_id
+          ,tp.user_type
           ,DATETIME_ADD(created_at, INTERVAL 7 HOUR)   AS created_at
     FROM ${source.circa_os}.product_product p
     LEFT JOIN ${source.circa_os}.product_main_category mc ON p.main_category_code = mc.code AND p.client_id = mc.client_id
