@@ -63,4 +63,4 @@ left join (
     AND tsi.sku = spi.sku
     AND tsi.pick_ticket_line_id = spi.line_id
 WHERE tsi.processed_quantity > 0
-  and  TIMESTAMP_SECONDS(CAST(ts.end_time AS INT64)) >= (select timestamp(start_date) from cte_date)
+  and  TIMESTAMP_SECONDS(CAST(ts.end_time AS INT64)) + INTERVAL 7 HOUR >= (select timestamp(start_date) from cte_date)

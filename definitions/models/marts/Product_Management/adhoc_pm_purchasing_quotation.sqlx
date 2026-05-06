@@ -1,0 +1,86 @@
+config {
+    type: "table",
+    tags: ["custom_1h_past10", "PRODUCT_MANAGEMENT"],
+}
+
+WITH
+    quotation AS (
+        SELECT
+            a.seller_code
+            , a.product_id
+            , a.product_name
+            , a.quantity_expect
+            , a.warehouse_code
+            , a.favorite_vendor_id
+            , a.favorite_vendor_name
+            , CONCAT(a.product_id, "_", a.seller_code, "_", a.warehouse_code) AS sku_key_fc
+            , IFNULL(SAFE_CAST(JSON_VALUE(a.extra_props, "$.block_release_to_fav_session") AS BOOLEAN),FALSE) AS block_release_to_fav_session
+            , quotation_status
+            , is_bidding
+            , DATE(assign_vendor_time, "+7") AS assign_vendor_date
+            , CONCAT(a.product_id, "_", a.seller_code, "_", a.warehouse_code, "_", FORMAT_DATE("%Y%m%d", COALESCE( DATE(assign_vendor_time, "+7"), created_date))) AS sku_fc_assign_date
+            , sku
+            , purchaser_code
+            , 1 AS source_priority
+            , a.created_date
+        FROM platinum_buymed_vn.seller_prd_purchasing_quotation AS a
+        WHERE created_date = CURRENT_DATE("+7")
+        QUALIFY ROW_NUMBER() over (PARTITION BY product_id, seller_code, warehouse_code ORDER BY created_date DESC) = 1
+        UNION ALL
+        SELECT
+            a.seller_code
+            , a.product_id
+            , a.product_name
+            , a.quantity_expect
+            , a.warehouse_code
+            , b.supplier_id
+            , b.supplier_name
+            , CONCAT(a.product_id, "_", a.seller_code, "_", a.warehouse_code) AS sku_key_fc
+            , IFNULL(SAFE_CAST(JSON_VALUE(a.extra_props, "$.block_release_to_fav_session") AS BOOLEAN),FALSE) AS block_release_to_fav_session
+            , ""
+            , FALSE
+            , DATE(PARSE_TIMESTAMP("%Y%m%d%H%M%S", version), "+7") AS assign_vendor_date
+            , CONCAT(a.product_id, "_", a.seller_code, "_", a.warehouse_code, "_", FORMAT_DATE("%Y%m%d", COALESCE( DATE(PARSE_TIMESTAMP("%Y%m%d%H%M%S", version), "+7"), created_date))) AS sku_fc_assign_date
+            , sku
+            , CASE warehouse_code
+                WHEN "BD" THEN "PUR_HCM"
+                WHEN "HN" THEN "PUR_HN"
+                WHEN "DN" THEN "PUR_DN"
+             END AS purchaser_code
+            , 2 AS source_priority
+            , a.created_date
+        FROM platinum_buymed_vn.seller_prd_purchasing_quotation_export AS a
+            LEFT JOIN gold_buymed_vn2.dim_vendor AS b ON a.vendor_code = b.supplier_code
+        WHERE a.created_date BETWEEN DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 2 MONTH ) AND CURRENT_DATE("+7") 
+            AND a.seller_code IN ("MEDX", "BML_INT")
+        QUALIFY ROW_NUMBER() over (PARTITION BY product_id, seller_code, warehouse_code,assign_vendor_date ORDER BY version DESC) = 1
+    ),
+
+    bidding_rate AS (
+        
+    )
+
+SELECT
+    a.seller_code
+    , a.product_id
+    , a.product_name
+    , a.quantity_expect
+    , a.warehouse_code
+    , b.publish_price
+    , b.refer_price
+    , b.purchase_vat
+    , a.favorite_vendor_id
+    , a.favorite_vendor_name
+    , a.sku_key_fc
+    , a.block_release_to_fav_session
+    , quotation_status
+    , is_bidding
+    , COALESCE( assign_vendor_date, a.created_date) AS assign_vendor_date
+    , sku_fc_assign_date
+FROM quotation AS a
+    LEFT JOIN gold_buymed_vn2.dim_vendor AS v ON v.supplier_id = a.favorite_vendor_id
+    LEFT JOIN platinum_buymed_vn.seller_prd_purchasing_sku_config AS b ON a.sku = b.sku AND a.purchaser_code = b.purchaser_code
+WHERE 1=1
+    AND a.seller_code IN ("MEDX", "BML_INT")
+    AND COALESCE( assign_vendor_date, a.created_date) >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 2 MONTH )
+QUALIFY ROW_NUMBER() over (PARTITION BY sku_fc_assign_date ORDER BY source_priority) = 1
