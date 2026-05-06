@@ -22,7 +22,6 @@ WITH _all AS (
         ,a.cost_price_include_tax
         ,a.location_id
         ,a.product_id || "_" || a.lot_date AS product_lot_date
-        ,a.product_id || "_" || a.lot_date || "_" || a.client_id AS product_lot_date_vat_client_id
         ,SUM(a.on_hand_qty) AS on_hand_quantity
         ,SUM(a.available_qty) AS available_qty
         ,b.pos_id
