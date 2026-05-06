@@ -40,12 +40,12 @@ SELECT DISTINCT
        ,b.received_quantity * a.unit_price                                                                                AS PO_item_amount
        ,(b.received_quantity - COALESCE(x.quantity,0)  ) * a.unit_price                                                   AS actual_po_item_amount
        ,b.lot_date
-       ,a.product_id || "_" || lot_date                                                                                   AS product_lot_date
-       ,a.sku || "_" || lot_date || "_" || b.tax_rate                                                                     AS sku_lotdate_vat
+       ,a.product_id || "_" || b.lot_date                                                                                   AS product_lot_date
+       ,a.sku || "_" || b.lot_date || "_" || b.tax_rate                                                                     AS sku_lotdate_vat
        ,il.location_type
        -- ,a.discount_amount
        ,b.discount_amount                                                                                                 AS item_discount_amt
-       ,c.code || "_" || a.sku || "_" || lot_date || "_" || b.tax_rate                                                    AS item_src_po_code
+       ,c.code || "_" || a.sku || "_" || b.lot_date || "_" || b.tax_rate                                                    AS item_src_po_code
        ,a.seller_code
        ,eo.name
        ,c.distributor_id
@@ -60,21 +60,24 @@ SELECT DISTINCT
        ,CONCAT(a.product_id, "_", p.code) AS product_pos_code
 FROM ${source.circa_os}.order_purchase_order_item AS a
 LEFT JOIN ${source.circa_os}.order_purchase_order AS c ON a.purchase_order_id = c.id
+LEFT JOIN ${source.circa_os}.order_po_item_detail AS b ON a.id = b.po_item_id
 LEFT JOIN (
    SELECT
     rto.source_id
     ,rto.client_id
     ,rti.product_id
     ,rti.unit_id
-    ,SUM(rti.quantity) AS quantity
-    ,SUM(rti.base_quantity) AS base_quantity
-    ,SUM(rti.amount) AS amount
+    ,rtid.lot_date
+    ,SUM(rtid.quantity) AS quantity
+    ,SUM(rtid.base_quantity) AS base_quantity
+   -- ,SUM(rti.amount) AS amount
   FROM ${source.circa_os}.order_return_po rto
-  JOIN ${source.circa_os}.order_return_po_item rti ON rto.id = rti.return_po_id
+  LEFT JOIN ${source.circa_os}.order_return_po_item rti ON rto.id = rti.return_po_id
+  LEFT JOIN ${source.circa_os}.order_return_po_item_detail rtid ON rti.id = rtid.return_po_item_id 
   WHERE rto.status NOT IN ('PENDING', 'CANCELED')
   GROUP BY ALL
-) x ON c.id = x.source_id AND c.client_id = x.client_id AND a.product_id = x.product_id AND a.unit_id = x.unit_id
-LEFT JOIN ${source.circa_os}.order_po_item_detail AS b ON a.id = b.po_item_id
+) x ON c.id = x.source_id AND c.client_id = x.client_id AND a.product_id = x.product_id AND a.unit_id = x.unit_id AND b.lot_date = x.lot_date
+
 LEFT JOIN ${source.circa_os}.inventory_location AS il ON b.location_id = il.id AND c.client_id = il.client_id
 LEFT JOIN ${source.circa_os}.entity_owner AS eo ON a.seller_code = eo.seller_code AND c.client_id = eo.client_id
 LEFT JOIN ${source.circa_os}.entity_distributor AS dis ON c.distributor_id = dis.id AND c.client_id = dis.client_id
