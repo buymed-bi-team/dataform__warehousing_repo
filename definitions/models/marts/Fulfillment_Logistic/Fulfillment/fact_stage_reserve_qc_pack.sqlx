@@ -67,4 +67,4 @@ left join (
   from ${source.platinum}.warehouse_prd_picking_pick_ticket_item
   where created_date >= (select DATE(start_date_scan) from cte_date) 
 ) pi on p.ticket_id = pi.ticket_id
-where coalesce(end_qc_time, end_pick_time) >= (select timestamp(start_date) from cte_date)
+where coalesce(end_qc_time, p.end_time) + INTERVAL 7 HOUR >= (select timestamp(start_date) from cte_date)
