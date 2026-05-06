@@ -2,7 +2,7 @@ config {
     type: "view",
     schema: "platinum_buymed_vn",
     name: "seller_prd_purchasing_bidding_rate",
-    tags:["platinum","seller_prd_wis"]
+    tags:["platinum","seller_prd_purchasing"]
 }
 SELECT
     *,
