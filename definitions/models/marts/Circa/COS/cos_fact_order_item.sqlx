@@ -76,7 +76,7 @@ WITH base_unit_selection AS (
                )
             END AS base_quantity
         ,oi.tax_rate
-        ,oi.product_id || '_' || oi.lot_date || '_'  || o.client_id AS product_lot_date_vat_client_id
+        ,oi.product_id || '_' || oi.lot_date AS product_lot_date
         ,oi.sku_code || '_' || oi.lot_date || '_' || oi.tax_rate AS sku_lotdate_vat
         ,al.cost_price_include_tax AS base_unit_cost_price
         ,eo.name AS owner_name
@@ -90,7 +90,7 @@ WITH base_unit_selection AS (
               ELSE ol.deal_code END AS promotion_event_code
         , CASE WHEN o.channel <> 'O2O' THEN d.deal_name
                ELSE ol.deal_name END AS deal_name
-        ,CASE WHEN o.channel <> 'O2O' THEN d.campaign_code
+        ,CASE WHEN o.channel <> 'O2O' THEN d.campaign_codecos_purchase
                 ELSE ol.campaign_code END AS campaign_code
         ,CASE WHEN o.channel <> 'O2O' THEN d.campaign_name
                ELSE ol.campaign_name END AS campaign_name

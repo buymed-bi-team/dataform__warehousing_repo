@@ -40,7 +40,7 @@ SELECT DISTINCT
        ,b.received_quantity * a.unit_price                                                                                AS PO_item_amount
        ,(b.received_quantity - COALESCE(x.quantity,0)  ) * a.unit_price                                                   AS actual_po_item_amount
        ,b.lot_date
-       ,a.product_id || "_" || lot_date || "_" ||  c.client_id                                                            AS product_lot_date_vat_client_id
+       ,a.product_id || "_" || lot_date                                                                                   AS product_lot_date
        ,a.sku || "_" || lot_date || "_" || b.tax_rate                                                                     AS sku_lotdate_vat
        ,il.location_type
        -- ,a.discount_amount

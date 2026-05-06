@@ -9,11 +9,11 @@ config {
 WITH t AS (
 SELECT DISTINCT
             product_id
-           ,CONCAT(product_id, "_", "1") AS product_client_id
-           ,client_id
+          -- ,CONCAT(product_id, "_", "1") AS product_client_id
+           --,client_id
            ,lot_date
            ,product_id || "_" || lot_date AS product_lot_date
-           ,product_id || "_" || lot_date || "_" || client_id AS product_lot_date_vat_client_id
+        --    ,,product_id || "_" || lot_date AS product_lot_date_vat_client_id
            --,type AS vat_type
            --,tax_rate
            ,DATE(TIMESTAMP_ADD(expired_date, INTERVAL 7 HOUR)) AS expired_date
