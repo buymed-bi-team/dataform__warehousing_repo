@@ -44,10 +44,10 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                     A
        ,i.accepted_quantity
        ,failed_purchase_count
        ,i.convert_rate
-       ,JSON_VALUE(accepted_quantity_history, '$[1].PoCode')   AS po_code
-       ,JSON_VALUE(accepted_quantity_history, '$[1].so_code')  AS so_code
-       ,JSON_VALUE(accepted_quantity_history, '$[1].Status')   AS so_status
-       ,JSON_VALUE(accepted_quantity_history, '$[1].SourceType') AS source_type
+       ,JSON_VALUE(accepted_quantity_history, '$[0].PoCode')   AS po_code
+       ,JSON_VALUE(accepted_quantity_history, '$[0].so_code')  AS so_code
+       ,JSON_VALUE(accepted_quantity_history, '$[0].Status')   AS so_status
+       ,JSON_VALUE(accepted_quantity_history, '$[0].SourceType') AS source_type
        ,i.tax_rate
        ,i.unit_price
        ,o.client_id

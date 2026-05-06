@@ -10,6 +10,9 @@ SELECT
   , product_id
   , product_name
   , NULLIF(product_category, "Thuốc (Chưa phân loại)") AS product_category
+  , cat2
+  , cat3
+  , cat4
   , volumes
   , unit
   , manufacture_name
