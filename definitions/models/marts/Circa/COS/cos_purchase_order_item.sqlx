@@ -38,13 +38,13 @@ SELECT DISTINCT
        --      WHEN a.amount = 0 THEN b.quantity * a.unit_price
        --  END AS PO_item_amount
        ,b.received_quantity * a.unit_price                                                                                AS PO_item_amount
-       ,(b.received_quantity - COALESCE(x.quantity,0)  ) * a.unit_price                                                   AS actual_po_item_amount
+       ,(b.received_quantity - COALESCE(x.quantity,0)  ) * a.unit_price - (b.discount_amount/b.received_quantity) *  (b.received_quantity - COALESCE(x.quantity,0) )   AS actual_po_item_amount
        ,b.lot_date
        ,a.product_id || "_" || b.lot_date                                                                                   AS product_lot_date
        ,a.sku || "_" || b.lot_date || "_" || b.tax_rate                                                                     AS sku_lotdate_vat
        ,il.location_type
        -- ,a.discount_amount
-       ,b.discount_amount                                                                                                 AS item_discount_amt
+       ,(b.discount_amount/b.received_quantity) *  (b.received_quantity - COALESCE(x.quantity,0) )                         AS item_discount_amt
        ,c.code || "_" || a.sku || "_" || b.lot_date || "_" || b.tax_rate                                                    AS item_src_po_code
        ,a.seller_code
        ,eo.name
