@@ -90,7 +90,7 @@ WITH base_unit_selection AS (
               ELSE ol.deal_code END AS promotion_event_code
         , CASE WHEN o.channel <> 'O2O' THEN d.deal_name
                ELSE ol.deal_name END AS deal_name
-        ,CASE WHEN o.channel <> 'O2O' THEN d.campaign_codecos_purchase
+        ,CASE WHEN o.channel <> 'O2O' THEN d.campaign_code
                 ELSE ol.campaign_code END AS campaign_code
         ,CASE WHEN o.channel <> 'O2O' THEN d.campaign_name
                ELSE ol.campaign_name END AS campaign_name
