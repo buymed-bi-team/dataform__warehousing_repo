@@ -2,10 +2,6 @@ config {
     type: "view",
     schema: "platinum_buymed_vn",
     name: "seller_prd_wis_defective_product",
-    description : `
-    PIC: minh.luu
-    Internal: internal.thuocsi.vn/internal-seller/MEDX/PUR_HN/refund-bill
-    `,
     tags:["platinum","seller_prd_wis"]
 }
 SELECT
