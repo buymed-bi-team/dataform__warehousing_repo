@@ -80,6 +80,7 @@ LEFT JOIN (SELECT * FROM ${source.ref}.cos_dim_product WHERE client_id = 1) p on
 LEFT JOIN base_unit cv ON a.product_id = cv.product_id AND a.unit = cv.convert_unit
 )
 SELECT i.*
+       ,purchase_note
        ,po_code
        ,so_code
        ,ordered_quantity
