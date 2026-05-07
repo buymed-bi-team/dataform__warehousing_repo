@@ -4,7 +4,13 @@ config {
 }
 
 SELECT
-    CONCAT(a.product_id, "_", a.seller_code, "_", a.warehouse_code) AS sku_key_fc
+    a.product_id
+    , a.seller_code
+    , a.sku AS sku_code
+    , a.favorite_vendor_id
+    , a.favorite_vendor_name
+    , a.warehouse_code
+    , CONCAT(a.product_id, "_", a.seller_code, "_", a.warehouse_code) AS sku_key_fc
     , CONCAT(a.product_id, "_", a.seller_code, "_", a.warehouse_code, "_", FORMAT_DATE("%Y%m%d", a.created_date)) AS sku_key_fc_date
     , IF(c.rebate_price_with_adhoc_promotion > b.min_seller_received, b.min_seller_received, c.rebate_price_with_adhoc_promotion) AS reference_price
     , c.rebate_price_with_adhoc_promotion AS price_after_rebate
