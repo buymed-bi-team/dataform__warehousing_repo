@@ -122,7 +122,7 @@ SELECT o.* except(delivery_tags)
     AND (
        cancellation_note LIKE '%PTTT%'
       OR cancellation_note LIKE '%phương thức thanh toán%'
-      OR cancellation_note LIKE '%mã giảm giá%'
+      OR (cancellation_note LIKE '%mã giảm giá%'AND cancellation_note NOT LIKE '%cheating%' AND cancellation_note NOT LIKE '%phát sinh nhiều đơn hàng%')
       OR cancellation_note LIKE '%mã km%'
       OR cancellation_note LIKE '%voucher%'
       OR cancellation_note LIKE '%chưa áp%'
@@ -162,6 +162,7 @@ SELECT o.* except(delivery_tags)
       OR cancellation_note LIKE '%sỉ%'
       OR cancellation_note LIKE '%giới hạn số lượng%'
       OR cancellation_note LIKE '%nghi ngờ%'
+      OR cancellation_note LIKE '%Nghi ngờ%'
       OR cancellation_note LIKE '%địa chỉ không rõ%'
     )
     THEN 'Gian lận / Rủi ro / Gom đơn'
