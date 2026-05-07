@@ -23,7 +23,7 @@ WITH
             , purchaser_code
             , 1 AS source_priority
             , a.created_date
-        FROM platinum_buymed_vn.seller_prd_purchasing_quotation AS a
+        FROM ${source.platinum}.seller_prd_purchasing_quotation AS a
         WHERE created_date = CURRENT_DATE("+7")
         QUALIFY ROW_NUMBER() over (PARTITION BY product_id, seller_code, warehouse_code ORDER BY created_date DESC) = 1
         UNION ALL
@@ -49,16 +49,12 @@ WITH
              END AS purchaser_code
             , 2 AS source_priority
             , a.created_date
-        FROM platinum_buymed_vn.seller_prd_purchasing_quotation_export AS a
-            LEFT JOIN gold_buymed_vn2.dim_vendor AS b ON a.vendor_code = b.supplier_code
+        FROM ${source.platinum}.seller_prd_purchasing_quotation_export AS a
+            LEFT JOIN ${ref("dim_vendor")} AS b ON a.vendor_code = b.supplier_code
         WHERE a.created_date BETWEEN DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 2 MONTH ) AND CURRENT_DATE("+7") 
             AND a.seller_code IN ("MEDX", "BML_INT")
         QUALIFY ROW_NUMBER() over (PARTITION BY product_id, seller_code, warehouse_code,assign_vendor_date ORDER BY version DESC) = 1
     )
-
-    -- bidding_rate AS (
-
-    -- )
 
 SELECT
     a.seller_code
@@ -78,8 +74,8 @@ SELECT
     , COALESCE( assign_vendor_date, a.created_date) AS assign_vendor_date
     , sku_fc_assign_date
 FROM quotation AS a
-    LEFT JOIN gold_buymed_vn2.dim_vendor AS v ON v.supplier_id = a.favorite_vendor_id
-    LEFT JOIN platinum_buymed_vn.seller_prd_purchasing_sku_config AS b ON a.sku = b.sku AND a.purchaser_code = b.purchaser_code
+    LEFT JOIN ${ref("dim_vendor")} AS v ON v.supplier_id = a.favorite_vendor_id
+    LEFT JOIN ${source.platinum}.seller_prd_purchasing_sku_config AS b ON a.sku = b.sku AND a.purchaser_code = b.purchaser_code
 WHERE 1=1
     AND a.seller_code IN ("MEDX", "BML_INT")
     AND COALESCE( assign_vendor_date, a.created_date) >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 2 MONTH )
