@@ -113,6 +113,109 @@ SELECT o.* except(delivery_tags)
              END AS delivery_tags
        ,m.district_name
        ,m.province_name
+       ,CASE
+  WHEN  o2o_status <>  'CANCELED' THEN NULL
+  -- 1. Thanh toán
+  WHEN cancellation_type IN ('PAYMENT_EXPIRED', 'UPDATE_PAYMENT_METHOD', 'VOUCHER_ISSUE')
+    THEN 'Vấn đề thanh toán'
+  WHEN cancellation_type = 'OTHER'
+    AND (
+       cancellation_note LIKE '%PTTT%'
+      OR cancellation_note LIKE '%phương thức thanh toán%'
+      OR cancellation_note LIKE '%mã giảm giá%'
+      OR cancellation_note LIKE '%mã km%'
+      OR cancellation_note LIKE '%voucher%'
+      OR cancellation_note LIKE '%chưa áp%'
+      OR cancellation_note LIKE '%chưa nhập mã%'
+    )
+    THEN 'Vấn đề thanh toán'
+
+  -- 2. Hàng hóa / Tồn kho
+  WHEN cancellation_type IN ('CUSTOMER_CANCEL_OR_OUT_OF_STOCK', 'PHARMACY_OUT_OF_STOCK')
+    THEN 'Hàng hóa / Tồn kho'
+  WHEN cancellation_type = 'CUSTOMER_CHANGES_MIND'
+    AND (
+      cancellation_note LIKE '%hết hàng%'
+      OR cancellation_note LIKE '%không có hàng%'
+      OR cancellation_note LIKE '%chờ nhập hàng%'
+      OR cancellation_note LIKE '%cận date%'
+    )
+    THEN 'Hàng hóa / Tồn kho'
+  WHEN cancellation_type = 'OTHER'
+    AND (
+      cancellation_note LIKE '%hết hàng%'
+      OR cancellation_note LIKE '%không có hàng%'
+      OR cancellation_note LIKE '%không đủ số lượng%'
+      OR cancellation_note LIKE '%cận date%'
+      OR cancellation_note LIKE '%hết date%'
+    )
+    THEN 'Hàng hóa / Tồn kho'
+
+  -- 3. Gian lận / Rủi ro
+  WHEN cancellation_type IN ('CUSTOMER_CHEATING', 'CUSTOMER_CANNOT_BE_CONTACTED', 'FAIL_TO_DELIVER')
+    THEN 'Gian lận / Rủi ro'
+  WHEN cancellation_type = 'OTHER'
+    AND (
+      cancellation_note LIKE '%cheating%'
+      OR cancellation_note LIKE '%thuốc sỉ%'
+      OR cancellation_note LIKE '%sỉ%'
+      OR cancellation_note LIKE '%giới hạn số lượng%'
+      OR cancellation_note LIKE '%nghi ngờ%'
+      OR cancellation_note LIKE '%địa chỉ không rõ%'
+    )
+    THEN 'Gian lận / Rủi ro'
+
+  -- 4. Gom đơn / Đặt lại
+  WHEN cancellation_type = 'CUSTOMER_ALREADY_REORDERED'
+    THEN 'Gom đơn / Đặt lại'
+  WHEN cancellation_type = 'OTHER'
+    AND (
+      cancellation_note LIKE '%gom%'
+      OR cancellation_note LIKE '%trùng đơn%'
+      OR cancellation_note LIKE '%đặt lại%'
+      OR cancellation_note LIKE '%đặt trùng%'
+    )
+    THEN 'Gom đơn / Đặt lại'
+  WHEN cancellation_type = 'CUSTOMER_CHANGES_MIND'
+    AND (
+      cancellation_note LIKE '%đặt lại%'
+      OR cancellation_note LIKE '%đơn mới%'
+    )
+    THEN 'Gom đơn / Đặt lại'
+
+  -- 5. Cập nhật thông tin đơn
+  WHEN cancellation_type IN ('UPDATE_ITEM_INFO', 'UPDATE_PHONE_OR_ADDRESS')
+    THEN 'Cập nhật thông tin đơn'
+  WHEN cancellation_type = 'OTHER'
+    AND (
+      cancellation_note LIKE '%địa chỉ%'
+      OR cancellation_note LIKE '%SĐT%'
+      OR cancellation_note LIKE '%số điện thoại%'
+      OR cancellation_note LIKE '%thay đổi sản phẩm%'
+    )
+    THEN 'Cập nhật thông tin đơn'
+  WHEN cancellation_type = 'CUSTOMER_CHANGES_MIND'
+    AND cancellation_note LIKE '%địa chỉ%'
+    THEN 'Cập nhật thông tin đơn'
+
+  -- 6. Khách đổi ý
+  WHEN cancellation_type IN ('CUSTOMER_CHANGES_MIND', 'CUSTOMER_ORDER_BY_MISTAKE', 'NOT_NEEDED')
+    THEN 'Khách đổi ý'
+  WHEN cancellation_type = 'OTHER'
+    AND (
+      cancellation_note LIKE '%không còn nhu cầu%'
+      OR cancellation_note LIKE '%đổi ý%'
+      OR cancellation_note LIKE '%không chờ%'
+      OR cancellation_note LIKE '%cần gấp%'
+    )
+    THEN 'Khách đổi ý'
+
+  -- 7. Lỗi hệ thống
+  WHEN cancellation_type = 'SYSTEM_INTERNAL_ERROR'
+    THEN 'Lỗi hệ thống'
+
+  ELSE 'Chưa phân loại'
+END AS cancel_group
 FROM map_deliver o
 LEFT JOIN location m ON o.district_code = m.district_code AND o.province_code = m.province_code
 WHERE order_code NOT IN (SELECT DISTINCT order_code FROM map_deliver WHERE  sender_name IN ( 'Cửa hàng Tech Test 1'))
