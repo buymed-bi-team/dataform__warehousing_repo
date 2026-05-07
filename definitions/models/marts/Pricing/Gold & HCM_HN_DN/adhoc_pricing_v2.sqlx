@@ -38,6 +38,7 @@ WITH
             a.sku_last_updated_at,
             d.rebate_date_get_at,
             a.product_id,
+            a.seller_code,
             a.sku_code,
             a.seller_class,
             a.product_name,
