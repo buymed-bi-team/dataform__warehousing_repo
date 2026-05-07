@@ -1,0 +1,61 @@
+config {
+    type: "table",
+    description: 
+        `
+        PIC: nguyen.tran; 
+        Type: Table; 
+		Refresh Schedule: hourly;
+        `,
+    tags: ["custom_1h_past10"]
+}
+
+WITH
+    purchased AS (
+        SELECT
+            oi.customer_id
+            , COUNT(DISTINCT oi.product_id) AS no_products_purchased
+            , STRING_AGG(DISTINCT SAFE_CAST(oi.product_id AS STRING), ", ") AS product_id_list
+        FROM ${ref("fact_order_item")} AS oi
+            LEFT JOIN ${ref("fact_order")} AS o ON oi.order_id = o.order_id
+        WHERE 1=1
+            AND o.channel = "MARKETPLACE"
+            AND o.order_status <> "CANCEL"
+            AND oi.seller_code = "MEDX"
+            AND oi.product_id IN (1129214,1129202	,1127079	,1160685	,1160792, 825641, 1160581, 237266, 2556, 2006776, 13887, 11376, 7989, 8472, 90132, 4589, 56032, 5287, 212255, 71988, 2000031, 1824, 15102, 4307	)
+            AND DATE(oi.created_at) BETWEEN "2026-01-01" AND  "2026-04-01" - 1
+            AND DATE(o.created_at) BETWEEN "2026-01-01" AND  "2026-04-01" - 1
+            AND sales_price > 1000
+            AND item_type <> "GIFT"
+        GROUP BY ALL
+        HAVING no_products_purchased >= 2
+    )
+
+    -- , product AS (
+    --     SELECT
+    --         oi.customer_id
+    --         , STRING_AGG(DISTINCT SAFE_CAST(oi.product_id AS STRING), ", ") AS product_id_list
+    --     FROM ${ref("fact_order_item")} AS oi
+    --         LEFT JOIN ${ref("fact_order")} AS o ON oi.order_id = o.order_id
+    --         LEFT JOIN ${ref("dim_product")} AS p ON oi.product_id = p.product_id
+    --     WHERE 1=1
+    --         AND o.channel = "MARKETPLACE"
+    --         AND o.order_status <> "CANCEL"
+    --         AND oi.seller_code = "MEDX"
+    --         AND oi.product_id IN (1129214,1129202	,1127079	,1160685	,1160792, 825641, 1160581, 237266, 2556, 2006776, 13887, 11376, 7989, 8472, 90132, 4589, 56032, 5287, 212255, 71988, 2000031, 1824, 15102, 4307	)
+    --         AND DATE(oi.created_at) BETWEEN "2026-01-01" AND  "2026-04-01" - 1
+    --         AND DATE(o.created_at) BETWEEN "2026-01-01" AND  "2026-04-01" - 1
+    --         AND sales_price > 1000
+    --         AND item_type <> "GIFT"
+    --     GROUP BY ALL
+    -- )
+
+
+SELECT
+    c.customer_id
+    , p.product_id_list
+FROM ${ref("dim_customer")} AS c
+    LEFT JOIN purchased AS p ON c.customer_id = p.customer_id
+    -- LEFT JOIN product AS pr ON p.customer_id = pr.customer_id
+WHERE 1=1
+    AND customer_status = "ACTIVE"
+    AND p.customer_id IS NOT NULL
