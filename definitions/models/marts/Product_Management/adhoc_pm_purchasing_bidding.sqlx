@@ -1,0 +1,41 @@
+config {
+    type: "table",
+    tags: ["custom_1h_past10", "PRODUCT_MANAGEMENT"],
+}
+
+WITH
+    bidding AS (
+        SELECT
+            a.vendor_code
+            , b.supplier_name AS vendor_name
+            , a.quantity_bidding
+            , a.unit_price_after_vat
+            , CONCAT(a.product_id, "_", SPLIT(a.sku, '.')[SAFE_OFFSET(0)], "_", a.warehouse_code) AS sku_key_fc
+            , created_time
+            , created_date
+        FROM ${source.platinum}.seller_prd_purchasing_bidding AS a
+            LEFT JOIN ${ref("dim_vendor")} AS b ON a.vendor_code = b.supplier_code
+        --     LEFT JOIN ${source.platinum}.seller_prd_purchasing_quotation AS c ON a.sku = c.sku AND a.warehouse_code = c.warehouse_code
+        WHERE
+            REGEXP_CONTAINS(a.sku, r'MEDX.|BML\_INT')
+        UNION  ALL
+        SELECT
+            a.vendor_code
+            , b.supplier_name AS vendor_name
+            , a.quantity_bidding
+            , a.unit_price_after_vat
+            , CONCAT(a.product_id, "_", SPLIT(JSON_VALUE(extra_props, "$.sku"), '.')[SAFE_OFFSET(0)], "_", a.warehouse_code) AS sku_key_fc
+            , created_time
+            , created_date
+        FROM ${source.platinum}.seller_prd_purchasing_bidding_history AS a
+            LEFT JOIN ${ref("dim_vendor")} AS b ON a.vendor_code = b.supplier_code
+        WHERE
+            REGEXP_CONTAINS(JSON_VALUE(extra_props, "$.sku"), r'MEDX.|BML\_INT')
+            AND created_date BETWEEN DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 2 MONTH ) AND CURRENT_DATE("+7")
+    )
+
+SELECT
+    * EXCEPT (created_time)
+    , CONCAT(sku_key_fc, "_", FORMAT_DATE("%Y%m%d", created_date)) AS sku_fc_bid_date
+FROM bidding
+QUALIFY ROW_NUMBER() over (PARTITION BY sku_fc_bid_date, vendor_code ORDER BY created_time DESC) = 1
