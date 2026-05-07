@@ -1,0 +1,45 @@
+config {
+    type: "table",
+    tags: ["custom_1h_past10", "PRODUCT_MANAGEMENT"],
+}
+
+SELECT
+    CONCAT(a.product_id, "_", a.seller_code, "_", a.warehouse_code) AS sku_key_fc
+    , CONCAT(a.product_id, "_", a.seller_code, "_", a.warehouse_code, "_", FORMAT_DATE("%Y%m%d", a.created_date)) AS sku_key_fc_date
+    , IF(c.rebate_price_with_adhoc_promotion > b.min_seller_received, b.min_seller_received, c.rebate_price_with_adhoc_promotion) AS reference_price
+    , c.rebate_price_with_adhoc_promotion AS price_after_rebate
+    , expected_quantity
+    , pos_quantity
+    , po AS po_code
+    , d.status AS po_status
+    , d.created_by_system
+    , e.price_after_discount + COALESCE(e.vat_price, 0) AS po_price
+FROM ${source.platinum}.seller_prd_purchasing_bidding_rate a
+    LEFT JOIN ${ref("dim_fc")} AS fc ON a.warehouse_code = fc.fc_code
+    LEFT JOIN (
+        SELECT
+            b.product_id
+            , b.fc_code
+            , MIN(COALESCE(a.seller_received_with_promo, a.seller_received_without_promo)) AS min_seller_received
+        FROM ${ref("adhoc_pricing_v2")} AS a
+            LEFT JOIN ${ref("dim_sku_sales_region_current")} AS b ON a.sku_key_sales_region_code = b.sku_key_sales_region_code
+        WHERE b.seller_class = "EXTERNAL"
+            AND b.sku_system_status IN ("NORMAL", "LIMIT")
+            AND b.sku_system_active
+        GROUP BY ALL
+    ) AS b ON a.product_id = b.product_id AND a.warehouse_code = b.fc_code
+    LEFT JOIN ${ref("adhoc_pricing_v2")} AS c ON c.sku_code = a.sku AND fc.sales_region_code = c.sales_region_code
+    LEFT JOIN UNNEST(JSON_VALUE_ARRAY(a.po_codes)) AS po
+    LEFT JOIN (
+        SELECT *
+        FROM ${source.platinum}.seller_prd_purchasing_purchase_order
+        WHERE created_date >= CURRENT_DATE("+7") - INTERVAL 30 DAY
+    ) AS d ON d.po_code = po
+    LEFT JOIN (
+        SELECT *
+        FROM ${source.platinum}.seller_prd_purchasing_purchase_order_item
+        WHERE created_date >= CURRENT_DATE("+7") - INTERVAL 30 DAY
+            AND price_after_discount > 0
+    ) AS e ON e.po_code = po AND e.sku = a.sku
+WHERE a.created_date >= CURRENT_DATE("+7") - INTERVAL 15 DAY
+GROUP BY ALL
