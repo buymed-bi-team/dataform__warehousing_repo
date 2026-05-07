@@ -105,7 +105,12 @@ LEFT JOIN (SELECT * FROM ${source.platinum}.circa_online_prd_order_sale_order
                    , province_name
 FROM `gold_buymed_vn2.dim_geo_location`
 )
-SELECT o.*
+SELECT o.* except(delivery_tags)
+       ,CASE WHEN delivery_tags = 'giao-30ph' OR delivery_tags = '30ph' THEN '1. giao-30ph'
+             WHEN delivery_tags = 'giao-2h' THEN '2. giao-2h'
+             WHEN delivery_tags = 'giao-24h' THEN '3. giao-24h'
+             WHEN delivery_tags = 'giao-96h' THEN  '4. giao-96h'
+             END AS delivery_tags
        ,m.district_name
        ,m.province_name
 FROM map_deliver o
