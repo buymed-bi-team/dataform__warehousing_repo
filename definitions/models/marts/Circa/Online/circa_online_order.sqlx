@@ -153,7 +153,7 @@ SELECT o.* except(delivery_tags)
 
   -- 3. Gian lận / Rủi ro
   WHEN cancellation_type IN ('CUSTOMER_CHEATING', 'CUSTOMER_CANNOT_BE_CONTACTED', 'FAIL_TO_DELIVER')
-    THEN 'Gian lận / Rủi ro'
+    THEN 'Gian lận / Rủi ro / Gom đơn'
   WHEN cancellation_type = 'OTHER'
     AND (
       cancellation_note LIKE '%gom%'
