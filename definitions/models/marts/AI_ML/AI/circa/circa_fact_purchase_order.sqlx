@@ -24,6 +24,7 @@ SELECT
     , oi.Vendor AS vendor
     , oi.Channel AS channel
     , oi.pos_code
+    , p.name AS pos_name
     , oi.client_id
     , IF(p.type = "FS", "FS", "COS") AS pos_type
 FROM ${ref("gold_buymed_vn2", "cos_purchase_order_item")} AS oi
