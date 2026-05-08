@@ -20,7 +20,8 @@ SELECT
     , d.status AS po_status
     , d.created_by_system
     , e.price_after_discount + COALESCE(e.vat_price, 0) AS po_price
-    , a.created_date
+    , v.commercial_supplier_name AS vendor_name
+    , a.created_date AS bidding_date
 FROM ${source.platinum}.seller_prd_purchasing_bidding_rate a
     LEFT JOIN ${ref("dim_fc")} AS fc ON a.warehouse_code = fc.fc_code
     LEFT JOIN (
@@ -48,6 +49,7 @@ FROM ${source.platinum}.seller_prd_purchasing_bidding_rate a
         WHERE created_date >= CURRENT_DATE("+7") - INTERVAL 30 DAY
             AND price_after_discount > 0
     ) AS e ON e.po_code = po AND e.sku = a.sku
+    LEFT JOIN  ${ref("dim_vendor")} AS v ON v.supplier_code = d.vendor_code
 WHERE a.created_date >= CURRENT_DATE("+7") - INTERVAL 15 DAY
     AND a.sku IS NOT NULL
 GROUP BY ALL
