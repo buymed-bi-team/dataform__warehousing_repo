@@ -43,6 +43,7 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                      
       ,payment_method                                                                --Banking/COD/PAYOO/BUSINESS_WALLET
       ,payment_status                                                                --COMPLETED/WAIT_FOR_PAYMENT/NULL
       ,deliver_method                                                                --FAST/NORMAL
+      ,JSON_VALUE(o.extra_props, '$.admin_note')                                     AS admin_note
       ,JSON_VALUE(o.extra_props, '$.is_split_payment')                               AS is_split_payment
       ,CAST(JSON_VALUE(o.extra_props, '$.wallet_paid_amount') AS INT64)              AS wallet_paid_amount
       ,CAST(JSON_VALUE(o.extra_props, '$.secondary_pay_amount') AS INT64)            AS secondary_pay_amount
@@ -130,6 +131,41 @@ SELECT o.* except(delivery_tags)
     )
     THEN '1. Vấn đề thanh toán'
 
+    
+  -- 3. Gian lận / Rủi ro
+  WHEN cancellation_type IN ('CUSTOMER_CHEATING', 'CUSTOMER_CANNOT_BE_CONTACTED', 'FAIL_TO_DELIVER')
+    THEN '3. Gian lận / Rủi ro / Gom đơn'
+  WHEN cancellation_type = 'CUSTOMER_CANCEL_OR_OUT_OF_STOCK'
+    AND (
+      admin_note LIKE '%gom%'
+      OR admin_note LIKE '%cheating%'
+      OR admin_note LIKE '%Gom%'
+      OR admin_note LIKE '%thuốc sỉ%'
+      OR admin_note LIKE '%sỉ%'
+      OR admin_note LIKE '%giới hạn số lượng%'
+      OR admin_note LIKE '%nghi ngờ%'
+      OR admin_note LIKE '%Nghi ngờ%'
+      OR admin_note LIKE '%địa chỉ không rõ%'
+      OR admin_note LIKE '%4 đơn liên tiếp%'
+      OR admin_note LIKE '%gian lận%'
+    )
+    THEN '3. Gian lận / Rủi ro / Gom đơn'
+
+    WHEN cancellation_type = 'CUSTOMER_CANCEL_OR_OUT_OF_STOCK'
+    AND (
+      cancellation_note LIKE '%gom%'
+      OR cancellation_note LIKE '%cheating%'
+      OR cancellation_note LIKE '%thuốc sỉ%'
+      OR cancellation_note LIKE '%sỉ%'
+      OR cancellation_note LIKE '%giới hạn số lượng%'
+      OR cancellation_note LIKE '%nghi ngờ%'
+      OR cancellation_note LIKE '%Nghi ngờ%'
+      OR cancellation_note LIKE '%địa chỉ không rõ%'
+    )
+    THEN '3. Gian lận / Rủi ro / Gom đơn'
+    WHEN customer_phone = '0333355122'  THEN '3. Gian lận / Rủi ro / Gom đơn'
+
+
   -- 2. Hàng hóa / Tồn kho
   WHEN cancellation_type IN ('CUSTOMER_CANCEL_OR_OUT_OF_STOCK', 'PHARMACY_OUT_OF_STOCK')
     THEN '2. Hàng hóa / Tồn kho'
@@ -150,22 +186,6 @@ SELECT o.* except(delivery_tags)
       OR cancellation_note LIKE '%hết date%'
     )
     THEN '2. Hàng hóa / Tồn kho'
-
-  -- 3. Gian lận / Rủi ro
-  WHEN cancellation_type IN ('CUSTOMER_CHEATING', 'CUSTOMER_CANNOT_BE_CONTACTED', 'FAIL_TO_DELIVER')
-    THEN '3. Gian lận / Rủi ro / Gom đơn'
-  WHEN cancellation_type = 'OTHER'
-    AND (
-      cancellation_note LIKE '%gom%'
-      OR cancellation_note LIKE '%cheating%'
-      OR cancellation_note LIKE '%thuốc sỉ%'
-      OR cancellation_note LIKE '%sỉ%'
-      OR cancellation_note LIKE '%giới hạn số lượng%'
-      OR cancellation_note LIKE '%nghi ngờ%'
-      OR cancellation_note LIKE '%Nghi ngờ%'
-      OR cancellation_note LIKE '%địa chỉ không rõ%'
-    )
-    THEN '3. Gian lận / Rủi ro / Gom đơn'
 
   -- 4. Đặt lại
   WHEN cancellation_type = 'CUSTOMER_ALREADY_REORDERED'
