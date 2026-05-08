@@ -12,7 +12,7 @@ SELECT
     END
     created_date
 FROM ${source.silver}.seller_prd_purchasing_bidding_rate
-QUALIFY ROW_NUMBER() OVER (_window) = 1 
+QUALIFY ROW_NUMBER() OVER (_window) = 1 AND action <> 'd'
 WINDOW _window AS (
     PARTITION BY mg_id
     ORDER BY synced_at DESC,

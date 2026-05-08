@@ -49,4 +49,5 @@ FROM ${source.platinum}.seller_prd_purchasing_bidding_rate a
             AND price_after_discount > 0
     ) AS e ON e.po_code = po AND e.sku = a.sku
 WHERE a.created_date >= CURRENT_DATE("+7") - INTERVAL 15 DAY
+    AND a.sku IS NOT NULL
 GROUP BY ALL
