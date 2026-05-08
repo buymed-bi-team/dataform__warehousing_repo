@@ -135,16 +135,17 @@ SELECT o.* except(delivery_tags)
   -- 3. Gian lận / Rủi ro
   WHEN cancellation_type IN ('CUSTOMER_CHEATING', 'CUSTOMER_CANNOT_BE_CONTACTED', 'FAIL_TO_DELIVER')
     THEN '3. Gian lận / Rủi ro / Gom đơn'
-  WHEN cancellation_type = 'OTHER'
+  WHEN cancellation_type = 'CUSTOMER_CANCEL_OR_OUT_OF_STOCK'
     AND (
-      cancellation_note LIKE '%gom%'
-      OR cancellation_note LIKE '%cheating%'
-      OR cancellation_note LIKE '%thuốc sỉ%'
-      OR cancellation_note LIKE '%sỉ%'
-      OR cancellation_note LIKE '%giới hạn số lượng%'
-      OR cancellation_note LIKE '%nghi ngờ%'
-      OR cancellation_note LIKE '%Nghi ngờ%'
-      OR cancellation_note LIKE '%địa chỉ không rõ%'
+      admin_note LIKE '%gom%'
+      OR admin_note LIKE '%cheating%'
+      OR admin_note LIKE '%Gom%'
+      OR admin_note LIKE '%thuốc sỉ%'
+      OR admin_note LIKE '%sỉ%'
+      OR admin_note LIKE '%giới hạn số lượng%'
+      OR admin_note LIKE '%nghi ngờ%'
+      OR admin_note LIKE '%Nghi ngờ%'
+      OR admin_note LIKE '%địa chỉ không rõ%'
     )
     THEN '3. Gian lận / Rủi ro / Gom đơn'
 
