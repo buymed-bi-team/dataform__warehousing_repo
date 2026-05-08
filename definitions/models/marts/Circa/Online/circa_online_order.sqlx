@@ -146,6 +146,7 @@ SELECT o.* except(delivery_tags)
       OR admin_note LIKE '%nghi ngờ%'
       OR admin_note LIKE '%Nghi ngờ%'
       OR admin_note LIKE '%địa chỉ không rõ%'
+      OR admin_note LIKE '%4 đơn liên tiếp%'
     )
     THEN '3. Gian lận / Rủi ro / Gom đơn'
 
