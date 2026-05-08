@@ -163,6 +163,7 @@ SELECT o.* except(delivery_tags)
       OR cancellation_note LIKE '%địa chỉ không rõ%'
     )
     THEN '3. Gian lận / Rủi ro / Gom đơn'
+    WHEN customer_phone = '0333355122'  THEN '3. Gian lận / Rủi ro / Gom đơn'
 
 
   -- 2. Hàng hóa / Tồn kho
