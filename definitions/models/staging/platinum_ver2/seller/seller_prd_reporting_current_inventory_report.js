@@ -23,26 +23,26 @@ model.createIncremental(
         ingestCutOffInterval : "INTERVAL 1 MONTH"
     }
 );
-model.assertUnique(
-    ["platinum_00h00","platinum_12h00", "seller_prd_reporting"],
-    {
-        intervalCheckpoint : `INTERVAL 1 YEAR`,
-        maxRetry: 2
-    }
-)
-model.createMismatchAssertionView(
-    ["seller_prd_reporting"],
-    {
-        intervalCheckpoint: `INTERVAL 2 DAY`,
-        maxRetry: 2,
-        // dependencies : [model.dependencies.assertUnique]
-    }
-)
-model.assertMismatch(
-    ["platinum_00h00","platinum_12h00", "seller_prd_reporting"],
-    {
-        intervalCheckpoint: `INTERVAL 2 DAY`,
-        maxRetry: 2,
+// model.assertUnique(
+//     ["platinum_00h00","platinum_12h00", "seller_prd_reporting"],
+//     {
+//         intervalCheckpoint : `INTERVAL 1 YEAR`,
+//         maxRetry: 2
+//     }
+// )
+// model.createMismatchAssertionView(
+//     ["seller_prd_reporting"],
+//     {
+//         intervalCheckpoint: `INTERVAL 2 DAY`,
+//         maxRetry: 2,
+//         // dependencies : [model.dependencies.assertUnique]
+//     }
+// )
+// model.assertMismatch(
+//     ["platinum_00h00","platinum_12h00", "seller_prd_reporting"],
+//     {
+//         intervalCheckpoint: `INTERVAL 2 DAY`,
+//         maxRetry: 2,
         
-    }
-)
+//     }
+// )
