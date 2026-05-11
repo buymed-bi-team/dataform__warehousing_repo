@@ -1,0 +1,51 @@
+
+config {
+  type: "view",
+  schema: "platinum_buymed_vn",
+  name: "operation_prd_qr_qr_code",
+  description : `
+  PIC: auto-gen
+  Partition by: created date
+  `,
+  tags:["platinum","operation_prd_qr"]
+}
+
+WITH silver AS (
+  SELECT
+    key,mg_id,logs,last_updated_time,product_id,product_name,lot,expired_date,status,created_by,created_source,seller_code,receipt_code,generated_time,machine_code,version_no,short_id,vat,created_time,unique_id,sku,old_seller_code,old_sku,old_versions,updated_by,synced_at,extra_props,action,ingest_time,circa_seller_code,unit_name,unit_code,circa_unit_name,circa_sku,circa_receipt_code,circa_unit_code,
+    CASE
+      WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time, 'Asia/Ho_Chi_Minh'))
+      ELSE DATE('2099-01-01')
+    END created_date,
+    CAST(NULL AS DATETIME) AS platinum_refresh
+  FROM silver_buymed_vn.operation_prd_qr_qr_code
+  WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 1 DAY
+  QUALIFY ROW_NUMBER() OVER (_window) = 1
+    AND ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 16 HOUR
+  WINDOW _window AS (
+    PARTITION BY mg_id
+    ORDER BY synced_at DESC,
+      IF(action='d',3, IF(action='u',2,1)) DESC,
+      last_updated_time DESC
+  )
+),
+
+platinum AS (
+  SELECT
+    key,mg_id,logs,last_updated_time,product_id,product_name,lot,expired_date,status,created_by,created_source,seller_code,receipt_code,generated_time,machine_code,version_no,short_id,vat,created_time,unique_id,sku,old_seller_code,old_sku,old_versions,updated_by,synced_at,extra_props,action,ingest_time,circa_seller_code,unit_name,unit_code,circa_unit_name,circa_sku,circa_receipt_code,circa_unit_code,
+    created_date,
+    platinum_refresh
+  FROM ${ref(`platinum_buymed_vn__stg`, `operation_prd_qr_qr_code`)}
+)
+
+SELECT p.*
+FROM platinum p
+LEFT JOIN silver s
+  ON p.mg_id = s.mg_id
+WHERE s.mg_id IS NULL
+
+UNION ALL
+
+SELECT s.*
+FROM silver s
+WHERE action <> "d"

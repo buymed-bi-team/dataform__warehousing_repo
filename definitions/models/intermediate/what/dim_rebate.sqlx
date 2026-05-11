@@ -21,11 +21,11 @@ SELECT
     , DATE(TIMESTAMP_ADD(end_time, INTERVAL 7 HOUR)) as end_time
     , status AS confirming_status
     , CASE
-        WHEN CURRENT_TIMESTAMP() BETWEEN TIMESTAMP_ADD(start_time, INTERVAL 7 HOUR) AND TIMESTAMP_ADD(end_time, INTERVAL 7 HOUR)
+        WHEN CURRENT_TIMESTAMP() BETWEEN start_time AND end_time
             THEN "OCCURING"
-        WHEN CURRENT_TIMESTAMP() < TIMESTAMP_ADD(start_time, INTERVAL 7 HOUR)
+        WHEN CURRENT_TIMESTAMP() < start_time
             THEN "UP-COMING"
-        WHEN CURRENT_TIMESTAMP() > TIMESTAMP_ADD(end_time, INTERVAL 7 HOUR)
+        WHEN CURRENT_TIMESTAMP() > end_time
             THEN "EXPIRED"
       END AS program_status
     , condition_include_type
@@ -39,6 +39,9 @@ SELECT
     , ARRAY_TO_STRING(ARRAY_AGG(DISTINCT CONCAT(b.supplier_id, ' - ', b.supplier_name)),  '\n') as vendors
     , ARRAY_TO_STRING(ARRAY_AGG(DISTINCT bill),  ', ') as bill_status
     , note
+    , JSON_VALUE(a.extra_props, "$.is_marketing_investment") AS is_marketing_investment
+    , JSON_VALUE(a.extra_props, "$.marketing_investment_budget") AS marketing_investment_budget
+    , ARRAY_TO_STRING(JSON_VALUE_ARRAY(a.extra_props, "$.marketing_investment_service"), ", ") AS marketing_investment_service
 FROM ${source.platinum}.seller_prd_promotion_rebate AS a
     LEFT JOIN UNNEST(JSON_VALUE_ARRAY(vendor_codes)) v
     LEFT JOIN ${ref('dim_vendor')} AS b ON b.supplier_code = v
