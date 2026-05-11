@@ -65,6 +65,7 @@ GROUP BY ALL
 SELECT trf.* 
       ,p.name AS pos_received
       ,rcv.* EXCEPT(id, dest_pos_id, client_id, product_id, lot_id, doc_code,unit_price)
+      ,TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
 FROM trf 
 LEFT JOIN rcv ON trf.id = rcv.related_transfer_request_id 
              AND trf.dest_pos_id = rcv.dest_pos_id 
