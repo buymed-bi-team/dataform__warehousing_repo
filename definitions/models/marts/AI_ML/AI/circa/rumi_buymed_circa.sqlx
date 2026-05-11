@@ -64,8 +64,14 @@ AS (SELECT * FROM  ${ref("buymed_innovation", "circa_agg_loss_sale")});
 CREATE OR REPLACE VIEW `rumi_buymed_circa.circa_agg_online_leadtime`
 AS (SELECT * FROM  ${ref("buymed_innovation", "circa_agg_online_leadtime")});
 
+-- circa_chat_sessions
 CREATE OR REPLACE VIEW `rumi_buymed_circa.circa_chat_sessions`
 AS (SELECT * FROM  ${ref("buymed_innovation", "circa_chat_sessions")});
+
+-- circa_chat_users
+CREATE OR REPLACE VIEW `rumi_buymed_circa.circa_chat_users`
+AS (SELECT * FROM  ${ref("buymed_innovation", "circa_chat_users")});
+
 
 
 
