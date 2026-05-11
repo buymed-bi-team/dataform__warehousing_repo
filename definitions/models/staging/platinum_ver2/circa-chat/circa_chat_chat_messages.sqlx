@@ -1,0 +1,81 @@
+config {
+    type: "view",
+    schema: "platinum_buymed_vn",
+    name: "circa_chat_chat_messages",
+    description : `
+    PIC: huyen.ngo
+    Partition by: created date
+    `,
+    tags: ["platinum", "circa-circa_chat_chat_messages"]
+}
+
+WITH silver AS (
+    SELECT
+        key,
+        mg_id,
+        message_id,
+        session_id,
+        sender_type,
+        sender_id,
+        sender_name,
+        connection_id,
+        content,
+        content_type,
+        created_at,
+        synced_at,
+        extra_props,
+        action,
+        ingest_time,
+
+        CASE
+            WHEN created_at IS NOT NULL THEN DATE(DATETIME(created_at, 'Asia/Ho_Chi_Minh'))
+            ELSE DATE('2099-01-01')
+        END AS created_date,
+
+        CAST(null AS DATETIME) AS platinum_refresh
+
+    FROM `silver_buymed_vn.circa_chat_chat_messages`
+    WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 1 DAY
+    QUALIFY ROW_NUMBER() OVER (_window) = 1
+        AND ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 16 HOUR
+        WINDOW _window AS (
+            PARTITION BY mg_id
+            ORDER BY
+                synced_at DESC,
+                IF(action='d', 3, IF(action='u', 2, 1)) DESC,
+                created_at DESC
+        )
+),
+
+platinum AS (
+    SELECT
+        key,
+        mg_id,
+        message_id,
+        session_id,
+        sender_type,
+        sender_id,
+        sender_name,
+        connection_id,
+        content,
+        content_type,
+        created_at,
+        synced_at,
+        extra_props,
+        action,
+        ingest_time,
+        created_date,
+        platinum_refresh
+    FROM ${ref(`platinum_buymed_vn__stg`, `circa_chat_chat_messages`)}
+)
+
+SELECT p.*
+FROM platinum p
+LEFT JOIN silver s ON p.mg_id = s.mg_id
+WHERE s.mg_id IS NULL
+
+UNION ALL
+
+SELECT s.*
+FROM silver s
+WHERE action <> "d"
