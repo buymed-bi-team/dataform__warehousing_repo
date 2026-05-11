@@ -1,0 +1,40 @@
+config {
+    type: "table",
+    description: `PIC: huyen.ngo; model_type: Table ;schedule: At minute 10 every 1 hour.Circa online order `,
+    tags: ['circa-chat'],
+    name: "circa_chat_sessions",
+    columns: {
+
+       
+    },
+    bigquery: {
+        partitionBy: "DATE_TRUNC(created_date, MONTH)"
+
+    }
+}
+
+SELECT DISTINCT o.session_id
+                ,o.status -- AI/PHARM/CLOSED
+                ,o.created_at AS session_created_at
+                ,o.updated_at AS session_updated_at
+                ,o.last_message_at AS session_last_updated_at
+                ,o.user_id
+                ,JSON_VALUE(o.customer, '$.name')                                              AS customer_name
+                ,JSON_VALUE(o.customer, '$.address')                                            AS address
+                ,JSON_VALUE(o.customer, '$.phone')                                              AS phone
+                ,o.message_count
+                ,JSON_VALUE(o.analytics, '$.session_start')                                     AS session_start
+                ,o.last_intent
+                ,o.cart_session_id
+                ,o.conversation_summary
+                ,o.summary_updated_at
+                ,i.sender_type --customer/AI
+                ,i.content
+                ,i.content_type --text,...
+                ,i.created_at AS messages_created_at
+FROM platinum_buymed_vn.circa_chat_chat_sessions o 
+LEFT JOIN platinum_buymed_vn.circa_chat_chat_messages i ON o.session_id = i.session_id
+
+
+
+
