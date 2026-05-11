@@ -41,7 +41,7 @@ SELECT
     , note
     , JSON_VALUE(a.extra_props, "$.is_marketing_investment") AS is_marketing_investment
     , JSON_VALUE(a.extra_props, "$.marketing_investment_budget") AS marketing_investment_budget
-    , JSON_VALUE(a.extra_props, "$.marketing_investment_service") AS marketing_investment_service
+    , ARRAY_TO_STRING(JSON_VALUE_ARRAY(a.extra_props, "$.marketing_investment_service"), ", ") AS marketing_investment_service
 FROM ${source.platinum}.seller_prd_promotion_rebate AS a
     LEFT JOIN UNNEST(JSON_VALUE_ARRAY(vendor_codes)) v
     LEFT JOIN ${ref('dim_vendor')} AS b ON b.supplier_code = v
