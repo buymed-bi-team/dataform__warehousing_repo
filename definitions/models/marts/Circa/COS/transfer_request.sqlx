@@ -61,7 +61,7 @@ LEFT JOIN ${source.ref}.circa_pos_profile p ON rcv.src_pos_id = p.id
 WHERE p.id IS NOT NULL
       AND rcv.type = 'TRANSFER_IN'
 GROUP BY ALL
-)
+), have_rcv AS (
 SELECT trf.* 
       ,p.name AS pos_received
       ,rcv.* EXCEPT(id, dest_pos_id, client_id, product_id, lot_id, doc_code,unit_price)
@@ -76,3 +76,17 @@ LEFT JOIN rcv ON trf.id = rcv.related_transfer_request_id
              AND trf.unit_price = rcv.unit_price
 LEFT JOIN ${source.ref}.circa_pos_profile p ON trf.dest_pos_id = p.id
 WHERE rcv_status <> 'CANCELED'
+)
+SELECT * FROM have_rcv
+UNION ALL 
+SELECT trf.*
+      ,p.name AS pos_received
+      ,NULL AS rcv_status
+      ,NULL AS related_transfer_request_id
+      ,NULL AS qty_received
+      ,NULL AS rcv_code
+      ,TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
+FROM trf
+LEFT JOIN ${source.ref}.circa_pos_profile p ON trf.dest_pos_id = p.id 
+WHERE trf.code NOT IN (SELECT DISTINCT code FROM have_rcv)
+
