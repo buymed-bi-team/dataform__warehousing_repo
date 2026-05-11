@@ -169,7 +169,7 @@ agg_sale_order_item_sort AS (
 )
 
 SELECT
-  *,
+  * EXCEPT(total_line),
   (0.1 * SAFE_DIVIDE(SUM(reserved_quantity) OVER (PARTITION BY sale_order_code), total_qty))
       + (0.6 * SAFE_DIVIDE(SUM(reserved_amount) OVER (PARTITION BY sale_order_code), total_amt))
       + (0.3 * LEAST(SAFE_DIVIDE(SUM(no_reserved_skus) OVER (PARTITION BY sale_order_code), total_line), 1))
