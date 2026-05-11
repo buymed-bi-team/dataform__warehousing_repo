@@ -109,7 +109,7 @@ WITH
     ),
 
     agg_sale_order_item AS (
-        SELECT DISTINCT
+        SELECT 
             a.sale_order_code,
             a.created_date,
             TIMESTAMP(DATETIME(a.created_time, "Asia/Ho_Chi_Minh")) AS created_time,
@@ -132,6 +132,7 @@ WITH
             SUM(a.order_quantity) OVER (PARTITION BY a.sale_order_code) AS total_qty,
             SUM(a.order_quantity * a.unit_price) OVER (PARTITION BY a.sale_order_code) AS total_amt,
             COUNT(DISTINCT a.sku_code) OVER (PARTITION BY a.sale_order_code) AS total_sku,
+            COUNT(1) OVER (PARTITION BY a.sale_order_code) AS total_line,
             -- d.location_code,
             a.location_code,
             TIMESTAMP_ADD(a.pack_done_at, INTERVAL 7 HOUR) AS pack_done_at,
@@ -154,24 +155,24 @@ agg_sale_order_item_sort AS (
     *,
       COALESCE(10 * SAFE_DIVIDE(order_quantity, NULLIF(total_qty, 0)), 0)
           + COALESCE(60 * SAFE_DIVIDE(order_amount, NULLIF(total_amt, 0)), 0)
-          + COALESCE(30 * SAFE_DIVIDE(1, NULLIF(total_sku, 0)), 0)
+          + COALESCE(30 * SAFE_DIVIDE(1, NULLIF(total_line, 0)), 0)
       AS expected_sort,
       COALESCE(10 * SAFE_DIVIDE(reserved_quantity, NULLIF(total_qty, 0)), 0)
           + COALESCE(60 * SAFE_DIVIDE(reserved_amount, NULLIF(total_amt, 0)), 0)
-          + COALESCE(30 * SAFE_DIVIDE(no_reserved_skus, NULLIF(total_sku, 0)), 0)
+          + COALESCE(30 * SAFE_DIVIDE(no_reserved_skus, NULLIF(total_line, 0)), 0)
       AS actual_sort,
       COALESCE(10 * SAFE_DIVIDE(first_reserved_quantity, NULLIF(total_qty, 0)), 0)
           + COALESCE(60 * SAFE_DIVIDE(first_reserved_amount, NULLIF(total_amt, 0)), 0)
-          + COALESCE(30 * SAFE_DIVIDE(no_first_reserved_skus, NULLIF(total_sku, 0)), 0)
+          + COALESCE(30 * SAFE_DIVIDE(no_first_reserved_skus, NULLIF(total_line, 0)), 0)
       AS actual_sort_first_reserved
   FROM agg_sale_order_item
 )
 
 SELECT
-  *,
+  * EXCEPT(total_line),
   (0.1 * SAFE_DIVIDE(SUM(reserved_quantity) OVER (PARTITION BY sale_order_code), total_qty))
       + (0.6 * SAFE_DIVIDE(SUM(reserved_amount) OVER (PARTITION BY sale_order_code), total_amt))
-      + (0.3 * LEAST(SAFE_DIVIDE(SUM(no_reserved_skus) OVER (PARTITION BY sale_order_code), total_sku), 1))
+      + (0.3 * LEAST(SAFE_DIVIDE(SUM(no_reserved_skus) OVER (PARTITION BY sale_order_code), total_line), 1))
   AS actual_sort_percentage_full_order,
   IF(delivery_status NOT IN ("WAIT_TO_DELIVERY", "DELIVERING", "DELIVERED", "COMPLETED") OR delivery_status IS NULL, expected_sort - actual_sort, 0) AS potential_sort,
   IF(delivery_status IN ("WAIT_TO_DELIVERY", "DELIVERING", "DELIVERED", "COMPLETED"), expected_sort - actual_sort, 0) AS unFF_sort
