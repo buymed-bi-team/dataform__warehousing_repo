@@ -71,6 +71,7 @@ with
             po.created_time,
             po.received_time,
             po.received_date,
+            po.created_by_system
             -- po.original_po
         from poi_dedup as pi
             left join po_dedup as po on po.po_code = pi.po_code
