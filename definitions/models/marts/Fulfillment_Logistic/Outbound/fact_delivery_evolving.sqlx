@@ -39,7 +39,7 @@ pre_operations {
                 MIN(created_date) AS checkpoint_delivery
             FROM platinum_buymed_vn.integration_prd_tpl_callback_callback 
             WHERE created_date >= date_trunc(date_sub(current_date(),interval 7 month), month)
-                AND last_updated_time >= CURRENT_TIMESTAMP() - INTERVAL 2 HOUR);
+                AND DATE(last_updated_time + INTERVAL  7 HOUR) >= CURRENT_DATE("+7") - INTERVAL 1 DAY);
         
         DELETE FROM ${self()}
         WHERE so_code IN UNNEST(new_records);
