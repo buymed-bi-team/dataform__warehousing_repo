@@ -237,7 +237,7 @@ SELECT o.* except(delivery_tags)
 --   WHEN cancellation_type = 'SYSTEM_INTERNAL_ERROR'
 --     THEN '7. Lỗi hệ thống'
 
-  ELSE '8. Chưa phân loại'
+  ELSE '7. Chưa phân loại'
 END AS cancel_group
 FROM map_deliver o
 LEFT JOIN location m ON o.district_code = m.district_code AND o.province_code = m.province_code
