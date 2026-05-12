@@ -113,7 +113,7 @@ with cte_date as (
         , case 
             when IFNULL(diff_day, null) is null then null
             when diff_day < 0 then "EXPIRED"
-            when diff_day < 20 then "NEED_CHECK"
+            when diff_day < 30 then "NEED_CHECK"
             when diff_day < 93 then "UNDER_3_MONTHS"
             when diff_day < 186 then "UNDER_6_MONTHS"
             when diff_day < 366 then "UNDER_1_YEAR"
