@@ -4,7 +4,7 @@ config {
         `
         PIC: nguyen.tran; 
         Type: Table; 
-        Refresh Schedule: daily at 8h30, 10h30, 12h30, 15h30, 18h00;
+        Refresh Schedule: hourly;
         Source: 
             ${source.platinum}.seller_prd_purchasing_purchase_order,
             ${source.platinum}.seller_prd_purchasing_purchase_order_item
@@ -29,9 +29,8 @@ with
             po_code,
             TIMESTAMP_ADD(first_inbound_time, INTERVAL 7 hour) as received_time,
             DATE(TIMESTAMP_ADD(first_inbound_time, INTERVAL 7 hour)) as received_date,
-            -- original_po
+            created_by_system,
         from ${source.platinum}.seller_prd_purchasing_purchase_order
-            -- LEFT JOIN UNNEST(JSON_VALUE_ARRAY(original_pos)) AS original_po
         WHERE
           created_date >= (SELECT start_date FROM target_date) 
     ),
@@ -102,5 +101,6 @@ with
 SELECT
     a.*
     , v.line_manager_combine
+    , v.commercial_supplier_name
 FROM final AS a
     LEFT JOIN ${ref('dim_vendor')} AS v ON a.vendor_code = v.supplier_code
