@@ -26,6 +26,7 @@ with
         select
             status,
             TIMESTAMP_ADD(created_time, INTERVAL 7 hour) as created_time,
+            created_date,
             po_code,
             TIMESTAMP_ADD(first_inbound_time, INTERVAL 7 hour) as received_time,
             DATE(TIMESTAMP_ADD(first_inbound_time, INTERVAL 7 hour)) as received_date,
@@ -69,6 +70,7 @@ with
             pi.*,
             po.status,
             po.created_time,
+            po.created_date,
             po.received_time,
             po.received_date,
             po.created_by_system
