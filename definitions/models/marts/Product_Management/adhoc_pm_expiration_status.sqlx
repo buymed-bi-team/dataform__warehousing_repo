@@ -119,9 +119,9 @@ with cte_date as (
             when diff_day < 366 then "UNDER_1_YEAR"
             else "OK"
          end as expired_status
-        , if ( expired_date_convert != expired_date_internal,
-                "NEED_CHECK",
-                "OKE"
+        , if ( expired_date_convert = expired_date_internal,               
+                "OKE",
+                "NEED_CHECK"
         ) as compare_expired_date
         , case 
             when IFNULL(diff_day, null) is null then null
