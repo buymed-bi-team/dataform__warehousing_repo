@@ -31,6 +31,7 @@ with
             TIMESTAMP_ADD(first_inbound_time, INTERVAL 7 hour) as received_time,
             DATE(TIMESTAMP_ADD(first_inbound_time, INTERVAL 7 hour)) as received_date,
             created_by_system,
+            type
         from ${source.platinum}.seller_prd_purchasing_purchase_order
         WHERE
           created_date >= (SELECT start_date FROM target_date) 
@@ -73,7 +74,8 @@ with
             po.created_date,
             po.received_time,
             po.received_date,
-            po.created_by_system
+            po.created_by_system,
+            po.type
             -- po.original_po
         from poi_dedup as pi
             left join po_dedup as po on po.po_code = pi.po_code
