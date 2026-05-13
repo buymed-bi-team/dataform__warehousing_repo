@@ -82,6 +82,8 @@ SELECT  TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
              ELSE o.created_at END AS created_at
        ,i.receiver_name
        ,i.receiver_full_address
+       ,i.district_name
+       ,i.province_name
        ,CASE
            WHEN o.order_type = 'RETURN' then 'True'
            ELSE 'False' END AS is_returned
