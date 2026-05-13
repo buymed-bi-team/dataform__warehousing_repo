@@ -364,7 +364,9 @@ SELECT
     JSON_VALUE(customer.examination_and_treatment_license, "$.0.public_url") AS examination_and_treatment_url,
     JSON_VALUE(customer.pharmacy_eligibility_license_info, "$.number") AS ddkkdd_license_number,
     FORMAT_DATE("%Y-%m-%d", SAFE.TIMESTAMP(JSON_VALUE(gpp_info, "$.date"))) AS GPP_issued_date
+    , FORMAT_DATE("%Y-%m-%d", SAFE.TIMESTAMP(JSON_VALUE(gpp_info, "$.expiry_date"))) AS GPP_expired_date_internal
     , FORMAT_DATE("%Y-%m-%d", SAFE.TIMESTAMP(JSON_VALUE(gdp_info, "$.date"))) AS GDP_issued_date
+    , FORMAT_DATE("%Y-%m-%d", SAFE.TIMESTAMP(JSON_VALUE(gdp_info, "$.expiry_date"))) AS GDP_expired_date_internal
     , FORMAT_DATE("%Y-%m-%d", SAFE.TIMESTAMP(JSON_VALUE(gsp_info, "$.date"))) AS GSP_issued_date
     , FORMAT_DATE("%Y-%m-%d", SAFE.TIMESTAMP(JSON_VALUE(examination_and_treatment_license_info, "$.date"))) AS GPHDKCB_issued_date
     , FORMAT_DATE("%Y-%m-%d", SAFE.TIMESTAMP(JSON_VALUE(license_info, "$.date"))) AS GPKD_issued_date

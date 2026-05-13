@@ -75,6 +75,7 @@ WITH
         WHERE 1=1
             AND ti.created_date >= date_sub(current_date(),interval 30 day)
             AND t.created_date >= date_sub(current_date(),interval 30 day)
+            AND order_quantity > 0
 
     ),
 

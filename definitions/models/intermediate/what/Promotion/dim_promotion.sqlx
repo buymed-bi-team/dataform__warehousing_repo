@@ -56,6 +56,7 @@ SELECT
         ELSE CONCAT("Tất cả sản phẩm ngoại trừ: ", TO_JSON_STRING(JSON_QUERY(a.extra_props, '$.apply_discount.not_in_skus')))
         END AS apply_product
     , JSON_VALUE(a.extra_props, '$.type_schema') as type_schema
+    , t.name AS voucher_group_name
 FROM ${source.platinum}.marketplace_prd_promotion_promotion AS a
 ------ Retrieve Campaign Brand based on data imported by members of Clients Solutions Team
 LEFT JOIN (
@@ -72,5 +73,6 @@ LEFT JOIN (
 ) AS b ON a.promotion_id = b.promotion_id
 LEFT JOIN ${ref("dim_employee")} e
     ON a.created_by = e.branch_account_id
+LEFT JOIN ${source.platinum}.marketplace_prd_promotion_voucher_group_type AS t ON a.voucher_group_code = t.code
 -- WHERE
 --     a.end_time >= TIMESTAMP_SUB('2023-01-01', INTERVAL 7 HOUR)
