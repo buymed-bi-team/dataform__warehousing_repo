@@ -248,6 +248,7 @@ SELECT DISTINCT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transform
       ,kit.KIT_NAME AS kit_name
       ,po.status as web_status
       ,tag_names
+      ,sell_area AS sell_area_online
 FROM cte_product pd
 LEFT JOIN ${source.platinum}.circa_online_prd_product_product AS op ON pd.product_id = op.product_id
 LEFT JOIN inventory i ON pd.product_id = i.product_id AND pd.client_id = i.client_id
