@@ -205,6 +205,13 @@ LEFT JOIN ${source.circa_os}.product_assortment_template_items i ON o.id = i.ass
 WHERE o.id = 'e9a5a24c-8b54-41a3-9b21-2ad63149eb3d'
       AND i.status = 'ACTIVE'
 
+), tags AS (
+SELECT DISTINCT
+   product_id
+  ,STRING_AGG(tag_name, ', ') AS tag_names
+FROM ${source.ref}.dim_product_tags
+GROUP BY product_id
+
 )
 SELECT DISTINCT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
       ,pd.product_id
@@ -240,6 +247,7 @@ SELECT DISTINCT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transform
       ,CASE WHEN kit.product_id IS NOT NULL THEN TRUE ELSE FALSE END AS is_combo_on_kit
       ,kit.KIT_NAME AS kit_name
       ,po.status as web_status
+      ,tag_names
 FROM cte_product pd
 LEFT JOIN ${source.platinum}.circa_online_prd_product_product AS op ON pd.product_id = op.product_id
 LEFT JOIN inventory i ON pd.product_id = i.product_id AND pd.client_id = i.client_id
@@ -258,6 +266,7 @@ LEFT JOIN ${source.ref}.cos_product_hotdeal2025 h ON pd.product_id = h.product_i
 LEFT JOIN ${source.ref}.cos_product_hot_deal_jan hd ON pd.product_id = hd.product_id AND pd.client_id = hd.client_id
 LEFT JOIN posm ON pd.product_id = posm.product_id
 LEFT JOIN ts_unit ts ON ts.product_id = pd.product_id and pd.client_id = ts.client_id
+LEFT JOIN tags ON pd.product_id = tags.product_id
 --WHERE pd.product_name NOT LIKE "%[Removed]%"
 
         --and pd.product_id = 1112
