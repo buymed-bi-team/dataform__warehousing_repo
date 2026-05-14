@@ -20,7 +20,7 @@ SELECT
   , is_allstore AS is_essential
   , is_allstore
   , brand
-  , web_status AS status_online
-  , sell_area_online
+  , CASE WHEN client_id = 1 THEN web_status END AS status_online
+  , CASE WHEN client_id = 1 THEN sell_area_online END AS sell_area_online
 FROM ${ref('gold_buymed_vn2', 'cos_dim_product')}
 QUALIFY ROW_NUMBER() OVER(PARTITION BY product_id_key) = 1
