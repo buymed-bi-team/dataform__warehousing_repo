@@ -31,7 +31,7 @@ WITH
             LEFT JOIN ${ref("dim_vendor")} AS b ON a.vendor_code = b.supplier_code
         WHERE
             REGEXP_CONTAINS(JSON_VALUE(extra_props, "$.sku"), r'MEDX.|BML\_INT')
-            AND created_date BETWEEN DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 2 MONTH ) AND CURRENT_DATE("+7")
+            AND created_date BETWEEN DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 3 MONTH ) AND CURRENT_DATE("+7")
     )
 
 SELECT

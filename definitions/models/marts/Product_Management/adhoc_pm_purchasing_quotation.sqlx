@@ -51,7 +51,7 @@ WITH
             , a.created_date
         FROM ${source.platinum}.seller_prd_purchasing_quotation_export AS a
             LEFT JOIN ${ref("dim_vendor")} AS b ON a.vendor_code = b.supplier_code
-        WHERE a.created_date BETWEEN DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 2 MONTH ) AND CURRENT_DATE("+7") 
+        WHERE a.created_date BETWEEN DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 3 MONTH ) AND CURRENT_DATE("+7") 
             AND a.seller_code IN ("MEDX", "BML_INT")
         QUALIFY ROW_NUMBER() over (PARTITION BY product_id, seller_code, warehouse_code,assign_vendor_date ORDER BY version DESC) = 1
     )
@@ -78,5 +78,5 @@ FROM quotation AS a
     LEFT JOIN ${source.platinum}.seller_prd_purchasing_sku_config AS b ON a.sku = b.sku AND a.purchaser_code = b.purchaser_code
 WHERE 1=1
     AND a.seller_code IN ("MEDX", "BML_INT")
-    AND COALESCE( assign_vendor_date, a.created_date) >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 2 MONTH )
+    AND COALESCE( assign_vendor_date, a.created_date) >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 3 MONTH )
 QUALIFY ROW_NUMBER() over (PARTITION BY sku_fc_assign_date ORDER BY source_priority) = 1
