@@ -47,7 +47,7 @@ Select distinct product_id
                ,competitor
                ,market_price_aft_convert as market_current_price
 from gold_buymed_vn2.adhoc_pricing_competitor_price
-where qc = "QC" and competitor in ('LongChau', 'AnKhang', 'Pharmacity')
+where qc = "QC" and competitor in ('LongChau', 'Pharmacity')
 qualify row_number() over (partition by product_id,competitor order by last_updated_time desc) = 1
 ), final_market as(
   Select
