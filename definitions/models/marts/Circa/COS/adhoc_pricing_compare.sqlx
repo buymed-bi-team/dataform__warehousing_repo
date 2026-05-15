@@ -26,7 +26,7 @@ WITH
     , max(competitor) as max_competitor
   FROM ${ref('adhoc_pricing_competitor_price')} m
   LEFT JOIN ${ref('dim_fc_service_area')} s ON m.province_code = s.service_area_code
-  WHERE qc = "QC" and competitor IN ('LongChau', 'AnKhang', 'Pharmacity')
+  WHERE qc = "QC" and competitor IN ('LongChau', 'Pharmacity')
   GROUP BY ALL
   ),
 
