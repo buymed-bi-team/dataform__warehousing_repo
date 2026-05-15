@@ -43,14 +43,17 @@ select
 	o.shipping_ward_code,
 	o.shipping_district_code,
 	o.shipping_province_code,
-	CASE 
-		WHEN REGEXP_CONTAINS(TO_JSON_STRING(o.tags), r'\"CLINIC_PORTAL\"') THEN "CLINIC_PORTAL" 
-		WHEN o.order_id >= 50000000 THEN "TENDER"
-		ELSE "NORMAL"
-	END  AS order_channel,
+	IF(o.order_code LIKE "SO%",
+		CASE 
+			WHEN REGEXP_CONTAINS(TO_JSON_STRING(o.tags), r'\"CLINIC_PORTAL\"') THEN "CLINIC_PORTAL" 
+			WHEN o.order_id >= 50000000 THEN "TENDER"
+			ELSE "NORMAL"
+		END,  
+		NULL
+	) AS order_channel,
 	CASE
-		WHEN REGEXP_CONTAINS(TO_JSON_STRING(tags), r'MERCHANT_[A-Za-z0-9_]+') THEN REGEXP_EXTRACT_ALL(TO_JSON_STRING(tags), r'MERCHANT_[A-Za-z0-9_]+')
-		WHEN REGEXP_CONTAINS(TO_JSON_STRING(tags), r'BRAND_NAME_[A-Za-z0-9_]+') THEN REGEXP_EXTRACT_ALL(TO_JSON_STRING(tags), r'BRAND_NAME_[A-Za-z0-9_]+')
+		WHEN REGEXP_CONTAINS(TO_JSON_STRING(tags), r'MERCHANT_[A-Za-z0-9_]+') THEN REGEXP_EXTRACT_ALL(TO_JSON_STRING(tags), r'MERCHANT_[A-Za-z0-9_]+')[SAFE_OFFSET(0)]
+		WHEN REGEXP_CONTAINS(TO_JSON_STRING(tags), r'BRAND_NAME_[A-Za-z0-9_]+') THEN REGEXP_EXTRACT_ALL(TO_JSON_STRING(tags), r'BRAND_NAME_[A-Za-z0-9_]+')[SAFE_OFFSET(0)]
 	END AS clinic_brand_name
 from (
 	select *
