@@ -1,0 +1,16 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `Initial Stock in the Thailand marketplace.`,
+    tags: ['AI_THUOCSI_TH']
+}
+
+SELECT
+    s.product_id
+    , a.sku AS sku_code
+    , a.avg_demand
+    , a.initial_stock
+    , JSON_EXTRACT_SCALAR(a.extra_props,'$.leadtime') as leadtime
+    , JSON_EXTRACT_SCALAR(a.extra_props,'$.stock_day') as stock_day
+FROM platinum_buymed_th.seller_prd_purchasing_initial_stock_draft AS a
+    LEFT JOIN gold_buymed_th.dim_sku AS s ON  a.sku = s.sku_code
