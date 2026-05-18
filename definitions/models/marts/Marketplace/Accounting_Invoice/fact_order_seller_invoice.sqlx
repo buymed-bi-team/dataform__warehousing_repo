@@ -1,0 +1,59 @@
+config {
+  type: "table",
+  description: 
+        `
+        Order Seller Invoice;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        `,
+  bigquery: {
+    partitionBy: "date(created_time)",
+    clusterBy: ["order_id", "seller_code"]
+  },
+  tags: ["custom_1h_past10"]
+}
+
+WITH
+    cte AS (
+        SELECT
+            a.order_id
+            , b.seller_code
+            , SUM(IF(t.tag_name IS NULL, 0, 1)) AS tax_code_required
+        FROM ${source.platinum}.accounting_prd_invoice_order_invoice_item AS a
+            LEFT JOIN ${source.platinum}.accounting_prd_invoice_order_invoice AS b ON a.invoice_code = b.code
+            LEFT JOIN ${ref("dim_fc")} AS f ON f.fc_code = SUBSTR(b.sale_order_code, 3, 2)
+            LEFT JOIN (
+                SELECT DISTINCT sku_code, sales_region_code, tag_name
+                FROM ${ref("dim_sku_tag")}
+                WHERE tag_code = "TAXCODE_REQUIRED"
+            ) AS t ON t.sku_code = a.sku_code AND f.sales_region_code = t.sales_region_code
+        WHERE a.created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH) - INTERVAL 6 MONTH
+            AND b.created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH) - INTERVAL 6 MONTH
+        GROUP BY ALL
+    )
+
+SELECT
+    a.seller_code
+    , a.order_id
+    , a.created_time + INTERVAL 7 HOUR AS created_time
+    , a.delivered_time + INTERVAL 7 HOUR AS delivered_time
+    , a.invoice_deadline + INTERVAL 7 HOUR AS deadline_time
+    , issued_time + INTERVAL 7 HOUR AS issued_time
+    , invoice_status
+    , invoice_id
+    , invoice_document_url
+    , invoice_code
+    , b.log_error
+    , b.status AS invoice_error_status
+    , a.request
+    , IF(c.tax_code_required > 0, "TAXCODE_REQUIRED", "NOT_REQUIRED") AS tax_code_required
+FROM ${source.platinum}.marketplace_prd_order_v2_invoice AS a
+    LEFT JOIN (
+        SELECT *
+        FROM ${source.platinum}.platform_billing_prd_invoice_v2_export_invoice_error
+        QUALIFY ROW_NUMBER() over (PARTITION BY order_id, seller_code ORDER BY last_updated_time DESC) = 1
+    ) AS b ON a.order_id = b.order_id AND a.seller_code = b.seller_code
+    LEFT JOIN cte AS c ON c.order_id = a.order_id AND c.seller_code = a.seller_code
+WHERE DATE(delivered_time + INTERVAL 7 HOUR)  >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH) - INTERVAL 6 MONTH
+    AND a.created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH) - INTERVAL 6 MONTH
+    --AND a.request
