@@ -77,7 +77,7 @@ WITH cte_product AS (
           ,SUM(total_on_hand_quantity) AS on_hand_quantity
           ,COUNT(DISTINCT CASE WHEN client_id = 1 AND total_on_hand_quantity > 0 THEN pos_id END) AS pos_os_have_stock
           ,COUNT(DISTINCT CASE WHEN client_id <> 1 AND total_on_hand_quantity > 0 THEN pos_id END) AS pos_fs_have_stock
-          ,STRING_AGG(DISTINCT pos_name, ', ') AS stock_available_in_poss
+          ,STRING_AGG(DISTINCT IF(total_on_hand_quantity > 0, pos_name, NULL), ', ') AS stock_available_in_poss
           ,client_id
     FROM inventory_summary
     GROUP BY product_id, client_id
