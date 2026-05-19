@@ -10,7 +10,15 @@ config {
 
 SELECT DISTINCT
        a.cutoff_date_index
-     , DATE_ADD(DATE_TRUNC(a.cutoff_date_index, MONTH), INTERVAL 1 MONTH) AS som
+     , CASE 
+    WHEN a.cutoff_date_index = DATE_SUB(CURRENT_DATE('Asia/Ho_Chi_Minh'), INTERVAL 1 DAY)
+        THEN a.cutoff_date_index
+
+    ELSE DATE_ADD(
+            DATE_TRUNC(a.cutoff_date_index, MONTH),
+            INTERVAL 1 MONTH
+         )
+END AS som
      , b.pos_id
      , a.product_id
      , SUM(on_hand_qty) AS on_hand_qty
@@ -32,6 +40,7 @@ WHERE  a.cutoff_date_index >= '2025-12-30'
       , '2026-02-28'
       , '2026-03-31'
       , '2026-04-30'
+      , DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
   )
 GROUP BY ALL
 
