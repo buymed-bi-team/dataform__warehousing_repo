@@ -1,0 +1,16 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `Inventory of Circa.`,
+    tags: ['AI_CIRCA']
+}
+
+SELECT o.* EXCEPT (cutoff_date_index, som, is_same_day)
+      , p.code AS pos_code
+      , p.name AS pos_name
+      , som AS cutoff_date_index
+      , IF(p.type = "FS", "FS", "COS") AS pos_type
+FROM ${ref("gold_buymed_vn2", "inventory_cutoff_som")} o 
+LEFT JOIN ${ref("gold_buymed_vn2", "circa_pos_profile")} p ON o.pos_id = p.id 
+WHERE p.id IS NOT NULL
+       AND p.actual_status <> 'Inactive' 
