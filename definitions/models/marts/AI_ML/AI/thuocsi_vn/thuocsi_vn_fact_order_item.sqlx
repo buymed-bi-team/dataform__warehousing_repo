@@ -40,6 +40,7 @@ WITH
                 WHEN a.source IN ('brand-portal', 'clinic-portal', 'merap') OR customer_id IN (360299, 360439, 375375) THEN 'TENDER'
                 ELSE 'MARKETPLACE'
             END AS channel,
+            customer_shipping_address,
             CASE
                 WHEN SAFE_CAST(a.customer_ward_code AS INTEGER) > 0 THEN a.customer_ward_code
                 ELSE a.customer_district_code
@@ -67,6 +68,7 @@ WITH
             -- , IF(status = 'CANCELLED','CANCEL', status) AS status
             , status
             , 'TENDER' AS channel
+            , receiver_shipping_address
             , CASE
                 WHEN SAFE_CAST(a.ward_code AS INTEGER) > 0 THEN a.ward_code
                 ELSE a.district_code
@@ -128,6 +130,7 @@ WITH
             , o.channel
             , o.customer_id
             , o.status AS order_status
+            , o.customer_shipping_address
             , g.ward_name AS shipping_ward_name
             , g.district_name AS shipping_district_name
             , g.province_name AS shipping_province_name
@@ -162,6 +165,7 @@ WITH
             , o.channel
             , o.customer_id
             , o.status AS order_status
+            , o.customer_shipping_address
             , g.ward_name
             , g.district_name
             , g.province_name
