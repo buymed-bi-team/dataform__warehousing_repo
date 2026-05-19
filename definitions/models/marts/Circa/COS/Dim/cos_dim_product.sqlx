@@ -9,7 +9,53 @@ config {
     }
 }
 
-WITH cte_product AS (
+
+WITH map_product AS (
+  SELECT
+    CAST(code AS INT64) AS product_id_draft,
+    SAFE_CAST(MAX(value) AS INT64) AS product_id_buymed
+  FROM `collector.data_prd`
+  WHERE object = 'CIRCA'
+    AND type = 'PRODUCT_ID_BUYMED'
+  GROUP BY 1
+),
+
+t AS (
+  SELECT DISTINCT product_id, category_name
+  FROM gold_buymed_vn2.dim_product_category
+  WHERE level = 1
+),
+
+e AS (
+  SELECT DISTINCT product_id, efficacy_name
+  FROM gold_buymed_vn2.dim_product_efficacy
+  WHERE efficacy_level = 1
+),
+
+tp AS (
+  SELECT *
+  FROM ${ref('dim_product')}
+),
+
+base AS (
+  SELECT
+    p.*
+   , mp.product_id_buymed
+
+   , CASE
+      WHEN tp_direct.product_id IS NOT NULL
+        OR t_direct.product_id IS NOT NULL
+        OR e_direct.product_id IS NOT NULL
+      THEN p.product_id
+      ELSE mp.product_id_buymed
+    END AS product_id_join_dim
+  FROM ${source.circa_os}.product_product p
+  LEFT JOIN map_product mp ON p.product_id = mp.product_id_draft
+  LEFT JOIN tp tp_direct ON p.product_id = tp_direct.product_id
+  LEFT JOIN t t_direct ON p.product_id = t_direct.product_id
+  LEFT JOIN e e_direct ON p.product_id = e_direct.product_id
+)
+,cte_product AS (
     SELECT DISTINCT p.product_id
           ,p.name AS product_name
           ,tp.retail_name
@@ -50,13 +96,13 @@ WITH cte_product AS (
           ,p.client_id
           ,tp.user_type
           ,DATETIME_ADD(created_at, INTERVAL 7 HOUR)   AS created_at
-    FROM ${source.circa_os}.product_product p
+    FROM base p
     LEFT JOIN ${source.circa_os}.product_main_category mc ON p.main_category_code = mc.code AND p.client_id = mc.client_id
     LEFT JOIN ${source.circa_os}.product_manufacturer m ON p.manufacturer_code = m.code AND p.client_id = m.client_id
     LEFT JOIN ${source.circa_os}.product_seller_category sc ON p.seller_category_code = sc.seller_category_code AND p.client_id = sc.client_id
-    LEFT JOIN (SELECT DISTINCT product_id, category_name FROM `gold_buymed_vn2.dim_product_category` WHERE level = 1) t ON p.product_id = t.product_id 
-    LEFT JOIN (SELECT DISTINCT product_id, efficacy_name FROM gold_buymed_vn2.dim_product_efficacy WHERE efficacy_level = 1) e ON p.product_id = e.product_id
-    LEFT JOIN ${ref('dim_product')} AS tp ON p.product_id = tp.product_id
+    LEFT JOIN t ON p.product_id_join_dim = t.product_id 
+    LEFT JOIN e ON p.product_id_join_dim = e.product_id
+    LEFT JOIN tp ON p.product_id_join_dim = tp.product_id
 )
 ,inventory_summary AS (
     SELECT a.product_id
