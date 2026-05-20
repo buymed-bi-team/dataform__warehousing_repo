@@ -204,9 +204,27 @@ WHERE is_expired = FALSE
 QUALIFY ROW_NUMBER() OVER (PARTITION BY product_id, sku_code ORDER BY created_at DESC) = 1
 ORDER BY o.created_at DESC
 
-)SELECT b.* EXCEPT(final_sale_price)
-    , b.final_sale_price AS price_bf_discount
+)SELECT b.*
     , p.discount_type
+    , p.percent
+    , CASE WHEN p.discount_type = 'FIXED_PRICE' AND p.unit = 'combo' THEN  p.discount_value
+           WHEN p.discount_type = 'FIXED_PRICE'
+            THEN ROUND(
+                     (
+                        p.discount_value
+                        / src.convert_rate
+                        * b.convert_rate
+                    )
+                , 0)
+        END AS discount_value
+    , CASE WHEN p.discount_type = 'SPECIFIC_PRICE'   AND p.unit = 'combo' THEN p.specific_price
+        WHEN p.discount_type = 'SPECIFIC_PRICE'
+            THEN ROUND(
+                    p.specific_price
+                    / src.convert_rate
+                    * b.convert_rate
+                , 0) END AS specific_price
+
     ,  CASE WHEN p.discount_type = 'PERCENT' AND p.unit = 'combo' THEN ROUND(b.final_sale_price * (1 - p.percent / 100), 0)
          WHEN p.discount_type = 'PERCENT'
             THEN ROUND(b.final_sale_price * (1 - p.percent / 100), 0)
@@ -230,8 +248,7 @@ ORDER BY o.created_at DESC
                 , 0)
 
         ELSE b.final_sale_price
-      END AS final_sale_price
-
+      END AS price_af_discount
 FROM base b
 LEFT JOIN promo p ON b.product_id = p.product_id AND b.sku_code = p.sku_code
 LEFT JOIN base src ON p.product_id = src.product_id AND p.unit = src.unit AND b.sku_code = p.sku_code AND b.seller_code = src.seller_code
