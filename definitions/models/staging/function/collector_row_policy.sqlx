@@ -12,7 +12,8 @@ ON
         "serviceAccount:nguyen-tran-service-account-2@lakehouse-prod-394907.iam.gserviceaccount.com",
         "user:minh.luugia@buymed.com",
 
-        "serviceAccount:warehousing-finance-dataform@lakehouse-prod-394907.iam.gserviceaccount.com"
+        "serviceAccount:warehousing-finance-dataform@lakehouse-prod-394907.iam.gserviceaccount.com",
+        "serviceAccount:collector@lakehouse-prod-394907.iam.gserviceaccount.com"
 
     )
 FILTER USING
