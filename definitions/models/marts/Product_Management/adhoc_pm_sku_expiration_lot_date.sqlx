@@ -22,7 +22,7 @@ with
         -- , b.product_id
         -- , b.seller_code
 
-            , b.product_id || "_" || b.seller_code               AS sku_key
+            , s.sku_key
             , CASE
                 when a.warehouse_code = "HN" then "MIENBAC"
                 when a.warehouse_code = "BD" then "MIENNAM"
@@ -54,13 +54,14 @@ with
                 from ${source.platinum}.warehouse_prd_inbound_put_ticket_item
                 where created_date >= (select DATE(start_date) from cte_date)
             ) as b on a.ticket_id = b.ticket_id
+            left join ${ref("dim_sku")} AS s ON b.sku = s.sku_code
         where
             a.status = "COMPLETED"
             and a.warehouse_code in ("BD", "HN",'DN')
             and 
                 REGEXP_CONTAINS(
                     COALESCE(JSON_EXTRACT_SCALAR(a.extra_props, '$.inbound_code'), JSON_VALUE(a.extra_props, '$.suggest_reference_codes.0')) 
-                    , r'PO|PGH'
+                    , r'PO|PGH|TO'
                 )
             and b.done_quantity > 0
             and length(b.expired_date) = 10
