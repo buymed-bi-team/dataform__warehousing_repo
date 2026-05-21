@@ -60,7 +60,7 @@ with
             and 
                 REGEXP_CONTAINS(
                     COALESCE(JSON_EXTRACT_SCALAR(a.extra_props, '$.inbound_code'), JSON_VALUE(a.extra_props, '$.suggest_reference_codes.0')) 
-                    , r'PO|PGH'
+                    , r'PO|PGH|TO'
                 )
             and b.done_quantity > 0
             and length(b.expired_date) = 10
