@@ -135,7 +135,8 @@ base AS (
           ,usage
           ,client_id
     FROM ${ref('cos_dim_product_ingredient')}
-    WHERE ingredient_level = 1
+--     WHERE ingredient_level = 1
+ QUALIFY ROW_NUMBER() OVER (PARTITION BY product_id, client_id ORDER BY ingredient_level DESC) = 1
 )
 ,product_base_unit AS (
     SELECT DISTINCT a.product_id
