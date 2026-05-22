@@ -7,7 +7,7 @@ config {
 
 
 SELECT t.* EXCEPT (store_id)
-      ,store_id AS pos_code
+      ,t.store_id AS pos_code
       ,p.name AS pos_name
       , IF(p.type = "FS", "FS", "COS") AS pos_type
 FROM gold_buymed_vn2.vision_ai t 
