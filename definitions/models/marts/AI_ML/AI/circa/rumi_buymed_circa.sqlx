@@ -39,6 +39,10 @@ AS (SELECT * FROM  ${ref("buymed_innovation", "circa_fact_inventory")});
 CREATE OR REPLACE VIEW `rumi_buymed_circa.circa_fact_order_online`
 AS (SELECT * FROM  ${ref("buymed_innovation", "circa_fact_order_online")});
 
+-- fact_vision_ai_camera
+CREATE OR REPLACE VIEW `rumi_buymed_circa.circa_fact_vision_ai_camera`
+AS (SELECT * FROM  ${ref("buymed_innovation", "circa_fact_vision_ai_camera")});
+
 -- dim_customer
 
 CREATE OR REPLACE VIEW `rumi_buymed_circa.circa_dim_customer`
@@ -80,9 +84,6 @@ AS (SELECT * FROM  ${ref("buymed_innovation", "circa_inventory_cutoff")});
 CREATE OR REPLACE VIEW `rumi_buymed_circa.circa_dim_pos`
 AS (SELECT * FROM  ${ref("buymed_innovation", "circa_dim_pos")});
 
--- ai camera
-CREATE OR REPLACE VIEW `rumi_buymed_circa.vision_ai_camera`
-AS (SELECT * FROM  ${ref("buymed_innovation", "vision_ai_camera")});
 
 
 
