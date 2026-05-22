@@ -10,7 +10,7 @@ config {
 
 SELECT DISTINCT 
       store_id
-    , bucket_minute
-    , DATE(bucket_minute) AS bucket_date
+    , bucket_minute + INTERVAL 7 HOUR AS bucket_minute
+    , DATE(bucket_minute + INTERVAL 7 HOUR) AS bucket_date
     , count_in
 FROM `buymed_circa_v2.vision_ai_count_aggregates_minute`
