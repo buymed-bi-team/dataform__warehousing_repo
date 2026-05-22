@@ -295,6 +295,7 @@ SELECT DISTINCT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transform
       ,po.status as web_status
       ,tag_names
       ,sell_area AS sell_area_online
+      ,client.name AS client_name
 FROM cte_product pd
 LEFT JOIN ${source.platinum}.circa_online_prd_product_product AS op ON pd.product_id = op.product_id
 LEFT JOIN inventory i ON pd.product_id = i.product_id AND pd.client_id = i.client_id
@@ -314,6 +315,7 @@ LEFT JOIN ${source.ref}.cos_product_hot_deal_jan hd ON pd.product_id = hd.produc
 LEFT JOIN posm ON pd.product_id = posm.product_id
 LEFT JOIN ts_unit ts ON ts.product_id = pd.product_id and pd.client_id = ts.client_id
 LEFT JOIN tags ON pd.product_id = tags.product_id
+LEFT JOIN ${source.circa_os}.entity_client client ON pd.client_id = client.id
 --WHERE pd.product_name NOT LIKE "%[Removed]%"
 
         --and pd.product_id = 1112
