@@ -17,5 +17,4 @@ SELECT DISTINCT code as pos_code
        ,m.province_name
 FROM ${ref('gold_buymed_vn2', 'circa_pos_profile')} o
 LEFT JOIN ${ref('gold_buymed_vn2', 'dim_geo_location')} m ON o.district = m.district_code AND o.province = m.province_code AND o.ward = m.ward_code
-WHERE type = 'CIRCA'
-       AND o.actual_status <> 'Inactive'
+WHERE  o.actual_status <> 'Inactive'

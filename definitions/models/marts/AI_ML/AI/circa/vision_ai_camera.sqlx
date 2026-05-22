@@ -1,0 +1,14 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `store of Circa.`,
+    tags: ['AI_CIRCA']
+}
+
+
+SELECT t.* EXCEPT (store_id)
+      ,store_id AS pos_code
+      ,p.name AS pos_name
+      , IF(p.type = "FS", "FS", "COS") AS pos_type
+FROM gold_buymed_vn2.vision_ai t 
+LEFT JOIN `gold_buymed_vn2.circa_pos_profile` p ON t.store_id = p.code

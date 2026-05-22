@@ -1,0 +1,16 @@
+config {
+    type: "table",
+    description: `Circa OS purchase order
+                  PIC: huyen.ngo; 
+                  model_type: Table ;schedule: At minute 10 every hour`,
+    tags: ["custom_1h_past10"],
+    name: "vision_ai"
+
+}
+
+SELECT DISTINCT 
+      store_id
+    , bucket_minute
+    , DATE(bucket_minute) AS bucket_date
+    , count_in
+FROM `buymed_circa_v2.vision_ai_count_aggregates_minute`
