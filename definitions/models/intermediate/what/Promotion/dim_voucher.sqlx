@@ -34,8 +34,9 @@ SELECT
        END AS campaign_type
     , and_conditions
     , CASE
-		WHEN JSON_VALUE(extra_props, '$.promotion_organizer') = "SELLER_CENTER" then "SELLER"
-		ELSE "BUYMED"
+		WHEN JSON_VALUE(extra_props, '$.promotion_organizer') = "SELLER_CENTER" THEN  "SELLER"
+		WHEN JSON_VALUE(extra_props, '$.promotion_organizer') = "INTERNAL_SELLER" THEN "MEDX"
+		ELSE "ALL"
 	  END AS promotion_organizer
     , COALESCE(CAST(v.promotion_id AS STRING), code) AS filter_promotion_id
     , v.promotion_name
@@ -48,6 +49,7 @@ SELECT
         WHEN v.customer_apply_type = "MANUAL" THEN "Tự chọn"
         WHEN v.customer_apply_type is null THEN "Chưa xác định"
       END AS apply_type
+    , v.apply_type AS voucher_apply_type
     , CASE
 		WHEN usage_total > 0 then "Đã sử dụng" 
 		ELSE "Chưa sử dụng"
@@ -59,6 +61,7 @@ SELECT
     , JSON_VALUE(extra_props, '$.seller_name') AS seller_name
     , JSON_VALUE(extra_props, '$.charge_fee') AS charge_fee
     , JSON_VALUE(extra_props, '$.link_to_page') AS link_to_page
+    , JSON_VALUE(extra_props, '$.short_name') AS short_name
     , SAFE_CAST(JSON_VALUE(extra_props, '$.is_specific') AS BOOL) AS is_specific
     , REGEXP_REPLACE(JSON_VALUE(v.extra_props, '$.condition_description'), r'\\n|\\|<[^>]*>|&nbsp;', '') AS condition_description
     , SAFE_CAST(JSON_VALUE(v.and_conditions, '$.ORDER_VALUE.or_conditions.0.order_condition.min_sku_quantity') AS INT64) AS min_sku_quantity
@@ -67,13 +70,14 @@ SELECT
     , scopes
     , JSON_QUERY(and_conditions, "$.ORDER_VALUE") IS NOT NULL AS is_order_value_condition
     , v.voucher_group_code
+    , JSON_QUERY(extra_props, '$.apply_discount') AS apply_discount
 FROM (
     SELECT key, mg_id, usage_type, start_time, applied_customers, created_by_user_name, promotion_id, promotion_name, public_time, max_usage, type, status, created_by, voucher_id, code, end_time, max_usage_per_customer, created_time, hash_tag, last_updated_time, updated_by, usage_total, and_conditions, apply_type, customer_apply_type, display_name, promotion_type, rewards, scopes, system_note, is_migrate_user_code, system_display, voucher_group_code, max_auto_apply_count, voucher_status, synced_at, extra_props, action, ingest_time, created_date, platinum_refresh 
     FROM ${source.platinum}.marketplace_prd_promotion_voucher 
     UNION ALL
     SELECT key, mg_id, usage_type, start_time, applied_customers, created_by_user_name, promotion_id, promotion_name, public_time, max_usage, type, status, created_by, voucher_id, code, end_time, max_usage_per_customer, created_time, hash_tag, last_updated_time, updated_by, usage_total, and_conditions, apply_type, customer_apply_type, display_name, promotion_type, rewards, scopes, system_note, is_migrate_user_code, system_display, voucher_group_code, max_auto_apply_count, voucher_status, synced_at, extra_props, action, ingest_time, created_date, platinum_refresh
     FROM ${source.platinum}.marketplace_prd_promotion_voucher_archived
-    WHERE created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH) - INTERVAL 15 MONTH
+    -- WHERE created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH) - INTERVAL 3 YEAR
 ) AS v
     LEFT JOIN UNNEST(JSON_QUERY_ARRAY(rewards)) AS r
     LEFT JOIN ${ref('dim_promotion')} AS p ON v.promotion_id = p.promotion_id
