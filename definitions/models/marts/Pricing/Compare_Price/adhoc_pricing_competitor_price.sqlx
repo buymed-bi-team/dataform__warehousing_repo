@@ -48,7 +48,7 @@ SELECT
     a.* EXCEPT(competitor_price, market_price_aft_convert, competitor_url)
     , IF(REGEXP_CONTAINS(LOWER(competitor_product_name), r'ngưng bán|chờ hàng') OR competitor_price < 0, 0, competitor_price) AS competitor_price
     , IF(REGEXP_CONTAINS(LOWER(competitor_product_name), r'ngưng bán|chờ hàng') OR market_price_aft_convert < 0, 0, market_price_aft_convert) AS market_price_aft_convert
-    , IF(b.product_id IS NOT NULL , 1, 0) AS flag
+    , IF(b.product_id IS NOT NULL AND a.competitor_price > 0, 1, 0) AS flag
     , REGEXP_REPLACE(competitor_url, r"ezrxplus.com", "ezrx.com") AS competitor_url
 FROM cte AS a
     LEFT JOIN ${ref('dim_product')} AS b 

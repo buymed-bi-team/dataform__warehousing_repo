@@ -9,7 +9,53 @@ config {
     }
 }
 
-WITH cte_product AS (
+
+WITH map_product AS (
+  SELECT
+    CAST(code AS INT64) AS product_id_draft,
+    SAFE_CAST(MAX(value) AS INT64) AS product_id_buymed
+  FROM `collector.data_prd`
+  WHERE object = 'CIRCA'
+    AND type = 'PRODUCT_ID_BUYMED'
+  GROUP BY 1
+),
+
+t AS (
+  SELECT DISTINCT product_id, category_name
+  FROM gold_buymed_vn2.dim_product_category
+  WHERE level = 1
+),
+
+e AS (
+  SELECT DISTINCT product_id, efficacy_name
+  FROM gold_buymed_vn2.dim_product_efficacy
+  WHERE efficacy_level = 1
+),
+
+tp AS (
+  SELECT *
+  FROM ${ref('dim_product')}
+),
+
+base AS (
+  SELECT
+    p.*
+   , mp.product_id_buymed
+
+   , CASE
+      WHEN tp_direct.product_id IS NOT NULL
+        OR t_direct.product_id IS NOT NULL
+        OR e_direct.product_id IS NOT NULL
+      THEN p.product_id
+      ELSE mp.product_id_buymed
+    END AS product_id_join_dim
+  FROM ${source.circa_os}.product_product p
+  LEFT JOIN map_product mp ON p.product_id = mp.product_id_draft
+  LEFT JOIN tp tp_direct ON p.product_id = tp_direct.product_id
+  LEFT JOIN t t_direct ON p.product_id = t_direct.product_id
+  LEFT JOIN e e_direct ON p.product_id = e_direct.product_id
+)
+,cte_product AS (
     SELECT DISTINCT p.product_id
           ,p.name AS product_name
           ,tp.retail_name
@@ -50,13 +96,13 @@ WITH cte_product AS (
           ,p.client_id
           ,tp.user_type
           ,DATETIME_ADD(created_at, INTERVAL 7 HOUR)   AS created_at
-    FROM ${source.circa_os}.product_product p
+    FROM base p
     LEFT JOIN ${source.circa_os}.product_main_category mc ON p.main_category_code = mc.code AND p.client_id = mc.client_id
     LEFT JOIN ${source.circa_os}.product_manufacturer m ON p.manufacturer_code = m.code AND p.client_id = m.client_id
     LEFT JOIN ${source.circa_os}.product_seller_category sc ON p.seller_category_code = sc.seller_category_code AND p.client_id = sc.client_id
-    LEFT JOIN (SELECT DISTINCT product_id, category_name FROM `gold_buymed_vn2.dim_product_category` WHERE level = 1) t ON p.product_id = t.product_id 
-    LEFT JOIN (SELECT DISTINCT product_id, efficacy_name FROM gold_buymed_vn2.dim_product_efficacy WHERE efficacy_level = 1) e ON p.product_id = e.product_id
-    LEFT JOIN ${ref('dim_product')} AS tp ON p.product_id = tp.product_id
+    LEFT JOIN t ON p.product_id_join_dim = t.product_id 
+    LEFT JOIN e ON p.product_id_join_dim = e.product_id
+    LEFT JOIN tp ON p.product_id_join_dim = tp.product_id
 )
 ,inventory_summary AS (
     SELECT a.product_id
@@ -77,7 +123,7 @@ WITH cte_product AS (
           ,SUM(total_on_hand_quantity) AS on_hand_quantity
           ,COUNT(DISTINCT CASE WHEN client_id = 1 AND total_on_hand_quantity > 0 THEN pos_id END) AS pos_os_have_stock
           ,COUNT(DISTINCT CASE WHEN client_id <> 1 AND total_on_hand_quantity > 0 THEN pos_id END) AS pos_fs_have_stock
-          ,STRING_AGG(DISTINCT pos_name, ', ') AS stock_available_in_poss
+          ,STRING_AGG(DISTINCT IF(total_on_hand_quantity > 0, pos_name, NULL), ', ') AS stock_available_in_poss
           ,client_id
     FROM inventory_summary
     GROUP BY product_id, client_id
@@ -87,9 +133,10 @@ WITH cte_product AS (
           ,ingredient_name
           ,volume
           ,usage
-          ,client_id
+       --   ,client_id
     FROM ${ref('cos_dim_product_ingredient')}
-    WHERE ingredient_level = 1
+--     WHERE ingredient_level = 1
+ QUALIFY ROW_NUMBER() OVER (PARTITION BY product_id ORDER BY ingredient_level DESC) = 1
 )
 ,product_base_unit AS (
     SELECT DISTINCT a.product_id
@@ -205,6 +252,13 @@ LEFT JOIN ${source.circa_os}.product_assortment_template_items i ON o.id = i.ass
 WHERE o.id = 'e9a5a24c-8b54-41a3-9b21-2ad63149eb3d'
       AND i.status = 'ACTIVE'
 
+), tags AS (
+SELECT DISTINCT
+   product_id
+  ,STRING_AGG(tag_name, ', ') AS tag_names
+FROM ${source.ref}.dim_product_tags
+GROUP BY product_id
+
 )
 SELECT DISTINCT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
       ,pd.product_id
@@ -240,10 +294,13 @@ SELECT DISTINCT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transform
       ,CASE WHEN kit.product_id IS NOT NULL THEN TRUE ELSE FALSE END AS is_combo_on_kit
       ,kit.KIT_NAME AS kit_name
       ,po.status as web_status
+      ,tag_names
+      ,sell_area AS sell_area_online
+      ,client.name AS client_name
 FROM cte_product pd
 LEFT JOIN ${source.platinum}.circa_online_prd_product_product AS op ON pd.product_id = op.product_id
 LEFT JOIN inventory i ON pd.product_id = i.product_id AND pd.client_id = i.client_id
-LEFT JOIN ingregients ig ON pd.product_id = ig.product_id AND pd.client_id = ig.client_id
+LEFT JOIN ingregients ig ON pd.product_id = ig.product_id -- AND pd.client_id = ig.client_id
 LEFT JOIN product_base_unit bu ON pd.product_id = bu.product_id AND pd.client_id = bu.client_id
 LEFT JOIN brand_type bt ON pd.product_id = bt.product_id
 LEFT JOIN convert_unit cr ON pd.product_id = cr.product_id AND pd.client_id = cr.client_id
@@ -258,6 +315,8 @@ LEFT JOIN ${source.ref}.cos_product_hotdeal2025 h ON pd.product_id = h.product_i
 LEFT JOIN ${source.ref}.cos_product_hot_deal_jan hd ON pd.product_id = hd.product_id AND pd.client_id = hd.client_id
 LEFT JOIN posm ON pd.product_id = posm.product_id
 LEFT JOIN ts_unit ts ON ts.product_id = pd.product_id and pd.client_id = ts.client_id
+LEFT JOIN tags ON pd.product_id = tags.product_id
+LEFT JOIN ${source.circa_os}.entity_client client ON pd.client_id = client.id
 --WHERE pd.product_name NOT LIKE "%[Removed]%"
 
         --and pd.product_id = 1112

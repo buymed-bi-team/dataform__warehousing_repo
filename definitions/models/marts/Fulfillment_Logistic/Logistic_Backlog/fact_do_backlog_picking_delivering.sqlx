@@ -56,7 +56,19 @@ select
 	o.tags,
 	cast(json_value(o.extra_props,"$.need_verify_receiver") as bool) as need_verify_receiver,
 	o.create_source,
-  	coalesce(pre.shipping_method,pre_sel.delivery_method) as return_shipping_method
+  	coalesce(pre.shipping_method,pre_sel.delivery_method) as return_shipping_method,
+	IF(o.order_code LIKE "SO%",
+		CASE 
+			WHEN REGEXP_CONTAINS(TO_JSON_STRING(o.tags), r'\"CLINIC_PORTAL\"') THEN "CLINIC_PORTAL" 
+			WHEN o.order_id >= 50000000 THEN "TENDER"
+			ELSE "NORMAL"
+		END,  
+		NULL
+	) AS order_channel,
+	CASE
+		WHEN REGEXP_CONTAINS(TO_JSON_STRING(tags), r'MERCHANT_[A-Za-z0-9_]+') THEN REGEXP_EXTRACT_ALL(TO_JSON_STRING(tags), r'MERCHANT_[A-Za-z0-9_]+')[SAFE_OFFSET(0)]
+		WHEN REGEXP_CONTAINS(TO_JSON_STRING(tags), r'BRAND_NAME_[A-Za-z0-9_]+') THEN REGEXP_EXTRACT_ALL(TO_JSON_STRING(tags), r'BRAND_NAME_[A-Za-z0-9_]+')[SAFE_OFFSET(0)]
+	END AS clinic_brand_name
 	-- string(null) as return_shipping_method
 from (
     select * 

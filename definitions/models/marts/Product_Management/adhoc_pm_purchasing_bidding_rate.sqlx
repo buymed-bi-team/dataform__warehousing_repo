@@ -41,15 +41,15 @@ FROM ${source.platinum}.seller_prd_purchasing_bidding_rate a
     LEFT JOIN (
         SELECT *
         FROM ${source.platinum}.seller_prd_purchasing_purchase_order
-        WHERE created_date >= CURRENT_DATE("+7") - INTERVAL 30 DAY
+        WHERE created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH) - INTERVAL 4 MONTH
     ) AS d ON d.po_code = po
     LEFT JOIN (
         SELECT *
         FROM ${source.platinum}.seller_prd_purchasing_purchase_order_item
-        WHERE created_date >= CURRENT_DATE("+7") - INTERVAL 30 DAY
+        WHERE created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH) - INTERVAL 4 MONTH
             AND price_after_discount > 0
     ) AS e ON e.po_code = po AND e.sku = a.sku
     LEFT JOIN  ${ref("dim_vendor")} AS v ON v.supplier_code = d.vendor_code
-WHERE a.created_date >= CURRENT_DATE("+7") - INTERVAL 15 DAY
+WHERE a.created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH) - INTERVAL 3 MONTH
     AND a.sku IS NOT NULL
 GROUP BY ALL

@@ -29,12 +29,15 @@ AS (SELECT * FROM  ${ref("buymed_innovation", "thuocsi_tha_dim_customer")});
 CREATE OR REPLACE VIEW `rumi_buymed_th.thuocsi_tha_dim_product_sku`
 AS (SELECT * FROM  ${ref("buymed_innovation", "thuocsi_tha_dim_product_sku")});
 
-
-
 -- dim_inventory
 
 CREATE OR REPLACE VIEW `rumi_buymed_th.thuocsi_tha_dim_inventory`
 AS (SELECT * FROM  ${ref("buymed_innovation", "thuocsi_tha_dim_inventory")});
+
+-- dim_initial_stock_draft
+
+CREATE OR REPLACE VIEW `rumi_buymed_th.thuocsi_tha_dim_initial_stock_draft`
+AS (SELECT * FROM  ${ref("buymed_innovation", "thuocsi_tha_dim_initial_stock_draft")});
 
 
 

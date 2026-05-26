@@ -16,6 +16,7 @@ SELECT
      ,tag_value
      ,tag_type
      ,tag_name
-     ,status 
+    -- ,status 
      ,CONCAT(product_id, "_", 1) AS product_client_id
 FROM ${source.platinum}.circa_online_prd_product_product_tags
+WHERE status = 'ACTIVE'

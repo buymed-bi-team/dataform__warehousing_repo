@@ -16,7 +16,7 @@ const model = new main.PlatinumModel(
     }
 );
 model.createIncremental(
-    ["platinum_custom_10min", "platinum_staging", "pim_prd_product"],
+    ["platinum_0h00","platinum_12h00", "platinum_staging", "pim_prd_product"],
     {
         has_src_created_date : false,
         ingestCutOffInterval : "INTERVAL 2 HOUR"

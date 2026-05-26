@@ -29,6 +29,7 @@ SELECT
     SAFE_CAST(JSON_VALUE(a.extra_props, '$.product_id') AS INT64) AS product_id,
     JSON_VALUE(a.extra_props, '$.sku') AS sku,
     COALESCE(JSON_VALUE(a.extra_props, '$.scope'), "SUPPORT_CUSTOMER") || "_TICKET" AS ticket_type,
+    a.note AS employee_note
 FROM platinum_buymed_vn.marketplace_prd_ticket_ticket AS a
     LEFT JOIN (
         SELECT

@@ -1,0 +1,20 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `store of Circa.`,
+    tags: ['AI_CIRCA']
+}
+
+
+SELECT DISTINCT code as pos_code
+       ,name as pos_name
+       ,actual_status AS store_status
+       ,created_at
+       ,client_id
+       ,full_address
+       ,m.ward_name
+       ,m.district_name
+       ,m.province_name
+FROM ${ref('gold_buymed_vn2', 'circa_pos_profile')} o
+LEFT JOIN ${ref('gold_buymed_vn2', 'dim_geo_location')} m ON o.district = m.district_code AND o.province = m.province_code AND o.ward = m.ward_code
+WHERE  o.actual_status <> 'Inactive'

@@ -1,0 +1,21 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `Initial Stock in the Vietnam marketplace.`,
+    tags: ['AI_THUOCSI_VN']
+}
+
+SELECT
+    s.product_id
+    , a.sku AS sku_code
+    , CONCAT(s.product_id, "_", a.seller_code, "_", warehouse_code) AS sku_key
+    , a.avg_demand
+    , a.initial_stock
+    , JSON_EXTRACT_SCALAR(a.extra_props,'$.leadtime') as leadtime
+    , JSON_EXTRACT_SCALAR(a.extra_props,'$.stock_day') as stock_day
+FROM ${source.platinum}.seller_prd_purchasing_initial_stock_draft AS a
+    LEFT JOIN ${ref("dim_sku")} AS s ON  a.sku = s.sku_code
+    -- LEFT JOIN ${source.platinum}.seller_prd_core_seller AS b ON a.seller_code = b.code
+    -- LEFT JOIN ${ref('gold_buymed_vn2', 'agg_avg_demand_sku_item_l30d')} AS c ON CONCAT(product_id, "_", seller_code, "_", warehouse_code) = c.sku_fc_key
+WHERE warehouse_code IN ("BD", "HN")
+    AND a.seller_code <> "DENX"

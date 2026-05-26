@@ -167,7 +167,7 @@ WITH thuosi_unit AS (
     FROM combine i
     LEFT JOIN check_unit_pricing cup ON i.product_id = cup.product_id
     GROUP BY ALL
-)
+), base AS (
 SELECT a.*
       ,pro.unit_name as web_unit
       ,pro.is_default as is_default_web
@@ -183,6 +183,76 @@ LEFT JOIN ${source.circa_os}.inventory_cost_price p ON a.seller_code = p.seller_
                                                     AND a.sku_code = p.sku_code
 LEFT JOIN  ${source.ref}.product_price_online pro ON a.product_id = pro.product_id AND a.unit = pro.unit_name
 GROUP BY ALL
+)
+, promo AS (
+   
+SELECT DISTINCT product_id
+                ,unit
+                ,o.created_at 
+                ,sku_code
+                ,i.percent
+                ,i.discount_value
+                ,i.specific_price
+                ,i.discount_type --FIXED_PRICE/SPECIFIC_PRICE/PERCENT
+FROM ${source.ref}.dim_promotion_event_circa o 
+LEFT JOIN ${source.ref}.dim_promotion_event_item_circa i ON o.id = i.promotion_event_id
+WHERE is_expired = FALSE
+     AND is_active = true
+     AND o.client_id = 1
+    -- AND i.discount_type ='FIXED_PRICE'
+    -- AND  product_id = 8742 
+QUALIFY ROW_NUMBER() OVER (PARTITION BY product_id, sku_code ORDER BY created_at DESC) = 1
+ORDER BY o.created_at DESC
+
+)SELECT b.*
+    , p.discount_type
+    , p.percent
+    , CASE WHEN p.discount_type = 'FIXED_PRICE' AND p.unit = 'combo' THEN  p.discount_value
+           WHEN p.discount_type = 'FIXED_PRICE'
+            THEN ROUND(
+                     (
+                        p.discount_value
+                        / src.convert_rate
+                        * b.convert_rate
+                    )
+                , 0)
+        END AS discount_value
+    , CASE WHEN p.discount_type = 'SPECIFIC_PRICE'   AND p.unit = 'combo' THEN p.specific_price
+        WHEN p.discount_type = 'SPECIFIC_PRICE'
+            THEN ROUND(
+                    p.specific_price
+                    / src.convert_rate
+                    * b.convert_rate
+                , 0) END AS specific_price
+
+    ,  CASE WHEN p.discount_type = 'PERCENT' AND p.unit = 'combo' THEN ROUND(b.final_sale_price * (1 - p.percent / 100), 0)
+         WHEN p.discount_type = 'PERCENT'
+            THEN ROUND(b.final_sale_price * (1 - p.percent / 100), 0)
+
+        WHEN p.discount_type = 'FIXED_PRICE' AND p.unit = 'combo' THEN  ROUND( b.final_sale_price - p.discount_value)
+        WHEN p.discount_type = 'FIXED_PRICE'
+            THEN ROUND(
+                    b.final_sale_price
+                    - (
+                        p.discount_value
+                        / src.convert_rate
+                        * b.convert_rate
+                    )
+                , 0)
+        WHEN p.discount_type = 'SPECIFIC_PRICE'   AND p.unit = 'combo' THEN p.specific_price
+        WHEN p.discount_type = 'SPECIFIC_PRICE'
+            THEN ROUND(
+                    p.specific_price
+                    / src.convert_rate
+                    * b.convert_rate
+                , 0)
+
+        ELSE b.final_sale_price
+      END AS price_af_discount
+FROM base b
+LEFT JOIN promo p ON b.product_id = p.product_id AND b.sku_code = p.sku_code
+LEFT JOIN base src ON p.product_id = src.product_id AND p.unit = src.unit AND b.sku_code = p.sku_code AND b.seller_code = src.seller_code
+WHERE b.client_id = 1
 
 
 

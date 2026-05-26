@@ -1,7 +1,7 @@
 config {
     type: "table",
     description: `Dim product | PIC: huyen.ngo; model_type: Table ;schedule: custom_1h_past15`,
-    tags: ["custom_1h_past15"],
+    tags: ["bq_information_schema"],
     name: "dim_product_online",
     columns: {/*
 */
@@ -28,5 +28,9 @@ SELECT
      ,status
      ,updated_by_id
      ,updated_by_name
+     ,ARRAY_TO_STRING(
+      JSON_VALUE_ARRAY(extra_props, '$.sell_area_codes'),
+    ' ,'
+    ) AS sell_area
      ,DATETIME_ADD(synced_at, INTERVAL 7 HOUR) AS synced_at
 FROM ${source.platinum}.circa_online_prd_product_product_filter

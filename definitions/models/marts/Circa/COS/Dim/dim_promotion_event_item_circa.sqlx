@@ -23,6 +23,8 @@ SELECT DISTINCT  i.promotion_event_id
                  ,source_type
                  ,o.status
                  ,discount_type
+                 ,discount_value
+                 ,specific_price
                  ,o.promotion_campaign_id
                  ,p.code AS campaign_code
                  ,p.name AS campaign_name

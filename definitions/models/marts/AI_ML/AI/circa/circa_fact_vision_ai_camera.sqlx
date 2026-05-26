@@ -1,0 +1,14 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `Camera AI of Circa.`,
+    tags: ['AI_CIRCA']
+}
+
+
+SELECT t.* EXCEPT (store_id)
+      ,t.store_id AS pos_code
+      ,p.name AS pos_name
+      , IF(p.type = "FS", "FS", "COS") AS pos_type
+FROM ${ref("vision_ai")} t 
+LEFT JOIN ${ref("circa_pos_profile")} p ON t.store_id = p.code

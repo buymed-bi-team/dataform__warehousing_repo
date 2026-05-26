@@ -73,6 +73,11 @@ AS (SELECT * FROM  ${ref("buymed_innovation", "thuocsi_vn_dim_product_sku")});
 CREATE OR REPLACE VIEW `rumi_buymed_vn.thuocsi_vn_dim_inventory`
 AS (SELECT * FROM  ${ref("buymed_innovation", "thuocsi_vn_dim_inventory")});
 
+-- dim_initial_stock_draft
+
+CREATE OR REPLACE VIEW `rumi_buymed_vn.thuocsi_vn_dim_initial_stock_draft`
+AS (SELECT * FROM  ${ref("buymed_innovation", "thuocsi_vn_dim_initial_stock_draft")});
+
 -- agg_competitor_price
 
 CREATE OR REPLACE VIEW `rumi_buymed_vn.thuocsi_vn_agg_competitor_price`
