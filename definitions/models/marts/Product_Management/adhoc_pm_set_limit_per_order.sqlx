@@ -23,6 +23,7 @@ get_column as (
             , b.volumes
             , b.weight
             , a.max_quantity_per_order as current_limit
+            , a.sku_key_sales_region_code
             , CASE
                 WHEN LOWER(b.product_name) LIKE '%cồn%' THEN 'cồn'
                 WHEN LOWER(b.product_name) LIKE '%oxy già%' THEN 'oxy già'
