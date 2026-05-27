@@ -37,12 +37,10 @@ get_column as (
                 WHEN LOWER(b.product_name) LIKE '%khẩu trang%' THEN 'khẩu trang'
                 WHEN LOWER(b.product_name) LIKE '%dầu gội%' THEN 'dầu gội'
                 WHEN LOWER(b.product_name) LIKE '%găng tay%' THEN 'găng tay'
-                WHEN c.category_code = '7E72AXHR2A' THEN 'vật tư và thiết bị y tế'
                 ELSE 'sản phẩm khác'
             END AS category_for_set_limit
         from ${ref('dim_sku_sales_region_current')} a
         left join ${ref('dim_product')} b on a.product_id = b.product_id
-        left join ${ref('dim_product_category')}  c on b.product_id = c.product_id
     )
 ),
 -- step 2: create limit_per_SO and limit_per_SO_quantity column according to logic set limit
