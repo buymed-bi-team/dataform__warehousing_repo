@@ -72,6 +72,7 @@ SELECT
     , v.voucher_group_code
     , JSON_QUERY(extra_props, '$.apply_discount') AS apply_discount
     , applied_customers
+    , customer_apply_type
 FROM (
     SELECT key, mg_id, usage_type, start_time, applied_customers, created_by_user_name, promotion_id, promotion_name, public_time, max_usage, type, status, created_by, voucher_id, code, end_time, max_usage_per_customer, created_time, hash_tag, last_updated_time, updated_by, usage_total, and_conditions, apply_type, customer_apply_type, display_name, promotion_type, rewards, scopes, system_note, is_migrate_user_code, system_display, voucher_group_code, max_auto_apply_count, voucher_status, synced_at, extra_props, action, ingest_time, created_date, platinum_refresh 
     FROM ${source.platinum}.marketplace_prd_promotion_voucher 
