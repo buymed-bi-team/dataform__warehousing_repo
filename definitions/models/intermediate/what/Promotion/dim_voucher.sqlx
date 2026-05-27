@@ -66,11 +66,12 @@ SELECT
     , REGEXP_REPLACE(JSON_VALUE(v.extra_props, '$.condition_description'), r'\\n|\\|<[^>]*>|&nbsp;', '') AS condition_description
     , SAFE_CAST(JSON_VALUE(v.and_conditions, '$.ORDER_VALUE.or_conditions.0.order_condition.min_sku_quantity') AS INT64) AS min_sku_quantity
     , SAFE_CAST(JSON_VALUE(v.and_conditions, '$.ORDER_VALUE.or_conditions.0.order_condition.min_total_price') AS INT64) AS min_total_price
-    , applied_customers IS NULL AND customer_apply_type = "ALL"  AS all_customer 
+    , IFNULL(ARRAY_LENGTH(JSON_QUERY_ARRAY( applied_customers)),0) = 0 AND customer_apply_type = "ALL"  AS all_customer 
     , scopes
     , JSON_QUERY(and_conditions, "$.ORDER_VALUE") IS NOT NULL AS is_order_value_condition
     , v.voucher_group_code
     , JSON_QUERY(extra_props, '$.apply_discount') AS apply_discount
+    , applied_customers
 FROM (
     SELECT key, mg_id, usage_type, start_time, applied_customers, created_by_user_name, promotion_id, promotion_name, public_time, max_usage, type, status, created_by, voucher_id, code, end_time, max_usage_per_customer, created_time, hash_tag, last_updated_time, updated_by, usage_total, and_conditions, apply_type, customer_apply_type, display_name, promotion_type, rewards, scopes, system_note, is_migrate_user_code, system_display, voucher_group_code, max_auto_apply_count, voucher_status, synced_at, extra_props, action, ingest_time, created_date, platinum_refresh 
     FROM ${source.platinum}.marketplace_prd_promotion_voucher 
