@@ -27,40 +27,65 @@ WITH
             , date
         FROM ${ref('fact_sku_status_day_by_date')}
         QUALIFY ROW_NUMBER() over (PARTITION BY item_code, sales_region_code, date ORDER BY start_at DESC ) = 1
+    ),
+
+    _order AS (
+        SELECT
+            DATE(oi.created_at) AS  date
+            , CONCAT(oi.product_id, '_', oi.sales_region_code) AS product_sales_region_code
+            , COUNT(1) AS count
+        FROM ${ref("fact_order_item")} AS oi
+            LEFT JOIN ${ref("fact_order")} AS o ON oi.order_id = o.order_id
+        WHERE 1=1
+            AND DATE(oi.created_at) >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), WEEK(MONDAY)), INTERVAL 3 WEEK )
+            AND DATE(o.created_at) >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), WEEK(MONDAY)), INTERVAL 3 WEEK )
+            AND o.order_status <> "CANCEL"
+            AND o.channel <> "TENDER"
+        GROUP BY ALL
+        HAVING count > 0
+    ),
+
+    product_status AS (
+        SELECT
+            TIMESTAMP_ADD(CURRENT_TIMESTAMP, INTERVAL 7 HOUR) AS last_refreshed_at
+            , c.product_id
+            , c.sales_region_code
+            , a.date
+            , CONCAT(c.product_id, '_', c.sales_region_code) AS product_sales_region_code
+        --     , IF(
+        --         COUNTIF(COALESCE(a.status, c.sku_system_status) IN ('NORMAL','LIMIT')) > 0
+        --         , "AVAILABLE"
+        --         , "UNAVAILABLE"
+        --       ) AS available_oos
+            , CASE
+                WHEN COUNTIF(COALESCE(a.status, c.sku_system_status) = 'NORMAL') > 0 THEN "NORMAL"
+                WHEN COUNTIF(COALESCE(a.status, c.sku_system_status) = 'LIMIT') > 0 THEN "LIMIT"
+                WHEN COUNTIF(COALESCE(a.status, c.sku_system_status) = 'SUSPENDED') = COUNT(COALESCE(a.sku_code, c.sku_code)) THEN "SUSPENDED"
+                WHEN COUNTIF(COALESCE(a.status, c.sku_system_status) = 'OUT_OF_STOCK') = COUNT(COALESCE(a.sku_code, c.sku_code)) THEN "OUT_OF_STOCK"
+                ELSE "OUT_OF_STOCK"
+            END AS status
+        FROM ${ref('dim_sku_sales_region_current')} AS c
+            LEFT JOIN status AS a
+                ON c.sub_sku_code = a.item_code
+                    AND c.sales_region_code = a.sales_region_code
+                    AND DATE(c.sku_approved_at) <= a.date
+            LEFT JOIN ${ref("dim_seller")} AS s ON c.seller_code = s.supplier_code
+        WHERE
+            a.date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), WEEK(MONDAY)), INTERVAL 3 WEEK )
+        --     a.date = CURRENT_DATE("+7")
+            AND (c.seller_code IN ("MEDX", "CIRCA_INT", "BML_INT") or c.seller_class = "EXTERNAL")
+            AND c.seller_code NOT IN ('MEDX_E', 'MEDC', 'MED_NT', 'TENDER', 'MEDX-HN', 'DENX', 'MARKETING', '9SUUUUUUUU', 'QMQEM8DN9F', 'UQRRRRRRRR', "TAM_GIA", "BML_E","TAYAU_E", "TAYAU")
+            AND REGEXP_CONTAINS(c.product_name, r'\[|\]') = FALSE
+            AND c.sku_system_status <> 'GIFT'
+            AND a.status NOT IN ("UNKNOWN","GIFT")
+            AND c.seller_class IN ("EXTERNAL","INTERNAL")
+            AND s.supplier_type IN ("ENTERPRISE", "TRADING")
+        GROUP BY ALL
     )
 
 SELECT
-    TIMESTAMP_ADD(CURRENT_TIMESTAMP, INTERVAL 7 HOUR) AS last_refreshed_at
-    , c.product_id
-    , c.sales_region_code
-    , a.date
-    , CONCAT(c.product_id, '_', c.sales_region_code) AS product_sales_region_code
---     , IF(
---         COUNTIF(COALESCE(a.status, c.sku_system_status) IN ('NORMAL','LIMIT')) > 0
---         , "AVAILABLE"
---         , "UNAVAILABLE"
---       ) AS available_oos
-    , CASE
-        WHEN COUNTIF(COALESCE(a.status, c.sku_system_status) = 'NORMAL') > 0 THEN "NORMAL"
-        WHEN COUNTIF(COALESCE(a.status, c.sku_system_status) = 'LIMIT') > 0 THEN "LIMIT"
-        WHEN COUNTIF(COALESCE(a.status, c.sku_system_status) = 'SUSPENDED') = COUNT(COALESCE(a.sku_code, c.sku_code)) THEN "SUSPENDED"
-        WHEN COUNTIF(COALESCE(a.status, c.sku_system_status) = 'OUT_OF_STOCK') = COUNT(COALESCE(a.sku_code, c.sku_code)) THEN "OUT_OF_STOCK"
-        ELSE "OUT_OF_STOCK"
-      END AS status
-FROM ${ref('dim_sku_sales_region_current')} AS c
-    LEFT JOIN status AS a
-        ON c.sub_sku_code = a.item_code
-            AND c.sales_region_code = a.sales_region_code
-            AND DATE(c.sku_approved_at) <= a.date
-    LEFT JOIN ${ref("dim_seller")} AS s ON c.seller_code = s.supplier_code
-WHERE
-    a.date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), WEEK(MONDAY)), INTERVAL 3 WEEK )
---     a.date = CURRENT_DATE("+7")
-    AND (c.seller_code IN ("MEDX", "CIRCA_INT", "BML_INT") or c.seller_class = "EXTERNAL")
-    AND c.seller_code NOT IN ('MEDX_E', 'MEDC', 'MED_NT', 'TENDER', 'MEDX-HN', 'DENX', 'MARKETING', '9SUUUUUUUU', 'QMQEM8DN9F', 'UQRRRRRRRR', "TAM_GIA", "BML_E","TAYAU_E", "TAYAU")
-    AND REGEXP_CONTAINS(c.product_name, r'\[|\]') = FALSE
-    AND c.sku_system_status <> 'GIFT'
-    AND a.status NOT IN ("UNKNOWN","GIFT")
-    AND c.seller_class IN ("EXTERNAL","INTERNAL")
-    AND s.supplier_type IN ("ENTERPRISE", "TRADING")
-GROUP BY ALL
+    a.*
+    , IF(o.product_sales_region_code IS NOT NULL, TRUE, FALSE) AS has_order
+FROM product_status AS a
+    LEFT JOIN  _order AS o ON a.product_sales_region_code = o.product_sales_region_code AND a.date = o.date
+
