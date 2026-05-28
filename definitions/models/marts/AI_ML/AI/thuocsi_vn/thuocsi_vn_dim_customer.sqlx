@@ -13,7 +13,7 @@ WITH
             , a.user_last_login
             , a.customer_name
             , a.customer_status
-            , a.business_scope
+            , a.business_scope AS business_type
             , b.customer_tag_priority
             -- , customer_tag_sub_group AS customer_tag_sub_priority
             , customer_level

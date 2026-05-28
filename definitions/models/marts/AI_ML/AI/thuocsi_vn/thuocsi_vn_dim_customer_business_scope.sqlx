@@ -1,0 +1,30 @@
+config {
+    type: 'table',
+    schema: "buymed_innovation",
+    description: `Customer Business Scope in the Vietnam marketplace.`,
+    tags: ['AI_THUOCSI_VN', 'custom_1h_past_10']
+}
+
+WITH
+    cte AS (
+        SELECT
+            customer_id
+            , scope_of_business AS scope
+        FROM ${source.platinum}.marketplace_prd_customer_customer
+            LEFT JOIN UNNEST(JSON_VALUE_ARRAY(gpp_info, "$.scope_of_business")) AS scope_of_business
+        UNION DISTINCT
+        SELECT
+            customer_id
+            , scope_of_business
+        FROM ${source.platinum}.marketplace_prd_customer_customer
+            LEFT JOIN UNNEST(JSON_VALUE_ARRAY(gdp_info, "$.scope_of_business")) AS scope_of_business
+    )
+
+SELECT
+    c.customer_id
+    , ksdb AS scope
+    , IF(cte.scope IS NOT NULL, 1, 0) AS valid
+FROM ${ref("gold_buymed_vn2", "dim_customer")} AS c
+    , UNNEST(["COMPOUND_DRUG", "BANNED_DRUG", "TOXIC_DRUG", "COLD_STORAGE_DRUG", "PRESCRIPTION", "NON_PRESCRIPTION"]) AS ksdb
+    LEFT JOIN cte ON cte.customer_id = c.customer_id AND cte.scope = ksdb
+QUALIFY ROW_NUMBER() over (PARTITION BY c.customer_id, ksdb ORDER BY valid DESC) = 1
