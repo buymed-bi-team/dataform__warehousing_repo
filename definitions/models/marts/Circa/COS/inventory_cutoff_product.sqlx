@@ -30,18 +30,3 @@ WHERE a.cutoff_date_index >= DATE_SUB( CURRENT_DATE("Asia/Ho_Chi_Minh"),INTERVAL
       AND a.client_id = 1
 GROUP BY ALL
 
-UNION ALL
-
-SELECT DISTINCT
-       CURRENT_DATE("Asia/Ho_Chi_Minh") AS _today
-     , CURRENT_DATE("Asia/Ho_Chi_Minh")  AS date_map
-     , pos_id
-     , product_id
-     , SUM(on_hand_quantity) AS on_hand_qty
-     , SUM(on_hand_quantity * cost_price_include_tax) AS stock_value
-     , client_id
-     ,  1 AS is_same_day
-     , CONCAT(product_id, "_", client_id) AS product_client_id
-FROM  ${source.ref}.cos_fact_inventory
-WHERE client_id = 1
-GROUP BY ALL
