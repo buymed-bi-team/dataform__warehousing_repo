@@ -31,26 +31,22 @@ SELECT DISTINCT
             ELSE b.tax_rate
         END                                                                                                               AS tax_rate
        ,a.unit_price
+       ,ROUND(a.unit_price - coalesce(b.discount_amount/NULLIF(b.received_quantity, 0)))                                  AS unit_price_af_discount
        ,a.unit
        ,a.unit_id
-       -- ,CASE
-       --      WHEN a.amount <> 0 THEN a.amount
-       --      WHEN a.amount = 0 THEN b.quantity * a.unit_price
-       --  END AS PO_item_amount
        ,b.received_quantity * a.unit_price                                                                                AS PO_item_amount
-      --  ,(b.received_quantity - COALESCE(x.quantity,0)  ) * a.unit_price - (b.discount_amount/NULLIF(b.received_quantity, 0)) *  (b.received_quantity - COALESCE(x.quantity,0) )   AS actual_po_item_amount
-      ,(b.received_quantity - COALESCE(x.quantity,0)  ) * a.unit_price                                                      AS actual_po_item_amount
+      ,(b.received_quantity - COALESCE(x.quantity,0)  ) * a.unit_price                                                      AS actual_po_item_amount --tiền hàng actual, đã trừ trả hàng, trước khuyến mãi 
        ,b.lot_date
        ,a.product_id || "_" || b.lot_date                                                                                   AS product_lot_date
        ,a.sku || "_" || b.lot_date || "_" || b.tax_rate                                                                     AS sku_lotdate_vat
        ,il.location_type
-       -- ,a.discount_amount
-       ,(b.discount_amount/NULLIF(b.received_quantity, 0)) *  (b.received_quantity - COALESCE(x.quantity,0) )                         AS item_discount_amt
+
+       ,ROUND((b.discount_amount/NULLIF(b.received_quantity, 0)) *  (b.received_quantity - COALESCE(x.quantity,0) ) )        AS item_discount_amt -- tổng số tiền khuyến mãi actual của sản phẩm , đã trừ trả hàng
        ,c.code || "_" || a.sku || "_" || b.lot_date || "_" || b.tax_rate                                                    AS item_src_po_code
        ,a.seller_code
        ,eo.name
        ,c.distributor_id
-       ,dis.name                                                                                                          AS Vendor
+       ,dis.name                                                                                                          AS Vendor  -- 
        ,c.client_id
        ,CONCAT(a.product_id, "_", c.client_id)                                                                            AS product_client_id
        ,rt.convert_rate
@@ -71,7 +67,6 @@ LEFT JOIN (
     ,rtid.lot_date
     ,SUM(rtid.quantity) AS quantity
     ,SUM(rtid.base_quantity) AS base_quantity
-   -- ,SUM(rti.amount) AS amount
   FROM ${source.circa_os}.order_return_po rto
   LEFT JOIN ${source.circa_os}.order_return_po_item rti ON rto.id = rti.return_po_id
   LEFT JOIN ${source.circa_os}.order_return_po_item_detail rtid ON rti.id = rtid.return_po_item_id 
