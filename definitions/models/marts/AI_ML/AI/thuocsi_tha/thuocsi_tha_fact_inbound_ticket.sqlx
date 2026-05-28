@@ -9,6 +9,7 @@ SELECT
     i.created_date AS inbound_ticket_created_date,
     TIMESTAMP_ADD(i.created_time, INTERVAL 7 HOUR) AS po_confirmed_time,
     TIMESTAMP_ADD(po.created_time, INTERVAL 7 HOUR) AS po_pgh_created_time,
+    TIMESTAMP_ADD(i.completed_time, INTERVAL 7 HOUR) AS inbound_completed_time,
     i.ticket_id,
     i.warehouse_code,
     i.code AS inbound_code,

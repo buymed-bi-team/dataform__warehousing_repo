@@ -19,6 +19,16 @@ AS (SELECT * FROM  ${ref("buymed_innovation", "thuocsi_tha_fact_order_voucher")}
 CREATE OR REPLACE VIEW `rumi_buymed_th.thuocsi_tha_fact_margin`
 AS (SELECT * FROM  ${ref("buymed_innovation", "thuocsi_tha_fact_margin")});
 
+-- fact_inbound_ticket
+
+CREATE OR REPLACE VIEW `rumi_buymed_th.thuocsi_tha_fact_inbound_ticket`
+AS (SELECT * FROM  ${ref("buymed_innovation", "thuocsi_tha_fact_inbound_ticket")});
+
+-- fact_inventory_historical
+
+CREATE OR REPLACE VIEW `rumi_buymed_th.thuocsi_tha_fact_inventory_historical`
+AS (SELECT * FROM  ${ref("buymed_innovation", "thuocsi_tha_fact_inventory_historical")});
+
 -- dim_customer
 
 CREATE OR REPLACE VIEW `rumi_buymed_th.thuocsi_tha_dim_customer`

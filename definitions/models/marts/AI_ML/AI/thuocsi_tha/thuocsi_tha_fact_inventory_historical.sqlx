@@ -1,0 +1,25 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `Inventory Historical Thailand marketplace.`,
+    tags: ['AI_THUOCSI_TH']
+}
+
+SELECT
+    DATE(day + INTERVAL 7 HOUR) AS date
+    , warehouse_code
+    , sku AS sku_code
+    , stock_quantity
+    , available_quantity
+FROM platinum_buymed_th.warehouse_prd_inventory_inventory_historical
+WHERE 1=1
+    AND  created_date >= "2026-01-01"
+QUALIFY ROW_NUMBER() over (PARTITION BY warehouse_code, sku, day ORDER BY created_date DESC) = 1
+UNION ALL
+SELECT
+    CURRENT_DATE("+7")
+    , warehouse_code
+    , sku_code
+    , stock_quantity
+    , available_quantity
+FROM ${ref("buymed_innovation", "thuocsi_tha_dim_inventory")} 
