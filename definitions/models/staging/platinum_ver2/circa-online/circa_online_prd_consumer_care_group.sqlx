@@ -18,7 +18,7 @@ WITH silver AS (
       ELSE DATE('2099-01-01')
     END created_date,
     CAST(NULL AS DATETIME) AS platinum_refresh
-  FROM silver_buymed_vn.circa_online_prd_consumer_clinics
+  FROM silver_buymed_vn.circa_online_prd_consumer_care_group
   WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 1 DAY
   QUALIFY ROW_NUMBER() OVER (_window) = 1
     AND ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 16 HOUR
