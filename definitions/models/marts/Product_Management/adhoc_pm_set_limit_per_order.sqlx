@@ -26,18 +26,26 @@ get_column as (
             , a.sku_key_sales_region_code
             , CASE
                 WHEN LOWER(b.product_name) LIKE '%cồn%' THEN 'cồn'
-                WHEN LOWER(b.product_name) LIKE '%oxy già%' THEN 'oxy già'
-                WHEN LOWER(b.product_name) LIKE '%povidin%' THEN 'povidin'
-                WHEN LOWER(b.product_name) LIKE '%nhỏ mắt%' THEN 'nhỏ mắt các loại'
-                WHEN LOWER(b.product_name) LIKE '%dung dịch vệ sinh%' THEN 'dung dịch vệ sinh'
-                WHEN LOWER(b.product_name) LIKE '%sữa rửa mặt%' THEN 'sữa rửa mặt'
-                WHEN LOWER(b.product_name) LIKE '%nước súc miệng%' THEN 'nước súc miệng'
-                WHEN LOWER(b.product_name) LIKE '%nước muối%' THEN 'nước muối'
                 WHEN LOWER(b.product_name) LIKE '%dịch truyền%' THEN 'dịch truyền'
-                WHEN LOWER(b.product_name) LIKE '%khẩu trang%' THEN 'khẩu trang'
+                WHEN LOWER(b.product_name) LIKE '%nước muối%' THEN 'nước muối'
                 WHEN LOWER(b.product_name) LIKE '%dầu gội%' THEN 'dầu gội'
+                WHEN LOWER(b.product_name) LIKE '%dầu xả%' THEN 'dầu xả'
+                WHEN LOWER(b.product_name) LIKE '%sữa rửa mặt%' THEN 'sữa rửa mặt'
+                WHEN LOWER(b.product_name) LIKE '%rửa mặt%' THEN 'sữa rửa mặt'
+                WHEN LOWER(b.product_name) LIKE '%sữa tắm%' THEN 'sữa tắm'
+                WHEN LOWER(b.product_name) LIKE '%gel tắm%' THEN 'sữa tắm'
+                WHEN LOWER(b.product_name) LIKE '%nước tắm%' THEN 'sữa tắm'
+                WHEN LOWER(b.product_name) LIKE '%nước súc miệng%' THEN 'nước súc miệng'
+                WHEN LOWER(b.product_name) LIKE '%nước rửa tay%' THEN 'nước rửa tay'
+                WHEN LOWER(b.product_name) LIKE '%rửa tay%' THEN 'nước rửa tay'
+                WHEN LOWER(b.product_name) LIKE '%nước cất%' THEN 'nước cất'
+                WHEN LOWER(b.product_name) LIKE '%gel siêu âm%' THEN 'gel siêu âm'
+                WHEN LOWER(b.product_name) LIKE '%dung dịch sát khuẩn%' THEN 'dung dịch sát khuẩn'
+--                 WHEN LOWER(b.product_name) LIKE '%dung dịch vệ sinh%' THEN 'dung dịch vệ sinh'
+                WHEN LOWER(b.product_name) LIKE '%khẩu trang%' THEN 'khẩu trang'
                 WHEN LOWER(b.product_name) LIKE '%găng tay%' THEN 'găng tay'
-                ELSE 'sản phẩm khác'
+--                 WHEN LOWER(b.product_name) LIKE '%povidin%' THEN 'povidin'
+--                 WHEN LOWER(b.product_name) LIKE '%nhỏ mắt%' THEN 'nhỏ mắt các loại'
             END AS category_for_set_limit
         from ${ref('dim_sku_sales_region_current')} a
         left join ${ref('dim_product')} b on a.product_id = b.product_id
@@ -48,25 +56,22 @@ get_column as (
 create_set_limit_logic as (
     select *,
         CASE
-            WHEN REGEXP_CONTAINS(category_for_set_limit, 'cồn|dịch truyền|nước muối|dầu gội|sữa rửa mặt|nước súc miệng')
+            WHEN REGEXP_CONTAINS(category_for_set_limit, 'cồn|dịch truyền|nước muối|dầu gội|dầu xả|sữa rửa mặt|rửa mặt|sữa tắm|gel tắm|nước tắm|nước súc miệng|nước rửa tay|rửa tay|nước cất|gel siêu âm|dung dịch sát khuẩn')
                 AND volumes_convert >= 250
-                THEN CASE LOWER(unit) 
-                        WHEN "thùng" THEN 2
-                        WHEN "chai"  THEN 20
+                THEN CASE 
+                        WHEN LOWER(unit)  = "thùng" THEN 2
+                        WHEN LOWER(unit)  IN ("chai", "hộp", "túi", "bịch", "bộ", "can", "lốc")  THEN 20
                      END
             WHEN REGEXP_CONTAINS(category_for_set_limit, 'khẩu trang|găng tay') 
                 AND LOWER(unit) = 'hộp' AND volumes_convert >= 50
                 THEN 10
         END AS limit_per_SO_policy
     from get_column
-    WHERE REGEXP_CONTAINS(category_for_set_limit, 'cồn|dịch truyền|nước muối|dầu gội|sữa rửa mặt|nước súc miệng|khẩu trang|găng tay')
+    WHERE category_for_set_limit IS NOT NULL
 )
 
 select *,
     IF(current_limit > limit_per_SO_policy, "UPDATE BY RULE QUANTITY", "OKE") AS action     
 from create_set_limit_logic
 where limit_per_SO_policy > 0
-
-
-
 
