@@ -27,6 +27,7 @@ SELECT
     , p.name AS pos_name
     , oi.client_id
     , IF(p.type = "FS", "FS", "COS") AS pos_type
+    , CONCAT(oi.client_id, "_", oi.product_id) AS product_id_key
 FROM ${ref("gold_buymed_vn2", "cos_purchase_order_item")} AS oi
     LEFT JOIN buymed_circa_v2.entity_pos_profile AS p ON  oi.pos_code = p.code
 
