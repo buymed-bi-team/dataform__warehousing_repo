@@ -37,7 +37,7 @@ WITH
             , b.supplier_name
             , CONCAT(a.product_id, "_", a.seller_code, "_", a.warehouse_code) AS sku_key_fc
             , IFNULL(SAFE_CAST(JSON_VALUE(a.extra_props, "$.block_release_to_fav_session") AS BOOLEAN),FALSE) AS block_release_to_fav_session
-            , ""
+            , "STOP_PUBLISH"
             , FALSE
             , DATE(PARSE_TIMESTAMP("%Y%m%d%H%M%S", version), "+7") AS assign_vendor_date
             , CONCAT(a.product_id, "_", a.seller_code, "_", a.warehouse_code, "_", FORMAT_DATE("%Y%m%d", COALESCE( DATE(PARSE_TIMESTAMP("%Y%m%d%H%M%S", version), "+7"), created_date))) AS sku_fc_assign_date
