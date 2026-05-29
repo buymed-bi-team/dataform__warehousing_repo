@@ -27,6 +27,7 @@ SELECT
       , SO_code AS so_code
       , d.name as vendor_name
       , fulfillment_method
+      , CONCAT(o.client_id, "_", o.product_id) AS product_id_key
 FROM ${ref("gold_buymed_vn2", "cos_fact_inventory")} o 
 LEFT JOIN ${source.circa_os}.entity_distributor d on o.distributor_id = d.id AND o.client_id = d.client_id 
 LEFT JOIN ${ref("gold_buymed_vn2", "circa_pos_profile")} p ON o.pos_id = p.id 
