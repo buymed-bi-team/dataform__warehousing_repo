@@ -9,6 +9,7 @@ SELECT
     a.product_id
     , competitor AS competitor_name
     , market_price_aft_convert AS competitor_price
+    , market_price_before_promotion_aft_convert AS competitor_price_before_promotion
 FROM ${ref('gold_buymed_vn2', 'adhoc_pricing_competitor_price')} AS a
 WHERE  qc = "QC"
     AND competitor_price > 0
