@@ -7,6 +7,7 @@ config {
 
 SELECT
     a.product_id
+    , competitor_unit
     , competitor AS competitor_name
     , market_price_aft_convert AS competitor_price
     , market_price_before_promotion_aft_convert AS competitor_price_before_promotion
