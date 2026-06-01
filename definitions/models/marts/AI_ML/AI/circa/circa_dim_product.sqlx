@@ -22,5 +22,15 @@ SELECT
   , brand
   , CASE WHEN client_id = 1 THEN web_status END AS status_online
   , CASE WHEN client_id = 1 THEN sell_area_online END AS sell_area_online
-FROM ${ref('gold_buymed_vn2', 'cos_dim_product')}
+  , circa_price
+  , circa_price_after_discount
+FROM ${ref('gold_buymed_vn2', 'cos_dim_product')} AS a
+  LEFT JOIN (
+    SELECT
+      CONCAT(client_id, "_", product_id) AS  product_id_key
+      , MIN(final_sale_price) AS circa_price
+      , MIN(price_af_discount) AS circa_price_after_discount
+    FROM ${ref("gold_buymed_vn2", "cos_adhoc_pos_product_client")}
+    GROUP BY 1
+  ) AS b ON b.product_id_key = CONCAT(a.client_id, "_", a.product_id)
 QUALIFY ROW_NUMBER() OVER(PARTITION BY product_id_key) = 1
