@@ -3,28 +3,24 @@ config {
     tags: ["adhoc-office"],
     dependencies: ["platform_organization_prd_ticket_ticket_instance"],
     name: "fact_ticket_instance",
-    description: "PIC: tu.dang; model_type: table; Schedule: At minute 5 past hour 7, 10, 13, 16 and 19",
+    description: "PIC: huyen.ngo; model_type: table; Schedule: At minute 5 past hour 7, 10, 13, 16 and 19",
     bigquery: {
     partitionBy: "created_date"
   }
 }
 
-with ticket_note as 
-(
-  select ref_code,
-       STRING_AGG(message,"; -") as message_notes
-from ${source.platinum}.platform_organization_prd_ticket_message
-where ref_type like "TICKET_INSTANCE"
-  and message_type = "INTERNAL_NOTE"
---   and ref_code = "25GGV-17036"
-group by ref_code
-
-),
-
-cause AS (
+WITH ticket_note AS (
     SELECT
---     JSON_VALUE(e, "$.key") AS key
---     , JSON_QUERY(e, "$.value") AS value
+        ref_code
+        , STRING_AGG(message, "; -") AS message_notes
+    FROM ${source.platinum}.platform_organization_prd_ticket_message
+    WHERE ref_type LIKE "TICKET_INSTANCE"
+        AND message_type = "INTERNAL_NOTE"
+    GROUP BY ref_code
+)
+
+, cause AS (
+    SELECT
         JSON_VALUE(v, "$.label") AS cause_name
         , JSON_VALUE(v, "$.value") AS cause_code
         , reason_code
@@ -32,70 +28,91 @@ cause AS (
     FROM ${source.platinum}.platform_billing_prd_payment_reason_setting
         , UNNEST(JSON_QUERY_ARRAY(extra_data)) AS e
         , UNNEST(JSON_QUERY_ARRAY(e, "$.value")) AS v
-    WHERE
-        JSON_VALUE(e, "$.key") = "CAUSE"
+    WHERE JSON_VALUE(e, "$.key") = "CAUSE"
     GROUP BY ALL
 )
 
-select 
-    requester_code,
-    requester_name,
-    clasify,
-    JSON_EXTRACT_SCALAR(a,'$.department_code') as department_code,
-    ti.reason_code,
-    priority,
-    template_topic_code,
-    ticket_instance_code,
-    name as ticket_name,
-    JSON_EXTRACT_SCALAR(input_data,'$.userDescription') as user_description,
-    ti.cause_code,
-    assignee_account_id,
-    DATETIME(PARSE_TIMESTAMP('%Y-%m-%dT%H:%M:%E*S%Ez',JSON_EXTRACT_SCALAR(JSON_EXTRACT(decision_selecteds,'$[0]'),'$.decision_time')), "Asia/Ho_Chi_Minh") as first_decision_time,
-    DATETIME(PARSE_TIMESTAMP('%Y-%m-%dT%H:%M:%E*S%Ez',JSON_EXTRACT_SCALAR(JSON_EXTRACT(decision_selecteds,'$[1]'),'$.decision_time')), "Asia/Ho_Chi_Minh") as second_decision_time,
-    status as ticket_status,
-    JSON_EXTRACT_SCALAR(JSON_EXTRACT(decision_selecteds,'$[0]'),'$.name') as first_decision_name,
-    JSON_EXTRACT_SCALAR(JSON_EXTRACT(decision_selecteds,'$[1]'),'$.name') as senconde_decision_name,
-    json_extract_scalar(input_data, '$.orderID') as order_id,
-    created_date,
-    case 
-        when requester_type is null then  JSON_EXTRACT_SCALAR(input_data,'$.REQUESTER_TYPE') 
-        else requester_type
-    end as requester_type,
-    created_by_account_name,
-    assignee_account_name,
-    assignee_account_email,
-    template_module_code,
-    branch_code,
-    case 
-        when created_by_account_id > 0 then "Internal"
-        else "Pharmacy" 
-    end as creator_type , 
-    partner_code,
-    DATETIME(picked_time, "Asia/Ho_Chi_Minh") AS picked_time,
-    -- case 
-    --     when picked_time is null then DATETIME(created_time, "Asia/Ho_Chi_Minh") 
-    --     else DATETIME(picked_time, "Asia/Ho_Chi_Minh") 
-    -- end AS picked_time,
-    DATETIME(created_time, "Asia/Ho_Chi_Minh") AS created_time,
-    DATETIME(deadline_time, "Asia/Ho_Chi_Minh") AS deadline_time,
-    root_ticket_instance_code,
-    DATETIME(PARSE_TIMESTAMP('%Y-%m-%dT%H:%M:%E*S%Ez',JSON_EXTRACT_SCALAR(extra_props,'$.completed_time')), "Asia/Ho_Chi_Minh") as completed_time,
-    message_notes,
-    c.cause_name AS cause_name,
-    c.reason_name,
-    JSON_VALUE(ti.input_data, "$.inboundCode") AS pgh,
-    JSON_VALUE(ti.input_data, "$.withdrawCode") AS prh,
-    JSON_VALUE(ti.input_data, "$.productCode") AS item_code,
-    s.product_name
-from `${source.platinum}.platform_organization_prd_ticket_ticket_instance` ti
-
-    left join unnest(JSON_EXTRACT_ARRAY(assign_roles,'$')) a
-    left join unnest(JSON_EXTRACT_ARRAY(decision_selecteds,'$')) b
-    left join cause AS c ON c.cause_code = ti.cause_code AND c.reason_code = ti.reason_code
-left join ticket_note as tn on ti.ticket_instance_code = tn.ref_code
-left join ${ref('dim_sku_sales_region_current')} AS s ON s.sub_sku_code = JSON_VALUE(ti.input_data, "$.productCode")
--- where status <> 'DRAFT'
--- where key like 'a0110ebd-0265-4bcb-832a-78322d27c34f'
--- requester_type like "CIRCA_FS" or
--- template_module_code like "CIRCA_FS" and branch_code like "VN"
-QUALIFY ROW_NUMBER() OVER(partition by ticket_instance_code ) = 1
+SELECT
+     requester_code
+    , requester_name
+    , clasify
+    , JSON_EXTRACT_SCALAR(a, '$.department_code') AS department_code
+    , ti.reason_code
+    , priority
+    , template_topic_code
+    , ticket_instance_code
+    , name AS ticket_name
+    , JSON_EXTRACT_SCALAR(input_data, '$.userDescription') AS user_description
+    , ti.cause_code
+    , assignee_account_id
+    , DATETIME(
+        PARSE_TIMESTAMP(
+            '%Y-%m-%dT%H:%M:%E*S%Ez'
+            , JSON_EXTRACT_SCALAR(
+                JSON_EXTRACT(decision_selecteds, '$[0]')
+                , '$.decision_time'
+            )
+        )
+        , "Asia/Ho_Chi_Minh"
+    ) AS first_decision_time
+    , DATETIME(
+        PARSE_TIMESTAMP(
+            '%Y-%m-%dT%H:%M:%E*S%Ez'
+            , JSON_EXTRACT_SCALAR(
+                JSON_EXTRACT(decision_selecteds, '$[1]')
+                , '$.decision_time'
+            )
+        )
+        , "Asia/Ho_Chi_Minh"
+    ) AS second_decision_time
+    , status AS ticket_status
+    , JSON_EXTRACT_SCALAR(
+        JSON_EXTRACT(decision_selecteds, '$[0]')
+        , '$.name'
+    ) AS first_decision_name
+    , JSON_EXTRACT_SCALAR(
+        JSON_EXTRACT(decision_selecteds, '$[1]')
+        , '$.name'
+    ) AS senconde_decision_name
+    , JSON_EXTRACT_SCALAR(input_data, '$.orderID') AS order_id
+    , created_date
+    , CASE
+        WHEN requester_type IS NULL
+            THEN JSON_EXTRACT_SCALAR(input_data, '$.REQUESTER_TYPE')
+        ELSE requester_type
+      END AS requester_type
+    , created_by_account_name
+    , assignee_account_name
+    , assignee_account_email
+    , template_module_code
+    , branch_code
+    , CASE
+        WHEN created_by_account_id > 0 THEN "Internal"
+        ELSE "Pharmacy"
+      END AS creator_type
+    , partner_code
+    , DATETIME(picked_time, "Asia/Ho_Chi_Minh") AS picked_time
+    , DATETIME(created_time, "Asia/Ho_Chi_Minh") AS created_time
+    , DATETIME(deadline_time, "Asia/Ho_Chi_Minh") AS deadline_time
+    , root_ticket_instance_code
+    , DATETIME(
+        PARSE_TIMESTAMP(
+            '%Y-%m-%dT%H:%M:%E*S%Ez'
+            , JSON_EXTRACT_SCALAR(extra_props, '$.completed_time')
+        )
+        , "Asia/Ho_Chi_Minh"
+    ) AS completed_time
+    , message_notes
+    , c.cause_name AS cause_name
+    , c.reason_name
+    , JSON_VALUE(ti.input_data, "$.inboundCode") AS pgh
+    , JSON_VALUE(ti.input_data, "$.withdrawCode") AS prh
+    , JSON_VALUE(ti.input_data, "$.productCode") AS item_code
+    , s.product_name
+FROM `${source.platinum}.platform_organization_prd_ticket_ticket_instance` ti
+LEFT JOIN UNNEST(JSON_EXTRACT_ARRAY(assign_roles, '$')) AS a
+LEFT JOIN UNNEST(JSON_EXTRACT_ARRAY(decision_selecteds, '$')) AS b
+LEFT JOIN cause AS c ON c.cause_code = ti.cause_code AND c.reason_code = ti.reason_code
+LEFT JOIN ticket_note AS tn ON ti.ticket_instance_code = tn.ref_code
+LEFT JOIN ${ref('dim_sku_sales_region_current')} AS s ON s.sub_sku_code = JSON_VALUE(ti.input_data, "$.productCode")
+QUALIFY ROW_NUMBER() OVER ( PARTITION BY ticket_instance_code) = 1
