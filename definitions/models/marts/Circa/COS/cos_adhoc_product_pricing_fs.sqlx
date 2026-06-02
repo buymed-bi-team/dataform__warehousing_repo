@@ -1,0 +1,203 @@
+config {
+    type: "table",
+    description: `Tracking price for Circa FS
+             PIC: huyen.ngo; model_type: Table ;schedule: At minute 15 past hour`,
+    tags: ["custom_1h_past15"],
+    name: "cos_adhoc_product_pricing_fs",
+}
+
+WITH thuosi_unit AS (
+    SELECT DISTINCT product_id
+                   ,unit
+    FROM ${source.ref}.dim_product
+)
+-- lấy tỉ lệ quy đổi
+,product_base_unit AS (
+    SELECT DISTINCT product_id
+                   ,unit AS convert_unit
+                   ,base_unit
+                   ,convert_rate
+                   ,sale_allowed
+                   ,purchase_allowed
+                   ,client_id
+    FROM ${source.circa_os}.product_retail_unit
+    WHERE client_id NOT IN (1,5,6,7)
+    
+)
+,count_ord AS (
+    SELECT DISTINCT oi.product_id
+                   ,MAX(o.created_date) AS latest_ord
+                   ,COUNT(DISTINCT o.order_id) AS no_ord
+                   ,SUM(unit_price * quantity) AS GMV
+                   ,o.client_id
+    FROM ${source.ref}.cos_fact_order o
+    LEFT JOIN ${source.ref}.cos_fact_order_item oi ON o.order_id = oi.order_id
+    WHERE status LIKE "%COMPLETE%"
+           AND o.client_id NOT IN (1,5,6,7)
+    GROUP BY ALL
+)
+,inventory AS (
+    SELECT DISTINCT a.product_id
+                   ,SUM(a.on_hand_quantity) AS on_hand_quantity
+                   ,seller_code
+                   ,sku_code
+                   ,a.client_id
+    FROM ${source.ref}.cos_fact_inventory a
+    LEFT JOIN ${source.ref}.circa_pos_profile p ON a.pos_id = p.id
+    WHERE a.client_id NOT IN (1,5,6,7)
+         -- AND p.actual_status <> "Inactive"
+    GROUP BY ALL
+)
+,has_price AS (
+    SELECT DISTINCT s.product_id
+                   ,s.seller_code
+                   ,s.sku_code
+                   ,pd.sale_price
+                   ,pd.unit
+                   ,bu.base_unit
+                   ,bu.convert_rate
+                   ,CASE WHEN t.unit IS NOT NULL THEN TRUE ELSE FALSE END AS is_thuocsi_unit
+                   ,CASE WHEN LOWER(pd.unit) = LOWER(pr.unit) THEN TRUE ELSE FALSE END AS is_purchase_unit
+                   ,sale_allowed
+                   ,purchase_allowed
+                   ,MAX(DATETIME(pd.updated_at, "Asia/Ho_Chi_Minh")) AS last_updated_at
+                   ,pr.web_status
+                   ,ps.client_id
+    FROM ${source.circa_os}.product_price_sheet_sku_detail AS pd
+    LEFT JOIN ${source.circa_os}.product_price_sheet_sku AS s ON pd.price_sheet_sku_id = s.id
+    LEFT JOIN ${source.circa_os}.product_price_sheet AS ps ON s.price_sheet_id = ps.id
+    LEFT JOIN product_base_unit AS bu ON s.product_id = bu.product_id AND pd.unit = bu.convert_unit AND ps.client_id = bu.client_id
+    LEFT JOIN thuosi_unit t ON s.product_id = t.product_id AND LOWER(pd.unit) = LOWER(t.unit)
+    LEFT JOIN ${source.ref}.cos_dim_product pr ON pr.product_id = s.product_id AND pr.client_id = ps.client_id 
+    WHERE bu.convert_unit IS NOT NULL
+      AND ps.client_id NOT IN (1,5,6,7)
+      AND level = 'POS'
+      AND s.seller_code IS NOT NULL
+      
+    GROUP BY ALL
+),combine AS (
+    SELECT DISTINCT p.product_id
+                   ,p.seller_code
+                   ,p.sku_code
+                   ,p.unit
+                   ,p.convert_rate
+                   ,p.is_thuocsi_unit
+                   ,is_purchase_unit
+                   ,sale_allowed
+                   ,purchase_allowed
+                   ,p.base_unit AS is_base_unit
+                   ,p.last_updated_at
+                   ,p.sale_price AS sale_unit_price
+                   ,CASE WHEN i.on_hand_quantity > 0 THEN "Available" ELSE "Unavailable" END AS have_stock
+                   ,CASE WHEN (p.sale_price IS NULL OR p.sale_price = 0) THEN "Price not set" ELSE "Price set" END AS price_set_check
+                   ,CASE WHEN DATE_DIFF(CURRENT_DATE("Asia/Ho_Chi_Minh"),latest_ord,DAY) < 16 THEN "15D"
+                         WHEN DATE_DIFF(CURRENT_DATE("Asia/Ho_Chi_Minh"),latest_ord,DAY) < 31 THEN "30D"
+                         WHEN DATE_DIFF(CURRENT_DATE("Asia/Ho_Chi_Minh"),latest_ord,DAY) < 46 THEN "45D"
+                         WHEN DATE_DIFF(CURRENT_DATE("Asia/Ho_Chi_Minh"),latest_ord,DAY) < 61 THEN "60D"
+                         WHEN DATE_DIFF(CURRENT_DATE("Asia/Ho_Chi_Minh"),latest_ord,DAY) < 90 THEN "90D" ELSE "Others" END AS latest_date_order_range
+                   ,CASE WHEN DATE_DIFF(CURRENT_DATE("Asia/Ho_Chi_Minh"),latest_ord,DAY) < 16 AND on_hand_quantity > 0 THEN "No-Demand 15D"
+                         WHEN DATE_DIFF(CURRENT_DATE("Asia/Ho_Chi_Minh"),latest_ord,DAY) < 31 AND on_hand_quantity > 0 THEN "No-Demand 30D"
+                         WHEN DATE_DIFF(CURRENT_DATE("Asia/Ho_Chi_Minh"),latest_ord,DAY) < 46 AND on_hand_quantity > 0 THEN "No-Demand 45D"
+                         WHEN DATE_DIFF(CURRENT_DATE("Asia/Ho_Chi_Minh"),latest_ord,DAY) < 61 AND on_hand_quantity > 0 THEN "No-Demand 60D"
+                         WHEN DATE_DIFF(CURRENT_DATE("Asia/Ho_Chi_Minh"),latest_ord,DAY) < 90 AND on_hand_quantity > 0 THEN "No-Demand 90D"
+                         ELSE "Others" END AS stock_aging_type
+                   ,no_ord
+                   ,GMV
+                   ,latest_ord
+                   ,on_hand_quantity
+                   ,p.client_id
+    FROM has_price p
+    LEFT JOIN inventory i ON i.product_id = p.product_id AND p.sku_code = i.sku_code AND p.client_id = i.client_id
+    LEFT JOIN count_ord co ON i.product_id = co.product_id AND p.client_id = co.client_id 
+    GROUP BY ALL
+)
+,check_unit_pricing AS (
+    SELECT DISTINCT product_id
+                   ,COUNT(*) AS total_units
+                   ,SUM(CASE WHEN (sale_unit_price IS NULL OR sale_unit_price = 0) THEN 1 ELSE 0 END) AS unset_units
+                   ,client_id
+    FROM combine
+    GROUP BY ALL
+)
+,_all AS (
+    SELECT i.*
+          ,CASE WHEN cup.unset_units = cup.total_units THEN "not set full"
+                WHEN cup.unset_units > 0 THEN "contain unit not set"
+                ELSE "set full" END AS check_unit_price_set
+         
+    FROM combine i
+    LEFT JOIN check_unit_pricing cup ON i.product_id = cup.product_id AND i.client_id = cup.client_id
+    GROUP BY ALL
+), promo AS (
+   
+SELECT DISTINCT product_id
+                ,unit
+                ,o.created_at 
+                ,sku_code
+                ,i.percent
+                ,i.discount_value
+                ,i.specific_price
+                ,i.discount_type --FIXED_PRICE/SPECIFIC_PRICE/PERCENT
+                ,o.client_id
+FROM ${source.ref}.dim_promotion_event_circa o 
+LEFT JOIN ${source.ref}.dim_promotion_event_item_circa i ON o.id = i.promotion_event_id
+WHERE is_expired = FALSE
+     AND is_active = true
+     AND o.client_id NOT IN (1,5,6,7)
+QUALIFY ROW_NUMBER() OVER (PARTITION BY product_id, sku_code ORDER BY created_at DESC) = 1
+ORDER BY o.created_at DESC
+)
+SELECT b.*
+    , p.discount_type
+    , p.percent
+    , CASE WHEN p.discount_type = 'FIXED_PRICE' AND p.unit = 'combo' THEN  p.discount_value
+           WHEN p.discount_type = 'FIXED_PRICE'
+            THEN ROUND(
+                     (
+                        p.discount_value
+                        / src.convert_rate
+                        * b.convert_rate
+                    )
+                , 0)
+        END AS discount_value
+    , CASE WHEN p.discount_type = 'SPECIFIC_PRICE'   AND p.unit = 'combo' THEN p.specific_price
+        WHEN p.discount_type = 'SPECIFIC_PRICE'
+            THEN ROUND(
+                    p.specific_price
+                    / src.convert_rate
+                    * b.convert_rate
+                , 0) END AS specific_price
+
+    ,  CASE WHEN p.discount_type = 'PERCENT' AND p.unit = 'combo' THEN ROUND(b.sale_unit_price * (1 - p.percent / 100), 0)
+         WHEN p.discount_type = 'PERCENT'
+            THEN ROUND(b.sale_unit_price * (1 - p.percent / 100), 0)
+
+        WHEN p.discount_type = 'FIXED_PRICE' AND p.unit = 'combo' THEN  ROUND( b.sale_unit_price - p.discount_value)
+        WHEN p.discount_type = 'FIXED_PRICE'
+            THEN ROUND(
+                    b.sale_unit_price
+                    - (
+                        p.discount_value
+                        / src.convert_rate
+                        * b.convert_rate
+                    )
+                , 0)
+        WHEN p.discount_type = 'SPECIFIC_PRICE'   AND p.unit = 'combo' THEN p.specific_price
+        WHEN p.discount_type = 'SPECIFIC_PRICE'
+            THEN ROUND(
+                    p.specific_price
+                    / src.convert_rate
+                    * b.convert_rate
+                , 0)
+
+        ELSE b.sale_unit_price
+      END AS price_af_discount
+FROM _all b
+LEFT JOIN promo p ON b.product_id = p.product_id AND b.sku_code = p.sku_code AND b.client_id = p.client_id
+LEFT JOIN _all src ON p.product_id = src.product_id AND p.unit = src.unit AND b.sku_code = p.sku_code AND b.seller_code = src.seller_code and b.client_id = src.client_id
+WHERE b.product_id = 1108 
+ORDER BY b.client_id
+
+
+     
+
