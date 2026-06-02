@@ -9,7 +9,8 @@ config {
      product_id
     , competitor_unit AS unit
     , market_price_aft_convert AS competior_price
-    , competitor 
+    , CASE WHEN competitor = 'LongChau' THEN 'Long Châu'
+           ELSE competitor END AS competitor
   FROM ${ref('adhoc_pricing_competitor_price')} m
   WHERE qc = "QC" and competitor IN ('LongChau', 'Pharmacity')
   GROUP BY ALL
