@@ -89,6 +89,17 @@ CREATE OR REPLACE VIEW `rumi_buymed_circa.circa_dim_pos`
 AS (SELECT * FROM  ${ref("buymed_innovation", "circa_dim_pos")});
 
 
+-- dim_product_price
+CREATE OR REPLACE VIEW `rumi_buymed_circa.circa_dim_product_price`
+AS (SELECT * FROM  ${ref("buymed_innovation", "circa_dim_product_price")});
+
+
+-- dim_competitor_price
+CREATE OR REPLACE VIEW `rumi_buymed_circa.circa_dim_product_competitor_price`
+AS (SELECT * FROM  ${ref("buymed_innovation", "circa_dim_product_competitor_price")});
+
+
+
 
 
 
