@@ -15,7 +15,7 @@ SELECT DISTINCT product_id
                ,CONCAT(client_id, "_", product_id) AS product_id_key
                ,client_type
                ,client_name
-FROM gold_buymed_vn2.cos_adhoc_product_price_fs
+FROM ${ref("gold_buymed_vn2", "cos_adhoc_product_price_fs")}
 
 UNION ALL
 
@@ -28,5 +28,5 @@ SELECT DISTINCT product_id
                ,CONCAT(client_id, "_", product_id) AS product_id_key
                ,client_type
                ,client_name
-FROM gold_buymed_vn2.cos_adhoc_pos_product_client
+FROM ${ref("gold_buymed_vn2", "cos_adhoc_pos_product_client")}
 WHERE seller_code = 'CIRCA'
