@@ -13,7 +13,7 @@ SELECT DISTINCT product_id
                ,sale_unit_price AS sales_price
                ,price_af_discount AS sales_price_after_discount
                ,discount_type
-               ,CONCAT(client_id, "_", product_id) AS product_id_key
+             --  ,CONCAT(client_id, "_", product_id) AS product_id_key
                ,client_type
                ,client_name
 FROM ${ref("gold_buymed_vn2", "cos_adhoc_product_price_fs")}
@@ -27,7 +27,7 @@ SELECT DISTINCT product_id
                ,final_sale_price AS sales_price
                ,price_af_discount AS sales_price_after_discount
                ,discount_type
-               ,CONCAT(client_id, "_", product_id) AS product_id_key
+              -- ,CONCAT(client_id, "_", product_id) AS product_id_key
                ,client_type
                ,client_name
 FROM ${ref("gold_buymed_vn2", "cos_adhoc_pos_product_client")}
@@ -38,7 +38,7 @@ WHERE seller_code = 'CIRCA'
     FROM gold_buymed_vn2.dim_product
 ), have_ts_unit AS(
 SELECT a.* FROM base_data a
-LEFT JOIN ts_unit b ON lower(a.unit) = lower(b.unit)
+LEFT JOIN ts_unit b ON lower(a.unit) = lower(b.unit) AND a.product_id = b.product_id
 WHERE b.product_id IS NOT NULL
 )
 SELECT *  
