@@ -27,4 +27,4 @@ SELECT DISTINCT product_id
                ,client_type
                ,client_name
 FROM gold_buymed_vn2.cos_adhoc_pos_product_client
-WHERE seller_code NOT IN ('CIRCA_MKP','MARKETING')
+WHERE seller_code = 'CIRCA'
