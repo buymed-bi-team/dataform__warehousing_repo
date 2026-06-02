@@ -1,0 +1,30 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `Price Circa.`,
+    tags: ['AI_CIRCA']
+}
+
+
+SELECT DISTINCT product_id
+               ,seller_code
+               ,unit
+               ,sale_unit_price AS sales_price
+               ,price_af_discount AS sales_price_after_discount
+               ,discount_type
+               ,client_type
+               ,client_name
+FROM gold_buymed_vn2.cos_adhoc_product_price_fs
+
+UNION ALL
+
+SELECT DISTINCT product_id
+               ,seller_code
+               ,unit
+               ,final_sale_price AS sales_price
+               ,price_af_discount AS sales_price_after_discount
+               ,discount_type
+               ,client_type
+               ,client_name
+FROM gold_buymed_vn2.cos_adhoc_pos_product_client
+WHERE seller_code NOT IN ('CIRCA_MKP','MARKETING')
