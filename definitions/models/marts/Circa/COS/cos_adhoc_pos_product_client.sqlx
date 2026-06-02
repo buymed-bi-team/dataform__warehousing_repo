@@ -249,6 +249,7 @@ ORDER BY o.created_at DESC
 
         ELSE b.final_sale_price
       END AS price_af_discount
+      , 'COS' AS client_type
 FROM base b
 LEFT JOIN promo p ON b.product_id = p.product_id AND b.sku_code = p.sku_code
 LEFT JOIN base src ON p.product_id = src.product_id AND p.unit = src.unit AND b.sku_code = p.sku_code AND b.seller_code = src.seller_code
