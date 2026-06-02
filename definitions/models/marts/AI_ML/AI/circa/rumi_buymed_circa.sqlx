@@ -82,7 +82,9 @@ AS (SELECT * FROM  ${ref("buymed_innovation", "circa_inventory_cutoff")});
 
 -- dim_competitor_price
 CREATE OR REPLACE VIEW `rumi_buymed_circa.circa_dim_competitor_price`
-AS (SELECT * FROM  ${ref("buymed_innovation", "thuocsi_vn_agg_competitor_price")});
+AS (SELECT * FROM  ${ref("buymed_innovation", "thuocsi_vn_agg_competitor_price")}
+    WHERE LOWER(competitor_name) IN ('longchau', 'pharmacity')
+);
 
 -- dim_pos
 CREATE OR REPLACE VIEW `rumi_buymed_circa.circa_dim_pos`
