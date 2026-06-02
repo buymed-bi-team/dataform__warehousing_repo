@@ -5,10 +5,11 @@ config {
     tags: ['AI_CIRCA']
 }
 
-
+WITH base_data AS (
 SELECT DISTINCT product_id
                ,seller_code
                ,unit
+               ,convert_rate
                ,sale_unit_price AS sales_price
                ,price_af_discount AS sales_price_after_discount
                ,discount_type
@@ -22,6 +23,7 @@ UNION ALL
 SELECT DISTINCT product_id
                ,seller_code
                ,unit
+               ,convert_rate
                ,final_sale_price AS sales_price
                ,price_af_discount AS sales_price_after_discount
                ,discount_type
@@ -30,3 +32,17 @@ SELECT DISTINCT product_id
                ,client_name
 FROM ${ref("gold_buymed_vn2", "cos_adhoc_pos_product_client")}
 WHERE seller_code = 'CIRCA'
+), ts_unit AS (
+    SELECT DISTINCT product_id
+                   ,unit
+    FROM gold_buymed_vn2.dim_product
+), have_ts_unit AS(
+SELECT a.* FROM base_data a
+LEFT JOIN ts_unit b ON lower(a.unit) = lower(b.unit)
+)
+SELECT *  
+FROM have_ts_unit
+UNION all 
+SELECT * FROM base_data
+WHERE product_id NOT IN (SELECT DISTINCT product_id FROM ts_unit)
+QUALIFY ROW_NUMBER() OVER(PARTITION BY product_id, client_name) = 1
