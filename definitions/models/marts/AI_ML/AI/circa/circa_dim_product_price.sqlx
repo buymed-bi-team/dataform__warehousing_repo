@@ -42,7 +42,3 @@ LEFT JOIN ts_unit b ON lower(a.unit) = lower(b.unit)
 )
 SELECT *  
 FROM have_ts_unit
-UNION all 
-SELECT * FROM base_data
-WHERE product_id NOT IN (SELECT DISTINCT product_id FROM ts_unit)
-QUALIFY ROW_NUMBER() OVER(PARTITION BY product_id, client_name) = 1
