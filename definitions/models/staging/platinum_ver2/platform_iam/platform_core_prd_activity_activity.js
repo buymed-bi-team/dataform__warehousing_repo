@@ -17,7 +17,7 @@ const model = new main.PlatinumModel(
     }
 );
 model.createIncremental(
-    ["platinum_custom_30m","platinum_weekend_full_refresh_13h40","core_prd_activity"],
+    ["platinum_custom_10min","platinum_weekend_full_refresh_13h40","core_prd_activity"],
     {
         has_src_created_date : false,
         ingestCutOffInterval : "INTERVAL 1 MONTH"
