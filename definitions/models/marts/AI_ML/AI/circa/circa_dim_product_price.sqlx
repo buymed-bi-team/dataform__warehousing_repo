@@ -39,6 +39,7 @@ WHERE seller_code = 'CIRCA'
 ), have_ts_unit AS(
 SELECT a.* FROM base_data a
 LEFT JOIN ts_unit b ON lower(a.unit) = lower(b.unit)
+WHERE b.product_id IS NOT NULL
 )
 SELECT *  
 FROM have_ts_unit
