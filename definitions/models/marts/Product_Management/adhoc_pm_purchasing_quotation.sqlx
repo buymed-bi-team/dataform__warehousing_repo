@@ -69,13 +69,20 @@ SELECT
     , a.favorite_vendor_name
     , a.sku_key_fc
     , a.block_release_to_fav_session
-    , quotation_status
+    , IF(cv.count_vendor > 0,"PUBLISH", quotation_status) AS quotation_status
     , is_bidding
     , COALESCE( assign_vendor_date, a.created_date) AS assign_vendor_date
     , sku_fc_assign_date
 FROM quotation AS a
     LEFT JOIN ${ref("dim_vendor")} AS v ON v.supplier_id = a.favorite_vendor_id
     LEFT JOIN ${source.platinum}.seller_prd_purchasing_sku_config AS b ON a.sku = b.sku AND a.purchaser_code = b.purchaser_code
+    LEFT JOIN (
+        SELECT
+            sku_fc_bid_date
+            , COUNT(DISTINCT vendor_code) AS count_vendor
+        FROM ${ref("adhoc_pm_purchasing_bidding")}
+        GROUP BY ALL
+    ) AS cv ON cv.sku_fc_bid_date = a.sku_fc_assign_date
 WHERE 1=1
     AND a.seller_code IN ("MEDX", "BML_INT")
     AND COALESCE( assign_vendor_date, a.created_date) >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 3 MONTH )
