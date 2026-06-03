@@ -57,9 +57,11 @@ WHERE p.id IS NOT NULL
       AND o.client_id NOT IN (5,6,7)
 )
 
-SELECT t.* except (total_amount)
+SELECT t.* except (total_amount, price)
        ,total_amount AS origin_amount
        ,p.final_sale_price
+       ,CASE WHEN p.product_id IS NOT NULL AND final_sale_price > 0 THEN final_sale_price
+             ELSE price END AS price
        ,CASE WHEN p.product_id IS NOT NULL AND final_sale_price > 0 THEN quantity * final_sale_price
              ELSE total_amount END AS total_amount
 FROM t
