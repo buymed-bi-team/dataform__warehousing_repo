@@ -17,7 +17,7 @@ SELECT DISTINCT
        , o.pos_id
        , DATE(DATETIME_ADD(o.created_at, INTERVAL 7 HOUR))                        AS created_date
        , DATETIME_ADD(o.created_at, INTERVAL 7 HOUR)                              AS created_at
-       , DATETIME_ADD(o.date_time, INTERVAL 7 HOUR)                               AS date_time
+       , DATE(DATETIME_ADD(o.date_time, INTERVAL 7 HOUR)  )                       AS date_time
        , DATETIME_ADD(o.updated_at, INTERVAL 7 HOUR)                              AS updated_at
        , o.id 
        , o.unit 
