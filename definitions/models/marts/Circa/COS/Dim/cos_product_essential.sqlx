@@ -19,7 +19,7 @@ SELECT DISTINCT
       ,i.purchase_status
       ,DATETIME_ADD(i.created_at, INTERVAL 7 HOUR) AS created_at
       ,DATETIME_ADD(i.updated_at, INTERVAL 7 HOUR) AS updated_at
-      ,1 AS client_id 
+     -- ,1 AS client_id 
 FROM ${source.circa_os}.product_assortment_template o 
 LEFT JOIN ${source.circa_os}.product_assortment_template_items i ON o.id = i.assortment_template_id
 WHERE o.id = '1430759b-40e3-4d86-86b8-8b9a1d5dae27'
