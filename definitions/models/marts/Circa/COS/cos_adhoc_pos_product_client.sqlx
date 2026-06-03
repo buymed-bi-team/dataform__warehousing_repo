@@ -173,7 +173,7 @@ SELECT a.*
       ,pro.is_default as is_default_web
       ,pro.web_unit_status
       ,pro.unit_price as unit_price_web
-      ,CONCAT(a.product_id,"_", convert_rate) AS key_compare
+      ,CONCAT(a.product_id,"_", lower(a.unit)) AS key_compare
       ,CONCAT(a.product_id, "_", client_id) AS product_client_id
       ,MIN(p.min_cost_price_include_tax * a.convert_rate) AS min_cost_price_include_tax
       ,MAX(p.max_cost_price_include_tax * a.convert_rate) AS max_cost_price_include_tax
