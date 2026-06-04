@@ -1,0 +1,110 @@
+config {
+    type: 'table',
+    schema: "buymed_innovation",
+    description: `Voucher Info in the Vietnam marketplace.`,
+    tags: ['AI_THUOCSI_VN', 'custom_1h_past_10']
+}
+
+WITH
+    voucher AS (
+        SELECT
+            voucher_code
+            , display_name
+            , p.promotion_name
+            , v.short_name
+            , IF(v.discount_type = "GIFT", "GIFT", "DISCOUNT") AS promotion_type
+            , system_display
+            , v.charge_fee
+            , v.promotion_organizer
+            , v.start_date
+            , v.end_date
+            , v.max_usage
+            , v.voucher_type
+            , v.usage_total
+            , v.voucher_apply_type
+            , v.max_usage_per_customer
+            , v.voucher_status
+            , v.discount_type
+            , v.voucher_discount
+            , v.percentage_discount
+            , v.max_discount
+            , v.customer_apply_type
+            , SAFE_CAST( COALESCE(JSON_VALUE(and_conditions, "$.ORDER_VALUE.and_conditions.0.order_condition.min_total_price"), JSON_VALUE(and_conditions, "$.ORDER_VALUE.or_conditions.0.order_condition.min_total_price")) AS INT64) AS order_condition_min_total_price
+            , SAFE_CAST(COALESCE(JSON_VALUE(and_conditions, "$.ORDER_VALUE.and_conditions.0.order_condition.min_sku_quantity"), JSON_VALUE(and_conditions, "$.ORDER_VALUE.or_conditions.0.order_condition.min_sku_quantity")) AS INT64) AS order_condition_min_sku_quantity
+            , COALESCE(JSON_VALUE(and_conditions, "$.PRODUCT.and_conditions.0.product_condition.seller_code"), JSON_VALUE(and_conditions, "$.PRODUCT.or_conditions.0.product_condition.seller_code")) AS product_condition_seller_code
+            , COALESCE(JSON_VALUE(and_conditions, "$.PRODUCT.and_conditions.0.product_condition.product_id"), JSON_VALUE(and_conditions, "$.PRODUCT.or_conditions.0.product_condition.product_id")) AS product_condition_product_id
+            , SAFE_CAST(COALESCE(JSON_VALUE(and_conditions, "$.PRODUCT.and_conditions.0.product_condition.min_total_price"), JSON_VALUE(and_conditions, "$.PRODUCT.or_conditions.0.product_condition.min_total_price")) AS INT64) AS product_condition_min_total_price
+            , SAFE_CAST( COALESCE(JSON_VALUE(and_conditions, "$.PRODUCT.and_conditions.0.product_condition.min_quantity"), JSON_VALUE(and_conditions, "$.PRODUCT.or_conditions.0.product_condition.min_quantity")) AS INT64) AS product_condition_min_quantity
+            , COALESCE(JSON_VALUE(and_conditions, "$.PRODUCT_TAG.and_conditions.0.product_tag_condition.seller_code"),  JSON_VALUE(and_conditions, "$.PRODUCT_TAG.or_conditions.0.product_tag_condition.seller_code")) AS product_tag_condition_seller_code
+            , COALESCE(JSON_VALUE(and_conditions, "$.PRODUCT_TAG.and_conditions.0.product_tag_condition.tag_code"), JSON_VALUE(and_conditions, "$.PRODUCT_TAG.or_conditions.0.product_tag_condition.tag_code")) AS product_tag_condition_tag_code
+            , SAFE_CAST( COALESCE(JSON_VALUE(and_conditions, "$.PRODUCT_TAG.and_conditions.0.product_tag_condition.min_quantity"), JSON_VALUE(and_conditions, "$.PRODUCT_TAG.or_conditions.0.product_tag_condition.min_quantity")) AS INT64) AS product_tag_condition_min_quantity
+            , SAFE_CAST( COALESCE(JSON_VALUE(and_conditions, "$.PRODUCT_TAG.and_conditions.0.product_tag_condition.sku_quantity"), JSON_VALUE(and_conditions, "$.PRODUCT_TAG.or_conditions.0.product_tag_condition.sku_quantity")) AS INT64) AS product_tag_condition_sku_quantity
+            , SAFE_CAST( COALESCE(JSON_VALUE(and_conditions, "$.PRODUCT_TAG.and_conditions.0.product_tag_condition.min_total_price"), JSON_VALUE(and_conditions, "$.PRODUCT_TAG.or_conditions.0.product_tag_condition.min_total_price")) AS INT64) AS product_tag_condition_min_total_price
+            , REGEXP_REPLACE( TO_JSON_STRING(JSON_QUERY(apply_discount, "$.not_in_skus")), r'\[|\]|\"','') AS apply_discount_not_in_skus
+            , REGEXP_REPLACE( TO_JSON_STRING(JSON_QUERY(apply_discount, "$.skus")), r'\[|\]|\"','') AS apply_discount_skus
+            , seller_code
+            , v.condition_description
+        FROM ${ref("gold_buymed_vn2", "dim_voucher")} AS v
+            LEFT JOIN ${ref("gold_buymed_vn2", "dim_promotion")} AS p ON v.promotion_id = p.promotion_id
+        WHERE 1=1
+            AND DATE(v.start_date) >= "2025-01-01"
+    ),
+
+    voucher_gift AS (
+        SELECT
+            code AS voucher_code
+            , JSON_VALUE(r, "$.type") AS reward_type
+            , STRING_AGG( CONCAT(s.product_id, " - ", s.product_name, " (", s.sku_code, "): ", JSON_VALUE(g, "$.quantity")), "\n") AS product_info
+        FROM (
+            SELECT code, rewards
+            FROM ${source.platinum}.marketplace_prd_promotion_voucher
+            UNION ALL
+            SELECT code, rewards
+            FROM ${source.platinum}.marketplace_prd_promotion_voucher_archived
+            -- WHERE created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH) - INTERVAL 3 YEAR
+        ) AS v
+            , UNNEST(JSON_QUERY_ARRAY(rewards)) AS r
+            , UNNEST(JSON_QUERY_ARRAY(r, "$.gifts")) AS g
+            LEFT JOIN  ${ref("gold_buymed_vn2", "dim_sku")} AS s ON s.sku_code = JSON_VALUE(g, "$.sku")
+        WHERE 1=1
+            AND JSON_VALUE(r, "$.type") = "GIFT"
+        GROUP BY ALL
+        QUALIFY ROW_NUMBER() over (PARTITION BY voucher_code) = 1
+    ),
+
+    area AS (
+        SELECT
+            IFNULL(STRING_AGG(COALESCE(province_name, region_name), ", "), "ALL") AS area_codes
+            , voucher_code
+        FROM ${ref("gold_buymed_vn2", "dim_voucher")}
+            , UNNEST(JSON_QUERY_ARRAY(scopes)) AS s
+            LEFT JOIN UNNEST(JSON_VALUE_ARRAY(s, "$.area_codes")) AS area_code
+            LEFT JOIN  ${ref("gold_buymed_vn2", "dim_geo_location")} AS g ON g.location_code = area_code
+        WHERE JSON_VALUE(s, "$.type") = "AREA"
+        GROUP BY ALL
+    )
+
+SELECT
+    v.*
+    , a.area_codes
+    , vg.product_info AS voucher_gift_product_info
+    , t.tag_name AS product_tag_condition_tag_name
+    , p.product_name AS product_condition_product_name
+    , s.supplier_name AS product_condition_seller_name
+    , s1.supplier_name AS product_tag_condition_seller_name
+    , CONCAT(s3.supplier_code, " - ", s3.supplier_name) AS seller
+    , s3.supplier_name AS seller_name
+    , s3.supplier_class AS seller_class
+FROM voucher AS v
+    LEFT JOIN voucher_gift AS vg ON v.voucher_code = vg.voucher_code
+    LEFT JOIN area AS a ON v.voucher_code = a.voucher_code
+    LEFT JOIN (
+        SELECT
+            code AS tag_code
+            , name AS tag_name
+        FROM ${source.platinum}.marketplace_prd_product_v2_tag
+    ) AS t ON v.product_tag_condition_tag_code = t.tag_code
+    LEFT JOIN ${ref("gold_buymed_vn2", "dim_product")} AS p ON SAFE_CAST(v.product_condition_product_id  AS INT64) = p.product_id
+    LEFT JOIN ${ref("gold_buymed_vn2", "dim_seller")} AS s ON v.product_condition_seller_code = s.supplier_code
+    LEFT JOIN ${ref("gold_buymed_vn2", "dim_seller")} AS s1 ON v.product_tag_condition_seller_code = s1.supplier_code
+    LEFT JOIN ${ref("gold_buymed_vn2", "dim_seller")} AS s3 ON v.seller_code = s3.supplier_code
