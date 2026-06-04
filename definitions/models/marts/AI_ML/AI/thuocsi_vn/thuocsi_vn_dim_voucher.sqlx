@@ -13,9 +13,9 @@ WITH
             , p.promotion_name
             , v.short_name
             , IF(v.discount_type = "GIFT", "GIFT", "DISCOUNT") AS promotion_type
-            , system_display
-            , v.charge_fee
-            , v.promotion_organizer
+            -- , system_display
+            -- , v.charge_fee
+            -- , v.promotion_organizer
             , v.start_date
             , v.end_date
             , v.max_usage
@@ -42,8 +42,8 @@ WITH
             , SAFE_CAST( COALESCE(JSON_VALUE(and_conditions, "$.PRODUCT_TAG.and_conditions.0.product_tag_condition.min_total_price"), JSON_VALUE(and_conditions, "$.PRODUCT_TAG.or_conditions.0.product_tag_condition.min_total_price")) AS INT64) AS product_tag_condition_min_total_price
             , REGEXP_REPLACE( TO_JSON_STRING(JSON_QUERY(apply_discount, "$.not_in_skus")), r'\[|\]|\"','') AS apply_discount_not_in_skus
             , REGEXP_REPLACE( TO_JSON_STRING(JSON_QUERY(apply_discount, "$.skus")), r'\[|\]|\"','') AS apply_discount_skus
-            , seller_code
-            , v.condition_description
+            -- , seller_code
+            -- , v.condition_description
         FROM ${ref("gold_buymed_vn2", "dim_voucher")} AS v
             LEFT JOIN ${ref("gold_buymed_vn2", "dim_promotion")} AS p ON v.promotion_id = p.promotion_id
         WHERE 1=1
@@ -92,9 +92,9 @@ SELECT
     , p.product_name AS product_condition_product_name
     , s.supplier_name AS product_condition_seller_name
     , s1.supplier_name AS product_tag_condition_seller_name
-    , CONCAT(s3.supplier_code, " - ", s3.supplier_name) AS seller
-    , s3.supplier_name AS seller_name
-    , s3.supplier_class AS seller_class
+    -- , CONCAT(s3.supplier_code, " - ", s3.supplier_name) AS seller
+    -- , s3.supplier_name AS seller_name
+    -- , s3.supplier_class AS seller_class
 FROM voucher AS v
     LEFT JOIN voucher_gift AS vg ON v.voucher_code = vg.voucher_code
     LEFT JOIN area AS a ON v.voucher_code = a.voucher_code
@@ -107,4 +107,4 @@ FROM voucher AS v
     LEFT JOIN ${ref("gold_buymed_vn2", "dim_product")} AS p ON SAFE_CAST(v.product_condition_product_id  AS INT64) = p.product_id
     LEFT JOIN ${ref("gold_buymed_vn2", "dim_seller")} AS s ON v.product_condition_seller_code = s.supplier_code
     LEFT JOIN ${ref("gold_buymed_vn2", "dim_seller")} AS s1 ON v.product_tag_condition_seller_code = s1.supplier_code
-    LEFT JOIN ${ref("gold_buymed_vn2", "dim_seller")} AS s3 ON v.seller_code = s3.supplier_code
+    -- LEFT JOIN ${ref("gold_buymed_vn2", "dim_seller")} AS s3 ON v.seller_code = s3.supplier_code
