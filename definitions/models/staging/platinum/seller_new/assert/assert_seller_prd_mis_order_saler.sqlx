@@ -1,7 +1,7 @@
 
 config {
     type: "operations",
-    tags: ["9h00","13h00","16h00","seller_prd_mis"]
+    //tags: ["9h00","13h00","16h00","seller_prd_mis"]
 }
 
 WITH 
