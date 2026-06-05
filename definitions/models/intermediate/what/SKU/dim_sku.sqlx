@@ -77,21 +77,4 @@ LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_product product
 ON sku_main.product_id = product.product_id
 WHERE
     sku_main.seller_code <> 'Med_NT' 
-    -- and sku_code not in ( -- loại trừ những trường
-    --     select sku_code 
-    --     from sku_main
-    --     where upper(sku_code) in (
-    --         select upper(sku_code)
-    --         from sku_main
-    --         where REGEXP_CONTAINS(sku_code, r'[a-z]')
-    --         INTERSECT distinct
-    --         select sku_code
-    --         from sku_main
-    --         where NOT REGEXP_CONTAINS(sku_code, r'[a-z]')
-    --     )
-    --     and REGEXP_CONTAINS(sku_code, r'[a-z]')
-    -- )
-
--- post_operations {                
---     ALTER TABLE ${self()} ADD PRIMARY KEY (sku_key) NOT ENFORCED;
--- }
+QUALIFY ROW_NUMBER() OVER(PARTITION BY sku_key) = 1
