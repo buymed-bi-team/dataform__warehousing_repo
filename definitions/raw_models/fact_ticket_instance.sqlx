@@ -20,16 +20,32 @@ WITH ticket_note AS (
 )
 
 , cause AS (
-    SELECT
-        JSON_VALUE(v, "$.label") AS cause_name
-        , JSON_VALUE(v, "$.value") AS cause_code
-        , reason_code
-        , reason_name
-    FROM ${source.platinum}.platform_billing_prd_payment_reason_setting
-        , UNNEST(JSON_QUERY_ARRAY(extra_data)) AS e
-        , UNNEST(JSON_QUERY_ARRAY(e, "$.value")) AS v
-    WHERE JSON_VALUE(e, "$.key") = "CAUSE"
-    GROUP BY ALL
+   SELECT
+  tt_item AS template_code
+  ,JSON_VALUE(cause_item, "$.label") AS cause_name
+  ,JSON_VALUE(cause_item, "$.value") AS cause_code
+  ,reason_code
+  ,reason_name
+FROM `platinum_buymed_vn.platform_billing_prd_payment_reason_setting`,
+  -- Lấy array TICKET_TEMPLATE
+  UNNEST(
+    JSON_VALUE_ARRAY(
+      (SELECT JSON_QUERY(item, "$.value")
+       FROM UNNEST(JSON_QUERY_ARRAY(extra_data, "$")) AS item
+       WHERE JSON_VALUE(item, "$.key") = "TICKET_TEMPLATE"),
+      "$"
+    )
+  ) AS tt_item,
+  -- Lấy array CAUSE
+  UNNEST(
+    JSON_QUERY_ARRAY(
+      (SELECT JSON_QUERY(item, "$.value")
+       FROM UNNEST(JSON_QUERY_ARRAY(extra_data, "$")) AS item
+       WHERE JSON_VALUE(item, "$.key") = "CAUSE"),
+      "$"
+    )
+  ) AS cause_item
+--WHERE reason_code = 'RS111'
 )
 
 SELECT
@@ -115,4 +131,5 @@ LEFT JOIN UNNEST(JSON_EXTRACT_ARRAY(decision_selecteds, '$')) AS b
 LEFT JOIN cause AS c ON c.cause_code = ti.cause_code AND c.reason_code = ti.reason_code
 LEFT JOIN ticket_note AS tn ON ti.ticket_instance_code = tn.ref_code
 LEFT JOIN ${ref('dim_sku_sales_region_current')} AS s ON s.sub_sku_code = JSON_VALUE(ti.input_data, "$.productCode")
+WHERE template_module_code IN ('CIRCA_FS', 'O2O_CUSTOMER','INTERNAL_SUPPORT')
 QUALIFY ROW_NUMBER() OVER ( PARTITION BY ticket_instance_code) = 1
