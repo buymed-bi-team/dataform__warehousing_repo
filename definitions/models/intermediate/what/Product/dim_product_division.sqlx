@@ -15,7 +15,7 @@ WITH
         select
             cast(code as integer) division_id,
             type,
-            IF(value = 'NAN', null, value) as value
+            NULLIF(UPPER(value), 'NAN') as value
         from collector.data_prd
         where object = 'Product' and submit_id >= 4300 and type  in ('DIVISION_NAME', 'IMAGE_LINK', 'DATA_SHARING', "DIVISION_GROUP")
           and code not in ('216','217','218','219')
