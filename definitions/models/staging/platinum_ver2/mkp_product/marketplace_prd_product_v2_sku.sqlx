@@ -1,0 +1,47 @@
+config {
+    type: "view",
+    schema: "platinum_buymed_vn",
+    name: "marketplace_prd_product_v2_sku",
+    tags:["platinum","marketplace_prd_product-v2","VN_product"]
+}
+
+  WITH silver AS (
+    SELECT
+      key, mg_id, slug, created_time, type, hash_tag, status, tags, max_quantity_per_order, retail_price_value, code, seller_code, is_active, retail_price_type, location_codes, product_code, product_id, dynamic_pricing_level, last_updated_time, is_dynamic_pricing_level, priority, none_vat, purchase_price, vat, is_auto_update_price, fee_codes, version, status_data, level, campaign_code, time_change_status, item_code, purchaser_code, sku, lot_dates, seller_class, seller_id, approved_date, manual_priority, deal_code, last_deal_code, fulfill, inbound_volume, inbound_volume_last_updated_time, raw_price, seller_inventory, seller_private_sku, combo_discount_type, is_combo, skus, use_skus_price, metadata, pricing_strategy, is_outstanding_product, synced_at, extra_props, action, ingest_time,
+      
+        CASE
+            WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time, 'Asia/Ho_Chi_Minh'))
+            ELSE DATE( '2099-01-01' )
+        END
+     created_date,
+      CAST(null as datetime) 
+    FROM silver_buymed_vn.marketplace_prd_product_v2_sku
+    WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 1 DAY
+    QUALIFY ROW_NUMBER() OVER (_window) = 1 
+          AND ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 16 HOUR
+          WINDOW _window AS (
+          PARTITION BY mg_id
+          ORDER BY synced_at DESC,
+          IF
+              (action='d',3,
+              IF
+              (action='u',2,1)) DESC
+          ,last_updated_time DESC)
+  ), platinum AS (
+    SELECT 
+      key, mg_id, slug, created_time, type, hash_tag, status, tags, max_quantity_per_order, retail_price_value, code, seller_code, is_active, retail_price_type, location_codes, product_code, product_id, dynamic_pricing_level, last_updated_time, is_dynamic_pricing_level, priority, none_vat, purchase_price, vat, is_auto_update_price, fee_codes, version, status_data, level, campaign_code, time_change_status, item_code, purchaser_code, sku, lot_dates, seller_class, seller_id, approved_date, manual_priority, deal_code, last_deal_code, fulfill, inbound_volume, inbound_volume_last_updated_time, raw_price, seller_inventory, seller_private_sku, combo_discount_type, is_combo, skus, use_skus_price, metadata, pricing_strategy, is_outstanding_product, synced_at, extra_props, action, ingest_time,
+      created_date,
+      platinum_refresh
+    FROM ${ref(`platinum_buymed_vn__stg`, `marketplace_prd_product_v2_sku`)}
+  )
+  SELECT p.*
+  FROM platinum p
+  LEFT JOIN silver s 
+      ON p.mg_id = s.mg_id 
+  WHERE s.mg_id is null 
+
+  UNION ALL 
+
+  SELECT s.*
+  FROM silver s
+  WHERE action <> "d"
