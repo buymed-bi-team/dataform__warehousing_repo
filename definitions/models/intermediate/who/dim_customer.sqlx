@@ -180,14 +180,17 @@ customer_segment_custom AS (
 
 customer_check_location AS (
     SELECT
-        c.*
+        c.* EXCEPT(ward_code, district_code, province_code)
+        , COALESCE(c.ward_code, JSON_VALUE(flatten_location, "$.2")) AS ward_code
+        , COALESCE(c.district_code, JSON_VALUE(flatten_location, "$.1")) AS district_code
+        , COALESCE(c.province_code, JSON_VALUE(flatten_location, "$.0")) AS province_code
         , IF(w.ward_code IS NOT NULL , TRUE, FALSE) AS ward_code_exists
         , IF(d.district_code IS NOT NULL , TRUE, FALSE) AS district_code_exists
         , IF(p.province_code IS NOT NULL , TRUE, FALSE) AS province_code_exists
     FROM ${source.platinum}.marketplace_prd_customer_customer AS c
-        LEFT JOIN ${ref('dim_ward')} AS w ON c.ward_code = w.ward_code
-        LEFT JOIN ${ref('dim_district')} AS d ON c.district_code = d.district_code
-        LEFT JOIN ${ref('dim_province')} AS p ON c.province_code = p.province_code
+        LEFT JOIN ${ref('dim_ward')} AS w ON COALESCE(c.ward_code, JSON_VALUE(flatten_location, "$.2")) = w.ward_code
+        LEFT JOIN ${ref('dim_district')} AS d ON COALESCE(c.district_code, JSON_VALUE(flatten_location, "$.1")) = d.district_code
+        LEFT JOIN ${ref('dim_province')} AS p ON COALESCE(c.province_code, JSON_VALUE(flatten_location, "$.0")) = p.province_code
 )
 
 js {

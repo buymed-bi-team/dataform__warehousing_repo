@@ -1,6 +1,6 @@
 config {
   type: "operations",
-  tags: ["00h00"]
+  //tags: ["00h00"]
 }
 CREATE OR REPLACE ROW ACCESS POLICY
   access_high_security
@@ -11,6 +11,7 @@ ON
         "serviceAccount:nguyen-tran-service-account@lakehouse-prod-394907.iam.gserviceaccount.com",
         "serviceAccount:nguyen-tran-service-account-2@lakehouse-prod-394907.iam.gserviceaccount.com",
         "user:minh.luugia@buymed.com",
+        "user:huong.dang@buymed.com",
 
         "serviceAccount:warehousing-finance-dataform@lakehouse-prod-394907.iam.gserviceaccount.com",
         "serviceAccount:collector@lakehouse-prod-394907.iam.gserviceaccount.com"

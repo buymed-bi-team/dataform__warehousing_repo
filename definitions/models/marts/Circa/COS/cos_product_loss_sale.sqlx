@@ -17,7 +17,7 @@ SELECT DISTINCT
        , o.pos_id
        , DATE(DATETIME_ADD(o.created_at, INTERVAL 7 HOUR))                        AS created_date
        , DATETIME_ADD(o.created_at, INTERVAL 7 HOUR)                              AS created_at
-       , DATETIME_ADD(o.date_time, INTERVAL 7 HOUR)                               AS date_time
+       , DATE(DATETIME_ADD(o.date_time, INTERVAL 7 HOUR)  )                       AS date_time
        , DATETIME_ADD(o.updated_at, INTERVAL 7 HOUR)                              AS updated_at
        , o.id 
        , o.unit 
@@ -52,17 +52,30 @@ SELECT DISTINCT
 FROM ${source.circa_os}.product_product_loss_sale o
 LEFT JOIN ${source.ref}.circa_pos_profile p ON o.pos_id = p.id 
 LEFT JOIN ${source.ref}.cos_dim_product td ON o.product_id = td.product_id AND o.client_id = td.client_id
-LEFT JOIN (Select distinct product_id, client_id from ${source.ref}.cos_product_essential WHERE status = 'ACTIVE') ls ON o.product_id = ls.product_id AND o.client_id = ls.client_id
+LEFT JOIN (SELECT DISTINCT product_id from ${source.ref}.cos_product_essential WHERE status = 'ACTIVE') ls ON o.product_id = ls.product_id 
 WHERE p.id IS NOT NULL
-
-     --and o.id not in ('8af8dcfb-da91-413c-9ccf-02525bd00876','c5d6fcaf-2d1d-4868-be4c-00b4ae6d7ae8','b729fb2c-7b00-455b-9d28-c5a942bc90fa','03e178f2-4bca-4dbe-9967-134d6618632d','08c9e5da-3ace-478b-a7dd-be17f1f208fb','cca7ed6c-6f2c-40f2-836c-3aad6495105a','b913b653-1268-4d59-bdbe-3b157c2ee469','51ca37f6-fbb8-4dd8-af5e-8d07c09ff8f6')
+      AND o.client_id NOT IN (5,6,7)
 )
 
-
-SELECT t.* except (total_amount)
+SELECT t.* except (total_amount, price)
        ,total_amount AS origin_amount
        ,p.final_sale_price
+       ,CASE WHEN p.product_id IS NOT NULL AND final_sale_price > 0 THEN final_sale_price
+             ELSE price END AS price
        ,CASE WHEN p.product_id IS NOT NULL AND final_sale_price > 0 THEN quantity * final_sale_price
              ELSE total_amount END AS total_amount
 FROM t
-LEFT JOIN (Select * from  `gold_buymed_vn2.cos_adhoc_pos_product_client` WHERE seller_code = 'CIRCA'  ) p  ON t.product_id = p.product_id and t.client_id = p.client_id and t.unit = p.unit
+LEFT JOIN (Select * from  ${source.ref}.cos_adhoc_pos_product_client WHERE seller_code = 'CIRCA'  ) p  ON t.product_id = p.product_id AND lower(t.unit) = lower(p.unit)
+
+-- WHERE t.client_id = 1
+-- UNION ALL 
+
+
+-- SELECT t.* except (total_amount)
+--        ,total_amount AS origin_amount
+--        ,p.unit_sales_price
+--        ,CASE WHEN p.product_id IS NOT NULL AND unit_sales_price > 0 THEN quantity * unit_sales_price
+--              ELSE total_amount END AS total_amount
+-- FROM t
+-- LEFT JOIN ${source.ref}. cos_adhoc_product_price_fs p  ON t.product_id = p.product_id and t.client_id = p.client_id and lower(t.unit) = lower(p.unit)
+-- WHERE t.client_id <> 1

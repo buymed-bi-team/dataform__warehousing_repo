@@ -39,6 +39,7 @@ WITH base_unit_selection AS (
     SELECT DISTINCT
          COALESCE(DATE(DATETIME_ADD(o.completed_at, INTERVAL 7 HOUR)), DATE(DATETIME_ADD(o.updated_at, INTERVAL 7 HOUR))) AS completed_date
        -- ,DATE(DATETIME_ADD(o.created_at, INTERVAL 7 HOUR)) AS created_date
+        , DATETIME_ADD(oi.created_at, INTERVAL 7 HOUR) AS created_at
         ,oi.order_id
         ,oi.product_id
         ,oi.sku_code

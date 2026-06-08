@@ -22,7 +22,7 @@ WITH
                 WHEN REGEXP_CONTAINS(TO_JSON_STRING(JSON_VALUE_ARRAY(a.extra_props, '$.customer_tags')), r'\"CIRCA\"|\"CIRCACOS\"|\"CIRCAFOFO\"|\"CIRCAFOCO\"')  THEN 'CIRCA'
                 WHEN a.source = 'brand-portal' AND JSON_VALUE(a.extra_props, "$.brand_code") IN ('Q8HDUVQX', '2E84FW961P', 'PG961P') THEN 'TENDER'
                 WHEN TO_JSON_STRING(JSON_VALUE_ARRAY(a.extra_props, '$.customer_tags')) LIKE '%TENDER%' THEN 'TENDER'
-                WHEN a.source IN ('brand-portal', 'clinic-portal') OR customer_id IN (360299, 360439, 375375) THEN 'TENDER'
+                WHEN a.source IN ('brand-portal', 'clinic-portal', 'merap', 'merchant') OR customer_id IN (360299, 360439, 375375) THEN 'TENDER'
                 ELSE 'MARKETPLACE'
             END AS channel,
             CASE

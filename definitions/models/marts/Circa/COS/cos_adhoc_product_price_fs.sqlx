@@ -3,7 +3,7 @@ config {
     description: `Tracking price for Circa FS
              PIC: huyen.ngo; model_type: Table ;schedule: At minute 15 past hour`,
     tags: ["custom_1h_past15"],
-    name: "cos_adhoc_product_pricing_fs",
+    name: "cos_adhoc_product_price_fs",
 }
 
 WITH thuosi_unit AS (
@@ -192,9 +192,12 @@ SELECT b.*
 
         ELSE b.sale_unit_price
       END AS price_af_discount
+      , c.name AS client_name
+      ,'FS' AS client_type
 FROM _all b
 LEFT JOIN promo p ON b.product_id = p.product_id AND b.sku_code = p.sku_code AND b.client_id = p.client_id
 LEFT JOIN _all src ON p.product_id = src.product_id AND p.unit = src.unit AND b.sku_code = p.sku_code AND b.seller_code = src.seller_code and b.client_id = src.client_id
+LEFT JOIN ${source.circa_os}.entity_client c ON b.client_id = c.id
 -- WHERE b.product_id = 1108 
 ORDER BY b.client_id
 

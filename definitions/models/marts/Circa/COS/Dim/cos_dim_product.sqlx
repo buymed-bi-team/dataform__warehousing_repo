@@ -88,8 +88,9 @@ base AS (
           ,ARRAY_TO_STRING(JSON_VALUE_ARRAY(image_urls), ', ') AS image_urls
           ,price_type
           ,tp.chronic
-          ,thuocsi_product_status
-          ,thuocsi_has_stock
+          ,ts.sku_system_status AS thuocsi_product_status
+          ,CASE WHEN ts.sku_system_status IN ( 'LIMIT', 'NORMAL') THEN true 
+                ELSE false END AS thuocsi_has_stock
           ,thuocsi_unit
           ,thuocsi_quantity
           ,tp.brand 
@@ -103,6 +104,7 @@ base AS (
     LEFT JOIN t ON p.product_id_join_dim = t.product_id 
     LEFT JOIN e ON p.product_id_join_dim = e.product_id
     LEFT JOIN tp ON p.product_id_join_dim = tp.product_id
+    LEFT JOIN ${source.ref}.sku_status_thuocsi ts ON p.product_id = ts.product_id
 )
 ,inventory_summary AS (
     SELECT a.product_id
