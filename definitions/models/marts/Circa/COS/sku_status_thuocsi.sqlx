@@ -10,7 +10,7 @@ config {
 
 WITH base_data AS (
     SELECT DISTINCT product_id
-    FROM ${source.circa_os}.inventory_location_detail
+    FROM gold_buymed_vn2.cos_dim_product
     -- WHERE (sku IS NOT NULL OR sku <> '')
     --   AND received_quantity <> 0
 ) -- lấy danh sách sản phẩm đã mua trong quá khứ
