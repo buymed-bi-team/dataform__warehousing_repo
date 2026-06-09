@@ -163,10 +163,7 @@ cte_combo_item_pricing as (
     , combo_price
     , source
     -- , bom_price as sales_price_original
-    , case  
-        when none_vat is true then -1
-        else vat
-        end as vat_code
+    , vat as vat_code
     , tag_code
     , sku_status
     , extra_props
@@ -222,10 +219,7 @@ cte_normal_item as (
     , oi.seller_price
     , oi.sales_price AS combo_price
     , oi.source
-    , case  
-      when none_vat is true then -1
-      else vat
-    end as vat_code
+    , vat as vat_code
     , tag_code
     , sku_status
     , extra_props
