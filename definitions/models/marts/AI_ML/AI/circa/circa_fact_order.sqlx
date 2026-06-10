@@ -73,6 +73,7 @@ WITH
              , o.order_id
              , o.order_status
              , o.customer_id
+             , O.employee_name
              , o.client_id
              , o.pos_id
              , o.pos_code
