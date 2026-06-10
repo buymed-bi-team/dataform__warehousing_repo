@@ -2,7 +2,7 @@ config {
     type: 'table',
     schema: "buymed_innovation",
     description: `Customer in the Vietnam marketplace.`,
-    tags: ['AI_THUOCSI_VN', 'custom_1h_past_10']
+    tags: ['AI_THUOCSI_VN', 'custom_1h_past10']
 }
 
 WITH
