@@ -17,7 +17,8 @@ SELECT
 FROM (
     SELECT
         SAFE_CAST(SPLIT(code, "_")[SAFE_OFFSET(0)] AS INT64) AS customer_id
-        , SPLIT(code, "_")[SAFE_OFFSET(1)] AS customer_group
+        , REGEXP_REPLACE(code, SPLIT(code, "_")[SAFE_OFFSET(0)]||"_", "") AS customer_group
+        -- , SPLIT(code, "_")[SAFE_OFFSET(1)] AS customer_group
         , type
         , NULLIF(UPPER(value), "NAN")  AS value
         , DATE_TRUNC(DATE(submit_at), MONTH ) AS month
@@ -29,3 +30,4 @@ FROM (
     QUALIFY ROW_NUMBER() over (PARTITION BY code, object, type, month ORDER BY submit_id DESC) = 1
 )
 PIVOT ( MAX(value) FOR type IN ("SALES_TARGET" AS sales_target, "KAM_PIC" AS kam_pic) )
+WHERE customer_id IS NOT NULL
