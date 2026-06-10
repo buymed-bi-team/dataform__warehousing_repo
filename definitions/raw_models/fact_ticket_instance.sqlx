@@ -131,5 +131,5 @@ LEFT JOIN UNNEST(JSON_EXTRACT_ARRAY(decision_selecteds, '$')) AS b
 LEFT JOIN cause AS c ON c.cause_code = ti.cause_code AND c.reason_code = ti.reason_code AND ti.ticket_template_code = c.template_code
 LEFT JOIN ticket_note AS tn ON ti.ticket_instance_code = tn.ref_code
 LEFT JOIN ${ref('dim_sku_sales_region_current')} AS s ON s.sub_sku_code = JSON_VALUE(ti.input_data, "$.productCode")
-WHERE template_module_code IN ('CIRCA_FS', 'O2O_CUSTOMER','INTERNAL_SUPPORT')
+WHERE template_module_code IN ('CIRCA_FS', 'O2O_CUSTOMER','INTERNAL_SUPPORT', '"THUOCSIVN_SELLER"')
 QUALIFY ROW_NUMBER() OVER ( PARTITION BY ticket_instance_code) = 1
