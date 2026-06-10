@@ -28,6 +28,7 @@ WITH
                      THEN CONCAT(entity_id, o.order_code)
                      ELSE entity_id
              END AS customer_id
+            ,o.name AS employee_name
             , o.client_id
             , o.pos_id
             , o.pos_code
