@@ -361,7 +361,7 @@ SELECT
   atc3.name AS act_3
   -- COALESCE(a3.atc_3, atc3.name) AS act_3,
   -- , CONCAT(SPLIT(a3.atc_3, " ")[SAFE_OFFSET(0)], " ", INITCAP(SPLIT(a3.atc_3, " ")[SAFE_OFFSET(1)]), " ", LOWER(SUBSTR(a3.atc_3, REGEXP_INSTR(a3.atc_3, ' ', 1, 2)+1, LENGTH(a3.atc_3) - REGEXP_INSTR(a3.atc_3, ' ', 1, 2)))) AS act_3
-  , CONCAT(SPLIT(a4.atc_4, " ")[SAFE_OFFSET(0)], " ", INITCAP(SPLIT(a4.atc_4, " ")[SAFE_OFFSET(1)]), " ", LOWER(SUBSTR(a4.atc_4, REGEXP_INSTR(a4.atc_4, ' ', 1, 2)+1, LENGTH(a4.atc_4) - REGEXP_INSTR(a4.atc_4, ' ', 1, 2)))) AS atc_4
+  , CONCAT(SPLIT(a4.atc_4, " ")[SAFE_OFFSET(0)], " ", INITCAP(SPLIT(a4.atc_4, " ")[SAFE_OFFSET(1)]), " ", IF(ARRAY_LENGTH(SPLIT(a4.atc_4, " "))>2, LOWER(SUBSTR(a4.atc_4, REGEXP_INSTR(a4.atc_4, ' ', 1, 2)+1, LENGTH(a4.atc_4) - REGEXP_INSTR(a4.atc_4, ' ', 1, 2))), "")) AS atc_4
   ,JSON_EXTRACT_SCALAR(product.retail_info, '$.retail_name') as retail_name,
   tb1.name as retail_category_name,
 
