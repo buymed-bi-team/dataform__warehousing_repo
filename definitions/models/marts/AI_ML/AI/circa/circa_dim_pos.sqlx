@@ -15,6 +15,7 @@ SELECT DISTINCT code as pos_code
        ,m.ward_name
        ,m.district_name
        ,m.province_name
+       ,number_of_shift
 FROM ${ref('gold_buymed_vn2', 'circa_pos_profile')} o
 LEFT JOIN ${ref('gold_buymed_vn2', 'dim_geo_location')} m ON o.district = m.district_code AND o.province = m.province_code AND o.ward = m.ward_code
 WHERE  o.actual_status <> 'Inactive'

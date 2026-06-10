@@ -31,7 +31,23 @@ WHERE type IN ('CIRCA', 'FS')
 
 SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
      ,t.*
-     
+     ,CASE WHEN client_id <> 1
+                OR actual_status = 'Inactive'
+                OR is_hub = true
+                OR code  IN ('POS0074', 'POS0076', 'POS0084') THEN NULL
+            WHEN name IN (
+                 'CIRCA MIZUKI',
+                 'CIRCA PHARMA ONE',
+                 'CIRCA EHOME',
+                 'CIRCA CELADON',
+                 'CIRCA SYMPHONY',
+                 'CIRCA BELVITA',
+                 'CIRCA ELANA',
+                 'CIRCA FLORITA',
+                 'CIRCA MORA'
+             ) THEN 2
+             ELSE 3
+         END AS number_of_shift
      ,customer_level
 FROM t 
 LEFT JOIN ${source.ref}.dim_customer m ON t.thuocsi_id = m.customer_id
