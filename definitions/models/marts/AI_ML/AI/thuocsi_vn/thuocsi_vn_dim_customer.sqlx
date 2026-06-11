@@ -23,6 +23,8 @@ WITH
             , c.province_name AS customer_province_name
             , c.region_name AS customer_region_name
             , REGEXP_REPLACE(tags, r'[\[\]\"]', '') AS tags
+            , DATE(a.first_purchase) AS first_order_date
+            , DATE(a.last_purchase) AS last_order_date
         FROM ${ref('gold_buymed_vn2', 'dim_customer')} AS a
             LEFT JOIN gold_buymed_vn2.dim_customer_tag_priority AS b USING(customer_id)
             LEFT JOIN ${ref("gold_buymed_vn2", "dim_geo_location")} AS c ON a.location_code = c.location_code
@@ -43,7 +45,17 @@ WITH
             , ""
             , ""
             , ""
+            , t.first_purchase
+            , t.last_purchase
         FROM platinum_buymed_vn.tender_prd_core_tender_beneficiaries
+        LEFT JOIN (
+                SELECT
+                    receiver_id
+                    , DATE(MIN(created_time)) AS first_purchase
+                    , DATE(MAX(created_time)) AS last_purchase
+                FROM platinum_buymed_vn.tender_prd_core_tender_orders
+                GROUP BY 1
+        ) AS t ON beneficiary_id = receiver_id
     )
 
 SELECT
