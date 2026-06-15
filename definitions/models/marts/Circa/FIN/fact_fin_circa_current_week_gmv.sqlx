@@ -1,7 +1,7 @@
 config {
     type: "table",
     description: `PIC: Ha.Lekim`,
-    tags: ["custom_1h_past12"]
+    tags: ["custom_1h_past20"]
 }
 with 
 -- change after verify BI 
