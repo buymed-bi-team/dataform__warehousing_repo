@@ -271,16 +271,16 @@ SELECT DISTINCT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transform
             WHEN pd.unit = 'combo' or pd.unit = 'Combo' THEN 1
             ELSE cr.convert_rate END AS ts_convert_rate
       ,CASE WHEN e.product_id IS NOT NULL THEN TRUE ELSE FALSE END AS is_allstore
-      ,e.status AS status_allstore
+      -- ,e.status AS status_allstore
       ,CASE WHEN tr.product_id IS NOT NULL THEN TRUE ELSE FALSE END AS is_trendy
-      ,tr.status AS status_trendy
-      ,CASE WHEN h.product_id IS NOT NULL THEN TRUE ELSE FALSE END AS is_hotdeal2025
-      ,CASE WHEN hd.product_id IS NOT NULL THEN TRUE ELSE FALSE END AS is_hotdealjan
+      -- ,tr.status AS status_trendy
+      -- ,CASE WHEN h.product_id IS NOT NULL THEN TRUE ELSE FALSE END AS is_hotdeal2025
+      -- ,CASE WHEN hd.product_id IS NOT NULL THEN TRUE ELSE FALSE END AS is_hotdealjan
       ,CASE WHEN posm.product_id IS NOT NULL THEN TRUE ELSE FALSE END AS is_posm
       ,cr.convert_rate
       ,cr.convert_unit
-      ,op.status AS medship_status
-      ,op.unit_name AS medship_unit
+     -- ,op.status AS medship_status
+      --,op.unit_name AS medship_unit
       ,CASE WHEN i.on_hand_quantity > 0 THEN "Available" ELSE "Not Available" END AS stock_check
       ,pos_os_have_stock
       ,stock_available_in_POSs
@@ -313,8 +313,8 @@ LEFT JOIN combo_on_kit kit ON kit.product_id = pd.product_id AND kit.client_id =
 LEFT JOIN ${source.ref}.dim_product_online po ON po.product_id = pd.product_id 
 LEFT JOIN ${source.ref}.cos_product_essential e ON pd.product_id = e.product_id --AND pd.client_id = e.client_id
 LEFT JOIN ${source.ref}.cos_product_trendy tr ON pd.product_id = tr.product_id-- AND pd.client_id = tr.client_id
-LEFT JOIN ${source.ref}.cos_product_hotdeal2025 h ON pd.product_id = h.product_id AND pd.client_id = h.client_id
-LEFT JOIN ${source.ref}.cos_product_hot_deal_jan hd ON pd.product_id = hd.product_id AND pd.client_id = hd.client_id
+-- LEFT JOIN ${source.ref}.cos_product_hotdeal2025 h ON pd.product_id = h.product_id AND pd.client_id = h.client_id
+-- LEFT JOIN ${source.ref}.cos_product_hot_deal_jan hd ON pd.product_id = hd.product_id AND pd.client_id = hd.client_id
 LEFT JOIN posm ON pd.product_id = posm.product_id
 LEFT JOIN ts_unit ts ON ts.product_id = pd.product_id and pd.client_id = ts.client_id
 LEFT JOIN tags ON pd.product_id = tags.product_id
