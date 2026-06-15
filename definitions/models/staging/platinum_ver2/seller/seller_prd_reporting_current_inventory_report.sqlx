@@ -12,40 +12,31 @@ config {
   WITH silver AS (
     SELECT
       key,mg_id,sku,warehouse_code,avg_demand,created_time,damaged_quantity,delivering_to_customer,hashtag,inbound_quantity,inbound_required_quantity,inventory_available_quantity,inventory_damaged_quantity,inventory_inbound_required_quantity,inventory_min_quantity,inventory_missing_quantity,inventory_on_hold_quantity,inventory_total_quantity,inventory_waiting_for_other_quantity,inventory_waiting_hold_quantity,inventory_waiting_put_quantity,last_updated_time,max_inbound_required_quantity,max_stock,min_stock,product_code,product_id,product_name,seller_code,seller_stock_days,stock_location,wait_for_pick_quantity,waiting_for_other_quantity,waiting_put_quantity,waiting_for_reconcile,synced_at,extra_props,action,ingest_time,
-      
-        CASE
-            WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time, 'Asia/Ho_Chi_Minh'))
-            ELSE DATE( '2099-01-01' )
-        END
-     created_date,
-      CAST(null as datetime) 
+      CASE
+          WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time, 'Asia/Ho_Chi_Minh'))
+          ELSE DATE('2099-01-01')
+      END AS created_date,
+      CAST(null as datetime) AS platinum_refresh
     FROM silver_buymed_vn.seller_prd_reporting_current_inventory_report
     WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 1 DAY
-    QUALIFY ROW_NUMBER() OVER (_window) = 1 
-          AND ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 16 HOUR
-          WINDOW _window AS (
+      AND ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 16 HOUR
+    QUALIFY ROW_NUMBER() OVER (
           PARTITION BY mg_id
-          ORDER BY synced_at DESC,
-          IF
-              (action='d',3,
-              IF
-              (action='u',2,1)) DESC
-          ,last_updated_time DESC)
-  ), platinum AS (
+          ORDER BY synced_at DESC, last_updated_time DESC
+    ) = 1
+), platinum AS (
     SELECT 
       key,mg_id,sku,warehouse_code,avg_demand,created_time,damaged_quantity,delivering_to_customer,hashtag,inbound_quantity,inbound_required_quantity,inventory_available_quantity,inventory_damaged_quantity,inventory_inbound_required_quantity,inventory_min_quantity,inventory_missing_quantity,inventory_on_hold_quantity,inventory_total_quantity,inventory_waiting_for_other_quantity,inventory_waiting_hold_quantity,inventory_waiting_put_quantity,last_updated_time,max_inbound_required_quantity,max_stock,min_stock,product_code,product_id,product_name,seller_code,seller_stock_days,stock_location,wait_for_pick_quantity,waiting_for_other_quantity,waiting_put_quantity,waiting_for_reconcile,synced_at,extra_props,action,ingest_time,
       created_date,
       platinum_refresh
-    FROM ${ref(`platinum_buymed_vn__stg`, `seller_prd_reporting_current_inventory_report`)}
-  )
-  SELECT p.*
-  FROM platinum p
-  LEFT JOIN silver s 
-      ON p.mg_id = s.mg_id 
-  WHERE s.mg_id is null 
+    FROM `lakehouse-prod-394907.platinum_buymed_vn__stg.seller_prd_reporting_current_inventory_report`
+)
+SELECT p.*
+FROM platinum p
+WHERE NOT EXISTS (SELECT 1 FROM silver s WHERE s.mg_id = p.mg_id)
 
-  UNION ALL 
+UNION ALL 
 
-  SELECT s.*
-  FROM silver s
-  WHERE action <> "d"
+SELECT s.*
+FROM silver s
+WHERE action <> 'd'

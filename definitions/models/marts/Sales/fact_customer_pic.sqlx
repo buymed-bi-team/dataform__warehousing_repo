@@ -5,7 +5,7 @@ config {
         PIC: nguyen.tran; 
         Type: Table; 
         `,
-    tags: ["custom_1h_past5"]
+    tags: ["custom_1h_past10"]
 }
 
 SELECT
