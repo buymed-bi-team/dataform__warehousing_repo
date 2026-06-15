@@ -74,6 +74,10 @@ SELECT
                 s.name,
                 cmv.name
     ) as commercial_supplier_name
+    , if (s.line_manager is null or s.line_manager = "", 
+                s.seller_id,
+                cmv.seller_id
+    ) as commercial_supplier_id
     ,s.extra_props as supplier_extra_props
     ,s.inbound_addresses
     , ${utils.ToTimezone('s.created_time')} as created_at
