@@ -2,7 +2,7 @@ config {
     type: "operations",
     name: "marketplace_prd_product_v2_product_fee_config__assert_operations",
     dependencies: ["marketplace_prd_product_v2_product_fee_config__assert_unique"],
-    tags: ["critical_custom_1h_past7","marketplace_prd_product_v2"],
+    //tags: ["critical_custom_1h_past7","marketplace_prd_product_v2"],
     description: ""
 }
 

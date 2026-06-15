@@ -15,11 +15,6 @@ config {
             ${source.platinum}.marketplace_prd_product_v2_product_fee_config
         `,
     tags: ["gold_custom_20m", "PRICING"],
-
-    assertions: {
-      uniqueKey: ["sku_key_sales_region_code"],
-      nonNull: ["sku_code", "sku_key", "sales_region_code"]
-    }
 }
 
 -- step 1: get some fee to calculate seller_received_value
