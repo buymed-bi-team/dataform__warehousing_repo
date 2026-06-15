@@ -8,13 +8,30 @@ config {
     }
 }
 
-Select b.*
+WITH base_data AS (
+SELECT b.*
       ,c.product_id
       ,c.unit
       ,c.sku_code
       ,c.lot_date
-      ,sum(c.quantity) as quantity
-      ,sum(c.base_quantity) as base_quantity
-from ${source.ref}.cos_return_completed b
-left join ${source.circa_os}.order_return_order_item c on b.id = c.return_order_id
-group by all
+      ,CASE WHEN SUM(received_quantity) > 0 THEN SUM(received_quantity)
+           ELSE SUM(c.quantity) END AS quantity
+     -- ,sum(c.base_quantity) as base_quantity
+FROM ${source.ref}.cos_return_completed b
+LEFT JOIN ${source.circa_os}.order_return_order_item c on b.id = c.return_order_id
+GROUP BY ALL
+
+), cv AS (
+ SELECT DISTINCT a.product_id
+           ,convert_rate
+           ,a.unit AS convert_unit
+           ,a.base_unit AS is_base_unit
+           ,client_id
+    FROM buymed_circa_v2.product_retail_unit AS a
+)
+
+SELECT a.*
+       , quantity * COALESCE(convert_rate,1) AS base_quantity
+FROM base_data a
+LEFT JOIN cv ON a.client_id = cv.client_id AND a.product_id = cv.product_id AND a.unit = cv.convert_unit
+GROUP BY ALL
