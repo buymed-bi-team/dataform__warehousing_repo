@@ -22,7 +22,7 @@ group by all)
 , target_ as (
   select pos_code,
   sum(target) as target,
-  sum(case when date >= "2026-06-08" then target*0.9 else target end) as new_target 
+  sum(custom_week_target) as new_target 
   from gold_buymed_vn2.dim_fin_circa_cos_gmv_target_2026_src 
   where channel = 'OFFLINE'
   and  date_trunc(date,week(monday))  = date_trunc(current_date(),week(monday))
