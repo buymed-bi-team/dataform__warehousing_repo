@@ -89,4 +89,3 @@ SELECT trf.*
 FROM trf
 LEFT JOIN ${source.ref}.circa_pos_profile p ON trf.dest_pos_id = p.id 
 WHERE trf.code NOT IN (SELECT DISTINCT code FROM have_rcv)
-
