@@ -33,10 +33,12 @@ SELECT DISTINCT r.id
               ,lot_date
               ,sku_code
               ,rid.doc_code
+              ,e.name AS created_by
 FROM ${source.circa_os}.inventory_transfer_request r 
 LEFT JOIN ${source.circa_os}.inventory_transfer_item ri ON r.id = ri.transfer_request_id 
 LEFT JOIN ${source.circa_os}.inventory_transfer_item_detail rid ON ri.id = rid.transfer_item_id 
 LEFT JOIN ${source.ref}.circa_pos_profile p ON r.src_pos_id = p.id AND r.client_id = p.client_id
+LEFT JOIN ${source.circa_os}.entity_entity e ON r.created_by = e.id AND r.client_id = e.client_id
 WHERE p.id IS NOT NULL
       AND r.type = 'TRANSFER_OUT'
       --  AND r.code = 'TRF00002258'
