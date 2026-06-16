@@ -181,15 +181,15 @@ WITH
       c.invoice_amount,
       d.actual_sales_amount,
       COALESCE(a.status, a.sale_order_status) AS sales_status,
-      CASE
-        WHEN TO_JSON_STRING(tags) LIKE '%SELLER_9SUUUUUUUU%' AND SOURCE = 'brand-portal' THEN 'Consignment Buymed'
-        WHEN TO_JSON_STRING(tags) LIKE '%SELLER_VUUUUUUUUU%' AND SOURCE = 'brand-portal' THEN 'Nature Gift Pharma'
-        WHEN TO_JSON_STRING(tags) LIKE '%SELLER_Y5STYACBVI%' AND SOURCE = 'brand-portal' THEN 'Duong Anh'
-      END AS seller_brand_portal,
-      CASE
-        WHEN TO_JSON_STRING(a.tags) LIKE '%CO_INTERNAL%' THEN "CO_Sale_Order"
-        WHEN TO_JSON_STRING(a.tags) LIKE '%SO_INTERNAL%' THEN "SO_Sale_Receipt"
-      END AS internal_portal_type,
+    --   CASE
+    --     WHEN TO_JSON_STRING(tags) LIKE '%SELLER_9SUUUUUUUU%' AND SOURCE = 'brand-portal' THEN 'Consignment Buymed'
+    --     WHEN TO_JSON_STRING(tags) LIKE '%SELLER_VUUUUUUUUU%' AND SOURCE = 'brand-portal' THEN 'Nature Gift Pharma'
+    --     WHEN TO_JSON_STRING(tags) LIKE '%SELLER_Y5STYACBVI%' AND SOURCE = 'brand-portal' THEN 'Duong Anh'
+    --   END AS seller_brand_portal,
+    --   CASE
+    --     WHEN TO_JSON_STRING(a.tags) LIKE '%CO_INTERNAL%' THEN "CO_Sale_Order"
+    --     WHEN TO_JSON_STRING(a.tags) LIKE '%SO_INTERNAL%' THEN "SO_Sale_Receipt"
+    --   END AS internal_portal_type,
       -- e.carrier_name,
       a.province_code,
       a.redeem_code,
@@ -280,14 +280,6 @@ WITH
         WHEN sales_status IN ("COMPLETED", "DELIVERED", "DELIVERING") THEN total_notional_amount
         ELSE ordered_amount_aft_discount
       END AS sales_amount,
-        --old loggic
-      --   CASE
-      --       WHEN ordered_amount + 50001 <= ordered_amount_aft_discount THEN ordered_amount_aft_discount
-      --       ELSE ordered_amount 
-      -- END AS gmv
-      
-      -- new logic
-      -- some order_id have order_amount = 0 so = > get from ordered_amount_aft_discount to match with fact_sku_order_item_combo
         CASE
             WHEN ordered_amount = 0 THEN ordered_amount_aft_discount
             ELSE ordered_amount 
