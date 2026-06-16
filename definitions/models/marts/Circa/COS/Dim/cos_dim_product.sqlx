@@ -280,7 +280,8 @@ SELECT DISTINCT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transform
       -- ,CASE WHEN hd.product_id IS NOT NULL THEN TRUE ELSE FALSE END AS is_hotdealjan
       ,CASE WHEN posm.product_id IS NOT NULL THEN TRUE ELSE FALSE END AS is_posm
       ,cr.convert_rate
-      ,cr.convert_unit
+      ,CASE WHEN cr.convert_unit IS NOT NULL THEN cr.convert_unit
+            ELSE pd.unit END AS convert_unit
      -- ,op.status AS medship_status
       --,op.unit_name AS medship_unit
       ,CASE WHEN i.on_hand_quantity > 0 THEN "Available" ELSE "Not Available" END AS stock_check
