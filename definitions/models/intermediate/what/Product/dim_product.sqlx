@@ -419,7 +419,7 @@ SELECT
 --   ) AS chronic,
   -- essential.essential,
   -- IF(JSON_VALUE(product.extra_props, "$.is_essential_drug")="true", "ESSENTIAL", NULL) AS essential,
-  COALESCE(JSON_VALUE(product.extra_props, "$.drug_type"), "NON_ESSENTIAL") AS essential,
+  JSON_VALUE(product.extra_props, "$.drug_type") AS essential,
   cl.thuoc_cat_lieu,
 
   CASE
