@@ -57,6 +57,7 @@ base AS (
 )
 ,cte_product AS (
     SELECT DISTINCT p.product_id
+          , p.code AS product_code
           ,p.name AS product_name
           ,tp.retail_name
           ,p.volumes
