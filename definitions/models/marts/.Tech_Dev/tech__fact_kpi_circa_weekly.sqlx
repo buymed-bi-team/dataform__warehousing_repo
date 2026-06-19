@@ -1,0 +1,9 @@
+config {
+    type: "view",
+    schema: "buymed_tech",
+    name: "tech__fact_kpi_circa_weekly",
+}
+
+select * 
+from ${ref('fact_fin_circa_current_week_gmv')}
+ 

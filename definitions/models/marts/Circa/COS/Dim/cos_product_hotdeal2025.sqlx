@@ -2,6 +2,7 @@ config {
     type: "table",
     description: `List sản phẩm hot dealthansg 1 2025 | PIC: huyen.ngo; model_type: Table ;schedule: At 10h30`,
     tags: ["10h30"],
+    disabled: true,
     name: "cos_product_hotdeal2025",
     columns: {/*
         */

@@ -14,6 +14,7 @@ SELECT
     , user_system_status AS customer_status
     , business_scope
     , customer_level
+    , a.last_login_at
     , JSON_VALUE(w.extra_props, "$.name_en") AS customer_ward_name
     , JSON_VALUE(d.extra_props, "$.name_en") AS customer_district_name
     , JSON_VALUE(p.extra_props, "$.name_en") AS customer_province_name

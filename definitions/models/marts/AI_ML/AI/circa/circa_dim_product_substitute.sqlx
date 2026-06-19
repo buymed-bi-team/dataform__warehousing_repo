@@ -1,0 +1,38 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `Product Substitute of Circa COS.`,
+    tags: ['AI_CIRCA']
+}
+
+SELECT DISTINCT 
+    p.product_id
+    , p.product_name
+    , a.substitute_id AS substitute_product_id
+    , c.product_name AS substitute_product_name
+    , d.on_hand_quantity AS substitute_stock_quantity
+    , l.product_link AS  substitute_product_link
+FROM (SELECT
+        product_id, product_name
+      FROM ${ref("gold_buymed_vn2", "cos_dim_product")}
+      GROUP BY ALL
+) AS p
+    LEFT JOIN platinum_buymed_vn.marketplace_prd_product_v2_substitute_product AS a ON p.product_id = a.product_id
+    LEFT JOIN ${ref("gold_buymed_vn2", "dim_product")} AS c ON a.substitute_id = c.product_id
+    LEFT JOIN (
+        SELECT
+            product_id
+            , SUM(on_hand_quantity) AS on_hand_quantity
+        FROM ${ref("buymed_innovation", "circa_fact_inventory")}
+        GROUP BY ALL
+    ) AS d ON a.substitute_id = d.product_id
+    LEFT JOIN  (
+      SELECT
+          product_id
+          , CONCAT("https://circa.vn/danh-sach-san-pham/", slug) AS product_link
+      FROM platinum_buymed_vn.circa_online_prd_product_product
+      QUALIFY ROW_NUMBER() OVER(PARTITION BY product_id) = 1
+    ) AS l ON l.product_id = a.substitute_id
+WHERE 1=1
+    -- AND p.product_id = 1114
+    AND d.on_hand_quantity > 0
