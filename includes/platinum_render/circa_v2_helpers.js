@@ -123,7 +123,7 @@ const colExprCase = `
       IF ARRAY_LENGTH(affected_dates) > 0 THEN
         DELETE FROM ${destTable}
         WHERE created_date IN UNNEST(affected_dates)
-          AND ${primaryKey} IN (
+          AND CAST(${primaryKey} AS STRING) IN (
             SELECT JSON_VALUE(data,'$.primary_key.id')
             FROM ${srcTable}
             WHERE publish_time > TIMESTAMP_SUB(ingest_checkpoint, INTERVAL ${lookbackHours} HOUR)
