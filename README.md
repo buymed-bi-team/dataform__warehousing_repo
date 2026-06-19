@@ -149,20 +149,14 @@ Dùng `QUALIFY ROW_NUMBER() OVER (_window) = 1` với thứ tự ưu tiên:
 2. Action priority: **delete > update > insert**
 3. `last_updated_time DESC`
 
-### Multi-Region Support
-
-| Region   | Gold              | Platinum             |
-| -------- | ----------------- | -------------------- |
-| Vietnam  | `gold_buymed_vn2` | `platinum_buymed_vn` |
-| Thailand | `gold_buymed_th`  | `platinum_buymed_th` |
-
 ## Analytics Use Cases
 
 Layer `marts` phục vụ:
 
-- **AI/ML** cho product recommendation (`circa_dim_product`, `thuocsi_tha_dim_product_sku`).
+- **AI/ML**.
 - **Product analytics** với categorization, pricing, inventory.
 - **Customer behavior tracking** qua click analytics của notification / popup.
+- ....
 
 ## Development Workflow
 
@@ -170,7 +164,6 @@ Layer `marts` phục vụ:
 
 - **Data quality** (assertions tự động, mismatch view, retry).
 - **Incremental processing** (cutoff interval, partition theo ngày).
-- **Multi-tenant** (nhiều business unit) và **multi-region** (VN, TH).
 
 ## Tham khảo thêm
 
