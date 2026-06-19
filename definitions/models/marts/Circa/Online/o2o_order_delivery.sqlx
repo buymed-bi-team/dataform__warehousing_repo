@@ -27,8 +27,7 @@ Select
 
 from ${source.platinum}.circa_online_prd_order_sale_order i 
 left join ${source.ref}.circa_online_order o on o.order_code = i.order_code
-where i.sender_name not like '%FC Circa%'
-        and i.sender_name not like '%Tech Test%'
+where i.sender_name not like '%Tech Test%'
         and i.sender_name not like '%[TECH]%'
         and i.sender_name <> 'Tech - Cao Lăm Miền Nam'
         and extract (year from o.created_date) >= 2024

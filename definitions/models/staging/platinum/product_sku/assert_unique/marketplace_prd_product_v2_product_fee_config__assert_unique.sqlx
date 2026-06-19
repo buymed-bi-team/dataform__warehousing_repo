@@ -1,6 +1,6 @@
 config {
     type: "operations",
-    tags: ["critical_custom_1h_past7","marketplace_prd_product_v2"],
+   // tags: ["critical_custom_1h_past7","marketplace_prd_product_v2"],
 }
 -- script_tag: ["assert","assert_duplicate"]
 

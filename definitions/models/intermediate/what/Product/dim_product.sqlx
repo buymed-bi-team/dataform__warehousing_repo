@@ -199,17 +199,17 @@ WITH
   )
   
   
-  , essential AS (
-      SELECT
-          SAFE_CAST(code AS INT64) AS product_id
-          , NULLIF(UPPER(value), "NAN") AS essential
-      FROM collector.data_prd
-      WHERE DATE(submit_at) >= "2025-06-18"
-          AND submit_id >= 5539
-          AND object = "Product"
-          AND type = "ESSENTIAL"
-      QUALIFY ROW_NUMBER() over (PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
-  )
+  -- , essential AS (
+  --     SELECT
+  --         SAFE_CAST(code AS INT64) AS product_id
+  --         , NULLIF(UPPER(value), "NAN") AS essential
+  --     FROM collector.data_prd
+  --     WHERE DATE(submit_at) >= "2025-06-18"
+  --         AND submit_id >= 5539
+  --         AND object = "Product"
+  --         AND type = "ESSENTIAL"
+  --     QUALIFY ROW_NUMBER() over (PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
+  -- )
   
   
   , cat_lieu AS (
@@ -418,7 +418,8 @@ SELECT
 --     -- , IF(product.seller_category_code = "AQFV2U" AND product.seller_sub_category_code = "LALT0T", "Acute", NULL)
 --   ) AS chronic,
   -- essential.essential,
-  IF(JSON_VALUE(product.extra_props, "$.is_essential_drug")="true", "ESSENTIAL", NULL) AS essential,
+  -- IF(JSON_VALUE(product.extra_props, "$.is_essential_drug")="true", "ESSENTIAL", NULL) AS essential,
+  JSON_VALUE(product.extra_props, "$.drug_type") AS essential,
   cl.thuoc_cat_lieu,
 
   CASE
@@ -456,7 +457,7 @@ LEFT JOIN retail_price AS rp ON rp.product_id = product.product_id
 LEFT JOIN brand AS br ON br.product_id = product.product_id
 LEFT JOIN ownbrand_portfolio AS op ON op.product_id = product.product_id
 LEFT JOIN chronic AS chronic ON chronic.product_id = product.product_id
-LEFT JOIN essential AS essential ON essential.product_id = product.product_id
+-- LEFT JOIN essential AS essential ON essential.product_id = product.product_id
 LEFT JOIN cat_lieu AS cl ON cl.product_id = product.product_id
 LEFT JOIN atc3 AS a3 ON a3.product_id = product.product_id
 LEFT JOIN atc4 AS a4 ON a4.product_id = product.product_id

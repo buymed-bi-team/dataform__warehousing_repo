@@ -12,7 +12,7 @@ config {
 
 with
     cte_date as (
-        SELECT date_trunc(date_sub(current_date('+7'), interval 6 month), month)  as start_date
+        SELECT date_trunc(date_sub(current_date('+7'), interval 12 month), year)  as start_date
     )
 
 -- step 1: get put ticket data

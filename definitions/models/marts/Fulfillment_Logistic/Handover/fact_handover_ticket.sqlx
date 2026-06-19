@@ -42,7 +42,7 @@ select
     a.ticket_id,
     a.code,
     SPLIT(a.code, '-')[SAFE_OFFSET(0)] AS ticket_type,
-    item_type,
+    IF(item_type = "PO" AND REGEXP_CONTAINS(json_value(a_l,"$.so"), r'^PGH'), "PGH", item_type ) AS item_type,
     a.route_code,
     a.route_name,
     a.from_department_code,

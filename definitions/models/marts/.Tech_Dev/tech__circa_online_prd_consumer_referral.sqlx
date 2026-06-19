@@ -1,0 +1,9 @@
+config {
+    type: "view",
+    schema: "buymed_tech",
+    name: "tech__circa_online_prd_consumer_referral",
+}
+
+select * 
+from ${source.platinum}.circa_online_prd_consumer_referral
+ 

@@ -1,0 +1,36 @@
+config {
+    type:"view",
+    name: "circa_online_prd_consumer_referral",
+    schema: "platinum_buymed_vn",
+    tags: ["platinum","circa_online_prd_consumer"]
+}
+WITH over_tbl AS (
+        SELECT
+            mg_id,
+            ARRAY_AGG(
+                key 
+                ORDER BY
+                    synced_at DESC,
+                    last_updated_time DESC
+                LIMIT 1
+            )[0] key ,
+            ARRAY_AGG(
+                action 
+                ORDER BY
+                    synced_at DESC,
+                    last_updated_time DESC
+                LIMIT 1
+            )[0] action
+        FROM ${source.silver}.circa_online_prd_consumer_referral
+        
+        GROUP BY mg_id HAVING action != "d"
+    )
+    SELECT
+        * ,
+        CASE
+            WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time, 'Asia/Ho_Chi_Minh'))
+            ELSE DATE( '2099-01-01' )
+        END AS created_date,
+        CURRENT_DATETIME() AS platinum_refresh
+    FROM ${source.silver}.circa_online_prd_consumer_referral
+    WHERE key IN (SELECT o.key FROM over_tbl o)

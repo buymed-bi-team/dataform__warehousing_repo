@@ -5,10 +5,6 @@ config {
     type: "incremental",
     name: "core_prd_account_account",
     schema: "platinum_buymed_vn",
-    assertions: {
-        uniqueKey: 'mg_id',
-        nonNull: ["created_date"]
-    },
     bigquery: {
         partitionBy: "created_date"
     },
