@@ -2,7 +2,7 @@ config {
     type: "incremental",
     description: "PIC:minhluu",
     columns: {},
-    tags: ["custom_2h_past_5"],
+    tags: ["custom_2h_past5"],
     bigquery: {
         partitionBy: "date"
     }
