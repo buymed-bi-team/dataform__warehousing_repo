@@ -1,0 +1,31 @@
+config {
+    type: "table",
+    description: `PIC: huyen.ngo; model_type: Table ;schedule: At minute 10 every 1 hour.Circa cart `,
+    tags: ['circa_online'],
+    name: "circa_online_cart",
+    columns: {
+    
+       
+    },
+    bigquery: {
+        partitionBy: "DATE_TRUNC(cart_created_date, MONTH)"
+
+    }
+}
+
+SELECT DISTINCT 
+          o.cart_id
+         ,o.cart_code
+         ,o.customer_id
+         ,phone_number AS customer_phone
+         ,full_name AS customer_name
+         ,DATE(DATETIME_ADD(o.created_time, INTERVAL 7 HOUR)) AS cart_created_date
+         ,DATE(DATETIME_ADD(o.last_updated_time, INTERVAL 7 HOUR)) AS cart_last_updated
+         ,i.product_id
+         ,i.unit
+         ,i.price AS unit_price
+         ,DATE(DATETIME_ADD(i.created_time, INTERVAL 7 HOUR)) AS date_add_item
+         ,DATETIME_ADD(i.created_time, INTERVAL 7 HOUR) AS time_add_item
+FROM ${source.platinum}.circa_online_prd_order_cart o 
+LEFT JOIN ${source.platinum}.circa_online_prd_order_cart_item i ON o.cart_id = i.cart_id
+LEFT JOIN ${source.platinum}.circa_online_prd_consumer_customer e ON o.customer_id = e.customer_id

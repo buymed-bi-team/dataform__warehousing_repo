@@ -41,7 +41,7 @@ WITH base_data AS (
     , t.action
     , DATETIME_ADD(t.last_updated_time, INTERVAL 7 HOUR)                              AS last_updated_time
     , DATETIME_ADD(t.platinum_refresh, INTERVAL 7 HOUR)                               AS platinum_refresh
-  FROM platinum_buymed_vn.circa_online_prd_order_order_item t
+  FROM ${source.platinum}.circa_online_prd_order_order_item t
 ), base_unit_selection AS (
     SELECT DISTINCT
          product_id

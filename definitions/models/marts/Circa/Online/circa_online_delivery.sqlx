@@ -3,7 +3,7 @@ config {
     type: "table",
     description: `PIC: huyen.ngo; model_type: Table ;schedule: `,
     tags:["custom_1h_past20"],
-    name: "o2o_order_delivery"
+    name: "circa_online_delivery"
 }
 
 with t as (
