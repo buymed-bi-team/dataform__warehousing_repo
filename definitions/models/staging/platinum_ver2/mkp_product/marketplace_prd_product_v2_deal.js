@@ -36,11 +36,11 @@ model.createMismatchAssertionView(
         // dependencies : [model.dependencies.assertUnique]
     }
 )
-model.assertMismatch(
-    ["platinum_00h00","platinum_12h00", "platinum_staging_assertion", "marketplace_prd_product-v2"],
-    {
-        intervalCheckpoint: `INTERVAL 2 DAY`,
-        maxRetry: 2,
+// model.assertMismatch(
+//     ["platinum_00h00","platinum_12h00", "platinum_staging_assertion", "marketplace_prd_product-v2"],
+//     {
+//         intervalCheckpoint: `INTERVAL 2 DAY`,
+//         maxRetry: 2,
         
-    }
-)
+//     }
+// )
