@@ -10,7 +10,7 @@ js {
     rawTable:     "inventory_location",
     primaryKey:   "id",
     createdTime:  "created_at",
-    lookbackHours: 2,
+    lookbackHours: 0,
   });
 }
 
