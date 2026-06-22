@@ -1,6 +1,6 @@
 config {
     type: "table",
-    tags: ["adhoc-office"],
+    tags: ["custom_1h_past10"],
     dependencies: ["platform_organization_prd_ticket_ticket_instance"],
     name: "fact_ticket_instance",
     description: "PIC: huyen.ngo; model_type: table; Schedule: At minute 5 past hour 7, 10, 13, 16 and 19",
