@@ -134,27 +134,6 @@ SELECT o.* except(delivery_tags)
     THEN '1. Vấn đề thanh toán'
 
 
-  -- 2. Hàng hóa / Tồn kho
-  WHEN cancellation_type IN ('CUSTOMER_CANCEL_OR_OUT_OF_STOCK', 'PHARMACY_OUT_OF_STOCK')
-    THEN '2. Hàng hóa / Tồn kho'
-  WHEN cancellation_type = 'CUSTOMER_CHANGES_MIND'
-    AND (
-      cancellation_note LIKE '%hết hàng%'
-      OR cancellation_note LIKE '%không có hàng%'
-      OR cancellation_note LIKE '%chờ nhập hàng%'
-      OR cancellation_note LIKE '%cận date%'
-    )
-    THEN '2. Hàng hóa / Tồn kho'
-  WHEN cancellation_type = 'OTHER'
-    AND (
-      cancellation_note LIKE '%hết hàng%'
-      OR cancellation_note LIKE '%không có hàng%'
-      OR cancellation_note LIKE '%không đủ số lượng%'
-      OR cancellation_note LIKE '%cận date%'
-      OR cancellation_note LIKE '%hết date%'
-    )
-    THEN '2. Hàng hóa / Tồn kho'
-    
   -- 3. Gian lận / Rủi ro
   WHEN cancellation_type IN ('CUSTOMER_CHEATING', 'CUSTOMER_CANNOT_BE_CONTACTED', 'FAIL_TO_DELIVER')
     THEN '3. Gian lận / Rủi ro / Gom đơn'
@@ -189,7 +168,27 @@ SELECT o.* except(delivery_tags)
     WHEN customer_phone = '0333355122'  THEN '3. Gian lận / Rủi ro / Gom đơn'
 
 
-
+  -- 2. Hàng hóa / Tồn kho
+  WHEN cancellation_type IN ('CUSTOMER_CANCEL_OR_OUT_OF_STOCK', 'PHARMACY_OUT_OF_STOCK')
+    THEN '2. Hàng hóa / Tồn kho'
+  WHEN cancellation_type = 'CUSTOMER_CHANGES_MIND'
+    AND (
+      cancellation_note LIKE '%hết hàng%'
+      OR cancellation_note LIKE '%không có hàng%'
+      OR cancellation_note LIKE '%chờ nhập hàng%'
+      OR cancellation_note LIKE '%cận date%'
+    )
+    THEN '2. Hàng hóa / Tồn kho'
+  WHEN cancellation_type = 'OTHER'
+    AND (
+      cancellation_note LIKE '%hết hàng%'
+      OR cancellation_note LIKE '%không có hàng%'
+      OR cancellation_note LIKE '%không đủ số lượng%'
+      OR cancellation_note LIKE '%cận date%'
+      OR cancellation_note LIKE '%hết date%'
+    )
+    THEN '2. Hàng hóa / Tồn kho'
+    
   -- 4. Đặt lại
   WHEN cancellation_type = 'CUSTOMER_ALREADY_REORDERED'
     THEN '4. Đặt lại'
