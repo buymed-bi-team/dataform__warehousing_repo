@@ -1,0 +1,45 @@
+config {
+    type: "view",
+    schema: "platinum_buymed_vn",
+    name: "marketplace_prd_customer_customer",
+    description : `
+    PIC: minh.luu
+    Partition by: created date
+    Cluster by: ["code","voucher_id","status","type"]
+    `,
+    tags:["platinum","marketplace_prd_customer"]
+}
+  WITH silver AS (
+    SELECT
+      key, mg_id, point, code, scope, level, phone, status, is_new_bie, created_time, customer_id, hash_tag, is_active, province_code, last_updated_time, name, email, account_id, level_point, address, business_images, business_name, district_code, gpp, legal_representative, licenses, ward_code, confirmed_time, supporter_account_id, color, company_address, company_name, examination_and_treatment_license, examination_and_treatment_license_info, gpp_info, license_info, pharmacy_eligibility_license, pharmacy_eligibility_license_info, first_order_at, last_order_at, orders_count, sale_filter, draft_data, last_deleted_at, last_update_status_at, flatten_location, gdp_info, gsp_info, last_action_time, practicing_license_info, reason_code_ban, brand_sales_account_id, business_type, gdp, location, mst, practicing_license, refer_code, supporter, tags, tax_code, total_point, user_name, synced_at, extra_props, action, ingest_time,
+      
+        CASE
+            WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time, 'Asia/Ho_Chi_Minh'))
+            ELSE DATE( '2099-01-01' )
+        END
+     created_date,
+      CAST(null as datetime) 
+    FROM silver_buymed_vn.marketplace_prd_customer_customer
+    WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 1 DAY
+    QUALIFY ROW_NUMBER() OVER (_window) = 1 
+          -- AND ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 16 HOUR
+          WINDOW _window AS (
+          PARTITION BY mg_id
+          ORDER BY synced_at DESC,
+          last_updated_time DESC)
+  ), platinum AS (
+    SELECT 
+      key, mg_id, point, code, scope, level, phone, status, is_new_bie, created_time, customer_id, hash_tag, is_active, province_code, last_updated_time, name, email, account_id, level_point, address, business_images, business_name, district_code, gpp, legal_representative, licenses, ward_code, confirmed_time, supporter_account_id, color, company_address, company_name, examination_and_treatment_license, examination_and_treatment_license_info, gpp_info, license_info, pharmacy_eligibility_license, pharmacy_eligibility_license_info, first_order_at, last_order_at, orders_count, sale_filter, draft_data, last_deleted_at, last_update_status_at, flatten_location, gdp_info, gsp_info, last_action_time, practicing_license_info, reason_code_ban, brand_sales_account_id, business_type, gdp, location, mst, practicing_license, refer_code, supporter, tags, tax_code, total_point, user_name, synced_at, extra_props, action, ingest_time,
+      created_date,
+      platinum_refresh
+    FROM ${ref(`platinum_buymed_vn__stg`, `marketplace_prd_customer_customer`)}
+  )
+SELECT p.*
+FROM platinum p
+WHERE NOT EXISTS (SELECT 1 FROM silver s WHERE s.mg_id = p.mg_id)
+
+  UNION ALL 
+
+  SELECT s.*
+  FROM silver s
+  WHERE action <> "d"

@@ -1,0 +1,48 @@
+
+const model = new main.PlatinumModel(
+    "marketplace_prd_customer_customer",
+    {
+        target_schema : "platinum_buymed_vn__stg", // Use for document
+        // customAssertionsSchema : `dataform_playground_assertions`,
+        // source_schema = source.silver,
+        // description = ``,
+
+        has_lastUpdatedTime : true,
+        has_createdTime : true,
+        bigquery: {
+            partitionBy: "created_date",
+            clusterBy: ["customer_id"]
+        }
+    }
+);
+model.createIncremental(
+    ["platinum_00h00", "platinum_12h00", "platinum_staging", "marketplace_prd_customer"],
+    {
+        has_src_created_date : false,
+        ingestCutOffInterval : "INTERVAL 1 DAY"
+    }
+);
+// model.assertUnique(
+//     ["0h00","12h00", "platinum_unique_assertion", "marketplace_prd_promotion"],
+//     {
+//         intervalCheckpoint : `INTERVAL 3 MONTH`,
+//         maxRetry: 2,
+//         dependencies: [{schema:"platinum_buymed_vn",name:"marketplace_prd_promotion_voucher"}]
+//     }
+// )
+// model.createMismatchAssertionView(
+//     ["platinum_staging_assertion_view", "marketplace_prd_promotion"],
+//     {
+//         intervalCheckpoint: `INTERVAL 2 DAY`,
+//         maxRetry: 2,
+//         // dependencies : [model.dependencies.assertUnique]
+//     }
+// )
+// model.assertMismatch(
+//     ["0h00","12h00", "platinum_staging_assertion", "marketplace_prd_promotion"],
+//     {
+//         intervalCheckpoint: `INTERVAL 2 DAY`,
+//         maxRetry: 2,
+        
+//     }
+// )
