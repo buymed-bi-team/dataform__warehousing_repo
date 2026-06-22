@@ -15,14 +15,14 @@ config {
 }
 WITH created_by AS (
             SELECT DISTINCT order_code, event_name, action_by_name 
-            FROM platinum_buymed_vn.circa_online_prd_order_order_event
+            FROM ${source.platinum}.circa_online_prd_order_order_event
             WHERE event_name  = 'CREATE_ORDER'
                OR event_name = 'ADMIN_CREATE_ORDER'
      )
 , delivery_time AS (
     SELECT DISTINCT order_code
                     ,DATETIME_ADD(synced_at, INTERVAL 7 HOUR) AS last_status_time
-    FROM platinum_buymed_vn.circa_online_prd_order_order_event
+    FROM ${source.platinum}.circa_online_prd_order_order_event
     -- WHERE order_code = 'DH000938'
     QUALIFY ROW_NUMBER() OVER (PARTITION BY order_code ORDER BY synced_at DESC) = 1
 )
@@ -73,7 +73,7 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                      
       ,i.pos_id                                                                      AS assigned_pos_id  
       ,p.code                                                                        AS assigned_pos_code 
       ,p.name                                                                        AS assigned_pos_name
-FROM platinum_buymed_vn.circa_online_prd_order_order o 
+FROM ${source.platinum}.circa_online_prd_order_order o 
 LEFT JOIN (
     SELECT DISTINCT order_code, reference_order_in_platform, pos_id
     FROM ${source.ref}.cos_fact_order 
