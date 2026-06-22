@@ -85,15 +85,15 @@ WITH over_tbl AS (
         ARRAY_AGG(
             key 
             ORDER BY
-                synced_at DESC,
-                last_updated_time DESC
+                synced_at DESC
+                -- last_updated_time DESC
             LIMIT 1
         )[0] key ,
         ARRAY_AGG(
             action 
             ORDER BY
-                synced_at DESC,
-                last_updated_time DESC
+                synced_at DESC
+                -- last_updated_time DESC
             LIMIT 1
         )[0] action
     FROM silver_buymed_vn.accounting_prd_invoice_order_invoice_item
