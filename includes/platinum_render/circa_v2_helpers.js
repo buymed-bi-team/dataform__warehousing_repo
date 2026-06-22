@@ -9,7 +9,7 @@ function generateCDCScript({
   primaryKey      = 'id',
   createdTime     = 'created_at',
   timezone        = 'Asia/Ho_Chi_Minh',
-  lookbackHours   = 2,
+  lookbackHours   = 0,
 }) {
 const colExprCase = `
   CASE
@@ -85,7 +85,7 @@ const colExprCase = `
     -- ── 2. Get checkpoint ─────────────────────────────────────────────────
     IF table_exists THEN
       SET ingest_checkpoint = (
-        SELECT COALESCE(MAX(sync_at) - INTERVAL 1 HOUR, TIMESTAMP('2000-01-01'))
+        SELECT COALESCE(MAX(sync_at), TIMESTAMP('2000-01-01'))
         FROM ${destTable}
       );
     ELSE
@@ -112,11 +112,20 @@ const colExprCase = `
           )
         );
       ELSE
-        SET affected_dates = ARRAY(
-          SELECT DISTINCT DATE(DATETIME(SAFE.PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%E*S%Ez',
-            JSON_VALUE(JSON_QUERY(data,'$.after'),'$.${createdTime}')), '${timezone}'))
-          FROM ${srcTable}
-          WHERE publish_time > TIMESTAMP_SUB(ingest_checkpoint, INTERVAL ${lookbackHours} HOUR)
+SET affected_dates = ARRAY(
+          SELECT DISTINCT created_date
+          FROM (
+            SELECT
+              CASE
+                WHEN JSON_VALUE(JSON_QUERY(data,'$.after'),'$.${createdTime}') IS NOT NULL
+                THEN DATE(DATETIME(SAFE.PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%E*S%Ez',
+                       JSON_VALUE(JSON_QUERY(data,'$.after'),'$.${createdTime}')), '${timezone}'))
+                ELSE DATE('1900-01-01')
+              END AS created_date
+            FROM ${srcTable}
+            WHERE publish_time > TIMESTAMP_SUB(ingest_checkpoint, INTERVAL ${lookbackHours} HOUR)
+          )
+          WHERE created_date IS NOT NULL
         );
       END IF;
 
@@ -195,7 +204,7 @@ const colExprCase = `
   -- ── SELECT (dynamic cols first, sync_at + created_date appended at the end) ──
           ' SELECT ',
           STRING_AGG(${colExprCase}, ', ' ORDER BY col_offset),   -- ← dynamic col expressions
-          ',   SAFE_CAST(JSON_VALUE(data,\\'$.sync_at\\') AS TIMESTAMP) AS sync_at',
+          ',   publish_time AS sync_at',
           ',   CASE WHEN JSON_VALUE(JSON_QUERY(data,\\'$.after\\'),\\'$.${createdTime}\\') IS NOT NULL',
           '   THEN DATE(DATETIME(SAFE.PARSE_TIMESTAMP(\\'%Y-%m-%d %H:%M:%E*S%Ez\\',',
           '     JSON_VALUE(JSON_QUERY(data,\\'$.after\\'),\\'$.${createdTime}\\')),\\'${timezone}\\'))',

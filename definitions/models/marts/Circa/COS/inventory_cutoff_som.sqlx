@@ -1,7 +1,7 @@
 config {
     type: "table",
-    description: `inventory_cutoff_som PIC: huyen.ngo; model_type: Table ;schedule: manual refresh`,
-    tags: ["circa_cutoff"],
+    description: `inventory_cutoff_som PIC: huyen.ngo; model_type: Table ;schedule: at 10h30`,
+    tags: ["circa_cutoff","10h30"], 
     name: "inventory_cutoff_som",
     columns: {
         
