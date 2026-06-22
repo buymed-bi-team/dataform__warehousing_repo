@@ -112,11 +112,20 @@ const colExprCase = `
           )
         );
       ELSE
-        SET affected_dates = ARRAY(
-          SELECT DISTINCT DATE(DATETIME(SAFE.PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%E*S%Ez',
-            JSON_VALUE(JSON_QUERY(data,'$.after'),'$.${createdTime}')), '${timezone}'))
-          FROM ${srcTable}
-          WHERE publish_time > TIMESTAMP_SUB(ingest_checkpoint, INTERVAL ${lookbackHours} HOUR)
+SET affected_dates = ARRAY(
+          SELECT DISTINCT created_date
+          FROM (
+            SELECT
+              CASE
+                WHEN JSON_VALUE(JSON_QUERY(data,'$.after'),'$.${createdTime}') IS NOT NULL
+                THEN DATE(DATETIME(SAFE.PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%E*S%Ez',
+                       JSON_VALUE(JSON_QUERY(data,'$.after'),'$.${createdTime}')), '${timezone}'))
+                ELSE DATE('1900-01-01')
+              END AS created_date
+            FROM ${srcTable}
+            WHERE publish_time > TIMESTAMP_SUB(ingest_checkpoint, INTERVAL ${lookbackHours} HOUR)
+          )
+          WHERE created_date IS NOT NULL
         );
       END IF;
 
