@@ -1,5 +1,5 @@
 config {
-    type: "table", 
+    type: "incremental", 
     description: 
         `PIC: nguyen.tran; 
         Type: Table; 
@@ -50,6 +50,17 @@ config {
     //}
 }
 
+pre_operations {
+    ${when(
+        incremental(),
+        `     
+            DELETE FROM ${self()}
+            WHERE DATE(created_at) >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), YEAR), INTERVAL 1 YEAR);
+        `
+        )
+    }
+}
+
 WITH
   return_amount AS (
     SELECT 
@@ -57,6 +68,7 @@ WITH
       ,SUM(amount) AS return_amount
     FROM ${source.platinum}.accounting_prd_core_credit_note
     WHERE type = "RETURN"
+    ${when(incremental(), `AND created_date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), YEAR), INTERVAL 1 YEAR)`)}
     GROUP BY 1 
   ),
 
@@ -67,6 +79,7 @@ WITH
       ,SUM(total_order_amount) AS invoice_amount
     FROM ${source.platinum}.accounting_prd_core_bill
     WHERE status <> "CANCEL"
+    ${when(incremental(), `AND created_date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), YEAR), INTERVAL 1 YEAR)`)}
     GROUP BY 1 
   ),
 
@@ -95,6 +108,7 @@ WITH
         , SUM(SAFE_CAST(JSON_VALUE(r, "$.discount_value") AS FLOAT64)) AS discount_amount
       FROM ${source.platinum}.marketplace_prd_order_v2_order
         , UNNEST(JSON_QUERY_ARRAY(redeem_apply_result)) AS r
+        ${when(incremental(), `WHERE created_date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), YEAR), INTERVAL 1 YEAR)`)}
       GROUP BY 1
   ),
 
@@ -261,6 +275,7 @@ WITH
         ON da.order_id = a.order_id
     WHERE
       a.status <> 'REVERTING' 
+      ${when(incremental(), `AND a.created_date >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), YEAR), INTERVAL 1 YEAR)`)}
   ),
 
   fact_order_v2 AS (
@@ -286,59 +301,59 @@ WITH
         END AS gmv
     FROM
       fact_order AS a
-  ),
-
-  Orders AS (
-    SELECT
-      DATE(created_at) AS created_date,
-      customer_id,
-      FORMAT_DATE('%m-%Y', DATE(created_at)) AS created_month,
-      EXTRACT(YEAR FROM DATE(created_at)) AS year,
-      EXTRACT(MONTH FROM DATE(created_at)) AS month
-    FROM fact_order_v2
-    WHERE order_status != "CANCEL" 
-    QUALIFY
-      ROW_NUMBER() OVER (PARTITION BY customer_id, FORMAT_DATE('%m-%Y', date(created_at)) ORDER BY created_at DESC) = 1
-    ORDER BY created_date
-  ),
-
-  Orders_prev AS (
-    SELECT  
-      customer_id,
-      created_month,
-      year,
-      month,
-      LAG(created_month) OVER (PARTITION BY customer_id ORDER BY year, month) AS prev_created_month,
-      LAG(year) OVER (PARTITION BY customer_id ORDER BY year, month) AS prev_year,
-      LAG(month) OVER (PARTITION BY customer_id ORDER BY year, month) AS prev_month
-    FROM Orders
-  ),
-
-  OrderCustomerType AS (
-    SELECT
-      CONCAT(cast(created_month as string), "_", customer_id) as month_id,
-      customer_id,
-      created_month,
-      year,
-      month,
-      prev_created_month,
-      prev_year,
-      prev_month,
-      CASE
-        WHEN prev_created_month IS NULL THEN 'New Customer' 
-        ELSE
-          CASE
-            WHEN (year - prev_year) * 12 + (month - prev_month) > 1 THEN 'Reacquire Customer' --caculate the period of prev month and curent row month to find out customer type 
-            ELSE 'Repeat Customer'
-          END
-      END AS customer_type
-    FROM Orders_prev
   )
+
+--   Orders AS (
+--     SELECT
+--       DATE(created_at) AS created_date,
+--       customer_id,
+--       FORMAT_DATE('%m-%Y', DATE(created_at)) AS created_month,
+--       EXTRACT(YEAR FROM DATE(created_at)) AS year,
+--       EXTRACT(MONTH FROM DATE(created_at)) AS month
+--     FROM fact_order_v2
+--     WHERE order_status != "CANCEL" 
+--     QUALIFY
+--       ROW_NUMBER() OVER (PARTITION BY customer_id, FORMAT_DATE('%m-%Y', date(created_at)) ORDER BY created_at DESC) = 1
+--     ORDER BY created_date
+--   ),
+
+--   Orders_prev AS (
+--     SELECT  
+--       customer_id,
+--       created_month,
+--       year,
+--       month,
+--       LAG(created_month) OVER (PARTITION BY customer_id ORDER BY year, month) AS prev_created_month,
+--       LAG(year) OVER (PARTITION BY customer_id ORDER BY year, month) AS prev_year,
+--       LAG(month) OVER (PARTITION BY customer_id ORDER BY year, month) AS prev_month
+--     FROM Orders
+--   ),
+
+--   OrderCustomerType AS (
+--     SELECT
+--       CONCAT(cast(created_month as string), "_", customer_id) as month_id,
+--       customer_id,
+--       created_month,
+--       year,
+--       month,
+--       prev_created_month,
+--       prev_year,
+--       prev_month,
+--       CASE
+--         WHEN prev_created_month IS NULL THEN 'New Customer' 
+--         ELSE
+--           CASE
+--             WHEN (year - prev_year) * 12 + (month - prev_month) > 1 THEN 'Reacquire Customer' --caculate the period of prev month and curent row month to find out customer type 
+--             ELSE 'Repeat Customer'
+--           END
+--       END AS customer_type
+--     FROM Orders_prev
+--   )
 
 SELECT 
   a.*
-  , b.customer_type 
+--   , b.customer_type 
 FROM fact_order_v2 AS a 
-  LEFT JOIN  OrderCustomerType AS b 
-    ON a.month_id = b.month_id
-QUALIFY ROW_NUMBER() OVER(PARTITION BY order_id) = 1
+--   LEFT JOIN  OrderCustomerType AS b 
+    -- ON a.month_id = b.month_id
+-- QUALIFY ROW_NUMBER() OVER(PARTITION BY order_id) = 1
