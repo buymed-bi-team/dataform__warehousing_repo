@@ -100,7 +100,7 @@ function createIncremental_query({
                 key 
                 ORDER BY
                     synced_at DESC,
-                    IF (action='d',3, IF (action='u',2,1)) DESC,
+                    --IF (action='d',3, IF (action='u',2,1)) DESC,
                     ${config.lastUpdatedTime} DESC
                 LIMIT 1
             )[0] key ,
@@ -108,7 +108,7 @@ function createIncremental_query({
                 action 
                 ORDER BY
                     synced_at DESC,
-                    IF (action='d',3, IF (action='u',2,1)) DESC,
+                    --IF (action='d',3, IF (action='u',2,1)) DESC,
                     ${config.lastUpdatedTime} DESC
                 LIMIT 1
             )[0] action
@@ -137,7 +137,7 @@ function createIncremental_query({
         PARTITION BY mg_id
         ORDER BY synced_at desc,
             synced_at DESC,
-        IF (action='d',3, IF (action='u',2,1)) DESC,
+        --IF (action='d',3, IF (action='u',2,1)) DESC,
         ${config.lastUpdatedTime} DESC
     )
     `
