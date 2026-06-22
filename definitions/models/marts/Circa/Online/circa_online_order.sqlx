@@ -157,7 +157,7 @@ SELECT o.* except(delivery_tags)
     AND (
       cancellation_note LIKE '%gom%'
       OR cancellation_note LIKE '%cheating%'
-      OR cancellation_note LIKE '%thuốc sỉ%'
+     -- OR cancellation_note LIKE '%thuốc sỉ%'
       OR cancellation_note LIKE '%sỉ%'
       OR cancellation_note LIKE '%giới hạn số lượng%'
       OR cancellation_note LIKE '%nghi ngờ%'
