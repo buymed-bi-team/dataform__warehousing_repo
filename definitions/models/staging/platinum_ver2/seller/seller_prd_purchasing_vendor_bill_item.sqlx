@@ -23,15 +23,11 @@ config {
     FROM silver_buymed_vn.seller_prd_purchasing_vendor_bill_item
     WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 1 DAY
     QUALIFY ROW_NUMBER() OVER (_window) = 1 
-          AND ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 16 HOUR
+        --   AND ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 16 HOUR
           WINDOW _window AS (
           PARTITION BY mg_id
           ORDER BY synced_at DESC,
-          IF
-              (action='d',3,
-              IF
-              (action='u',2,1)) DESC
-          ,last_updated_time DESC)
+          last_updated_time DESC)
   ), platinum AS (
     SELECT 
       key,mg_id,growth_invoice_id,quantity,total_price,product_id,lot,po_code,vendor_bill_code,vat,discount_price,vendor_bill_item_code,growth_invoice_item_id,item_name,unit,vat_price,total_discount_price,price,sku,vendor_bill_id,created_time,is_inbound_completed,price_after_discount,product_name,product_code,exp_date,discount_percent,last_updated_time,actual_quantity,po_trackings,synced_at,extra_props,action,ingest_time,
@@ -39,11 +35,9 @@ config {
       platinum_refresh
     FROM ${ref(`platinum_buymed_vn__stg`, `seller_prd_purchasing_vendor_bill_item`)}
   )
-  SELECT p.*
-  FROM platinum p
-  LEFT JOIN silver s 
-      ON p.mg_id = s.mg_id 
-  WHERE s.mg_id is null 
+SELECT p.*
+FROM platinum p
+WHERE NOT EXISTS (SELECT 1 FROM silver s WHERE s.mg_id = p.mg_id)
 
   UNION ALL 
 
