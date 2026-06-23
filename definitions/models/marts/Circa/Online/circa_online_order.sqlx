@@ -210,6 +210,7 @@ SELECT o.* except(delivery_tags)
        cancellation_note LIKE '%trùng đơn%'
       OR cancellation_note LIKE '%đặt lại%'
       OR cancellation_note LIKE '%đặt trùng%'
+      OR cancellation_note LIKE '%để đặt thêm%'
     )
     THEN '4. Đặt lại'
   WHEN cancellation_type = 'CUSTOMER_CHANGES_MIND'
