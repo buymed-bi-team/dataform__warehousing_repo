@@ -17,7 +17,8 @@ and a.status not in ('CANCELED','FAILED_SHIPMENT','OUT_OF_STOCK','RETURNED')
 and a.type = 'OFFLINE'
 and dp.type = 'CIRCA'
 and not regexp_contains(lower(dp.name), 'tech|test|text|111')
-and date_trunc(a.created_date,week(monday))  = date_trunc(current_date(),week(monday))
+-- and date_trunc(a.created_date,week(monday))  = date_trunc(current_date(),week(monday))
+and a.created_date between '2026-06-22' and '2026-06-30'
 group by all)
 , target_ as (
   select pos_code,
@@ -25,7 +26,8 @@ group by all)
   sum(custom_week_target) as new_target 
   from gold_buymed_vn2.dim_fin_circa_cos_gmv_target_2026_src 
   where channel = 'OFFLINE'
-  and  date_trunc(date,week(monday))  = date_trunc(current_date(),week(monday))
+  -- and  sow  = date_trunc(current_date(),week(monday))
+  and sow = '2026-06-22' -- custom final week with 9 days
   group by all
   )
 
