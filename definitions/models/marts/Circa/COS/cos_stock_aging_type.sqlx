@@ -75,13 +75,13 @@ WITH count_ord AS ( -- đếm số lượng đơn
                 WHEN DATE_DIFF(CURRENT_DATE("Asia/Ho_Chi_Minh"), latest_ord, DAY) < 46 AND DATE_DIFF(CURRENT_DATE("Asia/Ho_Chi_Minh"), latest_ord, DAY) >= 31 THEN "45D"
                 WHEN DATE_DIFF(CURRENT_DATE("Asia/Ho_Chi_Minh"), latest_ord, DAY) < 61 AND DATE_DIFF(CURRENT_DATE("Asia/Ho_Chi_Minh"), latest_ord, DAY) >= 46 THEN "60D"
                 WHEN DATE_DIFF(CURRENT_DATE("Asia/Ho_Chi_Minh"), latest_ord, DAY) < 91 AND DATE_DIFF(CURRENT_DATE("Asia/Ho_Chi_Minh"), latest_ord, DAY) >= 61 THEN "90D"
-                WHEN DATE_DIFF(CURRENT_DATE("Asia/Ho_Chi_Minh"), latest_ord, DAY) > 90 THEN "> 90D" 
+                WHEN DATE_DIFF(CURRENT_DATE("Asia/Ho_Chi_Minh"), latest_ord, DAY) >= 91 THEN "> 90D" 
                 WHEN b.latest_ord IS NULL AND DATE_DIFF(CURRENT_DATE("Asia/Ho_Chi_Minh"), DATE(firstime_have_inventory), DAY) < 16 THEN "15D"
                 WHEN b.latest_ord IS NULL AND DATE_DIFF(CURRENT_DATE("Asia/Ho_Chi_Minh"), DATE(firstime_have_inventory), DAY) < 31 AND DATE_DIFF(CURRENT_DATE("Asia/Ho_Chi_Minh"), DATE(firstime_have_inventory), DAY) >= 16 THEN "30D"
                 WHEN b.latest_ord IS NULL AND DATE_DIFF(CURRENT_DATE("Asia/Ho_Chi_Minh"), DATE(firstime_have_inventory), DAY) < 46 AND DATE_DIFF(CURRENT_DATE("Asia/Ho_Chi_Minh"), DATE(firstime_have_inventory), DAY) >= 31 THEN "45D"
                 WHEN b.latest_ord IS NULL AND DATE_DIFF(CURRENT_DATE("Asia/Ho_Chi_Minh"), DATE(firstime_have_inventory), DAY) < 61 AND DATE_DIFF(CURRENT_DATE("Asia/Ho_Chi_Minh"), DATE(firstime_have_inventory), DAY) >= 46 THEN "60D"
                 WHEN b.latest_ord IS NULL AND DATE_DIFF(CURRENT_DATE("Asia/Ho_Chi_Minh"), DATE(firstime_have_inventory), DAY) < 91 AND DATE_DIFF(CURRENT_DATE("Asia/Ho_Chi_Minh"), DATE(firstime_have_inventory), DAY) >= 61 THEN "90D"
-                WHEN b.latest_ord IS NULL AND DATE_DIFF(CURRENT_DATE("Asia/Ho_Chi_Minh"), DATE(firstime_have_inventory), DAY) > 90 THEN "> 90D" 
+                WHEN b.latest_ord IS NULL AND DATE_DIFF(CURRENT_DATE("Asia/Ho_Chi_Minh"), DATE(firstime_have_inventory), DAY) >= 91 THEN "> 90D" 
            END AS latest_date_order_range
         --   ,a.client_id
      FROM first_time_have_inventory a
