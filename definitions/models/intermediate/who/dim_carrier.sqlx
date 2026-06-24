@@ -54,7 +54,7 @@ with cte_dedup_carrier as (
             , CASE
                 WHEN STRPOS(a.carrier_code, "HUB") > 0 AND a.carrier_name NOT IN ("Onwheel", "Viettel Post Miền Nam")
                     OR a.carrier_name = "NVCT Hub VSIP II"
-                    OR a.carrier_code = "LANGSON"
+                    OR a.carrier_code in ('LANGSON', 'CAOBANG','BACKAN','HAGIANG')
                     THEN "HUB"
                 WHEN (STRPOS(a.carrier_code, "NVCT") > 0 OR STRPOS(a.carrier_code, "NVTC") > 0)
                     AND a.carrier_name NOT IN ("VTP Miền Bắc - PHS", "Viettel Post Miền Bắc")
