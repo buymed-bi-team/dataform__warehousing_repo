@@ -27,7 +27,7 @@ WITH
             , FORMAT_DATE("%Y-%m", created_date ) AS year_month
             , DATE_TRUNC(created_date, MONTH) AS som
             , DATETIME(created_time, "+7") AS created_time
-            , DATETIME(a.delivered_time, "+7") AS delivered_time
+            , DATETIME(d.delivered_time, "+7") AS delivered_time
             , order_id
             , sale_order_code
             , customer_id
@@ -50,6 +50,13 @@ WITH
             SAFE_CAST(JSON_VALUE(a.invoice, '$.invoice_request') AS BOOLEAN) AS invoice_request,
             payment_method,
         FROM ${source.platinum}.marketplace_prd_order_v2_order AS a
+            LEFT JOIN (
+                SELECT
+                    admin_id
+                    , MIN(delivered_time) AS delivered_time
+                FROM  ${source.platinum}.warehouse_prd_core_delivery_order
+                GROUP BY ALL
+            ) AS d ON a.order_id = d.admin_id
         WHERE 1=1
             -- AND created_date >= "2022-01-01"
             AND a.created_date >= ${when(incremental(), `DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 1 MONTH)`, `"2025-01-01"`)}
