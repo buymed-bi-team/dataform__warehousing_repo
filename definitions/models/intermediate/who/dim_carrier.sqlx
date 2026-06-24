@@ -45,7 +45,7 @@ with cte_dedup_carrier as (
         --         else '3PL'
         --     end as carrier_type
             , case
-                when a.carrier_code in ('LANGSON') then '1PL'
+                when a.carrier_code in ('LANGSON', 'CAOBANG','BACKAN','HAGIANG') then '1PL'
                 when a.carrier_code like 'HUB%' then '1PL'
                 when a.carrier_code like 'NVCT%' then '1PL'
                 when a.carrier_code like 'KTLS%' 	then '2PL'
