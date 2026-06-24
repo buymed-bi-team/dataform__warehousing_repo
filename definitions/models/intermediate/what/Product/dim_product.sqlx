@@ -276,6 +276,7 @@ WITH
             WHERE code = "PRODUCT_USER_TYPE"
                 AND JSON_VALUE(l, "$.language") = "vi"
         ) AS a ON a.code = user_type
+    WHERE a.code IS NOT NULL
     GROUP BY ALL
   )
 
