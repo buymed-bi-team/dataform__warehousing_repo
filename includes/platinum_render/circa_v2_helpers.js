@@ -9,7 +9,7 @@ function generateCDCScript({
   primaryKey      = 'id',
   createdTime     = 'created_at',
   timezone        = 'Asia/Ho_Chi_Minh',
-  lookbackHours   = 0,
+  lookbackHours   = 2,
 }) {
 const colExprCase = `
   CASE
@@ -85,7 +85,7 @@ const colExprCase = `
     -- ── 2. Get checkpoint ─────────────────────────────────────────────────
     IF table_exists THEN
       SET ingest_checkpoint = (
-        SELECT COALESCE(MAX(sync_at), TIMESTAMP('2000-01-01'))
+        SELECT COALESCE(MAX(publish_time), TIMESTAMP('2000-01-01'))
         FROM ${destTable}
       );
     ELSE
@@ -106,7 +106,7 @@ const colExprCase = `
           SELECT DISTINCT created_date
           FROM ${destTable}
           WHERE ${primaryKey} IN (
-            SELECT JSON_VALUE(data,'$.primary_key.id')
+            SELECT JSON_VALUE(data,'$.primary_key.${primaryKey}')
             FROM ${srcTable}
             WHERE publish_time > TIMESTAMP_SUB(ingest_checkpoint, INTERVAL ${lookbackHours} HOUR)
           )
@@ -133,7 +133,7 @@ SET affected_dates = ARRAY(
         DELETE FROM ${destTable}
         WHERE created_date IN UNNEST(affected_dates)
           AND CAST(${primaryKey} AS STRING) IN (
-            SELECT JSON_VALUE(data,'$.primary_key.id')
+            SELECT JSON_VALUE(data,'$.primary_key.${primaryKey}')
             FROM ${srcTable}
             WHERE publish_time > TIMESTAMP_SUB(ingest_checkpoint, INTERVAL ${lookbackHours} HOUR)
           );
@@ -185,7 +185,7 @@ SET affected_dates = ARRAY(
           -- ── WITH winners ──
           ' WITH winners AS (',
           '   SELECT',
-          '     JSON_VALUE(data,\\'$.primary_key.id\\') AS id,',
+          '     JSON_VALUE(data,\\'$.primary_key.${primaryKey}\\') AS id,',
           '     ARRAY_AGG(message_id ORDER BY',
           '       SAFE_CAST(JSON_VALUE(data,\\'$.sync_at\\') AS TIMESTAMP) DESC,',
           '       IF(JSON_VALUE(data,\\'$.operation\\')=\\'DELETE\\',3,',
@@ -195,16 +195,17 @@ SET affected_dates = ARRAY(
           '       SAFE_CAST(JSON_VALUE(data,\\'$.sync_at\\') AS TIMESTAMP) DESC',
           '       LIMIT 1)[OFFSET(0)] AS action',
           '   FROM ${srcTable}',
-          '   WHERE JSON_VALUE(data,\\'$.primary_key.id\\') IS NOT NULL',
+          '   WHERE JSON_VALUE(data,\\'$.primary_key.${primaryKey}\\') IS NOT NULL',
           '     AND publish_time > TIMESTAMP_SUB(TIMESTAMP(\\'', CAST(ingest_checkpoint AS STRING), '\\'), INTERVAL ${lookbackHours} HOUR)',
           '   GROUP BY id',
           '   HAVING action != \\'DELETE\\'',
           ' )',
 
-  -- ── SELECT (dynamic cols first, sync_at + created_date appended at the end) ──
+  -- ── SELECT (dynamic cols first, sync_at, publish_time + created_date appended at the end) ──
           ' SELECT ',
           STRING_AGG(${colExprCase}, ', ' ORDER BY col_offset),   -- ← dynamic col expressions
-          ',   publish_time AS sync_at',
+          ',   SAFE_CAST(JSON_VALUE(data,\\'$.sync_at\\') AS TIMESTAMP) AS sync_at',
+          ',   publish_time AS publish_time',
           ',   CASE WHEN JSON_VALUE(JSON_QUERY(data,\\'$.after\\'),\\'$.${createdTime}\\') IS NOT NULL',
           '   THEN DATE(DATETIME(SAFE.PARSE_TIMESTAMP(\\'%Y-%m-%d %H:%M:%E*S%Ez\\',',
           '     JSON_VALUE(JSON_QUERY(data,\\'$.after\\'),\\'$.${createdTime}\\')),\\'${timezone}\\'))',
@@ -220,7 +221,7 @@ SET affected_dates = ARRAY(
     IF table_exists THEN
       SET flatten_sql = CONCAT(
         'INSERT INTO ${destTable}',
-        ' (', col_list, ', sync_at, created_date) ',
+        ' (', col_list, ', sync_at, publish_time, created_date) ',
         select_body
       );
     ELSE
