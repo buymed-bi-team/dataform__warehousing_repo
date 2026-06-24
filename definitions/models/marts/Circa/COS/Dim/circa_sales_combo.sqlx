@@ -45,7 +45,8 @@ SELECT DISTINCT t.* except (product_id)
                ,t.sub_product_id AS product_id
                ,pr.name AS product_name
                ,CONCAT(t.product_id, "_", t.client_id) AS product_client_id
-               ,CASE WHEN expired_time <= TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) THEN true 
+               ,CASE WHEN expired_time IS NULL THEN false
+                     WHEN expired_time <= TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) THEN true 
                      ELSE false
                 END AS is_expired
 FROM t
