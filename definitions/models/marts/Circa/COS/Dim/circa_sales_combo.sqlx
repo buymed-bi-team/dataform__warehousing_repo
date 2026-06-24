@@ -41,11 +41,12 @@ SELECT DISTINCT s.product_id
 
 SELECT DISTINCT t.* except (product_id)
                 ,t.product_id AS combo_code
+                ,DATE(t.created_at ) AS created_date 
                 ,p.sale_price
-               ,t.sub_product_id AS product_id
-               ,pr.name AS product_name
-               ,CONCAT(t.product_id, "_", t.client_id) AS product_client_id
-               ,CASE WHEN expired_time IS NULL THEN false
+                ,t.sub_product_id AS product_id
+                ,pr.name AS product_name
+                ,CONCAT(t.product_id, "_", t.client_id) AS product_client_id
+                ,CASE WHEN expired_time IS NULL THEN false
                      WHEN expired_time <= TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) THEN true 
                      ELSE false
                 END AS is_expired
