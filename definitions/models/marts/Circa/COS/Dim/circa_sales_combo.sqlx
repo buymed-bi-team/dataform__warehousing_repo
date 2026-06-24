@@ -39,7 +39,7 @@ SELECT DISTINCT s.product_id
            and client_id = 1
 )
 
-SELECT DISTINCT t.* except (product_id)
+SELECT DISTINCT t.* except (product_id, sub_product_id)
                 ,t.product_id AS combo_code
                 ,DATE(t.created_at ) AS created_date 
                 ,p.sale_price
