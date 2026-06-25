@@ -197,7 +197,7 @@ SELECT o.* except(delivery_tags)
       OR admin_note LIKE '%hết tồn kho%'
       OR admin_note LIKE '%không còn đủ%'
       OR admin_note LIKE '%đang thiếu hàng%'
-      -- OR admin_note LIKE '%địa chỉ không rõ%'
+      OR admin_note LIKE '%không giữ hàng%'
       -- OR admin_note LIKE '%4 đơn liên tiếp%'
       -- OR admin_note LIKE '%gian lận%'
     )
@@ -210,6 +210,7 @@ SELECT o.* except(delivery_tags)
        cancellation_note LIKE '%trùng đơn%'
       OR cancellation_note LIKE '%đặt lại%'
       OR cancellation_note LIKE '%đặt trùng%'
+      OR cancellation_note LIKE '%để đặt thêm%'
     )
     THEN '4. Đặt lại'
   WHEN cancellation_type = 'CUSTOMER_CHANGES_MIND'

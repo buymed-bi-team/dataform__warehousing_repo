@@ -262,14 +262,22 @@ WITH
 
   user_type AS (
     SELECT
-        JSON_VALUE(o, "$.value") AS code
-        , JSON_VALUE(l, "$.label") AS label
-        -- , JSON_VALUE(l, "$.language") AS language
-    FROM platinum_buymed_vn.pim_prd_product_attribute_definitions
-        LEFT JOIN UNNEST(JSON_QUERY_ARRAY(options)) AS o
-        LEFT JOIN UNNEST(JSON_QUERY_ARRAY(o, "$.labels")) AS l
-    WHERE code = "PRODUCT_USER_TYPE"
-        AND JSON_VALUE(l, "$.language") = "vi"
+        p.product_id
+        , STRING_AGG(label, ", ") AS user_type
+    FROM ${source.platinum}.marketplace_prd_product_v2_product AS p
+        , UNNEST(JSON_VALUE_ARRAY(extra_props, "$.user_types")) AS user_type
+        LEFT JOIN (
+            SELECT
+                JSON_VALUE(o, "$.value") AS code
+                , JSON_VALUE(l, "$.label") AS label
+            FROM ${source.platinum}.pim_prd_product_attribute_definitions
+                LEFT JOIN UNNEST(JSON_QUERY_ARRAY(options)) AS o
+                LEFT JOIN UNNEST(JSON_QUERY_ARRAY(o, "$.labels")) AS l
+            WHERE code = "PRODUCT_USER_TYPE"
+                AND JSON_VALUE(l, "$.language") = "vi"
+        ) AS a ON a.code = user_type
+    WHERE a.code IS NOT NULL
+    GROUP BY ALL
   )
 
 SELECT
@@ -434,13 +442,13 @@ SELECT
   REGEXP_REPLACE(JSON_VALUE(product.image_urls, "$[0]"), r'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS product_image_url,
   ARRAY_LENGTH(JSON_VALUE_ARRAY(product.image_urls )) AS no_images,
   -- JSON_VALUE(product.extra_props, "$.user_type") AS user_type,
-  ut.label AS user_type,
+  ut.user_type,
   IF(product.product_id IN (1129214,1129202	,1127079	,1160685	,1160792, 825641, 1160581, 237266, 2556, 2006776, 13887, 11376, 7989, 8472, 90132, 4589, 56032, 5287, 212255, 71988, 2000031, 1824, 15102, 4307	), TRUE, FALSE) AS sales_rx_buymed
 
 
 
 FROM ${source.platinum}.marketplace_prd_product_v2_product AS product
-LEFT JOIN  ${source.platinum}.seller_prd_core_seller AS seller on COALESCE(product.owner, "MEDX") = seller.code
+LEFT JOIN ${source.platinum}.seller_prd_core_seller AS seller on COALESCE(product.owner, "MEDX") = seller.code
 LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_seller_category AS seller_category ON seller_category.code = product.seller_category_code
 LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_seller_sub_category AS seller_sub_category ON seller_sub_category.code = product.seller_sub_category_code
 LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_manufacturer AS manufacturer ON manufacturer.code = product.manufacturer_code
@@ -462,7 +470,7 @@ LEFT JOIN cat_lieu AS cl ON cl.product_id = product.product_id
 LEFT JOIN atc3 AS a3 ON a3.product_id = product.product_id
 LEFT JOIN atc4 AS a4 ON a4.product_id = product.product_id
 LEFT JOIN sub_brand AS sb ON sb.product_id = product.product_id
-LEFT JOIN user_type AS ut ON ut.code = JSON_VALUE(product.extra_props, "$.user_type")
+LEFT JOIN user_type AS ut ON ut.product_id = product.product_id
 
 WHERE
     LOWER(product.name) NOT LIKE '%(bỏ)%'

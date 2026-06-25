@@ -10,7 +10,7 @@ WITH base_data AS (
     SELECT DISTINCT product_id
     FROM ${source.circa_os}.order_purchase_order_item
     WHERE (sku IS NOT NULL OR sku <> '')
-      AND received_quantity > 0
+   --  AND received_quantity > 0
 ) -- lấy danh sách sản phẩm đã mua trong quá khứ
 
 , inventory_by_product AS (
