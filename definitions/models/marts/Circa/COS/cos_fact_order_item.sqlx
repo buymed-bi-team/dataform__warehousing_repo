@@ -148,7 +148,7 @@ SELECT DISTINCT
     ,fo.created_date
     ,fo.order_code
     ,i.* EXCEPT(unit_price, discount_amount, unit_price_before_discount)
-    , CASE WHEN i.order_apply_combo_id IS NOT NULL AND i.order_apply_combo_id <> '' AND unit_price = 0 THEN
+    , CASE WHEN i.order_apply_combo_id IS NOT NULL AND i.order_apply_combo_id <> ''  THEN
 ROUND(SAFE_DIVIDE(
         c.combo_price  * c.quantity  * SAFE_DIVIDE(i.system_price * i.quantity,
             SUM(i.system_price * i.quantity) OVER (PARTITION BY i.order_apply_combo_id)
@@ -156,7 +156,7 @@ ROUND(SAFE_DIVIDE(
         i.quantity
     )
     ) ELSE unit_price_before_discount END AS unit_price_before_discount
-     ,CASE WHEN i.order_apply_combo_id IS NOT NULL AND i.order_apply_combo_id <> '' AND unit_price = 0 THEN
+     ,CASE WHEN i.order_apply_combo_id IS NOT NULL AND i.order_apply_combo_id <> ''  THEN
 ROUND(SAFE_DIVIDE(
         c.discount_amount  * c.quantity  * SAFE_DIVIDE(i.system_price * i.quantity,
             SUM(i.system_price * i.quantity) OVER (PARTITION BY i.order_apply_combo_id)
@@ -164,7 +164,7 @@ ROUND(SAFE_DIVIDE(
         i.quantity
     )
     ) ELSE i.discount_amount  END AS discount_amount
-    ,CASE WHEN i.order_apply_combo_id IS NOT NULL AND i.order_apply_combo_id <> '' AND unit_price = 0 THEN
+    ,CASE WHEN i.order_apply_combo_id IS NOT NULL AND i.order_apply_combo_id <> '' THEN
     ROUND(SAFE_DIVIDE(
         (c.combo_price - c.discount_amount)  * c.quantity  * SAFE_DIVIDE(i.system_price * i.quantity,
             SUM(i.system_price * i.quantity) OVER (PARTITION BY i.order_apply_combo_id)
