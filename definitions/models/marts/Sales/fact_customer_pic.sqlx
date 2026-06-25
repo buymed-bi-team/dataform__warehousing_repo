@@ -1,11 +1,11 @@
 config {
-    type: "table",
+    type: "view",
     description: 
         `
         PIC: nguyen.tran; 
         Type: Table; 
         `,
-    tags: ["custom_1h_past10"]
+    //tags: ["custom_1h_past10"]
 }
 
 SELECT
