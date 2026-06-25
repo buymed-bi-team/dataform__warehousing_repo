@@ -55,49 +55,8 @@ LEFT JOIN ${source.ref}.cos_dim_product td ON o.product_id = td.product_id AND o
 LEFT JOIN (SELECT DISTINCT product_id from ${source.ref}.cos_product_essential WHERE status = 'ACTIVE') ls ON o.product_id = ls.product_id 
 WHERE p.id IS NOT NULL
       AND o.client_id NOT IN (5,6,7)
-), base_data_competitor AS (
-    SELECT
-          SAFE_CAST(JSON_EXTRACT_SCALAR(a.extra_props.product_id) AS INT64) AS product_id
-        , JSON_EXTRACT_SCALAR(a.extra_props.unit) AS unit
-        , JSON_EXTRACT_SCALAR(a.extra_props.source) AS comp_name
-        , SAFE_CAST(JSON_EXTRACT_SCALAR(a.extra_props.conversion_rate) AS FLOAT64)
-            * SAFE_CAST(JSON_EXTRACT_SCALAR(a.extra_props.market_price) AS INT64) AS comp_price
-        , a.created_date
-        , a.last_updated_time
-    FROM `platinum_buymed_vn.marketplace_prd_product_v2_product_market_price` a
-    WHERE 1 = 1
-        AND JSON_EXTRACT_SCALAR(a.extra_props.source) IN ('LongChau', 'Pharmacity')
-        AND JSON_EXTRACT_SCALAR(a.extra_props.product_id) IS NOT NULL
-        AND JSON_EXTRACT_SCALAR(a.extra_props.qc) IN ('QC', 'QC done')
-        AND LOWER(JSON_EXTRACT_SCALAR(a.extra_props.market_name)) NOT LIKE '%[ngưng bán]%'
-        AND LOWER(JSON_EXTRACT_SCALAR(a.extra_props.market_name)) NOT LIKE '%[chờ hàng]%'
-        AND DATE(a.last_updated_time + INTERVAL 7 HOUR)
-            >= CURRENT_DATE('Asia/Ho_Chi_Minh') - 3
-        AND SAFE_CAST(JSON_EXTRACT_SCALAR(a.extra_props.conversion_rate) AS FLOAT64)
-            * SAFE_CAST(JSON_EXTRACT_SCALAR(a.extra_props.market_price) AS INT64) >= 1000
 )
-, market AS (
-    SELECT
-          a.product_id
-        , a.comp_name
-        , a.comp_price
-    FROM base_data_competitor a
-    LEFT JOIN `platinum_buymed_vn.marketplace_prd_product_v2_product` b
-        ON a.product_id = b.product_id
-    QUALIFY ROW_NUMBER() OVER (
-        PARTITION BY a.product_id, a.comp_name
-        ORDER BY a.last_updated_time DESC
-    ) = 1
-), competitor AS (
-SELECT
-      product_id
-    , MIN(a.comp_price) AS min_comp
-    , COUNT(comp_name) AS no_competitor
-    , STRING_AGG(comp_name, ', ') AS competitors
-FROM market a
--- WHERE product_id = 1110
-GROUP BY ALL
-)
+
 SELECT t.* except (total_amount, price)
        ,total_amount AS origin_amount
        ,p.final_sale_price
@@ -105,13 +64,8 @@ SELECT t.* except (total_amount, price)
              ELSE price END AS price
        ,CASE WHEN p.product_id IS NOT NULL AND final_sale_price > 0 THEN quantity * final_sale_price
              ELSE total_amount END AS total_amount
-      , min_comp
-      , c.no_competitor
-      , c.competitors
 FROM t
 LEFT JOIN (Select * from  ${source.ref}.cos_adhoc_pos_product_client WHERE seller_code = 'CIRCA') p  ON t.product_id = p.product_id AND lower(t.unit) = lower(p.unit)
-LEFT JOIN competitor c ON t.product_id = c.product_id
-
 -- WHERE t.client_id = 1
 -- UNION ALL 
 
