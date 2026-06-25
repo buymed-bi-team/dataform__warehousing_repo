@@ -11,28 +11,33 @@ config {
 WITH base_data AS (
     SELECT DISTINCT product_id
     FROM gold_buymed_vn2.cos_dim_product
-    -- WHERE (sku IS NOT NULL OR sku <> '')
-    --   AND received_quantity <> 0
-) -- lấy danh sách sản phẩm đã mua trong quá khứ
-,thuocsi_sku_status AS (
-    SELECT DISTINCT
-            a.product_id
-           ,sku_system_status
-           ,ROW_NUMBER() OVER (
-                PARTITION BY a.product_id
-                ORDER BY CASE a.sku_system_status
-                            WHEN 'NORMAL' THEN 1
-                            WHEN 'LIMIT' THEN 2
-                            WHEN 'OUT_OF_STOCK' THEN 3
-                            WHEN 'SUSPENDED' THEN 4
-                            ELSE 5
-                         END
-            ) AS row_num
+),
+
+
+sku_aggregated AS (
+    SELECT
+        a.product_id
+        ,a.sku_system_status
+        ,SUM(a.available_qty) OVER (PARTITION BY a.product_id) AS available_qty
+        ,ROW_NUMBER() OVER (
+            PARTITION BY a.product_id
+            ORDER BY CASE a.sku_system_status
+                        WHEN 'NORMAL'       THEN 1
+                        WHEN 'LIMIT'        THEN 2
+                        WHEN 'OUT_OF_STOCK' THEN 3
+                        WHEN 'SUSPENDED'    THEN 4
+                        ELSE 5
+                     END
+        ) AS row_num
     FROM ${source.ref}.adhoc_pm_master_sku a
-    WHERE product_id IN (SELECT DISTINCT product_id FROM base_data)
-      --AND a.fc_code = 'BD'
-      AND sku_system_status <> 'GIFT'
+    INNER JOIN base_data b ON a.product_id = b.product_id
+    WHERE a.sku_system_status <> 'GIFT'
+    --AND a.fc_code = 'BD'
 )
-SELECT *
-FROM thuocsi_sku_status
+
+SELECT
+     product_id
+    ,sku_system_status
+    ,available_qty
+FROM sku_aggregated
 WHERE row_num = 1
