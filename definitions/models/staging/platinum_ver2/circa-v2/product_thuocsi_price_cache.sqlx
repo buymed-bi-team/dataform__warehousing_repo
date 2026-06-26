@@ -10,7 +10,7 @@ js {
                     rawTable:     "product_thuocsi_price_cache",
                     primaryKey:   "id",
                     createdTime:  "created_at",
-                    lookbackHours: 1,
+                    lookbackHours: 0,
                 });
         }
 
