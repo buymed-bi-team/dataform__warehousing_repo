@@ -13,25 +13,40 @@ function generateCDCScript({
 }) {
 const colExprCase = `
   CASE
-    WHEN is_array = TRUE
+    WHEN is_array = TRUE AND bq_type = 'JSON'
+      THEN CONCAT(
+        'JSON_QUERY(data, \\'$.after.',
+        name,
+        '\\') AS \`',
+        name,
+        '\`'
+      )
+
+    WHEN is_array = TRUE AND bq_type != 'JSON'
       THEN CONCAT(
         'JSON_QUERY(JSON_QUERY(data,\\'$.after\\'), \\'$.', name, '\\') AS \`',
         name,
         '\`'
       )
 
-    WHEN bq_type IN ('INT64','INT32','FLOAT64','NUMERIC','BIGNUMERIC','BOOLEAN','DATE','DATETIME','TIMESTAMP','TIME','INTEGER')
+    WHEN bq_type IN ('INT64','INT32','FLOAT64','NUMERIC','BIGNUMERIC','BOOLEAN','DATE','DATETIME','TIMESTAMP','TIME','INTEGER','FLOAT')
       THEN CONCAT(
         'SAFE_CAST(JSON_VALUE(JSON_QUERY(data,\\'$.after\\'), \\'$.', name, '\\') AS ',
-        bq_type,
+        CASE bq_type
+          WHEN 'FLOAT' THEN 'FLOAT64'
+          WHEN 'INT32' THEN 'INT64'
+          ELSE bq_type
+        END,
         ') AS \`',
         name,
         '\`'
       )
 
-    WHEN bq_type = 'JSON'
+    WHEN bq_type = 'JSON' AND is_array = FALSE
       THEN CONCAT(
-        'SAFE.PARSE_JSON(JSON_VALUE(JSON_QUERY(data,\\'$.after\\'), \\'$.', name, '\\')) AS \`',
+        'JSON_QUERY(data, \\'$.after.',
+        name,
+        '\\') AS \`',
         name,
         '\`'
       )
