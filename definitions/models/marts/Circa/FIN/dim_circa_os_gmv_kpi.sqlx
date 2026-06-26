@@ -1,0 +1,36 @@
+config {
+    type: "table",
+    description: `PIC: Ha.Lekim`,
+    tags: ["custom_1h_past20"]
+}
+  select month, 
+  date, 
+  sow as week, 
+  pos_code,
+  dp.name as pos_name,
+  channel, 
+  have_custom_target,
+  target, 
+  custom_week_target, 
+  case when have_custom_target = 1 then custom_week_target
+  -- adjust target based on changes in customed week target, ensure final_target = target
+  else target * safe_divide(
+     sum(target) over (partition by month, pos_code, channel)
+     - sum(custom_week_target) over (partition by month, pos_code, channel), 
+     sum(target) over (partition by month, pos_code, channel, have_custom_target)
+  ) end as final_target
+  from (select 
+  date_trunc(date, month) as month,
+  date, 
+  sow, 
+  pos_code,
+  channel,
+  -- target setup monthly by ha.lekim
+  -- RULE: ONLINE: 125% GMV last month
+  -- OFFLINE: 120% GMV last month
+   target, 
+   CASE WHEN custom_week_target = 0 then 0 else 1 end have_custom_target, 
+   -- custome week target is target setup mannually on every monday by phuc.nguyen.
+   custom_week_target
+  from gold_buymed_vn2.dim_fin_circa_cos_gmv_target_2026_src 
+  ) t left join buymed_circa_v2.entity_pos_profile dp on t.pos_code = dp.code
