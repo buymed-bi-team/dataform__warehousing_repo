@@ -1,7 +1,7 @@
 
 
 const model = new main.PlatinumModel(
-    "platform_core_prd_activity_activity",
+    "platform_iam_prd_core_account",
     {
         target_schema : "platinum_buymed_vn__stg", 
         // customAssertionsSchema : `dataform_playground_assertions`,
@@ -12,12 +12,12 @@ const model = new main.PlatinumModel(
         has_createdTime : true,
         bigquery: {
             partitionBy: "created_date",
-            clusterBy: ["template_code"]
+            clusterBy: ["account_id"]
         }
     }
 );
 model.createIncremental(
-    ["platinum_0h00","platinum_weekend_full_refresh_13h40","platform_core_prd_activity"],
+    ["platinum_0h00","platform_iam_prd_core"],
     {
         has_src_created_date : false,
         ingestCutOffInterval : "INTERVAL 1 MONTH"
