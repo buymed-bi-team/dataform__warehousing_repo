@@ -10,7 +10,7 @@ js {
                     rawTable:     "inventory_change_cost_price_item",
                     primaryKey:   "id",
                     createdTime:  "created_at",
-                    lookbackHours: 1,
+                    lookbackHours: 0,
                 });
         }
 
