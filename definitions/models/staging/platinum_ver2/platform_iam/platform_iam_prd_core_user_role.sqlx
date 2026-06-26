@@ -1,13 +1,13 @@
 config {
     type: "view",
     schema: "platinum_buymed_vn",
-    name: "platform_core_prd_activity_activity",
-    tags:["platinum","platform_core_prd_activity","VN.activity"]
+    name: "platform_iam_prd_core_user_role",
+    tags:["platinum","platform_iam_prd_core","PLATFORM.iam"]
 }
 
   WITH silver AS (
     SELECT
-      key, mg_id, created_time, fullname, `group`, path, data, primary_key, user_agent, activity_id, template_code, org_id, target, session, last_updated_time, username, entity_id, method, ip, result_status, account_id, app_id, keys, synced_at, extra_props, action, ingest_time,
+      key, mg_id, app_id, org_id, account_id, is_main, source, role_code, entity_id, created_time, last_updated_time, synced_at, extra_props, action, ingest_time,
       
         CASE
             WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time, 'Asia/Ho_Chi_Minh'))
@@ -15,7 +15,7 @@ config {
         END
      created_date,
       CAST(null as datetime) 
-    FROM silver_buymed_vn.platform_core_prd_activity_activity
+    FROM silver_buymed_vn.platform_iam_prd_core_user_role
     WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 1 DAY
     QUALIFY ROW_NUMBER() OVER (_window) = 1 
           WINDOW _window AS (
@@ -24,10 +24,10 @@ config {
           ,last_updated_time DESC)
   ), platinum AS (
     SELECT 
-      key, mg_id, created_time, fullname, `group`, path, data, primary_key, user_agent, activity_id, template_code, org_id, target, session, last_updated_time, username, entity_id, method, ip, result_status, account_id, app_id, keys, synced_at, extra_props, action, ingest_time,
+      key, mg_id, app_id, org_id, account_id, is_main, source, role_code, entity_id, created_time, last_updated_time, synced_at, extra_props, action, ingest_time,
       created_date,
       platinum_refresh
-    FROM ${ref(`platinum_buymed_vn__stg`, `platform_core_prd_activity_activity`)}
+    FROM ${ref(`platinum_buymed_vn__stg`, `platform_iam_prd_core_user_role`)}
   )
   SELECT p.*
   FROM platinum p
