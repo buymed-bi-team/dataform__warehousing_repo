@@ -1,7 +1,7 @@
 config {
     type:"table",
     description: "PIC: tu.dang; model_type: table",
-    tags: ["custom_2h_past5"],
+    //tags: ["custom_2h_past5"],
     columns :
     {
         "date":"daily date in calendar",
