@@ -10,7 +10,7 @@ js {
                     rawTable:     "order_order_item_demand",
                     primaryKey:   "id",
                     createdTime:  "created_at",
-                    lookbackHours: 1,
+                    lookbackHours: 0,
                 });
         }
 
