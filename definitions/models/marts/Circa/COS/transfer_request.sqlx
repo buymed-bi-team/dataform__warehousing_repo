@@ -13,7 +13,7 @@ SELECT DISTINCT r.id
               ,r.code
               ,r.src_pos_id
               ,p.name AS pos_tranfer
-              ,r.type
+              ,r.type AS trf_type 
               ,DATETIME_ADD(r.created_at, INTERVAL 7 HOUR) AS created_at
               ,DATETIME_ADD(r.completed_at, INTERVAL 7 HOUR) AS completed_at
               ,dest_pos_id
@@ -45,10 +45,16 @@ WHERE p.id IS NOT NULL
       --  AND product_id = 65050
 GROUP BY ALL
 ), rcv AS ( -- phiếu nhận
-SELECT DISTINCT rcv.id
+SELECT DISTINCT  rcv.id
               ,rcv.status AS rcv_status
+              ,rcv.type AS rcv_type
               ,rcv.related_transfer_request_id
+              ,SUM(ri.quantity) AS tranfer_qty
+              ,SUM(rid.quantity) AS quantity
+              ,SUM(rid.base_quantity) AS base_qty_transfer
               ,SUM(rid.received_quantity) AS qty_received
+              ,SUM(rid.quantity * rid.unit_price) AS total_amount_item
+              --,rcv.src_pos_id
               ,rcv.dest_pos_id
               ,rcv.code AS rcv_code
               ,rcv.client_id
@@ -56,18 +62,22 @@ SELECT DISTINCT rcv.id
               ,lot_id
               ,rid.doc_code
               ,unit_price
+              ,e.name AS created_by
+              ,unit
+              ,rcv.note AS rcv_note
 FROM ${source.circa_os}.inventory_transfer_request rcv 
 LEFT JOIN ${source.circa_os}.inventory_transfer_item ri ON rcv.id = ri.transfer_request_id
 LEFT JOIN ${source.circa_os}.inventory_transfer_item_detail rid ON ri.id = rid.transfer_item_id 
 LEFT JOIN ${source.ref}.circa_pos_profile p ON rcv.src_pos_id = p.id
+LEFT JOIN ${source.circa_os}.entity_entity e ON rcv.created_by = e.id AND rcv.client_id = e.client_id
 WHERE p.id IS NOT NULL
-      AND rcv.type = 'TRANSFER_IN'
+      AND  rcv.type IN ('TRANSFER_IN', 'TRANSFER_RETURN')
 GROUP BY ALL
 ), have_rcv AS (
 SELECT trf.* 
       ,p.name AS pos_received
-      ,rcv.* EXCEPT(id, dest_pos_id, client_id, product_id, lot_id, doc_code,unit_price)
-      ,TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
+      ,rcv.* EXCEPT(id, dest_pos_id, client_id, product_id, lot_id, doc_code,unit_price,created_by,tranfer_qty,unit,quantity,base_qty_transfer,total_amount_item)
+    
 FROM trf 
 LEFT JOIN rcv ON trf.id = rcv.related_transfer_request_id 
              AND trf.dest_pos_id = rcv.dest_pos_id 
@@ -78,16 +88,62 @@ LEFT JOIN rcv ON trf.id = rcv.related_transfer_request_id
              AND trf.unit_price = rcv.unit_price
 LEFT JOIN ${source.ref}.circa_pos_profile p ON trf.dest_pos_id = p.id
 WHERE rcv_status <> 'CANCELED'
+     AND rcv_type = 'TRANSFER_IN'
+UNION ALL 
+SELECT trf.id
+              ,trf.code
+              ,trf.dest_pos_id AS src_pos_id
+              ,p.name AS pos_tranfer
+              ,trf.trf_type
+              ,trf.created_at
+              ,trf.completed_at
+              ,trf.src_pos_id AS dest_pos_id 
+              ,trf.status
+              ,trf.note
+              ,trf.actual_total_amount
+              ,trf.product_id
+              ,rcv.unit
+              ,rcv.tranfer_qty
+              ,rcv.quantity
+              ,rcv.base_qty_transfer
+              ,rcv.unit_price
+              ,rcv.total_amount_item
+              ,trf.client_id
+              ,trf.product_client_id
+              ,trf.lot_id
+              ,trf.lot_date
+              ,trf.sku_code
+              ,trf.doc_code
+              ,rcv.created_by
+              ,trf.pos_tranfer AS pos_received
+              ,rcv.rcv_status
+              ,rcv.rcv_type
+              ,rcv.related_transfer_request_id
+              ,rcv.qty_received
+              ,rcv_code
+              ,rcv_note
+             
+FROM trf 
+LEFT JOIN rcv ON trf.id = rcv.related_transfer_request_id 
+             AND trf.src_pos_id = rcv.dest_pos_id 
+             AND trf.client_id = rcv.client_id 
+             AND trf.product_id = rcv.product_id
+             AND trf.lot_id = rcv.lot_id
+             AND trf.doc_code = rcv.doc_code
+            AND trf.unit_price = rcv.unit_price
+LEFT JOIN ${source.ref}.circa_pos_profile p ON trf.dest_pos_id = p.id
+WHERE rcv_type = 'TRANSFER_RETURN'
 )
 SELECT * FROM have_rcv
 UNION ALL 
 SELECT trf.*
       ,p.name AS pos_received
       ,NULL AS rcv_status
+      ,NULL AS rcv_type
       ,NULL AS related_transfer_request_id
       ,NULL AS qty_received
       ,NULL AS rcv_code
-      ,TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
+      ,NULL AS rcv_note
 FROM trf
 LEFT JOIN ${source.ref}.circa_pos_profile p ON trf.dest_pos_id = p.id 
 WHERE trf.code NOT IN (SELECT DISTINCT code FROM have_rcv)
