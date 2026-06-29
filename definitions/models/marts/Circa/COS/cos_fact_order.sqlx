@@ -57,9 +57,9 @@ SELECT DISTINCT
         WHEN rt.return_codes IS NULL THEN 'NORMAL'
         ELSE 'RETURN'
      END AS order_type
-     ,g.gift_id
-     ,gift_item_type
-     ,gift_code
+     ,STRING_AGG(gift_id, ', ') AS gift_id
+     ,STRING_AGG(gift_item_type, ',') AS gift_item_type
+     ,STRING_AGG(gift_code, ', ') AS gift_code
      ,o.delivery_amount
     ,o.client_id
     ,o.payment_method
