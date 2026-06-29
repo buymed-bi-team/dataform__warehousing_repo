@@ -37,7 +37,7 @@ function createIncremental_preOps({
         SET ( has_new_data, checkpoint_date, has_delete_data ) = (
             SELECT AS STRUCT
                 IF (
-                    COUNT(*) > 0 , TRUE, FALSE
+                    COUNT(1) > 0 , TRUE, FALSE
                 ) has_new_data,
                 /*
                     has_new_data describe the existance of data after the last refresh time of platinum
