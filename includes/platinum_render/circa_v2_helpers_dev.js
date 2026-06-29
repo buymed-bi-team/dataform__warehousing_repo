@@ -231,7 +231,7 @@ function generateCDCScript({
         ' ON CAST(T.${primaryKey} AS STRING) = S._cdc_pk',
         '   AND T.created_date IN (', affected_filter, ')',
         ' WHEN MATCHED AND S._cdc_action = \\'DELETE\\' THEN DELETE',
-        ' WHEN MATCHED THEN UPDATE SET ', update_set, ', sync_at = S.sync_at, publish_time = S.publish_time',
+        ' WHEN MATCHED AND S.sync_at > T.sync_at THEN UPDATE SET ', update_set, ', sync_at = S.sync_at, publish_time = S.publish_time',
         ' WHEN NOT MATCHED BY TARGET AND S._cdc_action != \\'DELETE\\' THEN',
         '   INSERT (', col_list, ', sync_at, publish_time, created_date)',
         '   VALUES (', insert_vals, ', S.sync_at, S.publish_time, S.created_date)'
