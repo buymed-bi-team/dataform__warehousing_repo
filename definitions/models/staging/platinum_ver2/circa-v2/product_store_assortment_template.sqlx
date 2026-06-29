@@ -10,7 +10,7 @@ js {
                     rawTable:     "product_store_assortment_template",
                     primaryKey:   "id",
                     createdTime:  "created_at",
-                    lookbackHours: 1,
+                    lookbackHours: 0,
                 });
         }
 

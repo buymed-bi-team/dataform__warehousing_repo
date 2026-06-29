@@ -10,7 +10,7 @@ js {
                     rawTable:     "product_sub_sku",
                     primaryKey:   "id",
                     createdTime:  "created_at",
-                    lookbackHours: 1,
+                    lookbackHours: 0,
                 });
         }
 

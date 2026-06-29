@@ -10,7 +10,7 @@ js {
                     rawTable:     "order_daily_sales_aggregate",
                     primaryKey:   "id",
                     createdTime:  "created_at",
-                    lookbackHours: 1,
+                    lookbackHours: 0,
                 });
         }
 

@@ -10,7 +10,7 @@ js {
                     rawTable:     "product_price_sheet_sku",
                     primaryKey:   "id",
                     createdTime:  "created_at",
-                    lookbackHours: 1,
+                    lookbackHours: 0,
                 });
         }
 

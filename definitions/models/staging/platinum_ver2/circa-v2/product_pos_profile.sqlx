@@ -10,7 +10,7 @@ js {
                     rawTable:     "product_pos_profile",
                     primaryKey:   "id",
                     createdTime:  "created_at",
-                    lookbackHours: 1,
+                    lookbackHours: 0,
                 });
         }
 

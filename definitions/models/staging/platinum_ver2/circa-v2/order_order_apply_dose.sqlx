@@ -10,7 +10,7 @@ js {
                     rawTable:     "order_order_apply_dose",
                     primaryKey:   "id",
                     createdTime:  "created_at",
-                    lookbackHours: 1,
+                    lookbackHours: 0,
                 });
         }
 

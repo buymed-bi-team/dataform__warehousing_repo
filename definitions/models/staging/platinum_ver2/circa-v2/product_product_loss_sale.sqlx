@@ -10,7 +10,7 @@ js {
                     rawTable:     "product_product_loss_sale",
                     primaryKey:   "id",
                     createdTime:  "created_at",
-                    lookbackHours: 1,
+                    lookbackHours: 0,
                 });
         }
 

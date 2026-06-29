@@ -10,7 +10,7 @@ js {
                     rawTable:     "order_order_status_history",
                     primaryKey:   "id",
                     createdTime:  "created_at",
-                    lookbackHours: 1,
+                    lookbackHours: 0,
                 });
         }
 

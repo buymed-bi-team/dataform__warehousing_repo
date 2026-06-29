@@ -4,10 +4,6 @@ config {
     type: "incremental",
     name: "platform_insider_prd_communication_web_push_target_detail",
     schema: "platinum_buymed_vn",
-    assertions: {
-        uniqueKey: 'mg_id',
-        nonNull: ["created_date"]
-    },
     bigquery: {
         partitionBy: "created_date"
     },

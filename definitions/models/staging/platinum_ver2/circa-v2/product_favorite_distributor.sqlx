@@ -10,7 +10,7 @@ js {
                     rawTable:     "product_favorite_distributor",
                     primaryKey:   "id",
                     createdTime:  "created_at",
-                    lookbackHours: 1,
+                    lookbackHours: 0,
                 });
         }
 

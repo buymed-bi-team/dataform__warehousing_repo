@@ -1,0 +1,42 @@
+config {
+    type: "view",
+    schema: "platinum_buymed_vn",
+    name: "platform_iam_prd_core_account",
+    tags:["platinum","platform_iam_prd_core","PLATFORM.iam"]
+}
+
+  WITH silver AS (
+    SELECT
+      key, mg_id, username, fullname, account_id, last_updated_time, email_verified, source, password, country_code, hash_tag, type, status, phone_number_verified, phone_number, created_time, email, is_temporary_password, temp_password_expiration, login_time, failed_login_time, failed_login_count, last_active, banned_reason, is_banned, gender, day_of_birth, avatar_url, org_ids, app_ids, entity_ids, label, logs, synced_at, extra_props, action, ingest_time,
+      
+        CASE
+            WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time, 'Asia/Ho_Chi_Minh'))
+            ELSE DATE( '2099-01-01' )
+        END
+     created_date,
+      CAST(null as datetime) 
+    FROM silver_buymed_vn.platform_iam_prd_core_account
+    WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 1 DAY
+    QUALIFY ROW_NUMBER() OVER (_window) = 1 
+          WINDOW _window AS (
+          PARTITION BY mg_id
+          ORDER BY synced_at DESC
+          ,last_updated_time DESC)
+  ), platinum AS (
+    SELECT 
+      key, mg_id, username, fullname, account_id, last_updated_time, email_verified, source, password, country_code, hash_tag, type, status, phone_number_verified, phone_number, created_time, email, is_temporary_password, temp_password_expiration, login_time, failed_login_time, failed_login_count, last_active, banned_reason, is_banned, gender, day_of_birth, avatar_url, org_ids, app_ids, entity_ids, label, logs, synced_at, extra_props, action, ingest_time,
+      created_date,
+      platinum_refresh
+    FROM ${ref(`platinum_buymed_vn__stg`, `platform_iam_prd_core_account`)}
+  )
+  SELECT p.*
+  FROM platinum p
+  LEFT JOIN silver s 
+      ON p.mg_id = s.mg_id 
+  WHERE s.mg_id is null 
+
+  UNION ALL 
+
+  SELECT s.*
+  FROM silver s
+  WHERE action <> "d"
