@@ -1,5 +1,5 @@
 js {
-                const { generateCDCScript } = require("includes/platinum_render/circa_v2_helpers_dev");
+                const { generateCDCScript } = require("includes/platinum_render/circa_v2_helpers");
 
                 const querySQL = generateCDCScript({
                     postgresDatabase: "order",
