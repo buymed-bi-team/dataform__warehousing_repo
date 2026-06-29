@@ -114,7 +114,7 @@ function generateCDCScript({
         SELECT CONCAT(
           'ALTER TABLE ${destTable} ',
           STRING_AGG(
-            CONCAT('ADD COLUMN IF NOT EXISTS ', name, ' ', ddl_type),
+            CONCAT('ADD COLUMN IF NOT EXISTS \`', name, '\` ', ddl_type),
             ', ' ORDER BY col_offset
           )
         )
@@ -193,7 +193,7 @@ function generateCDCScript({
           '   FROM ${srcTable}',
           '   WHERE JSON_VALUE(data,\\'$.primary_key.${primaryKey}\\') IS NOT NULL',
           '     AND publish_time > TIMESTAMP_SUB(TIMESTAMP(\\'', CAST(ingest_checkpoint AS STRING), '\\'), INTERVAL ${lookbackHours} HOUR)',
-          '   GROUP BY id',
+          '   GROUP BY JSON_VALUE(data,\\'$.primary_key.${primaryKey}\\')',
           ' )',
 
           ' SELECT ',
