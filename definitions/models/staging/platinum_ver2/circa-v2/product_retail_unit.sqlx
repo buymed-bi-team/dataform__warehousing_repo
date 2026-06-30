@@ -17,7 +17,7 @@ js {
                 config {
                 type: "operations",
                 schema: "buymed_circa_v2_staging",
-                tags: ["buymed_circa_v2_product", "platinum_custom_10min"]
+                tags: ["buymed_circa_v2_product", "platinum_custom_30m"]
                 }
 
                 ${querySQL}
