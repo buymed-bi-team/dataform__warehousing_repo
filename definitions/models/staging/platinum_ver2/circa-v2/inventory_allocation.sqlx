@@ -17,7 +17,7 @@
 --                 config {
 --                 type: "operations",
 --                 schema: "buymed_circa_v2",
---                 tags: ["buymed_circa_v2_inventory", "platinum_custom_10min"]
+--                 tags: ["buymed_circa_v2_inventory", "platinum_custom_30m"]
 --                 }
 
 --                 ${querySQL}
