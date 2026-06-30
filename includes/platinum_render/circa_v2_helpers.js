@@ -81,8 +81,6 @@ function generateCDCScript({
   return `
     DECLARE ingest_checkpoint TIMESTAMP;
     DECLARE table_exists BOOL;
-    DECLARE affected_dates ARRAY<DATE>;
-    DECLARE affected_filter STRING;
     DECLARE add_columns_sql STRING;
 
     DECLARE select_body STRING;   -- nguồn (source) dùng chung cho MERGE & CTAS
@@ -114,7 +112,7 @@ function generateCDCScript({
         SELECT CONCAT(
           'ALTER TABLE ${destTable} ',
           STRING_AGG(
-            CONCAT('ADD COLUMN IF NOT EXISTS ', name, ' ', ddl_type),
+            CONCAT('ADD COLUMN IF NOT EXISTS \`', name, '\` ', ddl_type),
             ', ' ORDER BY col_offset
           )
         )
@@ -134,34 +132,7 @@ function generateCDCScript({
       END IF;
     END IF;
 
-    -- ── 4. Partition prune cho MERGE ───────────────────────────────────────
-    --   affected_dates = các partition (created_date) của những dòng trong đích
-    --   có id nằm trong batch. Lấy từ ĐÍCH (không từ after.created_at) nên
-    --   bao trùm cả UPDATE, DELETE và cả trường hợp created_at bị đổi.
-    --   CAST AS STRING để khớp kiểu với primary_key (luôn là chuỗi trong JSON).
-    IF table_exists THEN
-      SET affected_dates = ARRAY(
-        SELECT DISTINCT created_date
-        FROM ${destTable}
-        WHERE CAST(${primaryKey} AS STRING) IN (
-          SELECT JSON_VALUE(data,'$.primary_key.${primaryKey}')
-          FROM ${srcTable}
-          WHERE publish_time > TIMESTAMP_SUB(ingest_checkpoint, INTERVAL ${lookbackHours} HOUR)
-        )
-      );
-
-      -- Dựng literal IN-list để BQ prune được partition.
-      -- Rỗng (toàn dòng mới) → sentinel never-match, mọi dòng rơi vào NOT MATCHED → INSERT.
-      SET affected_filter = (
-        SELECT IFNULL(
-          STRING_AGG(CONCAT('DATE \\'', CAST(d AS STRING), '\\''), ','),
-          'DATE \\'9999-12-31\\''
-        )
-        FROM UNNEST(affected_dates) d
-      );
-    END IF;
-
-    -- ── 5. Dựng source select + các mệnh đề cột (dùng chung MERGE & CTAS) ───
+    -- ── 4. Dựng source select + các mệnh đề cột (dùng chung MERGE & CTAS) ───
     --   winners: gom theo primary_key, chọn bản mới nhất theo sync_at, tie-break
     --   theo độ ưu tiên op (DELETE>UPDATE>INSERT). action & winning_message_id
     --   DÙNG CHUNG order by để không lệch nhau.
@@ -215,7 +186,7 @@ function generateCDCScript({
       FROM schema
     );
 
-    -- ── 6. Bảng chưa tồn tại → CTAS (bỏ DELETE) ; đã tồn tại → MERGE ───────
+    -- ── 5. Bảng chưa tồn tại → CTAS (bỏ DELETE) ; đã tồn tại → MERGE ───────
     IF NOT table_exists THEN
       SET dml_sql = CONCAT(
         'CREATE TABLE ${destTable}',
@@ -229,8 +200,7 @@ function generateCDCScript({
         'MERGE INTO ${destTable} T',
         ' USING (', select_body, ') S',
         ' ON CAST(T.${primaryKey} AS STRING) = S._cdc_pk',
-        '   AND T.created_date IN (', affected_filter, ')',
-        ' WHEN MATCHED AND S._cdc_action = \\'DELETE\\' THEN DELETE',
+        ' WHEN MATCHED AND S._cdc_action = \\'DELETE\\' AND S.sync_at >= T.sync_at THEN DELETE',
         ' WHEN MATCHED AND S.sync_at > T.sync_at THEN UPDATE SET ', update_set, ', sync_at = S.sync_at, publish_time = S.publish_time',
         ' WHEN NOT MATCHED BY TARGET AND S._cdc_action != \\'DELETE\\' THEN',
         '   INSERT (', col_list, ', sync_at, publish_time, created_date)',
