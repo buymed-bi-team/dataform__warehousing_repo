@@ -4,10 +4,10 @@ js {
                 const querySQL = generateCDCScript({
                     postgresDatabase: "entity",
                     dataset:      "buymed_circa_v2_raw",
-                    tableName:    "http_request_log",
-                    targetDataset: "buymed_circa_v2_staging",
-                    targetTable: "entity_http_request_log",
-                    rawTable:     "entity_http_request_log",
+                    tableName:    "bank_account",
+                    targetDataset: "buymed_circa_v2",
+                    targetTable: "entity_bank_account",
+                    rawTable:     "entity_bank_account",
                     primaryKey:   "id",
                     createdTime:  "created_at",
                     lookbackHours: 2,
@@ -16,8 +16,8 @@ js {
 
                 config {
                 type: "operations",
-                schema: "buymed_circa_v2_staging",
-                tags: ["buymed_circa_v2_entity", "platinum_custom_10min"]
+                schema: "buymed_circa_v2",
+                tags: ["buymed_circa_v2_entity", "platinum_custom_30m"]
                 }
 
                 ${querySQL}
