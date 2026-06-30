@@ -1,7 +1,7 @@
 
 config {
     type: "operations",
-    tags: ["platinum","platinum_custom_30min","delivery_prd_transporting"]
+    tags: ["platinum","delivery_prd_transporting"]
 }
 
 WITH 
