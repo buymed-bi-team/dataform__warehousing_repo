@@ -47,7 +47,7 @@ WITH base_data AS (
                  END
             ) AS no_customers
         , COUNT(DISTINCT o.order_code) AS orders
-        , SUM(oi.unit_price * oi.quantity) - COALESCE(SUM(oi.unit_price * qty_rt), 0) AS GMV
+        , SUM(oi.unit_price_before_discount * oi.quantity) - COALESCE(SUM(oi.unit_price_before_discount * qty_rt), 0) AS GMV
         , SUM(unit_cost_price * oi.quantity) - COALESCE(SUM(unit_cost_price * qty_rt), 0) AS cogs
         , o.client_id
     FROM ${source.ref}.cos_fact_order o
