@@ -39,7 +39,7 @@ WITH base_unit_selection AS (
     SELECT DISTINCT
          COALESCE(DATE(DATETIME_ADD(o.completed_at, INTERVAL 7 HOUR)), DATE(DATETIME_ADD(o.updated_at, INTERVAL 7 HOUR))) AS completed_date
        -- ,DATE(DATETIME_ADD(o.created_at, INTERVAL 7 HOUR)) AS created_date
-        , DATETIME_ADD(oi.created_at, INTERVAL 7 HOUR) AS created_at
+      --  , DATETIME_ADD(oi.created_at, INTERVAL 7 HOUR) AS created_at
         ,oi.order_id
         ,oi.product_id
         ,oi.sku_code
@@ -147,8 +147,9 @@ SELECT DISTINCT
      TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
     ,fo.created_date
     ,fo.order_code
+    ,fo.created_at
     ,i.* EXCEPT(unit_price, discount_amount, unit_price_before_discount)
-    , CASE WHEN i.order_apply_combo_id IS NOT NULL AND i.order_apply_combo_id <> '' AND unit_price = 0 THEN
+    , CASE WHEN i.order_apply_combo_id IS NOT NULL AND i.order_apply_combo_id <> ''  THEN
 ROUND(SAFE_DIVIDE(
         c.combo_price  * c.quantity  * SAFE_DIVIDE(i.system_price * i.quantity,
             SUM(i.system_price * i.quantity) OVER (PARTITION BY i.order_apply_combo_id)
@@ -156,7 +157,7 @@ ROUND(SAFE_DIVIDE(
         i.quantity
     )
     ) ELSE unit_price_before_discount END AS unit_price_before_discount
-     ,CASE WHEN i.order_apply_combo_id IS NOT NULL AND i.order_apply_combo_id <> '' AND unit_price = 0 THEN
+     ,CASE WHEN i.order_apply_combo_id IS NOT NULL AND i.order_apply_combo_id <> ''  THEN
 ROUND(SAFE_DIVIDE(
         c.discount_amount  * c.quantity  * SAFE_DIVIDE(i.system_price * i.quantity,
             SUM(i.system_price * i.quantity) OVER (PARTITION BY i.order_apply_combo_id)
@@ -164,7 +165,7 @@ ROUND(SAFE_DIVIDE(
         i.quantity
     )
     ) ELSE i.discount_amount  END AS discount_amount
-    ,CASE WHEN i.order_apply_combo_id IS NOT NULL AND i.order_apply_combo_id <> '' AND unit_price = 0 THEN
+    ,CASE WHEN i.order_apply_combo_id IS NOT NULL AND i.order_apply_combo_id <> '' THEN
     ROUND(SAFE_DIVIDE(
         (c.combo_price - c.discount_amount)  * c.quantity  * SAFE_DIVIDE(i.system_price * i.quantity,
             SUM(i.system_price * i.quantity) OVER (PARTITION BY i.order_apply_combo_id)

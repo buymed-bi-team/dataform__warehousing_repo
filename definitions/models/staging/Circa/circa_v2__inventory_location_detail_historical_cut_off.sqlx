@@ -9,30 +9,17 @@ config {
     tags: ["circa_2h00"]
 }
 
--- -- SELECT 
--- --     *,
--- --     DATE(DATETIME(created_at,'Asia/Ho_Chi_Minh')) as date_created_at, 
--- --     CAST(FORMAT_TIMESTAMP('%y%m%d', TIMESTAMP(current_timestamp())) as INT64) as date_index,
--- --     CURRENT_DATE() as cutoff_date_index
--- --     -- PAR
--- --     -- CAST( current_timestamp()
-
--- -- FROM ${source.circa_os}.inventory_location_detail
--- -- FOR SYSTEM_TIME AS OF TIMESTAMP("2025-04-23T18:00:00")
-
 js {
-   const dataset_lst = ["buymed_circa_v2"]; 
+    const dataset_lst = ["buymed_circa_v2"];
 
-   function create_table_function () {
+    function create_table_function() {
         let return_operations = ``
-        dataset_lst.forEach( datasetId => {
+        dataset_lst.forEach(datasetId => {
             return_operations += `
-                            
+
                 CREATE TABLE IF NOT EXISTS ${datasetId}.inventory_location_detail_historical_cut_off
                 (
-                    _airbyte_raw_id STRING OPTIONS(description=""),
-                    _airbyte_extracted_at TIMESTAMP OPTIONS(description=""),
-                    _airbyte_meta JSON OPTIONS(description=""),
+
                     id STRING OPTIONS(description=""),
                     lot_id STRING OPTIONS(description=""),
                     doc_code STRING OPTIONS(description=""),
@@ -66,11 +53,7 @@ js {
                 );
 
                 INSERT INTO  ${datasetId}.inventory_location_detail_historical_cut_off
-                (
-                    _airbyte_raw_id
-                    ,_airbyte_extracted_at
-                    ,_airbyte_meta
-                    ,id
+        (    id
                     ,lot_id
                     ,doc_code
                     ,doc_type
@@ -97,11 +80,9 @@ js {
                     ,cutoff_date_index
                 )
                 (
-                    SELECT 
-                        _airbyte_raw_id
-                        ,_airbyte_extracted_at
-                        ,_airbyte_meta
-                        ,id
+                    SELECT
+
+                        id
                         ,lot_id
                         ,doc_code
                         ,doc_type
@@ -131,13 +112,18 @@ js {
             `
         })
         return return_operations
-   }
+    }
 }
 
-${
-    create_table_function()
-}
--- FOR _index_dataset IN (( SELECT * FROM UNNEST(["buymed_circa_v2"])) ) DO 
-
---     CREATE TABLE IF NOT EXISTS _index_dataset  
-
+  -- -- SELECT
+  -- --     *,
+  -- --     DATE(DATETIME(created_at,'Asia/Ho_Chi_Minh')) as date_created_at,
+  -- --     CAST(FORMAT_TIMESTAMP('%y%m%d', TIMESTAMP(current_timestamp())) as INT64) as date_index,
+  -- --     CURRENT_DATE() as cutoff_date_index
+  -- --     -- PAR
+  -- --     -- CAST( current_timestamp()
+  -- -- FROM ${source.circa_os}.inventory_location_detail
+  -- -- FOR SYSTEM_TIME AS OF TIMESTAMP("2025-04-23T18:00:00")
+  ${create_table_function()}
+  -- FOR _index_dataset IN (( SELECT * FROM UNNEST(["buymed_circa_v2"])) ) DO
+  --     CREATE TABLE IF NOT EXISTS _index_dataset

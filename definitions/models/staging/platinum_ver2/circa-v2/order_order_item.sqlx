@@ -1,23 +1,24 @@
 js {
-  const { generateCDCScript } = require("includes/platinum_render/circa_v2_helpers");
+                const { generateCDCScript } = require("includes/platinum_render/circa_v2_helpers");
 
-  const querySQL = generateCDCScript({
-    postgresDatabase: "order",
-    dataset:      "buymed_circa_v2_raw",
-    tableName:    "order_item",
-    targetDataset: "buymed_circa_v2",
-    targetTable: "order_order_item",
-    rawTable:     "order_order_item",
-    primaryKey:   "id",
-    createdTime:  "created_at",
-    lookbackHours: 2,
-  });
-}
+                const querySQL = generateCDCScript({
+                    postgresDatabase: "order",
+                    dataset:      "buymed_circa_v2_raw",
+                    tableName:    "order_item",
+                    targetDataset: "buymed_circa_v2",
+                    targetTable: "order_order_item",
+                    rawTable:     "order_order_item",
+                    primaryKey:   "id",
+                    createdTime:  "created_at",
+                    lookbackHours: 0,
+                });
+        }
 
-config {
-  type: "operations",
-  schema: "buymed_circa_v2",
-  tags: ["cdc", "platinum_custom_10min"]
-}
+                config {
+                type: "operations",
+                schema: "buymed_circa_v2",
+                tags: ["buymed_circa_v2_order", "platinum_custom_30m"]
+                }
 
-${querySQL}
+                ${querySQL}
+    

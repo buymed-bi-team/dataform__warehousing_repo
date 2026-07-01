@@ -92,8 +92,8 @@ base AS (
           ,ts.sku_system_status AS thuocsi_product_status
           ,CASE WHEN ts.sku_system_status IN ( 'LIMIT', 'NORMAL') THEN true 
                 ELSE false END AS thuocsi_has_stock
-          ,thuocsi_unit
-          ,thuocsi_quantity
+          ,tp.unit AS thuocsi_unit
+          ,ts.available_qty AS thuocsi_quantity
           ,tp.brand 
           ,p.client_id
           ,tp.user_type

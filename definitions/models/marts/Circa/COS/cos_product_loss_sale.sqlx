@@ -21,7 +21,7 @@ SELECT DISTINCT
        , DATETIME_ADD(o.updated_at, INTERVAL 7 HOUR)                              AS updated_at
        , o.id 
        , o.unit 
-       , unit_id 
+       , o.unit_id 
        , o.product_id 
        , CASE  
              WHEN o.product_name IS NULL OR o.product_name = ''  
@@ -37,9 +37,9 @@ SELECT DISTINCT
              THEN 'Khác'  
              ELSE td.product_category  
          END                                                                      AS product_category
-       , price 
-       , quantity 
-       , total_amount 
+       , o.price 
+       , o.quantity 
+       , o.total_amount 
        , o.client_id 
        ,CASE  
             WHEN ls.product_id IS NOT NULL  
@@ -48,24 +48,79 @@ SELECT DISTINCT
         END                                                                       AS is_essential
         ,td.on_hand_quantity
        ,CONCAT(o.product_id, "_", o.client_id)                                    AS product_client_id
-
+      , a.order_id
 FROM ${source.circa_os}.product_product_loss_sale o
+LEFT JOIN (SELECT * FROM ${source.circa_os}.order_order_item_demand WHERE status='UNFULFILLED') a ON o.product_id = a.product_id 
+                                                                                               AND o.pos_id = a.pos_id
+                                                                                               AND o.unit_id = a.unit_id 
+                                                                                               AND o.unit = a.unit
+                                                                                                AND o.product_name = a.product_name
+                                                                                               AND TIMESTAMP_TRUNC(o.created_at, MINUTE) = TIMESTAMP_TRUNC(a.created_at, MINUTE)
+                                                                                               AND TIMESTAMP_TRUNC(o.publish_time, MINUTE) = TIMESTAMP_TRUNC(a.publish_time, MINUTE)
+                                                                                               AND o.price = a.unit_price
 LEFT JOIN ${source.ref}.circa_pos_profile p ON o.pos_id = p.id 
 LEFT JOIN ${source.ref}.cos_dim_product td ON o.product_id = td.product_id AND o.client_id = td.client_id
 LEFT JOIN (SELECT DISTINCT product_id from ${source.ref}.cos_product_essential WHERE status = 'ACTIVE') ls ON o.product_id = ls.product_id 
 WHERE p.id IS NOT NULL
       AND o.client_id NOT IN (5,6,7)
+), base_data_competitor AS (
+    SELECT
+          SAFE_CAST(JSON_EXTRACT_SCALAR(a.extra_props.product_id) AS INT64) AS product_id
+        , JSON_EXTRACT_SCALAR(a.extra_props.unit) AS unit
+        , JSON_EXTRACT_SCALAR(a.extra_props.source) AS comp_name
+        , SAFE_CAST(JSON_EXTRACT_SCALAR(a.extra_props.conversion_rate) AS FLOAT64)
+            * SAFE_CAST(JSON_EXTRACT_SCALAR(a.extra_props.market_price) AS INT64) AS comp_price
+        , a.created_date
+        , a.last_updated_time
+    FROM `platinum_buymed_vn.marketplace_prd_product_v2_product_market_price` a
+    WHERE 1 = 1
+        AND JSON_EXTRACT_SCALAR(a.extra_props.source) IN ('LongChau', 'Pharmacity')
+        AND JSON_EXTRACT_SCALAR(a.extra_props.product_id) IS NOT NULL
+        AND JSON_EXTRACT_SCALAR(a.extra_props.qc) IN ('QC', 'QC done')
+        AND LOWER(JSON_EXTRACT_SCALAR(a.extra_props.market_name)) NOT LIKE '%[ngưng bán]%'
+        AND LOWER(JSON_EXTRACT_SCALAR(a.extra_props.market_name)) NOT LIKE '%[chờ hàng]%'
+        AND DATE(a.last_updated_time + INTERVAL 7 HOUR)
+            >= CURRENT_DATE('Asia/Ho_Chi_Minh') - 3
+        AND SAFE_CAST(JSON_EXTRACT_SCALAR(a.extra_props.conversion_rate) AS FLOAT64)
+            * SAFE_CAST(JSON_EXTRACT_SCALAR(a.extra_props.market_price) AS INT64) >= 1000
 )
-
+, market AS (
+    SELECT
+          a.product_id
+        , a.comp_name
+        , a.comp_price
+    FROM base_data_competitor a
+    LEFT JOIN `platinum_buymed_vn.marketplace_prd_product_v2_product` b
+        ON a.product_id = b.product_id
+    QUALIFY ROW_NUMBER() OVER (
+        PARTITION BY a.product_id, a.comp_name
+        ORDER BY a.last_updated_time DESC
+    ) = 1
+), competitor AS (
+SELECT
+      product_id
+    , MIN(a.comp_price) AS min_comp
+    , COUNT(comp_name) AS no_competitor
+    , STRING_AGG(comp_name, ', ') AS competitors
+FROM market a
+-- WHERE product_id = 1110
+GROUP BY ALL
+)
 SELECT t.* except (total_amount, price)
-       ,total_amount AS origin_amount
+       ,t.total_amount AS origin_amount
        ,p.final_sale_price
        ,CASE WHEN p.product_id IS NOT NULL AND final_sale_price > 0 THEN final_sale_price
              ELSE price END AS price
        ,CASE WHEN p.product_id IS NOT NULL AND final_sale_price > 0 THEN quantity * final_sale_price
-             ELSE total_amount END AS total_amount
+             ELSE t.total_amount END AS total_amount
+      , min_comp
+      , c.no_competitor
+      , c.competitors
+      , o.code AS order_code
 FROM t
-LEFT JOIN (Select * from  ${source.ref}.cos_adhoc_pos_product_client WHERE seller_code = 'CIRCA'  ) p  ON t.product_id = p.product_id AND lower(t.unit) = lower(p.unit)
+LEFT JOIN (Select * from  ${source.ref}.cos_adhoc_pos_product_client WHERE seller_code = 'CIRCA') p  ON t.product_id = p.product_id AND lower(t.unit) = lower(p.unit)
+LEFT JOIN competitor c ON t.product_id = c.product_id
+LEFT JOIN ${source.circa_os}.order_order o ON t.order_id = o.id AND t.client_id = o.client_id
 
 -- WHERE t.client_id = 1
 -- UNION ALL 

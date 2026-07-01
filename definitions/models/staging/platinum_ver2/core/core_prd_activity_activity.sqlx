@@ -3,56 +3,44 @@ config {
     schema: "platinum_buymed_vn",
     name: "core_prd_activity_activity",
     description : `
-    PIC: minh.luu
+
     Partition by: created date
     ClusterBy: ["template_code"]
     `,
     tags:["platinum","core_prd_activity"]
 }
  
---   WITH silver AS (
---     SELECT
---       key,mg_id,path,ua_metadata,result_error_code,created_time,account_id,template_code,data,primary_key,keys,session,ip,result_status,username,fullname,activity_id,type,target,method,user_agent,result_message,synced_at,extra_props,action,ingest_time,
+  WITH silver AS (
+    SELECT
+      key, mg_id, path, ua_metadata, result_error_code, created_time, account_id, template_code, data, primary_key, keys, session, ip, result_status, username, fullname, activity_id, type, target, method, user_agent, result_message, synced_at, extra_props, action, ingest_time,
       
---         CASE
---             WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time, 'Asia/Ho_Chi_Minh'))
---             ELSE DATE( '2099-01-01' )
---         END
---      created_date,
---       CAST(null as datetime) 
---     FROM silver_buymed_vn.core_prd_activity_activity
---     WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 1 DAY
---     QUALIFY ROW_NUMBER() OVER (_window) = 1 
---           AND ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 16 HOUR
---           WINDOW _window AS (
---           PARTITION BY mg_id
---           ORDER BY synced_at DESC,
---           IF
---               (action='d',3,
---               IF
---               (action='u',2,1)) DESC
---           )
---   ), platinum AS (
---     SELECT 
---       key,mg_id,path,ua_metadata,result_error_code,created_time,account_id,template_code,data,primary_key,keys,session,ip,result_status,username,fullname,activity_id,type,target,method,user_agent,result_message,synced_at,extra_props,action,ingest_time,
---       created_date,
---       platinum_refresh
---     FROM ${ref(`platinum_buymed_vn__stg`, `core_prd_activity_activity`)}
---   )
---   SELECT p.*
---   FROM platinum p
---   LEFT JOIN silver s 
---       ON p.mg_id = s.mg_id 
---   WHERE s.mg_id is null 
-
---   UNION ALL 
-
---   SELECT s.*
---   FROM silver s
---   WHERE action <> "d"
-
-SELECT 
-      key,mg_id,path,ua_metadata,result_error_code,created_time,account_id,template_code,data,primary_key,keys,session,ip,result_status,username,fullname,activity_id,type,target,method,user_agent,result_message,synced_at,extra_props,action,ingest_time,
+        CASE
+            WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time, 'Asia/Ho_Chi_Minh'))
+            ELSE DATE( '2099-01-01' )
+        END
+     created_date,
+      CAST(null as datetime) 
+    FROM silver_buymed_vn.core_prd_activity_activity
+    WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 1 DAY
+    QUALIFY ROW_NUMBER() OVER (_window) = 1 
+          WINDOW _window AS (
+          PARTITION BY mg_id
+          ORDER BY synced_at DESC
+    )
+  ), platinum AS (
+    SELECT 
+      key, mg_id, path, ua_metadata, result_error_code, created_time, account_id, template_code, data, primary_key, keys, session, ip, result_status, username, fullname, activity_id, type, target, method, user_agent, result_message, synced_at, extra_props, action, ingest_time,
       created_date,
       platinum_refresh
     FROM ${ref(`platinum_buymed_vn__stg`, `core_prd_activity_activity`)}
+  )
+SELECT p.*
+FROM platinum p
+WHERE NOT EXISTS (SELECT 1 FROM silver s WHERE s.mg_id = p.mg_id)
+
+
+  UNION ALL 
+
+  SELECT s.*
+  FROM silver s
+  WHERE action <> "d"

@@ -20,7 +20,7 @@ WITH base_data AS (
         , SUM(v.on_hand_quantity) AS current_stock_by_product
         , td.ts_convert_rate AS convert_rate
         , td.ts_unit AS unit
-        , SUM(v.on_hand_quantity) / COALESCE(td.ts_convert_rate,1) AS stock_qty
+        , SAFE_DIVIDE (SUM(v.on_hand_quantity), COALESCE(td.ts_convert_rate,1)) AS stock_qty
         , SUM(cost_price_include_tax * v.on_hand_quantity) AS current_stock_value
         , p.client_id
     FROM ${source.ref}.cos_fact_inventory v
@@ -47,7 +47,7 @@ WITH base_data AS (
                  END
             ) AS no_customers
         , COUNT(DISTINCT o.order_code) AS orders
-        , SUM(oi.unit_price * oi.quantity) - COALESCE(SUM(oi.unit_price * qty_rt), 0) AS GMV
+        , SUM(oi.unit_price_before_discount * oi.quantity) - COALESCE(SUM(oi.unit_price_before_discount * qty_rt), 0) AS GMV
         , SUM(unit_cost_price * oi.quantity) - COALESCE(SUM(unit_cost_price * qty_rt), 0) AS cogs
         , o.client_id
     FROM ${source.ref}.cos_fact_order o

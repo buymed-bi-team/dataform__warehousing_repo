@@ -9,7 +9,7 @@ config {
     bigquery: {
         partitionBy: "created_date"
     },
-    tags:["platinum","platinum_custom_30min","platform_insider_prd_dynamic-segment"]
+    tags:["platinum","platinum_custom_1h_past7","platform_insider_prd_dynamic-segment"]
 }
 
 
