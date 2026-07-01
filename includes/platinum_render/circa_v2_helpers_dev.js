@@ -3,14 +3,49 @@ function generateCDCScript({
   tableName,
   dataset,
   rawTable,
-  medataTable = 'circa_v2_schema_metadata',
+  medataTable   = 'circa_v2_schema_metadata',
   targetDataset,
   targetTable,
-  primaryKey      = 'id',
-  createdTime     = 'created_at',
-  timezone        = 'Asia/Ho_Chi_Minh',
-  lookbackHours   = 2,
+  primaryKey    = 'id',        // string | string[] — hỗ trợ composite primary key (nhiều cột)
+  createdTime   = 'created_at',
+  timezone      = 'Asia/Ho_Chi_Minh',
+  lookbackHours = 2,
+  pkSeparator   = ':::',       // dùng để nối các phần tử của composite key thành 1 chuỗi định danh duy nhất
 }) {
+  // ── Chuẩn hoá primaryKey về dạng mảng để dùng chung logic cho 1 hay nhiều cột ──
+  const primaryKeys = Array.isArray(primaryKey) ? primaryKey : [primaryKey];
+
+  if (primaryKeys.length === 0) {
+    throw new Error('primaryKey phải có ít nhất 1 phần tử');
+  }
+  if (primaryKeys.some((k) => typeof k !== 'string' || !k.trim())) {
+    throw new Error('Mỗi phần tử của primaryKey phải là string khác rỗng');
+  }
+  if (pkSeparator.includes("'")) {
+    throw new Error("pkSeparator không được chứa dấu nháy đơn (')");
+  }
+
+
+  const pkJsonParts = primaryKeys.map(
+    (k) => `JSON_VALUE(data,\\'$.primary_key.${k}\\')`
+  );
+  const pkIdExpr = pkJsonParts.length === 1
+    ? pkJsonParts[0]
+    : `CONCAT(${pkJsonParts.join(`, \\'${pkSeparator}\\', `)})`;
+
+
+  const pkNotNullExpr = primaryKeys
+    .map((k) => `JSON_VALUE(data,\\'$.primary_key.${k}\\') IS NOT NULL`)
+    .join(' AND ');
+
+  const clusterByExpr = primaryKeys.join(', ');
+
+
+  const pkTargetParts = primaryKeys.map((k) => `CAST(T.${k} AS STRING)`);
+  const pkTargetExpr = pkTargetParts.length === 1
+    ? pkTargetParts[0]
+    : `CONCAT(${pkTargetParts.join(`, \\'${pkSeparator}\\', `)})`;
+
   const colExprCase = `
   CASE
     WHEN is_array = TRUE AND bq_type = 'JSON'
@@ -22,11 +57,19 @@ function generateCDCScript({
         '\`'
       )
 
+
     WHEN is_array = TRUE AND bq_type != 'JSON'
       THEN CONCAT(
-        'JSON_QUERY(JSON_QUERY(data,\\'$.after\\'), \\'$.', name, '\\') AS \`',
-        name,
-        '\`'
+        '(SELECT CASE',
+        '  WHEN v IS NULL THEN NULL',
+        '  WHEN v = \\'{}\\' THEN PARSE_JSON(\\'[]\\')',
+        '  WHEN NOT (STARTS_WITH(v, \\'{\\') AND ENDS_WITH(v, \\'}\\')) THEN PARSE_JSON(TO_JSON_STRING(v))',
+        '  ELSE PARSE_JSON(TO_JSON_STRING(ARRAY(',
+        '    SELECT CASE WHEN TRIM(elem) = \\'NULL\\' THEN CAST(NULL AS STRING) ELSE TRIM(TRIM(elem), \\'"\\') END',
+        '    FROM UNNEST(SPLIT(SUBSTR(v, 2, LENGTH(v) - 2), \\',\\')) AS elem',
+        '  ))) END',
+        ' FROM (SELECT JSON_VALUE(JSON_QUERY(data,\\'$.after\\'), \\'$.', name, '\\') AS v)',
+        ') AS \`', name, '\`'
       )
 
     WHEN bq_type IN ('INT64','INT32','FLOAT64','NUMERIC','BIGNUMERIC','BOOLEAN','DATE','DATETIME','TIMESTAMP','TIME','INTEGER','FLOAT')
@@ -81,8 +124,6 @@ function generateCDCScript({
   return `
     DECLARE ingest_checkpoint TIMESTAMP;
     DECLARE table_exists BOOL;
-    DECLARE affected_dates ARRAY<DATE>;
-    DECLARE affected_filter STRING;
     DECLARE add_columns_sql STRING;
 
     DECLARE select_body STRING;   -- nguồn (source) dùng chung cho MERGE & CTAS
@@ -114,7 +155,7 @@ function generateCDCScript({
         SELECT CONCAT(
           'ALTER TABLE ${destTable} ',
           STRING_AGG(
-            CONCAT('ADD COLUMN IF NOT EXISTS ', name, ' ', ddl_type),
+            CONCAT('ADD COLUMN IF NOT EXISTS \`', name, '\` ', ddl_type),
             ', ' ORDER BY col_offset
           )
         )
@@ -134,39 +175,14 @@ function generateCDCScript({
       END IF;
     END IF;
 
-    -- ── 4. Partition prune cho MERGE ───────────────────────────────────────
-    --   affected_dates = các partition (created_date) của những dòng trong đích
-    --   có id nằm trong batch. Lấy từ ĐÍCH (không từ after.created_at) nên
-    --   bao trùm cả UPDATE, DELETE và cả trường hợp created_at bị đổi.
-    --   CAST AS STRING để khớp kiểu với primary_key (luôn là chuỗi trong JSON).
-    IF table_exists THEN
-      SET affected_dates = ARRAY(
-        SELECT DISTINCT created_date
-        FROM ${destTable}
-        WHERE CAST(${primaryKey} AS STRING) IN (
-          SELECT JSON_VALUE(data,'$.primary_key.${primaryKey}')
-          FROM ${srcTable}
-          WHERE publish_time > TIMESTAMP_SUB(ingest_checkpoint, INTERVAL ${lookbackHours} HOUR)
-        )
-      );
-
-      -- Dựng literal IN-list để BQ prune được partition.
-      -- Rỗng (toàn dòng mới) → sentinel never-match, mọi dòng rơi vào NOT MATCHED → INSERT.
-      SET affected_filter = (
-        SELECT IFNULL(
-          STRING_AGG(CONCAT('DATE \\'', CAST(d AS STRING), '\\''), ','),
-          'DATE \\'9999-12-31\\''
-        )
-        FROM UNNEST(affected_dates) d
-      );
-    END IF;
-
-    -- ── 5. Dựng source select + các mệnh đề cột (dùng chung MERGE & CTAS) ───
-    --   winners: gom theo primary_key, chọn bản mới nhất theo sync_at, tie-break
-    --   theo độ ưu tiên op (DELETE>UPDATE>INSERT). action & winning_message_id
-    --   DÙNG CHUNG order by để không lệch nhau.
+    -- ── 4. Dựng source select + các mệnh đề cột (dùng chung MERGE & CTAS) ───
+    --   winners: gom theo primary_key (có thể là composite key nhiều cột),
+    --   chọn bản mới nhất theo sync_at, tie-break theo độ ưu tiên op
+    --   (DELETE>UPDATE>INSERT). action & winning_message_id DÙNG CHUNG order by
+    --   để không lệch nhau.
     --   KHÔNG lọc DELETE ở đây — để MERGE tự xử lý xoá.
-    --   _cdc_pk lấy từ primary_key (hợp lệ cả với DELETE vì after = null).
+    --   _cdc_pk = chuỗi nối tất cả các phần tử của primary_key (theo
+    --   pkSeparator, đúng thứ tự) — hợp lệ cả với DELETE vì after = null.
     SET (select_body, col_list, update_set, insert_vals) = (
       WITH schema AS (
         SELECT col.name, col.bq_type, CAST(col.is_array AS BOOL) AS is_array, col_offset
@@ -179,7 +195,7 @@ function generateCDCScript({
         CONCAT(
           ' WITH winners AS (',
           '   SELECT',
-          '     JSON_VALUE(data,\\'$.primary_key.${primaryKey}\\') AS id,',
+          '     ${pkIdExpr} AS id,',
           '     ARRAY_AGG(message_id ORDER BY',
           '       SAFE_CAST(JSON_VALUE(data,\\'$.sync_at\\') AS TIMESTAMP) DESC,',
           '       IF(JSON_VALUE(data,\\'$.operation\\')=\\'DELETE\\',3,',
@@ -191,7 +207,7 @@ function generateCDCScript({
           '         IF(JSON_VALUE(data,\\'$.operation\\')=\\'UPDATE\\',2,1)) DESC',
           '       LIMIT 1)[OFFSET(0)] AS action',
           '   FROM ${srcTable}',
-          '   WHERE JSON_VALUE(data,\\'$.primary_key.${primaryKey}\\') IS NOT NULL',
+          '   WHERE ${pkNotNullExpr}',
           '     AND publish_time > TIMESTAMP_SUB(TIMESTAMP(\\'', CAST(ingest_checkpoint AS STRING), '\\'), INTERVAL ${lookbackHours} HOUR)',
           '   GROUP BY id',
           ' )',
@@ -215,12 +231,12 @@ function generateCDCScript({
       FROM schema
     );
 
-    -- ── 6. Bảng chưa tồn tại → CTAS (bỏ DELETE) ; đã tồn tại → MERGE ───────
+    -- ── 5. Bảng chưa tồn tại → CTAS (bỏ DELETE) ; đã tồn tại → MERGE ───────
     IF NOT table_exists THEN
       SET dml_sql = CONCAT(
         'CREATE TABLE ${destTable}',
         ' PARTITION BY created_date',
-        ' CLUSTER BY ${primaryKey}',
+        ' CLUSTER BY ${clusterByExpr}',
         ' AS SELECT * EXCEPT(_cdc_action, _cdc_pk) FROM (', select_body, ')',
         ' WHERE _cdc_action != \\'DELETE\\''
       );
@@ -228,9 +244,8 @@ function generateCDCScript({
       SET dml_sql = CONCAT(
         'MERGE INTO ${destTable} T',
         ' USING (', select_body, ') S',
-        ' ON CAST(T.${primaryKey} AS STRING) = S._cdc_pk',
-        '   AND T.created_date IN (', affected_filter, ')',
-        ' WHEN MATCHED AND S._cdc_action = \\'DELETE\\' THEN DELETE',
+        ' ON ${pkTargetExpr} = S._cdc_pk',
+        ' WHEN MATCHED AND S._cdc_action = \\'DELETE\\' AND S.sync_at >= T.sync_at THEN DELETE',
         ' WHEN MATCHED AND S.sync_at > T.sync_at THEN UPDATE SET ', update_set, ', sync_at = S.sync_at, publish_time = S.publish_time',
         ' WHEN NOT MATCHED BY TARGET AND S._cdc_action != \\'DELETE\\' THEN',
         '   INSERT (', col_list, ', sync_at, publish_time, created_date)',
