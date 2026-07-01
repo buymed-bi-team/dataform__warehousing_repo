@@ -12,7 +12,8 @@ config {
   have_custom_target,
   target, 
   custom_week_target, 
-  case when have_custom_target = 1 then custom_week_target
+  CASE WHEN CHANNEL = 'ONLINE' THEN target
+   when have_custom_target = 1 then custom_week_target
   -- adjust target based on changes in customed week target, ensure final_target = target
   else target * safe_divide(
      sum(target) over (partition by month, pos_code, channel)
