@@ -13,7 +13,7 @@ config {
 
 WITH t AS  (
 SELECT DISTINCT 
-       p.name 
+       p.name AS pos_name
        , o.pos_id
        , DATE(DATETIME_ADD(o.created_at, INTERVAL 7 HOUR))                        AS created_date
        , DATETIME_ADD(o.created_at, INTERVAL 7 HOUR)                               AS created_at
