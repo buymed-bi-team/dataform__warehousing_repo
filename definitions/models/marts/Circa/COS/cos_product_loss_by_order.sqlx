@@ -59,6 +59,7 @@ LEFT JOIN (SELECT DISTINCT product_id from ${source.ref}.cos_product_essential W
 LEFT JOIN ${source.circa_os}.order_order i ON o.order_id = i.id AND o.client_id = i.client_id
 WHERE p.id IS NOT NULL
       AND o.client_id = 1
+      AND unfulfilled_quantity > 0 
 GROUP BY ALL
 ), base_data_competitor AS (
     SELECT
