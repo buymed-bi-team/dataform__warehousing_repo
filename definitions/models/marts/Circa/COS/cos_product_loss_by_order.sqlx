@@ -1,8 +1,8 @@
 config {
     type: "table",
     description: `PIC: huyen.ngo; model_type: Table ;schedule: At minute 15 past hour`,
-    tags: ["custom_1h_past15"],
-    name: "cos_product_loss_sale",
+    tags: ["custom_2h_past15"],
+    name: "cos_product_loss_by_order",
     columns: {
         
     },
@@ -13,12 +13,12 @@ config {
 
 WITH t AS  (
 SELECT DISTINCT 
-         p.name 
+       p.name 
        , o.pos_id
        , DATE(DATETIME_ADD(o.created_at, INTERVAL 7 HOUR))                        AS created_date
-       , DATETIME_ADD(o.created_at, INTERVAL 7 HOUR)                              AS created_at
-       , DATE(DATETIME_ADD(o.date_time, INTERVAL 7 HOUR)  )                       AS date_time
-       , DATETIME_ADD(o.updated_at, INTERVAL 7 HOUR)                              AS updated_at
+       , DATETIME_ADD(o.created_at, INTERVAL 7 HOUR)                               AS created_at
+     --  , DATE(DATETIME_ADD(o.date_time, INTERVAL 7 HOUR)  )                      AS date_time
+       , DATETIME_ADD(o.finish_date, INTERVAL 7 HOUR)                              AS finish_date
        , o.id 
        , o.unit 
        , o.unit_id 
@@ -37,9 +37,9 @@ SELECT DISTINCT
              THEN 'Khác'  
              ELSE td.product_category  
          END                                                                      AS product_category
-       , o.price 
-       , o.quantity 
-       , o.total_amount 
+       , o.unit_price 
+       , SUM(unfulfilled_quantity) AS quantity 
+       , SUM(o.unit_price * o.quantity) AS total_amount 
        , o.client_id 
        ,CASE  
             WHEN ls.product_id IS NOT NULL  
@@ -48,13 +48,19 @@ SELECT DISTINCT
         END                                                                       AS is_essential
         ,td.on_hand_quantity
        ,CONCAT(o.product_id, "_", o.client_id)                                    AS product_client_id
-FROM ${source.circa_os}.product_product_loss_sale o
-
+      , o.order_id
+      , i.code AS order_code
+      , o.status AS demand_status
+      , i.status AS order_status
+FROM ${source.circa_os}.order_order_item_demand  o
 LEFT JOIN ${source.ref}.circa_pos_profile p ON o.pos_id = p.id 
 LEFT JOIN ${source.ref}.cos_dim_product td ON o.product_id = td.product_id AND o.client_id = td.client_id
 LEFT JOIN (SELECT DISTINCT product_id from ${source.ref}.cos_product_essential WHERE status = 'ACTIVE') ls ON o.product_id = ls.product_id 
+LEFT JOIN ${source.circa_os}.order_order i ON o.order_id = i.id AND o.client_id = i.client_id
 WHERE p.id IS NOT NULL
-      AND o.client_id NOT IN (5,6,7)
+      AND o.client_id = 1
+      AND unfulfilled_quantity > 0 
+GROUP BY ALL
 ), base_data_competitor AS (
     SELECT
           SAFE_CAST(JSON_EXTRACT_SCALAR(a.extra_props.product_id) AS INT64) AS product_id
@@ -98,11 +104,11 @@ FROM market a
 -- WHERE product_id = 1110
 GROUP BY ALL
 )
-SELECT t.* except (total_amount, price)
+SELECT t.* except (total_amount, unit_price)
        ,t.total_amount AS origin_amount
        ,p.final_sale_price
        ,CASE WHEN p.product_id IS NOT NULL AND final_sale_price > 0 THEN final_sale_price
-             ELSE price END AS price
+             ELSE unit_price END AS price
        ,CASE WHEN p.product_id IS NOT NULL AND final_sale_price > 0 THEN quantity * final_sale_price
              ELSE t.total_amount END AS total_amount
       , min_comp
@@ -112,16 +118,3 @@ FROM t
 LEFT JOIN (Select * from  ${source.ref}.cos_adhoc_pos_product_client WHERE seller_code = 'CIRCA') p  ON t.product_id = p.product_id AND lower(t.unit) = lower(p.unit)
 LEFT JOIN competitor c ON t.product_id = c.product_id
 
-
--- WHERE t.client_id = 1
--- UNION ALL 
-
-
--- SELECT t.* except (total_amount)
---        ,total_amount AS origin_amount
---        ,p.unit_sales_price
---        ,CASE WHEN p.product_id IS NOT NULL AND unit_sales_price > 0 THEN quantity * unit_sales_price
---              ELSE total_amount END AS total_amount
--- FROM t
--- LEFT JOIN ${source.ref}. cos_adhoc_product_price_fs p  ON t.product_id = p.product_id and t.client_id = p.client_id and lower(t.unit) = lower(p.unit)
--- WHERE t.client_id <> 1
