@@ -48,16 +48,8 @@ SELECT DISTINCT
         END                                                                       AS is_essential
         ,td.on_hand_quantity
        ,CONCAT(o.product_id, "_", o.client_id)                                    AS product_client_id
-      , a.order_id
 FROM ${source.circa_os}.product_product_loss_sale o
-LEFT JOIN (SELECT * FROM ${source.circa_os}.order_order_item_demand WHERE status='UNFULFILLED') a ON o.product_id = a.product_id 
-                                                                                               AND o.pos_id = a.pos_id
-                                                                                               AND o.unit_id = a.unit_id 
-                                                                                               AND o.unit = a.unit
-                                                                                                AND o.product_name = a.product_name
-                                                                                               AND TIMESTAMP_TRUNC(o.created_at, MINUTE) = TIMESTAMP_TRUNC(a.created_at, MINUTE)
-                                                                                               AND TIMESTAMP_TRUNC(o.publish_time, MINUTE) = TIMESTAMP_TRUNC(a.publish_time, MINUTE)
-                                                                                               AND o.price = a.unit_price
+
 LEFT JOIN ${source.ref}.circa_pos_profile p ON o.pos_id = p.id 
 LEFT JOIN ${source.ref}.cos_dim_product td ON o.product_id = td.product_id AND o.client_id = td.client_id
 LEFT JOIN (SELECT DISTINCT product_id from ${source.ref}.cos_product_essential WHERE status = 'ACTIVE') ls ON o.product_id = ls.product_id 
@@ -116,11 +108,10 @@ SELECT t.* except (total_amount, price)
       , min_comp
       , c.no_competitor
       , c.competitors
-      , o.code AS order_code
 FROM t
 LEFT JOIN (Select * from  ${source.ref}.cos_adhoc_pos_product_client WHERE seller_code = 'CIRCA') p  ON t.product_id = p.product_id AND lower(t.unit) = lower(p.unit)
 LEFT JOIN competitor c ON t.product_id = c.product_id
-LEFT JOIN ${source.circa_os}.order_order o ON t.order_id = o.id AND t.client_id = o.client_id
+
 
 -- WHERE t.client_id = 1
 -- UNION ALL 
