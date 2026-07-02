@@ -21,7 +21,7 @@ WITH map_product AS (
 ),
 
 t AS (
-  SELECT DISTINCT product_id, category_name
+  SELECT DISTINCT product_id, category_name, category_code
   FROM gold_buymed_vn2.dim_product_category
   WHERE level = 1
 ),
@@ -76,6 +76,7 @@ base AS (
           ,tp.registration_number
           ,tp.product_category_code
           ,tp.product_category
+          ,t.category_code
           ,t.category_name AS cat2
           ,e.efficacy_name AS cat3
           ,tp.retail_category_name as cat4
