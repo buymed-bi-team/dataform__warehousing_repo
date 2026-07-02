@@ -58,7 +58,7 @@ LEFT JOIN ${source.ref}.cos_dim_product td ON o.product_id = td.product_id AND o
 LEFT JOIN (SELECT DISTINCT product_id from ${source.ref}.cos_product_essential WHERE status = 'ACTIVE') ls ON o.product_id = ls.product_id 
 LEFT JOIN ${source.circa_os}.order_order i ON o.order_id = i.id AND o.client_id = i.client_id
 WHERE p.id IS NOT NULL
-      AND o.client_id = 1
+      AND o.client_id NOT IN (5,6,7)
       AND unfulfilled_quantity > 0 
 GROUP BY ALL
 ), base_data_competitor AS (
