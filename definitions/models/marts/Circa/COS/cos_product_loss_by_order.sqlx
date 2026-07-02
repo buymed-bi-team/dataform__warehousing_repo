@@ -50,6 +50,8 @@ SELECT DISTINCT
        ,CONCAT(o.product_id, "_", o.client_id)                                    AS product_client_id
       , o.order_id
       , i.code AS order_code
+      , o.status AS demand_status
+      , i.status AS order_status
 FROM ${source.circa_os}.order_order_item_demand  o
 LEFT JOIN ${source.ref}.circa_pos_profile p ON o.pos_id = p.id 
 LEFT JOIN ${source.ref}.cos_dim_product td ON o.product_id = td.product_id AND o.client_id = td.client_id
