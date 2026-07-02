@@ -157,8 +157,10 @@ SELECT a.*
              ) = 1 THEN TRUE
              ELSE FALSE
           END AS is_first_pos_order
+          ,CASE WHEN c.order_code IS NOT NULL THEN true ELSE false END AS is_have_lost_sales
 FROM map_inf a
 LEFT JOIN clean_phone b ON a.order_code = b.order_code 
+LEFT JOIN (SELECT DISTINCT order_code FROM ${source.ref}.cos_product_loss_by_order) c ON a.order_code = c.order_code
 
 
 
