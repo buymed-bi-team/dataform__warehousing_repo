@@ -5,7 +5,7 @@ js {
                     postgresDatabase: "demand_planning",
                     dataset:      "buymed_circa_v2_raw",
                     tableName:    "demand_planning_result",
-                    targetDataset: "buymed_circa_v2_staging",
+                    targetDataset: "buymed_circa_v2",
                     targetTable: "demand_planning_demand_planning_result",
                     rawTable:     "demand_planning_demand_planning_result",
                     primaryKey:   "id",
@@ -16,7 +16,7 @@ js {
 
                 config {
                 type: "operations",
-                schema: "buymed_circa_v2_staging",
+                schema: "buymed_circa_v2",
                 tags: ["buymed_circa_v2_demand_planning", "platinum_custom_30m"]
                 }
 
