@@ -2,13 +2,13 @@ js {
                 const { generateCDCScript } = require("includes/platinum_render/circa_v2_helpers");
 
                 const querySQL = generateCDCScript({
-                    postgresDatabase: "demand_planning",
+                    postgresDatabase: "product",
                     dataset:      "buymed_circa_v2_raw",
-                    tableName:    "demand_planning_result",
+                    tableName:    "ingredient",
                     targetDataset: "buymed_circa_v2_staging",
-                    targetTable: "demand_planning_demand_planning_result",
-                    rawTable:     "demand_planning_demand_planning_result",
-                    primaryKey:   "id",
+                    targetTable: "product_ingredient",
+                    rawTable:     "product_ingredient",
+                    primaryKey:   ["ingredient_id", "client_id"],
                     createdTime:  "created_at",
                     lookbackHours: 1,
                 });
@@ -17,7 +17,7 @@ js {
                 config {
                 type: "operations",
                 schema: "buymed_circa_v2_staging",
-                tags: ["buymed_circa_v2_demand_planning", "platinum_custom_30m"]
+                tags: ["buymed_circa_v2_product", "platinum_custom_30m"]
                 }
 
                 ${querySQL}
