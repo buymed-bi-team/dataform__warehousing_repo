@@ -1,16 +1,16 @@
 js {
-                const { generateCDCScript } = require("includes/platinum_render/circa_v2_helpers");
+                const { generateCDCScript } = require("includes/platinum_render/circa_v2_helpers_dev");
 
                 const querySQL = generateCDCScript({
                     postgresDatabase: "product",
                     dataset:      "buymed_circa_v2_raw",
-                    tableName:    "thuocsi_price_cache",
+                    tableName:    "manufacturer",
                     targetDataset: "buymed_circa_v2",
-                    targetTable: "product_thuocsi_price_cache",
-                    rawTable:     "product_thuocsi_price_cache",
-                    primaryKey:   "id",
+                    targetTable: "product_manufacturer",
+                    rawTable:     "product_manufacturer",
+                    primaryKey:   ["manufacturer_id", "client_id"],
                     createdTime:  "created_at",
-                    lookbackHours: 0,
+                    lookbackHours: 1,
                 });
         }
 
