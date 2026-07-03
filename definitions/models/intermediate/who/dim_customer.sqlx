@@ -361,6 +361,7 @@ SELECT
     flom.last_purchase,
     flom.first_purchase,
     JSON_VALUE(customer.gpp, "$.0.public_url") AS gpp_url,
+    JSON_VALUE(customer.licenses, "$.0.public_url") AS license_url,
     JSON_VALUE(customer.pharmacy_eligibility_license, "$.0.public_url") AS pharmacy_eligibility_url,
     JSON_VALUE(customer.gdp, "$.0.public_url") AS gdp_url,
     JSON_VALUE(customer.extra_props, "$.gsp.0.public_url") AS gsp_url,
