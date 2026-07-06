@@ -11,7 +11,7 @@ config {
 SELECT
     customer_id
     , customer_group
-    , kam_pic AS pic
+    , REGEXP_REPLACE(kam_pic, r'@BUYMED.COM', '') AS pic
     , SAFE_CAST(sales_target AS FLOAT64) AS target
     , month
 FROM (
@@ -23,7 +23,7 @@ FROM (
         , NULLIF(UPPER(value), "NAN")  AS value
         , DATE_TRUNC(DATE(submit_at), MONTH ) AS month
     FROM collector.data_prd
-    WHERE DATE(submit_at) >= "2025-05-01"
+    WHERE DATE(submit_at) >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH) - INTERVAL 3 MONTH
         AND object = "Customer_PIC"
         AND type IN ("SALES_TARGET","KAM_PIC")
         AND submit_id >= 5732
