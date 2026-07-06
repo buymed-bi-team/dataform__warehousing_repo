@@ -1,7 +1,7 @@
 config {
     type: "table",
     description: `PIC: huyen.ngo; model_type: Table ;schedule: At minute 15 past 2 hours`,
-    name: "sku_status_thuocsi",
+    name: "cos_dim_sku_status_thuocsi_by_region",
     tags: ["custom_1h_past15"],
     columns: {/*"*/
         
@@ -10,17 +10,15 @@ config {
 
 WITH base_data AS (
     SELECT DISTINCT product_id
-    FROM gold_buymed_vn2.cos_dim_product
-),
-
-
-sku_aggregated AS (
+    FROM ${source.ref}.cos_dim_product
+),sku_aggregated AS (
     SELECT
         a.product_id
         ,a.sku_system_status
-        ,SUM(a.available_qty) OVER (PARTITION BY a.product_id) AS available_qty
+        ,fc_code
+        ,SUM(a.available_qty) OVER (PARTITION BY a.product_id, fc_code) AS available_qty
         ,ROW_NUMBER() OVER (
-            PARTITION BY a.product_id
+            PARTITION BY a.product_id,  fc_code
             ORDER BY CASE a.sku_system_status
                         WHEN 'NORMAL'       THEN 1
                         WHEN 'LIMIT'        THEN 2
@@ -29,15 +27,17 @@ sku_aggregated AS (
                         ELSE 5
                      END
         ) AS row_num
-    FROM ${source.ref}.dim_sku_sales_region_current a
+    FROM ${source.ref}.dim_sku_sales_region_current  a
     INNER JOIN base_data b ON a.product_id = b.product_id
     WHERE a.sku_system_status <> 'GIFT'
+          AND a.sku_system_active = true
     --AND a.fc_code = 'BD'
 )
 
 SELECT
      product_id
     ,sku_system_status
+    ,fc_code
     ,available_qty
 FROM sku_aggregated
 WHERE row_num = 1
