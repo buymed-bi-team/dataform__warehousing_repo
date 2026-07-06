@@ -20,7 +20,7 @@ SELECT
     i.type AS inbound_type,
     i.priority AS inbound_priority,
     i.status AS inbound_status,
-    po.status AS po_status,
+    IF(po.status = "CANCELED", "CANCEL", po.status) AS po_status,
     i.total_sku,
     i.total_item,
     sku,

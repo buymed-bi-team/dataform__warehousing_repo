@@ -49,6 +49,14 @@ WITH
             a.warehouse_code,
             SAFE_CAST(JSON_VALUE(a.invoice, '$.invoice_request') AS BOOLEAN) AS invoice_request,
             payment_method,
+            CONCAT(
+                a.customer_id,
+                '_',
+                CASE
+                    WHEN LOWER(a.source) IN ('internal-portal', 'thuocsi-mobile', 'thuocsi-web') then 'thuocsi'
+                    WHEN LOWER(a.source) IN ('clinic-portal', 'merchant') then 'portal'
+                    END
+            ) AS customer_id_source
         FROM ${source.platinum}.marketplace_prd_order_v2_order AS a
             LEFT JOIN (
                 SELECT
@@ -83,7 +91,8 @@ WITH
             0,
             p.fc_code,
             TRUE,
-            payment_method
+            payment_method,
+            CONCAT(1000000 + receiver_id, "_", "tender")
         FROM ${source.platinum}.tender_prd_core_tender_orders AS a
             LEFT JOIN ${ref('gold_buymed_vn2','dim_province')} AS p ON a.province_code = p.province_code
         WHERE 1=1
@@ -146,6 +155,7 @@ WITH
             , o.total_discount / COUNT(1) OVER(PARTITION BY a.order_id) AS total_discount
             , invoice_request
             , payment_method
+            , customer_id_source
         FROM ${source.platinum}.marketplace_prd_order_v2_order_item AS a
             LEFT JOIN ${source.platinum}.seller_prd_core_seller AS s ON a.seller_code = s.code
             LEFT JOIN fact_order AS o ON a.order_id = o.order_id
@@ -181,6 +191,7 @@ WITH
             , o.total_discount/ COUNT(1) OVER(PARTITION BY a.order_id) AS total_discount
             , invoice_request
             , payment_method
+            , customer_id_source
         FROM ${source.platinum}.tender_prd_core_tender_order_items AS a
             LEFT JOIN fact_order AS o ON a.order_id = o.order_id
             LEFT JOIN ${ref('gold_buymed_vn2','dim_geo_location')} AS g ON o.shipping_ward_code = g.location_code
