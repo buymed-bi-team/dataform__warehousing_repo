@@ -47,5 +47,5 @@ SELECT
 FROM ${ref("dim_customer")} AS a
 WHERE 1=1
     AND a.business_type = "PHARMA_COMPANY"
-    AND EXISTS (SELECT 1 FROM cte AS b WHERE a.customer_id = b.customer_id )
+    AND NOT EXISTS (SELECT 1 FROM cte AS b WHERE a.customer_id = b.customer_id )
 
