@@ -14,7 +14,7 @@ WITH
             , a.customer_name
             , a.customer_status
             , a.business_scope AS business_type
-            , b.customer_tag_priority
+            -- , b.customer_tag_priority
             -- , customer_tag_sub_group AS customer_tag_sub_priority
             , customer_level
             , a.address AS customer_address
@@ -27,7 +27,7 @@ WITH
             , DATE(a.last_purchase) AS last_order_date
             , c.urban_rural
         FROM ${ref('gold_buymed_vn2', 'dim_customer')} AS a
-            LEFT JOIN gold_buymed_vn2.dim_customer_tag_priority AS b USING(customer_id)
+            -- LEFT JOIN gold_buymed_vn2.dim_customer_tag_priority AS b USING(customer_id)
             LEFT JOIN ${ref("gold_buymed_vn2", "dim_geo_location")} AS c ON a.location_code = c.location_code
         UNION ALL
         SELECT
@@ -37,7 +37,7 @@ WITH
             , name
             , status
             , "HOSPITAL"
-            , "3. TENDER"
+            -- , "3. TENDER"
             -- , "TENDER"
             , "TENDER"
             , address
