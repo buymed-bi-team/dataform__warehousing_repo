@@ -78,7 +78,7 @@ WITH
             , DATETIME(a.delivered_time, "+7") AS delivered_time
             , order_id
             , sale_order_code
-            , 1000000 + receiver_id
+            , SAFE_CAST(CONCAT("9999", receiver_id) AS INT64)
             , total_amount
             -- , IF(status = 'CANCELLED','CANCEL', status) AS status
             , status
@@ -92,7 +92,7 @@ WITH
             p.fc_code,
             TRUE,
             payment_method,
-            CONCAT(1000000 + receiver_id, "_", "tender")
+            CONCAT("9999", receiver_id, "_", "tayau")
         FROM ${source.platinum}.tender_prd_core_tender_orders AS a
             LEFT JOIN ${ref('gold_buymed_vn2','dim_province')} AS p ON a.province_code = p.province_code
         WHERE 1=1

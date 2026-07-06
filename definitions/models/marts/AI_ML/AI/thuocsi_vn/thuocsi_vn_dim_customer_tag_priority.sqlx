@@ -1,0 +1,14 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `Customer Tag Priority in the Vietnam marketplace.`,
+    tags: ['AI_THUOCSI_VN']
+}
+
+SELECT
+    customer_id
+    , source_order
+    , customer_id_source
+    , customer_segment
+    , customer_segment_sub
+FROM gold_buymed_vn2.dim_customer_tag_priority_ver2
