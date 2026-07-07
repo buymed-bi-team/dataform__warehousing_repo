@@ -44,28 +44,28 @@ WITH thuosi_unit AS (
           AND p.actual_status <> "Inactive"
     GROUP BY ALL
 )
-,full_unit AS (
-    SELECT DISTINCT ru.product_id
-                   ,ru.convert_unit AS unit
-                   ,ru.convert_rate
-                   ,seller_code
-                   ,ru.base_unit
-                   ,ru.list_price
-    FROM inventory AS i
-    JOIN product_base_unit AS ru ON i.product_id = ru.product_id
-    GROUP BY ALL
-)
+-- ,full_unit AS (
+--     SELECT DISTINCT ru.product_id
+--                    ,ru.convert_unit AS unit
+--                    ,ru.convert_rate
+--                    ,seller_code
+--                    ,ru.base_unit
+--                    ,ru.list_price
+--     FROM product_base_unit AS ru
+--     LEFT JOIN  inventory AS i ON i.product_id = ru.product_id
+--     GROUP BY ALL
+-- )
 ,inventory_full_unit AS (
     SELECT DISTINCT i.product_id
-                   ,u.unit
+                   ,u.convert_unit AS unit
                    ,u.convert_rate
                    ,i.on_hand_quantity
                    ,i.sku_code
                    ,i.seller_code
                    ,u.base_unit
                    ,u.list_price
-    FROM inventory i
-    LEFT JOIN full_unit u ON i.product_id = u.product_id
+    FROM product_base_unit u 
+    LEFT JOIN inventory i ON i.product_id = u.product_id
 )
 ,has_price AS (
     SELECT DISTINCT s.product_id
@@ -110,7 +110,7 @@ WITH thuosi_unit AS (
                    ,p.seller_code
                    ,p.sku_code
                    ,p.unit
-                   ,i.convert_rate
+                   ,COALESCE(i.convert_rate,p.convert_rate) AS convert_rate
                    ,p.is_thuocsi_unit
                    ,is_purchase_unit
                    ,sale_allowed

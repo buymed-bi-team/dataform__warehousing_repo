@@ -1,0 +1,82 @@
+config {
+    type: "table",
+    description: `Tracking price for Circa OS
+             PIC: huyen.ngo; model_type: Table ;schedule: At minute 15 past hour`,
+    tags: ["custom_1h_past15"],
+    name: "cos_dim_chronic_price",
+}
+ 
+ 
+ 
+WITH base AS (
+    SELECT
+        a.product_id,
+        LOWER(b.unit) AS unit,
+        CONCAT(a.product_id,"_", lower(b.unit))AS compare_key,
+        competitor AS competitor_name,
+        market_price_aft_convert AS competitor_price,
+        COALESCE(
+            market_price_before_promotion_aft_convert,
+            market_price_aft_convert
+        ) AS competitor_price_before_promotion
+    FROM `lakehouse-prod-394907.gold_buymed_vn2.adhoc_pricing_competitor_price` a
+    LEFT JOIN `lakehouse-prod-394907.gold_buymed_vn2.dim_product` b
+        USING(product_id)
+    WHERE qc = 'QC'
+        AND market_price_aft_convert > 0
+        AND competitor IN ('LongChau', 'Pharmacity')
+        AND NOT REGEXP_CONTAINS(competitor, r'P[0-9]+')
+        AND LOWER(competitor) IN (
+            SELECT LOWER(source)
+            FROM platinum_buymed_vn.marketplace_prd_product_v2_market_price_source
+            WHERE NOT REGEXP_CONTAINS(source, r'P[0-9]+')
+                AND COALESCE(is_active, TRUE)
+        )
+        AND b.product_category = 'Thuốc kê đơn'
+        AND b.chronic = 'CHRONIC'
+), competitor AS (
+ 
+SELECT DISTINCT
+    product_id
+    ,unit
+    ,compare_key
+ 
+    ,MAX(CASE WHEN competitor_name = 'LongChau'
+        THEN competitor_price END) AS longchau_price
+ 
+   ,MAX(CASE WHEN competitor_name = 'LongChau'
+        THEN competitor_price_before_promotion END) AS longchau_price_before_promotion
+ 
+    ,MAX(CASE WHEN competitor_name = 'Pharmacity'
+        THEN competitor_price END) AS pharmacity_price
+ 
+    ,MAX(CASE WHEN competitor_name = 'Pharmacity'
+        THEN competitor_price_before_promotion END) AS pharmacity_price_before_promotion
+ 
+FROM base
+-- WHERE product_id = 2010196
+GROUP BY ALL
+), map_competitor AS (
+SELECT DISTINCT p.product_id
+               , p.unit
+               , p.convert_rate
+               , final_sale_price
+               , price_af_discount
+,c.* EXCEPT(product_id, unit, compare_key)
+FROM `gold_buymed_vn2.cos_adhoc_pos_product_client` p
+LEFT JOIN `gold_buymed_vn2.cos_dim_product` td ON p.product_id = td.product_id AND p.client_id = td.client_id
+LEFT JOIN competitor c on p.key_compare = c.compare_key
+WHERE td.product_category = 'Thuốc kê đơn'  
+     AND td.chronic = 'CHRONIC'
+     AND p.seller_code = 'CIRCA'
+     AND p.client_id = 1
+    -- AND p.product_id = 1183
+), have_competitor AS (
+SELECT *
+FROM map_competitor WHERE longchau_price  IS NOT NULL OR pharmacity_price IS NOT NULL
+)
+SELECT * FROM have_competitor
+UNION ALL
+SELECT * FROM map_competitor
+WHERE product_id NOT IN (SELECT  DISTINCT product_id FROM have_competitor )
+QUALIFY ROW_NUMBER() OVER (PARTITION BY product_id ORDER BY convert_rate DESC) = 1
