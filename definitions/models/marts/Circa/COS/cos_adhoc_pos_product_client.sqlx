@@ -6,7 +6,6 @@ config {
     name: "cos_adhoc_pos_product_client",
 }
 
-
 WITH thuosi_unit AS (
     SELECT DISTINCT product_id
                    ,unit
@@ -44,28 +43,28 @@ WITH thuosi_unit AS (
           AND p.actual_status <> "Inactive"
     GROUP BY ALL
 )
--- ,full_unit AS (
---     SELECT DISTINCT ru.product_id
---                    ,ru.convert_unit AS unit
---                    ,ru.convert_rate
---                    ,seller_code
---                    ,ru.base_unit
---                    ,ru.list_price
---     FROM product_base_unit AS ru
---     LEFT JOIN  inventory AS i ON i.product_id = ru.product_id
---     GROUP BY ALL
--- )
+,full_unit AS (
+    SELECT DISTINCT ru.product_id
+                   ,ru.convert_unit AS unit
+                   ,ru.convert_rate
+                   ,seller_code
+                   ,ru.base_unit
+                   ,ru.list_price
+    FROM inventory AS i
+    JOIN product_base_unit AS ru ON i.product_id = ru.product_id
+    GROUP BY ALL
+)
 ,inventory_full_unit AS (
     SELECT DISTINCT i.product_id
-                   ,u.convert_unit AS unit
+                   ,u.unit
                    ,u.convert_rate
-                   ,ROUND(SAFE_DIVIDE(on_hand_quantity, u.convert_rate)) AS on_hand_quantity
+                   ,i.on_hand_quantity
                    ,i.sku_code
                    ,i.seller_code
                    ,u.base_unit
                    ,u.list_price
-    FROM product_base_unit u 
-    LEFT JOIN inventory i ON i.product_id = u.product_id
+    FROM inventory i
+    LEFT JOIN full_unit u ON i.product_id = u.product_id
 )
 ,has_price AS (
     SELECT DISTINCT s.product_id
@@ -110,7 +109,7 @@ WITH thuosi_unit AS (
                    ,p.seller_code
                    ,p.sku_code
                    ,p.unit
-                   ,COALESCE(i.convert_rate,p.convert_rate) AS convert_rate
+                   ,i.convert_rate
                    ,p.is_thuocsi_unit
                    ,is_purchase_unit
                    ,sale_allowed
@@ -203,7 +202,6 @@ WHERE is_expired = FALSE
     -- AND  product_id = 8742 
 QUALIFY ROW_NUMBER() OVER (PARTITION BY product_id, sku_code ORDER BY created_at DESC) = 1
 ORDER BY o.created_at DESC
-
 )SELECT b.*
     , p.discount_type
     , p.percent
@@ -224,11 +222,9 @@ ORDER BY o.created_at DESC
                     / src.convert_rate
                     * b.convert_rate
                 , 0) END AS specific_price
-
     ,  CASE WHEN p.discount_type = 'PERCENT' AND p.unit = 'combo' THEN ROUND(b.final_sale_price * (1 - p.percent / 100), 0)
          WHEN p.discount_type = 'PERCENT'
             THEN ROUND(b.final_sale_price * (1 - p.percent / 100), 0)
-
         WHEN p.discount_type = 'FIXED_PRICE' AND p.unit = 'combo' THEN  ROUND( b.final_sale_price - p.discount_value)
         WHEN p.discount_type = 'FIXED_PRICE'
             THEN ROUND(
@@ -246,7 +242,6 @@ ORDER BY o.created_at DESC
                     / src.convert_rate
                     * b.convert_rate
                 , 0)
-
         ELSE b.final_sale_price
       END AS price_af_discount
       ,'COS' AS client_type
@@ -255,6 +250,3 @@ FROM base b
 LEFT JOIN promo p ON b.product_id = p.product_id AND b.sku_code = p.sku_code
 LEFT JOIN base src ON p.product_id = src.product_id AND p.unit = src.unit AND b.sku_code = p.sku_code AND b.seller_code = src.seller_code
 WHERE b.client_id = 1
-
-
-
