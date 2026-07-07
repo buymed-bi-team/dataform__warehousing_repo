@@ -2,7 +2,7 @@ config {
     type: "table",
     description: `Last 13 month| PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour;Table này dùng để tracking những đơn hàng đã được đặt nhưng hàng chưa về hoặc hàng đã về nhưng chưa tạo PO, sử dụng cho report Purchase Planner`
     /**/,
-    tags: ["custom_1h_past15"],
+     disabled: true,
     name: "cos_pending_dont_have_po",
     columns: {
         order_id: "NonNull |" + docs.order_id,
