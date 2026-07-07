@@ -78,9 +78,12 @@ WHERE td.product_category = 'Thuốc kê đơn'
 ), have_competitor AS (
 SELECT *
 FROM map_competitor WHERE longchau_price  IS NOT NULL OR pharmacity_price IS NOT NULL
-)
+), final AS (
 SELECT * FROM have_competitor
 UNION ALL
 SELECT * FROM map_competitor
 WHERE product_id NOT IN (SELECT  DISTINCT product_id FROM have_competitor )
 QUALIFY ROW_NUMBER() OVER (PARTITION BY product_id ORDER BY convert_rate DESC) = 1
+)
+SELECT * FROM final
+ QUALIFY ROW_NUMBER() OVER (PARTITION BY product_id ORDER BY on_hand_quantity DESC) = 1
