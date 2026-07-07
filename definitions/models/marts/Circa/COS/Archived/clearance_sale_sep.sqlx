@@ -2,7 +2,6 @@
 config {
     type: "table",
     description: `cos_demand_planning detail PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`,
-    tags: ["custom_2h_past15"],
     disabled: true,
     name: "clearance_sale_sep",
     columns: {

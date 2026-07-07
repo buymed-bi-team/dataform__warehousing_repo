@@ -6,7 +6,6 @@ config {
     name: "cos_adhoc_pos_product_client",
 }
 
-
 WITH thuosi_unit AS (
     SELECT DISTINCT product_id
                    ,unit
@@ -203,7 +202,6 @@ WHERE is_expired = FALSE
     -- AND  product_id = 8742 
 QUALIFY ROW_NUMBER() OVER (PARTITION BY product_id, sku_code ORDER BY created_at DESC) = 1
 ORDER BY o.created_at DESC
-
 )SELECT b.*
     , p.discount_type
     , p.percent
@@ -224,11 +222,9 @@ ORDER BY o.created_at DESC
                     / src.convert_rate
                     * b.convert_rate
                 , 0) END AS specific_price
-
     ,  CASE WHEN p.discount_type = 'PERCENT' AND p.unit = 'combo' THEN ROUND(b.final_sale_price * (1 - p.percent / 100), 0)
          WHEN p.discount_type = 'PERCENT'
             THEN ROUND(b.final_sale_price * (1 - p.percent / 100), 0)
-
         WHEN p.discount_type = 'FIXED_PRICE' AND p.unit = 'combo' THEN  ROUND( b.final_sale_price - p.discount_value)
         WHEN p.discount_type = 'FIXED_PRICE'
             THEN ROUND(
@@ -246,7 +242,6 @@ ORDER BY o.created_at DESC
                     / src.convert_rate
                     * b.convert_rate
                 , 0)
-
         ELSE b.final_sale_price
       END AS price_af_discount
       ,'COS' AS client_type
@@ -255,6 +250,3 @@ FROM base b
 LEFT JOIN promo p ON b.product_id = p.product_id AND b.sku_code = p.sku_code
 LEFT JOIN base src ON p.product_id = src.product_id AND p.unit = src.unit AND b.sku_code = p.sku_code AND b.seller_code = src.seller_code
 WHERE b.client_id = 1
-
-
-
