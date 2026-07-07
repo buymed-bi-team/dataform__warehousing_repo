@@ -59,6 +59,9 @@ GROUP BY ALL
 ), map_competitor AS (
 SELECT DISTINCT p.product_id
                , p.unit
+               , p.on_hand_quantity
+               , have_stock AS circa_status
+               , i.sku_system_status AS thuocsi_status
                , p.convert_rate
                , final_sale_price
                , price_af_discount
@@ -66,6 +69,7 @@ SELECT DISTINCT p.product_id
 FROM `gold_buymed_vn2.cos_adhoc_pos_product_client` p
 LEFT JOIN `gold_buymed_vn2.cos_dim_product` td ON p.product_id = td.product_id AND p.client_id = td.client_id
 LEFT JOIN competitor c on p.key_compare = c.compare_key
+LEFT JOIN gold_buymed_vn2.sku_status_thuocsi i ON p.product_id = i.product_id
 WHERE td.product_category = 'Thuốc kê đơn'  
      AND td.chronic = 'CHRONIC'
      AND p.seller_code = 'CIRCA'

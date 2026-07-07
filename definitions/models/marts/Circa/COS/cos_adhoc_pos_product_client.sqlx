@@ -59,7 +59,7 @@ WITH thuosi_unit AS (
     SELECT DISTINCT i.product_id
                    ,u.convert_unit AS unit
                    ,u.convert_rate
-                   ,i.on_hand_quantity
+                   ,ROUND(SAFE_DIVIDE(on_hand_quantity, u.convert_rate)) AS on_hand_quantity
                    ,i.sku_code
                    ,i.seller_code
                    ,u.base_unit
