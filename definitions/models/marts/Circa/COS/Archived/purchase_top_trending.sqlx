@@ -4,7 +4,6 @@ config {
     description: `tracking performance của mặt hàng trending. Report for team chị Đức
                  PIC: huyen.ngo; model_type: Table ;
                  schedule: At minute 5 every 2 hours`,
-    tags: ["custom_2h_past5"],
     disabled: true,
     name: "purchase_top_trending",
     columns: {
