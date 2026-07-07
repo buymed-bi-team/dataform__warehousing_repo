@@ -2,7 +2,6 @@ config {
     type: "table",
     description: `Last 13 month| PIC: huyen.ngo; model_type: Table ;
                   schedule: At minute 5 every hour;Table này dùng để tracking những đơn hàng đã được đặt nhưng hàng chưa về, sử dụng cho report Purchase Planner`,
-    tags: ["custom_1h_past15"],
     disabled: true,
     name: "cos_pending_purchase",
     bigquery: {
@@ -70,7 +69,7 @@ where  TO_JSON_STRING(customer_tags) LIKE "%CIRCACOS%"
        and o.order_status <> 'CANCEL'
        and t.code is not null
        and p.id is not null
-       and date(created_date) >=  '2025-08-01' 
+       and date(t.created_date) >=  '2025-08-01' 
 group by all
 --Lấy những đơn hàng đặt mua thuốc sỉ
 )
@@ -100,7 +99,7 @@ where  TO_JSON_STRING(customer_tags) LIKE "%CIRCACOS%"
        and t.code is not null
        and t.seller_code is null
        and p.id is not null
-       and date(created_date) >=  '2025-08-01' 
+       and date(t.created_date) >=  '2025-08-01' 
 group by all
 )
 ,Pending as (
