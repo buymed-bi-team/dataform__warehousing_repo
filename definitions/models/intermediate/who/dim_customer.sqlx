@@ -353,6 +353,7 @@ SELECT
         WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"CIRCACOS\"') THEN 'CIRCA_COS'
         WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"CIRCAFOFO\"|\"CIRCA\"|\"CIRCAFOCO\"') THEN 'CIRCA_FS'
         WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"VIP\"|\"AMBASSADOR\"') THEN "RETAIL_A"
+        WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"RETAILC\"') THEN "RETAIL_C"
         ELSE "RETAIL_B"
     END  AS customer_tag_sub_group,
     IFNULL(SAFE_CAST(JSON_VALUE(customer.extra_props, "$.is_skip_sync_level") AS BOOLEAN), FALSE) AS is_skip_sync_level,
