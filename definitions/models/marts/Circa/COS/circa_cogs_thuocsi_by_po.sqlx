@@ -25,18 +25,14 @@ WITH base_unit_selection AS (
             ORDER BY COUNT(*) DESC
         ) AS rn
     FROM `lakehouse-prod-394907.gold_buymed_vn2.cos_product_convert_base_unit`
-    GROUP BY
-         product_id
-        ,client_id
-        ,base_unit
+    GROUP BY ALL
 ),
 
 base_unit AS (
     SELECT
          a.*
     FROM `lakehouse-prod-394907.gold_buymed_vn2.cos_product_convert_base_unit` a
-    JOIN base_unit_selection b
-      ON a.product_id = b.product_id
+    LEFT JOIN  base_unit_selection b ON a.product_id = b.product_id
      AND a.client_id  = b.client_id
      AND a.base_unit  = b.base_unit
     WHERE b.rn = 1
@@ -57,7 +53,7 @@ t AS (
     FROM `gold_buymed_vn2.cos_purchase_order_item` i
     JOIN `gold_buymed_vn2.cos_purchase_order` o ON o.po_id = i.po_id
     WHERE o.fulfillment_method = 'SO_THUOCSI'
-      AND o.client_id = 1
+   --   AND o.client_id = 1
       AND o.po_status NOT IN ('SEPERATED','PENDING','WAIT_FOR_ORDER','CANCELED')
       AND i.unit_price <> 0
     GROUP BY ALL
@@ -69,9 +65,7 @@ p AS (
         ,product_id
         ,AVG(unit_cost_price) AS avg_unit_cost_price
     FROM `gold_buymed_vn2.circa_cogs_thuocsi`
-    GROUP BY
-         order_id
-        ,product_id
+    GROUP BY ALL
 ),
 
 final AS (
