@@ -32,4 +32,5 @@ LEFT JOIN  ${source.ref}.cos_fact_order_item i ON o.order_id = i.order_id
 LEFT JOIN  ${source.ref}.cos_dim_product p ON i.product_id = p.product_id AND o.client_id = p.client_id
 LEFT JOIN  ${source.ref}.cos_order_item_demand d on o.order_id = d.order_id
 WHERE delivery_scheduled_time IS NOT NULL
+     OR  o.status IN ('WAITING_STOCK')
 GROUP BY ALL
