@@ -30,9 +30,10 @@ WITH
             LEAST( b.deal_price, a.display_price ),
             a.display_price
         ) AS sku_display_price,
-        price_after_discount_level1,
-        price_after_discount_level2,
-        price_after_discount_level3,
+        d.price_after_discount_level1,
+        d.price_after_discount_level2,
+        d.price_after_discount_level3,
+        d.voucher_code,
         a.sku_key_sales_region_code
 
     from ${ref('adhoc_pricing_display_price_full')} a
