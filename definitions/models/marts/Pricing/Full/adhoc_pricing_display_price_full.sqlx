@@ -45,7 +45,7 @@ with
                 AND LENGTH(code) = 3
             QUALIFY ROW_NUMBER() over (PARTITION BY type, code ORDER BY synced_at DESC, last_updated_time DESC) = 1
         ) as a
-            LEFT JOIN ${ref('dim_geo_location')} as b 
+            LEFT JOIN ${ref("dim_geo_location")} as b 
                 ON a.district_code = b.district_code
         WHERE
             b.sales_region_code is not null
@@ -84,9 +84,11 @@ with
 
             -- platform fee
             if (
-                a.retail_price_value > 0,
-                a.retail_price_value * 0.02 * d.fee_value * COALESCE(b.fee_value,1)  * c.fee_value *
-                    COALESCE(NULLIF(a.pricing_strategy, 0),1),
+               a.retail_price_value > 0,
+                a.retail_price_value * 0.02 * d.fee_value                                          -- Customer Level
+                    * IF( p.is_combo AND a.seller_class = "EXTERNAL", 1, COALESCE(b.fee_value,1))  -- Dynamic Level
+                    * c.fee_value                                                                  -- Price Range
+                    * COALESCE(NULLIF(a.pricing_strategy, 0),1),                           -- Pricing Strategy
                 null
             ) as platform_fee,
 
@@ -103,7 +105,8 @@ with
             a.use_skus_price,
             a.sub_sku_code
 
-        from ${ref('dim_sku_sales_region_current')} AS a
+        from ${ref("dim_sku_sales_region_current")} AS a
+            left join ${ref("dim_product")} AS p on a.product_id = p.product_id
             left join (
                 select *
                 from  ${source.platinum}.marketplace_prd_pricing_v2_dynamic_level
@@ -142,11 +145,11 @@ with
                     when retail_price_type = "FIXED_PRICE" and retail_price_value > 1 then retail_price_value
                     when retail_price_type = "CUSTOM_FEE" and retail_price_value > 1 then
                         CASE
-                            WHEN fee_code = '1BRTE9AQ1PG' THEN retail_price_value + platform_fee
-                            WHEN fee_code = '3WQD9UBW961' THEN retail_price_value + logistic_fee
-                            ELSE retail_price_value + platform_fee + logistic_fee
+                            WHEN fee_code = '1BRTE9AQ1PG' THEN GREATEST(retail_price_value + platform_fee, retail_price_value)
+                            WHEN fee_code = '3WQD9UBW961' THEN GREATEST(retail_price_value + logistic_fee, retail_price_value)
+                            ELSE GREATEST(retail_price_value + platform_fee + logistic_fee, retail_price_value)
                         END
-                    when retail_price_value > 1 then retail_price_value + platform_fee + logistic_fee
+                    when retail_price_value > 1 then GREATEST(retail_price_value + platform_fee + logistic_fee, retail_price_value)
                 end,
                 -2
             ) as display_price
@@ -179,8 +182,6 @@ with
         )
         GROUP BY ALL
     )
-
-  -- calculate display price 
 
 SELECT *
 FROM normal_product
