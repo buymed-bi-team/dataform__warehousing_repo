@@ -33,6 +33,8 @@ WITH
         d.price_after_discount_level1,
         d.price_after_discount_level2,
         d.price_after_discount_level3,
+        d.price_after_discount_level4,
+        d.price_after_discount_level5,
         d.product_voucher_discount,
         d.voucher_code,
         a.sku_key_sales_region_code
