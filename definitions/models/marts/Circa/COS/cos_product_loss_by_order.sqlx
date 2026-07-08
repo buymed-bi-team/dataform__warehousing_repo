@@ -15,6 +15,7 @@ WITH t AS  (
 SELECT DISTINCT 
        p.name AS pos_name
        , o.pos_id
+       , i.type AS channel
        , DATE(DATETIME_ADD(o.created_at, INTERVAL 7 HOUR))                        AS created_date
        , DATETIME_ADD(o.created_at, INTERVAL 7 HOUR)                               AS created_at
      --  , DATE(DATETIME_ADD(o.date_time, INTERVAL 7 HOUR)  )                      AS date_time
