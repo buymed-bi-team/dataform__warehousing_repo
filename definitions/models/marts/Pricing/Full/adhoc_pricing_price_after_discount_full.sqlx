@@ -120,7 +120,6 @@ SELECT
     ) AS price_after_discount_level3
     , c.voucher_code
     , a.prices
-    , c.display_name
     -- , c.area_code
 FROM final_price AS a
     LEFT JOIN voucher AS c 
