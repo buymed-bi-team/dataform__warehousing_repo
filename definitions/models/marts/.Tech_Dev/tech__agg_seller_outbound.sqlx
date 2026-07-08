@@ -3,16 +3,29 @@ config {
     schema: "buymed_tech",
 }
 
+WITH 
+    cte AS (
+        SELECT
+            oi.created_date
+            , s.supplier_id AS seller_id
+            , SUM(oi.outbound_quantity * oi.sales_price) AS outbound_amount
+        FROM ${ref("fact_order_item")} AS oi
+            LEFT JOIN ${ref("fact_order")} AS o ON oi.order_id = o.order_id
+            LEFT JOIN ${ref("dim_supplier")} AS s ON oi.seller_code = s.supplier_code
+        WHERE 1=1
+            AND DATE(oi.created_at) >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH)
+            AND DATE(o.created_at) >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH)
+            AND o.order_status <> "CANCEL"
+            AND s.supplier_class = "EXTERNAL"
+        GROUP BY ALL
+    )
+
+SELECT *
+FROM cte
+UNION ALL
 SELECT
-    oi.created_date
-    , s.supplier_id AS seller_id
-    , SUM(oi.outbound_quantity * oi.sales_price) AS outbound_amount
-FROM ${ref("fact_order_item")} AS oi
-    LEFT JOIN ${ref("fact_order")} AS o ON oi.order_id = o.order_id
-    LEFT JOIN ${ref("dim_supplier")} AS s ON oi.seller_code = s.supplier_code
-WHERE 1=1
-    AND DATE(oi.created_at) >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH)
-    AND DATE(o.created_at) >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH)
-    AND o.order_status <> "CANCEL"
-    AND s.supplier_class = "EXTERNAL"
+    created_date
+    , 20519
+    , MAX(outbound_amount)
+FROM cte
 GROUP BY ALL
