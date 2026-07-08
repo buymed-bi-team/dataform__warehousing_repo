@@ -52,7 +52,7 @@ group by all
              ,sku_code
              ,doc_code
              ,sum(base_qty_transfer) as base_qty_transfer
-      from  ${source.ref}.transfer_request
+      from  ${source.ref}.circa_fact_transfer_request
       where client_id = 1
            and doc_code in ( Select distinct po_code from purchase)
       group by all
