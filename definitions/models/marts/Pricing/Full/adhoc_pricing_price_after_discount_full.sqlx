@@ -85,6 +85,14 @@ SELECT
     , a.deal_price
     , sku_final_price
     , charge_fee
+    , IFNULL(
+        IF(
+            discount_type = "ABSOLUTE",
+            c.avg_discount,
+            a.sku_final_price * SAFE_CAST(c.percentage_discount AS FLOAT64) / 100
+        )
+        , 0
+     ) AS product_voucher_discount
     , ROUND(
         a.sku_final_price * 0.995 - ROUND(a.sku_final_price * 0.00256, -2)
             - IFNULL(
