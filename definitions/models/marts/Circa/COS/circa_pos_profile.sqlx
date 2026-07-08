@@ -25,7 +25,7 @@ LEFT JOIN (SELECT * FROM ${source.external}.circa_store_status
            --WHERE store_format LIKE '%Circa%'
           ) s ON p.code = s.pos_code
 WHERE type IN ('CIRCA', 'FS')
-  AND code NOT IN ('POS0006','POS0024','POS0030','POS0001','POS0047','POS0020','POS0020')
+  AND code NOT IN ('POS0006','POS0030','POS0001','POS0047','POS0020','POS0020')
   --AND s.pos_code IS NULL
 )
 
