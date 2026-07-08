@@ -17,6 +17,7 @@ WITH
       select 
         a.product_id,
         a.sku_code,
+        a.seller_code,
         a.sales_region_code,
         a.prices,
         SPLIT(a.prices, '_&_')[OFFSET(0)] AS customer_level,
