@@ -6,6 +6,8 @@ config {
     columns: {/*
 */
         
+    }, bigquery: {
+        partitionBy: "created_date"
     }
 }
 
@@ -32,5 +34,10 @@ SELECT
       JSON_VALUE_ARRAY(extra_props, '$.sell_area_codes'),
     ' ,'
     ) AS sell_area
+    ,JSON_VALUE(extra_props, '$.daily_limit_quantity') AS daily_limit_quantity
+     ,JSON_VALUE(extra_props, '$.daily_limit_unit') AS daily_limit_unit
+     ,JSON_VALUE(extra_props, '$.order_limit_quantity') AS order_limit_quantity
+     ,JSON_VALUE(extra_props, '$.order_limit_unit') AS order_limit_unit
      ,DATETIME_ADD(synced_at, INTERVAL 7 HOUR) AS synced_at
 FROM ${source.platinum}.circa_online_prd_product_product_filter
+WHERE DATE(ingest_time )>= '2026-05-01'
