@@ -30,6 +30,9 @@ WITH
             LEAST( b.deal_price, a.display_price ),
             a.display_price
         ) AS sku_display_price,
+        price_after_discount_level1,
+        price_after_discount_level2,
+        price_after_discount_level3,
         a.sku_key_sales_region_code
 
     from ${ref('adhoc_pricing_display_price_full')} a
@@ -41,6 +44,10 @@ WITH
       on a.sku_code = c.sku_code 
       and a.sales_region_code = c.sales_region_code
       AND a.prices = c.prices
+    left join ${ref('adhoc_pricing_price_after_discount_full')} d
+      on a.sku_code = d.sku_code 
+      and a.sales_region_code = d.sales_region_code
+      AND a.prices = d.prices
 )
 
 SELECT

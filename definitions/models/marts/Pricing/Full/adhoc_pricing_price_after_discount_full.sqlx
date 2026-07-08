@@ -119,8 +119,7 @@ SELECT
         , -2
     ) AS price_after_discount_level3
     , c.voucher_code
-    , SPLIT(a.prices, '_&_')[OFFSET(0)] AS customer_level
-    , SPLIT(a.prices, '_&_')[OFFSET(1)] AS delivery_fee
+    , a.prices
     , c.display_name
     -- , c.area_code
 FROM final_price AS a
