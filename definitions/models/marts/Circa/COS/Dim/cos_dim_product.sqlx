@@ -299,6 +299,10 @@ SELECT DISTINCT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transform
       ,tag_names
       ,sell_area AS sell_area_online
       ,client.name AS client_name
+      ,daily_limit_quantity
+      ,daily_limit_unit
+      ,order_limit_quantity
+      ,order_limit_unit
 FROM cte_product pd
 LEFT JOIN ${source.platinum}.circa_online_prd_product_product AS op ON pd.product_id = op.product_id
 LEFT JOIN inventory i ON pd.product_id = i.product_id AND pd.client_id = i.client_id
