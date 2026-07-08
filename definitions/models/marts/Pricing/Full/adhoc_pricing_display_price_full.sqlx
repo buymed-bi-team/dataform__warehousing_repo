@@ -25,7 +25,7 @@ with
         from ${source.platinum}.marketplace_prd_pricing_v2_setting
         where
             type = 'CUSTOMER_LEVEL'
-            and upper(code) IN ('LEVEL_GOLD', 'LEVEL_SILVER', 'LEVEL_PLATINUM','LEVEL_DIAMOND', "LEVEL_CIRCA_DIAMOND","LEVEL_CIRCA_L2_GROWTH", "LEVEL_CIRCA_L3_ELITE")
+            and upper(code) IN ('LEVEL_GOLD', 'LEVEL_SILVER', 'LEVEL_PLATINUM','LEVEL_DIAMOND', "LEVEL_CIRCA_DIAMOND","LEVEL_CIRCA_L2_GROWTH", "LEVEL_CIRCA_L3_ELITE", "LEVEL_RETAIL_POTENTIAL")
         QUALIFY ROW_NUMBER() OVER (PARTITION BY type, code ORDER BY ingest_time DESC) = 1
     )
 
@@ -73,6 +73,7 @@ with
             a.mg_id,
             a.product_id,
             a.sku_code,
+            a.seller_code,
             a.sales_region_code,
             a.seller_class,
             CONCAT(d.customer_level, "_&_Delivery_Fee_", e.delivery_level) AS prices,
