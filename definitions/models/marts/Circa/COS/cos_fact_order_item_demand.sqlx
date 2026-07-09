@@ -39,8 +39,8 @@ WITH _order AS(
                 , o.status
                 , unit_id
                 , o.unit
-                , coalesce(o.product_id, td.product_id) AS product_id
-                , coalesce(o.product_name, td.product_name) AS product_name 
+                , coalesce(td.product_id, o.product_id ) AS product_id
+                , coalesce( td.product_name, o.product_name) AS product_name 
                 , cv.convert_rate 
                 , unit_price
                 , platform_price
