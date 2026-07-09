@@ -48,7 +48,7 @@ WITH _order AS(
                 , sale_quantity
                 , reserved_qty
                 , unfulfilled_quantity
-                , s.code
+                , s.code AS order_code
                 , s.reference_order_in_platform
                 , s.status AS order_status
                 , JSON_VALUE(JSON_QUERY_ARRAY(purchase_history)[OFFSET(0)], '$.note') AS purchase_note
