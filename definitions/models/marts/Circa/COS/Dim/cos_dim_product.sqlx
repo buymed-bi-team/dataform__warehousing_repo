@@ -137,6 +137,7 @@ base AS (
 ,ingregients AS (
     SELECT DISTINCT product_id
           ,ingredient_name
+          ,description
           ,volume
           ,usage
        --   ,client_id
