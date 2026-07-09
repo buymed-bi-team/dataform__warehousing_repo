@@ -78,7 +78,8 @@ WITH _order AS(
       FROM ${source.ref}.cos_fact_inventory
   GROUP BY ALL
 )
-SELECT a.*
+SELECT a.* EXCEPT(ordered_quantity)
+      , SAFE_DIVIDE(ordered_quantity, convert_rate) AS ordered_quantity
       , SAFE_DIVIDE(b.on_hand_quantity, a.convert_rate) AS current_stock
 FROM base_data a 
 LEFT JOIN stock b ON a.pos_id = b.pos_id AND a.product_id = b.product_id
