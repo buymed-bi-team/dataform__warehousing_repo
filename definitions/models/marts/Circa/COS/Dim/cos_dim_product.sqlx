@@ -6,6 +6,8 @@ config {
     columns: {/*
 */
         
+    }   ,bigquery: {
+        partitionBy: "DATE(created_at)"
     }
 }
 
