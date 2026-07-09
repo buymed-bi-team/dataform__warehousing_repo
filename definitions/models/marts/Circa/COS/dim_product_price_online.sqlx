@@ -5,7 +5,7 @@ config {
                   PIC: huyen.ngo;
                   model_type: Table ;schedule: custom_1h_past20`,
     tags: ["custom_1h_past20"],
-    name: "product_price_online",
+    name: "dim_product_price_online",
     columns: {/*
 */
         
