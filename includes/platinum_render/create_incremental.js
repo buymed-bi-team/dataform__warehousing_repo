@@ -12,9 +12,9 @@ function createIncremental_preOps({
         ingestCutOffInterval = `WHERE created_date >= CURRENT_DATE() - ${ingestCutOffInterval}`
     }
 
-    if (ignore_deletion == true) {
-        ignore_query== ``? ignore_query = `AND NOT (action = 'd' AND ingest_time BETWEEN '2026-04-19 17:00:00' AND '2026-04-26 17:00:00')`: ignore_query = `${ignore_query}`
-    }
+    // if (ignore_deletion == true) {
+    //     ignore_query== ``? ignore_query = `AND NOT (action = 'd' AND ingest_time BETWEEN '2026-04-19 17:00:00' AND '2026-04-26 17:00:00')`: ignore_query = `${ignore_query}`
+    // }
 
     if (ctx.incremental()) {
         preOperation = `
@@ -89,9 +89,7 @@ function createIncremental_query({
     ignore_deletion = false,
     ignore_query =``
 }) {
-    if (ignore_deletion == true) {
-        ignore_query== ``? ignore_query = `AND NOT (action = 'd' AND ingest_time BETWEEN '2026-04-19 17:00:00' AND '2026-04-26 17:00:00')`: ignore_query = `${ignore_query}`
-    }
+    
     const selectQuery = `
     WITH over_tbl AS (
         SELECT
@@ -154,6 +152,9 @@ function createIncremental({
     ignore_deletion = false,
     ignore_query =``
 }) {
+    if (ignore_deletion == true) {
+        ignore_query== ``? ignore_query = `AND NOT (action = 'd' AND ingest_time BETWEEN '2026-04-19 17:00:00' AND '2026-04-26 17:00:00')`: ignore_query = `${ignore_query}`
+    }
     return publish(config.tableName, {
         type: "incremental",
         description: config.description,
