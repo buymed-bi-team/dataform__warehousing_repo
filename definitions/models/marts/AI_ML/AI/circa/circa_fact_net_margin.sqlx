@@ -99,7 +99,7 @@ WITH map_cogs_buymed AS (
                      AND i.gift_code IS NOT NULL
                      AND i.gift_code <> ''
                      AND i.unit_price = 0
-                     AND i.product_id NOT IN (941832, 941878, 1101283, 2003919, 2004189)
+                 --    AND i.product_id NOT IN (941832, 941878, 1101283, 2003919, 2004189)
                 THEN i.unit_cost_price * (i.quantity - COALESCE(i.qty_rt, 0))
                 ELSE 0
             END
@@ -107,7 +107,7 @@ WITH map_cogs_buymed AS (
         , SUM(
             CASE
                 WHEN i.owner_name = 'CIRCA MARKETING'
-                     AND i.product_id NOT IN (941832, 941878, 1101283, 2003919, 2004189)
+                 --    AND i.product_id NOT IN (941832, 941878, 1101283, 2003919, 2004189)
                 THEN i.unit_cost_price * (i.quantity - COALESCE(i.qty_rt, 0))
                 ELSE 0
             END
@@ -127,7 +127,7 @@ WITH map_cogs_buymed AS (
                      AND i.gift_code IS NOT NULL
                      AND i.gift_code <> ''
                      AND i.unit_price = 0
-                     AND i.product_id NOT IN (941832, 941878, 1101283, 2003919, 2004189)
+                  --   AND i.product_id NOT IN (941832, 941878, 1101283, 2003919, 2004189)
                 THEN i.base_unit_cost_price_ts * i.convert_rate * (i.quantity - COALESCE(i.qty_rt, 0))
                 ELSE 0
             END
@@ -135,7 +135,7 @@ WITH map_cogs_buymed AS (
         , SUM(
             CASE
                 WHEN i.owner_name = 'CIRCA MARKETING'
-                     AND i.product_id NOT IN (941832, 941878, 1101283, 2003919, 2004189)
+                 --    AND i.product_id NOT IN (941832, 941878, 1101283, 2003919, 2004189)
                 THEN i.base_unit_cost_price_ts * i.convert_rate * (i.quantity - COALESCE(i.qty_rt, 0))
                 ELSE 0
             END
