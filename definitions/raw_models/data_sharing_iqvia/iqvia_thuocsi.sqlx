@@ -1,0 +1,121 @@
+config {
+    type: "table",
+    tags: ["IQVIA_DATA_SHARING"],
+    bigquery: {
+        partitionBy: "created_date",
+        clusterBy: ["product_id", "customer_id"]
+    }
+
+}
+
+WITH
+    outbound AS (
+        SELECT
+            admin_id AS order_id
+            , admin_product_id AS original_product_id
+            , COALESCE(SAFE_CAST(JSON_VALUE(pi, "$.admin_product_id") AS INT64), admin_product_id) AS product_id
+            , sku AS original_sku
+            , COALESCE(JSON_VALUE(pi, "$.sku"), sku) AS sku
+            , COALESCE(SAFE_CAST(JSON_VALUE(pi, "$.order_quantity") AS INT64), order_quantity) AS order_quantity
+            , COALESCE(SAFE_CAST(JSON_VALUE(pi, "$.reserved_quantity") AS INT64), reserved_quantity) AS reserved_quantity
+            , SAFE_CAST(JSON_VALUE(sd, "$.quantity") AS INT64) AS outbound_quantity
+            , unit_price
+            , JSON_VALUE(sd, "$.pocode")  AS po_code
+            , created_date
+        FROM ${source.platinum}.warehouse_prd_core_sale_order_item
+            LEFT JOIN UNNEST(JSON_QUERY_ARRAY(pick_items)) AS pi
+            LEFT JOIN UNNEST(JSON_QUERY_ARRAY(pi, "$.scanned_details")) AS sd
+        WHERE 1=1
+            AND created_date >= "2026-04-01"
+            AND created_date <= "2026-07-01" - 1
+    )
+
+    , order_item AS (
+        SELECT
+            order_id
+            , product_id
+            , product_original_id
+            , sku_code
+            , sku_orignal_code AS sku_original_code
+            , demand_quantity
+            , reserved_quantity
+            , outbound_quantity
+            , sales_price
+            , customer_id
+        FROM ${ref("fact_order_item")}
+        WHERE 1=1
+            AND DATE(created_at) >= "2026-01-01"
+    )
+
+    , sale_order AS (
+        SELECT
+            admin_id AS order_id
+            , JSON_VALUE(customer, "$.name") AS customer_name
+            , IF( warehouse_code = "TA",SAFE_CAST(JSON_VALUE(customer, "$.code") AS INT64) + 1000000, SAFE_CAST(JSON_VALUE(customer, "$.code") AS INT64)) AS customer_id
+            , JSON_VALUE(customer, "$.address") AS customer_address
+            , JSON_VALUE(customer, "$.ward") AS customer_ward
+            , JSON_VALUE(customer, "$.district") AS customer_district
+            , JSON_VALUE(customer, "$.province") AS customer_province
+        FROM ${source.platinum}.warehouse_prd_core_sale_order
+        WHERE 1=1
+            AND created_date >= "2026-04-01"
+            AND created_date <= "2026-07-01" - 1
+            AND status <> "CANCEL"
+            AND UPPER(type) = "NORMAL"
+    )
+
+SELECT
+    ob.created_date
+    , ob.product_id
+    , p.product_code
+    , p.product_name
+    , p.volumes
+    , p.unit
+    , p.product_category_commercial AS product_category
+    , p.product_image_url
+    , p.brand
+    , p.manufacturer_short_name AS manufacturer
+    , v.commercial_supplier_id AS corporation_id
+    , v.commercial_supplier_name AS corporation
+    , IF(v.supplier_class = "EXTERNAL", "SELLER", "MEDX") AS supplier_type
+    , so.customer_id
+    , c.customer_name
+    , c.address AS customer_address
+    , g.ward_name AS customer_ward
+    , g.district_name AS customer_district
+    , g.province_name AS customer_province
+    , COALESCE(o.company_invoice_address, CONCAT(c.address, ", ", g.ward_name, ", ", g.district_name, ", ", g.province_name)) AS invoice_address
+    , COALESCE(c.business_scope, "HOSPITAL") AS customer_business_type
+    , ROUND(SUM(IF(ob.product_id <> ob.original_product_id, COALESCE(oi.sales_price, ob.unit_price), ob.unit_price) * ob.outbound_quantity),0) AS value
+    , SUM(ob.outbound_quantity) AS quantity
+    , ROUND(SUM(IF(ob.product_id <> ob.original_product_id, COALESCE(oi.sales_price, ob.unit_price), ob.unit_price) * ob.outbound_quantity) / SUM(ob.outbound_quantity),0) AS average_price
+FROM outbound AS ob
+    LEFT JOIN order_item AS oi
+        ON ob.order_id = oi.order_id
+            AND ob.sku = oi.sku_code
+            AND ob.original_sku = oi.sku_original_code
+            AND ob.order_quantity = oi.demand_quantity
+            AND ob.reserved_quantity = oi.reserved_quantity
+    LEFT JOIN sale_order AS so ON ob.order_id = so.order_id
+    LEFT JOIN (
+        SELECT order_id, company_invoice_address
+        FROM ${ref("fact_order")} AS o
+        WHERE DATE(created_at) >= "2026-01-01"
+            AND invoice_request = "true"
+    ) AS o ON ob.order_id = o.order_id
+    LEFT JOIN ${ref("dim_product")} AS p ON ob.product_id = p.product_id
+    LEFT JOIN ${source.platinum}.warehouse_prd_inbound_inbound_ticket AS it ON ob.po_code = it.po_code
+    LEFT JOIN ${ref("dim_supplier")} AS v ON v.supplier_code = it.vendor_code
+    LEFT JOIN ${ref("dim_customer")} AS c ON c.customer_id = so.customer_id
+    LEFT JOIN ${ref("dim_geo_location")} AS g ON c.location_code = g.location_code
+WHERE 1=1
+    AND NOT EXISTS (SELECT 1 FROM ${ref("fact_order")} AS o WHERE o.order_id = ob.order_id AND o.source = "clinic-portal")
+    AND so.order_id IS NOT NULL
+    AND NOT (p.product_category_commercial = "Rx" AND c.business_scope = "DRUGSTORE" AND p.essential = "ESSENTIAL")
+    AND ob.outbound_quantity > 0
+    AND c.business_scope NOT IN ("CLINIC", "BEAUTY_SALON", "DENTISTRY")
+    AND p.product_report_category <> "RECALLED"
+    AND p.product_name NOT LIKE "[%"
+GROUP BY ALL
+HAVING value > 0
+
