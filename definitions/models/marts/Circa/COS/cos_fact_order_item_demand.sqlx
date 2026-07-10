@@ -2,13 +2,12 @@ config {
     type: "table",
     description: `Last 13 month| PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every 2 hours.Circa /cos_order_item_demand `,
     tags: ["custom_1h_past15"],
-    name: "cos_order_item_demand",
+    name: "cos_fact_order_item_demand",
     columns: {
         order_id: "NonNull |" + docs.order_id
-   
-        
-    },
-    bigquery: {
+
+    }
+    ,bigquery: {
         partitionBy: "date(created_at)"
     }
 }
@@ -30,8 +29,7 @@ WITH _order AS(
    FROM ${source.circa_os}.order_order
    WHERE type = 'ONLINE'
    QUALIFY ROW_NUMBER() OVER (PARTITION BY reference_order_in_platform ORDER BY code DESC) = 1 
-)
-
+), base_data AS (
     SELECT DISTINCT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
                 , p.name
                 , o.pos_id
@@ -40,15 +38,17 @@ WITH _order AS(
                 , o.order_id
                 , o.status
                 , unit_id
-                , product_id
-                , product_name
-                , unit
+                , o.unit
+                , coalesce(td.product_id, o.product_id ) AS product_id
+                , coalesce( td.product_name, o.product_name) AS product_name 
+                , cv.convert_rate 
                 , unit_price
                 , platform_price
                 , quantity
                 , sale_quantity
+                , reserved_qty
                 , unfulfilled_quantity
-                , s.code
+                , s.code AS order_code
                 , s.reference_order_in_platform
                 , s.status AS order_status
                 , JSON_VALUE(JSON_QUERY_ARRAY(purchase_history)[OFFSET(0)], '$.note') AS purchase_note
@@ -57,13 +57,30 @@ WITH _order AS(
                 , JSON_VALUE(JSON_QUERY_ARRAY(purchase_history)[OFFSET(0)], '$.quantity') AS ordered_quantity
                 , JSON_VALUE(JSON_QUERY_ARRAY(purchase_history)[OFFSET(0)], '$.source_type') AS source_type
                 , DATETIME_ADD(s.pre_order_scheduled_time, INTERVAL 7 HOUR) AS pre_order_scheduled_time
-                , CONCAT(product_id, "_", o.client_id) AS product_client_id
+                , CONCAT(o.product_id, "_", o.client_id) AS product_client_id
     FROM ${source.circa_os}.order_order_item_demand o
     LEFT JOIN ${source.ref}.circa_pos_profile p  ON o.pos_id = p.id
     LEFT JOIN _order s ON o.order_id = s.id
+    -- LEFT JOIN ${source.ref}.cos_fact_order_item i ON o.order_id = i.order_id and o.product_id = i.product_id AND o.unit = i.unit AND o.sku_code = i.sku_code
+    LEFT JOIN  ${source.ref}.cos_dim_product td ON o.product_id = td.product_id AND o.client_id = p.client_id
+    LEFT JOIN buymed_circa_v2.product_retail_unit cv ON o.unit = cv.unit AND o.product_id = cv.product_id AND o.client_id = cv.client_id
     -- LEFT JOIN ${source.circa_os}.order_order sON o.order_id = s.id
     WHERE o.status IS NOT NULL
       AND o.status <> 'DRAFT'
       AND s.status <> 'CANCELED'
       AND p.id IS NOT NULL
       AND quantity > 0
+)
+, stock AS (
+      SELECT pos_id
+            , product_id
+            , SUM(on_hand_quantity) AS on_hand_quantity
+      FROM ${source.ref}.cos_fact_inventory
+  GROUP BY ALL
+)
+SELECT a.* EXCEPT(ordered_quantity)
+      , ROUND(SAFE_DIVIDE(CAST(a.ordered_quantity AS INT64), a.convert_rate)) AS ordered_quantity
+      , ROUND(SAFE_DIVIDE(b.on_hand_quantity, a.convert_rate)) AS current_stock
+FROM base_data a 
+LEFT JOIN stock b ON a.pos_id = b.pos_id AND a.product_id = b.product_id
+-- WHERE a.order_code = 'DHC00856092'
