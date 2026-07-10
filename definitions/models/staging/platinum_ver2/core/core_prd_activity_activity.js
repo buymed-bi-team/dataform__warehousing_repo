@@ -20,7 +20,9 @@ model.createIncremental(
     ["platinum_00h00", "platinum_12h00","core_prd_activity"],
     {
         has_src_created_date : false,
-        ingestCutOffInterval : "INTERVAL 1 MONTH"
+        ingestCutOffInterval : "INTERVAL 1 MONTH",
+        ignore_deletion: true,
+        ignore_query: `AND NOT(action ='d' AND created_time < CURRENT_TIMESTAMP - INTERVAL 12 MONTH)`
     }
 );
 // model.assertUnique(
