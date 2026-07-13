@@ -1,0 +1,230 @@
+config {
+    type: "table",
+    description: `Circa OS Transaction order item detail 
+                  PIC: huyen.ngo; 
+                  model_type: Table ;
+                  schedule: At minute 20 every hour`,
+    tags:  ["custom_1h_past23"],
+    name: "circa_fact_net_margin",
+    columns: {
+    }
+    
+    ,bigquery: {
+        partitionBy: "created_date"
+    }
+}
+
+WITH
+  fact_order_item AS (
+  SELECT
+    i.*,
+     CASE
+      WHEN i.fulfillment_method = 'SO_THUOCSI' AND cogs_base_unit_ts is not null then cogs_base_unit_ts
+      else i.cost_price_include_tax
+    END AS base_unit_cost_price_ts
+  FROM
+    gold_buymed_vn2.fact_fin_circa_order_item i
+  LEFT JOIN
+    ${ref("gold_buymed_vn2", "circa_cogs_thuocsi_by_po")} p
+  ON
+    i.doc_code = p.po_code
+    AND i.product_id = p.product_id
+)
+
+    ,
+  fact_order AS (
+  SELECT
+    o.created_date,
+    EXTRACT(HOUR FROM o.created_at) AS created_hour,
+    o.pos_id,
+    o.client_id,
+    o.order_code,
+    o.status,
+    o.type AS channel,
+    SUM( total_order_discount_amount + total_loyalty_discount_amount ) AS voucher_discount
+  FROM
+    gold_buymed_vn2.fact_fin_circa_order o
+  WHERE o.status NOT IN ('RETURNED', 'FAILED_SHIPMENT', 'OUT_OF_STOCK','CANCELED' )
+  GROUP BY
+    ALL )
+    ,
+  cogs_os AS (
+  SELECT
+    o.created_date,
+    o.created_hour,
+    o.pos_id,
+    o.client_id,
+    i.order_code,
+    o.status,
+    o.channel,
+    i.product_id,
+    SUM(
+      CASE
+        WHEN i.gift_code IS NULL THEN i.unit_price_before_discount*i.quantity_po
+        ELSE 0
+    END
+      ) AS gmv,
+    SUM(i.item_amount_contribution*o.voucher_discount) AS voucher_discount,
+    SUM(CASE
+        WHEN i.is_deal_1k IS TRUE THEN (unit_price_before_discount - unit_price_after_discount)*i.quantity_po
+        ELSE 0
+    END
+      ) AS deal_1k_amount
+    ,
+    SUM(i.quantity_po*(item_discount_amount + combo_discount_amount)) AS discount_deal,
+    SUM(
+      CASE
+        WHEN (i.owner_name <> 'CIRCA MARKETING' 
+        AND i.gift_code IS NOT NULL AND i.gift_code <> '' 
+        AND i.product_id NOT IN (941832, 941878, 1101283, 2003919, 2004189, 2010834, 2010836, 2010837, 2010838, 2010840, 300704)) 
+        OR ( i.owner_name = 'CIRCA MARKETING' 
+        AND i.product_id NOT IN (941832, 941878, 1101283, 2003919, 2004189, 2010834, 2010836, 2010837, 2010838, 2010840, 300704) ) 
+        THEN i.cost_price_include_tax * i.base_quantity_po
+        ELSE 0
+    END
+      ) AS cogs_mkt_circa,
+    SUM(
+      CASE
+        WHEN i.owner_name <> 'CIRCA MARKETING' 
+        AND (i.gift_code IS NULL OR i.gift_code = '') 
+        AND product_id NOT IN (2010834, 2010836, 2010837, 2010838, 2010840) 
+        THEN i.cost_price_include_tax * i.base_quantity_po
+        ELSE 0
+    END
+      ) AS cogs_circa,
+    SUM(
+      CASE
+        WHEN (i.owner_name <> 'CIRCA MARKETING' 
+        AND i.gift_code IS NOT NULL AND i.gift_code <> '' 
+        AND i.product_id NOT IN (941832, 941878, 1101283, 2003919, 2004189, 2010834, 2010836, 2010837, 2010838, 2010840, 300704)) 
+        OR ( i.owner_name = 'CIRCA MARKETING' 
+        AND i.product_id NOT IN (941832, 941878, 1101283, 2003919, 2004189, 2010834, 2010836, 2010837, 2010838, 2010840, 300704) ) 
+        THEN i.base_unit_cost_price_ts * i.base_quantity_po
+        ELSE 0
+    END
+      ) AS cogs_mkt_buymed,
+    SUM(
+      CASE
+        WHEN i.owner_name <> 'CIRCA MARKETING' 
+        AND (i.gift_code IS NULL OR i.gift_code = '') 
+        AND product_id NOT IN (2010834, 2010836, 2010837, 2010838, 2010840) 
+        THEN i.base_unit_cost_price_ts * i.base_quantity_po
+        ELSE 0
+    END
+      ) AS cogs_buymed
+  FROM
+    fact_order_item AS i
+  INNER JOIN
+    fact_order o
+  ON
+    i.order_code = o.order_code
+  WHERE
+    o.client_id = 1
+    AND o.pos_id NOT IN ( '0afdb831-b60d-4254-8822-df13e39c90e7'
+    --head office
+    )
+    GROUP BY
+      ALL ),
+    cogs_fs AS (
+  SELECT
+    o.created_date,
+    created_hour,
+    o.pos_id,
+    o.client_id,
+    i.order_code,
+    o.status,
+    o.channel,
+    i.product_id,
+    SUM(
+      CASE
+        WHEN i.gift_code IS NULL THEN i.unit_price_before_discount*i.quantity_po
+        ELSE 0
+    END
+      ) AS gmv,
+    SUM(i.item_amount_contribution*o.voucher_discount) AS voucher_discount,
+    SUM(CASE
+        WHEN i.is_deal_1k IS TRUE THEN (unit_price_before_discount - unit_price_after_discount)*i.quantity_po
+        ELSE 0
+    END
+      ) AS deal_1k_amount
+    ,
+    SUM(i.quantity_po*(item_discount_amount + combo_discount_amount)) AS discount_deal,
+   0 AS cogs_mkt_circa,
+    SUM( i.cost_price_include_tax * i.base_quantity_po ) AS cogs_circa,
+    0 AS cogs_mkt_buymed,
+    SUM( i.base_unit_cost_price_ts * i.base_quantity_po ) AS cogs_buymed
+  FROM
+    fact_order_item AS i
+  INNER JOIN
+    fact_order o
+  ON
+    i.order_code = o.order_code
+  WHERE
+    o.client_id <>1
+    GROUP BY
+      ALL )
+    , final_cogs as (
+      select * from cogs_os 
+      union ALL
+      select * from cogs_fs
+    )
+    , final AS (
+    SELECT
+      created_date,
+      created_hour,
+      pos_id,
+      client_id,
+      order_code,
+      status,
+      channel,
+      product_id,
+      gmv,
+      cogs_circa,
+      cogs_buymed,
+      COALESCE(SUM(gmv),0) - COALESCE(SUM(cogs_circa), 0) AS profit_circa,
+      COALESCE(SUM(gmv),0) - COALESCE(SUM(cogs_buymed), 0) AS profit_buymed,
+      COALESCE(SUM(voucher_discount), 0) + COALESCE(SUM(cogs_mkt_circa), 0) + COALESCE(SUM(deal_1k_amount), 0) AS voucher_circa,
+      COALESCE(SUM(voucher_discount), 0) + COALESCE(SUM(cogs_mkt_buymed), 0) + COALESCE(SUM(deal_1k_amount), 0) AS voucher_buymed,
+      COALESCE(SUM(discount_deal), 0) AS deal,
+      COALESCE(SUM(gmv),0) - COALESCE(SUM(cogs_circa), 0) - (COALESCE(SUM(voucher_discount), 0) + COALESCE(SUM(cogs_mkt_circa), 0) + COALESCE(SUM(deal_1k_amount), 0)) - COALESCE(SUM(discount_deal), 0) AS net_profit_circa,
+      COALESCE(SUM(gmv),0) - COALESCE(SUM(cogs_buymed), 0) - (COALESCE(SUM(voucher_discount), 0) + COALESCE(SUM(cogs_mkt_buymed), 0) + COALESCE(SUM(deal_1k_amount), 0)) - COALESCE(SUM(discount_deal), 0) AS net_profit_buymed
+    FROM
+      final_cogs
+    WHERE
+      order_code IS NOT NULL
+    GROUP BY
+      ALL )
+  SELECT
+    a.created_date,
+    a.created_hour,
+    a.client_id,
+    p.code AS pos_code,
+    p.name AS pos_name,
+  IF
+    (p.type = 'FS', 'FS', 'COS') AS pos_type,
+    a.order_code,
+    a.status,
+    a.channel,
+    a.product_id,
+    a.gmv,
+    a.cogs_circa,
+    a.cogs_buymed,
+    a.profit_circa AS gross_profit_circa,
+    a.profit_buymed AS gross_profit_buymed,
+    SAFE_DIVIDE(a.profit_circa, a.gmv) AS gross_margin_circa,
+    SAFE_DIVIDE(a.profit_buymed, a.gmv) AS gross_margin_buymed,
+    a.voucher_circa,
+    a.voucher_buymed,
+    a.deal,
+    a.net_profit_circa,
+    a.net_profit_buymed,
+    SAFE_DIVIDE(a.net_profit_circa, a.gmv) AS net_margin_circa,
+    SAFE_DIVIDE(a.net_profit_buymed, a.gmv) AS net_margin_buymed,
+    CONCAT(a.client_id, "_", a.product_id) AS product_id_key,
+    CONCAT(a.order_code, CONCAT(a.client_id, "_", a.product_id)) AS order_product_unit_key
+  FROM
+    final AS a
+  LEFT JOIN
+    ${ref("gold_buymed_vn2", "circa_pos_profile")} AS p
+  ON
+    a.pos_id = p.id
