@@ -30,6 +30,7 @@ WITH
     o.pos_id,
     o.client_id,
     o.order_code,
+    o.type AS channel,
     status,
     SUM( total_order_discount_amount + total_loyalty_discount_amount ) AS voucher_discount
   FROM
@@ -45,6 +46,7 @@ WITH
     o.pos_id,
     o.client_id,
     i.order_code,
+    o.channel,
     i.product_id,
     SUM(
       CASE
@@ -120,6 +122,7 @@ WITH
     o.pos_id,
     o.client_id,
     i.order_code,
+    o.channel,
     i.product_id,
     SUM(
       CASE
@@ -161,6 +164,7 @@ WITH
       pos_id,
       client_id,
       order_code,
+      channel,
       product_id,
       gmv,
       cogs_circa,
@@ -187,6 +191,7 @@ WITH
   IF
     (p.type = 'FS', 'FS', 'COS') AS pos_type,
     a.order_code,
+    a.channel,
     a.product_id,
     a.gmv,
     a.cogs_circa,
