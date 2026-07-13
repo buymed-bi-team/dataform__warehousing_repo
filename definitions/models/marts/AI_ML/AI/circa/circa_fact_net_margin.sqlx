@@ -177,6 +177,7 @@ WITH
       ALL )
   SELECT
     a.created_date AS created_date,
+    a.created_hour
     a.client_id,
     p.code AS pos_code,
     p.name AS pos_name,
