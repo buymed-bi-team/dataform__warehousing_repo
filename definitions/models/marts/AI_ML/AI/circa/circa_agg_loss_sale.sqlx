@@ -6,7 +6,7 @@ config {
 }
 
 SELECT
-    a.name AS pos_name
+    a.pos_name
     , a.pos_id
     , p.code AS pos_code
     , IF(p.type = "FS", "FS", "COS") AS pos_type
