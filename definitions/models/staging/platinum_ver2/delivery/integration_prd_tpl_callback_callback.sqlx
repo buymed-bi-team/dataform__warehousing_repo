@@ -23,14 +23,9 @@ config {
     FROM silver_buymed_vn.integration_prd_tpl_callback_callback
     WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 1 DAY
     QUALIFY ROW_NUMBER() OVER (_window) = 1 
-          AND ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 16 HOUR
           WINDOW _window AS (
           PARTITION BY mg_id
-          ORDER BY synced_at DESC,
-          IF
-              (action='d',3,
-              IF
-              (action='u',2,1)) DESC
+          ORDER BY synced_at DESC
           ,last_updated_time DESC)
   ), platinum AS (
     SELECT 
@@ -39,11 +34,9 @@ config {
       platinum_refresh
     FROM ${ref(`platinum_buymed_vn__stg`, `integration_prd_tpl_callback_callback`)}
   )
-  SELECT p.*
-  FROM platinum p
-  LEFT JOIN silver s 
-      ON p.mg_id = s.mg_id 
-  WHERE s.mg_id is null 
+SELECT p.*
+FROM platinum p
+WHERE NOT EXISTS (SELECT 1 FROM silver s WHERE s.mg_id = p.mg_id)
 
   UNION ALL 
 
