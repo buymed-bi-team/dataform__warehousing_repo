@@ -8,6 +8,7 @@ SELECT
  e.name AS client_name
 ,o.client_id
 ,o.created_date
+,pos_code
 ,pos_name
 ,SUM(gmv) gmv
 ,SUM(cogs_circa) cogs_circa
