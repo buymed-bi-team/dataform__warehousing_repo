@@ -1,0 +1,55 @@
+config {
+    type: "table",
+    description: `PIC: Ha.Lekim`,
+    bigquery: {
+        partitionBy: "created_date"
+    },
+    tags: ["gold_custom_20m"]
+}
+
+WITH
+  clean_data AS (
+  SELECT
+    TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at,
+    t.product_id,
+    CASE
+      WHEN SAFE_CAST(JSON_VALUE(t.extra_props, '$.origin_price') AS INT64) IS NULL THEN t.price
+      ELSE SAFE_CAST(JSON_VALUE(t.extra_props, '$.origin_price') AS INT64)
+  END
+    AS origin_price,
+    JSON_VALUE(t.extra_props, '$.promotion_event_id') AS promotion_event_id,
+    ARRAY_TO_STRING( ARRAY(
+      SELECT
+        JSON_EXTRACT_SCALAR(tag)
+      FROM
+        UNNEST(JSON_EXTRACT_ARRAY(t.extra_props, '$.tags')) AS tag ), ' ,' ) AS tag_list,
+    t.unit,
+    t.unit_code,
+    t.price,
+    t.quantity,
+    JSON_VALUE(t.extra_props, '$.reserved_quantity') AS reserved_quantity,
+    t.order_id,
+    t.order_code,
+    t.total_price,
+    DATETIME_ADD(t.created_time, INTERVAL 7 HOUR) AS created_time,
+    DATE(DATETIME_ADD(t.created_time, INTERVAL 7 HOUR)) AS created_date,
+    t.action,
+    DATETIME_ADD(t.last_updated_time, INTERVAL 7 HOUR) AS last_updated_time,
+    DATETIME_ADD(t.platinum_refresh, INTERVAL 7 HOUR) AS platinum_refresh
+  FROM
+    platinum_buymed_vn.circa_online_prd_order_order_item t )
+SELECT
+  a.*,
+  CASE
+    WHEN tag_list LIKE '%deal_1000%' AND price = 1000 THEN TRUE
+    ELSE FALSE
+END
+  AS is_deal1k,
+  origin_price - price AS discount_amount,
+  d.code AS promotion_event_code
+FROM
+  clean_data a
+LEFT JOIN
+  buymed_circa_v2.promotion_promotion_event d
+ON
+  a.promotion_event_id = d.id

@@ -1,0 +1,49 @@
+config {
+    type: "table",
+    description: `PIC: Ha.Lekim`,
+    bigquery: {
+        partitionBy: "created_date"
+    },
+    tags: ["custom_1h_past10"]
+}
+with raw_data as (
+SELECT
+  po.updated_date,
+  po.created_date,
+  po.pos_id,
+  po.po_code,
+  po.po_id,
+  po.status,
+  po.client_id,
+  poi.id as item_id,
+  poi.product_id,
+  poi.sku,
+  poi.unit,
+  ru.convert_rate,
+  poi.unit_price,
+  poid.lot_id,
+  poid.lot_date,
+  poid.tax_rate,
+  poid.quantity,
+  poid.received_quantity,
+  poid.discount_amount,
+  poid.received_quantity*ru.convert_rate as received_base_quantity,
+  safe_divide(poid.received_quantity, sum(poid.received_quantity) over (partition by po.po_id, poi.id)) as base_quantity_lot_dist
+FROM ${ref("fact_fin_circa_purchase_order")} po
+LEFT JOIN  buymed_circa_v2.order_purchase_order_item poi
+ON po.po_id = poi.purchase_order_id
+left join buymed_circa_v2.product_retail_unit ru
+ on poi.unit_id = ru.id
+LEFT JOIN  buymed_circa_v2.order_po_item_detail poid
+ON poi.id = poid.po_item_id
+WHERE
+  1=1
+  AND poid.lot_id IS NOT NULL)
+  select * except (quantity, received_quantity, discount_amount, received_base_quantity, base_quantity_lot_dist),
+  sum(quantity) quantity,
+  sum(received_quantity) received_quantity,
+  sum(discount_amount) discount_amount,
+  sum(received_base_quantity) received_base_quantity,
+  sum(base_quantity_lot_dist) base_quantity_lot_dist
+  from raw_data 
+  group by all

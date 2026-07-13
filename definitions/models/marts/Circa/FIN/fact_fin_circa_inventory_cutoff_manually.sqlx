@@ -1,0 +1,38 @@
+config {
+    type: "incremental",
+    description: `PIC: Ha.Lekim
+    circa_inventory_cutoff from allocation`,
+     bigquery: {
+        partitionBy: "cut_off_date"
+    },
+     tags: ["8h30"]
+}
+js {
+   const end_time = `DATETIME(date(current_date()), '01:20:00')`
+}
+-- only keep that end day of month
+pre_operations {
+  DELETE
+  FROM
+    ${self()}
+  WHERE
+    date_trunc(cut_off_date,month) = date_trunc(DATE_SUB(date(${end_time}), interval 1 day),month)
+}
+WITH
+  raw_allocation AS (
+select * from ${ref("fact_fin_circa_inventory_allocation")}
+    WHERE datetime(updated_at) < ${end_time}
+    )
+
+  SELECT
+    pos_code,
+    product_id,
+    lot_id,
+    location_id,
+    location_detail_id,
+    DATE_SUB(date(${end_time}), interval 1 day) as cut_off_date,
+    SUM(convert_rate * base_quantity) base_quantity
+  FROM
+    raw_allocation 
+  GROUP BY
+    ALL

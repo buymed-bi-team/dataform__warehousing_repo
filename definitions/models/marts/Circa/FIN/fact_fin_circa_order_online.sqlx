@@ -1,0 +1,54 @@
+config {
+    type: "table",
+    description: `PIC: Ha.Lekim`,
+    bigquery: {
+        partitionBy: "created_date"
+    },
+    tags: ["gold_custom_20m"]
+}
+
+SELECT DISTINCT  
+a.order_id, 
+a.order_code, 
+c.code as offline_order_code,
+a.sale_order_code, 
+a.sale_order_status, 
+a.type, 
+a.status, 
+canceled_by_user_type, 
+cancellation_note, 
+cancellation_type , 
+a.customer_name, 
+a.customer_phone, 
+a.receiver_phone_number, 
+a.receiver_name,
+a.price, 
+a.delivery_method_fee, 
+a.total_discount,
+a.total_price, 
+a.paid_amount,
+a.deliver_method, 
+a.payment_status, 
+a.payment_method,
+DATETIME_ADD(a.created_time, INTERVAL 7 HOUR) AS created_at,
+DATE(DATETIME_ADD(a.last_updated_time, INTERVAL 7 HOUR)) AS updated_date,
+DATE(DATETIME_ADD(a.created_time, INTERVAL 7 HOUR)) AS created_date,
+DATE(DATETIME_ADD(a.delivery_date, INTERVAL 7 HOUR)) AS delivery_date,
+ DATE(DATETIME_ADD(a.paid_time, INTERVAL 7 HOUR)) AS paid_date,
+ json_value(a.extra_props, '$.secondary_pay_method') secondary_pay_method,
+ cast(json_value(a.extra_props, '$.secondary_pay_amount') as int64) secondary_pay_amount,
+ date(datetime_add(timestamp(json_value(a.extra_props, '$.cancel_time')), interval 7 hour)) AS cancel_time,
+ pos_id,
+b.delivery_carrier_code,
+b.delivery_carrier,
+b.delivery_tracking_number,
+d.fee_amount AS original_delivery_fee
+FROM ${source.platinum}.circa_online_prd_order_order a
+LEFT JOIN ${source.platinum}.circa_online_prd_order_sale_order b 
+ON a.sale_order_code = b.sale_order_code
+left join  (select distinct reference_order_in_platform, pos_id, code from ${source.circa_os}.order_order
+where status NOT IN ('CANCELED','PENDING')
+qualify  row_number() over (partition by reference_order_in_platform order by created_at desc) =1
+) c
+on a.order_code = c.reference_order_in_platform
+LEFT JOIN ${ref("fact_circa_online_transporting")} d on b.delivery_tracking_number = d.tracking_code

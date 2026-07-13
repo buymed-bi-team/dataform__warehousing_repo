@@ -1,0 +1,59 @@
+config {
+    type: "table",
+    description: `PIC: Ha.Lekim`,
+    bigquery: {
+        partitionBy: "created_time"
+    },
+    tags: ["custom_1h_past10"]
+}
+SELECT
+  pmt.partner_code,
+  pmt.partner_name,
+  pmt.partner_type,
+  pmt.company_code,
+  ARRAY_REVERSE(SPLIT(rec_code, ':'))[SAFE_OFFSET(0)] AS rec_code,
+  pmt.payment_code,
+  pmt.payment_id,
+  pmt.payment_method,
+  JSON_VALUE(pmt.extra_props, '$.reason_code') AS reason_code,
+  rea.reason_name,
+  pmt.transaction_code,
+  pmt.type,
+  pmt.status,
+  pmt.note,
+  object_types_,
+  date(DATETIME(pmt.created_time + INTERVAL 7 HOUR)) AS created_time,
+  date(DATETIME(pmt.paid_time + INTERVAL 7 HOUR)) AS paid_time,
+  date(DATETIME(pmt.last_updated_time + INTERVAL 7 HOUR)) AS last_updated_time,
+  pmt.amount,
+  pmt.balance
+-- select distinct pmt.status
+FROM
+  ${source.platinum_restricted}.platform_billing_prd_payment_payment
+    pmt
+LEFT JOIN UNNEST(JSON_VALUE_ARRAY(object_type_codes)) AS rec_code
+  ON TRUE
+LEFT JOIN UNNEST(JSON_VALUE_ARRAY(object_types)) AS object_types_
+  ON TRUE
+INNER JOIN
+  (
+    SELECT DISTINCT
+      reason_code,
+      reason_name
+    FROM
+      ${source.platinum_restricted}.platform_billing_prd_payment_reason_setting
+    WHERE
+      1 = 1
+      AND LOWER(reason_name) LIKE '%đối soát%'
+  ) rea
+  ON JSON_VALUE(pmt.extra_props, '$.reason_code') = rea.reason_code
+WHERE
+  1 = 1
+  AND NOT REGEXP_CONTAINS(LOWER(partner_name), "demo|tech|test")
+  AND company_code = 'CIRCA'
+  AND partner_type IN (
+    'CIRCA_FS_EXTERNAL', 'CIRCA_FS', 'CIRCA_COS', 'CIRCA_FS_V2')
+  AND pmt.status NOT IN ('DRAFT', 'CANCELLED')
+  AND REGEXP_CONTAINS(
+    ARRAY_REVERSE(SPLIT(rec_code, ':'))[SAFE_OFFSET(0)],
+    'CIRCACOS|CIRCAFS_DEBT|CIRCAFS_FEE')

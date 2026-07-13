@@ -1,0 +1,48 @@
+config {
+    type: "table",
+    description: `PIC: Ha.Lekim`,
+    tags: ["8h30"]
+}
+
+SELECT
+  ld.cutoff_date_index AS date_index,
+  l.pos_id,
+  ld.doc_code,
+  ld.product_id,
+  ld.client_id,
+  ld.sku_code,
+  ld.lot_id,
+  ld.location_id,
+  ld.id as location_detail_id,
+  l.location_type,
+  po.source_type,
+  po.fulfillment_method,
+  po.distributor_id,
+  owner.id AS owner_id,
+  owner.name AS onwer_name,
+  ld.on_hand_qty                                       AS on_hand_quantity,
+  ld.available_qty                                     AS available_quantity,
+  COALESCE(ld.cost_price_include_tax,0)                   AS unit_price,
+  COALESCE(ld.cost_price_without_tax,0)                   AS unit_price_nonvat,
+  COALESCE(ld.on_hand_qty*ld.cost_price_include_tax,0)    AS total_amount,
+  COALESCE(ld.on_hand_qty*ld.cost_price_without_tax,0)    AS total_amount_nonvat
+FROM (select * from ${source.circa_os}.inventory_location_detail_historical_cut_off
+where cutoff_date_index in (
+   date_trunc(date_sub(current_date(),interval 2 month),month) -1,
+   date_trunc(date_sub(current_date(),interval 1 month),month) -1,
+   date_trunc(current_date(),month) -1,
+CURRENT_DATE()-1
+)
+) ld 
+LEFT JOIN ${source.circa_os}.inventory_location l
+  ON ld.location_id = l.id
+
+LEFT JOIN ${source.circa_os}.order_purchase_order po
+  ON ld.doc_code = po.code
+
+LEFT JOIN ${source.circa_os}.entity_owner owner
+  ON po.owner_id = owner.id
+-- LEFT JOIN ${source.circa_os}.inventory_location_detail ild
+--   on ld.id = ild.id
+WHERE 1=1
+	AND ld.doc_code <> 'N/A' and ld.on_hand_qty != 0

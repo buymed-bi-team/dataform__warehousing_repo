@@ -1,0 +1,103 @@
+config {
+    type: "table",
+    description: `PIC: Ha.Lekim`,
+    bigquery: {
+        partitionBy: "created_date"
+    },
+   tags: ["custom_1h_past10"]
+}
+SELECT 
+rec.created_date,
+rec_line.*,
+FROM
+  (
+    SELECT
+      recline.entity_code,
+      recline.rec_code,
+      recline.name,
+      col_name,
+      '' AS description,
+      recline.rec_line_code,
+      recline.line_amount,
+      JSON_VALUE(data, '$.thuocsi_payment_code')
+        AS thuocsi_payment_code,
+      SUM(amount) AS item_amount
+    FROM
+      ${source.platinum}.platform_accounting_prd_reconcile_CIRCA_FS_EXTERNAL_reconcile_line recline
+    LEFT JOIN
+      ${source.platinum}.platform_accounting_prd_reconcile_CIRCA_FS_EXTERNAL_reconcile_item recitem
+      ON recline.rec_line_code = recitem.rec_line_code
+    WHERE
+      1 = 1
+      AND RIGHT(recline.rec_code, 2) = 'V1'
+    GROUP BY ALL
+    UNION ALL
+    SELECT
+      recline.entity_code,
+      recline.rec_code,
+      recline.name,
+      col_name,
+      '' AS description,
+      recline.rec_line_code,
+      recline.line_amount,
+      JSON_VALUE(data, '$.thuocsi_payment_code') AS thuocsi_payment_code,
+      SUM(amount) AS item_amount
+    FROM
+      ${source.platinum}.platform_accounting_prd_reconcile_CIRCA_COS_reconcile_line recline
+    LEFT JOIN
+      ${source.platinum}.platform_accounting_prd_reconcile_CIRCA_COS_reconcile_item recitem
+      ON recline.rec_line_code = recitem.rec_line_code
+    WHERE 1 = 1
+    GROUP BY ALL
+    UNION ALL
+    SELECT
+      recline.entity_code,
+      recline.rec_code,
+      recline.name,
+      col_name,
+      '' AS description,
+      recline.rec_line_code,
+      recline.line_amount,
+      JSON_VALUE(data, '$.thuocsi_payment_code')  AS thuocsi_payment_code,
+      SUM(amount) AS item_amount
+    FROM
+      ${source.platinum}.platform_accounting_prd_reconcile_CIRCA_FS_V2_reconcile_line recline
+    LEFT JOIN
+      ${source.platinum}.platform_accounting_prd_reconcile_CIRCA_FS_V2_reconcile_item recitem
+      ON recline.rec_line_code = recitem.rec_line_code
+    WHERE 1 = 1
+    GROUP BY ALL
+    UNION ALL
+    SELECT
+      rec.entity_code,
+      rec.rec_code,
+      JSON_VALUE(extra_fees_, '$.name') AS name,
+      JSON_VALUE(extra_fees_, '$.col_name') AS col_name,
+      JSON_VALUE(extra_fees_, '$.description') AS description,
+      CONCAT(
+        'LINE-',
+        rec.rec_code,
+        '-',
+        JSON_VALUE(extra_fees_, '$.extra_line_code')) AS rec_line_code,
+      CAST(JSON_VALUE(extra_fees_, '$.amount') AS NUMERIC) AS line_amount,
+      '' AS thuocsi_payment_code,
+      CAST(JSON_VALUE(extra_fees_, '$.amount') AS NUMERIC) AS item_amount,
+    FROM
+      ${source.platinum}.platform_accounting_prd_reconcile_reconcile
+        rec
+    LEFT JOIN UNNEST(JSON_QUERY_ARRAY(extra_fees)) AS extra_fees_
+      ON TRUE
+    WHERE
+      1 = 1
+      AND rec_template_code != 'CIRCAFS'
+  ) rec_line
+  left join ${ref("fact_fin_circa_reconcile")} rec
+  on rec_line.rec_code = rec.rec_code
+WHERE 1=1
+  AND NOT (
+    rec_line.name IS NULL
+    AND rec_line.col_name IS NULL
+    AND rec_line.description IS NULL
+    AND rec_line.rec_line_code IS NULL
+    AND rec_line.line_amount IS NULL
+    AND rec_line.item_amount IS NULL)

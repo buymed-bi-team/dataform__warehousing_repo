@@ -1,0 +1,49 @@
+config {
+    type: "table",
+    description: `PIC: Ha.Lekim`,
+    bigquery: {
+        partitionBy: "created_date"
+    },
+    tags: ["custom_1h_past10"]
+}
+SELECT
+ rec.entity_code,
+  CASE
+    WHEN rec.entity_type = 'CIRCA_FS_EXTERNAL' THEN 'CIRCA_FS_V1'
+    WHEN rec.entity_code IN ('POS0028', 'POS0025') THEN 'OTHER'
+    ELSE rec.entity_type
+    END AS entity_type,
+  rec.rec_code,
+  rec.session_code,
+  rec.status,
+  rec.branch_code,
+  rec.company_code,
+  rec.description,
+  rec.rec_template_code,
+  CONCAT(
+    rec.rec_template_code,
+    "-",
+    CASE
+      WHEN rec.entity_type = 'CIRCA_FS_EXTERNAL' THEN 'CIRCA_FS_V1'
+      WHEN rec.entity_code IN ('POS0028', 'POS0025') THEN 'OTHER'
+      ELSE rec.entity_type
+      END) AS reconcile_config,
+  date(datetime_add(rec.created_time, INTERVAL 7 HOUR)) AS created_date,
+  datetime_add(rec.created_time, INTERVAL 7 HOUR) AS created_time,
+  datetime_add(rec.start_time, INTERVAL 7 HOUR) AS start_time,
+  datetime_add(rec.end_time, INTERVAL 7 HOUR) AS end_time,
+  datetime_add(rec.paid_time, INTERVAL 7 HOUR) AS paid_time,
+  datetime_add(rec.pay_due_time, INTERVAL 7 HOUR) AS pay_due_time,
+  datetime_add(rec.completed_time, INTERVAL 7 HOUR) AS completed_time,
+  datetime_add(rec.last_updated_time, INTERVAL 7 HOUR) AS last_updated_time,
+  MAX(rec.calc_amount) AS calc_amount,
+  SUM(CAST(JSON_VALUE(extra_fees_, '$.amount') AS NUMERIC)) AS extra_amount,
+  MAX(rec.final_amount) AS final_amount
+FROM
+  ${source.platinum}.platform_accounting_prd_reconcile_reconcile rec
+LEFT JOIN UNNEST(JSON_QUERY_ARRAY(extra_fees)) AS extra_fees_
+  ON TRUE
+WHERE
+  1 = 1
+  AND rec_template_code != 'CIRCAFS'
+GROUP BY ALL

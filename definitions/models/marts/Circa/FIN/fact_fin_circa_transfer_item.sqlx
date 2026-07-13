@@ -1,0 +1,116 @@
+config {
+    type: "table",
+    description: `PIC: Ha.Lekim`,
+    tags: ["custom_1h_past10"]
+}
+
+with cogs as (
+  select product_id,
+  lot_id,
+  po_code,
+  safe_divide(sum(received_quantity*unit_price), sum(received_base_quantity)) as base_purchase_price,
+  safe_divide(sum(received_quantity*(unit_price / (1+tax_rate/100))), sum(received_base_quantity)) as base_purchase_price_nonvat
+  from ${ref("fact_fin_circa_purchase_order_item")}
+  group by all
+)
+, cte_trf as ( SELECT
+      date(datetime_add(r.created_at, INTERVAL 7 hour)) created_date,
+      r.src_pos_id,
+      r.dest_pos_id,
+      r.status,
+      r.code,
+      r.note,
+      id,
+    FROM buymed_circa_v2.inventory_transfer_request r
+  where  r.type = 'TRANSFER_OUT' 
+)
+, cte_rcv as ( SELECT
+      date(datetime_add(r.created_at, INTERVAL 7 hour)) created_date,
+      r.status,
+      r.code,
+      r.note,
+      related_transfer_request_id,
+    FROM buymed_circa_v2.inventory_transfer_request r
+  where  r.type <> 'TRANSFER_OUT'
+)
+, thuocsi_po as (
+   SELECT
+   po.created_date,
+    po.po_code,
+    po.status AS po_status,
+    regexp_extract(po.source_document, r"TRF\d+") AS trf,
+    po.seller_code,
+    po.vendor_name,
+  from platinum_buymed_vn.seller_prd_purchasing_purchase_order po
+  WHERE 
+   po.seller_code IN ('MEDX', 'CIRCA_INT')
+   and po.vendor_name in ('CÔNG TY TNHH CIRCA PHARMACY','CIRCA nội bộ')
+    AND po.status NOT IN ('CANCELED','PENDING')
+  GROUP BY ALL
+)
+,cte_po_seller as (
+    select code, string_agg(distinct po_code, ", ") po_code, count(distinct po_code) as no_po,
+    string_agg(distinct seller_code, "," order by seller_code) seller_code,
+    from (
+select distinct 
+t.code,
+coalesce(ts_po.po_code, note_value) as po_code,
+ts_po.seller_code,
+from cte_trf t
+left join unnest(REGEXP_EXTRACT_ALL(t.note,r"PO\d+")) as note_value
+left join cte_rcv r
+on t.id = r.related_transfer_request_id
+left join thuocsi_po ts_po
+on note_value = ts_po.po_code
+or t.code = ts_po.trf
+)
+group by all)
+
+    SELECT
+      date(datetime_add(r.updated_at, INTERVAL 7 hour)) updated_date,
+      date(datetime_add(r.created_at, INTERVAL 7 hour)) created_date,
+      rid.updated_at,
+      r.src_pos_id,
+      r.dest_pos_id,
+      r.status,
+      r.type,
+      r.code,
+      ri.product_id,
+      ri.unit,
+      rid.quantity,
+      rid.received_quantity,
+      ru.convert_rate,
+      rid.quantity*ru.convert_rate as base_quantity,
+      rid.received_quantity*ru.convert_rate as base_received_quantity,
+      rid.unit_price,
+      rid.lot_id,
+      rid.doc_code as po_code,
+      ild.id as location_detail_id,
+      ild.tax_rate,
+      ild.cost_price_include_tax,
+      ild.cost_price_without_tax,
+      c.base_purchase_price,
+      c.base_purchase_price_nonvat,
+      po.po_code as ts_po_code,
+      po.no_po,
+      po.seller_code,
+    FROM buymed_circa_v2.inventory_transfer_request r
+    -- LEFT JOIN rcv_table c on r.id = c.related_transfer_request_id
+    LEFT JOIN buymed_circa_v2.inventory_transfer_item ri
+      ON r.id = ri.transfer_request_id
+    LEFT JOIN buymed_circa_v2.inventory_transfer_item_detail rid
+      ON ri.id = rid.transfer_item_id
+    left join buymed_circa_v2.product_retail_unit ru 
+    on ri.unit_id= ru.id
+    LEFT JOIN buymed_circa_v2.inventory_location_detail ild 
+    on rid.location_detail_id = ild.id
+    LEFT JOIN cogs c
+    on ri.product_id = c.product_id
+    and rid.lot_id = c.lot_id
+    and rid.doc_code = c.po_code
+    left join cte_po_seller po
+    on r.code = po.code
+      where 1=1
+      AND r.type = 'TRANSFER_OUT'
+      AND rid.quantity > 0
+  order by r.code 

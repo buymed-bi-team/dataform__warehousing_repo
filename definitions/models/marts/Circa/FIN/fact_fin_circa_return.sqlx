@@ -1,0 +1,44 @@
+config {
+    type: "table",
+    description: `PIC: Ha.Lekim`, 
+     bigquery: {
+        partitionBy: "created_date"
+    },
+    tags: ["custom_1h_past10"]
+}
+
+SELECT
+  r.code as return_order_code,
+  r.id as return_order_id,
+  r.origin_order_id as order_id, 
+  r.pos_id,
+  r.status,
+  r.client_id,
+  date(datetime_add(r.updated_at, interval 7 hour)) as updated_date,
+  date(datetime_add(r.created_at, interval 7 hour)) as created_date,
+  date(datetime_add(r.completed_at, interval 7 hour)) as completed_date,
+  r.payment_method,
+   ee.email as employee_email,
+   ee.name as employee_name,
+   pay_amount,
+   subsidise_amount,
+  total_amount, -- total return amount
+  cancel_reason, 
+  delivery_type,
+  discount_amount, -- total discount return amount
+  total_item_amount, -- total item return amount
+  return_reason_note,
+  return_reason_type,
+  actual_total_amount, -- total purchase amount
+  loyalty_point_usage, 
+  medicine_cutting_fee, -- total medicine cutting fee
+  loyalty_point_rewarded,
+  loyalty_discount_amount, 
+  actual_total_item_amount, -- total item purchase amount
+  reference_order_in_platform -- online order code
+FROM
+  ${source.circa_os}.order_return_order r
+LEFT JOIN ${source.circa_os}.entity_entity ee
+on r.updated_by = ee.id
+  WHERE 1=1
+    AND r.status = 'COMPLETED'
