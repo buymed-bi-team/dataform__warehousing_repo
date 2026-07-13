@@ -1,9 +1,9 @@
 config {
     type: "table",
-    description: `Circa OS Transaction order item detail 
-                  PIC: huyen.ngo; 
+    description: `circa_fact_net_margin
+                  PIC: huyen.ngo & ha.lekim; 
                   model_type: Table ;
-                  schedule: At minute 20 every hour`,
+                  schedule: At minute 30 every hour`,
     tags:  ["platinum_custom_30m"],
     name: "circa_fact_net_margin",
     columns: {
