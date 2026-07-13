@@ -12,6 +12,7 @@ SELECT
 ,pos_type
 ,pos_code
 ,pos_name
+,channel
 ,SUM(gmv) gmv
 ,SUM(cogs_circa) cogs_circa
 ,SUM(cogs_buymed) cogs_buymed
