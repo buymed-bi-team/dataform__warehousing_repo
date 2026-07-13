@@ -1,0 +1,61 @@
+config {
+    type: "table",
+    description: `PIC: Ha.Lekim`,
+    tags: ["custom_1h_past10"]
+}
+with cogs as (
+  select product_id,
+  lot_id,
+  po_code,
+  safe_divide(sum(received_quantity*unit_price), sum(received_base_quantity)) as base_purchase_unit_price,
+  safe_divide(sum(received_quantity*(unit_price / (1+tax_rate/100))), sum(received_base_quantity)) as base_purchase_unit_price_nonvat
+  from ${ref("fact_fin_circa_purchase_order_item")}
+  group by all
+)
+, cte_trf as ( SELECT
+      date(datetime_add(r.created_at, INTERVAL 7 hour)) created_date,
+      r.src_pos_id,
+      r.dest_pos_id,
+      r.status,
+      r.code,
+      r.note,
+      id,
+    FROM buymed_circa_v2.inventory_transfer_request r
+  where  r.type = 'TRANSFER_OUT')
+    SELECT
+      date(datetime_add(r.updated_at, INTERVAL 7 hour)) updated_date,
+      date(datetime_add(r.created_at, INTERVAL 7 hour)) created_date,
+      rid.updated_at,
+      r.src_pos_id,
+      r.dest_pos_id,
+      r.status,
+      r.type,
+      r.code,
+      r.note,
+      t.code as ref_code,
+      ri.product_id,
+      ri.unit,
+      rid.quantity,
+      rid.received_quantity,
+      rid.quantity*ru.convert_rate as base_quantity,
+      rid.received_quantity*ru.convert_rate as base_received_quantity,
+      rid.unit_price,
+      rid.lot_id,
+      rid.doc_code as po_code,
+      rid.location_detail_id,
+      ild.cost_price_include_tax,
+      ild.cost_price_without_tax,
+    FROM buymed_circa_v2.inventory_transfer_request r
+    LEFT JOIN cte_trf t on r.related_transfer_request_id = t.id
+    LEFT JOIN buymed_circa_v2.inventory_transfer_item ri
+      ON r.id = ri.transfer_request_id
+    LEFT JOIN buymed_circa_v2.inventory_transfer_item_detail rid
+      ON ri.id = rid.transfer_item_id
+    left join buymed_circa_v2.product_retail_unit ru 
+    on ri.unit_id= ru.id
+    LEFT JOIN buymed_circa_v2.inventory_location_detail ild 
+    on rid.location_detail_id = ild.id
+      where 1=1
+      -- AND date(datetime_add(r.created_at, INTERVAL 7 hour)) <= "2025-12-31"
+      AND r.type in ('TRANSFER_IN', 'TRANSFER_RETURN')
+  order by r.code 

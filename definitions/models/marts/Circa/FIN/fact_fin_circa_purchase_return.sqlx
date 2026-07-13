@@ -1,0 +1,36 @@
+config {
+    type: "table",
+    description: `PIC: Ha.Lekim`,
+    bigquery: {
+        partitionBy: "created_date"
+    },
+    tags: ["custom_1h_past10"]
+}
+
+SELECT
+rpo.pos_id,
+  po.po_code,
+  rpo.code AS return_po_code,
+  rpo.id AS return_po_id,
+  rpo.client_id,
+  DATE(rpo.updated_at + INTERVAL 7 HOUR) AS updated_date,
+  DATE(rpo.created_at + INTERVAL 7 HOUR) AS created_date,
+  DATE(rpo.stock_at + INTERVAL 7 HOUR) AS stock_date,
+  DATE(rpo.completed_at + INTERVAL 7 HOUR) AS completed_at,
+  rpo.status AS status,
+  rpo.source_type,
+  rpo.delivery_type,
+  rpo.return_reason_note,
+  rpo.return_reason_type,
+  rpo.total_amount,
+  rpo.discount_amount,
+  rpo.subsidise_amount,
+  rpo.delivery_fee_amount,
+  rpo.actual_total_amount,
+  rpo.actual_total_item_amount
+FROM ${source.circa_os}.order_return_po rpo
+left join ${ref("fact_fin_circa_purchase_order")} po
+on rpo.origin_po_id = po.po_id
+WHERE 1=1
+  AND not regexp_contains(LOWER(rpo.note), 'tech|demo|test')
+  AND rpo.status NOT IN  ('CANCELED','PENDING')

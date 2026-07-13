@@ -1,0 +1,103 @@
+config {
+    type: "incremental",
+    description: `PIC: Ha.Lekim`,
+    bigquery: {
+        partitionBy: "created_date"
+    },
+    tags: ["custom_1h_past10"]
+}
+
+js {
+    const start_time = 'DATE(CURRENT_DATE() - 30)'
+  //const start_time = "'2024-01-01'"
+}
+pre_operations {
+  DELETE FROM ${self()}
+  WHERE created_date >= ${start_time}
+}
+select * 
+from (
+SELECT
+  'FS_V2' AS SOURCE_TYPE,
+  rec_item_code,
+  rec_code,
+  rec_line_code,
+  amount,
+  col_name,
+  DATE(created_time + INTERVAL 7 HOUR) AS created_date,
+  DATE(last_updated_time + INTERVAL 7 HOUR) AS last_updated_time,
+  entity_code,
+  entity_type,
+  object_code,
+  object_type,
+  org_id,
+  JSON_VALUE(data, '$.code') AS code,
+  DATE(
+    PARSE_DATETIME(
+      '%F %H:%M:%E*S',
+      REPLACE(REPLACE(JSON_VALUE(data, '$.created_at'), 'T', ' '), 'Z', ''))
+    + INTERVAL 7 HOUR) AS created_at,
+  JSON_VALUE(data, '$.document_code') AS document_code,
+  JSON_VALUE(data, '$.document_type') AS document_type,
+  DATE(
+    PARSE_DATETIME(
+      '%F %H:%M:%E*S',
+      REPLACE(REPLACE(JSON_VALUE(data, '$.payment_at'), 'T', ' '), 'Z', ''))
+    + INTERVAL 7 HOUR) AS payment_at,
+  JSON_VALUE(data, '$.po_code') AS po_code,
+  JSON_VALUE(data, '$.pos_code') AS pos_code,
+  JSON_VALUE(data, '$.recon_payment_method') AS recon_payment_method,
+  JSON_VALUE(data, '$.status') AS status,
+  JSON_VALUE(data, '$.thuocsi_payment_code') AS thuocsi_payment_code,
+  CAST(JSON_VALUE(data, '$.total_amount') AS INT64) AS total_amount,
+  JSON_VALUE(data, '$.type') AS type,
+  JSON_VALUE(data, '$.uniqueKey') AS uniqueKey
+FROM
+  ${source.platinum}.platform_accounting_prd_reconcile_CIRCA_FS_V2_reconcile_item
+WHERE
+  1 = 1
+  AND created_date >= DATE_SUB(${start_time}, INTERVAL 60 DAY)
+-- AND DATE(created_time + INTERVAL 7 HOUR) >= CURRENT_DATE() - 30
+UNION ALL
+SELECT
+  'FS_V1' AS SOURCE_TYPE,
+  rec_item_code,
+  rec_code,
+  rec_line_code,
+  amount,
+  col_name,
+  DATE(created_time + INTERVAL 7 HOUR) AS created_date,
+  DATE(last_updated_time + INTERVAL 7 HOUR) AS last_updated_time,
+  entity_code,
+  entity_type,
+  object_code,
+  object_type,
+  org_id,
+  JSON_VALUE(data, '$.code') AS code,
+  DATE(
+    PARSE_DATETIME(
+      '%F %H:%M:%E*S',
+      REPLACE(REPLACE(JSON_VALUE(data, '$.created_at'), 'T', ' '), 'Z', ''))
+    + INTERVAL 7 HOUR) AS created_at,
+  JSON_VALUE(data, '$.document_code') AS document_code,
+  JSON_VALUE(data, '$.document_type') AS document_type,
+  DATE(
+    PARSE_DATETIME(
+      '%F %H:%M:%E*S',
+      REPLACE(REPLACE(JSON_VALUE(data, '$.payment_at'), 'T', ' '), 'Z', ''))
+    + INTERVAL 7 HOUR) AS payment_at,
+  JSON_VALUE(data, '$.po_code') AS po_code,
+  JSON_VALUE(data, '$.pos_code') AS pos_code,
+  JSON_VALUE(data, '$.recon_payment_method') AS recon_payment_method,
+  JSON_VALUE(data, '$.status') AS status,
+  JSON_VALUE(data, '$.thuocsi_payment_code') AS thuocsi_payment_code,
+  CAST(JSON_VALUE(data, '$.total_amount') AS INT64) AS total_amount,
+  JSON_VALUE(data, '$.type') AS type,
+  JSON_VALUE(data, '$.uniqueKey') AS uniqueKey
+FROM
+  ${source.platinum}.platform_accounting_prd_reconcile_CIRCA_FS_EXTERNAL_reconcile_item
+WHERE
+  1 = 1
+  AND created_date >= DATE_SUB(${start_time}, INTERVAL 60 DAY)
+  AND RIGHT(rec_code, 2) = 'V1'
+  ) where  created_date >= ${start_time} 

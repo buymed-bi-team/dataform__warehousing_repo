@@ -1,0 +1,71 @@
+config {
+    type: "table",
+    description: `PIC: Ha.Lekim
+    `,
+     bigquery: {
+        partitionBy: "updated_date",
+        clusterBy: ["type"]
+    },
+     tags: ["gold_custom_20m"]
+}
+
+WITH
+  raw_allocation AS (
+    select 
+    date(DATETIME_ADD(ia.updated_at, INTERVAL 7 hour)) updated_date,
+    DATETIME_ADD(ia.updated_at, INTERVAL 7 hour) updated_at,
+    ia.id,
+    ia.type,
+    ia.ref_number,
+    ia.product_id,
+    ia.item_ref_id,
+    ia.lot_id,
+    ia.location_id,
+    ia.location_detail_id,
+    po.fulfillment_method,
+    do.name as owner_name,
+    ild.cost_price_include_tax,
+    ild.cost_price_without_tax,
+    p.code AS pos_code,
+    l.location_type,
+    l.name AS location_name,
+    ild.doc_code,
+    CASE
+      WHEN (JSON_VALUE(so, '$') IS NULL OR JSON_VALUE(so, '$') = '') THEN NULL
+      ELSE JSON_VALUE(so, '$')
+  END
+    AS so_thuoc_si,
+    CASE
+      WHEN ia.type = 'COMPLETED_PUT_RETURN_ORDER' AND l.location_type = 'SALES' THEN (1)
+      WHEN ia.type = 'COMPLETED_RETURN_ORDER'
+    AND l.location_type = 'RETURN_ORDER' THEN (-1)
+      WHEN ia.type IN ('COMPLETED_PURCHASE_ORDER', 'COMPLETED_TRANSFER_IN') AND l.location_type = 'INBOUND' THEN (-1)
+      WHEN ia.type = 'COMPLETED_PUT'
+    AND l.location_type = 'SALES' THEN (1)
+      WHEN ia.type IN ( 'PURCHASE_ORDER', 'TRANSFER_IN', 'TRANSFER_IN_MISSING', 'TRANSFER_IN_RETURN', 'TRANSFER_LOCATION_IN', 'RETURN_ORDER', 'RETURN_ORDER_DEMOLISH', 'FAILED_SHIPMENT', 'CANCELED_ORDER', 'CANCELED_TRANSFER_REQUEST', 'CANCEL_TRANSFER_REQUEST', 'CHANGE_QUANTITY_INCREASE') THEN (1)
+      WHEN ia.type IN ( 'SALE_ORDERED',
+      'TRANSFER_OUT',
+      'TRANSFER_LOCATION_OUT',
+      'RETURN_PURCHASE_ORDER',
+      'GOODS_RETURN_RECEIPT',
+      'CHANGE_QUANTITY_DECREASE') THEN (-1)
+  END AS convert_rate,
+    ia.base_quantity,
+    SAFE_DIVIDE( ia.base_quantity, SUM(base_quantity) OVER (PARTITION BY ia.type, ia.ref_number, ia.item_ref_id)) AS base_quantity_distribution,
+  FROM `buymed_circa_v2.inventory_allocation` ia
+  LEFT JOIN buymed_circa_v2.inventory_location l
+  ON ia.location_id = l.id
+  LEFT JOIN buymed_circa_v2.inventory_location_detail ild
+  ON ia.location_detail_id = ild.id
+  LEFT JOIN UNNEST(JSON_EXTRACT_ARRAY(ild.sale_order_numbers)) AS so
+  ON TRUE
+  LEFT JOIN buymed_circa_v2.order_purchase_order po
+  ON ild.doc_code = po.code
+  LEFT JOIN buymed_circa_v2.entity_owner do 
+  on po.owner_id = do.id
+  LEFT JOIN buymed_circa_v2.entity_pos_profile p
+  ON l.pos_id = p.id
+  where ia.deleted_at is null
+    )
+select * from raw_allocation
+

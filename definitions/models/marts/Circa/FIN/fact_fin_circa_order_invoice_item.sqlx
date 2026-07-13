@@ -1,0 +1,43 @@
+config {
+    type: "table",
+    description: `PIC: Ha.Lekim`,
+    bigquery: {
+        partitionBy: "created_date"
+    },
+    tags: ["custom_1h_past10"]
+}
+
+SELECT
+  date(datetime_add(ip.created_at, interval 7 hour)) as created_date,
+  date(datetime_add(ip.updated_at, interval 7 hour)) as updated_date,
+  date(datetime_add(ip.completed_at, interval 7 hour)) as completed_date,
+  ip.updated_at,
+	ip.no AS invoice_number,
+	ip.status AS invoice_status,
+	ip.pos_id,
+	ip.client_id,
+	CONCAT(ip.pos_id,"-",ip.client_id) AS pos_key,
+	ip.cancel_reason,
+	REPLACE(ip.pdf_url,'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS pdf_url,
+	ip.pattern,
+	ip.serial,
+	ip.buyer,
+	ip.circa_fkey,
+	COALESCE(ip.order_code,	ipi.order_code) AS order_code,
+	ipi.product_id,
+	CONCAT(ipi.product_id,"-",ip.client_id) AS product_key,
+	ipi.prod_name AS product_name,
+	ipi.prod_unit AS uom,
+	ipi.lot,
+	ipi.expired_date,
+	ipi.prod_quantity AS quantity,
+	CASE WHEN ipi.product_id = 0 then ipi.prod_price*(-1) ELSE ipi.prod_price END AS unit_price, -- product id = 0 là CTKM
+	CASE WHEN ipi.product_id = 0 then ipi.total*(-1) ELSE ipi.total END AS total_amount_nonvat,
+	ipi.vat_rate AS vat_percent,
+	CASE WHEN ipi.product_id = 0 then ipi.vat_amount*(-1) ELSE ipi.vat_amount END AS vat_amount,
+	CASE WHEN ipi.product_id = 0 then ipi.amount*(-1) ELSE ipi.amount END AS total_amount
+FROM ${source.circa_os}.invoice_invoice_process ip
+LEFT JOIN ${source.circa_os}.invoice_invoice_process_item ipi
+  ON ip.id = ipi.invoice_process_id
+WHERE 1=1
+-- and COALESCE(ip.order_code,	ipi.order_code) = 'DHC00740834

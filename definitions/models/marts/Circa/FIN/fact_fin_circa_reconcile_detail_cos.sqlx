@@ -1,0 +1,47 @@
+config {
+    type: "table",
+    description: `PIC: Ha.Lekim`,
+    bigquery: {
+        partitionBy: "created_date"
+    },
+    tags: ["custom_1h_past10"]
+}
+
+SELECT
+  rec_code,
+  rec_line_code,
+  rec_item_code,
+  col_name,
+  amount,
+  entity_code,
+  entity_type,
+  object_code,
+  object_type,
+  org_id,
+  CAST(JSON_VALUE(data,'$.amount') AS INT64) AS amount_json,
+  JSON_VALUE(data,'$.code') AS code,
+  DATE(
+    PARSE_DATETIME('%F %H:%M:%E*S',REPLACE(REPLACE(JSON_VALUE(data,'$.completed_at'),'T',' '),'Z','') )
+    + INTERVAL 7 HOUR) AS completed_date,
+      DATE(
+    PARSE_DATETIME('%F %H:%M:%E*S',REPLACE(REPLACE(JSON_VALUE(data,'$.created_at'),'T',' '),'Z','') )
+    + INTERVAL 7 HOUR) AS created_date,
+  DATE(
+    PARSE_DATETIME('%F %H:%M:%E*S',REPLACE(REPLACE(JSON_VALUE(data,'$.doc_date'),'T',' '),'Z','') )
+    + INTERVAL 7 HOUR) AS doc_date,
+  JSON_VALUE(data,'$.entityCode') AS entityCode,
+  JSON_VALUE(data,'$.id') AS id,
+  JSON_VALUE(data,'$.payment_method') AS payment_method,
+  JSON_VALUE(data,'$.payment_status') AS payment_status,
+  JSON_VALUE(data,'$.pos_id') AS pos_id,
+  JSON_VALUE(data,'$.reason_type') AS reason_type,
+  JSON_VALUE(data,'$.ref_id') AS ref_id,
+  JSON_VALUE(data,'$.ref_number') AS ref_number,
+  JSON_VALUE(data,'$.ref_type') AS ref_type,
+  JSON_VALUE(data,'$.subject') AS subject,
+  JSON_VALUE(data,'$.subject_name') AS subject_name,
+  JSON_VALUE(data,'$.uniqueKey') AS uniqueKey,
+  -- CAST(JSON_VALUE(data,'$.updated_at') AS DATETIME) AS updated_at,
+  JSON_VALUE(data,'$.voucher_type') AS voucher_type
+FROM ${source.platinum}.platform_accounting_prd_reconcile_CIRCA_COS_reconcile_item
+WHERE 1=1

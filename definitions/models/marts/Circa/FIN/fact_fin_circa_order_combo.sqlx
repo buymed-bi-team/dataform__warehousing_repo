@@ -1,0 +1,24 @@
+config {
+    type: "table",
+    description: `PIC: Ha.Lekim`, 
+
+    tags: ["gold_custom_20m"]
+}
+
+SELECT  o.order_code, 
+c.id as combo_id, 
+qr_code, 
+sku_code,
+c.product_id, 
+ru.unit,
+ru.convert_rate,
+quantity, 
+quantity*ru.convert_rate as base_quantity,
+combo_price, 
+discount_amount, 
+promotion_event_code
+FROM ${source.circa_os}.order_order_apply_combo c
+LEFT JOIN ${source.circa_os}.product_retail_unit ru
+on c.unit_id = ru.id
+left join ${ref("fact_fin_circa_order")} o
+  on c.order_id = o.order_id
