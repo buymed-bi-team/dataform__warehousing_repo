@@ -33,9 +33,7 @@ WITH
     SUM( total_order_discount_amount + total_loyalty_discount_amount ) AS voucher_discount
   FROM
     gold_buymed_vn2.fact_fin_circa_order o
-  WHERE
-     o.status IN ('COMPLETED',
-      'COMPLETED_SHIPPING')
+  WHERE o.status NOT IN ('CANCELED', 'FAILED_SHIPMENT', 'OUT_OF_STOCK')
   GROUP BY
     ALL )
     ,
