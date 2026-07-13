@@ -8,6 +8,7 @@ SELECT
  e.name AS client_name
 ,o.client_id
 ,o.created_date
+,o.created_hour
 ,pos_type
 ,pos_code
 ,pos_name
