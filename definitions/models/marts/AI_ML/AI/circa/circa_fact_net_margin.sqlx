@@ -29,6 +29,7 @@ WITH
     o.pos_id,
     o.client_id,
     o.order_code,
+    status,
     SUM( total_order_discount_amount + total_loyalty_discount_amount ) AS voucher_discount
   FROM
     gold_buymed_vn2.fact_fin_circa_order o
