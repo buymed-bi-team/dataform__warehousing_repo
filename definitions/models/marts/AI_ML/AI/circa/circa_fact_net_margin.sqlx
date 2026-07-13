@@ -30,12 +30,12 @@ WITH
     o.pos_id,
     o.client_id,
     o.order_code,
+    o.status,
     o.type AS channel,
-    status,
     SUM( total_order_discount_amount + total_loyalty_discount_amount ) AS voucher_discount
   FROM
     gold_buymed_vn2.fact_fin_circa_order o
-  WHERE status NOT IN ('RETURNED', 'FAILED_SHIPMENT', 'OUT_OF_STOCK','CANCELED' )
+  WHERE o.status NOT IN ('RETURNED', 'FAILED_SHIPMENT', 'OUT_OF_STOCK','CANCELED' )
   GROUP BY
     ALL )
     ,
@@ -46,6 +46,7 @@ WITH
     o.pos_id,
     o.client_id,
     i.order_code,
+    o.status,
     o.channel,
     i.product_id,
     SUM(
@@ -122,6 +123,7 @@ WITH
     o.pos_id,
     o.client_id,
     i.order_code,
+    o.status,
     o.channel,
     i.product_id,
     SUM(
@@ -164,6 +166,7 @@ WITH
       pos_id,
       client_id,
       order_code,
+      status,
       channel,
       product_id,
       gmv,
@@ -191,6 +194,7 @@ WITH
   IF
     (p.type = 'FS', 'FS', 'COS') AS pos_type,
     a.order_code,
+    a.status,
     a.channel,
     a.product_id,
     a.gmv,
