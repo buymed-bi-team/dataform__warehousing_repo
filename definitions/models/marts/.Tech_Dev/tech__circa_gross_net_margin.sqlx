@@ -5,7 +5,7 @@ config {
 }
 
 SELECT 
-    e.name AS client_name
+    e.client_name
     ,o.client_id
     ,o.created_date
     ,created_hour
@@ -28,6 +28,6 @@ SELECT
     ,SAFE_DIVIDE(SUM(net_profit_circa), SUM(gmv)) AS net_margin_circa
     ,SAFE_DIVIDE(SUM(net_profit_buymed), SUM(gmv)) AS net_margin_buymed
 FROM ${ref("gold_buymed_vn2", "circa_fact_net_margin")} o 
-LEFT JOIN buymed_circa_v2.entity_client e ON o.client_id = e.id
+LEFT JOIN ${ref("gold_buymed_vn2", "circa_dim_entity_client")} e ON o.client_id = e.client_id
 GROUP BY ALL
  
