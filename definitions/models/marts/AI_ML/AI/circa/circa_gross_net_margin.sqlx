@@ -6,7 +6,7 @@ config {
 }
 SELECT 
  e.name AS client_name
-,created_date
+,o.created_date
 ,pos_name
 ,SUM(gmv) gmv
 ,SUM(cogs_circa) cogs_circa
