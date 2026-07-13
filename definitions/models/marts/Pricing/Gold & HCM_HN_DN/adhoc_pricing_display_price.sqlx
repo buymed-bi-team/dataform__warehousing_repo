@@ -165,7 +165,7 @@ with
                 when retail_price_value > 1 then platform_fee + logistic_fee
             end as service_fee,
 
-            ROUND(
+            -- ROUND(
                 CASE
                     when retail_price_value is null or retail_price_value > 100000000 or dynamic_pricing_level_fee_value is null then retail_price_value
                     when retail_price_type = "FIXED_PRICE" and retail_price_value > 1 then retail_price_value
@@ -176,9 +176,10 @@ with
                             ELSE GREATEST(retail_price_value + platform_fee + logistic_fee, retail_price_value)
                         END
                     when retail_price_value > 1 then GREATEST(retail_price_value + platform_fee + logistic_fee, retail_price_value)
-                end,
-                -2
-            ) as display_price
+                end
+                -- -2
+            -- ) 
+            as display_price
         from get_columns
         WHERE
             use_skus_price IS NULL
@@ -205,10 +206,18 @@ with
             WHERE a.use_skus_price = true AND a.seller_class <> "EXTERNAL"
         )
         GROUP BY ALL
+    ),
+
+    final AS (
+        SELECT * 
+        FROM normal_product
+        UNION ALL
+        SELECT *
+        FROM combo_product  
     )
 
-SELECT *
-FROM normal_product
-UNION ALL
-SELECT *
-FROM combo_product  
+SELECT 
+    * EXCEPT(display_price)
+    , ROUND(display_price, -2) AS display_price
+FROM  final
+
