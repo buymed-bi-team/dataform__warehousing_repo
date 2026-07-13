@@ -15,4 +15,4 @@ SELECT id AS client_id
        ,address
        ,phone_number
        ,email
-FROM buymed_circa_v2.entity_client
+FROM ${source.circa_os}.entity_client

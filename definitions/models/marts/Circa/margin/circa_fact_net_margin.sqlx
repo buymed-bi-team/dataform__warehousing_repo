@@ -23,7 +23,7 @@ WITH
       else i.cost_price_include_tax
     END AS base_unit_cost_price_ts
   FROM
-    gold_buymed_vn2.fact_fin_circa_order_item i
+    ${source.ref}.fact_fin_circa_order_item i
   LEFT JOIN
     ${ref("gold_buymed_vn2", "circa_cogs_thuocsi_by_po")} p
   ON
@@ -43,7 +43,7 @@ WITH
     o.type AS channel,
     SUM( total_order_discount_amount + total_loyalty_discount_amount ) AS voucher_discount
   FROM
-    gold_buymed_vn2.fact_fin_circa_order o
+    ${source.ref}.fact_fin_circa_order o
   WHERE o.status NOT IN ('RETURNED', 'FAILED_SHIPMENT', 'OUT_OF_STOCK','CANCELED' )
   GROUP BY
     ALL )
