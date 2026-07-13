@@ -41,6 +41,7 @@ WITH
   cogs_os AS (
   SELECT
     o.created_date,
+    o.created_hour,
     o.pos_id,
     o.client_id,
     i.order_code,
@@ -115,6 +116,7 @@ WITH
     cogs_fs AS (
   SELECT
     o.created_date,
+    created_hour,
     o.pos_id,
     o.client_id,
     i.order_code,
@@ -155,6 +157,7 @@ WITH
     , final AS (
     SELECT
       created_date,
+      created_hour,
       pos_id,
       client_id,
       order_code,
@@ -176,8 +179,8 @@ WITH
     GROUP BY
       ALL )
   SELECT
-    a.created_date AS created_date,
-    a.created_hour
+    a.created_date,
+    a.created_hour,
     a.client_id,
     p.code AS pos_code,
     p.name AS pos_name,
