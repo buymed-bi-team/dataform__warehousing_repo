@@ -43,6 +43,7 @@ WITH _all AS (
 SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
        ,i.*
        ,CONCAT(i.product_id, "_", i.client_id) AS product_client_id
+       ,o.owner_id
        ,eo.name AS owner_name
        ,eo.seller_code
        ,o.sale_order_number AS SO_code
