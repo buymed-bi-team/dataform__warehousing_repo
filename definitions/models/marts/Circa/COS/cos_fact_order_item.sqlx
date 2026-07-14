@@ -180,4 +180,4 @@ LEFT JOIN ${ref('cos_fact_order')} fo ON i.order_id = fo.order_id
 LEFT JOIN base_unit cv ON cv.product_id = i.product_id AND cv.convert_unit = i.unit AND i.client_id = cv.client_id
 LEFT JOIN ${source.circa_os}.order_order_apply_combo c ON i.order_apply_combo_id = c.id
 WHERE fo.order_id IS NOT NULL
-
+-- 
