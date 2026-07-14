@@ -181,6 +181,10 @@ function generateCDCScript({
     --   (DELETE>UPDATE>INSERT). action & winning_message_id DÙNG CHUNG order by
     --   để không lệch nhau.
     --   KHÔNG lọc DELETE ở đây — để MERGE tự xử lý xoá.
+    --   Raw được dedup theo message_id (ROW_NUMBER, lấy dòng đầu) trước khi
+    --   join winners: pubsub có thể deliver trùng message_id, nếu không dedup
+    --   thì 1 winning_message_id join ra nhiều dòng source → MERGE lỗi
+    --   "must match at most one source row for each target row".
     --   _cdc_pk = chuỗi nối tất cả các phần tử của primary_key (theo
     --   pkSeparator, đúng thứ tự) — hợp lệ cả với DELETE vì after = null.
     SET (select_body, col_list, update_set, insert_vals) = (
@@ -222,7 +226,13 @@ function generateCDCScript({
           '   ELSE DATE(\\'2099-01-01\\') END AS created_date',
           ',   w.action AS _cdc_action',
           ',   w.id     AS _cdc_pk',
-          ' FROM ${srcTable} r',
+          ' FROM (',
+          '   SELECT * EXCEPT(_dup_rn) FROM (',
+          '     SELECT *, ROW_NUMBER() OVER (PARTITION BY message_id ORDER BY publish_time DESC) AS _dup_rn',
+          '     FROM ${srcTable}',
+          '     WHERE publish_time > TIMESTAMP_SUB(TIMESTAMP(\\'', CAST(ingest_checkpoint AS STRING), '\\'), INTERVAL ${lookbackHours} HOUR)',
+          '   ) WHERE _dup_rn = 1',
+          ' ) r',
           ' JOIN winners w ON r.message_id = w.winning_message_id'
         ),
         STRING_AGG(CONCAT('\`', name, '\`'), ', ' ORDER BY col_offset),
