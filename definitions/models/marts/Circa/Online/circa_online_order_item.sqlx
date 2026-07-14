@@ -86,4 +86,4 @@ SELECT i.*
        ,ordered_quantity
        ,source_type
 FROM final i
-LEFT JOIN  ${source.ref}.cos_order_item_demand o ON i.order_code = o.reference_order_in_platform AND i.product_client_id = o.product_client_id AND i.unit = o.unit
+LEFT JOIN  ${source.ref}.cos_fact_order_item_demand o ON i.order_code = o.reference_order_in_platform AND i.product_client_id = o.product_client_id AND i.unit = o.unit
