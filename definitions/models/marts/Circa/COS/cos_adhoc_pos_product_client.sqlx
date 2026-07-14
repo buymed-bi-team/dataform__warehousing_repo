@@ -96,7 +96,7 @@ WITH thuosi_unit AS (
     LEFT JOIN product_base_unit AS bu ON s.product_id = bu.product_id AND pd.unit = bu.convert_unit
     LEFT JOIN thuosi_unit t ON s.product_id = t.product_id AND LOWER(pd.unit) = LOWER(t.unit)
     LEFT JOIN ${source.circa_os}.product_sku td ON td.product_id = s.product_id AND td.client_id = ps.client_id AND td.sku_code = s.sku_code
-    LEFT JOIN ${source.ref}.cos_dim_product pr ON pr.product_id = s.product_id AND pr.client_id = ps.client_id 
+    LEFT JOIN ${ref('cos_dim_product')} pr ON pr.product_id = s.product_id AND pr.client_id = ps.client_id 
     WHERE bu.convert_unit IS NOT NULL
       AND ps.client_id = 1
       AND ps.name = 'Bảng giá client 1'
@@ -193,8 +193,8 @@ SELECT DISTINCT product_id
                 ,i.discount_value
                 ,i.specific_price
                 ,i.discount_type --FIXED_PRICE/SPECIFIC_PRICE/PERCENT
-FROM ${source.ref}.dim_promotion_event_circa o 
-LEFT JOIN ${source.ref}.dim_promotion_event_item_circa i ON o.id = i.promotion_event_id
+FROM ${ref('dim_promotion_event_circa')} o 
+LEFT JOIN ${ref('dim_promotion_event_item_circa')} i ON o.id = i.promotion_event_id
 WHERE is_expired = FALSE
      AND is_active = true
      AND o.client_id = 1
