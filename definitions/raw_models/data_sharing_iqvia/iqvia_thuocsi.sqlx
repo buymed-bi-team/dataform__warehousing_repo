@@ -26,8 +26,8 @@ WITH
             LEFT JOIN UNNEST(JSON_QUERY_ARRAY(pick_items)) AS pi
             LEFT JOIN UNNEST(JSON_QUERY_ARRAY(pi, "$.scanned_details")) AS sd
         WHERE 1=1
-            AND created_date >= "2026-04-01"
-            AND created_date <= "2026-07-01" - 1
+            AND created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH) - INTERVAL 1 MONTH
+            AND created_date < DATE_TRUNC(CURRENT_DATE("+7"), MONTH)
     )
 
     , order_item AS (
@@ -58,8 +58,8 @@ WITH
             , JSON_VALUE(customer, "$.province") AS customer_province
         FROM ${source.platinum}.warehouse_prd_core_sale_order
         WHERE 1=1
-            AND created_date >= "2026-04-01"
-            AND created_date <= "2026-07-01" - 1
+            AND created_date >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH) - INTERVAL 1 MONTH
+            AND created_date < DATE_TRUNC(CURRENT_DATE("+7"), MONTH)
             AND status <> "CANCEL"
             AND UPPER(type) = "NORMAL"
     )
@@ -78,8 +78,8 @@ SELECT
     , v.commercial_supplier_id AS corporation_id
     , v.commercial_supplier_name AS corporation
     , IF(v.supplier_class = "EXTERNAL", "SELLER", "MEDX") AS supplier_type
-    , so.customer_id
-    , c.customer_name
+    , oi.customer_id
+    -- , c.customer_name
     -- , c.address AS customer_address
     -- , g.ward_name AS customer_ward
     -- , g.district_name AS customer_district
@@ -96,7 +96,7 @@ FROM outbound AS ob
             AND ob.original_sku = oi.sku_original_code
             AND ob.order_quantity = oi.demand_quantity
             AND ob.reserved_quantity = oi.reserved_quantity
-    LEFT JOIN sale_order AS so ON ob.order_id = so.order_id
+    -- LEFT JOIN sale_order AS so ON ob.order_id = so.order_id
     LEFT JOIN (
         SELECT order_id, company_invoice_address
         FROM ${ref("fact_order")} AS o
@@ -106,14 +106,15 @@ FROM outbound AS ob
     LEFT JOIN ${ref("dim_product")} AS p ON ob.product_id = p.product_id
     LEFT JOIN ${source.platinum}.warehouse_prd_inbound_inbound_ticket AS it ON ob.po_code = it.po_code
     LEFT JOIN ${ref("dim_supplier")} AS v ON v.supplier_code = it.vendor_code
-    LEFT JOIN ${ref("dim_customer")} AS c ON c.customer_id = so.customer_id
+    LEFT JOIN ${ref("dim_customer")} AS c ON c.customer_id = oi.customer_id
     LEFT JOIN ${ref("dim_geo_location")} AS g ON c.location_code = g.location_code
 WHERE 1=1
     AND NOT EXISTS (SELECT 1 FROM ${ref("fact_order")} AS o WHERE o.order_id = ob.order_id AND o.source = "clinic-portal")
-    AND so.order_id IS NOT NULL
+    -- AND so.order_id IS NOT NULL
+    AND oi.order_id IS NOT NULL
     AND NOT (p.product_category_commercial = "Rx" AND c.business_scope = "DRUGSTORE" AND p.essential = "ESSENTIAL")
     AND ob.outbound_quantity > 0
-    AND COALESCE( c.business_scope, '') NOT IN ("CLINIC", "BEAUTY_SALON", "DENTISTRY")
+    AND COALESCE(c.business_scope, '') NOT IN ("CLINIC", "BEAUTY_SALON", "DENTISTRY")
     AND p.product_report_category <> "RECALLED"
     AND p.product_name NOT LIKE "[%"
 GROUP BY ALL
