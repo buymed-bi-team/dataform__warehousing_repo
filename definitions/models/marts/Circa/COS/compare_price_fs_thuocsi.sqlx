@@ -19,8 +19,8 @@ SELECT
       END AS compare_price
     , CONCAT(o.product_id, "_", o.client_id) AS product_client_id
     , 'yes' AS is_same_unit
-FROM ${source.ref}.circafs_lastest_price o
-LEFT JOIN ${source.ref}.thuocsi_price_fs t
+FROM ${ref('circafs_lastest_price')} o
+LEFT JOIN ${ref('thuocsi_price_fs')} t
     ON o.product_id = t.product_id
     AND o.fc_code = t.fc_code
 LEFT JOIN ${source.ref}.cos_product_convert_base_unit r
@@ -44,8 +44,8 @@ SELECT
       END AS compare_price
     , CONCAT(o.product_id, "_", o.client_id) AS product_client_id
     , 'no' AS is_same_unit
-FROM ${source.ref}.circafs_lastest_price o
-LEFT JOIN ${source.ref}.thuocsi_price_fs t
+FROM ${ref('circafs_lastest_price')} o
+LEFT JOIN ${ref('thuocsi_price_fs')} t
     ON o.product_id = t.product_id
     AND o.fc_code = t.fc_code
 LEFT JOIN ${source.ref}.cos_product_convert_base_unit r

@@ -83,5 +83,6 @@ WITH base_data AS (
 SELECT
       p.*
     , ts.sku_system_status AS thuocsi_status
+    , TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transform_at
 FROM by_product p
 LEFT JOIN ${source.ref}.sku_status_thuocsi ts ON p.product_id = ts.product_id
