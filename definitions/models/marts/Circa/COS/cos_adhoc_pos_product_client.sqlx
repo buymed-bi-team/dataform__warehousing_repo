@@ -9,7 +9,7 @@ config {
 WITH thuosi_unit AS (
     SELECT DISTINCT product_id
                    ,unit
-    FROM ${source.ref}.dim_product
+    FROM ${ref('dim_product')}
 )
 ,product_base_unit AS (
     SELECT DISTINCT product_id
@@ -27,8 +27,8 @@ WITH thuosi_unit AS (
                    ,MAX(o.created_date) AS latest_ord
                    ,COUNT(DISTINCT o.order_id) AS no_ord
                    ,SUM(unit_price * quantity) AS GMV
-    FROM ${source.ref}.cos_fact_order o
-    LEFT JOIN ${source.ref}.cos_fact_order_item oi ON o.order_id = oi.order_id
+    FROM ${ref('cos_fact_order')} o
+    LEFT JOIN ${ref('cos_fact_order_item')} oi ON o.order_id = oi.order_id
     WHERE status LIKE "%COMPLETE%"
     GROUP BY ALL
 )
@@ -37,8 +37,8 @@ WITH thuosi_unit AS (
                    ,SUM(a.on_hand_quantity) AS on_hand_quantity
                    ,seller_code
                    ,sku_code
-    FROM ${source.ref}.cos_fact_inventory a
-    LEFT JOIN ${source.ref}.circa_pos_profile p ON a.pos_id = p.id
+    FROM ${ref('cos_fact_inventory')} a
+    LEFT JOIN ${ref('circa_pos_profile')} p ON a.pos_id = p.id
     WHERE a.client_id = 1
           AND p.actual_status <> "Inactive"
     GROUP BY ALL
