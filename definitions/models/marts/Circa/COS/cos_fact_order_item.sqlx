@@ -23,12 +23,12 @@ WITH base_unit_selection AS (
         ,client_id
         ,base_unit
         ,ROW_NUMBER() OVER (PARTITION BY product_id, client_id ORDER BY COUNT(*) DESC) AS rn
-    FROM ${source.ref}.cos_product_convert_base_unit
+    FROM  ${ref('cos_product_convert_base_unit')} 
     GROUP BY product_id, client_id, base_unit
 )
 ,base_unit AS (
     SELECT a.*
-    FROM ${source.ref}.cos_product_convert_base_unit a
+    FROM  ${ref('cos_product_convert_base_unit')}  a
     LEFT JOIN base_unit_selection b 
         ON a.product_id = b.product_id
         AND a.client_id = b.client_id
@@ -108,8 +108,8 @@ WITH base_unit_selection AS (
     LEFT JOIN ${source.circa_os}.order_purchase_order po ON ld.doc_code = po.code AND o.client_id = po.client_id
     LEFT JOIN ${source.circa_os}.entity_owner eo ON po.owner_id = eo.id AND eo.client_id = o.client_id
     LEFT JOIN ${source.circa_os}.entity_entity e ON o.created_by = e.id AND o.client_id = e.client_id
-    LEFT JOIN (SELECT DISTINCT deal_code, deal_name ,campaign_code ,campaign_name, client_id FROM ${source.ref}.dim_promotion_event_circa ) d ON oi.promotion_event_code = d.deal_code AND o.client_id = d.client_id -- AND o.pos_id = d.pos_id
-    LEFT JOIN ${source.ref}.circa_online_order_item ol ON o.reference_order_in_platform = ol.order_code AND oi.product_id = ol.product_id AND oi.unit = ol.unit --AND oi.lot_date = ol.lot_date AND oi.sku_code = ol.sku_code
+    LEFT JOIN (SELECT DISTINCT deal_code, deal_name ,campaign_code ,campaign_name, client_id FROM ${ref('dim_promotion_event_circa')}) d ON oi.promotion_event_code = d.deal_code AND o.client_id = d.client_id -- AND o.pos_id = d.pos_id
+    LEFT JOIN ${ref('circa_online_order_item')} ol ON o.reference_order_in_platform = ol.order_code AND oi.product_id = ol.product_id AND oi.unit = ol.unit --AND oi.lot_date = ol.lot_date AND oi.sku_code = ol.sku_code
     WHERE o.status NOT IN ('PENDING', 'CANCELED')
 )
 ,order_item_with_total AS (
