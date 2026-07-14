@@ -23,7 +23,7 @@ with clean_data as (
       ru.unit,
       ild.doc_code,
       safe_divide(ia.base_quantity, sum(ia.base_quantity) over (partition by ri.id)) * ri.quantity_change as quantity,
-      safe_divide(ia.base_quantity, sum(ia.base_quantity) over (partition by ri.id)) * ri.quantity_change * ru.convert_rate as base_quantity,
+      safe_divide(ia.base_quantity, sum(ia.base_quantity) over (partition by ri.id)) * ri.base_quantity_change as base_quantity,
       ild.cost_price_include_tax,
       ild.cost_price_without_tax,
     FROM lakehouse-prod-394907.buymed_circa_v2.inventory_change_quantity r
