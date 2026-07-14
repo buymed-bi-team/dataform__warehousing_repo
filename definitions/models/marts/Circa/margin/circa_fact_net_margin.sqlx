@@ -225,6 +225,5 @@ WITH
   FROM
     final AS a
   LEFT JOIN
-    ${ref("gold_buymed_vn2", "circa_pos_profile")} AS p
-  ON
-    a.pos_id = p.id
+    ${ref("gold_buymed_vn2", "circa_pos_profile")} AS p ON a.pos_id = p.id
+   WHERE client_id NOT IN (5)

@@ -29,4 +29,5 @@ SELECT
 ,SAFE_DIVIDE(SUM(net_profit_buymed), SUM(gmv)) AS net_margin_buymed
 FROM buymed_innovation.circa_fact_net_margin o 
 LEFT JOIN buymed_circa_v2.entity_client e ON o.client_id = e.id
+WHERE client_id NOT IN (5)
 GROUP BY ALL
