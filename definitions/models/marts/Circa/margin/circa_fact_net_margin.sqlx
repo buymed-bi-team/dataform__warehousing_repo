@@ -221,7 +221,8 @@ WITH
     SAFE_DIVIDE(a.net_profit_circa, a.gmv) AS net_margin_circa,
     SAFE_DIVIDE(a.net_profit_buymed, a.gmv) AS net_margin_buymed,
     CONCAT(a.client_id, "_", a.product_id) AS product_id_key,
-    CONCAT(a.order_code, CONCAT(a.client_id, "_", a.product_id)) AS order_product_unit_key
+    CONCAT(a.order_code, CONCAT(a.client_id, "_", a.product_id)) AS order_product_unit_key,
+    TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transform_at
   FROM
     final AS a
   LEFT JOIN
