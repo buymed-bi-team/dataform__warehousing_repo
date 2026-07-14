@@ -8,7 +8,6 @@ SELECT
     e.client_name
     ,o.client_id
     ,o.created_date
-    ,created_hour
     ,pos_type
     ,pos_code
     ,pos_name
