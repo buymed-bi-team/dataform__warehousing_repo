@@ -26,8 +26,8 @@ WITH
             LEFT JOIN UNNEST(JSON_QUERY_ARRAY(pick_items)) AS pi
             LEFT JOIN UNNEST(JSON_QUERY_ARRAY(pi, "$.scanned_details")) AS sd
         WHERE 1=1
-            AND created_date >= "2026-04-01"
-            AND created_date <= "2026-07-01" - 1
+            AND created_date >= "2024-01-01"
+            AND created_date <= "2025-07-01" - 1
     )
 
     , order_item AS (
@@ -42,9 +42,9 @@ WITH
             , outbound_quantity
             , sales_price
             , customer_id
-        FROM ${ref("fact_order_item")}
+        FROM ${ref("fact_order_item_historical")}
         WHERE 1=1
-            AND DATE(created_at) >= "2026-01-01"
+            AND DATE(created_at) >= "2024-01-01"
     )
 
     , sale_order AS (
@@ -58,8 +58,8 @@ WITH
             , JSON_VALUE(customer, "$.province") AS customer_province
         FROM ${source.platinum}.warehouse_prd_core_sale_order
         WHERE 1=1
-            AND created_date >= "2026-04-01"
-            AND created_date <= "2026-07-01" - 1
+            AND created_date >= "2024-01-01"
+            AND created_date <= "2025-07-01" - 1
             AND status <> "CANCEL"
             AND UPPER(type) = "NORMAL"
     )
@@ -85,7 +85,7 @@ SELECT
     , g.district_name AS customer_district
     , g.province_name AS customer_province
     , COALESCE(o.company_invoice_address, CONCAT(c.address, ", ", g.ward_name, ", ", g.district_name, ", ", g.province_name)) AS invoice_address
-    , COALESCE(c.business_scope, "HOSPITAL") AS customer_business_type
+    , c.business_scope AS customer_business_type
     , ROUND(SUM(IF(ob.product_id <> ob.original_product_id, COALESCE(oi.sales_price, ob.unit_price), ob.unit_price) * ob.outbound_quantity),0) AS value
     , SUM(ob.outbound_quantity) AS quantity
     , ROUND(SUM(IF(ob.product_id <> ob.original_product_id, COALESCE(oi.sales_price, ob.unit_price), ob.unit_price) * ob.outbound_quantity) / SUM(ob.outbound_quantity),0) AS average_price
@@ -100,7 +100,7 @@ FROM outbound AS ob
     LEFT JOIN (
         SELECT order_id, company_invoice_address
         FROM ${ref("fact_order")} AS o
-        WHERE DATE(created_at) >= "2026-01-01"
+        WHERE DATE(created_at) >= "2024-01-01"
             AND invoice_request = "true"
     ) AS o ON ob.order_id = o.order_id
     LEFT JOIN ${ref("dim_product")} AS p ON ob.product_id = p.product_id
@@ -113,7 +113,7 @@ WHERE 1=1
     AND so.order_id IS NOT NULL
     AND NOT (p.product_category_commercial = "Rx" AND c.business_scope = "DRUGSTORE" AND p.essential = "ESSENTIAL")
     AND ob.outbound_quantity > 0
-    AND c.business_scope NOT IN ("CLINIC", "BEAUTY_SALON", "DENTISTRY")
+    AND COALESCE( c.business_scope, '') NOT IN ("CLINIC", "BEAUTY_SALON", "DENTISTRY")
     AND p.product_report_category <> "RECALLED"
     AND p.product_name NOT LIKE "[%"
 GROUP BY ALL

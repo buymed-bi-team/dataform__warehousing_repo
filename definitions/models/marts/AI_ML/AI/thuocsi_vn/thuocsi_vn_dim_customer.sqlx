@@ -9,6 +9,7 @@ WITH
     cte AS (
         SELECT
             a.customer_id
+            , TIMESTAMP(a.user_created_at) AS user_created_at
             , a.user_activated_at
             , a.user_last_login
             , a.customer_name
@@ -32,6 +33,7 @@ WITH
         UNION ALL
         SELECT
             SAFE_CAST(CONCAT("9999", receiver_id) AS INT64)
+            , created_time + INTERVAL 7 HOUR
             , NULL
             , NULL
             , name
