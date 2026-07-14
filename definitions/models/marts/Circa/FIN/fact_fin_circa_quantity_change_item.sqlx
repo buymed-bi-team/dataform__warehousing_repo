@@ -36,6 +36,7 @@ with clean_data as (
     left join buymed_circa_v2.product_retail_unit ru
     on ri.unit_id = ru.id
     where 1=1 
+    and ri.quantity_change is not null
  )
  select * except (quantity, base_quantity),
  sum(quantity*type_rate) as quantity,
