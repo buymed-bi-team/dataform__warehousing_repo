@@ -11,7 +11,7 @@ config {
     bigquery: {
         partitionBy: "created_date"
     },
-    tags:["platinum_custom_30m","seller_prd_purchasing"]
+    tags:["buymed_custom_30min","seller_prd_purchasing"]
 }
 
 pre_operations {
