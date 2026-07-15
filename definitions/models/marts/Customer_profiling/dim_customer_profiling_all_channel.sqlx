@@ -18,6 +18,7 @@ config {
 WITH customer_calendar AS (
   SELECT
     customer_id,
+    channel,
     year_month,
     som,
     gmv,
@@ -28,10 +29,11 @@ WITH customer_calendar AS (
 min_order_date AS (
   SELECT
     a.customer_id,
+    channel,
     DATE(MIN(a.created_at)) AS first_date_order
   FROM ${ref('fact_order')} AS a
   WHERE order_status <> 'CANCEL'
-  GROUP BY 1
+  GROUP BY ALL
 ),
 
 new_customer AS (
@@ -44,6 +46,7 @@ new_customer AS (
 
 SELECT
   a.customer_id,
+  a.channel,
   CASE
     WHEN cust.config_fc = 'MIENTRUNG' THEN 'CENTRAL'
     WHEN cust.config_fc = 'MIENBAC' THEN 'NORTHERN'
