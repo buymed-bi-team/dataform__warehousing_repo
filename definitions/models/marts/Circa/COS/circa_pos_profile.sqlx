@@ -24,7 +24,7 @@ FROM ${source.circa_os}.entity_pos_profile p
 LEFT JOIN (SELECT * FROM ${source.external}.circa_store_status 
            --WHERE store_format LIKE '%Circa%'
           ) s ON p.code = s.pos_code
-WHERE type IN ('CIRCA', 'FS')
+WHERE type IN ('CIRCA', 'FS','OTHER')
   AND code NOT IN ('POS0006','POS0030','POS0001','POS0047','POS0020','POS0020')
   --AND s.pos_code IS NULL
 )
