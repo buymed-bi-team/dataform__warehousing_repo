@@ -1,5 +1,5 @@
 config {
-    type: "view",
+    type: "table",
     description: `PIC: huong.dang, schedule: 0h00 daily
     Source
         ${source.ref}.marketplace_prd_order_v2_order
@@ -9,7 +9,10 @@ config {
         order_status: "Nullable | Null means unknown",
         created_time: "NonNull | Timezone in +7"
     },
-    tags : ['STRATEGIC-REPORTING']
+    tags: ['0h00', 'STRATEGIC-REPORTING'],
+    bigquery: {
+        partitionBy: "order_date"
+    }
 }
 
 js {
