@@ -4,7 +4,7 @@ config {
                   PIC: huyen.ngo;
                   model_type: Table;
                   schedule: At 7h00 and 10h30 `,
-    tags: ["7h15", "10h30"],
+    tags: ["7h15", "11h30"],
     name: "cos_demand_planning_result",
     columns: {
         
