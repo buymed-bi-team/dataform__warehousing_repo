@@ -99,3 +99,4 @@ INNER JOIN ${ref('dim_customer')} AS cust ON a.customer_id = cust.customer_id
 
 LEFT JOIN latest_channel AS ch ON a.customer_id = ch.customer_id AND a.som = ch.som
 LEFT JOIN first_order AS fo ON a.customer_id = fo.customer_id
+WHERE ch.channel is not NULL
