@@ -1,0 +1,69 @@
+config {
+    type: "table",
+    description: "PIC: Huong.Dang",
+    tags: ["custom_1h_past5"],
+    columns: {
+        new_customer: "Những khách hàng có đơn hàng đầu tiên tại thuocsi trong tháng đó, stt đơn <> CANCEL. Vd: Khách hàng A có đơn hàng đầu tiên tại thuocsi vào tháng 5/2024, có stt đơn=COMPLETED, thì khách đó sẽ là New_Customer trong tháng 5/2024",
+        repeat_customer: "Những khách hàng có đơn hàng 2 tháng liên tiếp tại sàn thuocsi, loại trừ những đơn hàng CANCEL. Vd: Khách hàng A có đơn hàng trong 4 / 2024 và tháng 5 / 2024,thì type của khách hàng A trong tháng 5 / 2024 sẽ là Repeat Customer",
+        reacquire_customer: "Những khách hàng chưa mua hàng từ 1 tháng trở lên, tính từ tháng cuối cùng mua hàng tại thucosi, quay trở lại mua hàng, loại trừ những đơn hàng CANCEL.Vd: Tháng 3/2024 khách A có mua hàng, tháng 4/2024 khách A không mua hàng, tháng 5/2024 quay lại mua hàng, khách A sẽ là Reacquire Customer trong tháng 5/2024",
+        active_customer: "Khách hàng có mua ít nhất 1 đơn trong tháng không tính Cancel",
+        churn_customer: "Khách hàng tháng trước có mua ít nhất 1 đơn không tính đơn Cancel. Tháng kế tiếp không mua"
+    },
+    bigquery: {
+        partitionBy: "som",
+        clusterBy: ["customer_id"]
+    }
+}
+
+WITH customer_calendar AS (
+  SELECT
+    customer_id,
+    year_month,
+    som,
+    gmv,
+    no_order
+  FROM ${ref('agg_customer_profiling_all_channel')}
+),
+
+min_order_date AS (
+  SELECT
+    a.customer_id,
+    DATE(MIN(a.created_at)) AS first_date_order
+  FROM ${ref('fact_order')} AS a
+  WHERE order_status <> 'CANCEL'
+  GROUP BY 1
+),
+
+new_customer AS (
+  SELECT
+    a.*,
+    DATE_TRUNC(a.first_date_order, MONTH) AS som_first_date_order,
+    FORMAT_DATE('%Y-%m', a.first_date_order) AS year_month
+  FROM min_order_date AS a
+)
+
+SELECT
+  a.customer_id,
+  CASE
+    WHEN cust.config_fc = 'MIENTRUNG' THEN 'CENTRAL'
+    WHEN cust.config_fc = 'MIENBAC' THEN 'NORTHERN'
+    WHEN cust.config_fc = 'MIENNAM' THEN 'SOUTHERN'
+  END AS location,
+  a.year_month,
+  a.som,
+  a.gmv,
+  a.no_order,
+  COUNT(DISTINCT b.customer_id) AS new_customer,
+  COUNT(DISTINCT c.customer_id) AS repeat_customer,
+  COUNT(DISTINCT d.customer_id) AS reacquire_customer,
+  COUNT(DISTINCT e.customer_id) AS active_customer,
+  COUNT(DISTINCT f.customer_id) AS churn_customer
+FROM customer_calendar AS a
+LEFT JOIN ${ref('dim_customer')} AS cust ON a.customer_id = cust.customer_id
+LEFT JOIN new_customer AS b ON a.customer_id = b.customer_id AND a.year_month = b.year_month
+LEFT JOIN ${ref('dim_customer_profiling_repeat')} AS c ON a.customer_id = c.customer_id AND a.year_month = c.year_month
+LEFT JOIN ${ref('dim_customer_profiling_reacquire')} AS d ON a.customer_id = d.customer_id AND a.year_month = d.year_month
+LEFT JOIN ${ref('dim_customer_profilling_active')} AS e ON a.customer_id = e.customer_id  AND a.year_month = e.year_month
+LEFT JOIN ${ref('dim_customer_churn')} AS f ON a.customer_id = f.customer_id AND a.year_month = f.year_month
+WHERE cust.customer_report_category <> 'EMPLOYEE'
+GROUP BY ALL

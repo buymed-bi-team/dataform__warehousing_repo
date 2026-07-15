@@ -30,7 +30,7 @@ union_table AS (
         'CUSTOMER_ACTIVE' AS measure,
         CAST(NULL AS STRING) AS supplier_class,
         COUNT(DISTINCT IF(dcp.active_customer <> 0, dcp.customer_id, NULL)) AS value
-    FROM ${ref(`dim_customer_profiling`)} dcp 
+    FROM ${ref(`dim_customer_profiling_all_channel`)} dcp 
     LEFT JOIN ${ref(`dim_calendar`)} dc  ON dcp.som = dc.som
     LEFT JOIN channel ch ON dcp.customer_id = ch.customer_id AND dcp.som = ch.som
     GROUP BY 1,2,3,4,5,6
@@ -45,7 +45,7 @@ union_table AS (
         'CUSTOMER_NEW' AS measure,
         CAST(NULL AS STRING) AS supplier_class,
         COUNT(DISTINCT IF(dcp.new_customer <> 0, dcp.customer_id, NULL)) AS value
-    FROM ${ref(`dim_customer_profiling`)} dcp 
+    FROM ${ref(`dim_customer_profiling_all_channel`)} dcp 
     LEFT JOIN ${ref(`dim_calendar`)} dc  ON dcp.som = dc.som
     LEFT JOIN channel ch ON dcp.customer_id = ch.customer_id AND dcp.som = ch.som
     GROUP BY 1,2,3,4,5,6
@@ -60,7 +60,7 @@ union_table AS (
         'CUSTOMER_REACQUIRED' AS measure,
         CAST(NULL AS STRING) AS supplier_class,
         COUNT(DISTINCT IF(dcp.reacquire_customer <> 0, dcp.customer_id, NULL)) AS value
-    FROM ${ref(`dim_customer_profiling`)} dcp 
+    FROM ${ref(`dim_customer_profiling_all_channel`)} dcp 
     LEFT JOIN ${ref(`dim_calendar`)} dc ON dcp.som = dc.som
     LEFT JOIN channel ch ON dcp.customer_id = ch.customer_id AND dcp.som = ch.som
     GROUP BY 1,2,3,4,5,6
