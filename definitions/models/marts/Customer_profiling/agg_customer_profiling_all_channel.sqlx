@@ -18,9 +18,9 @@ WITH
     SELECT
       a.customer_id,
       channel,
-      DATE(MIN(a.created_at)) AS first_date_order,
+      DATE(MIN(a.order_date)) AS first_date_order,
       DATE_TRUNC(DATE(MIN(a.created_at)), MONTH) AS som_first_date_order
-    FROM ${ref('fact_order')} AS a
+    FROM ${ref('fact_strategic_sale_order')} AS a
     WHERE order_status <> "CANCEL"
     GROUP BY ALL
   ),
@@ -43,9 +43,9 @@ WITH
     channel,
     sum (gmv) as gmv,
     count (order_id) as no_order,
-    CAST(FORMAT_DATE('%Y-%m', created_at) AS STRING) AS year_month,
+    CAST(FORMAT_DATE('%Y-%m', order_date) AS STRING) AS year_month,
     COUNTIF(order_status <> 'CANCEL') > 0 AS has_purchase
-  FROM  ${ref('fact_order')}
+  FROM  ${ref('fact_strategic_sale_order')}
   GROUP BY ALL),
 
   calendar_order AS(
