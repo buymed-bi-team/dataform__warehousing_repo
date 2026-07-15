@@ -22,7 +22,6 @@ WITH latest_channel AS (
   SELECT
     customer_id,
     DATE_TRUNC(DATE(order_date), MONTH) AS som,
-    FORMAT_DATE('%Y-%m', DATE(order_date)) AS year_month,
     channel
   FROM ${ref('fact_strategic_sale_order')}
   WHERE status <> 'CANCEL'
@@ -41,6 +40,16 @@ first_order AS (
   FROM ${ref('fact_strategic_sale_order')}
   WHERE status <> 'CANCEL'
   GROUP BY customer_id
+),
+
+customer_month AS (
+  SELECT
+    *
+  FROM ${ref('agg_customer_profiling_all_channel')}
+  QUALIFY ROW_NUMBER() OVER (
+    PARTITION BY customer_id, som
+    ORDER BY som DESC
+  ) = 1
 )
 
 SELECT
@@ -92,11 +101,7 @@ SELECT
     0
   ) AS churn_customer
 
-FROM ${ref('agg_customer_profiling_all_channel')} AS a
-
-INNER JOIN ${ref('dim_customer')} AS cust ON a.customer_id = cust.customer_id
-  AND cust.customer_report_category <> 'EMPLOYEE'
-
-LEFT JOIN latest_channel AS ch ON a.customer_id = ch.customer_id AND a.som = ch.som
+FROM customer_month AS a
+INNER JOIN ${ref('dim_customer')} AS cust ON a.customer_id = cust.customer_id AND cust.customer_report_category <> 'EMPLOYEE'
+INNER JOIN latest_channel AS ch ON a.customer_id = ch.customer_id AND a.som = ch.som
 LEFT JOIN first_order AS fo ON a.customer_id = fo.customer_id
-WHERE ch.channel is not NULL
