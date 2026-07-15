@@ -15,58 +15,75 @@ config {
     }
 }
 
-WITH customer_calendar AS (
+WITH min_order_date AS (
   SELECT
     customer_id,
     channel,
-    year_month,
-    som,
-    gmv,
-    no_order
-  FROM ${ref('agg_customer_profiling_all_channel')}
-),
-
-min_order_date AS (
-  SELECT
-    a.customer_id,
-    channel,
-    DATE(MIN(a.created_at)) AS first_date_order
-  FROM ${ref('fact_order')} AS a
-  WHERE order_status <> 'CANCEL'
-  GROUP BY ALL
+    DATE(MIN(order_date)) AS first_order_date
+  FROM ${ref('fact_strategic_sale_order')}
+  WHERE status <> 'CANCEL'
+  GROUP BY
+    customer_id,
+    channel
 ),
 
 new_customer AS (
   SELECT
-    a.*,
-    DATE_TRUNC(a.first_date_order, MONTH) AS som_first_date_order,
-    FORMAT_DATE('%Y-%m', a.first_date_order) AS year_month
-  FROM min_order_date AS a
+    customer_id,
+    channel,
+    FORMAT_DATE('%Y-%m', first_order_date) AS year_month
+  FROM min_order_date
 )
 
 SELECT
   a.customer_id,
   a.channel,
+
   CASE
     WHEN cust.config_fc = 'MIENTRUNG' THEN 'CENTRAL'
     WHEN cust.config_fc = 'MIENBAC' THEN 'NORTHERN'
     WHEN cust.config_fc = 'MIENNAM' THEN 'SOUTHERN'
   END AS location,
+
   a.year_month,
   a.som,
   a.gmv,
   a.no_order,
-  COUNT(DISTINCT b.customer_id) AS new_customer,
-  COUNT(DISTINCT c.customer_id) AS repeat_customer,
-  COUNT(DISTINCT d.customer_id) AS reacquire_customer,
-  COUNT(DISTINCT e.customer_id) AS active_customer,
-  COUNT(DISTINCT f.customer_id) AS churn_customer
-FROM customer_calendar AS a
-LEFT JOIN ${ref('dim_customer')} AS cust ON a.customer_id = cust.customer_id
-LEFT JOIN new_customer AS b ON a.customer_id = b.customer_id AND a.year_month = b.year_month
-LEFT JOIN ${ref('dim_customer_profiling_repeat')} AS c ON a.customer_id = c.customer_id AND a.year_month = c.year_month
-LEFT JOIN ${ref('dim_customer_profiling_reacquire')} AS d ON a.customer_id = d.customer_id AND a.year_month = d.year_month
-LEFT JOIN ${ref('dim_customer_profilling_active')} AS e ON a.customer_id = e.customer_id  AND a.year_month = e.year_month
-LEFT JOIN ${ref('dim_customer_churn')} AS f ON a.customer_id = f.customer_id AND a.year_month = f.year_month
-WHERE cust.customer_report_category <> 'EMPLOYEE'
-GROUP BY ALL
+
+  IF(
+    b.customer_id IS NOT NULL,
+    1,
+    0
+  ) AS new_customer,
+
+  IF(
+    a.has_purchase = TRUE
+    AND a.previous_month_purchase = TRUE,
+    1,
+    0
+  ) AS repeat_customer,
+
+  IF(
+    b.customer_id IS NULL
+    AND a.has_purchase = TRUE
+    AND a.previous_month_purchase = FALSE,
+    1,
+    0
+  ) AS reacquire_customer,
+
+  IF(
+    a.has_purchase = TRUE,
+    1,
+    0
+  ) AS active_customer,
+
+  IF(
+    a.has_purchase = FALSE
+    AND a.previous_month_purchase = TRUE,
+    1,
+    0
+  ) AS churn_customer
+
+FROM ${ref('agg_customer_profiling_all_channel')} AS a
+INNER JOIN ${ref('dim_customer')} AS cust ON a.customer_id = cust.customer_id AND cust.customer_report_category <> 'EMPLOYEE'
+LEFT JOIN new_customer AS b ON a.customer_id = b.customer_id AND a.channel = b.channel AND a.year_month = b.year_month
