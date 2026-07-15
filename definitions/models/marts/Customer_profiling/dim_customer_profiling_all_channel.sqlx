@@ -15,29 +15,34 @@ config {
     }
 }
 
-WITH min_order_date AS (
+WITH latest_channel AS (
   SELECT
     customer_id,
-    channel,
+    DATE_TRUNC(DATE(order_date), MONTH) AS som,
+    FORMAT_DATE('%Y-%m', DATE(order_date)) AS year_month,
+    channel
+  FROM ${ref('fact_strategic_sale_order')}
+  WHERE status <> 'CANCEL'
+  QUALIFY ROW_NUMBER() OVER (
+    PARTITION BY
+      customer_id,
+      DATE_TRUNC(DATE(order_date), MONTH)
+    ORDER BY order_date DESC
+  ) = 1
+),
+
+first_order AS (
+  SELECT
+    customer_id,
     DATE(MIN(order_date)) AS first_order_date
   FROM ${ref('fact_strategic_sale_order')}
   WHERE status <> 'CANCEL'
-  GROUP BY
-    customer_id,
-    channel
-),
-
-new_customer AS (
-  SELECT
-    customer_id,
-    channel,
-    FORMAT_DATE('%Y-%m', first_order_date) AS year_month
-  FROM min_order_date
+  GROUP BY customer_id
 )
 
 SELECT
   a.customer_id,
-  a.channel,
+  ch.channel,
 
   CASE
     WHEN cust.config_fc = 'MIENTRUNG' THEN 'CENTRAL'
@@ -51,7 +56,7 @@ SELECT
   a.no_order,
 
   IF(
-    b.customer_id IS NOT NULL,
+    DATE_TRUNC(fo.first_order_date, MONTH) = a.som,
     1,
     0
   ) AS new_customer,
@@ -64,7 +69,7 @@ SELECT
   ) AS repeat_customer,
 
   IF(
-    b.customer_id IS NULL
+    DATE_TRUNC(fo.first_order_date, MONTH) <> a.som
     AND a.has_purchase = TRUE
     AND a.previous_month_purchase = FALSE,
     1,
@@ -85,5 +90,9 @@ SELECT
   ) AS churn_customer
 
 FROM ${ref('agg_customer_profiling_all_channel')} AS a
-INNER JOIN ${ref('dim_customer')} AS cust ON a.customer_id = cust.customer_id AND cust.customer_report_category <> 'EMPLOYEE'
-LEFT JOIN new_customer AS b ON a.customer_id = b.customer_id AND a.channel = b.channel AND a.year_month = b.year_month
+
+INNER JOIN ${ref('dim_customer')} AS cust ON a.customer_id = cust.customer_id
+  AND cust.customer_report_category <> 'EMPLOYEE'
+
+LEFT JOIN latest_channel AS ch ON a.customer_id = ch.customer_id AND a.som = ch.som
+LEFT JOIN first_order AS fo ON a.customer_id = fo.customer_id
