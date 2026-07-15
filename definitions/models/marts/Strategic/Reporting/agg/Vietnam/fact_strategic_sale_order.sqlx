@@ -30,7 +30,7 @@ mkp_o1 AS (
         WHEN doc.order_channel IN ("MARKETPLACE","CONSIGNMENT") THEN "MARKETPLACE"
         ELSE order_channel
         END AS channel,
-        SUM (order)
+        SUM (price) as gmv,
         -- b.eom,
         DATE(o.created_time, "Asia/Ho_Chi_Minh") AS order_date,
         CAST(NULL AS STRING) AS supplier_class,
@@ -66,6 +66,7 @@ tender_o1 AS(
         WHEN doc.order_channel IN ("MARKETPLACE","CONSIGNMENT") THEN "MARKETPLACE"
         ELSE order_channel
         END AS channel,
+        SUM (price) as gmv,
         DATE(o.confirmation_date,"Asia/Ho_Chi_Minh") AS order_date,
         CAST(NULL AS STRING) AS supplier_class,
         CASE o.warehouse_code
@@ -97,6 +98,7 @@ tender_o1 AS(
         WHEN doc.order_channel IN ("MARKETPLACE","CONSIGNMENT") THEN "MARKETPLACE"
         ELSE order_channel 
         END AS channel,
+        SUM (total_amount) as gmv,
         DATE(o.confirmation_date,"Asia/Ho_Chi_Minh") AS order_date,
         CAST(NULL AS STRING) AS supplier_class,
         CASE
