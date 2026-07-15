@@ -75,7 +75,7 @@ union_table AS (
         'CUSTOMER_REPEAT' AS measure,
         CAST(NULL AS STRING) AS supplier_class,
         COUNT(DISTINCT IF(dcp.repeat_customer <> 0, dcp.customer_id, NULL)) AS value
-    FROM ${ref(`dim_customer_profiling`)} dcp 
+    FROM ${ref(`dim_customer_profiling_all_channel`)} dcp 
     LEFT JOIN ${ref(`dim_calendar`)} dc 
         ON dcp.som = dc.som
     LEFT JOIN channel ch
