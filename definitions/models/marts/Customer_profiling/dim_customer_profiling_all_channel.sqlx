@@ -15,6 +15,9 @@ config {
     }
 }
 
+-- Bảng này không loại channel = 'MARKETPLACE' như bảng dim_customer_profiling và lấy data từ fact_strategic_sale_order
+
+
 WITH latest_channel AS (
   SELECT
     customer_id,
