@@ -57,7 +57,7 @@ WITH base_data AS (
       AND o.client_id = 1
       AND o.status IN ('COMPLETED', 'COMPLETED_SHIPPING')
       AND owner_name NOT IN ('CIRCA MARKETING')
-      AND o.completed_date >= CURRENT_DATE() - INTERVAL 1 MONTH
+      AND o.created_date >= CURRENT_DATE() - INTERVAL 1 MONTH
     GROUP BY ALL
 )
 
