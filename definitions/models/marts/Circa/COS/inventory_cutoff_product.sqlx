@@ -1,12 +1,27 @@
 config {
-    type: "table",
-    description: `inventory_cutoff_dbd PIC: huyen.ngo; model_type: Table ;schedule: At 8h30`,
+    type: "incremental",
+    description: `inventory_cutoff_product 
+                   PIC: huyen.ngo; model_type: Table ;schedule: At 8h30`,
     tags: ["8h30"],
     name: "inventory_cutoff_product",
     columns: {
         
     }
 }
+
+js {
+    const start_date =
+        ` DATE_SUB(CURRENT_DATE(), INTERVAL 10 DAY) `
+    const end_date = ` CURRENT_DATE() `
+}
+pre_operations {
+  DELETE
+  FROM
+    ${self()}
+  WHERE
+    cutoff_date_index >= ${start_date}
+}
+
 
 SELECT DISTINCT
        a.cutoff_date_index
@@ -25,8 +40,12 @@ FROM  ${source.circa_os}.inventory_location_detail_historical_cut_off AS a
 LEFT JOIN  ${source.circa_os}.inventory_location AS b 
        ON a.location_id = b.id 
       AND a.client_id = b.client_id
-WHERE a.cutoff_date_index >= DATE_SUB( CURRENT_DATE("Asia/Ho_Chi_Minh"),INTERVAL 1 MONTH)
-      AND a.cutoff_date_index <= DATE_SUB(CURRENT_DATE("Asia/Ho_Chi_Minh"), INTERVAL 2 DAY)
+WHERE  a.cutoff_date_index <= DATE_SUB(CURRENT_DATE("Asia/Ho_Chi_Minh"), INTERVAL 2 DAY)
       AND a.client_id = 1
+      AND cutoff_date_index >= ${when(incremental(), start_date, `'2026-05-01'`)}
+  
+
 GROUP BY ALL
+
+
 
