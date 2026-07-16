@@ -23,8 +23,6 @@ WITH
     doc_code, 
     fulfillment_method, 
     owner_name,
-    quantity_po, 
-    base_quantity_po, 
     unit_price, 
     is_deal_1k,  
     cost_price_include_tax, 
@@ -37,7 +35,9 @@ WITH
     is_combo, 
     item_discount_amount, 
     combo_discount_amount, 
-    item_amount_contribution,
+    sum(quantity_po) quantity_po, 
+    sum(base_quantity_po) base_quantity_po, 
+    sum(item_amount_contribution) item_amount_contribution,
      CASE
       WHEN i.fulfillment_method = 'SO_THUOCSI' AND cogs_base_unit_ts is not null then cogs_base_unit_ts
       else i.cost_price_include_tax
@@ -49,6 +49,7 @@ WITH
   ON
     i.doc_code = p.po_code
     AND i.product_id = p.product_id
+  GROUP BY ALL
 )
     ,
   fact_order AS (
