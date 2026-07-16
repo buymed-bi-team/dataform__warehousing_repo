@@ -1,5 +1,5 @@
 config {
-    type: "table",
+    type: "incremental",
     description: `inventory_cutoff_dbd PIC: huyen.ngo; model_type: Table ;schedule: At 8h30`,
     tags: ["8h30"],
     name: "inventory_cutoff_dbd",
@@ -8,6 +8,19 @@ config {
     }
 }
 
+js {
+    const start_date =
+        ` DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY) `
+    const end_date = ` CURRENT_DATE() `
+}
+pre_operations {
+  DELETE
+  FROM
+    ${self()}
+  WHERE
+    cutoff_date_index >= ${start_date}
+}
+ 
 SELECT DISTINCT
       a.cutoff_date_index
       ,b.pos_id
@@ -19,5 +32,5 @@ SELECT DISTINCT
           end as is_same_day
 from ${source.circa_os}.inventory_location_detail_historical_cut_off as a
 left join ${source.circa_os}.inventory_location as b on a.location_id = b.id and a.client_id = b.client_id
-WHERE cutoff_date_index >= '2026-01-01'
-group by all
+WHERE cutoff_date_index >= ${when(incremental(), start_date, `'2026-01-01'`)}
+GROUP BY ALL

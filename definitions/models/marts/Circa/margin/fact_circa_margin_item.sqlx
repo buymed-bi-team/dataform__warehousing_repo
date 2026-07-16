@@ -1,0 +1,190 @@
+config {
+    type: "table",
+    description: `fact_circa_margin_item
+                  PIC: ha.lekim; 
+                  model_type: Table ;
+                  source: fact_fin_circa_order_item;
+                  schedule: At minute 30 every hour`,
+    tags:  ["gold_custom_20m"],
+    name: "fact_circa_margin_item",
+    columns: {
+    }
+    
+    ,bigquery: {
+        partitionBy: "created_date"
+    }
+}
+
+WITH
+  fact_order_item AS (
+  SELECT
+    i.order_code, 
+    i.product_id, 
+    doc_code, 
+    fulfillment_method, 
+    owner_name,
+    quantity_po, 
+    base_quantity_po, 
+    unit_price, 
+    is_deal_1k,  
+    cost_price_include_tax, 
+    cost_price_without_tax, 
+    so_thuoc_si, 
+    item_discount_code, 
+    gift_code, 
+    unit_price_before_discount, 
+    unit_price_after_discount, 
+    is_combo, 
+    item_discount_amount, 
+    combo_discount_amount, 
+    item_amount_contribution,
+     CASE
+      WHEN i.fulfillment_method = 'SO_THUOCSI' AND cogs_base_unit_ts is not null then cogs_base_unit_ts
+      else i.cost_price_include_tax
+    END AS base_unit_cost_price_ts
+  FROM
+    ${ref("gold_buymed_vn2", "fact_fin_circa_order_item")} i
+  LEFT JOIN
+    ${ref("gold_buymed_vn2", "circa_cogs_thuocsi_by_po")} p
+  ON
+    i.doc_code = p.po_code
+    AND i.product_id = p.product_id
+)
+    ,
+  fact_order AS (
+  SELECT
+    o.created_date,
+    EXTRACT(HOUR FROM o.created_at) AS created_hour,
+    o.pos_id,
+    o.client_id,
+    o.order_code,
+    o.status,
+    o.type AS channel,
+    SUM( total_order_discount_amount + total_loyalty_discount_amount ) AS voucher_discount
+ FROM
+   ${ref("gold_buymed_vn2", "fact_fin_circa_order")} o
+  WHERE o.status NOT IN ('RETURNED', 'FAILED_SHIPMENT', 'OUT_OF_STOCK','CANCELED' )
+  GROUP BY
+    ALL )
+    ,
+  cogs_os AS (
+  SELECT
+    o.created_date,
+    o.created_hour,
+    o.pos_id,
+    o.client_id,
+    o.order_code,
+    o.status,
+    o.channel,
+    i.* except(order_code),
+    SUM(
+      CASE
+        WHEN i.gift_code IS NULL THEN i.unit_price_before_discount*i.quantity_po
+        ELSE 0
+    END
+      ) AS gmv,
+    SUM(i.item_amount_contribution*o.voucher_discount) AS voucher_discount,
+    SUM(CASE
+        WHEN i.is_deal_1k IS TRUE THEN (unit_price_before_discount - unit_price_after_discount)*i.quantity_po
+        ELSE 0
+    END
+      ) AS deal_1k_amount
+    ,
+    SUM(i.quantity_po*(item_discount_amount + combo_discount_amount)) AS discount_deal,
+    SUM(
+      CASE
+        WHEN (i.owner_name <> 'CIRCA MARKETING' 
+        AND i.gift_code IS NOT NULL AND i.gift_code <> '' 
+        AND i.product_id NOT IN (941832, 941878, 1101283, 2003919, 2004189, 2010834, 2010836, 2010837, 2010838, 2010840, 300704)) 
+        OR ( i.owner_name = 'CIRCA MARKETING' 
+        AND i.product_id NOT IN (941832, 941878, 1101283, 2003919, 2004189, 2010834, 2010836, 2010837, 2010838, 2010840, 300704) ) 
+        THEN i.cost_price_include_tax * i.base_quantity_po
+        ELSE 0
+    END
+      ) AS cogs_mkt_circa,
+    SUM(
+      CASE
+        WHEN i.owner_name <> 'CIRCA MARKETING' 
+        AND (i.gift_code IS NULL OR i.gift_code = '') 
+        AND product_id NOT IN (2010834, 2010836, 2010837, 2010838, 2010840) 
+        THEN i.cost_price_include_tax * i.base_quantity_po
+        ELSE 0
+    END
+      ) AS cogs_circa,
+    SUM(
+      CASE
+        WHEN (i.owner_name <> 'CIRCA MARKETING' 
+        AND i.gift_code IS NOT NULL AND i.gift_code <> '' 
+        AND i.product_id NOT IN (941832, 941878, 1101283, 2003919, 2004189, 2010834, 2010836, 2010837, 2010838, 2010840, 300704)) 
+        OR ( i.owner_name = 'CIRCA MARKETING' 
+        AND i.product_id NOT IN (941832, 941878, 1101283, 2003919, 2004189, 2010834, 2010836, 2010837, 2010838, 2010840, 300704) ) 
+        THEN i.base_unit_cost_price_ts * i.base_quantity_po
+        ELSE 0
+    END
+      ) AS cogs_mkt_buymed,
+    SUM(
+      CASE
+        WHEN i.owner_name <> 'CIRCA MARKETING' 
+        AND (i.gift_code IS NULL OR i.gift_code = '') 
+        AND product_id NOT IN (2010834, 2010836, 2010837, 2010838, 2010840) 
+        THEN i.base_unit_cost_price_ts * i.base_quantity_po
+        ELSE 0
+    END
+      ) AS cogs_buymed
+  FROM
+    fact_order_item AS i
+  INNER JOIN
+    fact_order o
+  ON
+    i.order_code = o.order_code
+  WHERE
+    o.client_id = 1
+    AND o.pos_id NOT IN ( '0afdb831-b60d-4254-8822-df13e39c90e7'
+    --head office
+    )
+    GROUP BY
+      ALL ),
+    cogs_fs AS (
+  SELECT
+    o.created_date,
+    o.created_hour,
+    o.pos_id,
+    o.client_id,
+    o.order_code,
+    o.status,
+    o.channel,
+    i.* except(order_code),
+    SUM(
+      CASE
+        WHEN i.gift_code IS NULL THEN i.unit_price_before_discount*i.quantity_po
+        ELSE 0
+    END
+      ) AS gmv,
+    SUM(i.item_amount_contribution*o.voucher_discount) AS voucher_discount,
+    SUM(CASE
+        WHEN i.is_deal_1k IS TRUE THEN (unit_price_before_discount - unit_price_after_discount)*i.quantity_po
+        ELSE 0
+    END
+      ) AS deal_1k_amount
+    ,
+    SUM(i.quantity_po*(item_discount_amount + combo_discount_amount)) AS discount_deal,
+   0 AS cogs_mkt_circa,
+    SUM( i.cost_price_include_tax * i.base_quantity_po ) AS cogs_circa,
+    0 AS cogs_mkt_buymed,
+    SUM( i.base_unit_cost_price_ts * i.base_quantity_po ) AS cogs_buymed
+  FROM
+    fact_order_item AS i
+  INNER JOIN
+    fact_order o
+  ON
+    i.order_code = o.order_code
+  WHERE
+    o.client_id <>1
+    GROUP BY
+      ALL )
+    , final_cogs as (
+      select * from cogs_os 
+      union ALL
+      select * from cogs_fs
+    )
+    select * from final_cogs
