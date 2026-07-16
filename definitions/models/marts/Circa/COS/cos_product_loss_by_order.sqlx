@@ -53,6 +53,7 @@ SELECT DISTINCT
       , i.order_code
       , o.status AS demand_status
       , i.status AS order_status
+      , i.type AS channel 
       ,i.customer_phone
 FROM ${source.circa_os}.order_order_item_demand  o
 LEFT JOIN ${source.ref}.circa_pos_profile p ON o.pos_id = p.id 
