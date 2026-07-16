@@ -1,10 +1,12 @@
 config {
     type: "table",
-    description: `LASt 13 month| PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every 2 hours.Circa Pre_order `,
+    description: `Đơn có ngày khách hẹn lấy hàng
+                   PIC: huyen.ngo; 
+                   model_type: Table ;
+                   schedule: At minute 15 every 1 hours.Circa Pre_order `,
     tags: ["custom_1h_past15"],
     name: "circa_fact_pre_order",
     columns: {
-        
     },
     bigquery: {
         partitionBy: "date(created_at)"
@@ -34,7 +36,7 @@ LEFT JOIN  ${source.ref}.cos_dim_product p ON i.product_id = p.product_id AND o.
 LEFT JOIN  ${source.ref}.cos_fact_order_item_demand d on o.order_id = d.order_id
 LEFT JOIN `buymed_circa_v2.product_retail_unit` cv ON d.unit = cv.unit AND d.product_id = cv.product_id AND o.client_id = cv.client_id
 WHERE delivery_scheduled_time IS NOT NULL
-    -- OR  o.status IN ('WAITING_STOCK')
+
 GROUP BY ALL
 ), stock AS (
       SELECT pos_id
