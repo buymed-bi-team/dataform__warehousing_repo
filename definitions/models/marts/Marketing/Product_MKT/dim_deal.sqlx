@@ -25,6 +25,8 @@ SELECT
   , a.deal_type as type
   , JSON_EXTRACT_SCALAR(a.skus, '$.0.sku') AS sku_code
   , a.sku_status
+  , a.discount_percent
+  , a.max_discount_value
   , a.quantity AS sold_quantity
   , a.max_quantity
   , a.price
