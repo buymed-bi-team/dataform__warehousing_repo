@@ -46,11 +46,10 @@ SELECT
         when os.rating is not null then 1 
         else 0 
         end as is_have_survey,
-    -- case 
-    --     when oo.payment_method = "BUSINESS_WALLET" then oo.total_price - COALESCE(oo.secondary_pay_amount,0) 
-    --     else 0 
-    --     end as business_amount,
-    o.business_amount,
+    case 
+        when oo.payment_method = "BUSINESS_WALLET" then oo.total_price - COALESCE(oo.secondary_pay_amount,0) 
+        else 0 
+        end as business_amount,
     -- case 
         -- when oo.payment_method = "BUSINESS_WALLET" then COALESCE(oo.secondary_pay_amount,0) 
         -- else total_amount 
