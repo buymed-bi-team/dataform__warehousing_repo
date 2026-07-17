@@ -18,6 +18,7 @@ SELECT p.* except(thuocsi_id)
      ELSE thuocsi_id END AS thuocsi_id
      ,s.* EXCEPT (status)
      ,CASE WHEN p.code = 'POS0010' THEN 'Active'
+           WHEN p.code = 'POS0024' THEN 'Active'
            ELSE s.status
       END AS actual_status
 FROM ${source.circa_os}.entity_pos_profile p 

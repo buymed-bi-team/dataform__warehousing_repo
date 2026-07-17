@@ -25,16 +25,15 @@ SELECT
   , a.deal_type as type
   , JSON_EXTRACT_SCALAR(a.skus, '$.0.sku') AS sku_code
   , a.sku_status
+  , a.discount_percent
+  , a.max_discount_value
   , a.quantity AS sold_quantity
   , a.max_quantity
   , a.price
   , a.pricing_type
   , DATE(timestamp_add(a.start_time, interval 7 hour)) AS start_date
   , DATE(timestamp_add(a.end_time, interval 7 hour)) AS end_date
-  , CASE 
-      WHEN a.seller_code IN ('DENX', 'MARKETING', 'MEDC', 'MEDX', 'MEDX-HN', 'MEDX_E', 'MED_NT', 'TAM_GIA', 'TENDER') then 'INTERNAL' 
-      ELSE 'EXTERNAL' 
-    END AS seller_class
+  , se.supplier_class AS seller_class
   , a.seller_code
   , REGEXP_REPLACE(a.charge_deal_fee, r'MARKTEPLACE|MARKETPALCE', 'MARKETPLACE') AS charge_fee
   , JSON_EXTRACT_SCALAR(a.extra_props, '$.reason') AS reason
@@ -61,6 +60,7 @@ FROM ${source.platinum}.marketplace_prd_product_v2_deal a
     ON JSON_EXTRACT_SCALAR(a.area_codes[0]) = c.region_code
   LEFT JOIN ${source.platinum}.core_prd_account_account AS ca 
     ON ca.account_id = a.account_id
+  LEFT JOIN ${ref("dim_seller")} AS se ON se.supplier_code = a.seller_code
 WHERE a.action <> 'd'
   AND a.deal_id NOT IN (50105, 50103, 2, 2101, 50008, 20134)
   AND a.created_date >= "2025-01-01"
