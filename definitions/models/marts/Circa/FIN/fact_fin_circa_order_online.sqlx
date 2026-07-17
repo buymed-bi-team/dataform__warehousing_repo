@@ -42,7 +42,10 @@ DATE(DATETIME_ADD(a.delivery_date, INTERVAL 7 HOUR)) AS delivery_date,
 b.delivery_carrier_code,
 b.delivery_carrier,
 b.delivery_tracking_number,
-d.fee_amount AS original_delivery_fee
+d.fee_amount AS original_delivery_fee,
+cast(
+    JSON_EXTRACT_SCALAR(a.extra_props, '$.final_cod')
+    as int64) AS final_secondary_cod
 FROM ${source.platinum}.circa_online_prd_order_order a
 LEFT JOIN ${source.platinum}.circa_online_prd_order_sale_order b 
 ON a.sale_order_code = b.sale_order_code
