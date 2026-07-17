@@ -84,6 +84,7 @@ WITH
            ) = 1 THEN TRUE
            ELSE FALSE
       END AS is_first_channel_order
+    ,TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS refresh_at
   FROM fact_order_item AS i
   INNER JOIN fact_order o ON i.order_code = o.order_code 
   LEFT JOIN  ${ref("gold_buymed_vn2", "circa_pos_profile")} AS p ON o.pos_id = p.id

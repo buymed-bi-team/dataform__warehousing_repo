@@ -1,0 +1,11 @@
+config {
+    type: "view",
+    schema: "buymed_tech",
+    name: "tech__circa_agg_tracking",
+}
+
+SELECT *
+    , refresh_at 
+FROM ${ref("gold_buymed_vn2", "circa_agg_tracking")} o 
+GROUP BY ALL
+ 
