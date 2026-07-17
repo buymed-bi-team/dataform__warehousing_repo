@@ -5,7 +5,7 @@ js {
                     postgresDatabase: "inventory",
                     dataset:      "buymed_circa_v2_raw",
                     tableName:    "allocation",
-                    targetDataset: "buymed_circa_v2_staging",
+                    targetDataset: "buymed_circa_v2",
                     targetTable: "inventory_allocation",
                     rawTable:     "inventory_allocation",
                     primaryKey:   "id",
@@ -16,7 +16,7 @@ js {
 
                 config {
                 type: "operations",
-                schema: "buymed_circa_v2_staging",
+                schema: "buymed_circa_v2",
                 tags: ["buymed_circa_v2_inventory", "platinum_custom_5min"]
                 }
 
