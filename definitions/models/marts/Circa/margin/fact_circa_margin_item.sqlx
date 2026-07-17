@@ -61,7 +61,8 @@ WITH
     o.order_code,
     o.status,
     o.type AS channel,
-    SUM( total_order_discount_amount + total_loyalty_discount_amount ) AS voucher_discount
+    SUM( total_order_discount_amount + total_loyalty_discount_amount ) AS voucher_discount,
+    SUM( external_discount_amount  ) AS external_discount_amount
  FROM
    ${ref("gold_buymed_vn2", "fact_fin_circa_order")} o
   WHERE o.status NOT IN ('RETURNED', 'FAILED_SHIPMENT', 'OUT_OF_STOCK','CANCELED' )
@@ -85,6 +86,7 @@ WITH
     END
       ) AS gmv,
     SUM(i.item_amount_contribution*o.voucher_discount) AS voucher_discount,
+    SUM(i.item_amount_contribution*o.external_discount_amount) AS external_discount_amount,
     SUM(CASE
         WHEN i.is_deal_1k IS TRUE THEN (unit_price_before_discount - unit_price_after_discount)*i.quantity_po
         ELSE 0
@@ -162,6 +164,7 @@ WITH
     END
       ) AS gmv,
     SUM(i.item_amount_contribution*o.voucher_discount) AS voucher_discount,
+    SUM(i.item_amount_contribution*o.external_discount_amount) AS external_discount_amount,
     SUM(CASE
         WHEN i.is_deal_1k IS TRUE THEN (unit_price_before_discount - unit_price_after_discount)*i.quantity_po
         ELSE 0

@@ -24,12 +24,27 @@ WITH thuosi_unit AS (
 )
 ,count_ord AS (
     SELECT DISTINCT oi.product_id
+                   , oi.seller_code
                    ,MAX(o.created_date) AS latest_ord
                    ,COUNT(DISTINCT o.order_id) AS no_ord
-                   ,SUM(unit_price * quantity) AS GMV
+                   ,SUM(quantity * unit_price_before_discount) AS GMV
     FROM ${ref('cos_fact_order')} o
     LEFT JOIN ${ref('cos_fact_order_item')} oi ON o.order_id = oi.order_id
     WHERE status LIKE "%COMPLETE%"
+         AND o.client_id =1 
+    GROUP BY ALL
+),L1M AS (
+    SELECT DISTINCT oi.product_id
+                   , oi.unit
+                   , oi.seller_code
+                   ,MAX(o.created_date) AS latest_ord_L1M
+                   ,COUNT(DISTINCT o.order_id) AS no_ord_L1M
+                   ,SUM(quantity * unit_price_before_discount) AS GMV_L1M
+    FROM ${ref('cos_fact_order')} o
+    LEFT JOIN ${ref('cos_fact_order_item')} oi ON o.order_id = oi.order_id
+    WHERE status LIKE "%COMPLETE%"
+          AND o.created_date >= CURRENT_DATE() - INTERVAL 1 MONTH
+          AND o.client_id =1 
     GROUP BY ALL
 )
 ,inventory AS (
@@ -143,10 +158,14 @@ WITH thuosi_unit AS (
                    ,no_ord
                    ,GMV
                    ,latest_ord
+                   ,latest_ord_L1M
+                   ,no_ord_L1M
+                   ,GMV_L1M
                    ,on_hand_quantity
     FROM has_price p
     LEFT JOIN inventory_full_unit i ON i.product_id = p.product_id AND i.unit = p.unit AND p.sku_code = i.sku_code
-    LEFT JOIN count_ord co ON i.product_id = co.product_id
+    LEFT JOIN count_ord co ON i.product_id = co.product_id AND i.seller_code = co.seller_code
+    LEFT JOIN L1M l ON p.product_id = l.product_id AND LOWER(p.unit) = LOWER(l.unit) AND i.seller_code = l.seller_code
     GROUP BY ALL
 )
 ,check_unit_pricing AS (
