@@ -5,7 +5,7 @@ config {
                   model_type: Table ;
                   schedule: Every 20 mins`,
     tags:  ["gold_custom_20m"],
-    name: "circa_tracking",
+    name: "circa_agg_tracking",
     columns: {
     }
     
