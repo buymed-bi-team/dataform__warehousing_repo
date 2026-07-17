@@ -32,6 +32,8 @@ FROM (
             WHEN "COLD_STORAGE_DRUG" THEN "thuoc_bao_quan_lanh"
             WHEN "NON_PRESCRIPTION" THEN "thuoc_khong_ke_don"
             WHEN "PRESCRIPTION" THEN "thuoc_ke_don"
+            WHEN "ESSENTIAL" THEN "thuoc_thiet_yeu"
+            WHEN "NON_ESSENTIAL" THEN "thuoc_khong_thiet_yeu"
         END AS ksdb
         , true AS has_ksdb
         , COALESCE(
@@ -48,4 +50,5 @@ FROM (
 )
 PIVOT ( MAX(has_ksdb) FOR ksdb IN ("thuoc_dang_phoi_hop" AS thuoc_dang_phoi_hop, "thuoc_danh_muc_cam" AS thuoc_danh_muc_cam,
     "thuoc_doc" AS thuoc_doc, "thuoc_bao_quan_lanh" AS thuoc_bao_quan_lanh,
-    "thuoc_khong_ke_don" AS thuoc_khong_ke_don, "thuoc_ke_don" AS thuoc_ke_don) )
+    "thuoc_khong_ke_don" AS thuoc_khong_ke_don, "thuoc_ke_don" AS thuoc_ke_don, 
+    "thuoc_thiet_yeu" AS thuoc_thiet_yeu, "thuoc_khong_thiet_yeu" AS thuoc_khong_thiet_yeu) )
