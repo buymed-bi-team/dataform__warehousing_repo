@@ -29,11 +29,17 @@ WITH final AS (
       sum(cogs_buymed) cogs_buymed,
       COALESCE(SUM(gmv),0) - COALESCE(SUM(cogs_circa), 0) AS profit_circa,
       COALESCE(SUM(gmv),0) - COALESCE(SUM(cogs_buymed), 0) AS profit_buymed,
-      COALESCE(SUM(voucher_discount), 0) + COALESCE(SUM(cogs_mkt_circa), 0) + COALESCE(SUM(deal_1k_amount), 0) AS voucher_circa,
-      COALESCE(SUM(voucher_discount), 0) + COALESCE(SUM(cogs_mkt_buymed), 0) + COALESCE(SUM(deal_1k_amount), 0) AS voucher_buymed,
+      COALESCE(SUM(voucher_discount), 0) + COALESCE(SUM(cogs_mkt_circa), 0) + COALESCE(SUM(deal_1k_amount), 0) + COALESCE(SUM(external_discount_amount), 0) AS voucher_circa,
+      COALESCE(SUM(voucher_discount), 0) + COALESCE(SUM(cogs_mkt_buymed), 0) + COALESCE(SUM(deal_1k_amount), 0) + COALESCE(SUM(external_discount_amount), 0) AS voucher_buymed,
       COALESCE(SUM(discount_deal), 0) AS deal,
-      COALESCE(SUM(gmv),0) - COALESCE(SUM(cogs_circa), 0) - (COALESCE(SUM(voucher_discount), 0) + COALESCE(SUM(cogs_mkt_circa), 0) + COALESCE(SUM(deal_1k_amount), 0)) - COALESCE(SUM(discount_deal), 0) AS net_profit_circa,
-      COALESCE(SUM(gmv),0) - COALESCE(SUM(cogs_buymed), 0) - (COALESCE(SUM(voucher_discount), 0) + COALESCE(SUM(cogs_mkt_buymed), 0) + COALESCE(SUM(deal_1k_amount), 0)) - COALESCE(SUM(discount_deal), 0) AS net_profit_buymed
+      COALESCE(SUM(gmv),0) 
+        - COALESCE(SUM(cogs_circa), 0) 
+        - (COALESCE(SUM(voucher_discount), 0) + COALESCE(SUM(cogs_mkt_circa), 0) + COALESCE(SUM(deal_1k_amount), 0)+ COALESCE(SUM(external_discount_amount), 0)) 
+        - COALESCE(SUM(discount_deal), 0) AS net_profit_circa,
+      COALESCE(SUM(gmv),0) 
+        - COALESCE(SUM(cogs_buymed), 0) 
+        - (COALESCE(SUM(voucher_discount), 0) + COALESCE(SUM(cogs_mkt_buymed), 0) + COALESCE(SUM(deal_1k_amount), 0)+ COALESCE(SUM(external_discount_amount), 0)) 
+        - COALESCE(SUM(discount_deal), 0) AS net_profit_buymed
     FROM
       ${ref("gold_buymed_vn2", "fact_circa_margin_item")}
     WHERE
