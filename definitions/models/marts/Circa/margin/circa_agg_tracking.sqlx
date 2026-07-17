@@ -63,7 +63,7 @@ WITH
    , o.order_code
    , o.status
    , o.channel
-   , gmv
+   , ROUND(gmv) AS gmv
     , CASE WHEN voucher_code IS NOT NULL
                OR is_have_voucher= true THEN true 
           ELSE false 
