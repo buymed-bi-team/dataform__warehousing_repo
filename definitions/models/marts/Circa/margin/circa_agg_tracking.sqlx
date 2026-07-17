@@ -72,7 +72,7 @@ WITH
            WHEN customer_id IS NULL THEN TRUE
            WHEN ROW_NUMBER() OVER (
                PARTITION BY customer_id
-               ORDER BY o.created_at DESC
+               ORDER BY o.created_at 
            ) = 1 THEN TRUE
            ELSE FALSE
       END AS is_first_order
@@ -80,7 +80,7 @@ WITH
            WHEN customer_id IS NULL THEN TRUE
            WHEN ROW_NUMBER() OVER (
                PARTITION BY customer_id, channel
-               ORDER BY o.created_at DESC
+               ORDER BY o.created_at 
            ) = 1 THEN TRUE
            ELSE FALSE
       END AS is_first_channel_order
