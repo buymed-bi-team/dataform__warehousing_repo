@@ -44,14 +44,13 @@ SELECT DISTINCT
     ,MAX(CASE WHEN competitor_name = 'LongChau'
         THEN competitor_price END) AS longchau_price
  
-   ,MAX(CASE WHEN competitor_name = 'LongChau'
-        THEN competitor_price_before_promotion END) AS longchau_price_before_promotion
+--    ,MAX(CASE WHEN competitor_name = 'LongChau'
+--         THEN competitor_price_before_promotion END) AS longchau_price_before_promotion
  
     ,MAX(CASE WHEN competitor_name = 'Pharmacity'
         THEN competitor_price END) AS pharmacity_price
  
-    ,MAX(CASE WHEN competitor_name = 'Pharmacity'
-        THEN competitor_price_before_promotion END) AS pharmacity_price_before_promotion
+
  
 FROM base
 -- WHERE product_id = 2010196
