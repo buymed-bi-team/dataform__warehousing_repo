@@ -35,12 +35,12 @@ WITH
 ,  fact_order AS (
   SELECT
     o.created_date
-    , CASE WHEN i.customer_phone IS NULL
-                      OR i.customer_phone = ''
-                      OR i.customer_phone = '0'
-                      OR i.customer_phone = '000000000'
-                      OR i.customer_phone = '0000000001'
-                      OR i.customer_phone = '000000001'
+    , CASE WHEN i.customer_phone_cleaned IS NULL
+                      OR i.customer_phone_cleaned = ''
+                      OR i.customer_phone_cleaned = '0'
+                      OR i.customer_phone_cleaned = '000000000'
+                      OR i.customer_phone_cleaned = '0000000001'
+                      OR i.customer_phone_cleaned = '000000001'
                       THEN i.order_code ELSE i.customer_phone END AS customer_id
     ,EXTRACT(HOUR FROM o.created_at) AS created_hour
     ,o.created_at
