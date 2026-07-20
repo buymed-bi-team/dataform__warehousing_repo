@@ -2,7 +2,7 @@ config {
     name: "circa_assortment_template_operations",
     type: "operations",
     description: "PIC: minh.luu & giau.vo",
-    tags: ["00h00"]
+    //tags: ["00h00"]
 }
 
 CREATE OR REPLACE EXTERNAL TABLE
