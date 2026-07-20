@@ -38,6 +38,7 @@ WITH
     , CASE WHEN i.customer_phone IS NULL
                       OR i.customer_phone = ''
                       OR i.customer_phone = '0'
+                      OR i.customer_phone = '000000000'
                       THEN i.order_code ELSE i.customer_phone END AS customer_id
     ,EXTRACT(HOUR FROM o.created_at) AS created_hour
     ,o.created_at
