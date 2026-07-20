@@ -18,6 +18,8 @@ SELECT
     ELSE "2099-01-01"
   END AS created_date
 FROM ${source.silver}.core_prd_master_data_country o 
+QUALIFY ROW_NUMBER() OVER (_window) = 1
+       AND FIRST_VALUE(action) OVER (_window) <> 'd'
 WINDOW
   _window AS (
   PARTITION BY
