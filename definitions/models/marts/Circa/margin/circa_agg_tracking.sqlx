@@ -35,9 +35,12 @@ WITH
 ,  fact_order AS (
   SELECT
     o.created_date
-    , customer_id
+    , CASE WHEN i.customer_phone IS NULL
+                      OR i.customer_phone = ''
+                      OR i.customer_phone = '0'
+                      THEN i.order_code ELSE i.customer_phone END AS customer_id
     ,EXTRACT(HOUR FROM o.created_at) AS created_hour
-    , created_at
+    ,o.created_at
     ,o.pos_id
     ,o.client_id
     ,o.order_code
@@ -46,7 +49,8 @@ WITH
     ,voucher_code
     ,SUM( total_order_discount_amount + total_loyalty_discount_amount ) AS voucher_discount
     ,SUM( external_discount_amount  ) AS external_discount_amount
- FROM  ${ref("gold_buymed_vn2", "fact_fin_circa_order")} o
+ FROM  ${ref("gold_buymed_vn2", "fact_fin_circa_order")} o 
+ LEFT JOIN ${ref("gold_buymed_vn2", "cos_fact_order")} i ON o.order_id = i.order_id
   WHERE o.status NOT IN ('RETURNED', 'FAILED_SHIPMENT', 'OUT_OF_STOCK','CANCELED' )
   GROUP BY ALL ) 
  
