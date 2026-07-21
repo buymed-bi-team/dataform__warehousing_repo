@@ -1,0 +1,71 @@
+config {
+    type: "incremental",
+    description: 
+        `
+        Seller Reactive Time
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: daily at 8h30, 10h30, 12h30, 14h30, 16h30, 17h30;
+        `,
+    tags: ["8h30", "10h30", "12h30", "14h30" ,"16h30", "17h30"],
+    bigquery: {
+        partitionBy: "DATE(created_time)",
+        clusterBy: ["seller_code"]
+    },
+}
+
+pre_operations {
+    ${
+        when(incremental(),
+        `
+        DELETE FROM ${self()} WHERE DATE(created_time) >= CURRENT_DATE("+7") - 1
+        `,
+        ``
+    )}
+}
+
+SELECT
+    seller_code
+    , created_time
+    , status
+    , key 
+FROM (
+    SELECT
+        primary_key AS seller_code
+        , created_time + INTERVAL 7 HOUR AS created_time
+        , JSON_VALUE(data, "$.status") AS status
+        , key
+    FROM ${source.platinum}.core_prd_activity_activity
+    WHERE 1=1
+        AND created_date >= ${when(incremental(), `CURRENT_DATE("+7") - 1`, `"2025-09-01"`)}
+        AND template_code = "seller-info-update"
+        AND target = "seller"
+)
+QUALIFY status <> LAG(status) over (_w) OR LAG(status) over (_w) IS NULL
+WINDOW _w AS (PARTITION BY seller_code ORDER BY created_time)
+
+post_operations {
+  ${
+    when(incremental(),
+      `
+      CREATE TEMP TABLE tbl AS (
+            SELECT key, seller_code, created_time,status
+            FROM ${self()}
+            QUALIFY  status = LAG(status) OVER(w)
+                AND LAG(status) OVER(w) IS NOT NULL
+            WINDOW w AS (
+                PARTITION BY item_code
+                ORDER BY created_time
+            )
+        );
+        DELETE FROM ${self()}
+        WHERE CONCAT(key,seller_code) IN (
+            SELECT DISTINCT CONCAT(key, seller_code)
+            FROM tbl
+        ) 
+        ;
+      `,
+      ``
+    )
+  }
+}
