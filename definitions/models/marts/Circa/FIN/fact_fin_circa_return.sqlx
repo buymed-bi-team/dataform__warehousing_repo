@@ -18,28 +18,30 @@ SELECT
   date(datetime_add(r.created_at, interval 7 hour)) as created_date,
   date(datetime_add(r.completed_at, interval 7 hour)) as completed_date,
   r.payment_method,
+  o.order_code,
    ee.email as employee_email,
    ee.name as employee_name,
-   pay_amount,
-   subsidise_amount,
-  total_amount, -- total return amount
-  cancel_reason, 
-  delivery_type,
-  discount_amount, -- total discount return amount
-  total_item_amount, -- total item return amount
-  return_reason_note,
-  return_reason_type,
-  actual_total_amount, -- total purchase amount
-  loyalty_point_usage, 
-  medicine_cutting_fee, -- total medicine cutting fee
-  loyalty_point_rewarded,
-  loyalty_discount_amount, 
-  actual_total_item_amount, -- total item purchase amount
-  reference_order_in_platform, -- online order code
+   r.pay_amount,
+   r.subsidise_amount,
+  r.total_amount, -- total return amount
+  r.cancel_reason, 
+  r.delivery_type,
+  r.discount_amount, -- total discount return amount
+  r.total_item_amount, -- total item return amount
+  r.return_reason_note,
+  r.return_reason_type,
+  r.actual_total_amount, -- total purchase amount
+  r.loyalty_point_usage, 
+  r.medicine_cutting_fee, -- total medicine cutting fee
+  r.loyalty_point_rewarded,
+  r.loyalty_discount_amount, 
+  r.actual_total_item_amount, -- total item purchase amount
+  r.reference_order_in_platform, -- online order code
   if(date(datetime_add(r.completed_at, interval 7 hour)) >= "2026-07-10", 1,0) discount_logic_change -- Tri.dao
 FROM
   ${source.circa_os}.order_return_order r
 LEFT JOIN ${source.circa_os}.entity_entity ee
 on r.updated_by = ee.id
+LEFT JOIN ${ref("gold_buymed_vn2","fact_fin_circa_order")} o on r.origin_order_id = o.order_id
   WHERE 1=1
     AND r.status = 'COMPLETED'
