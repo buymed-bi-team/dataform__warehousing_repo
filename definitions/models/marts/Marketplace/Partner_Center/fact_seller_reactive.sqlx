@@ -54,7 +54,7 @@ post_operations {
             QUALIFY  status = LAG(status) OVER(w)
                 AND LAG(status) OVER(w) IS NOT NULL
             WINDOW w AS (
-                PARTITION BY item_code
+                PARTITION BY seller_code
                 ORDER BY created_time
             )
         );
