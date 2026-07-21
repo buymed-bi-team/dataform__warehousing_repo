@@ -36,7 +36,7 @@ SELECT
   loyalty_discount_amount, 
   actual_total_item_amount, -- total item purchase amount
   reference_order_in_platform, -- online order code
-  if(datetime_add(r.completed_at, interval 7 hour) >= "2026-07-10 11:50:04", 1,0) discount_logic_change -- Tri.dao
+  if(date(datetime_add(r.completed_at, interval 7 hour)) >= "2026-07-10", 1,0) discount_logic_change -- Tri.dao
 FROM
   ${source.circa_os}.order_return_order r
 LEFT JOIN ${source.circa_os}.entity_entity ee
