@@ -1,6 +1,6 @@
 config {
     type: "incremental",
-    name: "circa_online_prd_product_product_filter",
+    name: "circa_online_prd_consumer_tracking_events",
     schema: "platinum_buymed_vn",
     assertions: {
         uniqueKey: 'mg_id',
@@ -45,13 +45,13 @@ pre_operations {
                     DISTINCT IF(created_time is NULL, "2099-01-01" , DATE( DATETIME(created_time,'Asia/Ho_Chi_Minh') ) )
                 ) AS checkpoint_date,
                 COUNTIF( action = 'd' ) > 0 AS has_delete_data
-            FROM silver_buymed_vn.circa_online_prd_product_product_filter
+            FROM silver_buymed_vn.circa_online_prd_consumer_tracking_events1
             WHERE ingest_time > Ingest_checkpoint
         );
 
         CREATE TEMP TABLE new_records AS (
           SELECT DISTINCT mg_id
-          FROM silver_buymed_vn.circa_online_prd_product_product_filter
+          FROM silver_buymed_vn.circa_online_prd_consumer_tracking_events
           WHERE ingest_time > Ingest_checkpoint
         );
 
@@ -97,7 +97,7 @@ WITH over_tbl AS (
                 last_updated_time DESC
             LIMIT 1
         )[0] action
-    FROM silver_buymed_vn.circa_online_prd_product_product_filter
+    FROM silver_buymed_vn.circa_online_prd_consumer_tracking_events
     ${when(incremental(),  `
     WHERE ingest_time > Ingest_checkpoint - INTERVAL 2 HOUR
     AND mg_id IN (SELECT n.mg_id FROM new_records n)
@@ -111,7 +111,7 @@ SELECT
         ELSE DATE( '2099-01-01' )
     END AS created_date,
     CURRENT_DATETIME() AS platinum_refresh
-FROM silver_buymed_vn.circa_online_prd_product_product_filter
+FROM silver_buymed_vn.circa_online_prd_consumer_tracking_events
 WHERE key IN (SELECT o.key FROM over_tbl o)
 ${when(incremental(),  `
     AND ingest_time > Ingest_checkpoint - INTERVAL 2 HOUR
