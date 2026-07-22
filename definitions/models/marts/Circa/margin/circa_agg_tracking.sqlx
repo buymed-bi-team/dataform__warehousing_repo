@@ -72,7 +72,8 @@ WITH
    , o.channel
    , ROUND(gmv) AS gmv
     , CASE WHEN voucher_code IS NOT NULL
-               OR is_have_voucher= true THEN true 
+               OR is_have_voucher= true 
+               OR external_discount_amount > 0 THEN true 
           ELSE false 
      END AS is_have_voucher
     , CASE

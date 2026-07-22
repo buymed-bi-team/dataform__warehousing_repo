@@ -1,15 +1,8 @@
 config {
-    type: "table",
+    type: "view",
     name: "platform_iam_prd_core_job_title",
     schema: "platinum_buymed_vn",
-    assertions: {
-        uniqueKey: 'mg_id',
-        nonNull: ["created_date"]
-    },
-    bigquery: {
-        partitionBy: "created_date"
-    },
-    tags:["platinum_custom_2h_past7","platinum_platform_iam"]
+    tags:["platform_iam_prd_core"]
 }
 
 SELECT
