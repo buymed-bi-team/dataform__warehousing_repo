@@ -23,6 +23,8 @@ SELECT
   pru.convert_rate,
   base_quantity_distribution * c.received_quantity received_quantity,
   base_quantity_distribution * c.received_quantity * pru.convert_rate  base_quantity,
+  poi.cost_price_include_tax,
+  poi.cost_price_without_tax
   poi.base_quantity as base_qty_allocation
 FROM
   buymed_circa_v2.order_goods_receipt a
