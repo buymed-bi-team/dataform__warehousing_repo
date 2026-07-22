@@ -128,7 +128,7 @@ with
             * EXCEPT(mg_id),
 
             CASE
-                when retail_price_value is null or retail_price_value > 100000000 or dynamic_pricing_level_fee_value is null then 0
+                when retail_price_value is null or retail_price_value > 100000000 /*or dynamic_pricing_level_fee_value is null*/ then 0
                 when retail_price_type = "FIXED_PRICE" and retail_price_value > 1 then 0
                 when retail_price_type = "CUSTOM_FEE" and retail_price_value > 1 then
                     CASE
@@ -141,7 +141,7 @@ with
 
             ROUND(
                 CASE
-                    when retail_price_value is null or retail_price_value > 100000000 or dynamic_pricing_level_fee_value is null then retail_price_value
+                    when retail_price_value is null or retail_price_value > 100000000 /*or dynamic_pricing_level_fee_value is null*/ then retail_price_value
                     when retail_price_type = "FIXED_PRICE" and retail_price_value > 1 then retail_price_value
                     when retail_price_type = "CUSTOM_FEE" and retail_price_value > 1 then
                         CASE
