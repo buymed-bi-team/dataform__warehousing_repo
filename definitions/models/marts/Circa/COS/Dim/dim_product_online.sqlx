@@ -1,7 +1,7 @@
 config {
     type: "table",
     description: `Dim product | PIC: huyen.ngo; model_type: Table ;schedule: custom_1h_past15`,
-    tags: ["bq_information_schema"],
+    tags: ["8h30"],
     name: "dim_product_online",
     columns: {/*
 */
@@ -39,5 +39,6 @@ SELECT
      ,JSON_VALUE(extra_props, '$.order_limit_quantity') AS order_limit_quantity
      ,JSON_VALUE(extra_props, '$.order_limit_unit') AS order_limit_unit
      ,DATETIME_ADD(synced_at, INTERVAL 7 HOUR) AS synced_at
+     ,slug
 FROM ${source.platinum}.circa_online_prd_product_product_filter
 WHERE DATE(ingest_time )>= '2026-05-01'
