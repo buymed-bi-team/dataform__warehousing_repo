@@ -45,7 +45,7 @@ pre_operations {
                     DISTINCT IF(created_time is NULL, "2099-01-01" , DATE( DATETIME(created_time,'Asia/Ho_Chi_Minh') ) )
                 ) AS checkpoint_date,
                 COUNTIF( action = 'd' ) > 0 AS has_delete_data
-            FROM silver_buymed_vn.circa_online_prd_product_product_filter1
+            FROM silver_buymed_vn.circa_online_prd_product_product_filter
             WHERE ingest_time > Ingest_checkpoint
         );
 

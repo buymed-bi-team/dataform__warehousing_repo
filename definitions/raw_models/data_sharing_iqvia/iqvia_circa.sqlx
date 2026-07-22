@@ -4,7 +4,8 @@ config {
 }
 
 SELECT
-    oi.product_id
+    DATE(o.completed_date) AS date
+    , oi.product_id
     , p.product_code
     , p.product_name
     , p.volumes
@@ -39,6 +40,6 @@ FROM ${ref("cos_fact_order_item")} AS oi
     LEFT JOIN ${ref("dim_product")} AS dp ON oi.product_id = dp.product_id
     LEFT JOIN ${ref("dim_customer")} AS c ON pos.thuocsi_id = c.customer_id
     LEFT JOIN ${ref("dim_geo_location")} AS g ON c.location_code = g.location_code
-WHERE DATE(o.completed_date) BETWEEN "2026-01-01" AND "2026-01-31"
+WHERE DATE(o.completed_date) BETWEEN "2025-01-01" AND "2025-06-30"
     AND o.status IN ('COMPLETED', 'COMPLETED_SHIPPING')
     AND dp.product_id IS NOT NULL
