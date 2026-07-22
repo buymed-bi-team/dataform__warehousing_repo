@@ -41,4 +41,4 @@ SELECT
      ,DATETIME_ADD(synced_at, INTERVAL 7 HOUR) AS synced_at
      ,slug
 FROM ${source.platinum}.circa_online_prd_product_product_filter
-WHERE DATE(ingest_time )>= '2026-05-01'
+-- WHERE DATE(ingest_time )>= '2026-05-01'
