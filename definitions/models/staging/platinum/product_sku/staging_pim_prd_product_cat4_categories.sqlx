@@ -1,15 +1,8 @@
 config {
-    type: "table",
+    type: "view",
     name: "pim_prd_product_cat4_categories",
     schema: "platinum_buymed_vn",
-    assertions: {
-        uniqueKey: 'mg_id',
-        nonNull: ["created_date"]
-    },
-    bigquery: {
-        partitionBy: "created_date"
-    },
-    tags:["custom_1h_past7"]
+    tags:["pim_prd_product"]
 }
 
 SELECT *,
