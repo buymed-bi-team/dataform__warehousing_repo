@@ -50,7 +50,6 @@ WITH
     ,o.status
     ,o.type AS channel
     ,voucher_code
-    ,external_discount_amount
     ,SUM( total_order_discount_amount + total_loyalty_discount_amount ) AS voucher_discount
     ,SUM( external_discount_amount  ) AS external_discount_amount
  FROM  ${ref("gold_buymed_vn2", "fact_fin_circa_order")} o 
