@@ -1,7 +1,7 @@
 config {
     type: "table",
     description: `Dim product | PIC: huyen.ngo; model_type: Table ;schedule: custom_1h_past15`,
-    tags: ["bq_information_schema"],
+    tags: ["8h30"],
     name: "dim_product_online",
     columns: {/*
 */
