@@ -1,16 +1,9 @@
 config {
-    type: "table",
+    type: "view",
     name: "pim_prd_product_ingredient",
     schema: "platinum_buymed_vn",
     description: "Internal: https://product.buymed.com/category",
-    assertions: {
-        uniqueKey: 'mg_id',
-        nonNull: ["created_date"]
-    },
-    bigquery: {
-        partitionBy: "created_date"
-    },
-    tags:["custom_1h_past7"]
+    tags:["pim_prd_product"]
 }
 
 SELECT *,
