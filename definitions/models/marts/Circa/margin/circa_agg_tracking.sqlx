@@ -82,7 +82,7 @@ WITH
    , o.order_code
    , o.status
    , o.channel
-   , ROUND(gm) AS gvm
+   , ROUND(gmv) AS gvm
    , ROUND(gmv_before_deal) AS gmv_before_deal
    , ROUND(gmv_after_deal) AS gmv_after_deal
     , CASE WHEN voucher_code IS NOT NULL
