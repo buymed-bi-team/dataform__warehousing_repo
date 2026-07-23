@@ -28,6 +28,12 @@ WITH
                    WHEN i.gift_code IS NULL THEN i.unit_price_before_discount * i.quantity_po
                    ELSE 0
                END
+           ) AS gmv
+           ,SUM(
+               CASE
+                   WHEN i.gift_code IS NULL THEN i.unit_price_before_discount * i.quantity_po
+                   ELSE 0
+               END
            ) AS gmv_before_deal
            ,SUM(
                CASE
@@ -76,6 +82,7 @@ WITH
    , o.order_code
    , o.status
    , o.channel
+   , ROUND(gm) AS gvm
    , ROUND(gmv_before_deal) AS gmv_before_deal
    , ROUND(gmv_after_deal) AS gmv_after_deal
     , CASE WHEN voucher_code IS NOT NULL
