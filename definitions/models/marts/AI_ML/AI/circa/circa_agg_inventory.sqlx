@@ -32,6 +32,8 @@ WITH
 
 SELECT
   i.pos_id,
+  p.code AS pos_code, 
+  p.client_id, 
   COALESCE(p.name, i.pos_id) AS pos_name,
   -- IF(p.type = "FS", "FS", "COS") AS pos_type,
   "COS" AS pos_type,

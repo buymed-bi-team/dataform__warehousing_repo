@@ -9,6 +9,7 @@ SELECT
 ,o.client_id
 ,o.created_date
 ,pos_type
+,o.client_id
 ,pos_code
 ,pos_name
 ,channel

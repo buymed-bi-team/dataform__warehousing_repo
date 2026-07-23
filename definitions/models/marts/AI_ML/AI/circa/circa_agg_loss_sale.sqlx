@@ -10,6 +10,7 @@ SELECT
     , a.pos_id
     , p.code AS pos_code
     , IF(p.type = "FS", "FS", "COS") AS pos_type
+    , p.client_id 
     , a.created_date
     , a.product_id
     , a.product_name

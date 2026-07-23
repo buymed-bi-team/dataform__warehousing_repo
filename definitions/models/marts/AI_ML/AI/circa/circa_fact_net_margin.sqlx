@@ -193,6 +193,7 @@ WITH
     p.name AS pos_name,
   IF
     (p.type = 'FS', 'FS', 'COS') AS pos_type,
+    p.client_id,
     a.order_code,
     a.status,
     a.channel,

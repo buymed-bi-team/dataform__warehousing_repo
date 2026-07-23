@@ -58,6 +58,7 @@ WHERE o.client_id = 1
 SELECT a.date
       ,a.pos_code
       ,p.name AS pos_name
+      ,p.client_id
       ,channel
       ,target AS target_gmv
       ,SUM(b.actual_gmv) AS actual_gmv

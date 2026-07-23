@@ -17,6 +17,7 @@ SELECT
       , p.code as pos_code
       , p.name AS pos_name
       ,  IF(p.type = "FS", "FS", "COS") AS pos_type
+      , p.client_id
       , location_type
       , location_name
       , o.client_id

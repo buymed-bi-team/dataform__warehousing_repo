@@ -25,5 +25,6 @@ SELECT deal_code
        ,limit_per_order -- giới hạn đặt hàng hàng mỗi đơn
        ,campaign_code
        ,campaign_name
+       , o.client_id
 FROM ${ref('gold_buymed_vn2', 'dim_promotion_event_circa')} o
 LEFT JOIN ${ref('gold_buymed_vn2', 'circa_pos_profile')} p ON o.pos_id = p.id 

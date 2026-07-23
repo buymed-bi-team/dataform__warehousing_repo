@@ -8,6 +8,7 @@ config {
 SELECT o.* EXCEPT (cutoff_date_index, som, is_same_day)
       , p.code AS pos_code
       , p.name AS pos_name
+      , p.client_id
       , som AS cutoff_date_index
       , IF(p.type = "FS", "FS", "COS") AS pos_type
 FROM ${ref("gold_buymed_vn2", "inventory_cutoff_som")} o 

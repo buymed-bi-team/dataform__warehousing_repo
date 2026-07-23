@@ -85,6 +85,7 @@ ORDER BY o.created_date DESC
 SELECT p.code AS pos_code
     , p.name AS pos_name
     , IF(p.type = "FS", "FS", "COS") AS pos_type 
+    , a.client_id
     , a.* except (pos_id)
 FROM final a
 LEFT JOIN ${ref("gold_buymed_vn2", "circa_pos_profile")} p ON a.pos_id = p.id
