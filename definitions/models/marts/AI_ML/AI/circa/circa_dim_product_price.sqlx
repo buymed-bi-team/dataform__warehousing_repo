@@ -13,6 +13,7 @@ SELECT DISTINCT product_id
                ,sale_unit_price AS sales_price
                ,price_af_discount AS sales_price_after_discount
                ,discount_type
+               , client_id
              --  ,CONCAT(client_id, "_", product_id) AS product_id_key
                ,client_type
                ,client_name
@@ -27,6 +28,7 @@ SELECT DISTINCT product_id
                ,final_sale_price AS sales_price
                ,price_af_discount AS sales_price_after_discount
                ,discount_type
+               ,client_id
               -- ,CONCAT(client_id, "_", product_id) AS product_id_key
                ,client_type
                ,client_name
