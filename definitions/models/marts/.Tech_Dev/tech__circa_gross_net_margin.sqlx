@@ -7,7 +7,7 @@ config {
 SELECT 
       e.client_name
     , o.client_id
-    , o.completed_date,
+    , o.completed_date
     , pos_type
     , pos_code
     , pos_name
