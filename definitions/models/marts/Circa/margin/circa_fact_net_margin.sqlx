@@ -47,8 +47,8 @@ WITH final AS (
     GROUP BY
       ALL )
   SELECT
-    a.created_date,
-    a.created_hour,
+    a.completed_date,
+    a.completed_hour,
     a.client_id,
     p.code AS pos_code,
     p.name AS pos_name,
