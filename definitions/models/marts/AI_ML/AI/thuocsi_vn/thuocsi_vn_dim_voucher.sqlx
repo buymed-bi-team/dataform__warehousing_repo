@@ -13,9 +13,9 @@ WITH
             , p.promotion_name
             , v.short_name
             , IF(v.discount_type = "GIFT", "GIFT", "DISCOUNT") AS promotion_type
-            -- , system_display
-            -- , v.charge_fee
-            -- , v.promotion_organizer
+            , system_display
+            , v.charge_fee
+            , v.promotion_organizer
             , v.start_date
             , v.end_date
             , v.max_usage
@@ -42,6 +42,7 @@ WITH
             , SAFE_CAST( COALESCE(JSON_VALUE(and_conditions, "$.PRODUCT_TAG.and_conditions.0.product_tag_condition.min_total_price"), JSON_VALUE(and_conditions, "$.PRODUCT_TAG.or_conditions.0.product_tag_condition.min_total_price")) AS INT64) AS product_tag_condition_min_total_price
             , REGEXP_REPLACE( TO_JSON_STRING(JSON_QUERY(apply_discount, "$.not_in_skus")), r'\[|\]|\"','') AS apply_discount_not_in_skus
             , REGEXP_REPLACE( TO_JSON_STRING(JSON_QUERY(apply_discount, "$.skus")), r'\[|\]|\"','') AS apply_discount_skus
+            , is_specific
             -- , seller_code
             -- , v.condition_description
         FROM ${ref("gold_buymed_vn2", "dim_voucher")} AS v
