@@ -11,7 +11,7 @@ config {
     }
     
     ,bigquery: {
-        partitionBy: "completed_date"
+        partitionBy: "created_date"
     }
 }
 
@@ -55,7 +55,9 @@ WITH
   fact_order AS (
   SELECT
     o.completed_date,
+    o.created_date,
     EXTRACT(HOUR FROM o.completed_at) AS completed_hour,
+     EXTRACT(HOUR FROM o.created_at) AS created_hour,
     o.pos_id,
     o.client_id,
     o.order_code,
@@ -73,7 +75,9 @@ WITH
   cogs_os AS (
   SELECT
     o.completed_date,
+    o.created_date,
     o.completed_hour,
+    o.created_hour,
     o.pos_id,
     o.client_id,
     o.order_code,
@@ -152,7 +156,9 @@ WITH
     cogs_fs AS (
   SELECT
     o.completed_date,
+    o.created_date,
     o.completed_hour,
+    o.created_hour,
     o.pos_id,
     o.client_id,
     o.order_code,
