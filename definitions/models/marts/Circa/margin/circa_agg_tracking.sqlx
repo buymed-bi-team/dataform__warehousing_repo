@@ -29,6 +29,18 @@ WITH
                    ELSE 0
                END
            ) AS gmv
+           ,SUM(
+               CASE
+                   WHEN i.gift_code IS NULL THEN i.unit_price_before_discount * i.quantity_po
+                   ELSE 0
+               END
+           ) AS gmv_before_deal
+           ,SUM(
+               CASE
+                   WHEN i.gift_code IS NULL THEN i.unit_price * i.quantity_po
+                   ELSE 0
+               END
+           ) AS gmv_after_deal
        FROM  ${ref("gold_buymed_vn2", "fact_fin_circa_order_item")} i
        GROUP BY ALL
 )
@@ -70,7 +82,9 @@ WITH
    , o.order_code
    , o.status
    , o.channel
-   , ROUND(gmv) AS gmv
+   , ROUND(gmv) AS gvm
+   , ROUND(gmv_before_deal) AS gmv_before_deal
+   , ROUND(gmv_after_deal) AS gmv_after_deal
     , CASE WHEN voucher_code IS NOT NULL
                OR is_have_voucher= true 
                OR external_discount_amount > 0 THEN true 
