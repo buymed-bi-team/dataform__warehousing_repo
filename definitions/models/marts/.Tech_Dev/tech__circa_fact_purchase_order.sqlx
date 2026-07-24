@@ -1,0 +1,20 @@
+config {
+    type: "view",
+    schema: "buymed_tech",
+    name: "tech__circa_fact_purchase_order",
+}
+
+SELECT  
+    oi.created_date
+    , oi.po_code
+    , oi.po_status 
+    , fulfillment_method
+    , actual_po_amount_af_rt AS po_amount
+    , oi.pos_code
+    , p.name AS pos_name
+    , oi.client_id
+    , IF(p.type = "FS", "FS", "COS") AS pos_type
+FROM ${ref("gold_buymed_vn2","cos_purchase_order")} AS oi
+    LEFT JOIN buymed_circa_v2.entity_pos_profile AS p ON  oi.pos_code = p.code
+    WHERE  p.client_id NOT IN (5,6,7)
+

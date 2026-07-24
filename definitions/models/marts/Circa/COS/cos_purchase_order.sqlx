@@ -3,7 +3,7 @@ config {
     description: `Circa OS purchase order
                   PIC: huyen.ngo; 
                   model_type: Table ;schedule: At minute 10 every hour`,
-    tags: ["custom_1h_past10"],
+    tags: ["gold_custom_20m"],
     name: "cos_purchase_order"
 
 }
