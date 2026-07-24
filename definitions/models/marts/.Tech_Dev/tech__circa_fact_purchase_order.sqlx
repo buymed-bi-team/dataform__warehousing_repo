@@ -15,6 +15,6 @@ SELECT
     , oi.client_id
     , IF(p.type = "FS", "FS", "COS") AS pos_type
 FROM ${ref("gold_buymed_vn2","cos_purchase_order")} AS oi
-    LEFT JOIN buymed_circa_v2.entity_pos_profile AS p ON  oi.pos_code = p.code
+    LEFT JOIN  ${ref("gold_buymed_vn2","circa_pos_profile")}  AS p ON  oi.pos_code = p.code
     WHERE  p.client_id NOT IN (5,6,7)
 
