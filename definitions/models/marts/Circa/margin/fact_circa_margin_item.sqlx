@@ -54,14 +54,17 @@ WITH
     ,
   fact_order AS (
   SELECT
+    o.completed_date,
     o.created_date,
-    EXTRACT(HOUR FROM o.created_at) AS created_hour,
+    EXTRACT(HOUR FROM o.completed_at) AS completed_hour,
+     EXTRACT(HOUR FROM o.created_at) AS created_hour,
     o.pos_id,
     o.client_id,
     o.order_code,
     o.status,
     o.type AS channel,
-    SUM( total_order_discount_amount + total_loyalty_discount_amount ) AS voucher_discount,
+    SUM( total_order_discount_amount) AS voucher_discount,
+    SUM( total_loyalty_discount_amount ) AS total_loyalty_discount_amount,
     SUM( external_discount_amount  ) AS external_discount_amount
  FROM
    ${ref("gold_buymed_vn2", "fact_fin_circa_order")} o
@@ -71,7 +74,9 @@ WITH
     ,
   cogs_os AS (
   SELECT
+    o.completed_date,
     o.created_date,
+    o.completed_hour,
     o.created_hour,
     o.pos_id,
     o.client_id,
@@ -86,6 +91,7 @@ WITH
     END
       ) AS gmv,
     SUM(i.item_amount_contribution*o.voucher_discount) AS voucher_discount,
+    SUM(i.item_amount_contribution*o.total_loyalty_discount_amount) AS total_loyalty_discount_amount,
     SUM(i.item_amount_contribution*o.external_discount_amount) AS external_discount_amount,
     SUM(CASE
         WHEN i.is_deal_1k IS TRUE THEN (unit_price_before_discount - unit_price_after_discount)*i.quantity_po
@@ -149,7 +155,9 @@ WITH
       ALL ),
     cogs_fs AS (
   SELECT
+    o.completed_date,
     o.created_date,
+    o.completed_hour,
     o.created_hour,
     o.pos_id,
     o.client_id,
@@ -164,6 +172,7 @@ WITH
     END
       ) AS gmv,
     SUM(i.item_amount_contribution*o.voucher_discount) AS voucher_discount,
+    SUM(i.item_amount_contribution*o.total_loyalty_discount_amount) AS total_loyalty_discount_amount,
     SUM(i.item_amount_contribution*o.external_discount_amount) AS external_discount_amount,
     SUM(CASE
         WHEN i.is_deal_1k IS TRUE THEN (unit_price_before_discount - unit_price_after_discount)*i.quantity_po

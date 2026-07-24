@@ -28,6 +28,7 @@ SELECT
         else DATE(o.created_at + INTERVAL 7 hour) 
         end AS created_date,
     DATE(coalesce(o.completed_at, o.updated_at) + INTERVAL 7 hour) AS completed_date,
+    coalesce(o.completed_at, o.updated_at) + INTERVAL 7 hour AS completed_at,
     o.delivery_type,
     COALESCE(oo.payment_method, 
         o.payment_method) payment_method,
