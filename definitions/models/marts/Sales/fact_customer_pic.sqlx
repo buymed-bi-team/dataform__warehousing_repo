@@ -47,6 +47,6 @@ SELECT
     , DATE_TRUNC(CURRENT_DATE("+7"), MONTH)
 FROM ${ref("dim_customer")} AS a
 WHERE 1=1
-    AND a.business_type = "PHARMA_COMPANY"
-    AND NOT EXISTS (SELECT 1 FROM cte AS b WHERE a.customer_id = b.customer_id )
+    AND a.business_scope = "PHARMA_COMPANY"
+    AND NOT EXISTS (SELECT 1 FROM cte AS b WHERE a.customer_id = b.customer_id AND b.month = DATE_TRUNC(CURRENT_DATE("+7"), MONTH) )
 
