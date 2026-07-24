@@ -118,6 +118,7 @@ WHERE 1=1
     AND p.product_report_category <> "RECALLED"
     AND p.product_name NOT LIKE "[%"
     AND c.customer_id IS NOT NULL
+    AND c.customer_report_category <> "TECH"
 GROUP BY ALL
 HAVING value > 0
 
