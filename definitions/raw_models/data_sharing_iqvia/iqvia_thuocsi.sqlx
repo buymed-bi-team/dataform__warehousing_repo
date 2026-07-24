@@ -117,6 +117,7 @@ WHERE 1=1
     AND COALESCE(c.business_scope, '') NOT IN ("CLINIC", "BEAUTY_SALON", "DENTISTRY")
     AND p.product_report_category <> "RECALLED"
     AND p.product_name NOT LIKE "[%"
+    AND c.customer_id IS NOT NULL
 GROUP BY ALL
 HAVING value > 0
 
