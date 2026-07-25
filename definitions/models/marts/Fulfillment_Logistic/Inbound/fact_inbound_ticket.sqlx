@@ -176,3 +176,4 @@ FROM inbound_ticket AS i
         FROM ${ref('fact_fmpo')}
         QUALIFY ROW_NUMBER() over (PARTITION BY po_code) = 1
     ) AS f ON i.po_code = f.po_code
+QUALIFY ROW_NUMBER() OVER(PARTITION BY po_code) = 1
