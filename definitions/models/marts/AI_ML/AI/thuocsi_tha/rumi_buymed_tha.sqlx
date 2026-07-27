@@ -29,6 +29,11 @@ AS (SELECT * FROM  ${ref("buymed_innovation", "thuocsi_tha_fact_inbound_ticket")
 CREATE OR REPLACE VIEW `rumi_buymed_th.thuocsi_tha_fact_inventory_historical`
 AS (SELECT * FROM  ${ref("buymed_innovation", "thuocsi_tha_fact_inventory_historical")});
 
+-- fact_order_sort_percentage
+
+CREATE OR REPLACE VIEW `rumi_buymed_th.thuocsi_tha_fact_order_sort_percentage`
+AS (SELECT * FROM  ${ref("buymed_innovation", "thuocsi_tha_fact_order_sort_percentage")});
+
 -- dim_customer
 
 CREATE OR REPLACE VIEW `rumi_buymed_th.thuocsi_tha_dim_customer`
