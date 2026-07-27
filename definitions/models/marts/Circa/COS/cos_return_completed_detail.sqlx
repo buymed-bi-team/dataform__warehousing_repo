@@ -9,12 +9,18 @@ config {
 }
 
 WITH base_data AS (
-SELECT b.*
-      ,c.product_id
-      ,c.unit
-      ,c.sku_code
-      ,c.lot_date
-      ,CASE WHEN SUM(received_quantity) > 0 THEN SUM(received_quantity)
+SELECT  b.order_id
+      , b.created_at
+      , b.pos_id
+      , b.pos_code
+      , b.order_code
+      , b.return_codes
+      , b.client_id
+      , c.product_id
+      , c.unit
+      , c.sku_code
+      , c.lot_date
+      , CASE WHEN SUM(received_quantity) > 0 THEN SUM(received_quantity)
            ELSE SUM(c.quantity) END AS quantity
      -- ,sum(c.base_quantity) as base_quantity
 FROM ${source.ref}.cos_return_completed b
