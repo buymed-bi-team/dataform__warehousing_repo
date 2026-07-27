@@ -21,10 +21,11 @@ SELECT DISTINCT
     ,p.code as pos_code
     ,o.entity_id
     ,o.code AS order_code
-    ,o.total_amount
+    ,SUM(o.total_amount + COALESCE(o.business_amount, 0))  AS total_amount
     --,actual_total_item_amount
     ,o.total_item_amount
     ,SUM(COALESCE(loyalty_discount_amount,0 ) + COALESCE (o.discount_amount, 0)) AS discount_amount
+    ,business_amount
     ,o.created_by
     ,o.updated_by
     ,en.name
