@@ -6,132 +6,57 @@ config {
 
 }
 
-WITH
-  order_item_raw AS (
+WITH raw_data as (
+  select 
+  date_trunc(a.completed_date, month) as completed_month,
+  b.code as pos_code,
+  b.name as pos_name, 
+  a.order_code, 
+  a.status, 
+  gmv, 
+  c.type,
+  coalesce(voucher_discount,0) 
+  + coalesce(a.total_loyalty_discount_amount,0)
+  + coalesce(a.external_discount_amount,0)
+  + coalesce(deal_1k_amount,0)
+  + coalesce(cogs_mkt_circa,0) as promotion_excl_gift,
+  discount_deal,       
+  cogs_circa
+  from ${ref("fact_circa_margin_item")} a
+  inner join buymed_circa_v2.entity_pos_profile b
+  on a.pos_id = b.id
+  left join ${ref("fact_fin_circa_order")} 
+  c on a.order_code = c.order_code
+  where a.client_id = 1
+  and c.type = 'OFFLINE'
+)
+  , order_change AS (
     SELECT
-  i.*
-  , CASE
-      WHEN i.fulfillment_method = 'SO_THUOCSI' AND cogs_base_unit_ts is not null then cogs_base_unit_ts
-      else i.cost_price_include_tax
-    END AS base_unit_cost_price_ts
-from `gold_buymed_vn2.fact_fin_circa_order_item` i
-    LEFT JOIN `gold_buymed_vn2.circa_cogs_thuocsi_by_po` p
-      ON i.doc_code = p.po_code AND i.product_id = p.product_id
-    INNER JOIN buymed_circa_v2.entity_pos_profile d_pos 
-    on i.pos_id  = d_pos.id
-    WHERE d_pos.client_id = 1
-  ),
-  order_item_clean AS (
-    SELECT
-      order_id,
-      product_id,
-      quantity_po as quantity,
-      base_quantity_po as base_quantity,
-      unit_price_before_discount,
-      item_discount_amount,
-      combo_discount_amount,
-      CASE WHEN is_deal_1k IS TRUE THEN unit_price_before_discount - unit_price_after_discount ELSE 0 END AS deal_1k_amount,
-      unit_price_after_discount,
-      owner_name,
-      gift_code,
-      convert_rate,
-      CASE
-        WHEN
-          owner_name <> "CIRCA MARKETING"
-          AND gift_code IS NULL
-          AND product_id NOT IN (2010834, 2010836, 2010837, 2010838, 2010840)
-          THEN base_unit_cost_price_ts
-        ELSE 0
-        END AS base_unit_cost_price_ts,
-      CASE
-        WHEN
-           gift_code IS NOT NULL
-          THEN base_unit_cost_price_ts
-        ELSE 0
-        END AS gift_cost_price,
-      CASE
-        WHEN
-          owner_name = "CIRCA MARKETING"
-          AND gift_code IS NULL
-          AND product_id NOT IN (2010834, 2010836, 2010837, 2010838, 2010840)
-          THEN base_unit_cost_price_ts
-        ELSE 0
-        END AS marketing_cost_price,
-    FROM order_item_raw
-  ),
-  order_final AS (
-    SELECT
-      p.code,
-      p.name,
-      o.order_code,
-      date_trunc(o.created_date, month) created_month,
-      o.status,
-      oi.* EXCEPT (gmv),
-      gmv + o.medicine_cutting_fee AS gmv,
-      deal_cost + gift_cost + marketing_cost + o.voucher_discount AS promotion,
-      deal_cost  + marketing_cost + o.voucher_discount AS promotion_excl_gift,
-    FROM
-      (
-        SELECT
-          order_id,
-          COUNT(DISTINCT product_id) AS product_count,
-          sum(quantity) AS quantity,
-          sum(case when gift_code is null
-          then unit_price_before_discount else 0 end * quantity) AS gmv,
-          sum((item_discount_amount + combo_discount_amount + deal_1k_amount)* quantity) AS deal_cost,
-          sum(base_unit_cost_price_ts * base_quantity) AS cogs,
-          sum(gift_cost_price * base_quantity) AS gift_cost,
-          sum(marketing_cost_price * base_quantity) AS marketing_cost,
-        FROM order_item_clean
-        GROUP BY ALL
-      ) oi
-    INNER JOIN
-      (
-         SELECT
-          pos_id,
-          order_id,
-          order_code,
-           if(created_date = '0001-01-01', completed_date, created_date) created_date,
-          status,
-          sum(total_medicine_cutting_fee) medicine_cutting_fee,
-          sum(total_order_discount_amount + total_loyalty_discount_amount) voucher_discount
-        FROM `gold_buymed_vn2.fact_fin_circa_order`
-        WHERE status in ("COMPLETED", "COMPLETED_SHIPPING")
-        GROUP BY ALL
-      ) o
-      ON oi.order_id = o.order_id
-    LEFT JOIN gold_buymed_vn2.circa_pos_profile p
-      ON o.pos_id = p.id
-  ),
-  order_change AS (
-    SELECT
-      code AS pos_code,
-      created_month,
+      pos_code,
+      completed_month,
       sum(gmv) gmv,
-      lag(sum(gmv)) OVER (PARTITION BY code ORDER BY created_month) AS prev_gmv,
+      lag(sum(gmv)) OVER (PARTITION BY pos_code ORDER BY completed_month) AS prev_gmv,
       lag(sum(gmv), 2)
-        OVER (PARTITION BY code ORDER BY created_month) AS prev_prev_gmv,
+        OVER (PARTITION BY pos_code ORDER BY completed_month) AS prev_prev_gmv,
       safe_divide(
         sum(gmv)
-          - lag(sum(gmv)) OVER (PARTITION BY code ORDER BY created_month),
-        lag(sum(gmv)) OVER (PARTITION BY code ORDER BY created_month))
+          - lag(sum(gmv)) OVER (PARTITION BY pos_code ORDER BY completed_month),
+        lag(sum(gmv)) OVER (PARTITION BY pos_code ORDER BY completed_month))
         AS gmv_change,
       safe_divide(
         lag(sum(gmv))
-          OVER (PARTITION BY code ORDER BY created_month)
-          - lag(sum(gmv), 2) OVER (PARTITION BY code ORDER BY created_month),
-        lag(sum(gmv), 2) OVER (PARTITION BY code ORDER BY created_month))
+          OVER (PARTITION BY pos_code ORDER BY completed_month)
+          - lag(sum(gmv), 2) OVER (PARTITION BY pos_code ORDER BY completed_month),
+        lag(sum(gmv), 2) OVER (PARTITION BY pos_code ORDER BY completed_month))
         AS prev_gmv_change,
-      sum(promotion) as promotion,
       sum(promotion_excl_gift) as promotion_excl_gift,
       safe_divide(sum(promotion_excl_gift), sum(gmv)) AS `promotion_excl_gift_pct`,
-      safe_divide(sum(promotion), sum(gmv + gift_cost)) AS `promotion_pct`,
-      sum(cogs) AS cogs,
-      sum(gmv - cogs) AS gp,
-      sum(gmv - cogs - promotion) AS net_gp,
-      safe_divide(sum(gmv - cogs), sum(gmv)) AS margin,
-      safe_divide(sum(gmv  - cogs - promotion_excl_gift), sum(gmv)) AS net_margin,
-    FROM order_final
+      sum(cogs_circa) AS cogs,
+      sum(gmv - cogs_circa) AS gp,
+      sum(gmv - cogs_circa - promotion_excl_gift) AS net_profit,
+      safe_divide(sum(gmv - cogs_circa), sum(gmv)) AS margin,
+      safe_divide(sum(gmv  - cogs_circa - promotion_excl_gift), sum(gmv)) AS net_margin,
+    FROM raw_data
     GROUP BY ALL
   )
 -- classification query
@@ -160,7 +85,6 @@ FROM
       CASE WHEN promotion_excl_gift_pct >= 0.1 THEN 1 ELSE 0 END AS high_promotion,
     FROM order_change
     WHERE
-      created_month = date_sub(
+      completed_month = date_sub(
         date_trunc(date_add(current_date(), interval 1 day), month), INTERVAL 1 month)
   )
--- select sum(gmv) from order_final where created_month = "2026-03-01" and code  = "POS0009"
