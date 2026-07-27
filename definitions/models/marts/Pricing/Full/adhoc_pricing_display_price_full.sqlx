@@ -72,6 +72,15 @@ with
         QUALIFY ROW_NUMBER() OVER (PARTITION BY level ORDER BY ingest_time desc) = 1
     )
 
+    , base_sku AS (
+        select *
+        from ${ref("dim_sku_sales_region_current")}
+        where
+            sku_system_status IN ("NORMAL", "LIMIT", "OUT_OF_STOCK")
+            AND (seller_code IN ("MEDX", "BML_INT", "CIRCA_INT", "MEDX_INT") OR seller_class = "EXTERNAL")
+            AND sales_region_code <> "MIENTRUNG"
+    )
+
 -- get columns that to show in report and calculate 2 fee type.
 -- Note: I use cross join because deserting apply fees to all sku.
     , get_columns as (
@@ -111,7 +120,7 @@ with
             a.use_skus_price,
             a.sub_sku_code
 
-        from ${ref("dim_sku_sales_region_current")} AS a
+        from base_sku AS a
             left join ${ref("dim_product")} AS p on a.product_id = p.product_id
             left join get_dynamic_level_fee AS b on a.dynamic_pricing_level = b.level
             -- cross join get_price_range_fee AS c
@@ -126,9 +135,6 @@ with
             or a.retail_price_value > 100000000)
             -- ((a.retail_price_value >= coalesce(c.from_price,0) and a.retail_price_value <= c.to_price)
             -- or ((a.retail_price_value is null or a.retail_price_value > 100000000) and c.flag = true))
-            AND sku_system_status IN ("NORMAL", "LIMIT", "OUT_OF_STOCK")
-            AND (seller_code IN ("MEDX", "BML_INT", "CIRCA_INT", "MEDX_INT") OR seller_class = "EXTERNAL")
-            AND a.sales_region_code <> "MIENTRUNG"
     ),
 
     normal_product AS (
