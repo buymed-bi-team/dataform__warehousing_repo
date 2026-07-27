@@ -2,13 +2,10 @@
 
 
 config {
-    type: "table",
+    type: "view",
     name: "core_prd_master_data_country",
     schema: "platinum_buymed_vn",
-    assertions: {
-        uniqueKey: 'mg_id'
-    },
-    tags: ["custom_2h_past5"]
+    tags: ["core_prd_master_data"]
 }
 
 SELECT

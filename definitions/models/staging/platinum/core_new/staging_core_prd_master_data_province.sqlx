@@ -1,17 +1,10 @@
 
 
 config {
-    type: "table",
+    type: "view",
     name: "core_prd_master_data_province",
     schema: "platinum_buymed_vn",
-    assertions: {
-        uniqueKey: 'mg_id',
-        nonNull: ["created_date"]
-    },
-    bigquery: {
-        partitionBy: "created_date"
-    },
-    tags:["custom_2h_past5"]
+    tags:["core_prd_master_data"]
 }
 
 SELECT
