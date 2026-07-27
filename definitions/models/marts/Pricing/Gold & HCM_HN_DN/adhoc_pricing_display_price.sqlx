@@ -195,12 +195,12 @@ with
         FROM (
             SELECT
                 a.*
-                , s.sku AS sku_original_code
+                , s.sku_code AS sku_original_code
                 , JSON_VALUE(ss, '$.item_code') AS item_code
                 , SAFE_CAST(JSON_VALUE(ss, '$.quantity') AS INT64) AS quantity
                 , n.display_price
             FROM get_columns AS a
-                LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_sku AS s ON a.mg_id = s.mg_id
+                LEFT JOIN ${ref("dim_sku_location")} AS s ON a.mg_id = s.mg_id
                 , UNNEST(JSON_QUERY_ARRAY(s.skus)) AS ss
                 LEFT JOIN normal_product AS n ON JSON_VALUE(ss, '$.item_code') = n.sub_sku_code
             WHERE a.use_skus_price = true AND a.seller_class <> "EXTERNAL"
