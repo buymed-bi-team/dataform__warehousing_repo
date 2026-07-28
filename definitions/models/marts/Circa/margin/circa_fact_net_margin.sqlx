@@ -68,6 +68,7 @@ WITH base_data AS (
     a.rebate,
     a.gross_profit_circa,
     SAFE_DIVIDE(a.gross_profit_circa, a.net_revenue) AS gross_margin_circa,
+    a.voucher_gift_circa,
     a.net_profit_circa,
     SAFE_DIVIDE(a.net_profit_circa, a.net_revenue) AS net_margin_circa,
     CONCAT(a.client_id, "_", a.product_id) AS product_id_key,
