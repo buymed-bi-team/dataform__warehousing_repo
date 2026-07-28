@@ -23,6 +23,8 @@ group by all)
   select month, week, date,
   pos_code,
   pos_name,
+  target as month_target,
+  final_target as week_target,
   final_target,
   from ${ref("dim_circa_os_gmv_kpi")} 
   where channel = 'OFFLINE'
@@ -33,6 +35,8 @@ t.date,
 t.pos_code, 
 t.pos_name,
 gmv, 
+month_target,
+week_target,
 final_target, 
  from target_ t 
 left join gmv g
