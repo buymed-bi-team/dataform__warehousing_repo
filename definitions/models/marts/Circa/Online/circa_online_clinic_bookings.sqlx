@@ -1,0 +1,30 @@
+config {
+    type: "table",
+    description: `PIC: huyen.ngo; model_type: Table ;schedule: At minute 10 every 1 hour.Circa clinic bookings `,
+    tags: ['circa_online'],
+    name: "circa_online_clinic_bookings",
+
+    bigquery: {
+        partitionBy: "DATE_TRUNC(created_date, MONTH)"
+
+    }
+}
+
+
+SELECT DISTINCT booking_id
+               , o.code AS booking_code
+               , clinic_code
+               , service_requested
+               , note
+               , DATETIME_ADD(o.created_time, INTERVAL 7 HOUR) AS created_time
+               , DATE(DATETIME_ADD(o.created_time, INTERVAL 7 HOUR)) AS created_date
+               , o.status
+               --, account_id
+               , JSON_VALUE(patient, '$.email') AS patient_email
+               , JSON_VALUE(patient, '$.name') AS patient_name
+               , JSON_VALUE(patient, '$.phone') AS patient_phone
+               , JSON_VALUE(preferred_time, '$.date') AS preferred_date
+               , JSON_VALUE(preferred_time, '$.slot') AS preferred_slot
+               , i.name AS clinic_name
+FROM platinum_buymed_vn.circa_online_prd_consumer_clinic_bookings o 
+LEFT JOIN platinum_buymed_vn.circa_online_prd_consumer_clinics i ON o.clinic_code = i.code
