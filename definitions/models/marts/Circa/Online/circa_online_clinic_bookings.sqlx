@@ -5,7 +5,7 @@ config {
     name: "circa_online_clinic_bookings",
 
     bigquery: {
-        partitionBy: "DATE_TRUNC(created_date, MONTH)"
+        partitionBy: "created_date"
 
     }
 }
