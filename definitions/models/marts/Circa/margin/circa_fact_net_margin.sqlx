@@ -14,7 +14,7 @@ config {
     }
 }
 
-WITH final AS (
+WITH base_data AS (
     SELECT
       completed_date,
       created_date,
@@ -26,28 +26,26 @@ WITH final AS (
       status,
       channel,
       product_id,
-      sum(gmv) gmv,
-      sum(cogs_circa) cogs_circa,
-      sum(cogs_buymed) cogs_buymed,
-      COALESCE(SUM(gmv),0) - COALESCE(SUM(cogs_circa), 0) AS profit_circa,
-      COALESCE(SUM(gmv),0) - COALESCE(SUM(cogs_buymed), 0) AS profit_buymed,
-      COALESCE(SUM(voucher_discount), 0) + COALESCE(SUM(total_loyalty_discount_amount), 0) + COALESCE(SUM(cogs_mkt_circa), 0) + COALESCE(SUM(deal_1k_amount), 0) + COALESCE(SUM(external_discount_amount), 0) AS voucher_circa,
-      COALESCE(SUM(voucher_discount), 0) + COALESCE(SUM(total_loyalty_discount_amount), 0) + COALESCE(SUM(cogs_mkt_buymed), 0) + COALESCE(SUM(deal_1k_amount), 0) + COALESCE(SUM(external_discount_amount), 0) AS voucher_buymed,
-      COALESCE(SUM(discount_deal), 0) AS deal,
-      COALESCE(SUM(gmv),0) 
-        - COALESCE(SUM(cogs_circa), 0) 
-        - (COALESCE(SUM(voucher_discount), 0) + COALESCE(SUM(total_loyalty_discount_amount), 0) + COALESCE(SUM(cogs_mkt_circa), 0) + COALESCE(SUM(deal_1k_amount), 0)+ COALESCE(SUM(external_discount_amount), 0)) 
-        - COALESCE(SUM(discount_deal), 0) AS net_profit_circa,
-      COALESCE(SUM(gmv),0) 
-        - COALESCE(SUM(cogs_buymed), 0) 
-        - (COALESCE(SUM(voucher_discount), 0) + COALESCE(SUM(total_loyalty_discount_amount), 0) + COALESCE(SUM(cogs_mkt_buymed), 0) + COALESCE(SUM(deal_1k_amount), 0)+ COALESCE(SUM(external_discount_amount), 0)) 
-        - COALESCE(SUM(discount_deal), 0) AS net_profit_buymed
+      COALESCE(SUM(gmv),0) gmv,
+      COALESCE(SUM(cogs_circa),0) cogs_circa,
+      COALESCE(SUM(cogs_circa*0.03),0) rebate,
+      COALESCE(SUM(voucher_discount),0) + COALESCE(SUM(total_loyalty_discount_amount),0) + COALESCE(SUM(deal_1k_amount),0) + COALESCE(SUM(external_discount_amount),0) AS voucher_circa,
+      COALESCE(SUM(discount_deal),0) AS deal,
+      COALESCE(SUM(cogs_mkt_circa),0) AS voucher_gift_circa
     FROM
       ${ref("gold_buymed_vn2", "fact_circa_margin_item")}
     WHERE
       order_code IS NOT NULL
     GROUP BY
       ALL )
+, final as (
+  select 
+  *,
+  a.gmv - a.deal - a.voucher_circa as net_revenue,
+  a.gmv - a.deal - a.voucher_circa - a.cogs_circa + a.rebate AS gross_profit_circa,
+  a.gmv - a.deal - a.voucher_circa - a.cogs_circa + a.rebate - a.voucher_gift_circa as net_profit_circa
+  from base_data a
+)
   SELECT
     a.completed_date,
     a.completed_hour,
@@ -63,19 +61,15 @@ WITH final AS (
     a.channel,
     a.product_id,
     a.gmv,
-    a.cogs_circa,
-    a.cogs_buymed,
-    a.profit_circa AS gross_profit_circa,
-    a.profit_buymed AS gross_profit_buymed,
-    SAFE_DIVIDE(a.profit_circa, a.gmv) AS gross_margin_circa,
-    SAFE_DIVIDE(a.profit_buymed, a.gmv) AS gross_margin_buymed,
+    a.deal, 
     a.voucher_circa,
-    a.voucher_buymed,
-    a.deal,
+    a.net_revenue,
+    a.cogs_circa,
+    a.rebate,
+    a.gross_profit_circa,
+    SAFE_DIVIDE(a.gross_profit_circa, a.net_revenue) AS gross_margin_circa,
     a.net_profit_circa,
-    a.net_profit_buymed,
-    SAFE_DIVIDE(a.net_profit_circa, a.gmv) AS net_margin_circa,
-    SAFE_DIVIDE(a.net_profit_buymed, a.gmv) AS net_margin_buymed,
+    SAFE_DIVIDE(a.net_profit_circa, a.net_revenue) AS net_margin_circa,
     CONCAT(a.client_id, "_", a.product_id) AS product_id_key,
     CONCAT(a.order_code, CONCAT(a.client_id, "_", a.product_id)) AS order_product_unit_key,
     TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS refresh_at

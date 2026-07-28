@@ -15,19 +15,16 @@ SELECT
     , product_id
     , channel
     , SUM(gmv) gmv
-    , SUM(cogs_circa) cogs_circa
-    , SUM(cogs_buymed) cogs_buymed
-    , SUM(gross_profit_circa) gross_profit_circa
-    , SUM(gross_profit_buymed) gross_profit_buymed
-    , SAFE_DIVIDE(SUM(gross_profit_circa), SUM(gmv)) AS gross_margin_circa
-    , SAFE_DIVIDE(SUM(gross_profit_circa), SUM(gmv)) AS gross_margin_buymed
     , SUM(voucher_circa) voucher_circa
-    , SUM(voucher_buymed) voucher_buymed
     , SUM(deal) deal
+    , SUM(net_revenue) net_revenue
+    , SUM(cogs_circa) cogs_circa
+    , SUM(rebate) rebate
+    , SUM(gross_profit_circa) gross_profit_circa
+    , SAFE_DIVIDE(SUM(gross_profit_circa), SUM(gmv)) AS gross_margin_circa
+    , SUM(voucher_gift_circa) voucher_gift_circa
     , SUM(net_profit_circa) net_profit_circa
-    , SUM(net_profit_buymed) net_profit_buymed
     , SAFE_DIVIDE(SUM(net_profit_circa), SUM(gmv)) AS net_margin_circa
-    , SAFE_DIVIDE(SUM(net_profit_buymed), SUM(gmv)) AS net_margin_buymed
     , refresh_at 
 FROM ${ref("gold_buymed_vn2", "circa_fact_net_margin")} o 
 LEFT JOIN ${ref("gold_buymed_vn2", "circa_dim_entity_client")} e ON o.client_id = e.client_id
