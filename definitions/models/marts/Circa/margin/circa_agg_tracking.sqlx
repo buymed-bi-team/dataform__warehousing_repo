@@ -47,6 +47,7 @@ WITH
 ,  fact_order AS (
   SELECT
     o.created_date
+    , o.completed_date
     , CASE WHEN i.customer_phone_cleaned IS NULL
                       OR i.customer_phone_cleaned = ''
                       OR i.customer_phone_cleaned = '0'
@@ -72,6 +73,7 @@ WITH
   SELECT
      o.created_date
    , o.created_at
+   , o.completed_date
    , customer_id
   -- , o.pos_id
    , o.client_id
