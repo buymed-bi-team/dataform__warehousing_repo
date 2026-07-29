@@ -1,15 +1,8 @@
 config {
-    type: "table",
+    type: "view",
     name: "seller_prd_core_seller_reconciliation_fee_config",
     schema: "platinum_buymed_vn",
-    assertions: {
-        uniqueKey: 'mg_id',
-        nonNull: ["created_date"]
-    },
-    bigquery: {
-        partitionBy: "created_date"
-    },
-    tags: ["custom_1h_past5","seller_prd_core"]
+    tags: ["seller_prd_core"]
 }
 SELECT
  *,

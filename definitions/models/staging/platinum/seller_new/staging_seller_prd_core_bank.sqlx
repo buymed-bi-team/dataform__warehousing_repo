@@ -1,16 +1,18 @@
 config {
-    type: "table",
+    type: "view",
     name: "seller_prd_core_bank",
     schema: "platinum_buymed_vn",
-    assertions: {
-        uniqueKey: 'mg_id'
-    },
-    tags:["platinum_custom_2h_past5","seller_prd_core"]
+    tags:["seller_prd_core"]
 }
 
-SELECT *
-FROM ${source.silver}.seller_prd_core_bank
-QUALIFY ROW_NUMBER() OVER (_window) = 1
+SELECT
+ * ,
+ CASE 
+    WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
+    ELSE "2099-01-01"
+  END AS created_date
+FROM lakehouse-prod-394907.silver_buymed_vn.seller_prd_core_bank o 
+ QUALIFY ROW_NUMBER() OVER (_window) = 1
        AND FIRST_VALUE(action) OVER (_window) <> 'd'
 WINDOW
   _window AS (
