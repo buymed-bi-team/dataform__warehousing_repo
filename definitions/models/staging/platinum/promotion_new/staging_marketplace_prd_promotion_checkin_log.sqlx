@@ -17,55 +17,98 @@ pre_operations {
   ${
     when(incremental(),
       `
-      CREATE OR REPLACE TEMP TABLE range_created_time_table AS
-      SELECT MIN(DATE(created_time)) AS min_created_date, MAX(DATE(created_time)) AS max_created_date
-      FROM ${source.silver}.marketplace_prd_promotion_checkin_log WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()});
-      `,
-      ``
+        # Incremental
+        DECLARE has_new_data BOOLEAN;
+        DECLARE has_delete_data BOOLEAN;
+        DECLARE Ingest_checkpoint TIMESTAMP;
+        DECLARE checkpoint_date ARRAY<date>;
+        
+        SET Ingest_checkpoint = (
+            SELECT max(ingest_time)  - INTERVAL 1 HOUR  
+            FROM ${self()}
+            WHERE created_date >= CURRENT_DATE() - INTERVAL 1 MONTH
+        );
+        IF Ingest_checkpoint IS NULL THEN 
+            SET Ingest_checkpoint = (
+                SELECT max(ingest_time)  - INTERVAL 1 HOUR  FROM ${self()}
+            );
+        END IF;
+
+        SET ( has_new_data, checkpoint_date, has_delete_data ) = (
+            SELECT AS STRUCT
+                IF (
+                    COUNT(*) > 0 , TRUE, FALSE
+                ) has_new_data,
+                /*
+                    has_new_data describe the existance of data after the last refresh time of platinum
+                */
+                ARRAY_AGG(
+                    DISTINCT IF(created_time is NULL, "2099-01-01" , DATE( DATETIME(created_time,'Asia/Ho_Chi_Minh') ) )
+                ) AS checkpoint_date,
+                COUNTIF( action = 'd' ) > 0 AS has_delete_data
+            FROM silver_buymed_vn.marketplace_prd_promotion_checkin_log
+            WHERE ingest_time > Ingest_checkpoint
+        );
+
+        CREATE TEMP TABLE new_records AS (
+          SELECT DISTINCT mg_id
+          FROM silver_buymed_vn.marketplace_prd_promotion_checkin_log
+          WHERE ingest_time > Ingest_checkpoint
+        );
+
+        IF ( has_new_data = TRUE ) THEN
+            IF (has_delete_data = TRUE) THEN
+              SET checkpoint_date = ARRAY(
+                SELECT DISTINCT created_date
+                FROM ${self()}
+                WHERE mg_id IN (SELECT mg_id FROM new_records)
+              );
+            END IF;
+
+            DELETE FROM ${self()}
+            WHERE
+                created_date IN UNNEST(checkpoint_date)
+                AND mg_id IN (SELECT mg_id FROM new_records)
+            ;
+        ELSE
+            SET Ingest_checkpoint = TIMESTAMP("2099-01-01T00:00:00");
+        END IF ;
+      `      
     )
   }
 }
 
+WITH over_tbl AS (
+    SELECT
+        mg_id,
+        ARRAY_AGG(
+            key 
+            ORDER BY
+                synced_at DESC
+            LIMIT 1
+        )[0] key ,
+        ARRAY_AGG(
+            action 
+            ORDER BY
+                synced_at DESC
+            LIMIT 1
+        )[0] action
+    FROM silver_buymed_vn.marketplace_prd_promotion_checkin_log
+    ${when(incremental(),  `
+    WHERE ingest_time > Ingest_checkpoint - INTERVAL 2 HOUR
+    AND mg_id IN (SELECT n.mg_id FROM new_records n)
+    ` )}
+    GROUP BY mg_id HAVING action != "d"
+)
 SELECT
- *,
- date(created_time) as created_date
-FROM ${source.silver}.marketplace_prd_promotion_checkin_log o 
-  ${ when(incremental(), `WHERE ingest_time > (SELECT MAX(ingest_time) FROM ${self()})`)}
-  QUALIFY ROW_NUMBER() OVER (_window) = 1
-  AND FIRST_VALUE(action) OVER (_window) <> 'd'
-WINDOW
-  _window AS (
-  PARTITION BY
-    mg_id
-  ORDER BY
-    synced_at DESC,
-  IF
-    (action='d',3,
-    IF
-      (action='u',2,1)) DESC)
-
-post_operations {
-  ${
-    when(incremental(),
-      `
-      -- Delete rows using the temporary table
-      DELETE FROM ${self()}
-      WHERE created_date BETWEEN (SELECT min_created_date FROM range_created_time_table) 
-        AND (SELECT max_created_date FROM range_created_time_table)
-          and 
-         (key) IN (
-        SELECT (key) FROM ${self()} where created_date BETWEEN (SELECT min_created_date FROM range_created_time_table) 
-        AND (SELECT max_created_date FROM range_created_time_table) 
-        QUALIFY ROW_NUMBER() OVER (_window) > 1
-        OR FIRST_VALUE(action) OVER (_window) = "d"
-      WINDOW _window AS (
-        PARTITION BY mg_id
-        ORDER BY synced_at DESC,
-        IF(action = 'd', 3, IF(action = 'u', 2, 1)) DESC
-      )
-      ) ;
-      `,
-      ``
-    )
-  }
-}
+    *,
+    CASE
+        WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time, 'Asia/Ho_Chi_Minh'))
+        ELSE DATE( '2099-01-01' )
+    END AS created_date,
+    CURRENT_DATETIME() AS platinum_refresh
+FROM silver_buymed_vn.marketplace_prd_promotion_checkin_log
+WHERE key IN (SELECT o.key FROM over_tbl o)
+${when(incremental(),  `
+    AND ingest_time > Ingest_checkpoint - INTERVAL 2 HOUR
+    ` )}
