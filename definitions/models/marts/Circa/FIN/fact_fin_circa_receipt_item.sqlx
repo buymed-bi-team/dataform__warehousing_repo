@@ -9,9 +9,11 @@ config {
 }
 with raw_data as (
 SELECT
-  DATETIME_ADD(a.completed_at, INTERVAL 7 hour) AS completed_at,
-  DATE(DATETIME_ADD(a.completed_at, INTERVAL 7 hour)) completed_date,
-  DATE(DATETIME_ADD(a.created_at, INTERVAL 7 hour)) created_date,
+  p.pos_id,
+  p.client_id,
+  DATETIME_ADD(a.completed_at, INTERVAL 7 HOUR) AS completed_at,
+  DATE(DATETIME(a.completed_at, 'Asia/Ho_Chi_Minh')) completed_date,
+  DATE(DATETIME(a.created_at, 'Asia/Ho_Chi_Minh')) created_date,
   a.status,
   a.code receipt_code,
   a.purchase_order_id AS po_id,
@@ -25,9 +27,11 @@ SELECT
   base_quantity_distribution * c.received_quantity * pru.convert_rate  base_quantity,
   poi.base_quantity as base_qty_allocation,
   poi.cost_price_include_tax,
-  poi.cost_price_without_tax
+  poi.cost_price_without_tax,
+  poi.fulfillment_method
 FROM
   buymed_circa_v2.order_goods_receipt a
+LEFT JOIN buymed_circa_v2.order_purchase_order p on a.purchase_order_id = p.id
 LEFT JOIN
   buymed_circa_v2.order_goods_receipt_item b
 ON a.id = b.goods_receipt_id
