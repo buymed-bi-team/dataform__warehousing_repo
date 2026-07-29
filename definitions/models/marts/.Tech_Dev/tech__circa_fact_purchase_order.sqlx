@@ -29,11 +29,10 @@ SELECT
   sum(received_quantity*unit_price) as po_amount,
   sum(case when fulfillment_method = 'SO_THUOCSI' THEN received_quantity*unit_price*0.03 else 0 end) AS rebate,
 FROM ${ref("gold_buymed_vn2","fact_fin_circa_purchase_order")}  a
-inner join ${ref("gold_buymed_vn2","fact_fin_circa_purchase_order_item")} b on a.po_id = b.po_id
-inner JOIN ${ref("gold_buymed_vn2","circa_pos_profile")}  c on a.pos_id = c.id 
+left join ${ref("gold_buymed_vn2","fact_fin_circa_purchase_order_item")} b on a.po_id = b.po_id
+left JOIN ${ref("gold_buymed_vn2","circa_pos_profile")}  c on a.pos_id = c.id 
 WHERE 1=1
-  and c.type in ( "FS", "COS")
-  and c.client_id NOT IN (5,6,7)
+  and a.client_id NOT IN (5,6,7)
 group by all
 
   

@@ -37,6 +37,13 @@ WITH final AS (
       order_code IS NOT NULL
     GROUP BY
       ALL )
+  , final_1 as (
+    select *,
+     a.gmv - a.deal - a.voucher_circa as net_revenue,
+     a.gmv - a.deal - a.voucher_circa - a.cogs_circa as gross_profit_circa,
+     a.gmv - a.deal - a.voucher_circa - a.cogs_circa - a.voucher_gift_circa as net_profit_circa
+    from final a
+  )
   SELECT
     a.completed_date,
     a.completed_hour,
@@ -56,12 +63,16 @@ WITH final AS (
     a.voucher_circa,
     a.net_revenue,
     a.cogs_circa,
+    a.gross_profit_circa,
+    safe_divide(a.gross_profit_circa, a.net_revenue) as gross_margin_circa,
     a.voucher_gift_circa,
+    a.net_profit_circa,
+    safe_divide(a.net_profit_circa, a.net_revenue) as net_margin_circa,
     CONCAT(a.client_id, "_", a.product_id) AS product_id_key,
     CONCAT(a.order_code, CONCAT(a.client_id, "_", a.product_id)) AS order_product_unit_key,
     TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS refresh_at
   FROM
-    final AS a
+    final_1 AS a
   LEFT JOIN
     ${ref("gold_buymed_vn2", "circa_pos_profile")} AS p ON a.pos_id = p.id
    WHERE a.client_id NOT IN (5,6,7)
