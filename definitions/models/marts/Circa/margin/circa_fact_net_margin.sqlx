@@ -14,7 +14,7 @@ config {
     }
 }
 
-WITH base_data AS (
+WITH final AS (
     SELECT
       completed_date,
       created_date,
@@ -28,7 +28,6 @@ WITH base_data AS (
       product_id,
       COALESCE(SUM(gmv),0) gmv,
       COALESCE(SUM(cogs_circa),0) cogs_circa,
-      COALESCE(SUM(case when fulfillment_method = 'SO_THUOCSI' then cogs_circa*0.03 else 0 end),0) rebate,
       COALESCE(SUM(voucher_discount),0) + COALESCE(SUM(total_loyalty_discount_amount),0) + COALESCE(SUM(deal_1k_amount),0) + COALESCE(SUM(external_discount_amount),0) AS voucher_circa,
       COALESCE(SUM(discount_deal),0) AS deal,
       COALESCE(SUM(cogs_mkt_circa),0) AS voucher_gift_circa
@@ -38,14 +37,13 @@ WITH base_data AS (
       order_code IS NOT NULL
     GROUP BY
       ALL )
-, final as (
-  select 
-  *,
-  a.gmv - a.deal - a.voucher_circa as net_revenue,
-  a.gmv - a.deal - a.voucher_circa - a.cogs_circa + a.rebate AS gross_profit_circa,
-  a.gmv - a.deal - a.voucher_circa - a.cogs_circa + a.rebate - a.voucher_gift_circa as net_profit_circa
-  from base_data a
-)
+  , final_1 as (
+    select *,
+     a.gmv - a.deal - a.voucher_circa as net_revenue,
+     a.gmv - a.deal - a.voucher_circa - a.cogs_circa as gross_profit_circa,
+     a.gmv - a.deal - a.voucher_circa - a.cogs_circa - a.voucher_gift_circa as net_profit_circa
+    from final a
+  )
   SELECT
     a.completed_date,
     a.completed_hour,
@@ -65,17 +63,16 @@ WITH base_data AS (
     a.voucher_circa,
     a.net_revenue,
     a.cogs_circa,
-    a.rebate,
     a.gross_profit_circa,
-    SAFE_DIVIDE(a.gross_profit_circa, a.net_revenue) AS gross_margin_circa,
+    safe_divide(a.gross_profit_circa, a.net_revenue) as gross_margin_circa,
     a.voucher_gift_circa,
     a.net_profit_circa,
-    SAFE_DIVIDE(a.net_profit_circa, a.net_revenue) AS net_margin_circa,
+    safe_divide(a.net_profit_circa, a.net_revenue) as net_margin_circa,
     CONCAT(a.client_id, "_", a.product_id) AS product_id_key,
     CONCAT(a.order_code, CONCAT(a.client_id, "_", a.product_id)) AS order_product_unit_key,
     TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS refresh_at
   FROM
-    final AS a
+    final_1 AS a
   LEFT JOIN
     ${ref("gold_buymed_vn2", "circa_pos_profile")} AS p ON a.pos_id = p.id
    WHERE a.client_id NOT IN (5,6,7)

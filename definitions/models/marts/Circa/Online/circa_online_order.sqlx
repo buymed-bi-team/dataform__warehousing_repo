@@ -74,6 +74,12 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                      
       ,p.code                                                                        AS assigned_pos_code 
       ,p.name                                                                        AS assigned_pos_name
       ,JSON_VALUE(o.extra_props, '$.checkout_source')                                AS checkout_source
+      ,ARRAY_TO_STRING(
+         JSON_VALUE_ARRAY(tags), ', '
+         )                                                                            AS tags
+      , JSON_VALUE(o.extra_props, '$.affiliate_partner_code')                         AS affiliate_partner_code
+      , JSON_VALUE(o.extra_props, '$.affiliate_partner_type')                         AS affiliate_partner_type
+
 FROM ${source.platinum}.circa_online_prd_order_order o 
 LEFT JOIN (
     SELECT DISTINCT order_code, reference_order_in_platform, pos_id

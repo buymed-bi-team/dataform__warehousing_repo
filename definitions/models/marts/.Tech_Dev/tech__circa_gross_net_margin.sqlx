@@ -19,12 +19,12 @@ SELECT
     , SUM(deal) deal
     , SUM(net_revenue) net_revenue
     , SUM(cogs_circa) cogs_circa
-    , SUM(rebate) rebate
+    , 0 as rebate
     , SUM(gross_profit_circa) gross_profit_circa
-    , SAFE_DIVIDE(SUM(gross_profit_circa), SUM(gmv)) AS gross_margin_circa
+    , safe_divide(SUM(gross_profit_circa), sum(net_revenue)) as gross_margin_circa
     , SUM(voucher_gift_circa) voucher_gift_circa
     , SUM(net_profit_circa) net_profit_circa
-    , SAFE_DIVIDE(SUM(net_profit_circa), SUM(gmv)) AS net_margin_circa
+    , safe_divide(SUM(net_profit_circa), sum(net_revenue)) as net_margin_circa
     , refresh_at 
 FROM ${ref("gold_buymed_vn2", "circa_fact_net_margin")} o 
 LEFT JOIN ${ref("gold_buymed_vn2", "circa_dim_entity_client")} e ON o.client_id = e.client_id

@@ -64,12 +64,14 @@ SELECT DISTINCT
      ,o.delivery_amount
     ,o.client_id
     ,o.payment_method
+    ,m.province_name AS store_province_name
 FROM ${source.circa_os}.order_order o
 LEFT JOIN ${source.ref}.cos_return_completed rt ON o.code = rt.order_code
 LEFT JOIN ${source.ref}.circa_pos_profile p ON o.pos_id = p.id AND o.client_id = p.client_id
 LEFT JOIN (SELECT * FROM ${source.circa_os}.order_order_gift
       QUALIFY ROW_NUMBER() OVER (PARTITION BY order_code, gift_id,gift_code, pos_id ORDER BY created_at DESC) = 1) g ON o.code = g.order_code
 LEFT JOIN ${source.circa_os}.entity_entity en ON o.created_by = en.id AND o.client_id = en.client_id 
+LEFT JOIN gold_buymed_vn2.dim_geo_location m ON p.district = m.district_code AND p.province = m.province_code
 WHERE o.type <> 'RETURN'
   AND o.status <> 'PENDING'
   AND p.id IS NOT NULL
@@ -85,6 +87,7 @@ SELECT  TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
        ,i.receiver_full_address
        ,i.district_name
        ,i.province_name
+       ,COALESCE(i.province_name, o.store_province_name) AS customer_province
        ,CASE
            WHEN o.order_type = 'RETURN' then 'True'
            ELSE 'False' END AS is_returned
@@ -102,6 +105,7 @@ SELECT  TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
        ,concat(FORMAT_DATE('%Y-%m', coalesce(o.completed_date,o.created_date)), "_", n.email) as  ym_emp
        ,concat(o.pos_code,"_", o.updated_by) as emp_pos_id  
        ,concat(o.updated_by,"_", o.client_id) as updated_by_client_id
+       ,e.gender 
 FROM base_data o
 LEFT JOIN ${source.ref}.circa_online_order i ON o.reference_order_in_platform = i.order_code
 LEFT JOIN ${source.circa_os}.entity_customer e ON o.entity_id = e.id 

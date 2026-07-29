@@ -4,17 +4,35 @@ config {
     name: "tech__circa_fact_purchase_order",
 }
 
-SELECT  
-    oi.created_date
-    , oi.po_code
-    , oi.po_status 
-    , fulfillment_method
-    , actual_po_amount_af_rt AS po_amount
-    , oi.pos_code
-    , p.name AS pos_name
-    , oi.client_id
-    , IF(p.type = "FS", "FS", "COS") AS pos_type
-FROM ${ref("gold_buymed_vn2","cos_purchase_order")} AS oi
-    LEFT JOIN  ${ref("gold_buymed_vn2","circa_pos_profile")}  AS p ON  oi.pos_code = p.code
-    WHERE  p.client_id NOT IN (5,6,7)
+-- SELECT  
+--     oi.created_date
+--     , oi.po_code
+--     , oi.po_status 
+--     , fulfillment_method
+--     , actual_po_amount_af_rt AS po_amount
+--     , oi.pos_code
+--     , p.name AS pos_name
+--     , oi.client_id
+--     , IF(p.type = "FS", "FS", "COS") AS pos_type
+-- FROM ${ref("gold_buymed_vn2","cos_purchase_order")} AS oi
+--     LEFT JOIN  ${ref("gold_buymed_vn2","circa_pos_profile")}  AS p ON  oi.pos_code = p.code
+--     WHERE  p.client_id NOT IN (5,6,7)
+SELECT 
+  a.stock_date,
+  a.po_code,
+  a.status as po_status,
+  fulfillment_method,
+  c.code as pos_code,
+  c.name as pos_name,
+  c.client_id,
+  IF(c.type = "FS", "FS", "COS") AS pos_type,
+  sum(received_quantity*unit_price) as po_amount,
+  sum(case when fulfillment_method = 'SO_THUOCSI' THEN received_quantity*unit_price*0.03 else 0 end) AS rebate,
+FROM ${ref("gold_buymed_vn2","fact_fin_circa_purchase_order")}  a
+left join ${ref("gold_buymed_vn2","fact_fin_circa_purchase_order_item")} b on a.po_id = b.po_id
+left JOIN ${ref("gold_buymed_vn2","circa_pos_profile")}  c on a.pos_id = c.id 
+WHERE 1=1
+  and a.client_id NOT IN (5,6,7)
+group by all
 
+  
