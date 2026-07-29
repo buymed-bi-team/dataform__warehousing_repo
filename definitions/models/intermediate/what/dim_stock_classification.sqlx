@@ -14,6 +14,7 @@ WITH RankedData AS (
     SELECT 
         a.sku AS sku_code,
         a.warehouse_code AS fc_code,
+        CONCAT(a.product_id, "_", a.seller_code, "_", a.warehouse_code) AS  sku_fc_key,
         b.aging_put_days,
         c.aging_pick_days,
         DATETIME(b.latest_put_time, 'Asia/Ho_Chi_Minh') AS latest_put_time,
