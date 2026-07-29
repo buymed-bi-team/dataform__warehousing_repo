@@ -10,6 +10,7 @@ config {
 with raw_data as (
 SELECT
   p.pos_id,
+  p.client_id,
   DATETIME_ADD(a.completed_at, INTERVAL 7 HOUR) AS completed_at,
   DATE(DATETIME(a.completed_at, 'Asia/Ho_Chi_Minh')) completed_date,
   DATE(DATETIME(a.created_at, 'Asia/Ho_Chi_Minh')) created_date,
