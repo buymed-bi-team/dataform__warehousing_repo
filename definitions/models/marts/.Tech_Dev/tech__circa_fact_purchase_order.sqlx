@@ -18,6 +18,7 @@ config {
 --     LEFT JOIN  ${ref("gold_buymed_vn2","circa_pos_profile")}  AS p ON  oi.pos_code = p.code
 --     WHERE  p.client_id NOT IN (5,6,7)
 SELECT 
+a.created_date,
   a.stock_date,
   a.po_code,
   a.status as po_status,
