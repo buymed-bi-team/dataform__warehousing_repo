@@ -1,15 +1,8 @@
 config {
-    type: "table",
+    type: "view",
     name: "accounting_prd_core_reason_setting",
     schema: "platinum_buymed_vn_restricted",
-    assertions: {
-        uniqueKey: 'mg_id',
-        nonNull: ["created_date"]
-    },
-    bigquery: {
-        partitionBy: "created_date"
-    },
-    tags: ["platinum_custom_2h_past7","accounting_prd_core"]
+    tags: ["accounting_prd_core"]
 }
 SELECT
  *,
