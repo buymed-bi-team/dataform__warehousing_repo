@@ -102,6 +102,7 @@ SELECT  TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
        ,concat(FORMAT_DATE('%Y-%m', coalesce(o.completed_date,o.created_date)), "_", n.email) as  ym_emp
        ,concat(o.pos_code,"_", o.updated_by) as emp_pos_id  
        ,concat(o.updated_by,"_", o.client_id) as updated_by_client_id
+       ,e.gender 
 FROM base_data o
 LEFT JOIN ${source.ref}.circa_online_order i ON o.reference_order_in_platform = i.order_code
 LEFT JOIN ${source.circa_os}.entity_customer e ON o.entity_id = e.id 
