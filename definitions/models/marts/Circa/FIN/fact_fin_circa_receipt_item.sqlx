@@ -9,6 +9,7 @@ config {
 }
 with raw_data as (
 SELECT
+  p.pos_id,
   DATETIME_ADD(a.completed_at, INTERVAL 7 HOUR) AS completed_at,
   DATE(DATETIME(a.completed_at, 'Asia/Ho_Chi_Minh')) completed_date,
   DATE(DATETIME(a.created_at, 'Asia/Ho_Chi_Minh')) created_date,
@@ -29,6 +30,7 @@ SELECT
   poi.fulfillment_method
 FROM
   buymed_circa_v2.order_goods_receipt a
+LEFT JOIN buymed_circa_v2.order_purchase_order p on a.purchase_order_id = p.id
 LEFT JOIN
   buymed_circa_v2.order_goods_receipt_item b
 ON a.id = b.goods_receipt_id
