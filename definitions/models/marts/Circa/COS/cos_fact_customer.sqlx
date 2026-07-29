@@ -16,7 +16,7 @@ config {
   
 
 SELECT DISTINCT customer_phone_cleaned
-                ,MAX(gender) AS gender
+                ,MAX(CASE WHEN gender <> 'UNKNOWN' AND gender <> '' THEN gender END) AS gender
                 ,MAX(title) AS title
                 ,COUNT(DISTINCT order_code) total_orders
                 ,MAX(customer_name) AS customer_name
