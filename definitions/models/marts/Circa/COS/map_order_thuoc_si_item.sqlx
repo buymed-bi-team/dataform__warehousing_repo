@@ -76,14 +76,10 @@ Select date(o.created_at) as created_date
   ,a.sales_price
   ,a.sku_code
   ,s.supplier_name as seller_name,price_after_discount
---,   lot, fact_outbound_item.exp_date
---,   STRING_AGG(lot||"_"||exp_date, ", ") as lots_dates,
   ,sum(sales_price * outbound_quantity) as gmv_outbound
   ,sum(sales_price * demand_quantity) as gmv_demand
   ,sum(sales_price * outbound_quantity) as gmv_actual
   ,concat(a.product_id, "_", 1) as product_client_id
-  --,concat(a.product_id, "_", client_id,lower(case when td.unit = 'Tube' then 'tuýp' else td.unit end)) as product_client_id_unit
---   STRING_AGG(dat)
 from ${source.ref}.fact_order_item as a
 left join ${source.ref}.fact_order o on o.order_id = a.order_id 
 left join ${source.ref}.dim_product td on a.product_id = td.product_id
@@ -92,7 +88,7 @@ left join ${source.ref}.dim_supplier as s on a.seller_code = s.supplier_code
 left join gold_buymed_vn2.os_map_idthuocsi map on o.customer_id = map.id_thuocisi
 left join gold_buymed_vn2.circa_pos_profile p on map.pos_code = p.code
 -- left join gold_buymed_vn2.fact_outbound_item ob on a.order_id= ob.order_id and a.sku_code= ob.sku_code
-where c.tags like "%CIRCACOS%"
+where (REGEXP_CONTAINS(TO_JSON_STRING(customer_tags), r'\"CIRCACOS\"')  OR REGEXP_CONTAINS(TO_JSON_STRING(customer_tags), r'\"CIRCA_FS\"'))
 and date(a.created_at)>"2024-10-01"
 and o.order_status <> 'CANCEL'
 -- AND TIMESTAMP_TRUNC(a.created_at, Month) >=timestamp(date_trunc(date_sub(current_date(),interval 3 month), month),"Asia/Ho_Chi_Minh")

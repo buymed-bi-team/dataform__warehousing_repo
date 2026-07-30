@@ -81,7 +81,7 @@ left join ${source.ref}.dim_customer c using (customer_id)
 left join lakehouse-prod-394907.gold_buymed_vn2.os_map_idthuocsi map on o.customer_id = map.id_thuocisi
 left join lakehouse-prod-394907.gold_buymed_vn2.circa_pos_profile p on map.pos_code = p.code
 --left join ${source.ref}.cos_purchase_order po on SAFE_CAST(o.order_id as string) = po.order_id
-where REGEXP_CONTAINS(TO_JSON_STRING(customer_tags), r'\"CIRCACOS\"')
+where (REGEXP_CONTAINS(TO_JSON_STRING(customer_tags), r'\"CIRCACOS\"')  OR REGEXP_CONTAINS(TO_JSON_STRING(customer_tags), r'\"CIRCA_FS\"'))
        and date(o.created_at)>"2024-10-01"
        and o.order_status <> 'CANCEL'
        -- and customer_id <> 352665 -- Tech-Trúc Trần
