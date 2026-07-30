@@ -2,17 +2,10 @@
 
 
 config {
-    type: "table",
+    type: "view",
     name: "tender_prd_core_tender_orders",
     schema: "platinum_buymed_vn",
-    assertions: {
-        uniqueKey: 'mg_id',
-        nonNull: ["created_date"]
-    },
-    tags: ["platinum_custom_1h_past7","tender_prd_core_tender"],
-    bigquery: {
-        partitionBy: "created_date"
-    }
+    tags: ["tender_prd_core_tender"]
 }
 SELECT
  *,
