@@ -1,0 +1,35 @@
+config {
+    type: 'table',
+    schema: "buymed_circa_recommendation",
+    description: `All active product of web Circa.`,
+    tags: [ "custom_1h_past10"]
+}
+
+
+WITH base_data AS (
+SELECT * FROM platinum_buymed_vn.circa_online_prd_consumer_tracking_events
+WHERE session_id IN (
+SELECT DISTINCT session_id
+FROM `platinum_buymed_vn.circa_online_prd_consumer_tracking_events`
+WHERE customer_phone IS NOT NULL 
+GROUP BY ALL 
+HAVING  count(distinct customer_phone )  = 1
+)
+), add_phone AS (
+  SELECT
+    t.* EXCEPT(customer_phone),
+    MAX(customer_phone) OVER (
+        PARTITION BY session_id
+    ) AS customer_phone
+FROM base_data t
+)
+SELECT "add_to_cart" AS eventType
+       , customer_phone AS visitorID
+      --  , DATETIME_ADD(created_time, INTERVAL 7 HOUR) AS eventTime
+       , created_time AS eventTime
+       , product_id
+FROM add_phone 
+WHERE event_type = 'add_to_cart'
+       AND product_id IS NOT NULL 
+      --  AND customer_phone = '0563902636'
+ORDER BY created_time DESC
