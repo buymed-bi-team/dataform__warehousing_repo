@@ -34,7 +34,7 @@ SELECT  "purchase-complete" AS eventType
           -- , i.unit
           -- , cv.convert_rate
           -- , base_quantity
-           , SAFE_DIVIDE(i.base_quantity, cv.convert_rate) AS quantity
+           , ROUND(SAFE_DIVIDE(i.base_quantity, cv.convert_rate)) AS quantity
 FROM final i
 LEFT JOIN (
             SELECT distinct a.product_id, b.convert_rate FROM `buymed_circa_recommendation.circa_dim_product` a 
