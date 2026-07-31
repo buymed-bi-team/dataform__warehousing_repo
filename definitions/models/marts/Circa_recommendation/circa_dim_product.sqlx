@@ -49,7 +49,8 @@ FROM
          -- , p.code AS product_code
           , p.name AS product_name
           , CASE WHEN pr.unit_name IS NULL THEN p.unit ELSE pr.unit_name END AS unit
-          , pr.unit_price
+          , 'VND' AS currencyCode 
+          , pr.unit_price AS price
           ,tp.retail_name AS description  -- tên bán lẻ -> mô tả    
           ,CASE WHEN tp.product_category IN ('Thuốc kê đơn','Thuốc (Chưa phân loại)','Thuốc kê đơn') THEN
             ARRAY[
