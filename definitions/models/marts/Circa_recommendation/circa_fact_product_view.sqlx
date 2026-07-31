@@ -1,36 +1,45 @@
 config {
     type: 'table',
     schema: "buymed_circa_recommendation",
-    description: `All active product of web Circa.`,
+    description: `All product_view of web Circa.`,
     tags: [ "custom_1h_past10"]
 }
 
 
 
 WITH base_data AS (
-SELECT * FROM platinum_buymed_vn.circa_online_prd_consumer_tracking_events
-WHERE session_id IN (
-SELECT DISTINCT session_id
-FROM `platinum_buymed_vn.circa_online_prd_consumer_tracking_events`
-WHERE customer_phone IS NOT NULL 
-GROUP BY ALL 
-HAVING  count(distinct customer_phone )  = 1
+    SELECT *
+    FROM platinum_buymed_vn.circa_online_prd_consumer_tracking_events
+    WHERE session_id IN (
+        SELECT DISTINCT session_id
+        FROM platinum_buymed_vn.circa_online_prd_consumer_tracking_events
+        WHERE customer_phone IS NOT NULL
+        GROUP BY session_id
+        HAVING COUNT(DISTINCT customer_phone) = 1
+    )
+),
+
+add_phone AS (
+    SELECT
+        t.* EXCEPT(customer_phone),
+        MAX(customer_phone) OVER (
+            PARTITION BY session_id
+        ) AS customer_phone
+    FROM base_data t
 )
-), add_phone AS (
-  SELECT
-    t.* EXCEPT(customer_phone),
-    MAX(customer_phone) OVER (
-        PARTITION BY session_id
-    ) AS customer_phone
-FROM base_data t
-)
-SELECT "detail-page-view" AS eventType
-       , customer_phone AS visitorID
-      --  , DATETIME_ADD(created_time, INTERVAL 7 HOUR) AS eventTime
-       , created_time AS eventTime
-       , product_id
-FROM add_phone 
+
+SELECT
+    "detail-page-view" AS eventType
+    ,customer_phone AS visitorId
+    ,FORMAT_TIMESTAMP('%Y-%m-%dT%H:%M:%SZ', created_time) AS eventTime
+    ,[
+        STRUCT(
+            STRUCT(
+                CAST(product_id AS STRING) AS id
+            ) AS product
+        )
+    ] AS productDetails
+FROM add_phone
 WHERE event_type = 'product_view'
-       AND product_id IS NOT NULL 
-      --  AND customer_phone = '0563902636'
+    AND product_id IS NOT NULL
 ORDER BY created_time DESC
