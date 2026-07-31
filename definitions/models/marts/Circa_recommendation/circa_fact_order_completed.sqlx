@@ -5,72 +5,57 @@ config {
     tags: [ "custom_1h_past10"]
 }
 
-WITH base_unit_selection AS (
-    SELECT 
+WITH base_data AS (
+  SELECT t.product_id
+    , t.unit
+    , t.quantity
+    , t.order_code
+    , t.total_price
+    , b.customer_phone
+    , b.created_time
+  FROM lakehouse-prod-394907.platinum_buymed_vn.circa_online_prd_order_order_item t
+  LEFT JOIN `platinum_buymed_vn.circa_online_prd_order_order` b ON t.order_code = b.order_code
+  WHERE b.status = 'DELIVERED' 
+), base_unit_selection AS (
+    SELECT DISTINCT
          product_id
         ,client_id
         ,base_unit
-        ,ROW_NUMBER() OVER (
-            PARTITION BY product_id, client_id
-            ORDER BY COUNT(*) DESC
-        ) AS rn
-    FROM lakehouse-prod-394907.gold_buymed_vn2.cos_product_convert_base_unit
+        ,ROW_NUMBER() OVER (PARTITION BY product_id, client_id ORDER BY COUNT(*) DESC) AS rn
+    FROM buymed_circa_v2.product_retail_unit
+    WHERE client_id = 1
     GROUP BY ALL
 )
 ,base_unit AS (
-    SELECT
-         a.*
-    FROM `lakehouse-prod-394907.gold_buymed_vn2.cos_product_convert_base_unit` a
-    LEFT JOIN base_unit_selection b
+    SELECT a.product_id
+          , a.convert_rate 
+          , a.unit AS convert_unit
+          ,a.base_unit
+    FROM buymed_circa_v2.product_retail_unit a
+    LEFT JOIN base_unit_selection b 
         ON a.product_id = b.product_id
         AND a.client_id = b.client_id
         AND a.base_unit = b.base_unit
     WHERE b.rn = 1
-         AND a.client_id = 1
-), base_data AS (
-SELECT 
-         DATETIME_ADD(e.created_time, INTERVAL 7 hour) AS eventTime
-       , o.code AS order_code
-       , e.customer_phone
-       , i.product_id
-       , i.unit
-       , convert_rate
-       , i.quantity 
-       , i.quantity * COALESCE(cv.convert_rate,1) AS base_quantity
-       , CASE
-        WHEN i.order_apply_combo_id IS NOT NULL
-         AND i.order_apply_combo_id <> ''
-        THEN ROUND(
-            SAFE_DIVIDE(
-                (c.combo_price - c.discount_amount)
-                * c.quantity
-                * SAFE_DIVIDE(
-                    i.system_price * i.quantity
-                    ,SUM(i.system_price * i.quantity)
-                        OVER (PARTITION BY i.order_apply_combo_id)
-                )
-                ,i.quantity
-            )
-        )
-        ELSE unit_price
-    END AS unit_price
-FROM `buymed_circa_v2.order_order` o 
-LEFT JOIN buymed_circa_v2.order_order_item i ON o.id  = i.order_id
-LEFT JOIN `platinum_buymed_vn.circa_online_prd_order_order` e ON o.reference_order_in_platform = e.order_code
-LEFT JOIN buymed_circa_v2.order_order_apply_combo c ON i.order_apply_combo_id = c.id
-LEFT JOIN buymed_circa_v2.product_retail_unit cv ON LOWER(i.unit) = LOWER(cv.unit) AND o.client_id = cv.client_id AND i.product_id = cv.product_id 
-WHERE o.type = 'ONLINE'
-     AND o.status IN ('COMPLETED', 'COMPLETED_SHIPPING')
-     )
-     SELECT "purchase-complete" AS eventType
+), final AS (
+SELECT
+    a.* 
+  ,a.quantity * cv.convert_rate AS base_quantity
+  ,cv.base_unit
+FROM base_data a
+LEFT JOIN base_unit cv ON a.product_id = cv.product_id AND a.unit = cv.convert_unit
+)
+SELECT  "purchase-complete" AS eventType
            , customer_phone AS visitorID
-           , eventTime
-           , SUM(quantity* unit_price) AS GMV
+           , created_time AS eventTime
+           , SUM(total_price) AS GMV
            , 'VND' AS currencyCode
            , i.product_id
-           , SAFE_DIVIDE( base_quantity , cv.convert_rate) AS quantity
-     FROM base_data i
-     LEFT JOIN base_unit cv  ON cv.product_id = i.product_id
-                        AND cv.convert_unit = i.unit
-                       
-     GROUP BY ALL
+           , SAFE_DIVIDE(i.base_quantity, cv.convert_rate) AS quantity
+FROM final i
+LEFT JOIN (
+            SELECT distinct a.product_id, b.convert_rate FROM `buymed_circa_recommendation.circa_dim_product` a 
+            LEFT JOIN base_unit b ON a.product_id = b.product_id AND lower(a.unit) = lower(b.convert_unit) 
+     )  cv ON   cv.product_id = i.product_id      
+--WHERE order_code = 'DH018145'
+GROUP BY ALL
