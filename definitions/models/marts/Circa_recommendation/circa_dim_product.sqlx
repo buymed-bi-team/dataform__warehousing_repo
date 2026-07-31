@@ -46,10 +46,11 @@ FROM
          
 )
     SELECT DISTINCT p.product_id
-          , p.code AS product_code
+         -- , p.code AS product_code
           , p.name AS product_name
-          , pr.unit_name AS unit
-          , pr.unit_price
+          , CASE WHEN pr.unit_name IS NULL THEN p.unit ELSE pr.unit_name END AS unit
+          , 'VND' AS currencyCode 
+          , pr.unit_price AS price
           ,tp.retail_name AS description  -- tên bán lẻ -> mô tả    
           ,CASE WHEN tp.product_category IN ('Thuốc kê đơn','Thuốc (Chưa phân loại)','Thuốc kê đơn') THEN
             ARRAY[
@@ -85,5 +86,8 @@ FROM
     LEFT JOIN price pr ON p.product_id = pr.product_id 
     WHERE p.client_id = 1
           AND po.product_id IS NOT NULL
+          AND p.name NOT LIKE '%Quà Tặng%'
+          AND p.name NOT LIKE '%(hàng khuyến mãi)%'
+          AND p.name NOT LIKE '%quà tặng)%'
 
 
