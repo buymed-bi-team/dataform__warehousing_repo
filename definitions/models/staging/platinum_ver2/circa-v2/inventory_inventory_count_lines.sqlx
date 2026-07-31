@@ -1,7 +1,7 @@
 config {
   type: "operations",
   schema: "buymed_circa_v2",
-  tags: ["buymed_circa_v2_inventory", "platinum_custom_30m"],
+  tags: ["buymed_circa_v2_inventory"],
   description: "PIC: long.nguyen"
 }
 
@@ -23,7 +23,7 @@ js {
 
     primaryKey:       "id",
     createdTime:      "created_at",
-    lookbackHours:    0,
+    lookbackHours:    1,
   });
 }
 
