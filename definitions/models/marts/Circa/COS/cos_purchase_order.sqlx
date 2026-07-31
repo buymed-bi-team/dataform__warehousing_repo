@@ -78,7 +78,5 @@ LEFT JOIN (
 LEFT JOIN ${source.ref}.circa_pos_profile p ON a.pos_id = p.id AND a.client_id = p.client_id
 LEFT JOIN ${source.ref}.os_map_idthuocsi map ON o.customer_id = map.id_thuocisi
 LEFT JOIN  ${source.circa_os}.entity_entity e on a.created_by = e.id AND a.client_id = e.client_id 
-WHERE a.status <> 'CANCELED'
-  AND a.status <> 'PENDING'
-  AND p.id IS NOT NULL
+WHERE  p.id IS NOT NULL
 GROUP BY ALL
