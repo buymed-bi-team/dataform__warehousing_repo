@@ -8,7 +8,7 @@ config {
 WITH base_data AS (
   SELECT t.product_id
     , t.unit
-    , t.quantity
+    , CAST(JSON_value(t.extra_props, '$.reserved_quantity') AS INT64)                              AS quantity
     , t.order_code
     , t.total_price
     , b.customer_phone
@@ -16,34 +16,14 @@ WITH base_data AS (
   FROM lakehouse-prod-394907.platinum_buymed_vn.circa_online_prd_order_order_item t
   LEFT JOIN `platinum_buymed_vn.circa_online_prd_order_order` b ON t.order_code = b.order_code
   WHERE b.status = 'DELIVERED' 
-), base_unit_selection AS (
-    SELECT DISTINCT
-         product_id
-        ,client_id
-        ,base_unit
-        ,ROW_NUMBER() OVER (PARTITION BY product_id, client_id ORDER BY COUNT(*) DESC) AS rn
-    FROM buymed_circa_v2.product_retail_unit
-    WHERE client_id = 1
-    GROUP BY ALL
-)
-,base_unit AS (
-    SELECT a.product_id
-          , a.convert_rate 
-          , a.unit AS convert_unit
-          ,a.base_unit
-    FROM buymed_circa_v2.product_retail_unit a
-    LEFT JOIN base_unit_selection b 
-        ON a.product_id = b.product_id
-        AND a.client_id = b.client_id
-        AND a.base_unit = b.base_unit
-    WHERE b.rn = 1
 ), final AS (
 SELECT
     a.* 
   ,a.quantity * cv.convert_rate AS base_quantity
   ,cv.base_unit
 FROM base_data a
-LEFT JOIN base_unit cv ON a.product_id = cv.product_id AND a.unit = cv.convert_unit
+LEFT JOIN buymed_circa_v2.product_retail_unit cv ON a.product_id = cv.product_id AND lower(a.unit) = lower(cv.unit)
+WHERE quantity > 0
 )
 SELECT  "purchase-complete" AS eventType
            , customer_phone AS visitorID
@@ -51,11 +31,14 @@ SELECT  "purchase-complete" AS eventType
            , SUM(total_price) AS GMV
            , 'VND' AS currencyCode
            , i.product_id
+          -- , i.unit
+          -- , cv.convert_rate
+          -- , base_quantity
            , SAFE_DIVIDE(i.base_quantity, cv.convert_rate) AS quantity
 FROM final i
 LEFT JOIN (
             SELECT distinct a.product_id, b.convert_rate FROM `buymed_circa_recommendation.circa_dim_product` a 
-            LEFT JOIN base_unit b ON a.product_id = b.product_id AND lower(a.unit) = lower(b.convert_unit) 
+            LEFT JOIN buymed_circa_v2.product_retail_unit b ON a.product_id = b.product_id AND lower(a.unit) = lower(b.unit) AND b.client_id = 1
      )  cv ON   cv.product_id = i.product_id      
---WHERE order_code = 'DH018145'
+-- WHERE order_code = 'DH015973'
 GROUP BY ALL
