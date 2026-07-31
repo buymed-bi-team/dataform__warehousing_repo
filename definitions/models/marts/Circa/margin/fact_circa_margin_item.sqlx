@@ -16,6 +16,14 @@ config {
 }
 
 WITH
+  raw_data as (
+    select * except (item_amount_contribution),
+      SAFE_DIVIDE(quantity_po * unit_price_after_discount,
+        SUM(quantity_po * unit_price_after_discount) OVER (PARTITION BY order_id))
+      AS item_amount_contribution
+    FROM
+    ${ref("gold_buymed_vn2", "fact_fin_circa_order_item")}
+  ),
   fact_order_item AS (
   SELECT
     i.order_code, 
@@ -37,13 +45,13 @@ WITH
     combo_discount_amount, 
     sum(quantity_po) quantity_po, 
     sum(base_quantity_po) base_quantity_po, 
-    sum(item_amount_contribution) item_amount_contribution,
-     CASE
+    SUM(item_amount_contribution) item_amount_contribution,
+    CASE
       WHEN i.fulfillment_method = 'SO_THUOCSI' AND cogs_base_unit_ts is not null then cogs_base_unit_ts
       else i.cost_price_include_tax
     END AS base_unit_cost_price_ts
   FROM
-    ${ref("gold_buymed_vn2", "fact_fin_circa_order_item")} i
+    raw_data i
   LEFT JOIN
     ${ref("gold_buymed_vn2", "circa_cogs_thuocsi_by_po")} p
   ON
