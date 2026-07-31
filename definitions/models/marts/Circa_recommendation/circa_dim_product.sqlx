@@ -1,0 +1,89 @@
+config {
+    type: 'table',
+    schema: "buymed_circa_recommendation",
+    description: `All orders item of Circa.`,
+    tags: [ "custom_1h_past10"]
+}
+
+
+
+WITH
+t AS (
+  SELECT DISTINCT product_id, category_name, category_code
+  FROM gold_buymed_vn2.dim_product_category
+  WHERE level = 1
+),
+ 
+e AS (
+  SELECT DISTINCT product_id, efficacy_name
+  FROM gold_buymed_vn2.dim_product_efficacy
+  WHERE efficacy_level = 1
+), inventory AS (
+        SELECT DISTINCT product_id 
+                        , SUM(on_hand_qty) AS stock_qty
+          FROM buymed_circa_v2.inventory_location_detail AS a
+    LEFT JOIN gold_buymed_vn2.circa_pos_profile p  ON a.client_id = p.client_id AND a.pos_id = p.id
+    LEFT JOIN buymed_circa_v2.inventory_location AS b  ON a.location_id = b.id  
+                                                          AND b.pos_id = p.id 
+                                                          AND p.client_id = b.client_id
+   WHERE b.client_id = 1       
+   GROUP BY ALL
+), price AS (
+SELECT
+  DISTINCT product_id
+  --,JSON_VALUE(unit, '$.code') AS code
+  ,JSON_VALUE(unit, '$.is_default') AS is_default
+  ,JSON_VALUE(unit, '$.status') AS web_unit_status
+  --,JSON_VALUE(unit, '$.unit_code') AS unit_code
+  ,JSON_VALUE(unit, '$.unit_name') AS unit_name
+  ,JSON_VALUE(unit, '$.value') AS unit_value
+  ,JSON_VALUE(unit, '$.price') AS unit_price
+FROM
+ platinum_buymed_vn.circa_online_prd_product_product t,
+  UNNEST(JSON_EXTRACT_ARRAY(t.retail_units)) AS unit
+  WHERE JSON_VALUE(unit, '$.is_default') = 'true'
+         AND JSON_VALUE(unit, '$.status') = 'ACTIVE'
+         
+)
+    SELECT DISTINCT p.product_id
+          , p.code AS product_code
+          , p.name AS product_name
+          , pr.unit_name AS unit
+          , pr.unit_price
+          ,tp.retail_name AS description  -- tên bán lẻ -> mô tả    
+          ,CASE WHEN tp.product_category IN ('Thuốc kê đơn','Thuốc (Chưa phân loại)','Thuốc kê đơn') THEN
+            ARRAY[
+               CONCAT(
+                    COALESCE(tp.product_category,'Unknown'),
+                    ' > ',
+                    COALESCE(t.category_name,'Unknown'),
+                    ' > ',
+                    COALESCE(e.efficacy_name,'Unknown')
+               )
+           ] ELSE
+            ARRAY[
+               CONCAT(
+                    COALESCE(tp.product_category,'Unknown'),
+                    ' > ',
+                    COALESCE(t.category_name,'Unknown'),
+                    ' > ',
+                    COALESCE(tp.retail_category_name,'Unknown')
+               )
+           ] END
+            AS categories
+          , CASE WHEN stock_qty > 0 THEN "IN_STOCK"
+                 ELSE "OUT_OF_STOCK" END AS availability -- stock Circa
+          ,ARRAY_TO_STRING(JSON_VALUE_ARRAY(image_urls), ', ') AS image_urls
+    FROM buymed_circa_v2.product_product p
+    LEFT JOIN t ON p.product_id = t.product_id
+    LEFT JOIN e ON p.product_id = e.product_id
+    LEFT JOIN gold_buymed_vn2.dim_product tp ON p.product_id = tp.product_id
+    LEFT JOIN inventory i ON p.product_id = i.product_id 
+    LEFT JOIN (SELECT * FROM platinum_buymed_vn.circa_online_prd_product_product_filter
+                WHERE status = 'ACTIVE'
+               QUALIFY ROW_NUMBER() OVER (PARTITION BY product_id ORDER BY created_date DESC) = 1) po ON po.product_id = p.product_id 
+    LEFT JOIN price pr ON p.product_id = pr.product_id 
+    WHERE p.client_id = 1
+          AND po.product_id IS NOT NULL
+
+
