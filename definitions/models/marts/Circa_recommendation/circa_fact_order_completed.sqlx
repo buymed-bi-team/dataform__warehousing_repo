@@ -75,10 +75,10 @@ SELECT
     "purchase-complete" AS eventType
   , customer_phone AS visitorId
   , FORMAT_TIMESTAMP('%Y-%m-%dT%H:%M:%SZ', created_time) AS eventTime
- , [STRUCT(
+ , STRUCT(
         CAST(SUM(total_price) AS FLOAT64) AS revenue
       , "VND" AS currencyCode
-    )] AS purchaseTransaction
+    ) AS purchaseTransaction
   , ARRAY_AGG(
         STRUCT(
             STRUCT(
