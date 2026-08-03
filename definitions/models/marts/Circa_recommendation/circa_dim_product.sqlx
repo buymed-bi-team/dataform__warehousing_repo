@@ -13,6 +13,15 @@ config {
     }
 }
 
+TRUNCATE TABLE 
+`buymed_circa_recommendation.circa_dim_product`;
+
+
+INSERT INTO 
+`buymed_circa_recommendation.circa_dim_product`
+(
+  id, title, categories, description, languageCode, availability, priceInfo, images
+)
 
 WITH
 t AS (
