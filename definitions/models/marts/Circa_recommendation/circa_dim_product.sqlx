@@ -1,16 +1,9 @@
 config {
-    type: 'table',
+    type: 'operations',
     schema: "buymed_circa_recommendation",
     description: `All active product of web Circa.`,
-    tags: [ "custom_1h_past10"],
-    columns: {
-        id: {
-            description: "Product ID",
-        },
-    },
-    assertions: {
-        nonNull: ["id"]
-    }
+    tags: [ "custom_1h_past10"]
+
 }
 
 TRUNCATE TABLE 
