@@ -52,13 +52,9 @@ FROM
          AND JSON_VALUE(unit, '$.status') = 'ACTIVE'
          
 )
-    SELECT DISTINCT p.product_id
+    SELECT DISTINCT p.product_id AS id
          -- , p.code AS product_code
-          , p.name AS product_name
-          , CASE WHEN pr.unit_name IS NULL THEN p.unit ELSE pr.unit_name END AS unit
-          , 'VND' AS currencyCode 
-          , pr.unit_price AS price
-          ,tp.retail_name AS description  -- tên bán lẻ -> mô tả    
+          , p.name AS title
           ,CASE WHEN tp.product_category IN ('Thuốc kê đơn','Thuốc (Chưa phân loại)','Thuốc kê đơn') THEN
             ARRAY[
                CONCAT(
@@ -79,6 +75,13 @@ FROM
                )
            ] END
             AS categories
+            ,tp.retail_name AS description  -- tên bán lẻ -> mô tả    
+          --, CASE WHEN pr.unit_name IS NULL THEN p.unit ELSE pr.unit_name END AS unit
+          , 'vn' AS languageCode 
+          , STRUCT (
+                 'VND' AS currencyCode
+                 , pr.unit_price AS price
+                   ) AS priceInfo
           , CASE WHEN stock_qty > 0 OR f.ts_stock > 0  THEN "IN_STOCK"
                  ELSE "OUT_OF_STOCK" END AS availability -- stock status
           ,ARRAY_TO_STRING(JSON_VALUE_ARRAY(image_urls), ', ') AS image_urls
