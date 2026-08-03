@@ -6,39 +6,67 @@ config {
 }
 
 WITH base_data AS (
-  SELECT t.product_id
+  SELECT
+      t.product_id
     , t.unit
-    , CAST(JSON_value(t.extra_props, '$.reserved_quantity') AS INT64)                              AS quantity
+    , CAST(JSON_VALUE(t.extra_props, '$.reserved_quantity') AS INT64) AS quantity
     , t.order_code
     , t.total_price
     , b.customer_phone
     , b.created_time
   FROM lakehouse-prod-394907.platinum_buymed_vn.circa_online_prd_order_order_item t
-  LEFT JOIN `platinum_buymed_vn.circa_online_prd_order_order` b ON t.order_code = b.order_code
-  WHERE b.status = 'DELIVERED' 
-), final AS (
-SELECT
-    a.* 
-  ,a.quantity * cv.convert_rate AS base_quantity
-  ,cv.base_unit
-FROM base_data a
-LEFT JOIN buymed_circa_v2.product_retail_unit cv ON a.product_id = cv.product_id AND lower(a.unit) = lower(cv.unit)
-WHERE quantity > 0
+  LEFT JOIN platinum_buymed_vn.circa_online_prd_order_order b
+    ON t.order_code = b.order_code
+  WHERE b.status = 'DELIVERED'
+   -- AND b.order_code = 'DH024441'
 )
-SELECT  "purchase-complete" AS eventType
-           , customer_phone AS visitorID
-           , created_time AS eventTime
-           , SUM(total_price) AS GMV
-           , 'VND' AS currencyCode
-           , i.product_id
-          -- , i.unit
-          -- , cv.convert_rate
-          -- , base_quantity
-           , ROUND(SAFE_DIVIDE(i.base_quantity, cv.convert_rate)) AS quantity
-FROM final i
-LEFT JOIN (
-            SELECT distinct a.product_id, b.convert_rate FROM `buymed_circa_recommendation.circa_dim_product` a 
-            LEFT JOIN buymed_circa_v2.product_retail_unit b ON a.product_id = b.product_id AND lower(a.unit) = lower(b.unit) AND b.client_id = 1
-     )  cv ON   cv.product_id = i.product_id      
--- WHERE order_code = 'DH015973'
+
+, final AS (
+  SELECT
+      a.*
+    , cv.convert_rate
+    , a.quantity * cv.convert_rate AS base_quantity
+    , cv.base_unit
+  FROM base_data a
+  LEFT JOIN buymed_circa_v2.product_retail_unit cv
+    ON a.product_id = cv.product_id
+   AND LOWER(a.unit) = LOWER(cv.unit)
+  WHERE quantity > 0
+)
+
+, product_level AS (
+  SELECT
+      order_code
+    , customer_phone
+    , created_time
+    , product_id
+    , SUM(quantity) AS quantity
+    , SUM(total_price) AS total_price
+  FROM final
+  GROUP BY
+      order_code
+    , customer_phone
+    , created_time
+    , product_id
+)
+
+SELECT
+    "purchase-complete" AS eventType
+  , customer_phone AS visitorId
+  , FORMAT_TIMESTAMP('%Y-%m-%dT%H:%M:%SZ', created_time) AS eventTime
+  , STRUCT(
+        SUM(total_price) AS revenue
+      , "VND" AS currencyCode
+    ) AS purchaseTransaction
+  , ARRAY_AGG(
+        STRUCT(
+            STRUCT(
+                CAST(product_id AS STRING) AS id
+            ) AS product
+          , quantity
+        )
+        ORDER BY product_id
+    ) AS productDetails
+FROM product_level
+    -- WHERE order_code = 'DH024441'
 GROUP BY ALL
