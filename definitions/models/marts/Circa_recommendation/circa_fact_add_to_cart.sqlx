@@ -48,6 +48,7 @@ SELECT
             STRUCT(
                 CAST(product_id AS STRING) AS id
             ) AS product
+            , quantity AS quantity
         )
     ] AS productDetails
 FROM add_phone
