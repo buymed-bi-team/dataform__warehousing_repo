@@ -78,12 +78,13 @@ FROM
             ,tp.retail_name AS description  -- tên bán lẻ -> mô tả    
           --, CASE WHEN pr.unit_name IS NULL THEN p.unit ELSE pr.unit_name END AS unit
           , 'vi' AS languageCode 
+          , CASE WHEN stock_qty > 0 OR f.ts_stock > 0  THEN "IN_STOCK"
+                 ELSE "OUT_OF_STOCK" END AS availability -- stock status
           , STRUCT (
                  'VND' AS currencyCode
                  , CAST(pr.unit_price AS INT64) AS price
                    ) AS priceInfo
-          , CASE WHEN stock_qty > 0 OR f.ts_stock > 0  THEN "IN_STOCK"
-                 ELSE "OUT_OF_STOCK" END AS availability -- stock status
+          
           ,ARRAY(
                SELECT AS STRUCT
                  url AS uri
