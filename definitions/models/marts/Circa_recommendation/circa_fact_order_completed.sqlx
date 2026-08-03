@@ -5,6 +5,18 @@ config {
     tags: [ "custom_1h_past10"]
 }
 
+TRUNCATE TABLE 
+`buymed_circa_recommendation.circa_fact_order_completed`;
+
+
+INSERT INTO 
+`buymed_circa_recommendation.circa_fact_order_completed`
+(
+  eventType, visitorId, eventTime, purchaseTransaction, productDetails
+
+)
+
+
 WITH base_data AS (
   SELECT
       t.product_id
