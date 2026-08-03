@@ -12,7 +12,9 @@ SELECT
   po.id AS po_id,
   po.code AS po_code,
   po.sale_order_number AS thuocsi_so_code,
-  json_value(thuocsi_delivery_codes, '$[0]') as thuocsi_do_code,
+  coalesce(
+    json_extract_scalar(thuocsi_delivery_codes, '$[0]'),
+    regexp_extract(json_extract_scalar(thuocsi_delivery_codes, '$'), r'\{(.+)\}')) as thuocsi_do_code,
   po.sub_type,
   po.source_type AS po_source,
   po.location_type AS location_type,
