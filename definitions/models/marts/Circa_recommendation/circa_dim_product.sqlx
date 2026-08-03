@@ -28,7 +28,14 @@ e AS (
                                                           AND p.client_id = b.client_id
    WHERE b.client_id = 1       
    GROUP BY ALL
-), price AS (
+), inventory_ts  AS  (
+    SELECT DISTINCT product_id
+                    , SUM(available_qty) AS ts_stock
+    FROM gold_buymed_vn2.dim_sku_sales_region_current
+    GROUP BY ALL
+      
+)
+, price AS (
 SELECT
   DISTINCT product_id
   --,JSON_VALUE(unit, '$.code') AS code
@@ -72,14 +79,15 @@ FROM
                )
            ] END
             AS categories
-          , CASE WHEN stock_qty > 0 THEN "IN_STOCK"
-                 ELSE "OUT_OF_STOCK" END AS availability -- stock Circa
+          , CASE WHEN stock_qty > 0 OR f.ts_stock > 0  THEN "IN_STOCK"
+                 ELSE "OUT_OF_STOCK" END AS availability -- stock status
           ,ARRAY_TO_STRING(JSON_VALUE_ARRAY(image_urls), ', ') AS image_urls
     FROM buymed_circa_v2.product_product p
     LEFT JOIN t ON p.product_id = t.product_id
     LEFT JOIN e ON p.product_id = e.product_id
     LEFT JOIN gold_buymed_vn2.dim_product tp ON p.product_id = tp.product_id
     LEFT JOIN inventory i ON p.product_id = i.product_id 
+    LEFT JOIN inventory_ts f ON p.product_id = f.product_id
     LEFT JOIN (SELECT * FROM platinum_buymed_vn.circa_online_prd_product_product_filter
                 WHERE status = 'ACTIVE'
                QUALIFY ROW_NUMBER() OVER (PARTITION BY product_id ORDER BY created_date DESC) = 1) po ON po.product_id = p.product_id 
