@@ -71,7 +71,7 @@ SELECT
             STRUCT(
                 CAST(a.product_id AS STRING) AS id
             ) AS product
-          , SAFE_DIVIDE(base_quantity, COALESCE(CAST(unit_value AS INT64),1)) AS quantity
+          , ROUND(SAFE_DIVIDE(base_quantity, COALESCE(CAST(unit_value AS INT64),1))) AS quantity
         )
         ORDER BY a.product_id 
     ) AS productDetails
