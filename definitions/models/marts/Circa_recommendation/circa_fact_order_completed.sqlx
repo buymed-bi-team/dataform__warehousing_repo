@@ -18,7 +18,7 @@ WITH base_data AS (
   LEFT JOIN platinum_buymed_vn.circa_online_prd_order_order b
     ON t.order_code = b.order_code
   WHERE b.status = 'DELIVERED'
-   -- AND b.order_code = 'DH024441'
+   -- AND b.order_code = 'DH010546'
 )
 
 , final AS (
@@ -28,9 +28,8 @@ WITH base_data AS (
     , a.quantity * cv.convert_rate AS base_quantity
     , cv.base_unit
   FROM base_data a
-  LEFT JOIN buymed_circa_v2.product_retail_unit cv
-    ON a.product_id = cv.product_id
-   AND LOWER(a.unit) = LOWER(cv.unit)
+  LEFT JOIN (SELECT * FROM buymed_circa_v2.product_retail_unit WHERE client_id = 1) cv  ON a.product_id = cv.product_id
+                                                    AND LOWER(a.unit) = LOWER(cv.unit)
   WHERE quantity > 0
 )
 
@@ -40,16 +39,25 @@ WITH base_data AS (
     , customer_phone
     , created_time
     , product_id
+    , unit
     , SUM(quantity) AS quantity
+    , SUM(base_quantity) AS base_quantity
     , SUM(total_price) AS total_price
   FROM final
-  GROUP BY
-      order_code
-    , customer_phone
-    , created_time
-    , product_id
+  GROUP BY ALL
+), unit AS (
+SELECT
+  DISTINCT product_id
+  ,JSON_VALUE(unit, '$.is_default') AS is_default
+  ,JSON_VALUE(unit, '$.unit_name') AS unit_name
+  ,JSON_VALUE(unit, '$.value') AS unit_value
+  
+FROM
+ platinum_buymed_vn.circa_online_prd_product_product t,
+  UNNEST(JSON_EXTRACT_ARRAY(t.retail_units)) AS unit
+  WHERE JSON_VALUE(unit, '$.is_default') = 'true'
+         AND JSON_VALUE(unit, '$.status') = 'ACTIVE'
 )
-
 SELECT
     "purchase-complete" AS eventType
   , customer_phone AS visitorId
@@ -61,12 +69,13 @@ SELECT
   , ARRAY_AGG(
         STRUCT(
             STRUCT(
-                CAST(product_id AS STRING) AS id
+                CAST(a.product_id AS STRING) AS id
             ) AS product
-          , quantity
+          , ROUND(SAFE_DIVIDE(base_quantity, COALESCE(CAST(unit_value AS INT64),1)), 3) AS quantity
         )
-        ORDER BY product_id
+        ORDER BY a.product_id 
     ) AS productDetails
-FROM product_level
-    -- WHERE order_code = 'DH024441'
+FROM product_level a
+LEFT JOIN unit b ON a.product_id = b.product_id AND LOWER(a.unit) = LOWER(b.unit_name)
+  -- WHERE order_code = 'DH010546'
 GROUP BY ALL
