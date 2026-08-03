@@ -1,11 +1,22 @@
 config {
-    type: 'table',
+    type: 'operations',
     schema: "buymed_circa_recommendation",
     description: `All product_view of web Circa.`,
     tags: [ "custom_1h_past10"]
 }
 
+TRUNCATE TABLE 
+`buymed_circa_recommendation.circa_fact_product_view`;
 
+
+INSERT INTO 
+`buymed_circa_recommendation.circa_fact_product_view`
+(
+     eventType
+    ,visitorId
+    ,eventTime
+    ,productDetails
+)
 
 WITH base_data AS (
     SELECT *

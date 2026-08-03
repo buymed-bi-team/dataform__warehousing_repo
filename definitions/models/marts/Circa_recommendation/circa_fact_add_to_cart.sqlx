@@ -1,10 +1,22 @@
 config {
-    type: 'table',
-    schema: "buymed_circa_recommendation",
-    description: `All active product of web Circa.`,
-    tags: [ "custom_1h_past10"]
+  type: "operations",
+  schema: "buymed_circa_recommendation",
+  tags: ["custom_1h_past10"]
 }
 
+
+TRUNCATE TABLE 
+`buymed_circa_recommendation.circa_fact_add_to_cart`;
+
+
+INSERT INTO 
+`buymed_circa_recommendation.circa_fact_add_to_cart`
+(
+     eventType
+    ,visitorId
+    ,eventTime
+    ,productDetails
+)
 
 WITH base_data AS (
     SELECT *
@@ -42,3 +54,5 @@ FROM add_phone
 WHERE event_type = 'add_to_cart'
     AND product_id IS NOT NULL
 ORDER BY created_time DESC
+-- 
+ 
