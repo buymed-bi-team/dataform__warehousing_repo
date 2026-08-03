@@ -23,6 +23,7 @@ WITH final AS (
       pos_id,
       client_id,
       order_code,
+      order_id,
       status,
       channel,
       product_id,
@@ -37,12 +38,40 @@ WITH final AS (
       order_code IS NOT NULL
     GROUP BY
       ALL )
+    , fact_return as (
+        select 
+        r.order_id,
+        r.return_order_code,
+        product_id,
+        sum(
+            if(discount_logic_change = 0,
+            unit_price*quantity_po 
+            - (r.discount_amount + loyalty_discount_amount)*item_amount_contribution 
+            - voucher_discount_deal_1k,
+            unit_price*quantity_po)) as return_amount
+        from  ${ref("gold_buymed_vn2", "fact_fin_circa_return")} r
+        left join (
+            select * except (item_amount_contribution),
+            SAFE_DIVIDE( quantity_po * unit_price_after_discount, 
+            SUM( quantity_po * unit_price_after_discount) OVER (PARTITION BY return_order_id)) 
+            AS item_amount_contribution,
+            if(is_deal_1k is true, 
+            (unit_price_before_discount - unit_price_after_discount)*quantity_po,
+            0) as voucher_discount_deal_1k
+            from ${ref("gold_buymed_vn2", "fact_fin_circa_return_item")}) ri
+        on r.return_order_id = ri.return_order_id
+        where r.status = 'COMPLETED'
+        GROUP BY ALL
+    )
   , final_1 as (
-    select *,
-     a.gmv - a.deal - a.voucher_circa as net_revenue,
-     a.gmv - a.deal - a.voucher_circa - a.cogs_circa as gross_profit_circa,
-     a.gmv - a.deal - a.voucher_circa - a.cogs_circa - a.voucher_gift_circa as net_profit_circa
+    select a.*,
+     a.gmv - a.deal - a.voucher_circa - coalesce(b.return_amount,0) as net_revenue,
+     a.gmv - a.deal - a.voucher_circa - coalesce(b.return_amount,0) - a.cogs_circa as gross_profit_circa,
+     a.gmv - a.deal - a.voucher_circa - coalesce(b.return_amount,0) - a.cogs_circa - a.voucher_gift_circa as net_profit_circa
     from final a
+    left join fact_return b 
+    on a.order_id = b.order_id
+    and a.product_id = b.product_id
   )
   SELECT
     a.completed_date,
