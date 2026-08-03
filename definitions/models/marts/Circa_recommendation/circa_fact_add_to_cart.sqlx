@@ -6,11 +6,11 @@ config {
 
 
 TRUNCATE TABLE 
-`lakehouse-prod-394907.buymed_circa_recommendation.circa_fact_add_to_cart`;
+`buymed_circa_recommendation.circa_fact_add_to_cart`;
 
 
 INSERT INTO 
-`lakehouse-prod-394907.buymed_circa_recommendation.circa_fact_add_to_cart`
+`buymed_circa_recommendation.circa_fact_add_to_cart`
 (
      eventType
     ,visitorId
