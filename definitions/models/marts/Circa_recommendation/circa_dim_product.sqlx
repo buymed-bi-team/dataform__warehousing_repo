@@ -77,14 +77,18 @@ FROM
             AS categories
             ,tp.retail_name AS description  -- tên bán lẻ -> mô tả    
           --, CASE WHEN pr.unit_name IS NULL THEN p.unit ELSE pr.unit_name END AS unit
-          , 'vn' AS languageCode 
+          , 'vi' AS languageCode 
           , STRUCT (
                  'VND' AS currencyCode
-                 , pr.unit_price AS price
+                 , CAST(pr.unit_price AS INT64) AS price
                    ) AS priceInfo
           , CASE WHEN stock_qty > 0 OR f.ts_stock > 0  THEN "IN_STOCK"
                  ELSE "OUT_OF_STOCK" END AS availability -- stock status
-          ,ARRAY_TO_STRING(JSON_VALUE_ARRAY(image_urls), ', ') AS image_urls
+          ,ARRAY(
+               SELECT AS STRUCT
+                 url AS uri
+               FROM UNNEST(JSON_VALUE_ARRAY(image_urls)) AS url              
+                 ) AS images
     FROM buymed_circa_v2.product_product p
     LEFT JOIN t ON p.product_id = t.product_id
     LEFT JOIN e ON p.product_id = e.product_id
