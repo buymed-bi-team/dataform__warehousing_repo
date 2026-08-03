@@ -20,6 +20,7 @@ SELECT
   poi.sku,
   poi.unit,
   ru.convert_rate,
+  ru.buymed_convert_rate,
   poi.unit_price,
   poid.lot_id,
   poid.lot_date,
