@@ -2,9 +2,16 @@ config {
     type: 'table',
     schema: "buymed_circa_recommendation",
     description: `All active product of web Circa.`,
-    tags: [ "custom_1h_past10"]
+    tags: [ "custom_1h_past10"],
+    columns: {
+        id: {
+            description: "Product ID",
+        },
+    },
+    assertions: {
+        nonNull: ["id"]
+    }
 }
-
 
 
 WITH
@@ -52,7 +59,7 @@ FROM
          AND JSON_VALUE(unit, '$.status') = 'ACTIVE'
          
 )
-    SELECT DISTINCT p.product_id AS id
+    SELECT DISTINCT CAST(p.product_id AS STRING) AS id
          -- , p.code AS product_code
           , p.name AS title
           ,CASE WHEN tp.product_category IN ('Thuốc kê đơn','Thuốc (Chưa phân loại)','Thuốc kê đơn') THEN
