@@ -21,7 +21,7 @@ WITH base_data AS (
   SELECT
       t.product_id
     , t.unit
-    , CAST(JSON_VALUE(t.extra_props, '$.reserved_quantity') AS INT64) AS quantity
+    , CASE WHEN b.created_time >= '2026-02-23 13:45:00' THEN CAST(JSON_VALUE(t.extra_props, '$.reserved_quantity') AS INT64) ELSE quantity END  AS quantity
     , t.order_code
     , t.total_price
     , b.customer_phone
@@ -30,6 +30,7 @@ WITH base_data AS (
   LEFT JOIN platinum_buymed_vn.circa_online_prd_order_order b
     ON t.order_code = b.order_code
   WHERE b.status = 'DELIVERED'
+        AND DATE(b.created_time) >= CURRENT_DATE() - INTERVAL 1 YEAR
    -- AND b.order_code = 'DH010546'
 )
 
@@ -42,7 +43,7 @@ WITH base_data AS (
   FROM base_data a
   LEFT JOIN (SELECT * FROM buymed_circa_v2.product_retail_unit WHERE client_id = 1) cv  ON a.product_id = cv.product_id
                                                     AND LOWER(a.unit) = LOWER(cv.unit)
-  WHERE quantity > 0
+  WHERE quantity > 0 
 )
 
 , product_level AS (
@@ -74,16 +75,27 @@ SELECT
     "purchase-complete" AS eventType
   , customer_phone AS visitorId
   , FORMAT_TIMESTAMP('%Y-%m-%dT%H:%M:%SZ', created_time) AS eventTime
- , [STRUCT(
+ , STRUCT(
         CAST(SUM(total_price) AS FLOAT64) AS revenue
       , "VND" AS currencyCode
-    )] AS purchaseTransaction
+    ) AS purchaseTransaction
   , ARRAY_AGG(
         STRUCT(
             STRUCT(
                 CAST(a.product_id AS STRING) AS id
             ) AS product
-          , CAST(ROUND(SAFE_DIVIDE(base_quantity, COALESCE(CAST(unit_value AS INT64),1)), 3) as int64) AS quantity
+          ,CAST(
+  COALESCE(
+    ROUND(
+      SAFE_DIVIDE(
+        base_quantity,
+        COALESCE(SAFE_CAST(unit_value AS FLOAT64), 1)
+      ),
+      3
+    ),
+    0
+  ) AS INT64
+) AS quantity
         )
         ORDER BY a.product_id 
     ) AS productDetails
