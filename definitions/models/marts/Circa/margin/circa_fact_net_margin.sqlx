@@ -40,6 +40,7 @@ WITH final AS (
       ALL )
     , fact_return as (
         select 
+        r.completed_date,
         r.order_id,
         r.return_order_code,
         product_id,
@@ -73,6 +74,7 @@ WITH final AS (
     left join fact_return b 
     on a.order_id = b.order_id
     and a.product_id = b.product_id
+    and a.completed_date = b.completed_date
   )
   SELECT
     a.completed_date,
