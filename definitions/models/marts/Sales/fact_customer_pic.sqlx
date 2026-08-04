@@ -49,4 +49,31 @@ FROM ${ref("dim_customer")} AS a
 WHERE 1=1
     AND a.business_scope = "PHARMA_COMPANY"
     AND NOT EXISTS (SELECT 1 FROM cte AS b WHERE a.customer_id = b.customer_id AND b.month = (SELECT MAX(month) FROM cte WHERE customer_group = 'PHARMA_COMPANY') )
+UNION ALL
+SELECT
+    a.customer_id
+    , "CLINIC"
+    , pic.pic
+    , 0
+    , (SELECT MAX(month) FROM cte WHERE customer_group = 'CLINIC')
+FROM ${ref("dim_customer")} AS a
+    LEFT JOIN ${ref('dim_province')} AS p ON a.province_code = p.province_code
+    LEFT JOIN (
+        SELECT *
+        FROM UNNEST([
+            STRUCT('lan.trankim' AS pic, '1R0VW12DX4A'  AS region_code),
+            STRUCT('lan.trankim',        '2GRTBAEQDX4'),
+            STRUCT('lan.trankim',        '3BE9QP72U1Y'),
+            STRUCT('lan.trankim',        '413WEL1ABCL'),
+            STRUCT('lan.trankim',        '528UQP72U1Y'),
+            STRUCT('lan.trankim',        '6PB4LEU4ABC'),
+            STRUCT('xuan.mai',           '73XF1R94ABC'),
+            STRUCT('lan.trankim',        '8C1BDCT3PAB'),
+            STRUCT('lan.trankim',        '113RVDTCV2U1'),
+            STRUCT('xuan.mai',           '107TQTAR1Y7G')
+        ]) AS t
+    ) AS pic ON pic.region_code = p.region_code
+WHERE 1=1
+    AND a.business_scope = "CLINIC"
+    AND NOT EXISTS (SELECT 1 FROM cte AS b WHERE a.customer_id = b.customer_id AND b.month = (SELECT MAX(month) FROM cte WHERE customer_group = 'CLINIC') )
 
