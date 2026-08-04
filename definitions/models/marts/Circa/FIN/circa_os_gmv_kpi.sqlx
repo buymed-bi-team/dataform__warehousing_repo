@@ -1,7 +1,7 @@
 config {
     type: "table",
     description: `PIC: Ha.Lekim`,
-    tags: ["custom_1h_past20"]
+    tags: ["gold_custom_20m"]
 }
 with 
 gmv as 
