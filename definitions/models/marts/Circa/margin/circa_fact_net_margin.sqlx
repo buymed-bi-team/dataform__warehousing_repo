@@ -40,6 +40,7 @@ WITH final AS (
       ALL )
     , fact_return as (
         select 
+        r.completed_date,
         r.order_id,
         r.return_order_code,
         product_id,
@@ -65,6 +66,7 @@ WITH final AS (
     )
   , final_1 as (
     select a.*,
+    b.completed_date as completed_return_date,
     coalesce(b.return_amount,0) as return_amount,
      a.gmv - a.deal - a.voucher_circa - coalesce(b.return_amount,0) as net_revenue,
      a.gmv - a.deal - a.voucher_circa - coalesce(b.return_amount,0) - a.cogs_circa as gross_profit_circa,
@@ -76,6 +78,7 @@ WITH final AS (
   )
   SELECT
     a.completed_date,
+    a.completed_return_date,
     a.completed_hour,
     a.created_date,
     a.created_hour,

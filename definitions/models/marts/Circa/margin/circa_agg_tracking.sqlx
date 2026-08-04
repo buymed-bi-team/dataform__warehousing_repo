@@ -109,8 +109,8 @@ WITH
            ELSE FALSE
       END AS is_first_channel_order
     ,TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS refresh_at
-  FROM fact_order_item AS i
-  INNER JOIN fact_order o ON i.order_code = o.order_code 
+  FROM fact_order o 
+  LEFT JOIN fact_order_item AS i ON i.order_code = o.order_code 
   LEFT JOIN  ${ref("gold_buymed_vn2", "circa_pos_profile")} AS p ON o.pos_id = p.id
   LEFT JOIN ${ref("gold_buymed_vn2", "circa_dim_entity_client")} e ON o.client_id = e.client_id
    WHERE o.client_id NOT IN (5,6,7)
