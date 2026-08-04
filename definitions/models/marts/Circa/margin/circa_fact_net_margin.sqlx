@@ -65,6 +65,7 @@ WITH final AS (
     )
   , final_1 as (
     select a.*,
+    coalesce(b.return_amount,0) as return_amount,
      a.gmv - a.deal - a.voucher_circa - coalesce(b.return_amount,0) as net_revenue,
      a.gmv - a.deal - a.voucher_circa - coalesce(b.return_amount,0) - a.cogs_circa as gross_profit_circa,
      a.gmv - a.deal - a.voucher_circa - coalesce(b.return_amount,0) - a.cogs_circa - a.voucher_gift_circa as net_profit_circa
@@ -90,6 +91,7 @@ WITH final AS (
     a.gmv,
     a.deal, 
     a.voucher_circa,
+    a.return_amount,
     a.net_revenue,
     a.cogs_circa,
     a.gross_profit_circa,

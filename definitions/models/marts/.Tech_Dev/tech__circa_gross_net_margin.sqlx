@@ -17,6 +17,7 @@ SELECT
     , SUM(gmv) gmv
     , SUM(voucher_circa) voucher_circa
     , SUM(deal) deal
+    , SUM(return_amount) return_amount
     , SUM(net_revenue) net_revenue
     , SUM(cogs_circa) cogs_circa
     , 0 as rebate
