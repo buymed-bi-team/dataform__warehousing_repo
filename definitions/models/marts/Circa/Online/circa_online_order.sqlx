@@ -36,8 +36,8 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                      
       ,receiver_name
       ,receiver_phone_number
       ,receiver_full_address
-      ,district_code
-      ,province_code
+      ,o.district_code
+      ,o.province_code
       ,action_by_name                                                                AS create_order_by
       ,account_id                                                                    -- tạo tài khoản sẽ có account_id, ko tạo tk ~ acount_id = 0
       ,payment_method                                                                --Banking/COD/PAYOO/BUSINESS_WALLET
@@ -55,14 +55,14 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                      
       ,JSON_VALUE(o.extra_props, '$.delivery_tags')                                  AS delivery_tags
       ,JSON_VALUE(o.extra_props, '$.discount_delivery_fee')                          AS discount_delivery_fee
       ,total_product
-      ,DATETIME_ADD(created_time, INTERVAL 7 hour)                                   AS created_time
-      ,DATE(DATETIME_ADD(created_time, INTERVAL 7 hour))                             AS created_date
-      ,DATETIME_ADD(last_updated_time, INTERVAL 7 hour)                              AS last_updated_time
+      ,DATETIME_ADD(o.created_time, INTERVAL 7 hour)                                   AS created_time
+      ,DATE(DATETIME_ADD(o.created_time, INTERVAL 7 hour))                             AS created_date
+      ,DATETIME_ADD(o.last_updated_time, INTERVAL 7 hour)                              AS last_updated_time
       ,DATETIME_ADD(DATETIME(TIMESTAMP(JSON_VALUE(o.extra_props, '$.cancel_time'))),INTERVAL 7 HOUR)    AS cancel_time
       ,canceled_by_user_type
      -- ,DATETIME_ADD(delivery_date, INTERVAL 7 hour)                                  AS delivery_time
-      ,DATETIME_ADD(paid_time, INTERVAL 7 hour)                                      AS paid_time
-      ,DATETIME_ADD(platinum_refresh, INTERVAL 7 hour)                               AS platinum_refresh
+      ,DATETIME_ADD(o.paid_time, INTERVAL 7 hour)                                      AS paid_time
+      ,DATETIME_ADD(o.platinum_refresh, INTERVAL 7 hour)                               AS platinum_refresh
       ,l.last_status_time
       ,o.type                                                                        AS customer_type
       ,o.status                                                                      AS o2o_status -- DELIVERED/WAIT_TO_DELIVER/WAIT_TO_CONFIRM/CANCEL  
@@ -79,6 +79,16 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                      
          )                                                                            AS tags
       , JSON_VALUE(o.extra_props, '$.affiliate_partner_code')                         AS affiliate_partner_code
       , JSON_VALUE(o.extra_props, '$.affiliate_partner_type')                         AS affiliate_partner_type
+      , ROUND( ST_DISTANCE(
+        ST_GEOGPOINT(
+            CAST(JSON_VALUE(o.location, '$.coordinates[0]') AS FLOAT64),
+            CAST(JSON_VALUE(o.location, '$.coordinates[1]') AS FLOAT64)
+        ),
+        ST_GEOGPOINT(
+            CAST(JSON_VALUE(d.location, '$.coordinates[0]') AS FLOAT64),
+            CAST(JSON_VALUE(d.location, '$.coordinates[1]') AS FLOAT64)
+        )
+             ) / 1000 , 2) AS distance_km
 
 FROM ${source.platinum}.circa_online_prd_order_order o 
 LEFT JOIN (
@@ -91,7 +101,11 @@ LEFT JOIN (
 LEFT JOIN created_by c ON c.order_code = o.order_code
 LEFT JOIN delivery_time l ON l.order_code = o.order_code
 LEFT JOIN ${source.ref}.circa_pos_profile p on i.pos_id = p.id
-
+LEFT JOIN `platinum_buymed_vn.circa_online_prd_consumer_store_v2` AS d
+    ON CAST(
+        JSON_VALUE(o.extra_props, '$.assigned_store_id')
+        AS INT64
+    ) = d.store_id
 
 ),map_deliver AS (
 SELECT DISTINCT o.*
