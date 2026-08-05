@@ -42,7 +42,6 @@ WITH final AS (
         select 
         r.completed_date,
         r.order_id,
-        r.return_order_code,
         product_id,
         sum(
             if(discount_logic_change = 0,
