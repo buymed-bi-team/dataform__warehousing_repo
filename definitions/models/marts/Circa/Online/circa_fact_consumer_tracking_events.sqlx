@@ -8,7 +8,7 @@ config {
        
     },
     bigquery: {
-        partitionBy: "DATE_TRUNC(cart_created_date, MONTH)"
+        partitionBy: "DATE_TRUNC(created_date, MONTH)"
 
     }
 }
@@ -47,4 +47,4 @@ SELECT event_type
 FROM add_phone
 WHERE  product_id IS NOT NULL
     --AND customer_phone = '0563902636'
-ORDER BY created_time DESC
+
