@@ -12,6 +12,8 @@ SELECT
     , SUM(oi.quantity * oi.price) AS revenue
     , SUM(oi.origin_price * oi.quantity) AS gmv
     , o.o2o_status AS status
+    , o.delivery_tags
+    , o.distance_km
     , oi.product_id
     , oi.product_name
     , oi.unit
