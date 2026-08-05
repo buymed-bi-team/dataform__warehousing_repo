@@ -69,7 +69,7 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                      
       ,o.cancellation_type
       ,o.cancellation_note
       ,sale_order_status                                                             --NULL/WAIT_TO_DELIVER/NEW/DELIVERED/CANCELED/FAIL_TO_DELIVER
-      ,i.order_code                                                                  AS assigned_order_codes
+      ,i.code                                                                        AS assigned_order_codes
       ,i.pos_id                                                                      AS assigned_pos_id  
       ,p.code                                                                        AS assigned_pos_code 
       ,p.name                                                                        AS assigned_pos_name
@@ -92,11 +92,11 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                      
 
 FROM ${source.platinum}.circa_online_prd_order_order o 
 LEFT JOIN (
-    SELECT DISTINCT order_code, reference_order_in_platform, pos_id
-    FROM ${source.ref}.cos_fact_order 
+    SELECT DISTINCT code, reference_order_in_platform, pos_id
+    FROM buymed_circa_v2.order_order 
     WHERE channel = 'O2O' 
          -- AND status IN ('COMPLETED', 'COMPLETE_SHIPPING','AWAITING_SHIPMENT','SHIPPING','FAILED_SHIPMENT','PICKING')
-   QUALIFY ROW_NUMBER() OVER (PARTITION BY reference_order_in_platform ORDER BY order_code DESC) = 1
+   QUALIFY ROW_NUMBER() OVER (PARTITION BY reference_order_in_platform ORDER BY code DESC) = 1
     ) i ON o.order_code = i.reference_order_in_platform
 LEFT JOIN created_by c ON c.order_code = o.order_code
 LEFT JOIN delivery_time l ON l.order_code = o.order_code
