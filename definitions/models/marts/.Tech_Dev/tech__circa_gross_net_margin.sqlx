@@ -19,6 +19,8 @@ SELECT
     , SUM(voucher_circa) voucher_circa
     , SUM(deal) deal
     , SUM(return_amount) return_amount
+    , SUM(cogs_circa_return) cogs_circa_return
+    , SUM(voucher_gift_circa_return) voucher_gift_circa_return
     , SUM(net_revenue) net_revenue
     , SUM(cogs_circa) cogs_circa
     , 0 as rebate

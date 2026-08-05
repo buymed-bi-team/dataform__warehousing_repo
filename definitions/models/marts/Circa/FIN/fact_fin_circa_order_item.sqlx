@@ -10,7 +10,7 @@ config {
 }
 js {
     const start_date =
-      //   `date(2025, 01, 01)`
+      //   `date(2026, 01, 01)`
         ` DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY) `
     const end_date = ` CURRENT_DATE() `
 }
@@ -39,25 +39,27 @@ WITH
     oi.unit_id,
     oi.type,
     o.type AS order_type,
-    oi.order_apply_combo_id,
+    CASE WHEN order_apply_combo_id = '' THEN NULL ELSE order_apply_combo_id END AS order_apply_combo_id,
     cb.combo_price,
     cb.discount_amount AS combo_discount_amount,
     cb.quantity AS combo_quantity,
     ru.unit,
-    oi.gift_code,
+    CASE WHEN gift_code = '' THEN NULL ELSE gift_code END AS gift_code,
     ru.convert_rate,
-    -- oi.quantity AS quantity_order,
-    -- oi.quantity*ru.convert_rate AS base_quantity_order,
     COALESCE(oi.quantity * poi.base_quantity_distribution, oi.quantity) AS quantity_po,
     COALESCE(oi.quantity*ru.convert_rate * poi.base_quantity_distribution, oi.quantity*ru.convert_rate) AS base_quantity_po,
     oi.unit_price,
     coalesce(case when system_price = 0 then null else system_price end, 
     case when platform_price = 0 then null else platform_price end,
     case when unit_price = 0 then null else unit_price end) as system_price,
-    CASE WHEN o.channel <> 'O2O' THEN oi.promotion_event_code
-              ELSE ol.promotion_event_code END AS item_discount_code,
-     CASE WHEN o.channel <> 'O2O' THEN oi.discount_amount
-              ELSE ol.discount_amount END AS item_discount_amount,
+    COALESCE(
+      CASE WHEN ol.promotion_event_code = '' THEN NULL ELSE ol.promotion_event_code END,
+      CASE WHEN oi.promotion_event_code = '' THEN NULL ELSE oi.promotion_event_code END
+      ) item_discount_code,
+    COALESCE(
+      ol.discount_amount,
+      oi.discount_amount
+      ) item_discount_amount,
     CASE WHEN tag_list like '%deal_1000%' AND oi.unit_price = 1000  THEN TRUE ELSE FALSE END AS is_deal_1k,
     oi.updated_at,
     poi.base_quantity AS base_qty_allocation,
@@ -70,6 +72,8 @@ WITH
     poi.cost_price_include_tax,
     poi.cost_price_without_tax,
     poi.so_thuoc_si,
+    ol.origin_price,
+    ol.price,
   FROM buymed_circa_v2.order_order_item oi
   LEFT JOIN buymed_circa_v2.order_order_apply_combo cb
   ON oi.order_apply_combo_id = cb.id
@@ -88,10 +92,9 @@ WITH
   where oi.created_date >= ${start_date}
   )
   , clean_data as (
-    select * except (order_apply_combo_id, item_discount_code, gift_code),
-    CASE WHEN order_apply_combo_id = '' THEN NULL ELSE order_apply_combo_id END AS order_apply_combo_id,
-    CASE WHEN item_discount_code = '' THEN NULL ELSE item_discount_code END AS item_discount_code,
-    CASE WHEN gift_code = '' THEN NULL ELSE gift_code END AS gift_code,
+    select * except (combo_price, combo_discount_amount, origin_price, price),
+    CASE WHEN order_type = 'ONLINE' AND order_apply_combo_id IS NOT NULL THEN origin_price ELSE combo_price END AS combo_price,
+    CASE WHEN order_type = 'ONLINE' AND order_apply_combo_id IS NOT NULL THEN origin_price - price ELSE combo_discount_amount END AS combo_discount_amount,
     from base_data
   ),
   clean_system_price_data AS (

@@ -2,7 +2,7 @@ config {
     type: "table", 
     description: 
         `
-        Normal Product in Combo;
+        Sub Product in Combo;
         PIC: nguyen.tran; 
         Type: Table; 
         Source: 
@@ -19,6 +19,7 @@ SELECT
     , sl.seller_code
     , JSON_VALUE(s, '$.sku') AS sku_code
     , JSON_VALUE(s, '$.quantity') AS quantity
+    , JSON_VALUE(s, '$.item_code') AS item_code
     , ss.product_id
     , CONCAT(sl.product_id, "_", sl.seller_code, "_", sl.sales_region_code) AS sku_key_sales_region_code
 FROM ${ref('dim_sku_location')} AS sl

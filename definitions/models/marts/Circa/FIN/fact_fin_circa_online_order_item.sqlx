@@ -39,17 +39,18 @@ WITH
   FROM
     platinum_buymed_vn.circa_online_prd_order_order_item t )
 SELECT
-  a.*,
-  CASE
-    WHEN tag_list LIKE '%deal_1000%' AND price = 1000 THEN TRUE
-    ELSE FALSE
+    a.* except(product_id, unit),
+    coalesce(s.sub_product_id, a.product_id) as product_id,
+    coalesce(s.unit, a.unit) as unit,
+    CASE
+        WHEN tag_list LIKE '%deal_1000%' AND price = 1000 THEN TRUE
+        ELSE FALSE
 END
   AS is_deal1k,
   origin_price - price AS discount_amount,
   d.code AS promotion_event_code
-FROM
-  clean_data a
-LEFT JOIN
-  buymed_circa_v2.promotion_promotion_event d
-ON
-  a.promotion_event_id = d.id
+FROM  clean_data a
+LEFT JOIN  buymed_circa_v2.promotion_promotion_event d
+    ON  a.promotion_event_id = d.id
+LEFT JOIN (select * from lakehouse-prod-394907.buymed_circa_v2.product_sub_product where client_id =1) s 
+    ON a.product_id = s.product_id
