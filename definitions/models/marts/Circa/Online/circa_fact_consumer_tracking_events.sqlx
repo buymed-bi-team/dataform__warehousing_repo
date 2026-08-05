@@ -1,0 +1,50 @@
+config {
+    type: "table",
+    description: `PIC: huyen.ngo; model_type: Table ;schedule: At minute 10 every 1 hour.Circa cart `,
+    tags: ['circa_online'],
+    name: "circa_fact_consumer_tracking_events",
+    columns: {
+    
+       
+    },
+    bigquery: {
+        partitionBy: "DATE_TRUNC(cart_created_date, MONTH)"
+
+    }
+}
+
+WITH base_data AS (
+    SELECT *
+    FROM platinum_buymed_vn.circa_online_prd_consumer_tracking_events
+    WHERE session_id IN (
+        SELECT DISTINCT session_id
+        FROM platinum_buymed_vn.circa_online_prd_consumer_tracking_events
+        WHERE customer_phone IS NOT NULL
+        GROUP BY session_id
+        HAVING COUNT(DISTINCT customer_phone) = 1
+    )
+),
+
+add_phone AS (
+    SELECT
+        t.* EXCEPT(customer_phone),
+        MAX(customer_phone) OVER (
+            PARTITION BY session_id
+        ) AS customer_phone
+    FROM base_data t
+)
+
+SELECT event_type
+       , session_id
+       , customer_phone
+       , product_id
+       , product_name
+       , quantity
+       , price
+       , DATETIME_ADD(created_time, INTERVAL 7 HOUR) AS created_time
+       , DATE(DATETIME_ADD(created_time, INTERVAL 7 HOUR)) AS created_date
+       , DATETIME_ADD(last_updated_time, INTERVAL 7 HOUR) AS last_updated_time
+FROM add_phone
+WHERE  product_id IS NOT NULL
+    --AND customer_phone = '0563902636'
+ORDER BY created_time DESC
