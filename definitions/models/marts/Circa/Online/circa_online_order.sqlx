@@ -89,6 +89,10 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                      
             CAST(JSON_VALUE(d.location, '$.coordinates[1]') AS FLOAT64)
         )
              ) / 1000 , 2) AS distance_km
+      , CAST(
+        JSON_VALUE(o.extra_props, '$.assigned_store_id')
+        AS INT64
+         )      AS assigned_store_id
 
 FROM ${source.platinum}.circa_online_prd_order_order o 
 LEFT JOIN (
