@@ -47,9 +47,29 @@ WITH final AS (
         sum(
             if(discount_logic_change = 0,
             unit_price*quantity_po 
-            - (r.discount_amount + loyalty_discount_amount)*item_amount_contribution 
+            - (r.discount_amount + loyalty_discount_amount)*item_amount_contribution
             - voucher_discount_deal_1k,
-            unit_price*quantity_po)) as return_amount
+            unit_price*quantity_po)) as return_amount,
+        SUM(
+            CASE
+                WHEN ri.owner_name <> 'CIRCA MARKETING' 
+                    AND (ri.gift_code IS NULL OR ri.gift_code = '') 
+                    AND product_id NOT IN (2010834, 2010836, 2010837, 2010838, 2010840) 
+                THEN ri.cost_price_include_tax * ri.base_quantity_po
+                ELSE 0
+                END
+        ) AS cogs_circa_return,
+        SUM(
+            CASE
+                WHEN (ri.owner_name <> 'CIRCA MARKETING' 
+                    AND ri.gift_code IS NOT NULL AND ri.gift_code <> '' 
+                    AND ri.product_id NOT IN (941832, 941878, 1101283, 2003919, 2004189, 2010834, 2010836, 2010837, 2010838, 2010840, 300704)) 
+                OR ( ri.owner_name = 'CIRCA MARKETING' 
+                    AND ri.product_id NOT IN (941832, 941878, 1101283, 2003919, 2004189, 2010834, 2010836, 2010837, 2010838, 2010840, 300704)) 
+                THEN ri.cost_price_include_tax * ri.base_quantity_po
+                ELSE 0
+                END
+        ) AS voucher_gift_circa_return,
         from  ${ref("gold_buymed_vn2", "fact_fin_circa_return")} r
         left join (
             select * except (item_amount_contribution),
@@ -68,9 +88,13 @@ WITH final AS (
     select a.*,
     b.completed_date as completed_return_date,
     coalesce(b.return_amount,0) as return_amount,
-     a.gmv - a.deal - a.voucher_circa - coalesce(b.return_amount,0) as net_revenue,
-     a.gmv - a.deal - a.voucher_circa - coalesce(b.return_amount,0) - a.cogs_circa as gross_profit_circa,
-     a.gmv - a.deal - a.voucher_circa - coalesce(b.return_amount,0) - a.cogs_circa - a.voucher_gift_circa as net_profit_circa
+    coalesce(b.cogs_circa_return,0) as cogs_circa_return,
+    coalesce(b.voucher_gift_circa_return,0) as voucher_gift_circa_return,
+    a.gmv - a.deal - a.voucher_circa - coalesce(b.return_amount,0) as net_revenue,
+    a.gmv - a.deal - a.voucher_circa - coalesce(b.return_amount,0) - a.cogs_circa + coalesce(b.cogs_circa_return,0)
+        as gross_profit_circa,
+    a.gmv - a.deal - a.voucher_circa - coalesce(b.return_amount,0) - a.cogs_circa + coalesce(b.cogs_circa_return,0) - a.voucher_gift_circa + coalesce(b.voucher_gift_circa_return,0)
+        as net_profit_circa
     from final a
     left join fact_return b 
     on a.order_id = b.order_id
@@ -95,6 +119,8 @@ WITH final AS (
     a.deal, 
     a.voucher_circa,
     a.return_amount,
+    a.cogs_circa_return,
+    a.voucher_gift_circa_return,
     a.net_revenue,
     a.cogs_circa,
     a.gross_profit_circa,

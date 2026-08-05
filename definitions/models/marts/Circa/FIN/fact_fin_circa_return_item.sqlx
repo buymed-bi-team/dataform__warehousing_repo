@@ -45,6 +45,7 @@ WITH
     poi.doc_code,
     poi.location_type,
     poi.so_thuoc_si,
+    poi.owner_name,
     roi.order_apply_combo_id,
       cb.combo_price,
       cb.discount_amount as combo_discount_amount,
