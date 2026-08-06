@@ -72,6 +72,7 @@ WITH
     o.order_id,
     o.status,
     o.new_type AS channel,
+    o.affiliate_tag,
     SUM( total_order_discount_amount) AS voucher_discount,
     SUM( total_loyalty_discount_amount ) AS total_loyalty_discount_amount,
     SUM( external_discount_amount  ) AS external_discount_amount
@@ -93,6 +94,7 @@ WITH
     o.order_id,
     o.status,
     o.channel,
+    o.affiliate_tag,
     i.* except(order_code),
     SUM(
       CASE
@@ -175,6 +177,7 @@ WITH
     o.order_id,
     o.status,
     o.channel,
+    o.affiliate_tag,
     i.* except(order_code),
     SUM(
       CASE

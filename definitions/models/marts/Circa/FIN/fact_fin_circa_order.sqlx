@@ -16,7 +16,7 @@ SELECT
     o.client_id,
     o.status,
     o.channel,
-    if(affiliate_tag =  'AFFILIATE_FS', 'OFFLINE', o.type) as new_type,
+    if(client_id = 1 and affiliate_tag =  'AFFILIATE_FS', 'OFFLINE', o.type) as new_type,
     case 
         when o.channel = 'O2O' THEN oo.created_at 
         when DATE(o.created_at + INTERVAL 7 hour) = '0001-01-01' then DATETIME_ADD(o.completed_at, INTERVAL 7 hour) 
@@ -76,7 +76,7 @@ SELECT
     oo.deliver_method,
     oo.delivery_carrier_code,
     oo.delivery_carrier,
-    oo.affiliate_tag,
+    coalesce(oo.affiliate_tag, 'NON AFFILIATE') AS affiliate_tag,
 FROM ${source.circa_os}.order_order o
 LEFT JOIN ${source.circa_os}.entity_customer e
 on o.entity_id = e.id
