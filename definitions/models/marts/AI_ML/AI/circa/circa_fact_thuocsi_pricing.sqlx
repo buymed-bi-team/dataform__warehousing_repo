@@ -13,4 +13,4 @@ SELECT
   , seller_code
   , price_after_discount
   , cogs
-FROM gold_buymed_vn2.fact_product_sku_pricing_platinum
+FROM gold_buymed_vn2.fact_product_sku_pricing_circa_ver2
