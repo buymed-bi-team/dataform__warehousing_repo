@@ -5,5 +5,12 @@ config {
     tags: ['AI_CIRCA']
 }
 
-SELECT *
+SELECT 
+  cutoff_date
+  , product_id
+  , fc_code
+  , sku_code
+  , seller_code
+  , price_after_discount
+  , cogs
 FROM gold_buymed_vn2.fact_product_sku_pricing_platinum
