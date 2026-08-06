@@ -3,43 +3,6 @@ config {
     description: `PIC: Ha.Lekim`,
     tags: ["gold_custom_20m"]
 }
--- with 
--- gmv as 
--- (select  
--- pos_code, 
--- pos_name,
--- completed_date,
--- sum(gmv) as gmv,
--- sum(net_revenue) as net_revenue
--- from  ${ref('gold_buymed_vn2','circa_fact_net_margin')} 
--- where completed_date >= "2026-01-01"
--- and channel = 'OFFLINE' 
--- and pos_type = 'COS'
--- group by all)
--- , target_ as (
---   select month, week, date,
---   pos_code,
---   pos_name,
---   target as month_target,
---   final_target as week_target,
---   final_target,
---   from ${ref("dim_circa_os_gmv_kpi")} 
---   where channel = 'OFFLINE'
---   )
--- select t.month, 
--- t.week,
--- t.date,
--- t.pos_code, 
--- t.pos_name,
--- gmv, 
--- net_revenue,
--- month_target,
--- week_target,
--- final_target, 
---  from target_ t 
--- left join gmv g
--- on t.pos_code = g.pos_code
--- and t.date = g.completed_date
 WITH
   dim_calendar AS (
   SELECT
@@ -63,6 +26,8 @@ WITH
   WHERE  completed_date >= "2026-01-01"
     AND channel = 'OFFLINE'
     AND pos_type = 'COS'
+    AND ((completed_date < "2026-08-01" AND affiliate_tag <> 'AFFILIATE_FS') 
+      OR completed_date >= "2026-08-01")
   GROUP BY ALL),
   return AS (
   SELECT
