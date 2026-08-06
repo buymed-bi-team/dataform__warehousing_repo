@@ -9,7 +9,7 @@ WITH
     DISTINCT month,
     week,
     date
-  FROM  `lakehouse-prod-394907.gold_buymed_vn2.dim_circa_os_gmv_kpi`
+  FROM ${ref("gold_buymed_vn2", "dim_circa_os_gmv_kpi")} 
   WHERE  channel = 'OFFLINE' ),
   gmv AS (
   SELECT
