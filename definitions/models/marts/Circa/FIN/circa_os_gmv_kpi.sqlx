@@ -20,7 +20,7 @@ WITH
     dim_calendar.month,
     dim_calendar.week,
     SUM(gmv - deal - voucher_circa) AS net_sale
-  FROM  `lakehouse-prod-394907.gold_buymed_vn2.circa_fact_net_margin` f
+  FROM  ${ref("gold_buymed_vn2", "circa_fact_net_margin")} f
   LEFT JOIN  dim_calendar
   ON f.completed_date = dim_calendar.date
   WHERE  completed_date >= "2026-01-01"
@@ -38,7 +38,7 @@ WITH
     dim_calendar.month,
     dim_calendar.week,
     COALESCE(SUM(return_amount),0) AS return_amount
-  FROM `lakehouse-prod-394907.gold_buymed_vn2.circa_fact_net_margin` f
+  FROM ${ref("gold_buymed_vn2", "circa_fact_net_margin")} f
   LEFT JOIN dim_calendar
   ON f.completed_return_date = dim_calendar.date
   WHERE
@@ -55,7 +55,7 @@ WITH
     pos_name,
     TARGET,
     final_target AS custom_week_target,
-  FROM `lakehouse-prod-394907.gold_buymed_vn2.dim_circa_os_gmv_kpi`
+  FROM ${ref("gold_buymed_vn2", "dim_circa_os_gmv_kpi")} 
   WHERE channel = 'OFFLINE' )
     -- BY MONTH
     ,
