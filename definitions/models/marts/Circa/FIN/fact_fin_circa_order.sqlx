@@ -75,7 +75,8 @@ SELECT
     oo.secondary_pay_amount,
     oo.deliver_method,
     oo.delivery_carrier_code,
-    oo.delivery_carrier
+    oo.delivery_carrier,
+    oo.affiliate_tag,
 FROM ${source.circa_os}.order_order o
 LEFT JOIN ${source.circa_os}.entity_customer e
 on o.entity_id = e.id
