@@ -71,7 +71,7 @@ WITH
     o.order_code,
     o.order_id,
     o.status,
-    o.type AS channel,
+    o.new_type AS channel,
     SUM( total_order_discount_amount) AS voucher_discount,
     SUM( total_loyalty_discount_amount ) AS total_loyalty_discount_amount,
     SUM( external_discount_amount  ) AS external_discount_amount
