@@ -19,9 +19,12 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                      
        ,code
        ,customer_id
        ,gender
+       ,JSON_VALUE(extra_props, '$.registration_device') AS registration_device
+       ,JSON_VALUE(extra_props, '$.registration_source') AS registration_source
        ,DATETIME_ADD(created_time, INTERVAL 7 HOUR)                                  AS created_time
        ,DATE(DATETIME_ADD(created_time, INTERVAL 7 HOUR))                            AS created_date
        ,DATETIME_ADD(last_updated_time, INTERVAL 7 HOUR)                             AS last_updated_time
-       ,DATETIME_ADD(platinum_refresh, INTERVAL 7 HOUR)                              AS platinum_refresh
+       ,updated_by_name
 FROM platinum_buymed_vn.circa_online_prd_consumer_customer
+--WHERE account_id = 1181177
 QUALIFY ROW_NUMBER() OVER(PARTITION BY customer_id ORDER BY created_time DESC) = 1
