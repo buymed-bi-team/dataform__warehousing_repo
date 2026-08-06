@@ -1,0 +1,9 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `Price for CIRCA FS, OS on thuocsi.vn`,
+    tags: ['AI_CIRCA']
+}
+
+SELECT *
+FROM gold_buymed_vn2.fact_product_sku_pricing_platinum
