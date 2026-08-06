@@ -16,7 +16,7 @@ SELECT
     o.client_id,
     o.status,
     o.channel,
-    if(affiliate_tag =  'AFFILIATE_FS', 'OFFLINE', o.type) as new_type,
+    if(client_id = 1 and affiliate_tag =  'AFFILIATE_FS', 'OFFLINE', o.type) as new_type,
     case 
         when o.channel = 'O2O' THEN oo.created_at 
         when DATE(o.created_at + INTERVAL 7 hour) = '0001-01-01' then DATETIME_ADD(o.completed_at, INTERVAL 7 hour) 
