@@ -71,7 +71,7 @@ LEFT JOIN ${source.ref}.circa_pos_profile p ON o.pos_id = p.id AND o.client_id =
 LEFT JOIN (SELECT * FROM ${source.circa_os}.order_order_gift
       QUALIFY ROW_NUMBER() OVER (PARTITION BY order_code, gift_id,gift_code, pos_id ORDER BY created_at DESC) = 1) g ON o.code = g.order_code
 LEFT JOIN ${source.circa_os}.entity_entity en ON o.created_by = en.id AND o.client_id = en.client_id 
-LEFT JOIN gold_buymed_vn2.dim_geo_location m ON p.district = m.district_code AND p.province = m.province_code
+LEFT JOIN gold_buymed_vn2.dim_geo_location m ON p.district = m.district_code AND p.province = m.province_code AND p.ward = m.ward_code
 WHERE o.type <> 'RETURN'
   AND o.status <> 'PENDING'
   AND p.id IS NOT NULL
