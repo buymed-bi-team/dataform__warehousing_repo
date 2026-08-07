@@ -21,13 +21,13 @@ with cte_date as (
 
 select 
     o.reconcile_code,
-    SPLIT(o.reconcile_code, '/')[OFFSET(1)] as hub_code,
-    SPLIT(o.reconcile_code, '/')[OFFSET(2)] as short_code,
+    s.hub_code,
+    s.short_code,
     s.carrier_code,
     s.user_id as employee_id,
     acc.fullname as employee_name,
     s.status as session_status,
-    timestamp_add(o.created_time, interval 7 hour) as created_ts,
+    timestamp_add(s.created_time, interval 7 hour) as created_ts,
     timestamp_add(o.last_updated_time, interval 7 hour) as last_updated_ts,
     timestamp_add(o.delivered_time, interval 7 hour) as delivered_ts,
     o.status as session_order_status,
@@ -58,7 +58,8 @@ left join (
 ) as s on o.reconcile_code = s.code
 left join ${ref("dim_employee")} as acc on s.user_id = acc.branch_account_id
 LEFT JOIN ${ref("dim_employee")} AS e ON e.branch_account_id = s.created_by
--- where 1=1
+where 1=1
+    AND s.reconcile_type  IN ('HUB_COMP','RIDER_HUB')
 --     AND s.code = 'REC/HUBTRUONGDINH/RQ1FEQ'
 -- s.status not in ('DONE', 'CANCEL')
 QUALIFY ROW_NUMBER() OVER(PARTITION BY reference_code, reconcile_code ORDER BY last_updated_ts DESC) = 1
