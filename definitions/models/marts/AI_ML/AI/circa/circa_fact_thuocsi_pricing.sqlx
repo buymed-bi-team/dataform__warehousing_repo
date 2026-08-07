@@ -9,6 +9,10 @@ SELECT
   cutoff_date
   , product_id
   , fc_code
+  , CASE fc_code 
+      WHEN 'BD' THEN 'MIENNAM'
+      WHEN 'HN' THEN 'MIENBAC'
+    END AS sales_region
   , sku_code
   , seller_code
   , price_after_discount
