@@ -1,0 +1,65 @@
+config {
+    type: "table",
+    description: 
+        `
+        Fact Reconcile for Logistic;
+        PIC: nguyen.tran; 
+        Type: Table;
+        Schedule Refresh: hourly
+        `,
+    tags:[ "custom_1h_past10"],
+    bigquery: {
+        partitionBy: "DATE(created_ts)",
+        clusterBy: ["so_code", "reconcile_code", "session_status"]
+    }
+}
+
+with cte_date as (
+  SELECT
+		date_trunc(date_sub( current_date('+7'), interval 6 month), month)  as start_date,
+)
+
+select 
+    o.reconcile_code,
+    SPLIT(o.reconcile_code, '/')[OFFSET(1)] as hub_code,
+    SPLIT(o.reconcile_code, '/')[OFFSET(2)] as short_code,
+    s.carrier_code,
+    s.user_id as employee_id,
+    acc.fullname as employee_name,
+    s.status as session_status,
+    timestamp_add(o.created_time, interval 7 hour) as created_ts,
+    timestamp_add(o.last_updated_time, interval 7 hour) as last_updated_ts,
+    timestamp_add(o.delivered_time, interval 7 hour) as delivered_ts,
+    o.status as session_order_status,
+    o.reference_code as so_code,
+    o.tracking_code,
+    o.payment_method,
+    o.cod_amount,
+    o.received_cod_amount,
+    CASE
+        WHEN o.reference_code LIKE 'SO%' THEN "SO"
+        WHEN o.reference_code LIKE 'RONS%' THEN "RONS"
+        WHEN o.reference_code LIKE 'RO%' THEN "RO"
+        WHEN o.reference_code LIKE 'PGH%' THEN "PGH"
+        WHEN o.reference_code LIKE 'CO%' THEN "CO"
+        WHEN o.reference_code LIKE 'TO%' THEN "TO"
+    END AS order_type,
+    s.reconcile_type,
+    e.fullname as session_created_by
+from (
+	select *
+	from ${source.platinum}.accounting_prd_core_reconcile_session_order
+    where created_date >= (select DATE(start_date) from cte_date)
+) o
+left join (
+	select *
+	from ${source.platinum}.accounting_prd_core_reconcile_session
+    where created_date >= (select DATE(start_date) - INTERVAL 1 MONTH from cte_date)
+) as s on o.reconcile_code = s.code
+left join ${ref("dim_employee")} as acc on s.user_id = acc.branch_account_id
+LEFT JOIN ${ref("dim_employee")} AS e ON e.branch_account_id = s.created_by
+-- where 1=1
+--     AND s.code = 'REC/HUBTRUONGDINH/RQ1FEQ'
+-- s.status not in ('DONE', 'CANCEL')
+QUALIFY ROW_NUMBER() OVER(PARTITION BY reference_code, reconcile_code ORDER BY last_updated_ts DESC) = 1
+--     AND s.status NOT IN ('DONE', 'CANCEL')
