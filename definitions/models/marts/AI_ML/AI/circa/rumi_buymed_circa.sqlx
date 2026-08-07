@@ -117,6 +117,10 @@ AS (SELECT * FROM  ${ref("buymed_innovation", "circa_gross_net_margin")});
 CREATE OR REPLACE VIEW `rumi_buymed_circa.circa_fact_consumer_tracking_events`
 AS (SELECT * FROM  ${ref("buymed_innovation", "circa_fact_consumer_tracking_events")});
 
+-- retail_unit
+CREATE OR REPLACE VIEW `rumi_buymed_circa.circa_dim_product_retail_unit`
+AS (SELECT * FROM  ${ref("buymed_innovation", "circa_dim_product_retail_unit")});
+
 -- -- dim_competitor_price
 -- CREATE OR REPLACE VIEW `rumi_buymed_circa.circa_dim_product_competitor_price`
 -- AS (SELECT * FROM  ${ref("buymed_innovation", "circa_dim_product_competitor_price")});
