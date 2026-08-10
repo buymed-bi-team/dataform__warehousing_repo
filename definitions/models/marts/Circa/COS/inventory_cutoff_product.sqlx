@@ -6,6 +6,9 @@ config {
     name: "inventory_cutoff_product",
     columns: {
         
+    },
+    bigquery: {
+        partitionBy: "cutoff_date_index"
     }
 }
 
@@ -15,15 +18,19 @@ js {
     const end_date = ` CURRENT_DATE() `
 }
 pre_operations {
-  DELETE
-  FROM
-    ${self()}
-  WHERE
-    cutoff_date_index >= ${start_date}
+  ${when(
+    incremental(),
+    `
+    DELETE
+    FROM ${self()}
+    WHERE cutoff_date_index >= ${start_date}
+    `,
+    `SELECT 1`
+  )}
 }
 
 
-SELECT DISTINCT
+SELECT
        a.cutoff_date_index
      , DATE_ADD(a.cutoff_date_index, INTERVAL 1 DAY) AS date_map
      , b.pos_id
@@ -41,12 +48,11 @@ LEFT JOIN  ${source.circa_os}.inventory_location AS b
        ON a.location_id = b.id 
       AND a.client_id = b.client_id
 WHERE   a.client_id = 1
-      AND cutoff_date_index >= ${when(incremental(), start_date, `'2026-05-01'`)}
+      AND cutoff_date_index >= ${when(incremental(), start_date, `'2026-07-01'`)}
       -- a.cutoff_date_index <= DATE_SUB(CURRENT_DATE("Asia/Ho_Chi_Minh"), INTERVAL 2 DAY)
       -- AND
-  
 
 GROUP BY ALL
-
+-- 
 
 
