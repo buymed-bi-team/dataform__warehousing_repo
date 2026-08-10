@@ -61,13 +61,13 @@ WITH thuosi_unit AS (
   SELECT DISTINCT
      product_id
     ,seller_code
-    ,unit_price_af_discount AS unit_price
+    ,unit_price
     ,unit
     ,created_at AS latest_order
 FROM (
     SELECT
          i.product_id
-        ,i.unit_price_af_discount
+        ,COALESCE(i.unit_price_af_discount, i.unit_price ) AS unit_price
         ,unit
         ,o.client_id
         ,o.created_at
@@ -79,7 +79,7 @@ FROM (
     FROM lakehouse-prod-394907.gold_buymed_vn2.cos_purchase_order o
     LEFT JOIN lakehouse-prod-394907.gold_buymed_vn2.cos_purchase_order_item i ON o.po_id = i.po_id
     WHERE o.client_id = 1
-      AND unit_price > 0
+     
 )
 WHERE rn = 1
 )
