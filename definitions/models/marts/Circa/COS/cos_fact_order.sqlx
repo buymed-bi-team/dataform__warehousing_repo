@@ -42,8 +42,8 @@ SELECT DISTINCT
     ,o.origin_order_id
     ,DATETIME_ADD(o.end_pick_at, INTERVAL 7 HOUR) AS end_pick_at
     ,COALESCE(
-         DATETIME_ADD(o.completed_at, INTERVAL 7 HOUR)
-        ,DATETIME_ADD(o.updated_at, INTERVAL 7 HOUR)
+         DATETIME(o.completed_at, 'Asia/Ho_Chi_Minh')
+       , DATETIME(o.updated_at, 'Asia/Ho_Chi_Minh')
      ) AS completed_at
     ,COALESCE(
          DATE(DATETIME_ADD(o.completed_at, INTERVAL 7 HOUR))
@@ -166,7 +166,6 @@ SELECT a.*
 FROM map_inf a
 LEFT JOIN clean_phone b ON a.order_code = b.order_code 
 LEFT JOIN (SELECT DISTINCT order_code FROM ${source.ref}.cos_product_loss_by_order) c ON a.order_code = c.order_code
-
 
 
 -- where status in ('COMPLETED', 'COMPLETED_SHIPPING')
