@@ -57,6 +57,31 @@ WITH thuosi_unit AS (
     WHERE a.client_id = 1
           AND p.actual_status <> "Inactive"
     GROUP BY ALL
+), last_purchase AS (
+  SELECT DISTINCT
+     product_id
+    ,seller_code
+    ,unit_price
+    ,unit
+    ,created_at AS latest_order
+FROM (
+    SELECT
+         i.product_id
+        ,i.unit_price
+        ,unit
+        ,o.client_id
+        ,o.created_at
+        ,seller_code
+        ,ROW_NUMBER() OVER (
+             PARTITION BY i.product_id, seller_code
+             ORDER BY o.created_at DESC
+         ) AS rn
+    FROM lakehouse-prod-394907.gold_buymed_vn2.cos_purchase_order o
+    LEFT JOIN lakehouse-prod-394907.gold_buymed_vn2.cos_purchase_order_item i ON o.po_id = i.po_id
+    WHERE o.client_id = 1
+      AND unit_price > 0
+)
+WHERE rn = 1
 )
 ,full_unit AS (
     SELECT DISTINCT ru.product_id
@@ -119,7 +144,7 @@ WITH thuosi_unit AS (
       AND ps.channel = 'OFFLINE'
     GROUP BY ALL
 )
-,combine AS (
+,combine_unit AS (
     SELECT DISTINCT p.product_id
                    ,p.seller_code
                    ,p.sku_code
@@ -133,6 +158,7 @@ WITH thuosi_unit AS (
                    ,i.base_unit AS is_base_unit
                    ,p.last_updated_at
                    ,p.purchase_price
+                   ,po.unit_price AS last_price
                    ,p.cost_price
                    ,p.market_price
                    ,p.list_price
@@ -162,11 +188,33 @@ WITH thuosi_unit AS (
                    ,no_ord_L1M
                    ,GMV_L1M
                    ,on_hand_quantity
+                   ,SAFE_DIVIDE(po.unit_price, i.convert_rate) AS base_unit_price
     FROM has_price p
     LEFT JOIN inventory_full_unit i ON i.product_id = p.product_id AND i.unit = p.unit AND p.sku_code = i.sku_code
     LEFT JOIN count_ord co ON i.product_id = co.product_id AND i.seller_code = co.seller_code
     LEFT JOIN L1M l ON p.product_id = l.product_id AND LOWER(p.unit) = LOWER(l.unit) AND i.seller_code = l.seller_code
+    LEFT JOIN last_purchase po ON i.product_id = po.product_id AND LOWER(i.unit) = LOWER(po.unit) AND i.seller_code = po.seller_code
     GROUP BY ALL
+),base_price AS (
+    SELECT
+        product_id,
+        seller_code,
+        MAX(base_unit_price) AS base_unit_price
+    FROM combine_unit
+    WHERE last_price IS NOT NULL
+    GROUP BY ALL
+), combine AS (
+
+SELECT  b.* EXCEPT(purchase_price)
+        , 
+   ROUND( COALESCE(
+        b.last_price,
+        bp.base_unit_price * b.convert_rate
+    )) AS purchase_price
+FROM combine_unit b
+LEFT JOIN base_price bp
+    ON b.product_id = bp.product_id
+    AND b.seller_code = bp.seller_code
 )
 ,check_unit_pricing AS (
     SELECT DISTINCT product_id
