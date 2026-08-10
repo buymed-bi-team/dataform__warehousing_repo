@@ -60,6 +60,7 @@ SELECT DISTINCT
                               WHEN fulfillment_method = 'SO_THUOCSI'AND dis.name NOT LIKE '%MEDX%' AND dis.name NOT LIKE '%Buymed%' THEN 'SELLER' 
                               END AS vendor_type
     ,so_code
+    ,eo.id AS owner_id
     ,eo.name AS owner_name
     ,dis.name AS Vendor
     ,a.client_id
