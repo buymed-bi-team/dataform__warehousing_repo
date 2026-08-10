@@ -61,13 +61,13 @@ WITH thuosi_unit AS (
   SELECT DISTINCT
      product_id
     ,seller_code
-    ,unit_price
+    ,unit_price_af_discount AS unit_price
     ,unit
     ,created_at AS latest_order
 FROM (
     SELECT
          i.product_id
-        ,i.unit_price
+        ,i.unit_price_af_discount
         ,unit
         ,o.client_id
         ,o.created_at
