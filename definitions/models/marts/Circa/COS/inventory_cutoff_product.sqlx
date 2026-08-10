@@ -36,6 +36,7 @@ SELECT
      , b.pos_id
      , a.product_id
      , SUM(on_hand_qty) AS on_hand_qty
+     , SUM(available_qty) AS available_qty
      , SUM(on_hand_qty * cost_price_include_tax) AS stock_value
      , a.client_id
      , CASE 
