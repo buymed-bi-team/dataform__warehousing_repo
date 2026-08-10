@@ -167,7 +167,6 @@ WHERE rn = 1
                    ,final_sale_price
                    ,price_type
                    ,gap_ts_market
-                   ,CASE WHEN on_hand_quantity > 0 THEN purchase_price ELSE cost_price END AS exp_cost_price
                    ,CASE WHEN i.on_hand_quantity > 0 THEN "Available" ELSE "Unavailable" END AS have_stock
                    ,CASE WHEN (p.sale_price IS NULL OR p.sale_price = 0) THEN "Price not set" ELSE "Price set" END AS price_set_check
                    ,CASE WHEN DATE_DIFF(CURRENT_DATE("Asia/Ho_Chi_Minh"),latest_ord,DAY) < 16 THEN "15D"
@@ -211,6 +210,10 @@ SELECT  b.* EXCEPT(purchase_price)
         b.last_price,
         bp.base_unit_price * b.convert_rate
     )) AS purchase_price
+    ,CASE WHEN b.on_hand_quantity > 0 THEN  ROUND( COALESCE(
+        b.last_price,
+        bp.base_unit_price * b.convert_rate
+    )) ELSE cost_price END AS exp_cost_price
 FROM combine_unit b
 LEFT JOIN base_price bp
     ON b.product_id = bp.product_id
