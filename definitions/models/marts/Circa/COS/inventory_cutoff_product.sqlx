@@ -11,7 +11,7 @@ config {
 
 js {
     const start_date =
-        ` DATE_SUB(CURRENT_DATE(), INTERVAL 10 DAY) `
+        ` DATE_SUB(CURRENT_DATE(), INTERVAL 3 DAY) `
     const end_date = ` CURRENT_DATE() `
 }
 pre_operations {
