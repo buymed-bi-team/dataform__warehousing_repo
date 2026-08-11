@@ -79,6 +79,7 @@ FROM (
     FROM lakehouse-prod-394907.gold_buymed_vn2.cos_purchase_order o
     LEFT JOIN lakehouse-prod-394907.gold_buymed_vn2.cos_purchase_order_item i ON o.po_id = i.po_id
     WHERE o.client_id = 1
+           AND i.received_quantity > 0 
      
 )
 WHERE rn = 1
