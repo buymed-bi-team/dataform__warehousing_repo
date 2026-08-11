@@ -24,7 +24,7 @@ SELECT
     , o.pos_id
     , pos.name AS pos_name
     , COALESCE( NULLIF(pos.full_address, ''), CONCAT(c.address, ',' , g.ward_name, ', ', g.district_name, ', ', g.province_name)) AS pos_address
-    , pr.province_name
+    , COALESCE(pr.province_name, g.province_name) AS province_name
     , CASE
              WHEN o.entity_id = '00000000-0000-0000-0000-000000000000'
                OR o.entity_id = '0'
