@@ -69,6 +69,7 @@ WITH
     net_sale - COALESCE(return_amount,0) AS net_revenue,
     net_sale,
     return_amount,
+    no_order,
   FROM (
     SELECT
       month,
@@ -81,6 +82,7 @@ WITH
     SELECT
       g.month,
       g.pos_code,
+      COUNT(DISTINCT g.order_code) no_order,
       SUM(net_sale) net_sale,
       SUM(return_amount) return_amount
     FROM gmv g
@@ -103,6 +105,7 @@ WITH
     net_sale - COALESCE(return_amount,0) AS net_revenue,
     net_sale,
     return_amount,
+    no_order,
   FROM (
     SELECT
       week,
@@ -115,6 +118,7 @@ WITH
     SELECT
       g.week,
       g.pos_code,
+      COUNT(DISTINCT g.order_code) no_order,
       SUM(net_sale) net_sale,
       SUM(return_amount) return_amount
     FROM gmv g
@@ -136,6 +140,7 @@ WITH
     net_sale - COALESCE(return_amount,0) AS net_revenue,
     net_sale,
     return_amount,
+    no_order
   FROM (
     SELECT
       date,
@@ -148,6 +153,7 @@ WITH
     SELECT
       g.date,
       g.pos_code,
+       COUNT(DISTINCT g.order_code) no_order,
       SUM(net_sale) net_sale,
       SUM(return_amount) return_amount
     FROM gmv g
@@ -158,9 +164,9 @@ WITH
     GROUP BY ALL ) f
   ON t.date = f.date
   AND t.pos_code = f.pos_code )
-SELECT * FROM month_tb
+SELECT *, safe_divide(net_revenue, no_order) aov FROM month_tb
 UNION ALL
-SELECT * FROM week_tb
+SELECT *, safe_divide(net_revenue, no_order) aov FROM week_tb
 UNION ALL
-SELECT * FROM day_tb
+SELECT *, safe_divide(net_revenue, no_order) aov FROM day_tb
 
