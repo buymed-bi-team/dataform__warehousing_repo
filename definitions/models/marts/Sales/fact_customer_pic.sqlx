@@ -53,7 +53,7 @@ UNION ALL
 SELECT
     a.customer_id
     , "CLINIC"
-    , pic.pic
+    , UPPER(pic.pic) AS pic
     , 0
     , (SELECT MAX(month) FROM cte WHERE customer_group = 'CLINIC')
 FROM ${ref("dim_customer")} AS a
