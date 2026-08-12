@@ -344,7 +344,7 @@ SELECT
         WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"WHOLESALER\"') THEN "WHOLESALE"
         -- WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"TOP200\"|\"AMBASSADOR_TOP200\"|\"WHOLESALER\"') THEN 'KAM'
         WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"CIRCA\"|\"CIRCACOS\"|\"CIRCAFOFO\"|\"CIRCAFOCO\"') THEN 'CIRCA'
-        WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"VIP\"|\"AMBASSADOR\"') THEN 'RETAIL'
+        WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"VIP\"') THEN 'RETAIL'
         ELSE "RETAIL"
     END AS customer_tag_group,
     CASE  
@@ -352,7 +352,7 @@ SELECT
         WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"WHOLESALER\"') THEN "WHOLESALE"
         WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"CIRCACOS\"') THEN 'CIRCA_COS'
         WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"CIRCAFOFO\"|\"CIRCA\"|\"CIRCAFOCO\"') THEN 'CIRCA_FS'
-        WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"VIP\"|\"AMBASSADOR\"') THEN "RETAIL_A"
+        WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"VIP\"') THEN "RETAIL_A"
         WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"RETAILC\"') THEN "RETAIL_C"
         ELSE "RETAIL_B"
     END  AS customer_tag_sub_group,
