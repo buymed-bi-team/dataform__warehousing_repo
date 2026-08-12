@@ -45,7 +45,7 @@ SELECT DISTINCT
     a.deliver_method, 
     a.payment_status, 
     a.payment_method,
-    json_value(a.extra_props, "$.refund_amount") refund_amount,
+    cast(json_value(a.extra_props, "$.refund_amount") as int64) refund_amount,
     json_value(a.extra_props, "$.refund_method") refund_method ,
     json_value(a.extra_props, "$.refund_status") refund_status,
     DATETIME_ADD(a.created_time, INTERVAL 7 HOUR) AS created_at,
