@@ -27,14 +27,18 @@ select timestamp_add(c.created_time , interval 7 hour) as visit_time,
         then 
                 concat("0",
                 cast(div(timestamp_diff(timestamp_add(check_out_time,interval 1 second),check_in_time, second),60) as string),":",
-                cast(mod(timestamp_diff(timestamp_add(check_out_time,interval 1 second),check_in_time, second),60) as string))
+                LPAD(cast(mod(timestamp_diff(timestamp_add(check_out_time,interval 1 second),check_in_time, second),60) as string),2,'0')
+                )
          else
                 concat(
                 cast(div(timestamp_diff(timestamp_add(check_out_time,interval 1 second),check_in_time, second),60) as string),":",
-                cast(mod(timestamp_diff(timestamp_add(check_out_time,interval 1 second),check_in_time, second),60) as string))
+                LPAD(cast(mod(timestamp_diff(timestamp_add(check_out_time,interval 1 second),check_in_time, second),60) as string), 2, '0')
+                )
         end as visit_length_minute,
         emp.fullname as sr_name,
        json_value(address_detail, "$.province_code") as province_code, 
+       json_value(address_detail, "$.district_code") as district_code, 
+       json_value(address_detail, "$.ward_code") as ward_code, 
         care_type  
 from ${source.platinum}.marketplace_prd_sales_check_in_history c
 left join ${ref('dim_customer')} cust on cust.customer_phone = c.phone
