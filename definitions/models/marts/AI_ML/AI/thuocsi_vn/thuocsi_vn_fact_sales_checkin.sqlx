@@ -1,0 +1,14 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `Sales Checkin in the Vietnam marketplace.`,
+    tags: ['AI_THUOCSI_VN']
+}
+
+SELECT 
+    a.*
+    , b.ward_name
+    , b.district_name
+    , b.province_name
+FROM ${ref("gold_buymed_vn2", "fact_checkin_history")} AS a
+    LEFT JOIN ${ref("gold_buymed_vn2", "dim_geo_location")} AS b ON COALESCE(a.ward_code, a.district_code, a.province_code) = b.location_code
