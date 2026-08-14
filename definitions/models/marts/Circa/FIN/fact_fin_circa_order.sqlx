@@ -77,6 +77,9 @@ SELECT
     oo.delivery_carrier_code,
     oo.delivery_carrier,
     coalesce(oo.affiliate_tag, 'NON AFFILIATE') AS affiliate_tag,
+    oo.province_name,
+    oo.district_name,
+    oo.ward_name
 FROM ${source.circa_os}.order_order o
 LEFT JOIN ${source.circa_os}.entity_customer e
 on o.entity_id = e.id

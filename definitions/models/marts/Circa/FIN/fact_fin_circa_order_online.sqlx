@@ -62,7 +62,10 @@ SELECT DISTINCT
     b.delivery_tracking_number,
     d.fee_amount AS original_delivery_fee,
     cast( JSON_EXTRACT_SCALAR(a.extra_props, '$.final_cod') as int64) AS final_secondary_cod,
-    e.tag as affiliate_tag
+    e.tag as affiliate_tag,
+    mdm_ward.name as ward_name,
+    mdm_district.name as district_name,
+    mdm_province.name as province_name
 FROM ${source.platinum}.circa_online_prd_order_order a
 LEFT JOIN ${source.platinum}.circa_online_prd_order_sale_order b 
 ON a.sale_order_code = b.sale_order_code
@@ -70,3 +73,6 @@ left join  pos_order c
 on a.order_code = c.reference_order_in_platform
 LEFT JOIN ${ref("fact_circa_online_transporting")} d on b.delivery_tracking_number = d.tracking_code
 LEFT JOIN affiliate_order e on a.order_code = e.order_code
+LEFT JOIN ${source.circa_os}.mdm_ward on a.ward_code = mdm_ward.code
+LEFT JOIN ${source.circa_os}.mdm_district on a.district_code = mdm_district.code
+LEFT JOIN ${source.circa_os}.mdm_province on a.province_code = mdm_province.code
