@@ -67,6 +67,7 @@ FROM ${ref('dim_sku')} AS s
             sales_region_code
             , fc_code
         FROM ${ref('dim_fc_service_area')}
+        WHERE sales_region_code <> 'MIENTRUNG'
     ) AS sa
     LEFT JOIN ${ref('dim_sku_sales_region_current')} AS sc
         ON sc.sku_code = s.sku_code AND sc.sales_region_code = sa.sales_region_code
