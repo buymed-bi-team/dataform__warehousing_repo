@@ -1,0 +1,20 @@
+config {
+  type: "table",
+  description: "Quantity in Wait to Confirm Order",
+  tags: ["custom_1h_past5"],
+  bigquery: {
+    partitionBy: "created_date"
+  }
+}
+
+SELECT
+    oi.created_date
+    , oi.order_id
+    , oi.sku
+    , o.warehouse_code
+    , oi.quantity AS wait_to_confirm_quantity
+FROM ${source.platinum}.marketplace_prd_order_v2_order_item AS oi
+    LEFT JOIN ${source.platinum}.marketplace_prd_order_v2_order AS o ON o.order_id = oi.order_id
+WHERE oi.created_date >= CURRENT_DATE("+7") - INTERVAL 90 DAY
+    AND o.created_date >= CURRENT_DATE("+7") - INTERVAL 90 DAY
+    AND o.status = 'WAIT_TO_CONFIRM'
