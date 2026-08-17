@@ -1,0 +1,8 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `SKU Status on Thuocsi.`
+}
+
+SELECT * 
+FROM gold_buymed_vn2.fact_product_sku_status
