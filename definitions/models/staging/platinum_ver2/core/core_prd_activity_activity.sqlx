@@ -22,7 +22,9 @@ config {
       CAST(null as datetime) 
     FROM silver_buymed_vn.core_prd_activity_activity
     WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 1 DAY
-      AND NOT(action ='d' AND created_time < CURRENT_TIMESTAMP - INTERVAL 12 MONTH)
+      AND NOT(action ='d'
+      
+               AND DATE(created_time, 'Asia/Ho_Chi_Minh') < DATE_SUB(CURRENT_DATE('Asia/Ho_Chi_Minh'), INTERVAL 12 MONTH))
     QUALIFY ROW_NUMBER() OVER (_window) = 1 
           WINDOW _window AS (
           PARTITION BY mg_id
