@@ -223,7 +223,7 @@ LEFT JOIN base_price bp
 ,check_unit_pricing AS (
     SELECT DISTINCT product_id
                    ,COUNT(*) AS total_units
-                   ,SUM(CASE WHEN (sale_unit_price IS NULL OR sale_unit_price = 0) THEN 1 ELSE 0 END) AS unset_units
+                   ,SUM(CASE WHEN (final_sale_price IS NULL OR final_sale_price = 0) THEN 1 ELSE 0 END) AS unset_units
     FROM combine
     GROUP BY product_id
 )
