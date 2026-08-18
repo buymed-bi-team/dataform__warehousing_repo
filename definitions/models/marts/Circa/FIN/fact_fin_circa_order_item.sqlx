@@ -10,8 +10,8 @@ config {
 }
 js {
     const start_date =
-      //   `date(2026, 01, 01)`
-        ` DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY) `
+      //  `date(2024, 01, 01)`
+        ` DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)`
     const end_date = ` CURRENT_DATE() `
 }
 pre_operations {
@@ -38,6 +38,8 @@ WITH
     oi.product_id,
     oi.unit_id,
     oi.type,
+    oi.is_global_promotion_excluded,
+    oi.is_drug,
     o.type AS order_type,
     CASE WHEN order_apply_combo_id = '' THEN NULL ELSE order_apply_combo_id END AS order_apply_combo_id,
     cb.combo_price,
@@ -133,6 +135,5 @@ END
   AS item_discount_amount,
   CASE
     WHEN order_apply_combo_id IS NOT NULL AND gift_code IS NULL THEN unit_price_before_discount - unit_price_after_discount ELSE 0 END AS combo_discount_amount,
-  SAFE_DIVIDE( quantity_po * unit_price_after_discount, SUM(quantity_po * unit_price_after_discount) OVER (PARTITION BY order_id)) AS item_amount_contribution,
 FROM
   clean_system_price_data

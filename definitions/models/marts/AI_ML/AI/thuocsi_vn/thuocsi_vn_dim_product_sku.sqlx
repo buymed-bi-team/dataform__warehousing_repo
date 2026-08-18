@@ -100,6 +100,7 @@ SELECT
     , d.division_names
     , s.sku_demand_class AS sku_demand_classification
     , s.sub_sku_code AS item_code
+    , s.sub_sku_code
     , CASE
         -- WHEN s.cic_name IN ("dat.hoquang", "tra.pham") THEN NULL
         WHEN s.seller_code IN ("MEDX_E", "BML_E", "TAYAU_E") THEN "dat.hoquang"
