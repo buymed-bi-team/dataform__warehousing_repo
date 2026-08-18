@@ -19,6 +19,7 @@ WITH
     dim_calendar.date,
     dim_calendar.month,
     dim_calendar.week,
+    SUM(gmv) gmv,
     SUM(gmv - deal - voucher_circa) AS net_sale
   FROM  ${ref("gold_buymed_vn2", "circa_fact_net_margin")} f
   LEFT JOIN  dim_calendar
@@ -68,6 +69,7 @@ WITH
     TARGET,
     net_sale - COALESCE(return_amount,0) AS net_revenue,
     net_sale,
+    gmv,
     return_amount,
     no_order,
   FROM (
@@ -83,6 +85,7 @@ WITH
       g.month,
       g.pos_code,
       COUNT(DISTINCT g.order_code) no_order,
+      SUM(gmv) gmv,
       SUM(net_sale) net_sale,
       SUM(return_amount) return_amount
     FROM gmv g
@@ -104,6 +107,7 @@ WITH
     TARGET,
     net_sale - COALESCE(return_amount,0) AS net_revenue,
     net_sale,
+    gmv,
     return_amount,
     no_order,
   FROM (
@@ -119,6 +123,7 @@ WITH
       g.week,
       g.pos_code,
       COUNT(DISTINCT g.order_code) no_order,
+      SUM(gmv) gmv,
       SUM(net_sale) net_sale,
       SUM(return_amount) return_amount
     FROM gmv g
@@ -139,6 +144,7 @@ WITH
     TARGET,
     net_sale - COALESCE(return_amount,0) AS net_revenue,
     net_sale,
+    gmv,
     return_amount,
     no_order
   FROM (
@@ -154,6 +160,7 @@ WITH
       g.date,
       g.pos_code,
        COUNT(DISTINCT g.order_code) no_order,
+       SUM(gmv) gmv,
       SUM(net_sale) net_sale,
       SUM(return_amount) return_amount
     FROM gmv g
