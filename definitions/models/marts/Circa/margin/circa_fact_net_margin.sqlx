@@ -116,6 +116,13 @@ WITH final AS (
     a.channel,
     a.affiliate_tag,
     a.product_id,
+    dim_product.product_name,
+    dim_product.brand,
+    dim_product.brand_type,
+    dim_product.product_category,
+    dim_product.cat2,
+    dim_product.cat3,
+    dim_product.cat4,
     a.gmv,
     a.deal, 
     a.voucher_circa,
@@ -134,6 +141,8 @@ WITH final AS (
     TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS refresh_at
   FROM
     final_1 AS a
-  LEFT JOIN
-    ${ref("gold_buymed_vn2", "circa_pos_profile")} AS p ON a.pos_id = p.id
+  LEFT JOIN ${ref("gold_buymed_vn2", "circa_pos_profile")} AS p ON a.pos_id = p.id
+  LEFT JOIN ${ref("gold_buymed_vn2", "cos_dim_product")} AS dim_product 
+  on a.product_id = dim_product.product_id 
+  and a.client_id = dim_product.client_id
    WHERE a.client_id NOT IN (5,6,7)
