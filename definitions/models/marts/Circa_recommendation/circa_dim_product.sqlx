@@ -114,5 +114,3 @@ FROM
           AND p.name NOT LIKE '%Quà Tặng%'
           AND p.name NOT LIKE '%(hàng khuyến mãi)%'
           AND p.name NOT LIKE '%quà tặng)%'
-
-
