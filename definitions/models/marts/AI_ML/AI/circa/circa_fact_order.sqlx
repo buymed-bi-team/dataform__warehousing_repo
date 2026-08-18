@@ -2,7 +2,11 @@ config {
     type: 'table',
     schema: "buymed_innovation",
     description: `All orders item of Circa.`,
-    tags: ['AI_CIRCA', "custom_1h_past10"]
+    tags: ['AI_CIRCA', "custom_1h_past10"],
+    bigquery: {
+        partitionBy: "DATE(order_completed_at)",
+        clusterBy: ["product_id", "pos_code", "channel"]
+    },
 }
 
 WITH 
@@ -18,8 +22,9 @@ WITH
 
     fact_order AS (
         SELECT
-            o.created_date AS date
-            , o.completed_at AS order_completed_at
+             o.created_at 
+            , o.created_date AS date
+            , TIMESTAMP(o.completed_at) AS order_completed_at
             , o.order_code
             , o.order_id
             , CASE
@@ -67,7 +72,8 @@ WITH
 
     fact_order_item AS (
             SELECT
-               o.date
+               o.created_at
+             , o.date
              , o.order_completed_at
              , o.order_code
              , o.order_id

@@ -1,0 +1,90 @@
+config {
+    type: "table",
+    description: `PIC: Ha.Lekim
+    segmention CIRCA POS at every 1st month`,
+    tags: ["monthly_1st_2h10"]
+
+}
+
+WITH raw_data as (
+  select 
+  date_trunc(a.completed_date, month) as completed_month,
+  b.code as pos_code,
+  b.name as pos_name, 
+  a.order_code, 
+  a.status, 
+  gmv, 
+  c.type,
+  coalesce(voucher_discount,0) 
+  + coalesce(a.total_loyalty_discount_amount,0)
+  + coalesce(a.external_discount_amount,0)
+  + coalesce(deal_1k_amount,0)
+  + coalesce(cogs_mkt_circa,0) as promotion_excl_gift,
+  discount_deal,       
+  cogs_circa
+  from ${ref("fact_circa_margin_item")} a
+  inner join buymed_circa_v2.entity_pos_profile b
+  on a.pos_id = b.id
+  left join ${ref("fact_fin_circa_order")} 
+  c on a.order_code = c.order_code
+  where a.client_id = 1
+  and c.type = 'OFFLINE'
+)
+  , order_change AS (
+    SELECT
+      pos_code,
+      completed_month,
+      sum(gmv) gmv,
+      lag(sum(gmv)) OVER (PARTITION BY pos_code ORDER BY completed_month) AS prev_gmv,
+      lag(sum(gmv), 2)
+        OVER (PARTITION BY pos_code ORDER BY completed_month) AS prev_prev_gmv,
+      safe_divide(
+        sum(gmv)
+          - lag(sum(gmv)) OVER (PARTITION BY pos_code ORDER BY completed_month),
+        lag(sum(gmv)) OVER (PARTITION BY pos_code ORDER BY completed_month))
+        AS gmv_change,
+      safe_divide(
+        lag(sum(gmv))
+          OVER (PARTITION BY pos_code ORDER BY completed_month)
+          - lag(sum(gmv), 2) OVER (PARTITION BY pos_code ORDER BY completed_month),
+        lag(sum(gmv), 2) OVER (PARTITION BY pos_code ORDER BY completed_month))
+        AS prev_gmv_change,
+      sum(promotion_excl_gift) as promotion_excl_gift,
+      safe_divide(sum(promotion_excl_gift), sum(gmv)) AS `promotion_excl_gift_pct`,
+      sum(cogs_circa) AS cogs,
+      sum(gmv - cogs_circa) AS gp,
+      sum(gmv - cogs_circa - promotion_excl_gift) AS net_profit,
+      safe_divide(sum(gmv - cogs_circa), sum(gmv)) AS margin,
+      safe_divide(sum(gmv  - cogs_circa - promotion_excl_gift), sum(gmv)) AS net_margin,
+    FROM raw_data
+    GROUP BY ALL
+  )
+-- classification query
+SELECT
+  *,
+  CASE
+    WHEN increase_gmv = 1 AND good_margin = 1 AND high_promotion = 0
+      THEN "1. Healthy"
+    WHEN increase_gmv = 1 AND good_margin = 1 AND high_promotion = 1
+      THEN "4. Promotion-driven"
+    WHEN increase_gmv = 1 AND good_margin = 0
+      THEN "3. High GMV - Low Profit"
+    WHEN increase_gmv = 1 AND high_promotion = 1 THEN "4. Promotion-driven"
+    WHEN increase_gmv = 0 AND good_margin = 1 THEN "2. Unstable Growing"
+    ELSE "5. Underperforming"
+    END AS pos_type,
+FROM
+  (
+    SELECT
+      *,
+      CASE
+        WHEN gmv_change > 0 AND prev_gmv_change > 0 THEN 1
+        ELSE 0
+        END AS increase_gmv,
+      CASE WHEN net_margin >= 0.08 THEN 1 ELSE 0 END AS good_margin,
+      CASE WHEN promotion_excl_gift_pct >= 0.1 THEN 1 ELSE 0 END AS high_promotion,
+    FROM order_change
+    WHERE
+      completed_month = date_sub(
+        date_trunc(date_add(current_date(), interval 1 day), month), INTERVAL 1 month)
+  )

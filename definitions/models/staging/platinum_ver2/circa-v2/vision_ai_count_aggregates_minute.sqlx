@@ -5,12 +5,12 @@ js {
     postgresDatabase: "vision_ai",
     dataset:      "buymed_circa_v2_raw",
     tableName:    "count_aggregates_minute",
-    targetDataset: "buymed_circa_v2_staging",
+    targetDataset: "buymed_circa_v2",
     targetTable: "vision_ai_count_aggregates_minute",
     rawTable:     "vision_ai_count_aggregates_minute",
     primaryKey:   "id",
     createdTime:  "created_at",
-    lookbackHours: 2,
+    lookbackHours: 1,
   });
 }
 

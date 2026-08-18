@@ -1,0 +1,99 @@
+config {
+    type: "table",
+    description: `PIC: Ha.Lekim`,
+    bigquery: {
+        partitionBy: "created_date"
+    },
+    tags: ["custom_1h_past10"]
+}
+with return_table as (
+  select po_code,
+  sum(total_amount) as total_amount
+  from ${ref("fact_fin_circa_purchase_return")}
+  where status != 'CANCELED'
+  GROUP BY ALL
+),
+purchase_table as (
+  select po_code, 
+  sum(total_amount) as total_amount
+  from ${ref("fact_fin_circa_purchase_order")}
+  GROUP BY ALL
+)
+, return_completed as (
+  select a.po_code
+  from return_table inner join purchase_table a
+  on return_table.po_code = a.po_code
+  where return_table.total_amount = a.total_amount
+)
+, return_item_raw as (
+
+SELECT
+  rpo.status,
+  rpo.pos_id,
+  rpo.return_po_code,
+  po.po_code,
+  rpo.client_id,
+  rpo.created_date, 
+  rpoi.id return_item_id,
+  rpoi.product_id,
+  rpoi.sku,
+  rpoi.unit,
+  rpoi.unit_price,
+  rpoi.updated_at,
+  rpoid.lot_id,
+  rpoid.lot_date,
+  rpoid.tax_rate,
+  rpoid.quantity quantity,
+  rpoid.quantity*ru.convert_rate base_quantity,
+  rpoid.discount_amount,
+  ia.base_qty_allocation,
+  safe_divide(rpoid.quantity, sum(rpoid.quantity) over (partition by rpo.return_po_code, rpoi.id)) as base_quantity_lot_dist
+FROM
+  ${ref("fact_fin_circa_purchase_return")} rpo
+left join ${ref("fact_fin_circa_purchase_order")} po 
+on rpo.po_code = po.po_code
+LEFT JOIN  buymed_circa_v2.order_return_po_item rpoi
+ON rpo.return_po_id = rpoi.return_po_id
+LEFT JOIN buymed_circa_v2.product_retail_unit ru
+on rpoi.unit_id = ru.id
+LEFT JOIN  buymed_circa_v2.order_return_po_item_detail rpoid
+ON rpoi.id = rpoid.return_po_item_id
+LEFT JOIN (select item_ref_id, sum(base_quantity) as base_qty_allocation 
+from ${ref("fact_fin_circa_inventory_allocation")} 
+where type = 'RETURN_PURCHASE_ORDER'
+group by all) ia
+  ON rpoid.id = ia.item_ref_id
+WHERE
+  1=1
+  AND rpoid.lot_id IS NOT NULL
+)
+, return_item as (
+  select * except (quantity, base_quantity, discount_amount, base_quantity_lot_dist, base_qty_allocation),
+  sum(quantity) quantity,
+  sum(base_quantity) base_quantity,
+  sum(discount_amount) discount_amount,
+  sum(base_qty_allocation) base_qty_allocation,
+  sum(base_quantity_lot_dist) base_quantity_lot_dist
+  from return_item_raw
+  group by all
+)
+select r.*  except(discount_amount, unit_price),
+o.unit_price,
+o.unit_price_after_discount,
+if(rc.po_code is not null, 1, 0 ) completed_return
+ from return_item r
+left join (
+  select 
+po_code, product_id, 
+max(unit_price) unit_price,
+max(unit_price - safe_divide(discount_amount, received_quantity)) unit_price_after_discount,
+from 
+${ref("fact_fin_circa_purchase_order_item")}
+group by all
+ ) o
+on r.po_code = o.po_code
+and r.product_id = o.product_id
+left join return_completed rc
+on r.po_code = rc.po_code
+
+

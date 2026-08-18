@@ -1,0 +1,23 @@
+config {
+    type: "table",
+    description: `PIC: Ha.Lekim`,
+  tags: ["custom_1h_past10"]
+}
+with clean_data as (
+  SELECT t.order_code, type, amount, period,
+date(datetime_add(t.created_time, interval 7 hour)) as created_date,
+date(datetime_add(t.last_updated_time, interval 7 hour)) as updated_date,
+ b.company_name, b.contract_code
+FROM platinum_buymed_vn.circa_online_prd_consumer_wallet_transaction t
+left join `platinum_buymed_vn.circa_online_prd_consumer_business_contract` b
+on t.contract_id = b.mg_id
+where order_code is not null
+)
+select d.*, refund_date, refund_amount
+from (
+select * except (type, amount, created_date, updated_date), amount as deduction_amount, created_date as order_date
+from clean_data where type = 'DEDUCTION') d
+left join 
+(select * except (type, amount, created_date, updated_date), amount as refund_amount, created_date as refund_date
+from clean_data where type = 'REFUND') r
+on d.order_code = r.order_code

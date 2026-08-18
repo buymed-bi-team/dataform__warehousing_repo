@@ -1,0 +1,26 @@
+config {
+    type: "table",
+    description: `PIC: Ha.Lekim`,
+    bigquery: {
+        partitionBy: "created_date"
+    },
+    tags: ["custom_1h_past10"]
+}
+SELECT tracking_code, 
+reference_code, 
+from_customer_name, 
+from_customer_address, 
+tpl_code AS delivery_carrier_code, 
+tpl_name AS delivery_carrier_name, 
+status, 
+payment_method, 
+cod_amount, 
+fee_amount, 
+created_date
+FROM platinum_buymed_vn.delivery_prd_transporting_shipping_order
+where 1=1
+and created_date >= DATE_TRUNC(CURRENT_DATE(),YEAR)
+--  and tracking_code = '26AMSLQ6'
+and regexp_contains(reference_code, r"DH\d+")
+and type = 'EO'
+and status <> 'CANCEL'

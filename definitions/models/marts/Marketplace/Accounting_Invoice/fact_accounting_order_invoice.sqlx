@@ -31,7 +31,7 @@ SELECT
     , io.sale_order_code
     , ioi.seller_code
     , ioi.code AS invoice_code
-    , TIMESTAMP_ADD( COALESCE(ioi.arising_time, ioi.last_updated_time), interval 7 hour) AS invoice_time
+    , TIMESTAMP_ADD( COALESCE(ioi.arising_time, ioi.created_time), interval 7 hour) AS invoice_time
     , ioi.customer_id
     , STRING(ARRAY_REVERSE(JSON_QUERY_ARRAY(ioi.invoice_data))[SAFE_OFFSET(0)].invoice_no) AS invoice_number
     , REGEXP_REPLACE(STRING(ARRAY_REVERSE(JSON_QUERY_ARRAY(ioi.invoice_data))[SAFE_OFFSET(0)].pdf_url), 'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS invoice_url

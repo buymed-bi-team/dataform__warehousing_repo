@@ -344,7 +344,7 @@ SELECT
         WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"WHOLESALER\"') THEN "WHOLESALE"
         -- WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"TOP200\"|\"AMBASSADOR_TOP200\"|\"WHOLESALER\"') THEN 'KAM'
         WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"CIRCA\"|\"CIRCACOS\"|\"CIRCAFOFO\"|\"CIRCAFOCO\"') THEN 'CIRCA'
-        WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"VIP\"|\"AMBASSADOR\"') THEN 'RETAIL'
+        WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"VIP\"') THEN 'RETAIL'
         ELSE "RETAIL"
     END AS customer_tag_group,
     CASE  
@@ -352,7 +352,8 @@ SELECT
         WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"WHOLESALER\"') THEN "WHOLESALE"
         WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"CIRCACOS\"') THEN 'CIRCA_COS'
         WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"CIRCAFOFO\"|\"CIRCA\"|\"CIRCAFOCO\"') THEN 'CIRCA_FS'
-        WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"VIP\"|\"AMBASSADOR\"') THEN "RETAIL_A"
+        WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"VIP\"') THEN "RETAIL_A"
+        WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"RETAILC\"') THEN "RETAIL_C"
         ELSE "RETAIL_B"
     END  AS customer_tag_sub_group,
     IFNULL(SAFE_CAST(JSON_VALUE(customer.extra_props, "$.is_skip_sync_level") AS BOOLEAN), FALSE) AS is_skip_sync_level,
@@ -361,6 +362,7 @@ SELECT
     flom.last_purchase,
     flom.first_purchase,
     JSON_VALUE(customer.gpp, "$.0.public_url") AS gpp_url,
+    JSON_VALUE(customer.licenses, "$.0.public_url") AS license_url,
     JSON_VALUE(customer.pharmacy_eligibility_license, "$.0.public_url") AS pharmacy_eligibility_url,
     JSON_VALUE(customer.gdp, "$.0.public_url") AS gdp_url,
     JSON_VALUE(customer.extra_props, "$.gsp.0.public_url") AS gsp_url,

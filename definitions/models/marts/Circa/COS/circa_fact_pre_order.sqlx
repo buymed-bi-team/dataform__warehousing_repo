@@ -1,0 +1,52 @@
+config {
+    type: "table",
+    description: `Đơn có ngày khách hẹn lấy hàng
+                   PIC: huyen.ngo; 
+                   model_type: Table ;
+                   schedule: At minute 15 every 1 hours.Circa Pre_order `,
+    tags: ["custom_1h_past15"],
+    name: "circa_fact_pre_order",
+    columns: {
+    },
+    bigquery: {
+        partitionBy: "date(created_at)"
+    }
+}
+
+WITH base_data AS (
+SELECT o.*
+        ,coalesce(i.product_id, d.product_id) AS product_id
+        ,coalesce(p.product_name, d.product_name) AS product_name 
+        ,d.quantity AS demand_quantity
+        ,d.unit AS demand_unit
+        ,cv.convert_rate 
+        ,i.quantity AS sales_qty
+        ,i.unit AS sales_unit 
+        ,i.unit_price
+        ,i.unit_cost_price
+        ,sum (i.quantity * i.unit_price) AS item_amount
+        ,i.lot_date
+        ,i.po_code
+        ,i.owner_name
+        ,i.distributor_id
+        ,CONCAT(coalesce(i.product_id, d.product_id), "_",i.client_id) AS product_client_id
+ FROM  ${source.ref}.cos_fact_order o 
+LEFT JOIN  ${source.ref}.cos_fact_order_item i ON o.order_id = i.order_id
+LEFT JOIN  ${source.ref}.cos_dim_product p ON i.product_id = p.product_id AND o.client_id = p.client_id
+LEFT JOIN  ${source.ref}.cos_fact_order_item_demand d on o.order_id = d.order_id
+LEFT JOIN `buymed_circa_v2.product_retail_unit` cv ON d.unit = cv.unit AND d.product_id = cv.product_id AND o.client_id = cv.client_id
+WHERE delivery_scheduled_time IS NOT NULL
+
+GROUP BY ALL
+), stock AS (
+      SELECT pos_id
+            , product_id
+            , SUM(on_hand_quantity) AS on_hand_quantity
+      FROM `gold_buymed_vn2.cos_fact_inventory`
+  GROUP BY ALL
+)
+SELECT a.*
+      , SAFE_DIVIDE(b.on_hand_quantity, a.convert_rate) AS current_stock
+FROM base_data a 
+LEFT JOIN stock b ON a.pos_id = b.pos_id AND a.product_id = b.product_id
+-- WHERE a.order_code = 'DHC00856092'

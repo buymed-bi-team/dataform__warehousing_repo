@@ -1,0 +1,49 @@
+config {
+    type: "table",
+    tags: ["IQVIA_DATA_SHARING"]
+}
+
+SELECT
+    DATE(o.completed_date) AS date
+    , oi.product_id
+    , p.product_code
+    , p.product_name
+    , p.volumes
+    , oi.unit
+    , CASE
+          WHEN p.product_category_code = "AQFV2U" THEN
+            CASE
+              WHEN p.product_category = "Thuốc kê đơn" THEN "Rx"
+              WHEN p.product_category = "Thuốc không kê đơn" THEN "OTC"
+            END
+          ELSE "Non-Drug"
+      END AS product_category
+    , REGEXP_REPLACE(p.image_urls, 'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS image_url
+    , p.brand
+    , p.manufacture_name
+    , o.pos_id
+    , pos.name AS pos_name
+    , COALESCE( NULLIF(pos.full_address, ''), CONCAT(c.address, ',' , g.ward_name, ', ', g.district_name, ', ', g.province_name)) AS pos_address
+    , COALESCE(pr.province_name, g.province_name) AS province_name
+    , CASE
+             WHEN o.entity_id = '00000000-0000-0000-0000-000000000000'
+               OR o.entity_id = '0'
+             THEN CONCAT(o.entity_id, o.order_code)
+             ELSE o.entity_id
+     END AS customer_id
+    , oi.unit_price
+    , oi.quantity
+    , oi.unit_price * oi.quantity AS total_amount
+FROM ${ref("cos_fact_order_item")} AS oi
+    LEFT JOIN ${ref("cos_fact_order")} AS o ON oi.order_id = o.order_id
+    LEFT JOIN ${ref("circa_pos_profile")} AS pos ON o.pos_id = pos.id
+    LEFT JOIN ${ref("cos_dim_product")} AS p ON oi.product_id = p.product_id AND oi.client_id = p.client_id
+    LEFT JOIN ${ref("dim_product")} AS dp ON oi.product_id = dp.product_id
+    LEFT JOIN ${ref("dim_customer")} AS c ON pos.thuocsi_id = c.customer_id
+    LEFT JOIN ${ref("dim_geo_location")} AS g ON c.location_code = g.location_code
+    LEFT JOIN ${ref("dim_province")} AS pr ON pr.province_code = pos.province
+WHERE 1=1
+    AND DATE(o.completed_date) >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH) - INTERVAL 1 MONTH 
+    AND DATE(o.completed_date) < DATE_TRUNC(CURRENT_DATE("+7"), MONTH)
+    AND o.status IN ('COMPLETED', 'COMPLETED_SHIPPING')
+    AND dp.product_id IS NOT NULL

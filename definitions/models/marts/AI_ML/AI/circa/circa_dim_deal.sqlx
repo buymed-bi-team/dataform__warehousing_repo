@@ -19,7 +19,7 @@ SELECT deal_code
        ,discount_type
        ,discount_value
        ,percent
-       ,created_date
+       ,o.created_date
        ,created_by
        ,o.client_id
        ,limit_per_order -- giới hạn đặt hàng hàng mỗi đơn

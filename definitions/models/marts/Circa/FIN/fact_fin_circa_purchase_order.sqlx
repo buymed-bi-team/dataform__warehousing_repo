@@ -1,0 +1,70 @@
+config {
+    type: "table",
+    description: `PIC: Ha.Lekim`,
+    bigquery: {
+        partitionBy: "created_date"
+    },
+    tags: ["custom_1h_past10"]
+}
+
+SELECT
+  po.pos_id AS pos_id,
+  po.id AS po_id,
+  po.code AS po_code,
+  po.sale_order_number AS thuocsi_so_code,
+  coalesce(
+    json_extract_scalar(thuocsi_delivery_codes, '$[0]'),
+    regexp_extract(json_extract_scalar(thuocsi_delivery_codes, '$'), r'\{(.+)\}')) as thuocsi_do_code,
+  po.sub_type,
+  po.source_type AS po_source,
+  po.location_type AS location_type,
+  po.created_by_action,
+  po.fulfillment_method,
+  po.payment_method,
+  po.is_import,
+  po.paid_by_circa,
+  po.status,
+  po.type,
+  po.owner_id,
+  po.distributor_id,
+  po.client_id,
+  DATE(po.updated_at + INTERVAL 7 HOUR) AS updated_date,
+  DATE(po.created_at + INTERVAL 7 HOUR) AS created_date,
+  DATE(po.completed_at + INTERVAL 7 HOUR) AS completed_date,
+  DATE(po.stock_at + INTERVAL 7 HOUR ) stock_date,
+  po.total_amount,
+  po.total_item_amount,
+  po.subsidise_amount,
+  po.discount_amount,
+  po.actual_total_amount,
+  po.internal_files,
+  --get invoice url array, do not convert array to element because it make duplicates row. User should to transform it in Excel.
+  por.request_code,
+  CASE
+    WHEN LOWER(po.note) LIKE '%convert%' THEN 'CONVERT'
+    WHEN (por.request_code <> ''
+    OR por.request_code IS NOT NULL) THEN 'ADVANCED'
+    ELSE 'NORMAL'
+END AS po_type,
+  -- i.invoice_url
+FROM  ${source.circa_os}.order_purchase_order po
+LEFT JOIN (
+  SELECT
+    por.code AS request_code,
+    por.created_po_id AS po_id
+  FROM  ${source.circa_os}.order_request_purchase_order por
+  WHERE
+    1=1
+    AND por.created_po_id IS NOT NULL
+    AND por.created_po_id <> '' ) por
+ON po.id = por.po_id
+LEFT JOIN  buymed_circa_v2.entity_distributor d
+ON  po.distributor_id = d.id
+  -- left join gold_buymed_vn2.fact_fin_invoice i
+  -- on po.sale_order_number = cast(i.order_id as string)
+  -- and d.seller_code = i.seller_code
+WHERE
+  1=1
+  AND po.type = 'PURCHASE'
+  AND po.status NOT IN ('CANCELED',  'SEPERATED')
+  AND po.pos_id != ""

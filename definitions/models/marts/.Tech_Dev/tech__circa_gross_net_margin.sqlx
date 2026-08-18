@@ -1,0 +1,36 @@
+config {
+    type: "view",
+    schema: "buymed_tech",
+    name: "tech__circa_gross_net_margin",
+}
+
+SELECT 
+      e.client_name
+    , o.client_id
+    , o.completed_date
+    , o.completed_return_date
+    , pos_type
+    , pos_code
+    , pos_name
+    , order_code
+    , product_id
+    , channel
+    , SUM(gmv) gmv
+    , SUM(voucher_circa) voucher_circa
+    , SUM(deal) deal
+    , SUM(return_amount) return_amount
+    , SUM(cogs_circa_return) cogs_circa_return
+    , SUM(voucher_gift_circa_return) voucher_gift_circa_return
+    , SUM(net_revenue) net_revenue
+    , SUM(cogs_circa) cogs_circa
+    , 0 as rebate
+    , SUM(gross_profit_circa) gross_profit_circa
+    , safe_divide(SUM(gross_profit_circa), sum(net_revenue)) as gross_margin_circa
+    , SUM(voucher_gift_circa) voucher_gift_circa
+    , SUM(net_profit_circa) net_profit_circa
+    , safe_divide(SUM(net_profit_circa), sum(net_revenue)) as net_margin_circa
+    , refresh_at 
+FROM ${ref("gold_buymed_vn2", "circa_fact_net_margin")} o 
+LEFT JOIN ${ref("gold_buymed_vn2", "circa_dim_entity_client")} e ON o.client_id = e.client_id
+GROUP BY ALL
+ 

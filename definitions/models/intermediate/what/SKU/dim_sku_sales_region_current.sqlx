@@ -11,7 +11,7 @@ config {
             ${source.ref}.dim_sku_item_person_in_charge,
             ${source.ref}.dim_supplier_fc_person_in_charge,
             ${source.platinum}.seller_prd_purchasing_initial_stock_draft,
-            ${source.ref}.dim_inventory_sku',
+            ${source.ref}.dim_inventory_sku,
             ${source.ref}.dim_sku_item_vendors,
             ${source.platinum}.marketplace_prd_product_v2_sku_limit,
             ${source.ref}.adhoc_pricing_agg_vendor_bill_price,
@@ -212,5 +212,5 @@ FROM cte_full AS cte
     LEFT JOIN ${ref('dim_vendor')} AS vd
         ON vd.supplier_code = fv.vendor_code
 WHERE 
-    cte.sales_region_code IS NOT NULL
+    cte.sales_region_code <> 'MIENTRUNG'
 QUALIFY ROW_NUMBER() OVER(PARTITION BY sku_key_sales_region_code) = 1

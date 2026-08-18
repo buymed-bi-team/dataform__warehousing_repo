@@ -1,0 +1,18 @@
+
+config {
+    type: "table",
+    description: `circa_dim_entity_client item detail PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`,
+    tags: ["custom_1h_past5"],
+    name: "circa_dim_entity_client",
+    columns: {
+        
+    }
+}
+SELECT id AS client_id
+       , code AS client_code
+       ,name AS client_name
+       ,DATETIME_ADD(created_at, INTERVAL 7 HOUR) AS created_at
+       ,address
+       ,phone_number
+       ,email
+FROM ${source.circa_os}.entity_client

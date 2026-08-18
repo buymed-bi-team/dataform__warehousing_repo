@@ -7,6 +7,7 @@ config {
 
 
 SELECT DISTINCT code as pos_code
+       , id AS pos_id
        ,name as pos_name
        ,actual_status AS store_status
        ,created_at
@@ -16,6 +17,7 @@ SELECT DISTINCT code as pos_code
        ,m.district_name
        ,m.province_name
        ,number_of_shift
+       , IF( type = 'CIRCA', 'COS', type ) AS store_type
 FROM ${ref('gold_buymed_vn2', 'circa_pos_profile')} o
 LEFT JOIN ${ref('gold_buymed_vn2', 'dim_geo_location')} m ON o.district = m.district_code AND o.province = m.province_code AND o.ward = m.ward_code
 WHERE  o.actual_status <> 'Inactive'

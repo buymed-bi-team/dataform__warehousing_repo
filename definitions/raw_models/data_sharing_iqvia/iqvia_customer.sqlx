@@ -1,0 +1,60 @@
+config {
+    type: "table",
+    tags: ["IQVIA_DATA_SHARING"],
+}
+
+WITH
+    old AS (
+        SELECT
+            customer_id
+            , customer_name
+            , address
+            , ward_name
+            , district_name
+            , province_name
+            , GPKD_name
+            , GPKD_address
+            , customer_status
+        FROM buymed_external.import_iqvia_data_customer
+    )
+
+SELECT
+    customer_id
+    , customer_name
+    , address
+    , ward_name
+    , district_name
+    , province_name
+    , GPKD_name
+    , GPKD_address
+    , customer_status
+FROM old
+UNION ALL
+SELECT
+    a.customer_id
+    , c.customer_name
+    , c.address
+    , g.ward_name
+    , g.district_name
+    , g.province_name
+    , i.company_name
+    , i.company_address
+    , c.customer_status
+FROM (
+    SELECT
+        DISTINCT customer_id
+    FROM ${ref("iqvia_thuocsi")}
+) AS a
+    LEFT JOIN old AS b ON a.customer_id = b.customer_id
+    LEFT JOIN ${ref("dim_customer")} AS c ON a.customer_id = c.customer_id
+    LEFT JOIN ${ref("dim_geo_location")} AS g ON c.location_code = g.location_code
+    LEFT JOIN (
+        SELECT
+            customer_id
+            , tax_code
+            , company_address
+            , company_name
+        FROM ${source.platinum}.marketplace_prd_customer_invoice_info
+        QUALIFY ROW_NUMBER() over (PARTITION BY customer_id ORDER BY last_updated_time DESC) = 1
+    ) AS i ON i.customer_id = a.customer_id
+WHERE b.customer_id IS NULL

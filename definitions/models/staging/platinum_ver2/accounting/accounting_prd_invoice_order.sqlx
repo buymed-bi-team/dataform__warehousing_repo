@@ -1,0 +1,45 @@
+config {
+    type: "view",
+    schema: "platinum_buymed_vn",
+    name: "accounting_prd_invoice_order",
+    description : `
+    Partition by: created date
+    `,
+    tags:["platinum","accounting_prd_invoice"]
+}
+
+  WITH silver AS (
+    SELECT
+      key, mg_id, sale_order_code, is_difference_item_export, is_has_product_no_vat, customer_address, status, customer_tax_gov_status, customer_tax_gov_description, order_id, is_synced_po_circa, buyer_name, customer_email, payment_method, outbound_time, order_code, customer_id, customer_tax_code, is_invalid_customer_tax_code, created_time, sku_number, bought_time, sellers, customer_code, customer_name, customer_phone, arising_invoice_time, customer_request, last_updated_time, is_visible, invoice_noes, reconcile_time, synced_at, extra_props, action, ingest_time,
+        CASE
+            WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time, 'Asia/Ho_Chi_Minh'))
+            ELSE DATE( '2099-01-01' )
+        END
+     created_date,
+      CAST(null as datetime) 
+    FROM silver_buymed_vn.accounting_prd_invoice_order
+    WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 1 DAY
+    QUALIFY ROW_NUMBER() OVER (_window) = 1 
+          AND ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 16 HOUR
+          WINDOW _window AS (
+          PARTITION BY mg_id
+          ORDER BY synced_at DESC,
+          last_updated_time DESC)
+  ), platinum AS (
+    SELECT 
+      key, mg_id, sale_order_code, is_difference_item_export, is_has_product_no_vat, customer_address, status, customer_tax_gov_status, customer_tax_gov_description, order_id, is_synced_po_circa, buyer_name, customer_email, payment_method, outbound_time, order_code, customer_id, customer_tax_code, is_invalid_customer_tax_code, created_time, sku_number, bought_time, sellers, customer_code, customer_name, customer_phone, arising_invoice_time, customer_request, last_updated_time, is_visible, invoice_noes, reconcile_time, synced_at, extra_props, action, ingest_time,
+      created_date,
+      platinum_refresh
+    FROM ${ref(`platinum_buymed_vn__stg`, `accounting_prd_invoice_order`)}
+  )
+  SELECT p.*
+  FROM platinum p
+  LEFT JOIN silver s 
+      ON p.mg_id = s.mg_id 
+  WHERE s.mg_id is null 
+
+  UNION ALL 
+
+  SELECT s.*
+  FROM silver s
+  WHERE action <> "d"

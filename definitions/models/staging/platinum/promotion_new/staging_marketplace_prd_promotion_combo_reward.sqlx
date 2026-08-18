@@ -1,19 +1,16 @@
 config {
-    type: "table",
+    type: "view",
     name: "marketplace_prd_promotion_combo_reward",
     schema: "platinum_buymed_vn",
-    assertions: {
-        uniqueKey: 'mg_id'
-    },
-    bigquery: {
-        partitionBy: "created_date"
-    },
-    tags: ["custom_2h_past5","marketplace_prd_promotion"]
+    tags: ["marketplace_prd_promotion"]
 }
 
 SELECT
- *,
- date(created_time) as created_date
+ * ,
+ CASE 
+    WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
+    ELSE "2099-01-01"
+  END AS created_date
 FROM lakehouse-prod-394907.silver_buymed_vn.marketplace_prd_promotion_combo_reward o 
   
   QUALIFY ROW_NUMBER() OVER (_window) = 1

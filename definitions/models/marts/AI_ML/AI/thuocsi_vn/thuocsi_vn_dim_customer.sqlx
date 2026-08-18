@@ -9,12 +9,13 @@ WITH
     cte AS (
         SELECT
             a.customer_id
+            , TIMESTAMP(a.user_created_at) AS user_created_at
             , a.user_activated_at
             , a.user_last_login
             , a.customer_name
             , a.customer_status
             , a.business_scope AS business_type
-            , b.customer_tag_priority
+            -- , b.customer_tag_priority
             -- , customer_tag_sub_group AS customer_tag_sub_priority
             , customer_level
             , a.address AS customer_address
@@ -27,24 +28,25 @@ WITH
             , DATE(a.last_purchase) AS last_order_date
             , c.urban_rural
         FROM ${ref('gold_buymed_vn2', 'dim_customer')} AS a
-            LEFT JOIN gold_buymed_vn2.dim_customer_tag_priority AS b USING(customer_id)
+            -- LEFT JOIN gold_buymed_vn2.dim_customer_tag_priority AS b USING(customer_id)
             LEFT JOIN ${ref("gold_buymed_vn2", "dim_geo_location")} AS c ON a.location_code = c.location_code
         UNION ALL
         SELECT
-            1000000 + beneficiary_id
+            SAFE_CAST(CONCAT("9999", receiver_id) AS INT64)
+            , created_time + INTERVAL 7 HOUR
             , NULL
             , NULL
             , name
             , status
             , "HOSPITAL"
-            , "3. TENDER"
+            -- , "3. TENDER"
             -- , "TENDER"
             , "TENDER"
             , address
-            , ""
-            , ""
-            , ""
-            , ""
+            , c.ward_name AS customer_ward_name
+            , c.district_name AS customer_district_name
+            , c.province_name AS customer_province_name
+            , c.region_name AS customer_region_name
             , ""
             , t.first_purchase
             , t.last_purchase
@@ -52,15 +54,19 @@ WITH
                 WHEN REGEXP_CONTAINS(LOWER(address), 'thành phố|tp')  THEN "Urban"
                 ELSE "Rural"
             END 
-        FROM platinum_buymed_vn.tender_prd_core_tender_beneficiaries
+        FROM platinum_buymed_vn.tender_prd_core_tender_beneficiaries AS a
         LEFT JOIN (
                 SELECT
                     receiver_id
+                    , MAX(province_code) AS province_code
+                    , MAX(district_code) AS district_code
+                    , MAX(ward_code) AS ward_code
                     , DATE(MIN(created_time)) AS first_purchase
                     , DATE(MAX(created_time)) AS last_purchase
                 FROM platinum_buymed_vn.tender_prd_core_tender_orders
                 GROUP BY 1
         ) AS t ON beneficiary_id = receiver_id
+        LEFT JOIN ${ref("gold_buymed_vn2", "dim_geo_location")} AS c ON COALESCE(t.ward_code, t.district_code, t.province_code) = c.location_code
     )
 
 SELECT

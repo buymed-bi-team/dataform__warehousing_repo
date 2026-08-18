@@ -1,0 +1,12 @@
+config {
+    type: "table",
+    description: 
+        `
+        PIC: nguyen.tran; 
+        Type: Table; 
+        `,
+    tags: ["0h30"]
+}
+
+SELECT *
+FROM  ${source.external}.import_target_sales

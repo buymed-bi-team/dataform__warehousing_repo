@@ -1,0 +1,74 @@
+config {
+    type: "table",
+    description: `report to BI
+                  PIC: ha.lekim; 
+                  model_type: Table`,
+    tags:  ["gold_custom_20m"],
+    columns: {
+    }
+    
+    ,bigquery: {
+        partitionBy: "date"
+    }
+}
+
+WITH 
+sale_table as (
+  SELECT 
+    completed_date, 
+    sum(gmv) gmv,
+    sum(cogs_circa) cogs,
+    sum(deal) deal,
+    SUM(voucher_circa) voucher,
+    sum(voucher_gift_circa) voucher_gift
+  FROM ${ref("gold_buymed_vn2", "circa_fact_net_margin")}
+  WHERE client_id = 1
+  group by all
+)
+, 
+return_table as (
+  SELECT 
+    completed_return_date, 
+    sum(return_amount) return_amount,
+    sum(cogs_circa_return) cogs_circa_return,
+    sum(voucher_gift_circa_return) voucher_gift_circa_return,
+  FROM ${ref("gold_buymed_vn2", "circa_fact_net_margin")}
+  WHERE client_id = 1
+  group by all
+)
+, rebate_table as (
+  SELECT 
+    a.stock_date,
+    sum(case when fulfillment_method = 'SO_THUOCSI' THEN received_quantity*unit_price*0.03 else 0 end) AS rebate,
+  FROM ${ref("gold_buymed_vn2" , "fact_fin_circa_purchase_order")}  a
+  left join  ${ref("gold_buymed_vn2" , "fact_fin_circa_purchase_order_item")} b on a.po_id = b.po_id
+  left JOIN  ${ref("gold_buymed_vn2" , "circa_pos_profile")} c on a.pos_id = c.id 
+  WHERE 1=1
+    and a.client_id =1
+    and c.code not in ('POS0010', 'POS0004', 'POS0084', 'POS0074', 'POS0024', 'POS0030','POS0076', 'POS0028', 'POS0025')
+  group by all
+)
+, final as (select s.completed_date as date,
+coalesce(gmv,0) gmv, 
+coalesce(cogs,0) as cogs_before_return,
+coalesce(cogs,0)  - coalesce(cogs_circa_return,0) as cogs,
+coalesce(deal) deal,
+coalesce(voucher) voucher,
+coalesce(re.rebate) rebate,
+coalesce(return_amount) return_amount,
+coalesce(gmv,0) - coalesce(deal,0) - coalesce(voucher,0) - coalesce(return_amount,0) as net_revenue, 
+coalesce(voucher_gift,0) - coalesce(voucher_gift_circa_return,0) as voucher_gift
+from sale_table s
+left join return_table r
+on s.completed_date = r.completed_return_date
+left join rebate_table re 
+on s.completed_date = re.stock_date
+)
+
+select *,
+gmv - cogs_before_return as profit,
+net_revenue - cogs + rebate as gross_profit,
+safe_divide(net_revenue - cogs + rebate, net_revenue) gross_margin,
+net_revenue - cogs + rebate - voucher_gift as net_profit,
+safe_divide(net_revenue - cogs + rebate - voucher_gift, net_revenue) as net_margin
+from final

@@ -1,0 +1,62 @@
+config {
+    type: "table",
+    description: `PIC: huyen.ngo; model_type: Table ;schedule: At minute 10 every 1 hour. circa_fact_flash_sales `,
+    tags: ['circa_online'],
+    name: "circa_fact_flash_sales"
+} 
+
+
+WITH product AS (
+SELECT DATE(date) as date
+      , JSON_VALUE(slot, '$.label') AS label
+      , CAST(JSON_VALUE(slot, '$.start_hour') AS INT64) AS start_hour
+      , CAST(JSON_VALUE(slot, '$.end_hour') AS INT64) AS end_hour
+      , CAST(JSON_VALUE(product_id) AS INT64) AS product_id
+FROM `platinum_buymed_vn.circa_online_prd_product_flash_sales`,
+UNNEST(JSON_QUERY_ARRAY(slots)) AS slot, 
+UNNEST(JSON_QUERY_ARRAY(slot,'$.product_ids')) AS product_id
+-- WHERE date = '2026-07-31'
+), product_view AS (
+      SELECT DISTINCT mg_id
+                     , product_id
+                     , DATETIME_ADD(created_time, INTERVAL 7 HOUR) AS event_time
+                     , DATE(DATETIME_ADD(created_time, INTERVAL 7 HOUR)) AS created_date
+      FROM `platinum_buymed_vn.circa_online_prd_consumer_tracking_events`
+      WHERE event_type = 'product_view'
+       AND product_id IS NOT NULL 
+       AND product_id IN (SELECT DISTINCT product_id FROM product)
+), add_to_cart AS (
+      SELECT DISTINCT mg_id
+                     , product_id
+                     , DATETIME_ADD(created_time, INTERVAL 7 HOUR) AS event_time
+                     , DATE(DATETIME_ADD(created_time, INTERVAL 7 HOUR)) AS created_date
+      FROM `platinum_buymed_vn.circa_online_prd_consumer_tracking_events`
+      WHERE event_type = 'add_to_cart'
+       AND product_id IS NOT NULL 
+       AND product_id IN (SELECT DISTINCT product_id FROM product)
+),  purchase AS (
+      SELECT DISTINCT order_code
+                     , product_id
+                     , created_time AS event_time
+                     , created_date 
+      FROM `gold_buymed_vn2.circa_online_order_item`
+      WHERE  product_id IN (SELECT DISTINCT product_id FROM product)
+)
+SELECT a.* , COUNT(b.mg_id) AS product_view , COUNT(b.mg_id) AS cnt_add_to_cart,  COUNT(DISTINCT d.order_code) AS purchase FROM product a 
+LEFT JOIN product_view b ON a.date = b.created_date 
+                        AND a.product_id = b.product_id 
+                        AND EXTRACT(HOUR FROM b.event_time) >= a.start_hour
+                        AND EXTRACT(HOUR FROM b.event_time) < a.end_hour
+LEFT JOIN add_to_cart c ON a.date =c.created_date 
+                        AND a.product_id = c.product_id 
+                        AND EXTRACT(HOUR FROM c.event_time) >= a.start_hour
+                        AND EXTRACT(HOUR FROM c.event_time) < a.end_hour
+LEFT JOIN purchase d ON a.date =d.created_date 
+                        AND a.product_id = d.product_id 
+                        -- AND EXTRACT(HOUR FROM d.event_time) >= a.start_hour
+                        -- AND EXTRACT(HOUR FROM d.event_time) < a.end_hour
+LEFT JOIN (SELECT DISTINCT product_id, product_name FROM gold_buymed_vn2.cos_dim_product WHERE client_id = 1) p ON a.product_id = p.product_id
+WHERE a.product_id IS NOT NULL
+          
+GROUP BY ALL 
+ORDER BY cnt_add_to_cart DESC

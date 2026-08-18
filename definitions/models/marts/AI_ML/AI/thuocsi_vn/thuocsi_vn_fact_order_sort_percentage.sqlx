@@ -1,7 +1,7 @@
 config {
     type: 'view',
     schema: "buymed_innovation",
-    description: `All orders item in the Vietnam marketplace (including tender orders).`,
+    description: `Sort Percentage, First Reserving in the Vietnam marketplace (including tender orders).`,
     tags: ['AI_THUOCSI_VN']
 }
 

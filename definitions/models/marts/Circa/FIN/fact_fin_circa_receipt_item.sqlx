@@ -1,0 +1,54 @@
+config {
+    type: "table",
+    description: `PIC: Ha.Lekim
+    `,
+    bigquery: {
+        partitionBy: "created_date"
+    },
+   tags: ["custom_1h_past10"]
+}
+with raw_data as (
+SELECT
+  p.pos_id,
+  p.client_id,
+  DATETIME_ADD(a.completed_at, INTERVAL 7 HOUR) AS completed_at,
+  DATE(DATETIME(a.completed_at, 'Asia/Ho_Chi_Minh')) completed_date,
+  DATE(DATETIME(a.created_at, 'Asia/Ho_Chi_Minh')) created_date,
+  a.status,
+  a.code receipt_code,
+  a.purchase_order_id AS po_id,
+  b.product_id,
+  b.unit,
+  c.lot_id,
+  poi.location_type,
+  poi.location_detail_id,
+  pru.convert_rate,
+  base_quantity_distribution * c.received_quantity received_quantity,
+  base_quantity_distribution * c.received_quantity * pru.convert_rate  base_quantity,
+  poi.base_quantity as base_qty_allocation,
+  poi.cost_price_include_tax,
+  poi.cost_price_without_tax,
+  poi.fulfillment_method
+FROM
+  buymed_circa_v2.order_goods_receipt a
+LEFT JOIN buymed_circa_v2.order_purchase_order p on a.purchase_order_id = p.id
+LEFT JOIN
+  buymed_circa_v2.order_goods_receipt_item b
+ON a.id = b.goods_receipt_id
+LEFT JOIN
+  buymed_circa_v2.order_goods_receipt_detail c
+ON b.id = c.goods_receipt_item_id
+LEFT JOIN ${ref("fact_fin_circa_inventory_allocation")} poi
+    ON c.id = poi.item_ref_id
+LEFT JOIN  `buymed_circa_v2.product_retail_unit` pru
+ON b.unit_id = pru.id
+WHERE
+  1=1
+)
+select * except (received_quantity, base_quantity, base_qty_allocation),
+sum(received_quantity) received_quantity,
+sum(base_quantity) base_quantity,
+sum(base_qty_allocation) base_qty_allocation
+from raw_data 
+group by all
+

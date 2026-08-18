@@ -1,0 +1,45 @@
+config {
+    type: "table",
+    description: `PIC: Ha.Lekim`,
+    tags: ["custom_1h_past10"]
+}
+with clean_data as (
+    SELECT
+      date(datetime_add(r.updated_at, INTERVAL 7 hour)) updated_date,
+      date(datetime_add(r.created_at, INTERVAL 7 hour)) created_date,
+      ri.updated_at,
+      r.pos_id,
+      r.status,
+      r.code,
+      r.reason,
+      case when ri.is_increase is true then 'Increase'
+      when ri.is_increase is false then 'Decrease' end as type,
+      case when ri.is_increase is true then (1)
+      when ri.is_increase is false then (-1)
+      end as type_rate,
+      ri.product_id,
+      ri.lot_id,
+      ri.unit_id,
+      ru.unit,
+      ild.doc_code,
+      safe_divide(ia.base_quantity, sum(ia.base_quantity) over (partition by ri.id)) * ri.quantity_change as quantity,
+      safe_divide(ia.base_quantity, sum(ia.base_quantity) over (partition by ri.id)) * ri.base_quantity_change as base_quantity,
+      ild.cost_price_include_tax,
+      ild.cost_price_without_tax,
+    FROM lakehouse-prod-394907.buymed_circa_v2.inventory_change_quantity r
+    LEFT JOIN lakehouse-prod-394907.buymed_circa_v2.inventory_change_quantity_item ri
+      ON r.id = ri.change_quantity_id
+    LEFT JOIN buymed_circa_v2.inventory_allocation ia
+    on ri.id = ia.item_ref_id
+    left join buymed_circa_v2.inventory_location_detail ild
+    on ia.location_detail_id = ild.id
+    left join buymed_circa_v2.product_retail_unit ru
+    on ri.unit_id = ru.id
+    where 1=1 
+    and ri.quantity_change is not null
+ )
+ select * except (quantity, base_quantity),
+ sum(quantity*type_rate) as quantity,
+ sum(base_quantity*type_rate) as base_quantity
+ from clean_data 
+ group by all

@@ -41,6 +41,8 @@ WHERE  a.cutoff_date_index >= '2025-12-30'
       , '2026-03-31'
       , '2026-04-30'
       , '2026-05-31'
+      , '2026-06-30'
+      , '2026-07-31'
       , DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
   )
 GROUP BY ALL

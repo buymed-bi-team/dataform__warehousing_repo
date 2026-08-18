@@ -18,14 +18,15 @@ SELECT p.* except(thuocsi_id)
      ELSE thuocsi_id END AS thuocsi_id
      ,s.* EXCEPT (status)
      ,CASE WHEN p.code = 'POS0010' THEN 'Active'
+           WHEN p.code = 'POS0024' THEN 'Active'
            ELSE s.status
       END AS actual_status
 FROM ${source.circa_os}.entity_pos_profile p 
 LEFT JOIN (SELECT * FROM ${source.external}.circa_store_status 
            --WHERE store_format LIKE '%Circa%'
           ) s ON p.code = s.pos_code
-WHERE type IN ('CIRCA', 'FS')
-  AND code NOT IN ('POS0006','POS0024','POS0030','POS0001','POS0047','POS0020','POS0020')
+WHERE type IN ('CIRCA', 'FS','OTHER')
+  AND code NOT IN ('POS0006','POS0030','POS0001','POS0047','POS0020','POS0020')
   --AND s.pos_code IS NULL
 )
 

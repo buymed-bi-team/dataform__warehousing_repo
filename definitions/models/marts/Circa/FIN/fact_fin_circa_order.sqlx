@@ -1,0 +1,106 @@
+config {
+    type: "table",
+    description: `PIC: Ha.Lekim`,
+    bigquery: {
+        partitionBy: "created_date"
+    },
+    tags: ["gold_custom_20m"]
+}
+
+SELECT 
+    o.code AS order_code,
+    o.id AS order_id,
+    reference_order_in_platform AS ref_order_in_platform,
+    o.type,
+    o.pos_id,
+    o.client_id,
+    o.status,
+    o.channel,
+    if(client_id = 1 and affiliate_tag =  'AFFILIATE_FS', 'OFFLINE', o.type) as new_type,
+    case 
+        when o.channel = 'O2O' THEN oo.created_at 
+        when DATE(o.created_at + INTERVAL 7 hour) = '0001-01-01' then DATETIME_ADD(o.completed_at, INTERVAL 7 hour) 
+        else DATETIME_ADD(o.created_at, INTERVAL 7 hour) 
+        END  AS created_at,
+    DATE(o.updated_at + INTERVAL 7 hour) AS updated_date,
+    case 
+        when o.channel = 'O2O' then oo.created_date
+        when DATE(o.created_at + INTERVAL 7 hour) = '0001-01-01' then DATE(o.completed_at + INTERVAL 7 hour) 
+        else DATE(o.created_at + INTERVAL 7 hour) 
+        end AS created_date,
+    DATE(coalesce(o.completed_at, o.updated_at) + INTERVAL 7 hour) AS completed_date,
+    coalesce(o.completed_at, o.updated_at) + INTERVAL 7 hour AS completed_at,
+    o.delivery_type,
+    COALESCE(oo.payment_method, 
+        o.payment_method) payment_method,
+    o.note,
+    coalesce(concat('0', right(oo.customer_phone, 9)), 
+        if(e.phone_number LIKE '%000000000%', o.code, concat('0', right(e.phone_number, 9))), 
+        o.code) as customer_id,
+    v.voucher_code,
+    coalesce(concat('0', right(oo.customer_phone, 9)), 
+        concat('0', right(e.phone_number, 9))) as phone_number,
+    coalesce(oo.customer_name,
+        e.name) as customer_name,
+    ee.email as employee_email,
+    ee.name as employee_name,
+    case 
+        when os.rating is not null then 1 
+        else 0 
+        end as is_have_survey,
+    case 
+        when oo.payment_method = "BUSINESS_WALLET" then oo.total_price  - COALESCE(oo.secondary_pay_amount,0) 
+        else 0 
+        end as business_amount,
+    case 
+        when oo.payment_method = "BUSINESS_WALLET" then COALESCE(oo.final_secondary_cod, oo.secondary_pay_amount,0) 
+        else total_amount 
+        end as total_amount,
+    medicine_cutting_fee total_medicine_cutting_fee,
+    o.discount_amount AS total_order_discount_amount,
+    total_item_amount AS total_item_amount,
+    loyalty_discount_amount AS total_loyalty_discount_amount,
+    o.external_discount_amount,
+    JSON_VALUE(o.external_discount_meta,'$.code') as external_discount_code,
+    JSON_VALUE(o.external_discount_meta,'$.method') as external_discount_method,
+    loyalty_point_rewarded AS total_loyalty_point_rewarded,
+    loyalty_point_usage AS total_loyalty_point_usage,
+    case 
+        when o.channel = 'O2O' then oo.delivery_method_fee 
+        else delivery_amount 
+        end AS delivery_fee,
+    oo.delivery_tracking_number,
+    oo.original_delivery_fee,
+    oo.secondary_pay_method,
+    oo.secondary_pay_amount,
+    oo.deliver_method,
+    oo.delivery_carrier_code,
+    oo.delivery_carrier,
+    coalesce(oo.affiliate_tag, 'NON AFFILIATE') AS affiliate_tag,
+    oo.province_name,
+    oo.district_name,
+    oo.ward_name
+FROM ${source.circa_os}.order_order o
+LEFT JOIN ${source.circa_os}.entity_customer e
+on o.entity_id = e.id
+LEFT JOIN (select distinct id, email, name  from ${source.circa_os}.entity_entity) ee
+on o.updated_by = ee.id
+LEFT JOIN (
+  SELECT
+    order_code,
+    STRING_AGG(voucher_code,",") AS voucher_code,
+    SUM(discount_amount) AS discount_amount
+  FROM
+    ${source.circa_os}.order_order_voucher
+  WHERE
+    is_valid = TRUE
+    AND discount_amount >0
+GROUP BY ALL) v
+ON o.code = v.order_code
+left join ${ref("fact_fin_circa_order_online")} oo
+on o.reference_order_in_platform = oo.order_code
+LEFT JOIN ${source.circa_os}.order_order_survey os
+  ON o.id = os.order_id
+WHERE 1 = 1
+  AND o.type IN ('ONLINE', 'OFFLINE')
+  AND o.status not in ('CANCELED','PENDING')

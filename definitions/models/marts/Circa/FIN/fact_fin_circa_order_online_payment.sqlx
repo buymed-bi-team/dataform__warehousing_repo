@@ -1,0 +1,28 @@
+config {
+    type: "table",
+    description: `PIC: Ha.Lekim`,
+    bigquery: {
+        partitionBy: "created_date"
+    },
+   tags: ["custom_1h_past10"]
+}
+
+SELECT
+  payment_id,
+  type,
+  transaction_code,
+  status,
+  payment_code,
+  payment_method,
+  amount,
+  partner_name,
+  company_code,
+  SPLIT(JSON_EXTRACT_SCALAR(object_type_codes, '$[0]'),":")[1] AS order_code,
+  DATE(DATETIME_ADD(paid_time, INTERVAL 7 HOUR)) AS paid_date,
+  DATE(DATETIME_ADD(created_time, INTERVAL 7 HOUR)) AS created_date,
+FROM
+  ${source.platinum_restricted}.platform_billing_prd_payment_payment
+WHERE
+  partner_type = "CIRCA_CUSTOMER"
+  AND JSON_EXTRACT_SCALAR(extra_props,"$.reason_code") = "O2O_ORDER_PAYMENT"
+  AND status NOT IN ('DRAFT')

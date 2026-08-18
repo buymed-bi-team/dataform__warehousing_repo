@@ -1,0 +1,29 @@
+config {
+    type: "table",
+    description: `PIC: Ha.Lekim`,
+    bigquery: {
+        partitionBy: "created_date"
+    },
+    tags: ["custom_1h_past10"]
+}
+
+SELECT
+  pr.code,
+  pr.id,
+  DATE(pr.created_at + INTERVAL 7 HOUR) AS created_date,
+  DATE(pr.payment_at + INTERVAL 7 HOUR) AS payment_date,
+  DATE(pr.completed_at + INTERVAL 7 HOUR) AS completed_at,
+  pr.pos_id,
+  pr.pos_code,
+  pr.type,
+  pr.status,
+  pr.source_type,
+  pr.recon_payment_method,
+  pr.document_code,
+  pr.document_type,
+  pr.thuocsi_payment_code,
+  pr.total_amount
+  -- select *
+FROM ${source.circa_os}.order_payment_request pr
+WHERE 1=1
+  AND DATE(pr.created_at + INTERVAL 7 HOUR) IS NOT NULL

@@ -81,7 +81,6 @@ LEFT JOIN ${source.ref}.circa_pos_profile AS p ON c.pos_id = p.id AND c.client_i
 LEFT JOIN ${source.circa_os}.product_retail_unit AS rt ON a.unit = rt.unit
                                                       AND a.product_id = rt.product_id
                                                       AND c.client_id = rt.client_id
-WHERE c.status <> 'CANCELED'
-  AND eo.name NOT LIKE '%TEST%'
+WHERE  eo.name NOT LIKE '%TEST%'
   AND p.id IS NOT NULL
 GROUP BY ALL

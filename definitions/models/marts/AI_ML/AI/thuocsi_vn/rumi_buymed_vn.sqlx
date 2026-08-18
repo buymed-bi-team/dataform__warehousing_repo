@@ -58,10 +58,20 @@ AS (SELECT * FROM  ${ref("buymed_innovation", "thuocsi_vn_fact_user_event")});
 CREATE OR REPLACE VIEW `rumi_buymed_vn.thuocsi_vn_fact_seller_target`
 AS (SELECT * FROM  ${ref("buymed_innovation", "thuocsi_vn_fact_seller_target")});
 
+-- fact_sales_checkin
+
+CREATE OR REPLACE VIEW `rumi_buymed_vn.thuocsi_vn_fact_sales_checkin`
+AS (SELECT * FROM  ${ref("buymed_innovation", "thuocsi_vn_fact_sales_checkin")});
+
 -- dim_customer
 
 CREATE OR REPLACE VIEW `rumi_buymed_vn.thuocsi_vn_dim_customer`
 AS (SELECT * FROM  ${ref("buymed_innovation", "thuocsi_vn_dim_customer")});
+
+-- dim_customer_tag_priority
+
+CREATE OR REPLACE VIEW `rumi_buymed_vn.thuocsi_vn_dim_customer_tag_priority`
+AS (SELECT * FROM  ${ref("buymed_innovation", "thuocsi_vn_dim_customer_tag_priority")});
 
 -- dim_customer_business_scope
 

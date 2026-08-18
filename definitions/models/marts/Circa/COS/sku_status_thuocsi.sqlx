@@ -29,7 +29,7 @@ sku_aggregated AS (
                         ELSE 5
                      END
         ) AS row_num
-    FROM ${source.ref}.adhoc_pm_master_sku a
+    FROM ${source.ref}.dim_sku_sales_region_current a
     INNER JOIN base_data b ON a.product_id = b.product_id
     WHERE a.sku_system_status <> 'GIFT'
     --AND a.fc_code = 'BD'

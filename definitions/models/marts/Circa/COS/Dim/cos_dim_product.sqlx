@@ -6,6 +6,8 @@ config {
     columns: {/*
 */
         
+    }   ,bigquery: {
+        partitionBy: "DATE(created_at)"
     }
 }
 
@@ -21,7 +23,7 @@ WITH map_product AS (
 ),
 
 t AS (
-  SELECT DISTINCT product_id, category_name
+  SELECT DISTINCT product_id, category_name, category_code
   FROM gold_buymed_vn2.dim_product_category
   WHERE level = 1
 ),
@@ -76,6 +78,7 @@ base AS (
           ,tp.registration_number
           ,tp.product_category_code
           ,tp.product_category
+          ,t.category_code
           ,t.category_name AS cat2
           ,e.efficacy_name AS cat3
           ,tp.retail_category_name as cat4
@@ -136,6 +139,7 @@ base AS (
 ,ingregients AS (
     SELECT DISTINCT product_id
           ,ingredient_name
+          ,description
           ,volume
           ,usage
        --   ,client_id
@@ -298,6 +302,10 @@ SELECT DISTINCT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transform
       ,tag_names
       ,sell_area AS sell_area_online
       ,client.name AS client_name
+      ,daily_limit_quantity
+      ,daily_limit_unit
+      ,order_limit_quantity
+      ,order_limit_unit
 FROM cte_product pd
 LEFT JOIN ${source.platinum}.circa_online_prd_product_product AS op ON pd.product_id = op.product_id
 LEFT JOIN inventory i ON pd.product_id = i.product_id AND pd.client_id = i.client_id
@@ -309,7 +317,7 @@ LEFT JOIN sub_cat ON pd.product_id = sub_cat.product_id
 LEFT JOIN brand_type_add ba ON pd.product_id = ba.product_id
 LEFT JOIN popular_product pop ON pd.product_id = pop.product_id
 LEFT JOIN combo_on_kit kit ON kit.product_id = pd.product_id AND kit.client_id = pd.client_id
-LEFT JOIN ${source.ref}.dim_product_online po ON po.product_id = pd.product_id 
+LEFT JOIN (SELECT * FROM ${source.ref}.dim_product_online QUALIFY ROW_NUMBER() OVER (PARTITION BY product_id ORDER BY created_date DESC) = 1) po ON po.product_id = pd.product_id 
 LEFT JOIN ${source.ref}.cos_product_essential e ON pd.product_id = e.product_id --AND pd.client_id = e.client_id
 LEFT JOIN ${source.ref}.cos_product_trendy tr ON pd.product_id = tr.product_id-- AND pd.client_id = tr.client_id
 LEFT JOIN posm ON pd.product_id = posm.product_id

@@ -212,6 +212,22 @@ WITH
                 null
             ) as campaign_price,
 
+            if (
+                b.campaign_code is not null,
+                case
+                    WHEN  upper(b.campaign_type) = "PERCENTAGE"
+                        then  a.retail_price_value * ( 1 - b.campaign_value / 100)
+                    WHEN  upper(b.campaign_type) = "ABSOLUTE" then
+                        if(
+                            b.campaign_value > b.retail_price_value / 2,
+                            b.campaign_value,
+                            a.retail_price_value - b.campaign_value
+                        )
+                    WHEN  upper(b.campaign_type) = "PRICE" then b.campaign_value  -- external and internal are same formula
+                end ,
+                null
+            ) as campaign_setting_price,
+
         -- calculate deal_price
             if (
                 b.deal_code is not null,
@@ -249,6 +265,28 @@ WITH
                 end ,
                 null
             ) as deal_price,
+
+            if (
+                b.deal_code is not null,
+                case
+                    WHEN  upper(b.deal_type) = "PERCENTAGE" then
+                        case
+                            when a.seller_class = "EXTERNAL"
+                                and a.retail_price_value * (b.deal_value / 100) > max_discount_value
+                                and max_discount_value > 0
+                            then a.retail_price_value - max_discount_value
+
+                            when a.seller_class = "INTERNAL"
+                                and a.display_price * (b.deal_value / 100) > max_discount_value
+                                and max_discount_value > 0
+                            then a.retail_price_value - max_discount_value
+
+                            else a.retail_price_value * ( 1 - b.deal_value / 100)
+                        end
+                    WHEN  upper(b.deal_type) = "ABSOLUTE" then b.deal_value
+                end ,
+                null
+            ) as deal_setting_price,
 
         from dedup_promotion b
             -- we need some field in display_price to calculate promtion price for external seller

@@ -1,8 +1,8 @@
 config {
-    type: "table",
+    type: "view",
     name: "core_prd_master_data_bank",
     schema: "platinum_buymed_vn",
-    tags:["platinum_custom_2h_past7"]
+    tags:["core_prd_master_data"]
 }
 SELECT
  * ,

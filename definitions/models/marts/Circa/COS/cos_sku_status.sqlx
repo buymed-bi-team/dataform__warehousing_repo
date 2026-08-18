@@ -57,7 +57,7 @@ WITH base_data AS (
       AND o.client_id = 1
       AND o.status IN ('COMPLETED', 'COMPLETED_SHIPPING')
       AND owner_name NOT IN ('CIRCA MARKETING')
-      AND o.completed_date >= CURRENT_DATE() - INTERVAL 1 MONTH
+      AND o.created_date >= CURRENT_DATE() - INTERVAL 1 MONTH
     GROUP BY ALL
 )
 
@@ -83,5 +83,6 @@ WITH base_data AS (
 SELECT
       p.*
     , ts.sku_system_status AS thuocsi_status
+    , TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transform_at
 FROM by_product p
 LEFT JOIN ${source.ref}.sku_status_thuocsi ts ON p.product_id = ts.product_id

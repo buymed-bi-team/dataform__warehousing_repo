@@ -1,0 +1,12 @@
+config {
+    type: "view",
+    tags: ["IQVIA_DATA_SHARING"],
+}
+
+SELECT
+    oi.*
+FROM ${ref("iqvia_thuocsi")} AS oi
+    LEFT JOIN ${ref("dim_customer")} AS c ON c.customer_id = oi.customer_id
+WHERE 1=1
+    AND REGEXP_CONTAINS(c.tags, r'\"CIRCA\"|\"CIRCACOS\"|\"CIRCAFOCO\"|\"CIRCAFOFO\"|\"CIRCA_FS\"')
+

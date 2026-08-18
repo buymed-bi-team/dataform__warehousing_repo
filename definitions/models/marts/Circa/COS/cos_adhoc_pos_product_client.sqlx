@@ -6,11 +6,10 @@ config {
     name: "cos_adhoc_pos_product_client",
 }
 
-
 WITH thuosi_unit AS (
     SELECT DISTINCT product_id
                    ,unit
-    FROM ${source.ref}.dim_product
+    FROM ${ref('dim_product')}
 )
 ,product_base_unit AS (
     SELECT DISTINCT product_id
@@ -25,12 +24,27 @@ WITH thuosi_unit AS (
 )
 ,count_ord AS (
     SELECT DISTINCT oi.product_id
+                   , oi.seller_code
                    ,MAX(o.created_date) AS latest_ord
                    ,COUNT(DISTINCT o.order_id) AS no_ord
-                   ,SUM(unit_price * quantity) AS GMV
-    FROM ${source.ref}.cos_fact_order o
-    LEFT JOIN ${source.ref}.cos_fact_order_item oi ON o.order_id = oi.order_id
+                   ,SUM(quantity * unit_price_before_discount) AS GMV
+    FROM ${ref('cos_fact_order')} o
+    LEFT JOIN ${ref('cos_fact_order_item')} oi ON o.order_id = oi.order_id
     WHERE status LIKE "%COMPLETE%"
+         AND o.client_id =1 
+    GROUP BY ALL
+),L1M AS (
+    SELECT DISTINCT oi.product_id
+                   , oi.unit
+                   , oi.seller_code
+                   ,MAX(o.created_date) AS latest_ord_L1M
+                   ,COUNT(DISTINCT o.order_id) AS no_ord_L1M
+                   ,SUM(quantity * unit_price_before_discount) AS GMV_L1M
+    FROM ${ref('cos_fact_order')} o
+    LEFT JOIN ${ref('cos_fact_order_item')} oi ON o.order_id = oi.order_id
+    WHERE status LIKE "%COMPLETE%"
+          AND o.created_date >= CURRENT_DATE() - INTERVAL 1 MONTH
+          AND o.client_id =1 
     GROUP BY ALL
 )
 ,inventory AS (
@@ -38,11 +52,37 @@ WITH thuosi_unit AS (
                    ,SUM(a.on_hand_quantity) AS on_hand_quantity
                    ,seller_code
                    ,sku_code
-    FROM ${source.ref}.cos_fact_inventory a
-    LEFT JOIN ${source.ref}.circa_pos_profile p ON a.pos_id = p.id
+    FROM ${ref('cos_fact_inventory')} a
+    LEFT JOIN ${ref('circa_pos_profile')} p ON a.pos_id = p.id
     WHERE a.client_id = 1
           AND p.actual_status <> "Inactive"
     GROUP BY ALL
+), last_purchase AS (
+  SELECT DISTINCT
+     product_id
+    ,seller_code
+    ,unit_price
+    ,unit
+    ,created_at AS latest_order
+FROM (
+    SELECT
+         i.product_id
+        ,COALESCE(i.unit_price_af_discount, i.unit_price ) AS unit_price
+        ,unit
+        ,o.client_id
+        ,o.created_at
+        ,seller_code
+        ,ROW_NUMBER() OVER (
+             PARTITION BY i.product_id, seller_code
+             ORDER BY o.created_at DESC
+         ) AS rn
+    FROM lakehouse-prod-394907.gold_buymed_vn2.cos_purchase_order o
+    LEFT JOIN lakehouse-prod-394907.gold_buymed_vn2.cos_purchase_order_item i ON o.po_id = i.po_id
+    WHERE o.client_id = 1
+           AND i.received_quantity > 0 
+     
+)
+WHERE rn = 1
 )
 ,full_unit AS (
     SELECT DISTINCT ru.product_id
@@ -97,7 +137,7 @@ WITH thuosi_unit AS (
     LEFT JOIN product_base_unit AS bu ON s.product_id = bu.product_id AND pd.unit = bu.convert_unit
     LEFT JOIN thuosi_unit t ON s.product_id = t.product_id AND LOWER(pd.unit) = LOWER(t.unit)
     LEFT JOIN ${source.circa_os}.product_sku td ON td.product_id = s.product_id AND td.client_id = ps.client_id AND td.sku_code = s.sku_code
-    LEFT JOIN ${source.ref}.cos_dim_product pr ON pr.product_id = s.product_id AND pr.client_id = ps.client_id 
+    LEFT JOIN ${ref('cos_dim_product')} pr ON pr.product_id = s.product_id AND pr.client_id = ps.client_id 
     WHERE bu.convert_unit IS NOT NULL
       AND ps.client_id = 1
       AND ps.name = 'Bảng giá client 1'
@@ -105,7 +145,7 @@ WITH thuosi_unit AS (
       AND ps.channel = 'OFFLINE'
     GROUP BY ALL
 )
-,combine AS (
+,combine_unit AS (
     SELECT DISTINCT p.product_id
                    ,p.seller_code
                    ,p.sku_code
@@ -119,6 +159,7 @@ WITH thuosi_unit AS (
                    ,i.base_unit AS is_base_unit
                    ,p.last_updated_at
                    ,p.purchase_price
+                   ,po.unit_price AS last_price
                    ,p.cost_price
                    ,p.market_price
                    ,p.list_price
@@ -127,7 +168,6 @@ WITH thuosi_unit AS (
                    ,final_sale_price
                    ,price_type
                    ,gap_ts_market
-                   ,CASE WHEN on_hand_quantity > 0 THEN purchase_price ELSE cost_price END AS exp_cost_price
                    ,CASE WHEN i.on_hand_quantity > 0 THEN "Available" ELSE "Unavailable" END AS have_stock
                    ,CASE WHEN (p.sale_price IS NULL OR p.sale_price = 0) THEN "Price not set" ELSE "Price set" END AS price_set_check
                    ,CASE WHEN DATE_DIFF(CURRENT_DATE("Asia/Ho_Chi_Minh"),latest_ord,DAY) < 16 THEN "15D"
@@ -144,11 +184,41 @@ WITH thuosi_unit AS (
                    ,no_ord
                    ,GMV
                    ,latest_ord
+                   ,latest_ord_L1M
+                   ,no_ord_L1M
+                   ,GMV_L1M
                    ,on_hand_quantity
+                   ,SAFE_DIVIDE(po.unit_price, i.convert_rate) AS base_unit_price
     FROM has_price p
     LEFT JOIN inventory_full_unit i ON i.product_id = p.product_id AND i.unit = p.unit AND p.sku_code = i.sku_code
-    LEFT JOIN count_ord co ON i.product_id = co.product_id
+    LEFT JOIN count_ord co ON i.product_id = co.product_id AND i.seller_code = co.seller_code
+    LEFT JOIN L1M l ON p.product_id = l.product_id AND LOWER(p.unit) = LOWER(l.unit) AND i.seller_code = l.seller_code
+    LEFT JOIN last_purchase po ON i.product_id = po.product_id AND LOWER(i.unit) = LOWER(po.unit) AND i.seller_code = po.seller_code
     GROUP BY ALL
+),base_price AS (
+    SELECT
+        product_id,
+        seller_code,
+        MAX(base_unit_price) AS base_unit_price
+    FROM combine_unit
+    WHERE last_price IS NOT NULL
+    GROUP BY ALL
+), combine AS (
+
+SELECT  b.* EXCEPT(purchase_price)
+        , 
+   ROUND( COALESCE(
+        b.last_price,
+        bp.base_unit_price * b.convert_rate
+    )) AS purchase_price
+    ,CASE WHEN b.on_hand_quantity > 0 THEN  ROUND( COALESCE(
+        b.last_price,
+        bp.base_unit_price * b.convert_rate
+    )) ELSE cost_price END AS exp_cost_price
+FROM combine_unit b
+LEFT JOIN base_price bp
+    ON b.product_id = bp.product_id
+    AND b.seller_code = bp.seller_code
 )
 ,check_unit_pricing AS (
     SELECT DISTINCT product_id
@@ -181,7 +251,7 @@ FROM _all a
 LEFT JOIN ${source.circa_os}.inventory_cost_price p ON a.seller_code = p.seller_code 
                                                     AND a.product_id = p.product_id
                                                     AND a.sku_code = p.sku_code
-LEFT JOIN  ${source.ref}.product_price_online pro ON a.product_id = pro.product_id AND a.unit = pro.unit_name
+LEFT JOIN  ${source.ref}.dim_product_price_online pro ON a.product_id = pro.product_id AND a.unit = pro.unit_name
 GROUP BY ALL
 )
 , promo AS (
@@ -194,8 +264,8 @@ SELECT DISTINCT product_id
                 ,i.discount_value
                 ,i.specific_price
                 ,i.discount_type --FIXED_PRICE/SPECIFIC_PRICE/PERCENT
-FROM ${source.ref}.dim_promotion_event_circa o 
-LEFT JOIN ${source.ref}.dim_promotion_event_item_circa i ON o.id = i.promotion_event_id
+FROM ${ref('dim_promotion_event_circa')} o 
+LEFT JOIN ${ref('dim_promotion_event_item_circa')} i ON o.id = i.promotion_event_id
 WHERE is_expired = FALSE
      AND is_active = true
      AND o.client_id = 1
@@ -203,7 +273,6 @@ WHERE is_expired = FALSE
     -- AND  product_id = 8742 
 QUALIFY ROW_NUMBER() OVER (PARTITION BY product_id, sku_code ORDER BY created_at DESC) = 1
 ORDER BY o.created_at DESC
-
 )SELECT b.*
     , p.discount_type
     , p.percent
@@ -224,11 +293,9 @@ ORDER BY o.created_at DESC
                     / src.convert_rate
                     * b.convert_rate
                 , 0) END AS specific_price
-
     ,  CASE WHEN p.discount_type = 'PERCENT' AND p.unit = 'combo' THEN ROUND(b.final_sale_price * (1 - p.percent / 100), 0)
          WHEN p.discount_type = 'PERCENT'
             THEN ROUND(b.final_sale_price * (1 - p.percent / 100), 0)
-
         WHEN p.discount_type = 'FIXED_PRICE' AND p.unit = 'combo' THEN  ROUND( b.final_sale_price - p.discount_value)
         WHEN p.discount_type = 'FIXED_PRICE'
             THEN ROUND(
@@ -246,7 +313,6 @@ ORDER BY o.created_at DESC
                     / src.convert_rate
                     * b.convert_rate
                 , 0)
-
         ELSE b.final_sale_price
       END AS price_af_discount
       ,'COS' AS client_type
@@ -255,6 +321,3 @@ FROM base b
 LEFT JOIN promo p ON b.product_id = p.product_id AND b.sku_code = p.sku_code
 LEFT JOIN base src ON p.product_id = src.product_id AND p.unit = src.unit AND b.sku_code = p.sku_code AND b.seller_code = src.seller_code
 WHERE b.client_id = 1
-
-
-

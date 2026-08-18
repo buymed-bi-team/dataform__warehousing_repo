@@ -1,6 +1,6 @@
 config {
     type: "assertion",
-    tags: ["platinum_custom_2h_past5","seller_prd_promotion"],
+    //tags: ["platinum_custom_2h_past5","seller_prd_promotion"],
     dependencies: ["seller_prd_promotion_rebate_result_item"]
 }
 

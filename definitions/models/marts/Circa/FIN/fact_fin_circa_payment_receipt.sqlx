@@ -1,0 +1,19 @@
+config {
+    type: "table",
+    description: `PIC: Ha.Lekim`,
+  tags: ["custom_1h_past10"]
+}
+SELECT 
+code, amount, note, pos_id, subject, ref_type, 
+date(datetime_add(created_at, interval 7 hour)) created_date, 
+ref_number, 
+reason_type, 
+date(datetime_add(completed_at, interval 7 hour)) completed_date, 
+completed_by, 
+voucher_type, 
+payment_method, 
+payment_status,
+b.ref_order_in_platform
+FROM `buymed_circa_v2.order_payment_receipt_voucher` a
+left join (select order_code, ref_order_in_platform from  ${ref("fact_fin_circa_order")}) b
+on a.ref_number = b.order_code

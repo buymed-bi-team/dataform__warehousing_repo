@@ -4,13 +4,6 @@ config {
     type: "incremental",
     name: "seller_prd_mis_order_seller",
     schema: "platinum_buymed_vn",
-    assertions: {
-         // uniqueKey: 'mg_id',
-         // rowConditions: [
-         //    '(created_time is not null and last_updated_time is not null) or (created_time is null and last_updated_time is not null) or (created_time is not null and last_updated_time is null)',
-         //    'action != "d"'
-         // ]
-     },
     description:"internal: internal.thuocsi.vn/seller/orders/view",
     bigquery: {
         partitionBy: "created_date"
@@ -20,7 +13,7 @@ config {
 pre_operations {
   ${
     when(incremental(),
-        `
+      `
         # Incremental
         DECLARE has_new_data BOOLEAN;
         DECLARE has_delete_data BOOLEAN;
@@ -28,7 +21,8 @@ pre_operations {
         DECLARE checkpoint_date ARRAY<date>;
         
         SET Ingest_checkpoint = (
-            SELECT max(ingest_time)  - INTERVAL 1 HOUR  FROM ${self()}
+            SELECT max(ingest_time)  - INTERVAL 1 HOUR  
+            FROM ${self()}
             WHERE created_date >= CURRENT_DATE() - INTERVAL 1 MONTH
         );
         IF Ingest_checkpoint IS NULL THEN 
@@ -49,16 +43,14 @@ pre_operations {
                     DISTINCT IF(created_time is NULL, "2099-01-01" , DATE( DATETIME(created_time,'Asia/Ho_Chi_Minh') ) )
                 ) AS checkpoint_date,
                 COUNTIF( action = 'd' ) > 0 AS has_delete_data
-            FROM ${source.silver}.seller_prd_mis_order_seller s
+            FROM silver_buymed_vn.seller_prd_mis_order_seller
             WHERE ingest_time > Ingest_checkpoint
-                
         );
 
         CREATE TEMP TABLE new_records AS (
           SELECT DISTINCT mg_id
-          FROM ${source.silver}.seller_prd_mis_order_seller s
+          FROM silver_buymed_vn.seller_prd_mis_order_seller
           WHERE ingest_time > Ingest_checkpoint
-            
         );
 
         IF ( has_new_data = TRUE ) THEN
@@ -80,16 +72,12 @@ pre_operations {
             ;
         ELSE
             SET Ingest_checkpoint = TIMESTAMP("2099-01-01T00:00:00");
-        END IF;
-
-    
-      `,
-      ``
+        END IF ;
+      `      
     )
   }
 }
 
---
 WITH over_tbl AS (
     SELECT
         mg_id,
@@ -97,7 +85,6 @@ WITH over_tbl AS (
             key 
             ORDER BY
                 synced_at DESC,
-                IF (action='d',3, IF (action='u',2,1)) DESC,
                 last_updated_time DESC
             LIMIT 1
         )[0] key ,
@@ -105,33 +92,25 @@ WITH over_tbl AS (
             action 
             ORDER BY
                 synced_at DESC,
-                IF (action='d',3, IF (action='u',2,1)) DESC,
                 last_updated_time DESC
             LIMIT 1
         )[0] action
-    FROM ${source.silver}.seller_prd_mis_order_seller s 
-    ${when(incremental(), `WHERE ingest_time > Ingest_checkpoint - INTERVAL 2 HOUR
-        AND mg_id IN (SELECT n.mg_id FROM new_records n)`)}
+    FROM silver_buymed_vn.seller_prd_mis_order_seller
+    ${when(incremental(),  `
+    WHERE ingest_time > Ingest_checkpoint - INTERVAL 2 HOUR
+    AND mg_id IN (SELECT n.mg_id FROM new_records n)
+    ` )}
     GROUP BY mg_id HAVING action != "d"
 )
-
 SELECT
-  * ,
-  CASE
-      WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time, 'Asia/Ho_Chi_Minh'))
-      ELSE DATE( '2099-01-01' )
-  END AS created_date,
-  CURRENT_DATETIME() AS platinum_refresh
-FROM ${source.silver}.seller_prd_mis_order_seller s
+    *,
+    CASE
+        WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time, 'Asia/Ho_Chi_Minh'))
+        ELSE DATE( '2099-01-01' )
+    END AS created_date,
+    CURRENT_DATETIME() AS platinum_refresh
+FROM silver_buymed_vn.seller_prd_mis_order_seller
 WHERE key IN (SELECT o.key FROM over_tbl o)
-${ when(incremental(), 
-  `AND s.ingest_time > Ingest_checkpoint - INTERVAL 2 HOUR
-  `, 
-  )}  
-QUALIFY ROW_NUMBER() OVER(w) = 1
-  WINDOW w AS (
-      PARTITION BY mg_id
-      ORDER BY synced_at desc,
-      IF (action='d',3, IF (action='u',2,1)) DESC,
-      last_updated_time DESC
-  )
+${when(incremental(),  `
+    AND ingest_time > Ingest_checkpoint - INTERVAL 2 HOUR
+    ` )}

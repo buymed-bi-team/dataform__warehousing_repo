@@ -3,14 +3,49 @@ function generateCDCScript({
   tableName,
   dataset,
   rawTable,
-  medataTable = 'circa_v2_schema_metadata',
+  medataTable   = 'circa_v2_schema_metadata',
   targetDataset,
   targetTable,
-  primaryKey      = 'id',
-  createdTime     = 'created_at',
-  timezone        = 'Asia/Ho_Chi_Minh',
-  lookbackHours   = 2,
+  primaryKey    = 'id',        // string | string[] — hỗ trợ composite primary key (nhiều cột)
+  createdTime   = 'created_at',
+  timezone      = 'Asia/Ho_Chi_Minh',
+  lookbackHours = 2,
+  pkSeparator   = ':::',       // dùng để nối các phần tử của composite key thành 1 chuỗi định danh duy nhất
 }) {
+  // ── Chuẩn hoá primaryKey về dạng mảng để dùng chung logic cho 1 hay nhiều cột ──
+  const primaryKeys = Array.isArray(primaryKey) ? primaryKey : [primaryKey];
+
+  if (primaryKeys.length === 0) {
+    throw new Error('primaryKey phải có ít nhất 1 phần tử');
+  }
+  if (primaryKeys.some((k) => typeof k !== 'string' || !k.trim())) {
+    throw new Error('Mỗi phần tử của primaryKey phải là string khác rỗng');
+  }
+  if (pkSeparator.includes("'")) {
+    throw new Error("pkSeparator không được chứa dấu nháy đơn (')");
+  }
+
+
+  const pkJsonParts = primaryKeys.map(
+    (k) => `JSON_VALUE(data,\\'$.primary_key.${k}\\')`
+  );
+  const pkIdExpr = pkJsonParts.length === 1
+    ? pkJsonParts[0]
+    : `CONCAT(${pkJsonParts.join(`, \\'${pkSeparator}\\', `)})`;
+
+
+  const pkNotNullExpr = primaryKeys
+    .map((k) => `JSON_VALUE(data,\\'$.primary_key.${k}\\') IS NOT NULL`)
+    .join(' AND ');
+
+  const clusterByExpr = primaryKeys.join(', ');
+
+
+  const pkTargetParts = primaryKeys.map((k) => `CAST(T.${k} AS STRING)`);
+  const pkTargetExpr = pkTargetParts.length === 1
+    ? pkTargetParts[0]
+    : `CONCAT(${pkTargetParts.join(`, \\'${pkSeparator}\\', `)})`;
+
   const colExprCase = `
   CASE
     WHEN is_array = TRUE AND bq_type = 'JSON'
@@ -22,11 +57,19 @@ function generateCDCScript({
         '\`'
       )
 
+
     WHEN is_array = TRUE AND bq_type != 'JSON'
       THEN CONCAT(
-        'JSON_QUERY(JSON_QUERY(data,\\'$.after\\'), \\'$.', name, '\\') AS \`',
-        name,
-        '\`'
+        '(SELECT CASE',
+        '  WHEN v IS NULL THEN NULL',
+        '  WHEN v = \\'{}\\' THEN PARSE_JSON(\\'[]\\')',
+        '  WHEN NOT (STARTS_WITH(v, \\'{\\') AND ENDS_WITH(v, \\'}\\')) THEN PARSE_JSON(TO_JSON_STRING(v))',
+        '  ELSE PARSE_JSON(TO_JSON_STRING(ARRAY(',
+        '    SELECT CASE WHEN TRIM(elem) = \\'NULL\\' THEN CAST(NULL AS STRING) ELSE TRIM(TRIM(elem), \\'"\\') END',
+        '    FROM UNNEST(SPLIT(SUBSTR(v, 2, LENGTH(v) - 2), \\',\\')) AS elem',
+        '  ))) END',
+        ' FROM (SELECT JSON_VALUE(JSON_QUERY(data,\\'$.after\\'), \\'$.', name, '\\') AS v)',
+        ') AS \`', name, '\`'
       )
 
     WHEN bq_type IN ('INT64','INT32','FLOAT64','NUMERIC','BIGNUMERIC','BOOLEAN','DATE','DATETIME','TIMESTAMP','TIME','INTEGER','FLOAT')
@@ -133,11 +176,17 @@ function generateCDCScript({
     END IF;
 
     -- ── 4. Dựng source select + các mệnh đề cột (dùng chung MERGE & CTAS) ───
-    --   winners: gom theo primary_key, chọn bản mới nhất theo sync_at, tie-break
-    --   theo độ ưu tiên op (DELETE>UPDATE>INSERT). action & winning_message_id
-    --   DÙNG CHUNG order by để không lệch nhau.
+    --   winners: gom theo primary_key (có thể là composite key nhiều cột),
+    --   chọn bản mới nhất theo sync_at, tie-break theo độ ưu tiên op
+    --   (DELETE>UPDATE>INSERT). action & winning_message_id DÙNG CHUNG order by
+    --   để không lệch nhau.
     --   KHÔNG lọc DELETE ở đây — để MERGE tự xử lý xoá.
-    --   _cdc_pk lấy từ primary_key (hợp lệ cả với DELETE vì after = null).
+    --   Raw được dedup theo message_id (ROW_NUMBER, lấy dòng đầu) trước khi
+    --   join winners: pubsub có thể deliver trùng message_id, nếu không dedup
+    --   thì 1 winning_message_id join ra nhiều dòng source → MERGE lỗi
+    --   "must match at most one source row for each target row".
+    --   _cdc_pk = chuỗi nối tất cả các phần tử của primary_key (theo
+    --   pkSeparator, đúng thứ tự) — hợp lệ cả với DELETE vì after = null.
     SET (select_body, col_list, update_set, insert_vals) = (
       WITH schema AS (
         SELECT col.name, col.bq_type, CAST(col.is_array AS BOOL) AS is_array, col_offset
@@ -150,7 +199,7 @@ function generateCDCScript({
         CONCAT(
           ' WITH winners AS (',
           '   SELECT',
-          '     JSON_VALUE(data,\\'$.primary_key.${primaryKey}\\') AS id,',
+          '     ${pkIdExpr} AS id,',
           '     ARRAY_AGG(message_id ORDER BY',
           '       SAFE_CAST(JSON_VALUE(data,\\'$.sync_at\\') AS TIMESTAMP) DESC,',
           '       IF(JSON_VALUE(data,\\'$.operation\\')=\\'DELETE\\',3,',
@@ -162,7 +211,7 @@ function generateCDCScript({
           '         IF(JSON_VALUE(data,\\'$.operation\\')=\\'UPDATE\\',2,1)) DESC',
           '       LIMIT 1)[OFFSET(0)] AS action',
           '   FROM ${srcTable}',
-          '   WHERE JSON_VALUE(data,\\'$.primary_key.${primaryKey}\\') IS NOT NULL',
+          '   WHERE ${pkNotNullExpr}',
           '     AND publish_time > TIMESTAMP_SUB(TIMESTAMP(\\'', CAST(ingest_checkpoint AS STRING), '\\'), INTERVAL ${lookbackHours} HOUR)',
           '   GROUP BY id',
           ' )',
@@ -177,7 +226,13 @@ function generateCDCScript({
           '   ELSE DATE(\\'2099-01-01\\') END AS created_date',
           ',   w.action AS _cdc_action',
           ',   w.id     AS _cdc_pk',
-          ' FROM ${srcTable} r',
+          ' FROM (',
+          '   SELECT * EXCEPT(_dup_rn) FROM (',
+          '     SELECT *, ROW_NUMBER() OVER (PARTITION BY message_id ORDER BY publish_time DESC) AS _dup_rn',
+          '     FROM ${srcTable}',
+          '     WHERE publish_time > TIMESTAMP_SUB(TIMESTAMP(\\'', CAST(ingest_checkpoint AS STRING), '\\'), INTERVAL ${lookbackHours} HOUR)',
+          '   ) WHERE _dup_rn = 1',
+          ' ) r',
           ' JOIN winners w ON r.message_id = w.winning_message_id'
         ),
         STRING_AGG(CONCAT('\`', name, '\`'), ', ' ORDER BY col_offset),
@@ -191,7 +246,7 @@ function generateCDCScript({
       SET dml_sql = CONCAT(
         'CREATE TABLE ${destTable}',
         ' PARTITION BY created_date',
-        ' CLUSTER BY ${primaryKey}',
+        ' CLUSTER BY ${clusterByExpr}',
         ' AS SELECT * EXCEPT(_cdc_action, _cdc_pk) FROM (', select_body, ')',
         ' WHERE _cdc_action != \\'DELETE\\''
       );
@@ -199,7 +254,7 @@ function generateCDCScript({
       SET dml_sql = CONCAT(
         'MERGE INTO ${destTable} T',
         ' USING (', select_body, ') S',
-        ' ON CAST(T.${primaryKey} AS STRING) = S._cdc_pk',
+        ' ON ${pkTargetExpr} = S._cdc_pk',
         ' WHEN MATCHED AND S._cdc_action = \\'DELETE\\' AND S.sync_at >= T.sync_at THEN DELETE',
         ' WHEN MATCHED AND S.sync_at > T.sync_at THEN UPDATE SET ', update_set, ', sync_at = S.sync_at, publish_time = S.publish_time',
         ' WHEN NOT MATCHED BY TARGET AND S._cdc_action != \\'DELETE\\' THEN',

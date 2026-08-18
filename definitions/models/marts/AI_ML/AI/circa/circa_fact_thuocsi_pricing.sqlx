@@ -1,0 +1,14 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `Price for CIRCA FS, OS on thuocsi.vn`,
+    tags: ['AI_CIRCA']
+}
+
+SELECT 
+  * EXCEPT(retail_price_value, retail_price_type, display_price,  final_display_price, cogs_without_reserve)
+  , CASE fc_code 
+      WHEN 'BD' THEN 'MIENNAM'
+      WHEN 'HN' THEN 'MIENBAC'
+    END AS sales_region
+FROM gold_buymed_vn2.fact_product_sku_pricing_circa_ver2

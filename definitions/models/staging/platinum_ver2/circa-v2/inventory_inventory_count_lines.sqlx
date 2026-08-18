@@ -1,24 +1,30 @@
+config {
+  type: "operations",
+  schema: "buymed_circa_v2",
+  tags: ["buymed_circa_v2_inventory"],
+  description: "PIC: long.nguyen"
+}
+
 js {
-                const { generateCDCScript } = require("includes/platinum_render/circa_v2_helpers");
+  const { generateCDCScript } = require("includes/platinum_render/circa_v2_view_helpers");
 
-                const querySQL = generateCDCScript({
-                    postgresDatabase: "inventory",
-                    dataset:      "buymed_circa_v2_raw",
-                    tableName:    "inventory_count_lines",
-                    targetDataset: "buymed_circa_v2",
-                    targetTable: "inventory_inventory_count_lines",
-                    rawTable:     "inventory_inventory_count_lines",
-                    primaryKey:   "id",
-                    createdTime:  "created_at",
-                    lookbackHours: 0,
-                });
-        }
+  const querySQL = generateCDCScript({
+    postgresDatabase: "inventory",
+    dataset:          "buymed_circa_v2_raw",          
+    tableName:        "inventory_count_lines",       
+    rawTable:         "inventory_inventory_count_lines",
 
-                config {
-                type: "operations",
-                schema: "buymed_circa_v2",
-                tags: ["buymed_circa_v2_inventory", "platinum_custom_30m"]
-                }
+    stgDataset:       "buymed_circa_v2_staging",
+    stgTable:         "inventory_inventory_count_lines",
 
-                ${querySQL}
-    
+
+    viewDataset:      "buymed_circa_v2",
+    viewTable:        "inventory_inventory_count_lines",
+
+    primaryKey:       "id",
+    createdTime:      "created_at",
+    lookbackHours:    1,
+  });
+}
+
+${querySQL}

@@ -3,7 +3,7 @@ config {
     description: `Circa OS purchase order
                   PIC: huyen.ngo; 
                   model_type: Table ;schedule: At minute 10 every hour`,
-    tags: ["custom_1h_past10"],
+    tags: ["gold_custom_20m"],
     name: "cos_purchase_order"
 
 }
@@ -60,6 +60,8 @@ SELECT DISTINCT
                               WHEN fulfillment_method = 'SO_THUOCSI'AND dis.name NOT LIKE '%MEDX%' AND dis.name NOT LIKE '%Buymed%' THEN 'SELLER' 
                               END AS vendor_type
     ,so_code
+    ,a.owner_id 
+    ,eo.seller_code AS owner_code
     ,eo.name AS owner_name
     ,dis.name AS Vendor
     ,a.client_id
@@ -78,7 +80,5 @@ LEFT JOIN (
 LEFT JOIN ${source.ref}.circa_pos_profile p ON a.pos_id = p.id AND a.client_id = p.client_id
 LEFT JOIN ${source.ref}.os_map_idthuocsi map ON o.customer_id = map.id_thuocisi
 LEFT JOIN  ${source.circa_os}.entity_entity e on a.created_by = e.id AND a.client_id = e.client_id 
-WHERE a.status <> 'CANCELED'
-  AND a.status <> 'PENDING'
-  AND p.id IS NOT NULL
+WHERE  p.id IS NOT NULL
 GROUP BY ALL

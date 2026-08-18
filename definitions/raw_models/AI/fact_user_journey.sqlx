@@ -7,8 +7,8 @@ config {
     columns: {
 
             },
-tags: ['2h00']
-    ,bigquery: {
+//tags: ['2h00']
+    bigquery: {
         partitionBy: "date(first_occurrence_time)"
     },
 }

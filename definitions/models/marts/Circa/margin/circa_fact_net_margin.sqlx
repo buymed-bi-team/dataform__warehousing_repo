@@ -1,0 +1,139 @@
+config {
+    type: "table",
+    description: `circa_fact_net_margin
+                  PIC: huyen.ngo & ha.lekim; 
+                  model_type: Table ;
+                  schedule: At minute 30 every hour`,
+    tags:  ["gold_custom_20m"],
+    name: "circa_fact_net_margin",
+    columns: {
+    }
+    
+    ,bigquery: {
+        partitionBy: "created_date"
+    }
+}
+
+WITH final AS (
+    SELECT
+      completed_date,
+      created_date,
+      completed_hour,
+      created_hour,
+      pos_id,
+      client_id,
+      order_code,
+      order_id,
+      status,
+      channel,
+      affiliate_tag,
+      product_id,
+      COALESCE(SUM(gmv),0) gmv,
+      COALESCE(SUM(cogs_circa),0) cogs_circa,
+      COALESCE(SUM(voucher_discount),0) + COALESCE(SUM(total_loyalty_discount_amount),0) + COALESCE(SUM(deal_1k_amount),0) + COALESCE(SUM(external_discount_amount),0) AS voucher_circa,
+      COALESCE(SUM(discount_deal),0) AS deal,
+      COALESCE(SUM(cogs_mkt_circa),0) AS voucher_gift_circa
+    FROM
+      ${ref("gold_buymed_vn2", "fact_circa_margin_item")}
+    WHERE
+      order_code IS NOT NULL
+    GROUP BY
+      ALL )
+    , fact_return as (
+        select 
+        r.completed_date,
+        r.order_id,
+        product_id,
+        sum(
+            if(discount_logic_change = 0,
+            unit_price*quantity_po 
+            - (r.discount_amount + loyalty_discount_amount)*item_amount_contribution
+            - voucher_discount_deal_1k,
+            unit_price*quantity_po)) as return_amount,
+        SUM(
+            CASE
+                WHEN ri.owner_name <> 'CIRCA MARKETING' 
+                    AND (ri.gift_code IS NULL OR ri.gift_code = '') 
+                    AND product_id NOT IN (2010834, 2010836, 2010837, 2010838, 2010840) 
+                THEN ri.cost_price_include_tax * ri.base_quantity_po
+                ELSE 0
+                END
+        ) AS cogs_circa_return,
+        SUM(
+            CASE
+                WHEN (ri.owner_name <> 'CIRCA MARKETING' 
+                    AND ri.gift_code IS NOT NULL AND ri.gift_code <> '' 
+                    AND ri.product_id NOT IN (941832, 941878, 1101283, 2003919, 2004189, 2010834, 2010836, 2010837, 2010838, 2010840, 300704)) 
+                OR ( ri.owner_name = 'CIRCA MARKETING' 
+                    AND ri.product_id NOT IN (941832, 941878, 1101283, 2003919, 2004189, 2010834, 2010836, 2010837, 2010838, 2010840, 300704)) 
+                THEN ri.cost_price_include_tax * ri.base_quantity_po
+                ELSE 0
+                END
+        ) AS voucher_gift_circa_return,
+        from  ${ref("gold_buymed_vn2", "fact_fin_circa_return")} r
+        left join (
+            select * except (item_amount_contribution),
+            SAFE_DIVIDE( quantity_po * unit_price_after_discount, 
+            SUM( quantity_po * unit_price_after_discount) OVER (PARTITION BY return_order_id)) 
+            AS item_amount_contribution,
+            if(is_deal_1k is true, 
+            (unit_price_before_discount - unit_price_after_discount)*quantity_po,
+            0) as voucher_discount_deal_1k
+            from ${ref("gold_buymed_vn2", "fact_fin_circa_return_item")}) ri
+        on r.return_order_id = ri.return_order_id
+        where r.status = 'COMPLETED'
+        GROUP BY ALL
+    )
+  , final_1 as (
+    select a.*,
+    b.completed_date as completed_return_date,
+    coalesce(b.return_amount,0) as return_amount,
+    coalesce(b.cogs_circa_return,0) as cogs_circa_return,
+    coalesce(b.voucher_gift_circa_return,0) as voucher_gift_circa_return,
+    a.gmv - a.deal - a.voucher_circa - coalesce(b.return_amount,0) as net_revenue,
+    a.gmv - a.deal - a.voucher_circa - coalesce(b.return_amount,0) - a.cogs_circa + coalesce(b.cogs_circa_return,0)
+        as gross_profit_circa,
+    a.gmv - a.deal - a.voucher_circa - coalesce(b.return_amount,0) - a.cogs_circa + coalesce(b.cogs_circa_return,0) - a.voucher_gift_circa + coalesce(b.voucher_gift_circa_return,0)
+        as net_profit_circa
+    from final a
+    left join fact_return b 
+    on a.order_id = b.order_id
+    and a.product_id = b.product_id
+  )
+  SELECT
+    a.completed_date,
+    a.completed_return_date,
+    a.completed_hour,
+    a.created_date,
+    a.created_hour,
+    a.client_id,
+    p.code AS pos_code,
+    p.name AS pos_name,
+  IF
+    (p.type = 'FS', 'FS', 'COS') AS pos_type,
+    a.order_code,
+    a.status,
+    a.channel,
+    a.affiliate_tag,
+    a.product_id,
+    a.gmv,
+    a.deal, 
+    a.voucher_circa,
+    a.return_amount,
+    a.cogs_circa_return,
+    a.voucher_gift_circa_return,
+    a.net_revenue,
+    a.cogs_circa,
+    a.gross_profit_circa,
+    safe_divide(a.gross_profit_circa, a.net_revenue) as gross_margin_circa,
+    a.voucher_gift_circa,
+    a.net_profit_circa,
+    safe_divide(a.net_profit_circa, a.net_revenue) as net_margin_circa,
+    CONCAT(a.client_id, "_", a.product_id) AS product_id_key,
+    CONCAT(a.order_code, CONCAT(a.client_id, "_", a.product_id)) AS order_product_unit_key,
+    TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS refresh_at
+  FROM
+    final_1 AS a
+  LEFT JOIN
+    ${ref("gold_buymed_vn2", "circa_pos_profile")} AS p ON a.pos_id = p.id
+   WHERE a.client_id NOT IN (5,6,7)

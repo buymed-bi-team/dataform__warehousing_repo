@@ -1,12 +1,9 @@
 config {
-    type:"table",
+    type:"view",
     schema:"platinum_buymed_vn",
     name: "core_prd_config_manager_app_value",
     description: `PIC: minhluu, model_type: table, Internal: internal.thuocsi.vn/config/service-admin/app/config`,
-    assertions:{
-        uniqueKey: "mg_id"
-    },
-    tags: ["platinum_custom_2h_past5"]
+    tags: ["core_prd_config_manager"]
 }
 SELECT
  * ,

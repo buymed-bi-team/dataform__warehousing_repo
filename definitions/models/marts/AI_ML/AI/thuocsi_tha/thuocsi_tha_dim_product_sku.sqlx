@@ -30,6 +30,6 @@ FROM `lakehouse-prod-394907.gold_buymed_th.dim_sku` AS s
         SELECT
             sku
             , REGEXP_REPLACE(TO_JSON_STRING(tags), r'[\[\{\}\]]', '') AS tags
-            , JSON_VALUE(extra_props, "$.demand_classification_code") AS demand_classification_code
+            , demand_classification_code
         FROM platinum_buymed_th.marketplace_prd_product_v2_sku
     ) AS t ON s.sku_code = t.sku

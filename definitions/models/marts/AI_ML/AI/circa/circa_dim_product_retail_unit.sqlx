@@ -1,0 +1,14 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `Price Circa.`,
+    tags: ['AI_CIRCA']
+}
+
+
+          SELECT product_id
+                 , convert_rate
+                 , convert_unit AS unit
+                 , base_unit
+          FROM ${ref("gold_buymed_vn2", "cos_product_convert_base_unit")}
+          WHERE  client_id = 1
