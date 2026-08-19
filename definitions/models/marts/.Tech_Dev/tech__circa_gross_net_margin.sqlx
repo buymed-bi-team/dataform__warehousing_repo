@@ -14,6 +14,7 @@ SELECT
     , pos_name
     , order_code
     , product_id
+    , sku_code
     , product_name
     , brand
     , brand_type

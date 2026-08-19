@@ -24,7 +24,7 @@ WITH
             LEFT JOIN gold_buymed_vn2.dim_customer_tag_priority AS ct ON c.customer_id = ct.customer_id
             LEFT JOIN ${ref("dim_customer_opella")} AS co ON c.customer_id = co.customer_id
         WHERE 1=1
-            AND REGEXP_CONTAINS(c.tags, r'\"SHARE_OPELLA\"')
+            -- AND REGEXP_CONTAINS(c.tags, r'\"SHARE_OPELLA\"')
     ),
 
     promotion AS (

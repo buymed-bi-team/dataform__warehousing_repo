@@ -278,6 +278,16 @@ WITH
         ) AS a ON a.code = user_type
     WHERE a.code IS NOT NULL
     GROUP BY ALL
+  ),
+
+  pic_brand_seller AS  (
+    SELECT
+        code AS brand
+        , value AS pic_brand_seller
+    FROM ${source.collector}.data_prd
+    WHERE DATE(submit_at) >= "2026-08-19"
+        AND  object = "Product"
+        AND type = "PIC_BRAND_SELLER"
   )
 
 SELECT
@@ -444,7 +454,7 @@ SELECT
   -- JSON_VALUE(product.extra_props, "$.user_type") AS user_type,
   ut.user_type,
   IF(product.product_id IN (1129214,1129202	,1127079	,1160685	,1160792, 825641, 1160581, 237266, 2556, 2006776, 13887, 11376, 7989, 8472, 90132, 4589, 56032, 5287, 212255, 71988, 2000031, 1824, 15102, 4307	), TRUE, FALSE) AS sales_rx_buymed
-
+  , pbs.pic_brand_seller
 
 
 FROM ${source.platinum}.marketplace_prd_product_v2_product AS product
@@ -471,6 +481,7 @@ LEFT JOIN atc3 AS a3 ON a3.product_id = product.product_id
 LEFT JOIN atc4 AS a4 ON a4.product_id = product.product_id
 LEFT JOIN sub_brand AS sb ON sb.product_id = product.product_id
 LEFT JOIN user_type AS ut ON ut.product_id = product.product_id
+LEFT JOIN pic_brand_seller AS  pbs ON LOWER(pbs.brand) = LOWER(br.brand)
 
 WHERE
     LOWER(product.name) NOT LIKE '%(bỏ)%'
