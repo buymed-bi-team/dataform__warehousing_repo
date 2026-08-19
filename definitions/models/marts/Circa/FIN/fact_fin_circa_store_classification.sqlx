@@ -15,8 +15,7 @@ WITH raw_data as (
   status, 
   gmv, 
   channel,
-  coalesce(voucher_circa,0) as voucher_circa,
-  deal,       
+  coalesce(voucher_circa,0) + coalesce(deal,0) as voucher_circa,
   cogs_circa
   from ${ref("gold_buymed_vn2","circa_fact_net_margin")} a
   where client_id = 1
