@@ -28,6 +28,7 @@ WITH final AS (
       channel,
       affiliate_tag,
       product_id,
+      sku_code,
       COALESCE(SUM(gmv),0) gmv,
       COALESCE(SUM(cogs_circa),0) cogs_circa,
       COALESCE(SUM(voucher_discount),0) + COALESCE(SUM(total_loyalty_discount_amount),0) + COALESCE(SUM(deal_1k_amount),0) + COALESCE(SUM(external_discount_amount),0) AS voucher_circa,
@@ -44,6 +45,7 @@ WITH final AS (
         r.completed_date,
         r.order_id,
         product_id,
+        sku_code,
         sum(
             if(discount_logic_change = 0,
             unit_price*quantity_po 
@@ -99,6 +101,7 @@ WITH final AS (
     left join fact_return b 
     on a.order_id = b.order_id
     and a.product_id = b.product_id
+    and a.sku_code = b.sku_code
   )
   SELECT
     a.completed_date,
@@ -116,6 +119,7 @@ WITH final AS (
     a.channel,
     a.affiliate_tag,
     a.product_id,
+    a.sku_code,
     dim_product.product_name,
     dim_product.brand,
     dim_product.brand_type,

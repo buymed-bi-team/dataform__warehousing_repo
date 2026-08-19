@@ -31,6 +31,7 @@ WITH
   SELECT
     i.order_code, 
     i.product_id, 
+    i.sku_code,
     doc_code, 
     fulfillment_method, 
     owner_name,
