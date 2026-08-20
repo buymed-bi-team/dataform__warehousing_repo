@@ -290,9 +290,10 @@ SELECT DISTINCT
         ELSE unit_price
     END AS unit_price
 
-    ,base_unit_cost_price * convert_rate AS unit_cost_price
-    ,convert_rate
-
+    ,base_unit_cost_price * cv.convert_rate AS unit_cost_price
+    ,cv.convert_rate
+    , c.product_id AS combo_id
+    , p.product_name AS combo_name
 FROM final i
 LEFT JOIN ${ref('cos_fact_order')} fo ON i.order_id = fo.order_id
 LEFT JOIN base_unit cv  ON cv.product_id = i.product_id
@@ -300,5 +301,5 @@ LEFT JOIN base_unit cv  ON cv.product_id = i.product_id
                         AND i.client_id = cv.client_id
                     
 LEFT JOIN ${source.circa_os}.order_order_apply_combo c ON i.order_apply_combo_id = c.id
+LEFT JOIN ${ref('cos_dim_product')} p ON c.product_id = p.product_id AND i.client_id = p.client_id 
 WHERE fo.order_id IS NOT NULL
--- 
