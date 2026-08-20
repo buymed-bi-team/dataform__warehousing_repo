@@ -48,14 +48,11 @@ SELECT
         when os.rating is not null then 1 
         else 0 
         end as is_have_survey,
-    case 
-        when oo.payment_method = "BUSINESS_WALLET" then oo.total_price  - COALESCE(oo.secondary_pay_amount,0) 
-        else 0 
-        end as business_amount,
-    case 
-        when oo.payment_method = "BUSINESS_WALLET" then COALESCE(oo.final_secondary_cod, oo.secondary_pay_amount,0) 
-        else total_amount 
-        end as total_amount,
+    COALESCE(oo.wallet_paid_amount, 0) as business_amount,
+    COALESCE(COALESCE(oo.final_delivery_total_price - oo.wallet_paid_amount, 
+            oo.secondary_pay_amount,0),
+            total_amount 
+        ) as total_amount,
     medicine_cutting_fee total_medicine_cutting_fee,
     o.discount_amount AS total_order_discount_amount,
     total_item_amount AS total_item_amount,
@@ -65,10 +62,7 @@ SELECT
     JSON_VALUE(o.external_discount_meta,'$.method') as external_discount_method,
     loyalty_point_rewarded AS total_loyalty_point_rewarded,
     loyalty_point_usage AS total_loyalty_point_usage,
-    case 
-        when o.channel = 'O2O' then oo.delivery_method_fee 
-        else delivery_amount 
-        end AS delivery_fee,
+    COALESCE(oo.delivery_method_fee,delivery_amount) AS delivery_fee,
     oo.delivery_tracking_number,
     oo.original_delivery_fee,
     oo.secondary_pay_method,
