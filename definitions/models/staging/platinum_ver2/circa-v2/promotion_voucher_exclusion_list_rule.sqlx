@@ -10,7 +10,7 @@ js {
                     rawTable:     "promotion_voucher_exclusion_list_rule",
                     primaryKey:   "id",
                     createdTime:  "created_at",
-                    lookbackHours: 1,
+                    lookbackHours: 0,
                 });
         }
 
