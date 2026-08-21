@@ -80,8 +80,8 @@ WITH final AS (
         from  ${ref("gold_buymed_vn2", "fact_fin_circa_return")} r
         left join (
             select *,
-            SAFE_DIVIDE(coalesce(quantity_po*promotion_eligible_amount,quantity_po*unit_price_before_discount,0), 
-            SUM(coalesce(quantity_po*promotion_eligible_amount,quantity_po*unit_price_before_discount,0)) OVER (PARTITION BY return_order_id)) 
+            SAFE_DIVIDE(coalesce(quantity_po*promotion_eligible_amount,quantity_po*unit_price_after_discount,0), 
+            SUM(coalesce(quantity_po*promotion_eligible_amount,quantity_po*unit_price_after_discount,0)) OVER (PARTITION BY return_order_id)) 
             AS item_amount_contribution,
             if(is_deal_1k is true, 
             (unit_price_before_discount - unit_price_after_discount)*quantity_po,
