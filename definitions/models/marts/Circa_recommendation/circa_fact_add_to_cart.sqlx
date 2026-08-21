@@ -18,20 +18,7 @@ INSERT INTO
     ,productDetails
 )
 
-
-WITH unit AS (
-    SELECT product_id
-           , convert_rate
-           , unit
-    FROM buymed_circa_v2.product_retail_unit
-    WHERE sale_allowed = true
-          AND client_id = 1
-          AND unit <> 'test'
-          AND (convert_rate > 0 AND convert_rate IS NOT NULL)
-          QUALIFY ROW_NUMBER() OVER (PARTITION BY product_id ORDER BY convert_rate ) = 1
-)
-            
-, base_data AS (
+WITH base_data AS (
     SELECT *
     FROM platinum_buymed_vn.circa_online_prd_consumer_tracking_events
     WHERE session_id IN (
@@ -42,12 +29,10 @@ WITH unit AS (
         HAVING COUNT(DISTINCT customer_phone) = 1
     )
 ),
-
 add_phone AS (
     SELECT
-          t.* EXCEPT(customer_phone, extra_props)
-        , JSON_VALUE(extra_props, '$.unit') AS unit
-        , MAX(customer_phone) OVER (
+        t.* EXCEPT(customer_phone),
+        MAX(customer_phone) OVER (
             PARTITION BY session_id
         ) AS customer_phone
     FROM base_data t
@@ -59,18 +44,12 @@ SELECT
     ,[
         STRUCT(
             STRUCT(
-                CAST(o.product_id AS STRING) AS id
+                CAST(product_id AS STRING) AS id
             ) AS product
-            ,CAST(ROUND(SAFE_DIVIDE(quantity * COALESCE (p.convert_rate, 1)
-                 , COALESCE(u.convert_rate, 1)
-              )
-              ) AS INT64) AS quantity
+            , quantity AS quantity
         )
     ] AS productDetails
-FROM add_phone o
-LEFT JOIN `buymed_circa_v2.product_retail_unit` p ON o.product_id = p.product_id AND lower(o.unit) = LOWER(p.unit) AND p.client_id = 1
-LEFT JOIN unit u ON o.product_id = u.product_id 
+FROM add_phone
 WHERE event_type = 'add_to_cart'
-    AND o.product_id IS NOT NULL
-   -- AND customer_phone = '0563902636'
+    AND product_id IS NOT NULL
 ORDER BY created_time DESC
