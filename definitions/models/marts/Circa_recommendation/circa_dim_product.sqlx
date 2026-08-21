@@ -60,7 +60,7 @@ SELECT DISTINCT s.product_id
               AND ps.channel = 'OFFLINE'
               AND sale_allowed = true
              -- AND s.product_id = 1110
-              QUALIFY ROW_NUMBER() OVER (PARTITION BY product_id ORDER BY unit DESC ) = 1
+              QUALIFY ROW_NUMBER() OVER (PARTITION BY product_id ORDER BY convert_rate ) = 1
          
 )
     SELECT DISTINCT CAST(p.product_id AS STRING) AS id
@@ -107,9 +107,6 @@ SELECT DISTINCT s.product_id
     LEFT JOIN gold_buymed_vn2.dim_product tp ON p.product_id = tp.product_id
     LEFT JOIN inventory i ON p.product_id = i.product_id 
     LEFT JOIN inventory_ts f ON p.product_id = f.product_id
-    -- LEFT JOIN (SELECT * FROM platinum_buymed_vn.circa_online_prd_product_product_filter
-    --             WHERE status = 'ACTIVE'
-    --            QUALIFY ROW_NUMBER() OVER (PARTITION BY product_id ORDER BY created_date DESC) = 1) po ON po.product_id = p.product_id 
     LEFT JOIN price pr ON p.product_id = pr.product_id 
     WHERE p.client_id = 1
          -- AND po.product_id IS NOT NULL
