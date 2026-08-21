@@ -3,9 +3,8 @@ config {
     schema: "platinum_buymed_vn",
     name: "marketplace_prd_product_v2_product_market_price_history",
     description : `
-    PIC: minh.luu
     Partition by: created date
-    Cluster by: status
+    Cluster by: source, product_id
     `,
     tags:["platinum","marketplace_prd_promotion"]
 }
