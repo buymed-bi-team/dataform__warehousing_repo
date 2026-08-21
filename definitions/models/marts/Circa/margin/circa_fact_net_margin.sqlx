@@ -72,11 +72,16 @@ WITH final AS (
                 ELSE 0
                 END
         ) AS voucher_gift_circa_return,
+        sum(item_discount_amount*quantity_po) deal_return,
+        sum(
+          coalesce(quantity_po*total_allocated_discount_amount,
+          r.discount_amount + r.loyalty_discount_amount)*item_amount_contribution + voucher_discount_deal_1k
+        ) voucher_circa_return,
         from  ${ref("gold_buymed_vn2", "fact_fin_circa_return")} r
         left join (
             select *,
-            SAFE_DIVIDE( quantity_po * unit_price_after_discount, 
-            SUM( quantity_po * unit_price_after_discount) OVER (PARTITION BY return_order_id)) 
+            SAFE_DIVIDE(coalesce(quantity_po*promotion_eligible_amount,quantity_po*unit_price_before_discount,0), 
+            SUM(coalesce(quantity_po*promotion_eligible_amount,quantity_po*unit_price_before_discount,0)) OVER (PARTITION BY return_order_id)) 
             AS item_amount_contribution,
             if(is_deal_1k is true, 
             (unit_price_before_discount - unit_price_after_discount)*quantity_po,
@@ -91,6 +96,8 @@ WITH final AS (
     b.completed_date as completed_return_date,
     coalesce(b.return_amount,0) as return_amount,
     coalesce(b.cogs_circa_return,0) as cogs_circa_return,
+    coalesce(b.deal_return,0) as deal_return,
+    coalesce(b.voucher_circa_return,0) as voucher_circa_return,
     coalesce(b.voucher_gift_circa_return,0) as voucher_gift_circa_return,
     a.gmv - a.deal - a.voucher_circa - coalesce(b.return_amount,0) as net_revenue,
     a.gmv - a.deal - a.voucher_circa - coalesce(b.return_amount,0) - a.cogs_circa + coalesce(b.cogs_circa_return,0)
@@ -132,6 +139,8 @@ WITH final AS (
     a.voucher_circa,
     a.return_amount,
     a.cogs_circa_return,
+    a.deal_return,
+    a.voucher_circa_return,
     a.voucher_gift_circa_return,
     a.net_revenue,
     a.cogs_circa,
