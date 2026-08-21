@@ -31,7 +31,7 @@ WITH
     case when platform_price = 0 then null else platform_price end,
     case when unit_price = 0 then null else unit_price end) as system_price,
     coalesce(ol.promotion_event_code,roi.promotion_event_code) AS item_discount_code,
-    coalesce(ol.discount_amount,if(discount_logic_change = 0, roi.discount_amount, safe_divide(roi.base_amount - roi.amount, roi.quantity))) AS item_discount_amount,
+    coalesce(ol.discount_amount, roi.discount_amount) AS item_discount_amount,
     CASE WHEN tag_list like '%deal_1000%' AND roi.unit_price = 1000  THEN TRUE ELSE FALSE END AS is_deal_1k,
     roi.updated_at,
     poi.lot_id,
