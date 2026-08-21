@@ -79,6 +79,6 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
         ) AS stockstock_at_date
 
 FROM _all i 
-LEFT JOIN po o ON i.doc_code = o.code AND i.client_id = o.client_id
+LEFT JOIN po o ON i.doc_code = o.code AND i.client_id = o.client_id AND i.product_id = o.product_id
 LEFT JOIN ${source.circa_os}.entity_owner eo  ON o.owner_id = eo.id 
        AND i.client_id = eo.client_id
