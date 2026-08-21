@@ -29,7 +29,6 @@ WITH base_data AS (
         HAVING COUNT(DISTINCT customer_phone) = 1
     )
 ),
-
 add_phone AS (
     SELECT
         t.* EXCEPT(customer_phone),
@@ -38,7 +37,6 @@ add_phone AS (
         ) AS customer_phone
     FROM base_data t
 )
-
 SELECT
      'add-to-cart' AS eventType
     ,customer_phone AS visitorId
@@ -55,5 +53,3 @@ FROM add_phone
 WHERE event_type = 'add_to_cart'
     AND product_id IS NOT NULL
 ORDER BY created_time DESC
--- 
- 
