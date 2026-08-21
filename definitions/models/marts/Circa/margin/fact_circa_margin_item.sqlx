@@ -26,7 +26,6 @@ WITH
       SAFE_DIVIDE(quantity_po * unit_price_before_discount,
         SUM(quantity_po * unit_price_before_discount) OVER (PARTITION BY order_id))
       AS item_amount_contribution
-    from gold_buymed_vn2.fact_fin_circa_order_item
     FROM
     ${ref("gold_buymed_vn2", "fact_fin_circa_order_item")}
   ),
