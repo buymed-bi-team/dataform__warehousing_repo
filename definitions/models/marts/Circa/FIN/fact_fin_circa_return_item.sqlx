@@ -22,16 +22,16 @@ WITH
     ru.unit,
     ru.convert_rate,
     roi.unit_price,
-    roi.voucher_discount_amount,
-    roi.loyalty_discount_amount,
-    roi.external_discount_amount,
-    roi.total_allocated_discount_amount,
-    roi.promotion_eligible_amount, 
+    safe_divide(roi.voucher_discount_amount,roi.quantity) as voucher_discount,
+    safe_divide(roi.loyalty_discount_amount,roi.quantity) as loyalty_discount,
+    safe_divide(roi.external_discount_amount,roi.quantity) as external_discount,
+    safe_divide(roi.total_allocated_discount_amount,roi.quantity) as total_allocated_discount,
+    safe_divide(roi.promotion_eligible_amount, roi.quantity) as promotion_eligible,
     coalesce(case when system_price = 0 then null else system_price end, 
     case when platform_price = 0 then null else platform_price end,
     case when unit_price = 0 then null else unit_price end) as system_price,
     coalesce(ol.promotion_event_code,roi.promotion_event_code) AS item_discount_code,
-    coalesce(ol.discount_amount,roi.discount_amount) AS item_discount_amount,
+    coalesce(ol.discount_amount,if(discount_logic_change = 0, roi.discount_amount, safe_divide(roi.base_amount - roi.amount, roi.quantity))) AS item_discount_amount,
     CASE WHEN tag_list like '%deal_1000%' AND roi.unit_price = 1000  THEN TRUE ELSE FALSE END AS is_deal_1k,
     roi.updated_at,
     poi.lot_id,
@@ -108,6 +108,6 @@ SELECT
   CASE
     WHEN item_discount_code IS NOT NULL AND order_apply_combo_id IS NULL AND gift_code IS NULL THEN item_discount_amount END AS item_discount_amount,
   CASE
-    WHEN order_apply_combo_id IS NOT NULL AND gift_code IS NULL THEN unit_price_before_discount - unit_price_after_discount ELSE 0 END AS combo_discount_amount
+    WHEN order_apply_combo_id IS NOT NULL AND gift_code IS NULL THEN unit_price_before_discount - unit_price_after_discount ELSE 0 END AS combo_discount_amount,
 FROM
   clean_system_price_data
