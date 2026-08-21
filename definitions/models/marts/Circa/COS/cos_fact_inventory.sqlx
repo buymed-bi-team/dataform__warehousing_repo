@@ -49,6 +49,16 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
        ,o.sale_order_number AS SO_code
        ,o.distributor_id
        ,o.fulfillment_method
+       ,DATETIME(o.stock_at, 'Asia/Ho_Chi_Minh') AS stock_at
+       ,MIN(
+            CASE 
+                WHEN i.on_hand_quantity > 0 
+                THEN DATETIME(o.stock_at, 'Asia/Ho_Chi_Minh')
+            END
+        ) OVER (
+            PARTITION BY  i.pos_id, i.product_id
+        ) AS min_stock_at
+
 FROM _all i 
 LEFT JOIN ${source.circa_os}.order_purchase_order o ON i.doc_code = o.code 
                                                     AND i.client_id = o.client_id
