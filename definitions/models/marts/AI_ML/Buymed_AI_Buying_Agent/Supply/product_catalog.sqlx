@@ -1,0 +1,35 @@
+config {
+    type: 'incremental',
+    schema: "buying_agent_input"
+}
+
+SELECT
+    a.product_id
+    , product_code AS product_sku_code
+    , product_name
+    , registration_number
+    , IF(product_category_code = 'AQFV2U', TRUE, FALSE) AS is_drug
+    , dosage_form
+    , brand
+    , manufacturer_short_name AS manufacturer
+    , product_category AS category_l1
+    , b.category_name AS category_l2
+    , COALESCE(a.level_1_unit, a.level_2_unit, a.level_3_unit, a.level_4_unit) AS base_unit
+    , unit AS sell_unit
+    , COALESCE(a.level_4_quantity, a.level_3_quantity, a.level_2_quantity, a.level_1_quantity) AS units_per_sell_unit
+    , CASE is_prescription
+        WHEN 'Thuốc kê đơn' THEN TRUE
+        WHEN 'Thuốc không kê đơn' THEN FALSE
+      END AS is_prescription
+    , product_image_url AS image_url
+    , IF(product_status = 'ACTIVE', 'ACTIVE', 'INACTIVE') AS status
+    , CURRENT_DATE("+7") AS snapshot_date
+FROM ${ref("dim_product")} AS a
+    LEFT JOIN ${ref("dim_product_category")} AS b ON a.product_id = b.product_id AND b.level = 1
+WHERE 1=1
+    AND  a.product_report_category NOT IN ('RECALLED','TECH', 'DENX')
+
+post_operations {
+    ALTER TABLE ${self()} 
+        ADD PRIMARY KEY (product_id, snapshot_date) NOT ENFORCED;
+}

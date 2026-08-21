@@ -49,7 +49,7 @@ WITH final AS (
         sum(
             if(discount_logic_change = 0,
             unit_price*quantity_po 
-            - (r.discount_amount + loyalty_discount_amount)*item_amount_contribution
+            - (r.discount_amount + r.loyalty_discount_amount)*item_amount_contribution
             - voucher_discount_deal_1k,
             unit_price*quantity_po)) as return_amount,
         SUM(
@@ -74,7 +74,7 @@ WITH final AS (
         ) AS voucher_gift_circa_return,
         from  ${ref("gold_buymed_vn2", "fact_fin_circa_return")} r
         left join (
-            select * except (item_amount_contribution),
+            select *,
             SAFE_DIVIDE( quantity_po * unit_price_after_discount, 
             SUM( quantity_po * unit_price_after_discount) OVER (PARTITION BY return_order_id)) 
             AS item_amount_contribution,
