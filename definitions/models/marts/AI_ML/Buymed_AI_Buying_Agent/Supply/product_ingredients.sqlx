@@ -1,0 +1,16 @@
+config {
+    type: 'incremental',
+    schema: "buying_agent_input"
+}
+
+SELECT
+    product_id
+    , ingredient_name AS active_ingredient
+    , volume AS strength
+    , CURRENT_DATE("+7") AS snapshot_date
+FROM ${ref("dim_product_ingredient")}
+
+post_operations {
+    ALTER TABLE ${self()} 
+        ADD PRIMARY KEY (product_id, active_ingredient, snapshot_date) NOT ENFORCED;
+}

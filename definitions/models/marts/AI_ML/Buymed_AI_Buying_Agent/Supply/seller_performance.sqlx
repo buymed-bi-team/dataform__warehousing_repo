@@ -1,0 +1,26 @@
+config {
+    type: 'incremental',
+    schema: "buying_agent_input"
+}
+
+SELECT
+    s.supplier_id AS seller_id
+    , SAFE_DIVIDE(SUM(IF(o.order_status <> 'CANCEL', outbound_quantity, 0)), SUM(IF(o.order_status <> 'CANCEL', demand_quantity, 0))) AS fill_rate_90d
+    , SAFE_DIVIDE(COUNT(DISTINCT IF(o.order_status = 'CANCEL', oi.order_id, NULL)), COUNT(DISTINCT oi.order_id)) AS cancel_rate_90d
+    , AVG(DATE_DIFF(DATE(o.delivered_time), DATE(o.created_at), DAY)) AS avg_actual_lead_time_days
+    , CURRENT_DATE("+7") AS snapshot_date
+FROM ${ref("fact_order_item")} AS oi
+    LEFT JOIN  ${ref("fact_order")} AS o ON o.order_id = oi.order_id
+    LEFT JOIN ${ref("dim_seller")} AS s ON oi.seller_code = s.supplier_code
+WHERE 1=1
+    AND DATE(oi.created_at) >= DATE_SUB(CURRENT_DATE("+7"), INTERVAL 90 DAY)
+    AND DATE(o.created_at) >= DATE_SUB(CURRENT_DATE("+7"), INTERVAL 90 DAY)
+    AND o.order_status  IN ('DELIVERED', 'COMPLETED', 'DELIVERING', 'CANCEL')
+    AND o.channel <> 'TENDER'
+    AND s.supplier_class <> 'TECH'
+GROUP BY ALL
+
+post_operations {
+    ALTER TABLE ${self()} 
+        ADD PRIMARY KEY (seller_id, snapshot_date) NOT ENFORCED;
+}

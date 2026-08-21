@@ -1,0 +1,43 @@
+config {
+    type: 'incremental',
+    schema: "buying_agent_input"
+}
+
+SELECT
+    a.mg_id AS listing_id
+    , SAFE_CAST(a.product_id AS STRING) AS product_id
+    , SAFE_CAST(s.supplier_id AS STRING) AS seller_id
+    , s.supplier_name AS seller_name
+    , a.retail_price_value AS unit_price
+    , i.available_quantity AS available_qty
+    , IF(i.available_quantity > 0, TRUE, FALSE) AS in_stock
+    , 1 AS moq
+    , a.max_quantity_per_order AS max_order_qty
+    , 1 AS order_multiple
+    , SAFE_CAST(l.sku_leadtime AS FLOAT64) AS lead_time_days
+    , a.sales_region_code AS regions_served
+    , IF(a.sku_system_status = 'SUSPENDED', 'SUSPENDED', 'ACTIVE') AS status
+    , CURRENT_DATE("+7") AS snapshot_date
+FROM ${ref("dim_sku_sales_region_current")} AS a
+    LEFT JOIN ${ref("dim_seller")} AS s ON a.seller_code = s.supplier_code
+    LEFT JOIN ${ref("dim_inventory_sku")} AS i ON a.sku_key_sales_region_code = i.sku_key
+    LEFT JOIN (
+        SELECT
+            a.sku_key_sales_region_code
+            ,  AVG(DATE_DIFF(DATE(b.delivered_time), DATE(a.created_at), DAY)) AS sku_leadtime
+        FROM ${ref("fact_order_item")} AS a
+            LEFT JOIN  ${ref("fact_order")} AS b ON a.order_id = b.order_id
+        WHERE 1=1
+            AND DATE(a.created_at) >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH) - INTERVAL 3 MONTH
+            AND DATE(b.created_at) >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH) - INTERVAL 3 MONTH
+            AND b.order_status <> 'CANCEL'
+            AND b.channel <> 'TENDER'
+        GROUP BY a.sku_key_sales_region_code
+    ) AS l ON a.sku_key_sales_region_code = l.sku_key_sales_region_code
+WHERE 1=1
+    AND a.seller_code NOT IN ('MEDX_E', 'MEDC', 'MED_NT', 'TENDER', 'MEDX-HN', 'DENX', 'MARKETING', '9SUUUUUUUU', 'QMQEM8DN9F', 'UQRRRRRRRR', "TAM_GIA", "BML_E","TAYAU_E", "TAYAU")
+
+post_operations {
+    ALTER TABLE ${self()} 
+        ADD PRIMARY KEY (listing_id, snapshot_date) NOT ENFORCED;
+}

@@ -1,0 +1,20 @@
+config {
+    type: 'incremental',
+    schema: "buying_agent_input"
+}
+
+SELECT
+    v.voucher_code AS promo_id
+    , "PRODUCT" AS target_type
+    , vp.product_id AS target_id
+    , CURRENT_DATE("+7") AS snapshot_date
+FROM ${ref("dim_voucher_product")} AS vp
+    LEFT JOIN ${ref("dim_voucher")} AS v ON vp.voucher_code = v.voucher_code
+WHERE 1=1
+    AND v.voucher_status = 'ACTIVE'
+    AND v.discount_type IS NOT NULL
+
+post_operations {
+    ALTER TABLE ${self()} 
+        ADD PRIMARY KEY (promo_id, target_type, target_id, snapshot_date) NOT ENFORCED;
+}
