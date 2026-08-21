@@ -19,9 +19,9 @@ WITH
   raw_data as (
     select *,
       SAFE_DIVIDE(IF(promotion_eligible_amount IS NOT NULL, quantity_po*promotion_eligible_amount,
-      IF(is_drug IS FALSE AND is_global_promotion_excluded IS FALSE, quantity_po*unit_price_before_discount,0)),
+      IF(is_drug IS FALSE AND coalesce(is_global_promotion_excluded,FALSE) IS FALSE, quantity_po*unit_price_before_discount,0)),
         SUM(IF(promotion_eligible_amount IS NOT NULL, quantity_po*promotion_eligible_amount,
-      IF(is_drug IS FALSE AND is_global_promotion_excluded IS FALSE, quantity_po*unit_price_before_discount,0))) OVER (PARTITION BY order_id))
+      IF(is_drug IS FALSE AND coalesce(is_global_promotion_excluded,FALSE) IS FALSE, quantity_po*unit_price_before_discount,0))) OVER (PARTITION BY order_id))
       AS item_amount_contribution_voucher,
       SAFE_DIVIDE(quantity_po * unit_price_before_discount,
         SUM(quantity_po * unit_price_before_discount) OVER (PARTITION BY order_id))

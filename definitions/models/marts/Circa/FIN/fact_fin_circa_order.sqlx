@@ -49,10 +49,9 @@ SELECT
         else 0 
         end as is_have_survey,
     COALESCE(oo.wallet_paid_amount, 0) as business_amount,
-    COALESCE(COALESCE(oo.final_delivery_total_price - oo.wallet_paid_amount, 
-            oo.secondary_pay_amount),
-            total_amount 
-        ) as total_amount,
+    COALESCE(oo.final_delivery_total_price - oo.wallet_paid_amount, 
+            oo.total_price - oo.wallet_paid_amount,
+            total_amount)  as total_amount,
     medicine_cutting_fee total_medicine_cutting_fee,
     coalesce(oo.total_discount,o.discount_amount) AS total_order_discount_amount,
     total_item_amount AS total_item_amount,
