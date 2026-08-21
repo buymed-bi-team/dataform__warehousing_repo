@@ -35,6 +35,7 @@ SELECT
   r.medicine_cutting_fee, -- total medicine cutting fee
   r.loyalty_point_rewarded,
   r.loyalty_discount_amount, 
+  r.external_discount_amount,
   r.actual_total_item_amount, -- total item purchase amount
   r.reference_order_in_platform, -- online order code
   if(date(datetime_add(r.completed_at, interval 7 hour)) >= "2026-07-10", 1,0) discount_logic_change -- Tri.dao
