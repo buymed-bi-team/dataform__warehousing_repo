@@ -112,6 +112,7 @@ LEFT JOIN `platinum_buymed_vn.circa_online_prd_consumer_store_v2` AS d
         AS INT64
     ) = d.store_id
 LEFT JOIN platinum_buymed_vn.circa_online_prd_consumer_customer m ON o.customer_phone = m.phone_number
+GROUP BY ALL
 
 ),map_deliver AS (
 SELECT DISTINCT o.*
@@ -121,12 +122,13 @@ SELECT DISTINCT o.*
        ,s.pos_status
        ,s.deliver_status
        ,s.delivery_carrier
-       ,v.voucher_code AS voucher_code 
+       ,STRING_AGG (v.voucher_code, ', ') AS voucher_code 
 FROM online_order o
 LEFT JOIN ${source.ref}.cos_voucher_info v ON o.assigned_order_codes = v.order_code_used
 LEFT JOIN (SELECT * FROM ${source.platinum}.circa_online_prd_order_sale_order
            QUALIFY ROW_NUMBER () OVER (PARTITION BY order_code ORDER BY created_time DESC) = 1       
         ) s ON o.order_code = s.order_code 
+GROUP BY ALL
 --WHERE sender_name <> 'Cửa hàng Tech Test 1'
 ), location as (
      SELECT distinct district_code
