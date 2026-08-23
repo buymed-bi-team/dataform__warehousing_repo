@@ -4,10 +4,10 @@ config {
     schema: "buying_agent_input"
 }
 
-INSERT INTO buying_agent_input.store_profile
-(
-  store_id, store_name, store_type, province_code, district_code, thuocsi_account_id, snapshot_date
-)
+-- INSERT INTO buying_agent_input.store_profile
+-- (
+--   store_id, store_name, store_type, province_code, district_code, thuocsi_account_id, snapshot_date
+-- )
 
 SELECT
    id                              AS store_id
