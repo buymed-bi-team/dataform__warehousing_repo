@@ -33,12 +33,28 @@ SELECT  o.pos_id            AS store_id
        , DATETIME_ADD(o.created_at, INTERVAL -7 HOUR) AS sold_at
        , CASE WHEN base_qty_rt > 0 THEN TRUE ELSE FALSE END AS is_return
        , CURRENT_DATE('Asia/Ho_Chi_Minh')                           AS snapshot_date
-FROM `gold_buymed_vn2.cos_fact_order_item` i 
-LEFT JOIN `gold_buymed_vn2.cos_fact_order` o ON i.order_id = o.order_id 
+FROM ${ref("cos_fact_order_item")} i 
+LEFT JOIN ${ref("cos_fact_order")} o ON i.order_id = o.order_id 
 LEFT JOIN base_unit p ON i.product_id = p.product_id
 WHERE o.created_date BETWEEN DATE_SUB(CURRENT_DATE('Asia/Ho_Chi_Minh'), INTERVAL 89 DAY)
      AND CURRENT_DATE('Asia/Ho_Chi_Minh')
+     AND status NOT IN ('OUT_OF_STOCK', 'CANCELED','FAILED_SHIPMENT' )
 --HERE o.order_code = 'DHC01112371'
 GROUP BY ALL
 
+   post_operations {
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM `lakehouse-prod-394907.buying_agent_input.INFORMATION_SCHEMA.TABLE_CONSTRAINTS`
+    WHERE table_name = 'sales_out_transactions'
+      AND constraint_type = 'PRIMARY KEY'
+  ) THEN
+
+    ALTER TABLE ${self()}
+    ADD PRIMARY KEY (transaction_id, line_no) NOT ENFORCED;
+
+  END IF;
+
+}
 

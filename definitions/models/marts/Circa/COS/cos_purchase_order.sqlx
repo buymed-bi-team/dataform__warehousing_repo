@@ -23,7 +23,8 @@ SELECT DISTINCT
     ,SUM(a.actual_total_amount - COALESCE(rt.actual_total_amount, 0)) AS actual_po_amount_af_rt -- thực nhận tổng đơn, đã trừ discount
     ,DATE(DATETIME_ADD(a.created_at, INTERVAL 7 HOUR)) AS created_date
     ,DATE(DATETIME_ADD(a.completed_at, INTERVAL 7 HOUR)) AS completed_date
-    ,DATETIME_ADD(a.created_at, INTERVAL 7 HOUR) AS created_at
+    ,DATETIME(a.created_at, 'Asia/Ho_Chi_Minh') AS created_at
+    ,DATETIME(a.stock_at, 'Asia/Ho_Chi_Minh') AS stock_at
     ,a.location_type
     ,a.fulfillment_method
     ,a.sale_order_number AS order_id

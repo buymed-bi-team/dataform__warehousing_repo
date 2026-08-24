@@ -22,7 +22,7 @@ WITH
       IF(is_drug IS FALSE AND coalesce(is_global_promotion_excluded,FALSE) IS FALSE, quantity_po*unit_price_after_discount,0)),
         SUM(IF(promotion_eligible_amount IS NOT NULL, quantity_po*promotion_eligible_amount,
       IF(is_drug IS FALSE AND coalesce(is_global_promotion_excluded,FALSE) IS FALSE, quantity_po*unit_price_after_discount,0))) OVER (PARTITION BY order_id))
-      AS item_amount_contribution,
+      AS voucher_contribution,
     FROM
     ${ref("gold_buymed_vn2", "fact_fin_circa_order_item")}
   ),
@@ -48,7 +48,7 @@ WITH
     combo_discount_amount, 
     sum(quantity_po) quantity_po, 
     sum(base_quantity_po) base_quantity_po, 
-    SUM(item_amount_contribution) item_amount_contribution,
+    SUM(voucher_contribution) voucher_contribution,
     CASE
       WHEN i.fulfillment_method = 'SO_THUOCSI' AND cogs_base_unit_ts is not null then cogs_base_unit_ts
       else i.cost_price_include_tax
@@ -105,9 +105,9 @@ WITH
         ELSE 0
     END
       ) AS gmv,
-    SUM(i.item_amount_contribution*o.voucher_discount) AS voucher_discount,
-    SUM(i.item_amount_contribution*o.total_loyalty_discount_amount) AS total_loyalty_discount_amount,
-    SUM(i.item_amount_contribution*o.external_discount_amount) AS external_discount_amount,
+    SUM(i.voucher_contribution*o.voucher_discount) AS voucher_discount,
+    SUM(i.voucher_contribution*o.total_loyalty_discount_amount) AS total_loyalty_discount_amount,
+    SUM(i.voucher_contribution*o.external_discount_amount) AS external_discount_amount,
     SUM(CASE
         WHEN i.is_deal_1k IS TRUE THEN (unit_price_before_discount - unit_price_after_discount)*i.quantity_po
         ELSE 0
@@ -188,9 +188,9 @@ WITH
         ELSE 0
     END
       ) AS gmv,
-    SUM(i.item_amount_contribution*o.voucher_discount) AS voucher_discount,
-    SUM(i.item_amount_contribution*o.total_loyalty_discount_amount) AS total_loyalty_discount_amount,
-    SUM(i.item_amount_contribution*o.external_discount_amount) AS external_discount_amount,
+    SUM(i.voucher_contribution*o.voucher_discount) AS voucher_discount,
+    SUM(i.voucher_contribution*o.total_loyalty_discount_amount) AS total_loyalty_discount_amount,
+    SUM(i.voucher_contribution*o.external_discount_amount) AS external_discount_amount,
     SUM(CASE
         WHEN i.is_deal_1k IS TRUE THEN (unit_price_before_discount - unit_price_after_discount)*i.quantity_po
         ELSE 0
