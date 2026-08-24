@@ -65,7 +65,7 @@ WITH _all AS (
        SELECT DISTINCT pos_id, product_id, MAX(DATE(DATETIME(put.created_at, 'Asia/Ho_Chi_Minh'))) AS lasted_put
        FROM buymed_circa_v2.inventory_put_ticket put
        LEFT JOIN buymed_circa_v2.inventory_put_ticket_item putd ON putd.put_ticket_id = put.id
-       WHERE status = 'COMPLETED'
+       WHERE status <> 'CANCELED'
            AND quantity > 0
        GROUP BY ALL
 )
