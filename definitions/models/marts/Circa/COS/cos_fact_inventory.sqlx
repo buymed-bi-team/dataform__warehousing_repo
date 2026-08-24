@@ -61,8 +61,14 @@ WITH _all AS (
                        GROUP BY ALL
                 ) g  ON o.id = g.purchase_order_id AND i.product_id = g.product_id
              GROUP BY ALL
+), lasted_put AS (
+       SELECT DISTINCT pos_id, product_id, MAX(DATE(DATETIME(put.created_at, 'Asia/Ho_Chi_Minh'))) AS lasted_put
+       FROM buymed_circa_v2.inventory_put_ticket put
+       LEFT JOIN buymed_circa_v2.inventory_put_ticket_item putd ON putd.put_ticket_id = put.id
+       WHERE status = 'COMPLETED'
+           AND quantity > 0
+       GROUP BY ALL
 )
-
 SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
        ,i.*
        ,CONCAT(i.product_id, "_", i.client_id) AS product_client_id
@@ -81,16 +87,10 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
         ) OVER (
             PARTITION BY  i.pos_id, i.product_id
         ) AS min_stock_at
-        ,MAX(
-            CASE 
-                WHEN i.on_hand_quantity > 0 
-                THEN max_stock
-            END
-        ) OVER (
-            PARTITION BY  i.pos_id, i.product_id
-        ) AS lastest_stock_at
+        ,lasted_put AS lastest_stock_at
 
 FROM _all i 
 LEFT JOIN po o ON i.doc_code = o.code AND i.client_id = o.client_id AND i.product_id = o.product_id
 LEFT JOIN ${source.circa_os}.entity_owner eo  ON o.owner_id = eo.id 
        AND i.client_id = eo.client_id
+LEFT JOIN lasted_put p ON i.product_id = p.product_id AND i.pos_id = p.pos_id
