@@ -1,0 +1,36 @@
+
+config {
+  type: "incremental",
+  schema: "buying_agent_input",
+
+  uniqueKey: ["po_id","line_no"],
+
+  bigquery: {
+    partitionBy: "snapshot_date",
+    clusterBy: ["store_id","store_sku_id", "supplier_id"]
+  },
+
+  description: "PO history (180d) + open POs. PK: (po_id, line_no)."
+}
+
+SELECT o.po_id
+       , i.item_id AS line_no
+       , o.pos_id AS store_id 
+       , o.distributor_id AS supplier_id
+       , o.Vendor AS supplier_name
+       , CASE WHEN fulfillment_method = 'SO_THUOCSI' THEN TRUE ELSE FALSE END AS is_thuocsi
+       , o.distributor_id AS thuocsi_seller_id
+       , sku_code AS store_sku_id
+       , quantity AS ordered_qty
+       , actual_quantity AS received_qty
+       , i.unit
+       , i.unit_price_af_discount AS unit_cost
+       , o.po_status AS status
+       , o.created_at AS order_at
+       , stock_at AS received_at
+       , CURRENT_DATE('Asia/Ho_Chi_Minh')                           AS snapshot_date
+FROM ${ref("cos_purchase_order")} o 
+LEFT JOIN ${ref("cos_purchase_order_item")} i ON o.po_id = i.po_id 
+WHERE o.po_status NOT IN ('PENDING','CANCELED','SEPERATED' )
+      AND o.created_date BETWEEN DATE_SUB(CURRENT_DATE('Asia/Ho_Chi_Minh'), INTERVAL 179 DAY) 
+        AND CURRENT_DATE('Asia/Ho_Chi_Minh')
