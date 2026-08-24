@@ -21,7 +21,7 @@ SELECT
     , CURRENT_DATE("+7") AS snapshot_date
 FROM ${ref("dim_sku_sales_region_current")} AS a
     LEFT JOIN ${ref("dim_seller")} AS s ON a.seller_code = s.supplier_code
-    LEFT JOIN ${ref("dim_inventory_sku")} AS i ON a.sku_key_sales_region_code = i.sku_key
+    LEFT JOIN ${ref("dim_inventory_sku")} AS i ON a.sku_key_sales_region_code = i.sku_key_sales_region
     LEFT JOIN (
         SELECT
             a.sku_key_sales_region_code
