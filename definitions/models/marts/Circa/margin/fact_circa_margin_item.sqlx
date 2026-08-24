@@ -17,15 +17,21 @@ config {
 
 WITH
   raw_data as (
+    select * except (voucher_contribution),
+    coalesce(voucher_contribution, item_contribution) as voucher_contribution
+    from (
     select *,
       SAFE_DIVIDE(IF(promotion_eligible_amount IS NOT NULL, quantity_po*promotion_eligible_amount,
       IF(is_drug IS FALSE AND coalesce(is_global_promotion_excluded,FALSE) IS FALSE, quantity_po*unit_price_after_discount,0)),
         SUM(IF(promotion_eligible_amount IS NOT NULL, quantity_po*promotion_eligible_amount,
       IF(is_drug IS FALSE AND coalesce(is_global_promotion_excluded,FALSE) IS FALSE, quantity_po*unit_price_after_discount,0))) OVER (PARTITION BY order_id))
       AS voucher_contribution,
+      SAFE_DIVIDE(quantity_po*unit_price_after_discount,
+        SUM(quantity_po*unit_price_after_discount) OVER (PARTITION BY order_id))
+      AS item_contribution,
     FROM
     ${ref("gold_buymed_vn2", "fact_fin_circa_order_item")}
-  ),
+  )),
   fact_order_item AS (
   SELECT
     i.order_code, 
