@@ -19,6 +19,9 @@ config {
   description: "Circa store profile. Grain: one row per store per snapshot date."
 }
 
+
+-- TRUNCATE TABLE ${self()} 
+
 -- INSERT INTO buying_agent_input.store_profile
 -- (
 --   store_id, store_name, store_type, province_code, district_code, thuocsi_account_id, snapshot_date
