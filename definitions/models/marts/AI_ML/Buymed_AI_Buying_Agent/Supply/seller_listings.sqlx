@@ -1,6 +1,7 @@
 config {
     type: 'incremental',
-    schema: "buying_agent_input"
+    schema: "buying_agent_input",
+    tags: ["AI_Buying_Agent"]
 }
 
 SELECT
@@ -38,6 +39,13 @@ WHERE 1=1
     AND a.seller_code NOT IN ('MEDX_E', 'MEDC', 'MED_NT', 'TENDER', 'MEDX-HN', 'DENX', 'MARKETING', '9SUUUUUUUU', 'QMQEM8DN9F', 'UQRRRRRRRR', "TAM_GIA", "BML_E","TAYAU_E", "TAYAU")
 
 post_operations {
+    IF NOT EXISTS (
+        SELECT 1
+        FROM `lakehouse-prod-394907.buying_agent_input.INFORMATION_SCHEMA.TABLE_CONSTRAINTS`
+        WHERE table_name = 'seller_listings'
+        AND constraint_type = 'PRIMARY KEY'
+    ) THEN
     ALTER TABLE ${self()} 
         ADD PRIMARY KEY (listing_id, snapshot_date) NOT ENFORCED;
+    END IF;
 }

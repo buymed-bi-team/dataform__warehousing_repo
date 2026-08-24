@@ -1,6 +1,7 @@
 config {
     type: 'incremental',
-    schema: "buying_agent_input"
+    schema: "buying_agent_input",
+    tags: ["AI_Buying_Agent"]
 }
 
 SELECT
@@ -15,6 +16,13 @@ WHERE 1=1
     AND v.discount_type IS NOT NULL
 
 post_operations {
+    IF NOT EXISTS (
+        SELECT 1
+        FROM `lakehouse-prod-394907.buying_agent_input.INFORMATION_SCHEMA.TABLE_CONSTRAINTS`
+        WHERE table_name = 'promotion_scope'
+        AND constraint_type = 'PRIMARY KEY'
+    ) THEN
     ALTER TABLE ${self()} 
         ADD PRIMARY KEY (promo_id, target_type, target_id, snapshot_date) NOT ENFORCED;
+    END IF;
 }

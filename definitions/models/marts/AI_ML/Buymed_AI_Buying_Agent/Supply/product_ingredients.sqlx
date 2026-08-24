@@ -1,6 +1,7 @@
 config {
     type: 'incremental',
-    schema: "buying_agent_input"
+    schema: "buying_agent_input",
+    tags: ["AI_Buying_Agent"]
 }
 
 SELECT
@@ -11,6 +12,13 @@ SELECT
 FROM ${ref("dim_product_ingredient")}
 
 post_operations {
+    IF NOT EXISTS (
+        SELECT 1
+        FROM `lakehouse-prod-394907.buying_agent_input.INFORMATION_SCHEMA.TABLE_CONSTRAINTS`
+        WHERE table_name = 'product_ingredients'
+        AND constraint_type = 'PRIMARY KEY'
+    ) THEN
     ALTER TABLE ${self()} 
         ADD PRIMARY KEY (product_id, active_ingredient, snapshot_date) NOT ENFORCED;
+    END IF;
 }

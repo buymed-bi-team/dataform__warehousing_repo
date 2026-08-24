@@ -1,6 +1,7 @@
 config {
     type: 'incremental',
-    schema: "buying_agent_input"
+    schema: "buying_agent_input",
+    tags: ["AI_Buying_Agent"]
 }
 
 SELECT
@@ -21,6 +22,14 @@ FROM platinum_buymed_vn.marketplace_prd_product_v2_substitute_product AS a
     LEFT JOIN ${ref("dim_product_ingredient")} AS e ON a.substitute_id = e.product_id AND e.ingredient_level = 1
 
 post_operations {
+    IF NOT EXISTS (
+        SELECT 1
+        FROM `lakehouse-prod-394907.buying_agent_input.INFORMATION_SCHEMA.TABLE_CONSTRAINTS`
+        WHERE table_name = 'product_substitutes'
+        AND constraint_type = 'PRIMARY KEY'
+    ) THEN
+
     ALTER TABLE ${self()} 
         ADD PRIMARY KEY (product_id, substitute_product_id, snapshot_date) NOT ENFORCED;
+    END IF;
 }

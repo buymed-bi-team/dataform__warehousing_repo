@@ -1,6 +1,7 @@
 config {
     type: 'incremental',
-    schema: "buying_agent_input"
+    schema: "buying_agent_input",
+    tags: ["AI_Buying_Agent"]
 }
 
 SELECT
@@ -48,6 +49,13 @@ WHERE 1=1
     AND voucher_status = "ACTIVE"
 
 post_operations {
+    IF NOT EXISTS (
+        SELECT 1
+        FROM `lakehouse-prod-394907.buying_agent_input.INFORMATION_SCHEMA.TABLE_CONSTRAINTS`
+        WHERE table_name = 'promotions'
+        AND constraint_type = 'PRIMARY KEY'
+    ) THEN
     ALTER TABLE ${self()} 
         ADD PRIMARY KEY (promo_id, snapshot_date) NOT ENFORCED;
+    END IF;
 }
