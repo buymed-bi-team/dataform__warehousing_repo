@@ -38,3 +38,19 @@ WHERE deleted_at IS NULL
       AND client_id NOT IN (5,6,7)
       AND type <> 'OTHER'
       AND province <> ''
+
+     post_operations {
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM `lakehouse-prod-394907.buying_agent_input.INFORMATION_SCHEMA.TABLE_CONSTRAINTS`
+    WHERE table_name = 'store_profile'
+      AND constraint_type = 'PRIMARY KEY'
+  ) THEN
+
+    ALTER TABLE ${self()}
+    ADD PRIMARY KEY (store_id, snapshot_date) NOT ENFORCED;
+
+  END IF;
+
+}
