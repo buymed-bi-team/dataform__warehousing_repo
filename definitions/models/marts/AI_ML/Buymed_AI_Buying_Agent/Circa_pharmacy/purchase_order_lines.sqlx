@@ -31,6 +31,6 @@ SELECT o.po_id
        , CURRENT_DATE('Asia/Ho_Chi_Minh')                           AS snapshot_date
 FROM ${ref("cos_purchase_order")} o 
 LEFT JOIN ${ref("cos_purchase_order_item")} i ON o.po_id = i.po_id 
-WHERE o.po_status NOT IN ('PENDING','CANCELED','SEPERATED' )
+WHERE o.po_status NOT IN ('PENDING','CANCELED','SEPERATED','WAIT_FOR_ORDER' )
       AND o.created_date BETWEEN DATE_SUB(CURRENT_DATE('Asia/Ho_Chi_Minh'), INTERVAL 179 DAY) 
         AND CURRENT_DATE('Asia/Ho_Chi_Minh')

@@ -38,6 +38,7 @@ LEFT JOIN ${ref("cos_fact_order")} o ON i.order_id = o.order_id
 LEFT JOIN base_unit p ON i.product_id = p.product_id
 WHERE o.created_date BETWEEN DATE_SUB(CURRENT_DATE('Asia/Ho_Chi_Minh'), INTERVAL 89 DAY)
      AND CURRENT_DATE('Asia/Ho_Chi_Minh')
+     AND status NOT IN ('OUT_OF_STOCK', 'CANCELED','FAILED_SHIPMENT' )
 --HERE o.order_code = 'DHC01112371'
 GROUP BY ALL
 
