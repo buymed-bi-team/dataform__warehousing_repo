@@ -7,9 +7,8 @@ config {
   protected: true,
   bigquery: {
     partitionBy: "snapshot_date",
-    clusterBy: ["store_id","store_sku_id", "supplier_id"],
-    updatePartitionFilter:
-      "snapshot_date >= DATE_SUB(CURRENT_DATE('Asia/Ho_Chi_Minh'), INTERVAL 179 DAY)"
+    clusterBy: ["store_id","store_sku_id", "supplier_id"]
+   
   },
 
   description: "PO history (180d) + open POs. PK: (po_id, line_no)."

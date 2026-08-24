@@ -68,3 +68,19 @@ LEFT JOIN base_unit_dedup ru ON inv.product_id = ru.product_id
 )
 SELECT * FROM check
 WHERE base_unit IS NOT NULL
+
+  post_operations {
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM `lakehouse-prod-394907.buying_agent_input.INFORMATION_SCHEMA.TABLE_CONSTRAINTS`
+    WHERE table_name = 'inventory_snapshot'
+      AND constraint_type = 'PRIMARY KEY'
+  ) THEN
+
+    ALTER TABLE ${self()}
+    ADD PRIMARY KEY (store_id, store_sku_id,snapshot_date ) NOT ENFORCED;
+
+  END IF;
+
+}
