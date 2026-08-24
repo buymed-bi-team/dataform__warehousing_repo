@@ -5,8 +5,6 @@ config {
 
   uniqueKey: ["store_id","store_sku_id", "snapshot_date"],
 
-  protected: true,
-
   bigquery: {
     partitionBy: "snapshot_date",
     clusterBy: ["store_id","store_sku_id", "registration_number", "barcode"]
