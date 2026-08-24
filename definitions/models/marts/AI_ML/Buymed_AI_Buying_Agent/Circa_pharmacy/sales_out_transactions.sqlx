@@ -42,4 +42,19 @@ WHERE o.created_date BETWEEN DATE_SUB(CURRENT_DATE('Asia/Ho_Chi_Minh'), INTERVAL
 --HERE o.order_code = 'DHC01112371'
 GROUP BY ALL
 
+   post_operations {
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM `lakehouse-prod-394907.buying_agent_input.INFORMATION_SCHEMA.TABLE_CONSTRAINTS`
+    WHERE table_name = 'sales_out_transactions'
+      AND constraint_type = 'PRIMARY KEY'
+  ) THEN
+
+    ALTER TABLE ${self()}
+    ADD PRIMARY KEY (transaction_id, line_no) NOT ENFORCED;
+
+  END IF;
+
+}
 
