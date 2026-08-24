@@ -45,6 +45,7 @@ with cte_dedup_carrier as (
         --         else '3PL'
         --     end as carrier_type
             , case
+                when a.carrier_code IN ('HUBVSIPII', 'HUBBACNINH', 'HUBVSIPII_CHILD', 'HUBBACNINH_HN') THEN 'WAREHOUSE'
                 when a.carrier_code in ('LANGSON', 'CAOBANG','BACKAN','HAGIANG') then '1PL'
                 when a.carrier_code like 'HUB%' then '1PL'
                 when a.carrier_code like 'NVCT%' then '1PL'
@@ -52,8 +53,9 @@ with cte_dedup_carrier as (
                 else '3PL'
             end	as logistics_type
             , CASE
+                WHEN a.carrier_code IN ('HUBVSIPII', 'HUBBACNINH', 'HUBVSIPII_CHILD', 'HUBBACNINH_HN') THEN 'WAREHOUSE'
                 WHEN STRPOS(a.carrier_code, "HUB") > 0 AND a.carrier_name NOT IN ("Onwheel", "Viettel Post Miền Nam")
-                    OR a.carrier_name = "NVCT Hub VSIP II"
+                    -- OR a.carrier_name = "NVCT Hub VSIP II"
                     OR a.carrier_code in ('LANGSON', 'CAOBANG','BACKAN','HAGIANG')
                     THEN "HUB"
                 WHEN (STRPOS(a.carrier_code, "NVCT") > 0 OR STRPOS(a.carrier_code, "NVTC") > 0)
@@ -71,6 +73,7 @@ with cte_dedup_carrier as (
 SELECT
     *
     , CASE
+        WHEN carrier_group = 'WAREHOUSE' THEN 'WAREHOUSE'
         WHEN carrier_group IN ('HUB', 'NVCT') THEN "1PL"
         WHEN carrier_group = "KTLS" THEN "2PL"
         ELSE "3PL"
