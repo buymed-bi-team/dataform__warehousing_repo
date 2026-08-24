@@ -9,8 +9,6 @@ config {
     "snapshot_date"
   ],
 
-  protected: true,
-
   bigquery: {
     partitionBy: "snapshot_date",
     clusterBy: ["store_id"]
@@ -18,6 +16,9 @@ config {
 
   description: "Circa store profile. Grain: one row per store per snapshot date."
 }
+
+
+-- TRUNCATE TABLE ${self()} 
 
 -- INSERT INTO buying_agent_input.store_profile
 -- (

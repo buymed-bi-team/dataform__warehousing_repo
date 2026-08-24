@@ -129,7 +129,11 @@ WITH final AS (
     a.sku_code,
     dim_product.product_name,
     dim_product.brand,
-    dim_product.brand_type,
+    CASE 
+      WHEN dim_product.brand_type like "%BRAND%NAME%" THEN "BRANDNAME"
+      WHEN dim_product.brand_type like "%GENERIC%" THEN "GENERGIC"
+      ELSE dim_product.brand_type
+      END AS brand_type,
     dim_product.product_category,
     dim_product.cat2,
     dim_product.cat3,
