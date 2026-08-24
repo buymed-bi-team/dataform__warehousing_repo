@@ -1,0 +1,44 @@
+
+config {
+  type: "incremental",
+  schema: "buying_agent_input",
+
+  uniqueKey: ["transaction_id","line_no"],
+
+  bigquery: {
+    partitionBy: "snapshot_date",
+    clusterBy: ["store_id","store_sku_id", "sold_at"]
+  },
+
+  description: "Transaction-level sales-out, rolling 90 days. PK: (transaction_id, line_no)."
+}
+
+WITH base_unit AS (
+  SELECT
+    product_id
+    ,unit           AS base_unit
+  FROM buymed_circa_v2.product_retail_unit
+  WHERE base_unit = TRUE
+  QUALIFY ROW_NUMBER() OVER ( PARTITION BY product_id ORDER BY updated_at DESC
+  ) = 1
+)
+SELECT  o.pos_id            AS store_id 
+       , o.order_id         AS transaction_id
+       , i.item_id          AS line_no
+       , sku_code           AS store_sku_id
+       , SUM(base_quantity) AS sold_qty
+       , SUM(base_qty_rt)   AS return_qty
+       , p.base_unit        AS unit
+       , ROUND(SAFE_DIVIDE(unit_price, COALESCE(convert_rate, 1))) AS unit_price
+       , DATETIME_ADD(o.created_at, INTERVAL -7 HOUR) AS sold_at
+       , CASE WHEN base_qty_rt > 0 THEN TRUE ELSE FALSE END AS is_return
+       , CURRENT_DATE('Asia/Ho_Chi_Minh')                           AS snapshot_date
+FROM `gold_buymed_vn2.cos_fact_order_item` i 
+LEFT JOIN `gold_buymed_vn2.cos_fact_order` o ON i.order_id = o.order_id 
+LEFT JOIN base_unit p ON i.product_id = p.product_id
+WHERE o.created_date BETWEEN DATE_SUB(CURRENT_DATE('Asia/Ho_Chi_Minh'), INTERVAL 89 DAY)
+     AND CURRENT_DATE('Asia/Ho_Chi_Minh')
+--HERE o.order_code = 'DHC01112371'
+GROUP BY ALL
+
+
