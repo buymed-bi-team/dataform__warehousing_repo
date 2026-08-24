@@ -5,7 +5,7 @@ config {
 }
 
 SELECT
-    a.mg_id AS listing_id
+    CONCAT(a.mg_id, ROW_NUMBER()  OVER(PARTITION BY mg_id ORDER BY a.sales_region_code)) AS listing_id
     , SAFE_CAST(a.product_id AS STRING) AS product_id
     , SAFE_CAST(s.supplier_id AS STRING) AS seller_id
     , s.supplier_name AS seller_name
