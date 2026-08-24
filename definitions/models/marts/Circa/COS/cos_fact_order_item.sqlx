@@ -154,6 +154,7 @@ WITH base_unit_selection AS (
         END AS is_deal1k
 
         ,al.location_detail_id
+        ,oi.id AS item_id
 
     FROM ${source.circa_os}.order_order o
     LEFT JOIN ${source.circa_os}.order_order_item oi ON o.id = oi.order_id
