@@ -24,6 +24,7 @@ SELECT DISTINCT
     ,DATE(DATETIME_ADD(a.created_at, INTERVAL 7 HOUR)) AS created_date
     ,DATE(DATETIME_ADD(a.completed_at, INTERVAL 7 HOUR)) AS completed_date
     ,DATETIME_ADD(a.created_at, INTERVAL 7 HOUR) AS created_at
+    ,DATETIME_ADD(a.stock_at, INTERVAL 7 HOUR) AS stock_at
     ,a.location_type
     ,a.fulfillment_method
     ,a.sale_order_number AS order_id
