@@ -4,10 +4,12 @@ config {
   schema: "buying_agent_input",
 
   uniqueKey: ["po_id","line_no"],
-
+  protected: true,
   bigquery: {
     partitionBy: "snapshot_date",
-    clusterBy: ["store_id","store_sku_id", "supplier_id"]
+    clusterBy: ["store_id","store_sku_id", "supplier_id"],
+    updatePartitionFilter:
+      "snapshot_date >= DATE_SUB(CURRENT_DATE('Asia/Ho_Chi_Minh'), INTERVAL 179 DAY)"
   },
 
   description: "PO history (180d) + open POs. PK: (po_id, line_no)."
@@ -24,13 +26,31 @@ SELECT o.po_id
        , quantity AS ordered_qty
        , actual_quantity AS received_qty
        , i.unit
-       , i.unit_price_af_discount AS unit_cost
+       , COALESCE(i.unit_price_af_discount,unit_price) AS unit_cost
        , o.po_status AS status
-       , o.created_at AS order_at
-       , stock_at AS received_at
+       , TIMESTAMP(o.created_at) AS ordered_at 
+       , TIMESTAMP(stock_at) AS received_at
        , CURRENT_DATE('Asia/Ho_Chi_Minh')                           AS snapshot_date
 FROM ${ref("cos_purchase_order")} o 
 LEFT JOIN ${ref("cos_purchase_order_item")} i ON o.po_id = i.po_id 
 WHERE o.po_status NOT IN ('PENDING','CANCELED','SEPERATED','WAIT_FOR_ORDER' )
       AND o.created_date BETWEEN DATE_SUB(CURRENT_DATE('Asia/Ho_Chi_Minh'), INTERVAL 179 DAY) 
         AND CURRENT_DATE('Asia/Ho_Chi_Minh')
+        AND  i.item_id IS NOT NULL
+
+   post_operations {
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM `lakehouse-prod-394907.buying_agent_input.INFORMATION_SCHEMA.TABLE_CONSTRAINTS`
+    WHERE table_name = 'purchase_order_lines'
+      AND constraint_type = 'PRIMARY KEY'
+  ) THEN
+
+    ALTER TABLE ${self()}
+    ADD PRIMARY KEY (po_id, line_no) NOT ENFORCED;
+
+  END IF;
+
+}
+
