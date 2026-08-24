@@ -1,0 +1,68 @@
+
+config {
+  type: "incremental",
+  schema: "buying_agent_input",
+
+  uniqueKey: ["store_id","store_sku_id", "snapshot_date"],
+
+  protected: true,
+
+  bigquery: {
+    partitionBy: "snapshot_date",
+    clusterBy: ["store_id","store_sku_id", "registration_number", "barcode"]
+  },
+
+  description: "inventory_snapshot | grain: 1 row per store x store_sku | refresh: daily."
+}
+
+
+
+WITH inv AS (
+  SELECT
+    pos_id                                                           AS store_id
+    ,sku_code                                                        AS store_sku_id
+    ,product_id
+    ,SUM(on_hand_qty)                                                AS on_hand_qty
+    ,SUM(available_qty)                                              AS available_qty
+    ,MIN(expired_date)                                               AS nearest_expiry_date
+    ,SUM(CASE WHEN expired_date IS NOT NULL
+             AND expired_date <= TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 90 DAY)
+        THEN on_hand_qty ELSE 0 END)                                AS qty_expiring_90d
+    ,SAFE_DIVIDE(SUM(cost_price_include_tax * on_hand_qty),
+                NULLIF(SUM(on_hand_qty), 0))                        AS avg_cost_price
+    ,client_id
+  FROM `lakehouse-prod-394907.buymed_circa_v2.inventory_location_detail`
+  WHERE deleted_at IS NULL
+  GROUP BY ALL
+),
+base_unit_dedup AS (
+  SELECT
+    product_id
+    ,client_id
+    ,unit           AS base_unit
+  FROM `lakehouse-prod-394907.buymed_circa_v2.product_retail_unit`
+  WHERE base_unit = TRUE
+  QUALIFY ROW_NUMBER() OVER (
+    PARTITION BY product_id, client_id
+    ORDER BY updated_at DESC
+  ) = 1
+)
+SELECT
+  inv.store_id
+  ,inv.store_sku_id
+  ,p.product_name
+  ,p.barcode
+  ,p.registration_number
+  ,ru.base_unit                                      
+  ,p.ts_convert_rate AS pack_size
+  ,inv.on_hand_qty
+  ,0                           AS reserved_qty         --  fix = 0
+  ,inv.available_qty                                   
+  ,inv.nearest_expiry_date
+  ,inv.qty_expiring_90d
+  ,inv.avg_cost_price
+  ,CAST(NULL AS DATE)         AS last_stocktake_date  
+  ,CURRENT_DATE('Asia/Ho_Chi_Minh')                           AS snapshot_date
+FROM inv
+LEFT JOIN `gold_buymed_vn2.cos_dim_product` p ON inv.product_id = p.product_id AND inv.client_id = p.client_id
+LEFT JOIN base_unit_dedup ru ON inv.product_id = ru.product_id AND inv.client_id = ru.client_id
