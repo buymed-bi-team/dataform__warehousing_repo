@@ -16,7 +16,6 @@ config {
 }
 
 
-
 WITH inv AS (
   SELECT
     pos_id                                                           AS store_id
@@ -38,17 +37,15 @@ WITH inv AS (
 base_unit_dedup AS (
   SELECT
     product_id
-    ,client_id
     ,unit           AS base_unit
-  FROM `lakehouse-prod-394907.buymed_circa_v2.product_retail_unit`
+  FROM buymed_circa_v2.product_retail_unit
   WHERE base_unit = TRUE
-  QUALIFY ROW_NUMBER() OVER (
-    PARTITION BY product_id, client_id
-    ORDER BY updated_at DESC
+  QUALIFY ROW_NUMBER() OVER ( PARTITION BY product_id ORDER BY updated_at DESC
   ) = 1
-)
+), check AS (
 SELECT
   inv.store_id
+  ,inv.product_id
   ,inv.store_sku_id
   ,p.product_name
   ,p.barcode
@@ -58,11 +55,18 @@ SELECT
   ,inv.on_hand_qty
   ,0                           AS reserved_qty         --  fix = 0
   ,inv.available_qty                                   
-  ,inv.nearest_expiry_date
+  ,DATE(inv.nearest_expiry_date) AS nearest_expiry_date
   ,inv.qty_expiring_90d
   ,inv.avg_cost_price
   ,CAST(NULL AS DATE)         AS last_stocktake_date  
   ,CURRENT_DATE('Asia/Ho_Chi_Minh')                           AS snapshot_date
 FROM inv
-LEFT JOIN `gold_buymed_vn2.cos_dim_product` p ON inv.product_id = p.product_id AND inv.client_id = p.client_id
-LEFT JOIN base_unit_dedup ru ON inv.product_id = ru.product_id AND inv.client_id = ru.client_id
+LEFT JOIN 
+    (SELECT DISTINCT product_id, product_name, barcode, registration_number, ts_convert_rate FROM `gold_buymed_vn2.cos_dim_product` 
+     QUALIFY ROW_NUMBER() OVER ( PARTITION BY product_id ORDER BY created_at DESC
+  ) = 1)
+    p  ON inv.product_id = p.product_id 
+LEFT JOIN base_unit_dedup ru ON inv.product_id = ru.product_id 
+)
+SELECT * FROM check
+WHERE base_unit IS NOT NULL
