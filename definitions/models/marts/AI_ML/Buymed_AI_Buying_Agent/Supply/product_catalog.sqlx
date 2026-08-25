@@ -5,7 +5,7 @@ config {
 }
 
 SELECT
-    a.product_id
+    SAFE_CAST(a.product_id AS  STRING)  AS product_id
     , product_code AS product_sku_code
     , product_name
     , registration_number
@@ -34,7 +34,7 @@ post_operations {
 
     IF NOT EXISTS (
         SELECT 1
-        FROM `lakehouse-prod-394907.buying_agent_input.INFORMATION_SCHEMA.TABLE_CONSTRAINTS`
+        FROM buying_agent_input.INFORMATION_SCHEMA.TABLE_CONSTRAINTS
         WHERE table_name = 'product_catalog'
         AND constraint_type = 'PRIMARY KEY'
     ) THEN

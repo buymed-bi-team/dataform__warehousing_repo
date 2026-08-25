@@ -14,7 +14,7 @@ FROM ${ref("dim_product_ingredient")}
 post_operations {
     IF NOT EXISTS (
         SELECT 1
-        FROM `lakehouse-prod-394907.buying_agent_input.INFORMATION_SCHEMA.TABLE_CONSTRAINTS`
+        FROM buying_agent_input.INFORMATION_SCHEMA.TABLE_CONSTRAINTS
         WHERE table_name = 'product_ingredients'
         AND constraint_type = 'PRIMARY KEY'
     ) THEN

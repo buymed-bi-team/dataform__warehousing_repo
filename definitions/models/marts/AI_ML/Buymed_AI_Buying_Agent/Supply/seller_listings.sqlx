@@ -41,11 +41,12 @@ WHERE 1=1
 post_operations {
     IF NOT EXISTS (
         SELECT 1
-        FROM `lakehouse-prod-394907.buying_agent_input.INFORMATION_SCHEMA.TABLE_CONSTRAINTS`
+        FROM buying_agent_input.INFORMATION_SCHEMA.TABLE_CONSTRAINTS
         WHERE table_name = 'seller_listings'
         AND constraint_type = 'PRIMARY KEY'
     ) THEN
     ALTER TABLE ${self()} 
-        ADD PRIMARY KEY (listing_id, snapshot_date) NOT ENFORCED;
+        ADD PRIMARY KEY (listing_id, snapshot_date) NOT ENFORCED,
+        ADD FOREIGN KEY (product_id, snapshot_date) REFERENCES ${ref("buying_agent_input",  "product_catalog")}(product_id, snapshot_date) NOT ENFORCED;
     END IF;
 }
