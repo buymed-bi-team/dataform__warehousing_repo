@@ -288,6 +288,7 @@ WITH
     WHERE DATE(submit_at) >= "2026-08-19"
         AND  object = "Product"
         AND type = "PIC_BRAND_SELLER"
+    QUALIFY ROW_NUMBER() OVER(PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
   )
 
 SELECT

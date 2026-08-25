@@ -5,7 +5,7 @@ config {
 }
 
 SELECT
-    s.supplier_id AS seller_id
+    SAFE_CAST(s.supplier_id  AS STRING) AS seller_id
     , SAFE_DIVIDE(SUM(IF(o.order_status <> 'CANCEL', outbound_quantity, 0)), SUM(IF(o.order_status <> 'CANCEL', demand_quantity, 0))) AS fill_rate_90d
     , SAFE_DIVIDE(COUNT(DISTINCT IF(o.order_status = 'CANCEL', oi.order_id, NULL)), COUNT(DISTINCT oi.order_id)) AS cancel_rate_90d
     , AVG(DATE_DIFF(DATE(o.delivered_time), DATE(o.created_at), DAY)) AS avg_actual_lead_time_days

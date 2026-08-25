@@ -7,7 +7,7 @@ config {
 SELECT
     v.voucher_code AS promo_id
     , "PRODUCT" AS target_type
-    , vp.product_id AS target_id
+    , SAFE_CAST(vp.product_id AS STRING) AS target_id
     , CURRENT_DATE("+7") AS snapshot_date
 FROM ${ref("dim_voucher_product")} AS vp
     LEFT JOIN ${ref("dim_voucher")} AS v ON vp.voucher_code = v.voucher_code

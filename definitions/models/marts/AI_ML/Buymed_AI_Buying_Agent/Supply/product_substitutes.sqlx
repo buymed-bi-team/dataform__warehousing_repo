@@ -5,8 +5,8 @@ config {
 }
 
 SELECT
-    a.product_id
-    , substitute_id AS substitute_product_id
+    SAFE_CAST(a.product_id AS STRING) AS product_id
+    , SAFE_CAST(substitute_id  AS STRING) AS substitute_product_id
     , CASE
         WHEN b.brand = c.brand AND d.ingredient_id = e.ingredient_id AND d.volume = e.volume AND b.volumes <> c.volumes
             THEN "PACK_SIZE_VARIANT"
@@ -30,6 +30,8 @@ post_operations {
     ) THEN
 
     ALTER TABLE ${self()} 
-        ADD PRIMARY KEY (product_id, substitute_product_id, snapshot_date) NOT ENFORCED;
+        ADD PRIMARY KEY (product_id, substitute_product_id, snapshot_date) NOT ENFORCED,
+        ADD FOREIGN KEY (product_id, snapshot_date) REFERENCES ${ref("buying_agent_input",  "product_catalog")}(product_id, snapshot_date) NOT ENFORCED,
+        ADD FOREIGN KEY (substitute_product_id, snapshot_date) REFERENCES ${ref("buying_agent_input",  "product_catalog")}(product_id, snapshot_date) NOT ENFORCED;
     END IF;
 }

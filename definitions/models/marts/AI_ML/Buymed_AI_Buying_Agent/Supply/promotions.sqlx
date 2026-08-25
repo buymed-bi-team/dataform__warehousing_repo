@@ -36,7 +36,7 @@ SELECT
     , percentage_discount AS discount_pct
     , voucher_discount AS discount_amount
     , max_discount AS discount_cap
-    , s.product_id AS gift_product_id
+    , SAFE_CAST(s.product_id AS STRING) AS gift_product_id
     , gift_quantity AS gift_qty
     , start_at
     , end_at
