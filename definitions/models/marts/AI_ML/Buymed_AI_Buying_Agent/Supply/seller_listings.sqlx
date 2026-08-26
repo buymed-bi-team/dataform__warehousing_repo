@@ -1,7 +1,16 @@
 config {
     type: 'incremental',
     schema: "buying_agent_input",
-    tags: ["AI_Buying_Agent"]
+    tags: ["AI_Buying_Agent"],
+    uniqueKey: [
+        "listing_id",
+        "snapshot_date"
+    ],
+
+    bigquery: {
+        partitionBy: "snapshot_date",
+        clusterBy: ["listing_id", "product_id"]
+    },
 }
 
 SELECT
