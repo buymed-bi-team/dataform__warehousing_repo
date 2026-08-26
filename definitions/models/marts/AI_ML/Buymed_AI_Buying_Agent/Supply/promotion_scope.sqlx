@@ -25,6 +25,7 @@ FROM ${ref("dim_voucher_product")} AS vp
 WHERE 1=1
     AND v.voucher_status = 'ACTIVE'
     AND v.discount_type IS NOT NULL
+QUALIFY ROW_NUMBER() over(PARTITION BY promo_id, target_type, target_id) = 1
 
 post_operations {
     IF NOT EXISTS (
