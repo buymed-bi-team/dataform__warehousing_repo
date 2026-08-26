@@ -268,12 +268,11 @@ WITH
         , UNNEST(JSON_VALUE_ARRAY(extra_props, "$.user_types")) AS user_type
         LEFT JOIN (
             SELECT
-                JSON_VALUE(o, "$.value") AS code
+                value AS code
                 , JSON_VALUE(l, "$.label") AS label
-            FROM ${source.platinum}.pim_prd_product_attribute_definitions
-                LEFT JOIN UNNEST(JSON_QUERY_ARRAY(options)) AS o
-                LEFT JOIN UNNEST(JSON_QUERY_ARRAY(o, "$.labels")) AS l
-            WHERE code = "PRODUCT_USER_TYPE"
+            FROM ${source.platinum}.pim_prd_product_attribute_definition_option
+                LEFT JOIN UNNEST(JSON_QUERY_ARRAY(labels)) AS l
+            WHERE attribute_code = "PRODUCT_USER_TYPE"
                 AND JSON_VALUE(l, "$.language") = "vi"
         ) AS a ON a.code = user_type
     WHERE a.code IS NOT NULL
