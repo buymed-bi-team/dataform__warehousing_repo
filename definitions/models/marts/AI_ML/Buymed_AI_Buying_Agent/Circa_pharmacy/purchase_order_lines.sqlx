@@ -3,7 +3,7 @@ config {
   schema: "buying_agent_input",
 
   uniqueKey: ["snapshot_date", "po_id", "line_no"],
-
+  tags: ["AI_Buying_Agent"],
   protected: true,
 
   bigquery: {
