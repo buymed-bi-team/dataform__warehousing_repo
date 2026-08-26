@@ -84,7 +84,7 @@ WITH
     SELECT
       g.month,
       g.pos_code,
-      COUNT(DISTINCT g.order_code) no_order,
+      COUNT(DISTINCT if(net_sale - COALESCE(return_amount,0) = 0, null, g.order_code)) no_order,
       SUM(gmv) gmv,
       SUM(net_sale) net_sale,
       SUM(return_amount) return_amount
@@ -122,7 +122,7 @@ WITH
     SELECT
       g.week,
       g.pos_code,
-      COUNT(DISTINCT g.order_code) no_order,
+      COUNT(DISTINCT if(net_sale - COALESCE(return_amount,0) = 0, null, g.order_code)) no_order,
       SUM(gmv) gmv,
       SUM(net_sale) net_sale,
       SUM(return_amount) return_amount
@@ -159,7 +159,7 @@ WITH
     SELECT
       g.date,
       g.pos_code,
-       COUNT(DISTINCT g.order_code) no_order,
+       COUNT(DISTINCT if(net_sale - COALESCE(return_amount,0) = 0, null, g.order_code)) no_order,
        SUM(gmv) gmv,
       SUM(net_sale) net_sale,
       SUM(return_amount) return_amount
