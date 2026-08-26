@@ -69,6 +69,7 @@ WITH _all AS (
        LEFT JOIN buymed_circa_v2.inventory_put_ticket_item putd ON putd.put_ticket_id = put.id
        WHERE status <> 'CANCELED'
            AND quantity > 0
+           AND ref_type <> 'RETURN_ORDER'
        GROUP BY ALL
 )
 SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
