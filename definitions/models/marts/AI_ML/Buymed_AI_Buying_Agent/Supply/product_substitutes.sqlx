@@ -30,7 +30,7 @@ FROM platinum_buymed_vn.marketplace_prd_product_v2_substitute_product AS a
     LEFT JOIN ${ref("dim_product")} AS c ON a.substitute_id = c.product_id
     LEFT JOIN ${ref("dim_product_ingredient")} AS d ON a.product_id = d.product_id AND d.ingredient_level = 1
     LEFT JOIN ${ref("dim_product_ingredient")} AS e ON a.substitute_id = e.product_id AND e.ingredient_level = 1
-
+QUALIFY ROW_NUMBER() over(PARTITION BY product_id, substitute_product_id) = 1
 post_operations {
     IF NOT EXISTS (
         SELECT 1
