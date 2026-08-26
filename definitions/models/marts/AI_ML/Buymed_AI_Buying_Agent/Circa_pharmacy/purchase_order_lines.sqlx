@@ -4,7 +4,6 @@ config {
 
   uniqueKey: ["snapshot_date", "po_id", "line_no"],
   tags: ["AI_Buying_Agent"],
-  protected: true,
 
   bigquery: {
     partitionBy: "snapshot_date",
