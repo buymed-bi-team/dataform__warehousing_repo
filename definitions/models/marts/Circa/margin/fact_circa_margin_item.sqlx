@@ -40,6 +40,7 @@ WITH
     doc_code, 
     fulfillment_method, 
     owner_name,
+    i.unit,
     unit_price, 
     is_deal_1k,  
     cost_price_include_tax, 
