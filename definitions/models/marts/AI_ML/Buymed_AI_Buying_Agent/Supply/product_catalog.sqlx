@@ -37,7 +37,8 @@ SELECT
 FROM ${ref("dim_product")} AS a
     LEFT JOIN ${ref("dim_product_category")} AS b ON a.product_id = b.product_id AND b.level = 1
 WHERE 1=1
-    AND  a.product_report_category NOT IN ('RECALLED','TECH', 'DENX')
+    AND a.product_report_category NOT IN ('RECALLED','TECH', 'DENX')
+    AND a.product_status = 'ACTIVE'
 
 post_operations {
 
