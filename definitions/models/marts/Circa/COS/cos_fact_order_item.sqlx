@@ -207,9 +207,10 @@ WITH base_unit_selection AS (
         ,rt.unit
         ,rt.lot_date
         ,rt.sku_code
-        ,rt.quantity AS rt_quantity
-        ,rt.base_quantity AS rt_base_quantity
+        ,SUM(rt.quantity) AS rt_quantity
+        ,SUM(rt.base_quantity) AS rt_base_quantity
     FROM ${source.ref}.cos_return_completed_detail rt
+    GROUP BY ALL
 )
 
 ,final AS (
