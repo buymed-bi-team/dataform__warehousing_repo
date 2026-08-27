@@ -3,7 +3,7 @@ config {
   type: "incremental",
   schema: "buying_agent_input",
   name: "store_profile",
-
+  tags: ["AI_Buying_Agent"],
   uniqueKey: [
     "store_id",
     "snapshot_date"

@@ -1,16 +1,26 @@
 config {
     type: 'incremental',
     schema: "buying_agent_input",
-    tags: ["AI_Buying_Agent"]
+    tags: ["AI_Buying_Agent"],
+    uniqueKey: [
+        "product_id",
+        "active_ingredient",
+        "snapshot_date"
+    ],
+
+    bigquery: {
+        partitionBy: "snapshot_date",
+        clusterBy: ["product_id"]
+    },
 }
 
-SELECT
+SELECT 
     SAFE_CAST(product_id AS STRING)  AS  product_id
     , ingredient_name AS active_ingredient
     , volume AS strength
     , CURRENT_DATE("+7") AS snapshot_date
 FROM ${ref("dim_product_ingredient")}
-
+QUALIFY ROW_NUMBER() over(PARTITION BY product_id, active_ingredient) = 1
 post_operations {
     IF NOT EXISTS (
         SELECT 1

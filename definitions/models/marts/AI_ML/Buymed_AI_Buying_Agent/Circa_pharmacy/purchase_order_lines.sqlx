@@ -3,8 +3,7 @@ config {
   schema: "buying_agent_input",
 
   uniqueKey: ["snapshot_date", "po_id", "line_no"],
-
-  protected: true,
+  tags: ["AI_Buying_Agent"],
 
   bigquery: {
     partitionBy: "snapshot_date",
@@ -47,3 +46,18 @@ AND o.created_date BETWEEN
     )
     AND CURRENT_DATE('Asia/Ho_Chi_Minh')
 AND i.item_id IS NOT NULL
+     post_operations {
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM `lakehouse-prod-394907.buying_agent_input.INFORMATION_SCHEMA.TABLE_CONSTRAINTS`
+    WHERE table_name = 'purchase_order_lines'
+      AND constraint_type = 'PRIMARY KEY'
+  ) THEN
+
+    ALTER TABLE ${self()}
+    ADD PRIMARY KEY (po_id, line_no) NOT ENFORCED;
+
+  END IF;
+
+}
