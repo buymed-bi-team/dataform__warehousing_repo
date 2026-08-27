@@ -12,7 +12,7 @@ config {
         `,
     bigquery: {
         partitionBy: "DATE(created_at)",
-        clusterBy: ["order_id", "sku_code"]
+        clusterBy: ["order_id", "sku_code", "product_id", "seller_code"]
     },
     tags: ["custom_1h_past10", "MARKETPLACE", "CUSTOMER_SEGMENT"],
     columns: {
