@@ -131,6 +131,7 @@ WITH final AS (
     dim_product.brand,
     CASE 
       WHEN dim_product.brand_type LIKE '%BRAND%NAME%' THEN 'BRANDNAME'
+      WHEN dim_product.brand_type LIKE '%BRAND%GENERIC%' THEN 'BRAND_GENERIC'
       WHEN dim_product.brand_type = 'PORTFOLIO' THEN 'BUYMED SELECTED'
       WHEN dim_product.brand_type = 'MARKET PLACE' THEN 'HIGH MARGIN'
     ELSE dim_product.brand_type END AS brand_type,
