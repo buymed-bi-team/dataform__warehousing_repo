@@ -1,5 +1,5 @@
 config {
-    type: 'operations',
+    type: 'table',
     schema: "buymed_circa_recommendation",
     description: `All active product of web Circa.`,
     tags: [ "custom_1h_past10"]
@@ -58,8 +58,9 @@ LEFT JOIN base_unit t ON o.client_id = t.client_id AND o.product_id = t.product_
 --WHERE order_code = 'DHC00991602'
 GROUP BY ALL
 )
-SELECT
-      o.code AS order_code
+SELECT CASE WHEN o.type = 'ONLINE' THEN DATE(DATETIME(ol.created_time, 'Asia/Ho_Chi_Minh')) 
+             ELSE DATE(DATETIME(o.created_at, 'Asia/Ho_Chi_Minh')) END AS created_date
+    ,  o.code AS order_code
     , i.product_id
     , i.unit
     , i.sku_code
@@ -86,6 +87,7 @@ SELECT
       END AS unit_price
 
 FROM `buymed_circa_v2.order_order` AS o
+LEFT JOIN platinum_buymed_vn.circa_online_prd_order_order ol ON o.reference_order_in_platform = ol.order_code
 LEFT JOIN `buymed_circa_v2.order_order_item` AS i ON o.id = i.order_id
 LEFT JOIN rt
     ON o.code = rt.order_code
