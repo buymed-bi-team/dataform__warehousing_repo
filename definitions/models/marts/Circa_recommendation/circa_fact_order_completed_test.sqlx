@@ -1,0 +1,106 @@
+config {
+    type: 'operations',
+    schema: "buymed_circa_recommendation",
+    description: `All active product of web Circa.`,
+    tags: [ "custom_1h_past10"]
+}
+
+
+WITH base_unit_selection AS (
+    SELECT 
+         product_id
+        ,client_id
+        ,base_unit
+        ,ROW_NUMBER() OVER (
+            PARTITION BY product_id, client_id
+            ORDER BY COUNT(*) DESC
+        ) AS rn
+    FROM gold_buymed_vn2.cos_product_convert_base_unit
+    GROUP BY ALL
+)
+,base_unit AS (
+    SELECT
+         a.*
+    FROM gold_buymed_vn2.cos_product_convert_base_unit a
+    LEFT JOIN base_unit_selection b
+        ON a.product_id = b.product_id
+        AND a.client_id = b.client_id
+        AND a.base_unit = b.base_unit
+    WHERE b.rn = 1
+), return_detail AS (
+SELECT o.code
+      , order_code
+       ,i.product_id
+      , i.unit
+      , i.sku_code
+      , i.lot_date
+      , o.client_id
+      , CASE WHEN SUM(received_quantity) > 0 THEN SUM(received_quantity)
+           ELSE SUM(i.quantity) END AS quantity
+FROM `buymed_circa_v2.order_return_order` o  
+LEFT JOIN (SELECT code AS order_code, return_codes  FROM buymed_circa_v2.order_order
+    LEFT JOIN UNNEST(JSON_VALUE_ARRAY(order_return_codes)) AS return_codes
+    WHERE return_codes IS NOT NULL ) r ON o.code = r.return_codes
+LEFT JOIN `buymed_circa_v2.order_return_order_item` i ON o.id = i.return_order_id
+WHERE o.status = 'COMPLETED'
+GROUP BY ALL
+), rt AS (
+SELECT o.order_code
+      , o.product_id
+      , unit
+      , sku_code
+      , lot_date
+      , o.client_id
+      , SUM(quantity) AS quantity_return
+      , SUM( quantity * COALESCE(t.convert_rate, 1) ) AS base_quantity_return
+FROM return_detail o 
+LEFT JOIN base_unit t ON o.client_id = t.client_id AND o.product_id = t.product_id AND LOWER(t.convert_unit) = LOWER(o.unit)
+--WHERE order_code = 'DHC00991602'
+GROUP BY ALL
+)
+SELECT
+      o.code AS order_code
+    , i.product_id
+    , i.unit
+    , i.sku_code
+    , i.lot_date
+    , o.client_id
+    , i.quantity - COALESCE(rt.quantity_return, 0) AS quantity
+    , i.quantity * COALESCE(t.convert_rate, 1)  - COALESCE(rt.base_quantity_return, 0) AS base_quantity
+    , CASE
+        WHEN NULLIF(i.order_apply_combo_id, '') IS NOT NULL
+        THEN ROUND(
+            SAFE_DIVIDE(
+                (c.combo_price - c.discount_amount)
+                * c.quantity
+                * SAFE_DIVIDE(
+                    i.system_price * i.quantity,
+                    SUM(i.system_price * i.quantity) OVER (
+                        PARTITION BY o.id, i.order_apply_combo_id
+                    )
+                ),
+                i.quantity
+            )
+        )
+        ELSE i.unit_price
+      END AS unit_price
+
+FROM `buymed_circa_v2.order_order` AS o
+LEFT JOIN `buymed_circa_v2.order_order_item` AS i ON o.id = i.order_id
+LEFT JOIN rt
+    ON o.code = rt.order_code
+    AND i.product_id = rt.product_id
+    AND LOWER(i.unit) = LOWER(rt.unit)
+    AND i.sku_code = rt.sku_code
+    AND i.lot_date IS NOT DISTINCT FROM rt.lot_date
+LEFT JOIN base_unit AS t
+    ON o.client_id = t.client_id
+    AND i.product_id = t.product_id
+    AND LOWER(t.convert_unit) = LOWER(i.unit)
+LEFT JOIN `lakehouse-prod-394907.buymed_circa_v2.order_order_apply_combo` AS c
+    ON i.order_apply_combo_id = c.id
+
+
+
+
+
