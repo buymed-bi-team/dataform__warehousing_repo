@@ -61,6 +61,8 @@ GROUP BY ALL
 SELECT CASE WHEN o.type = 'ONLINE' THEN DATE(DATETIME(ol.created_time, 'Asia/Ho_Chi_Minh')) 
              ELSE DATE(DATETIME(o.created_at, 'Asia/Ho_Chi_Minh')) END AS created_date
     ,  o.code AS order_code
+    , o.client_id
+    , o.status 
     , i.product_id
     , i.unit
     , i.sku_code
