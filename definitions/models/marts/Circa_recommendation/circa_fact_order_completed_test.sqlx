@@ -1,8 +1,8 @@
 config {
     type: 'table',
     schema: "buymed_circa_recommendation",
-    description: `All active product of web Circa.`,
-    tags: [ "custom_1h_past10"]
+    description: `All active product of web Circa.`
+
 }
 
 
