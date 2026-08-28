@@ -11,7 +11,7 @@ config {
 }
 
 WITH silver AS (
-  SELECT
+SELECT
     key, mg_id, created_time, session_id, results_count, product_ids, total_matched, source_page, response_time_ms, user_action, record_id, last_updated_time, search_query, user_id, search_type, search_mode, synced_at, extra_props, action, ingest_time,
     CASE
       WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time, 'Asia/Ho_Chi_Minh'))
@@ -19,15 +19,15 @@ WITH silver AS (
     END created_date,
     CAST(NULL AS DATETIME) AS platinum_refresh
   FROM silver_buymed_vn.circa_online_prd_product_search_history
-  WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 1 DAY
-  QUALIFY ROW_NUMBER() OVER (_window) = 1
-    AND ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 16 HOUR
-  WINDOW _window AS (
+  WHERE DATE(ingest_time, 'Asia/Ho_Chi_Minh')
+      = CURRENT_DATE('Asia/Ho_Chi_Minh')
+QUALIFY ROW_NUMBER() OVER (
     PARTITION BY mg_id
-    ORDER BY synced_at DESC,
-      IF(action='d',3, IF(action='u',2,1)) DESC,
-      last_updated_time DESC
-  )
+    ORDER BY
+        synced_at DESC,
+        IF(action = 'd', 3, IF(action = 'u', 2, 1)) DESC,
+        last_updated_time DESC
+) = 1
 ),
 
 platinum AS (
