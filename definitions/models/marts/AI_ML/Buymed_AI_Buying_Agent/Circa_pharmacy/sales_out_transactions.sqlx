@@ -3,7 +3,7 @@ config {
   type: "incremental",
   schema: "buying_agent_input",
   tags: ["AI_Buying_Agent"],
-  uniqueKey: ["transaction_id","line_no"],
+  uniqueKey: ["transaction_id","line_no", "snapshot_date"],
 
   bigquery: {
     partitionBy: "snapshot_date",
@@ -52,7 +52,7 @@ GROUP BY ALL
   ) THEN
 
     ALTER TABLE ${self()}
-    ADD PRIMARY KEY (transaction_id, line_no) NOT ENFORCED;
+    ADD PRIMARY KEY (transaction_id, line_no, snapshot_date) NOT ENFORCED;
 
   END IF;
 
