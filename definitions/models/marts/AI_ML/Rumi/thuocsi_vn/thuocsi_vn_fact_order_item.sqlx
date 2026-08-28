@@ -3,23 +3,23 @@ config {
     schema: "buymed_innovation",
     description: `All orders item in the Vietnam marketplace (including tender orders).`,
     tags: ['AI_THUOCSI_VN', "innovation_10m"],
-    uniqueKey: ["order_id", "mg_id"],
+    //uniqueKey: ["order_id", "mg_id"],
     bigquery: {
         partitionBy: "DATE(created_time)",
         clusterBy: ["product_id", "sku_key","seller_class", "channel"]
     },
 }
 
--- pre_operations {
---     ${when(
---         incremental(),
---         `     
---             DELETE FROM ${self()}
---             WHERE DATE(created_time) >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 1 MONTH);            
---         `
---         )
---     }
--- }
+pre_operations {
+    ${when(
+        incremental(),
+        `     
+            DELETE FROM ${self()}
+            WHERE DATE(created_time) >= DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 1 MONTH);            
+        `
+        )
+    }
+}
 
 WITH
     fact_order AS ( 
@@ -100,6 +100,28 @@ WITH
             -- AND created_date >= "2022-01-01"
             AND a.created_date >= ${when(incremental(), `DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 1 MONTH)`, `"2025-01-01"`)}
             AND status <> "CANCELLED"
+    ),
+
+    fact_order_full AS ( 
+        SELECT
+            created_date
+            , DATE_TRUNC(created_date, MONTH) AS som
+            , DATETIME(created_time, "+7") AS created_time
+            , customer_id
+        FROM ${source.platinum}.marketplace_prd_order_v2_order AS a
+        WHERE 1=1
+            -- AND a.created_date >= "2025-01-01"
+            AND status <> "CANCEL"
+        UNION ALL
+        SELECT
+            created_date
+            , DATE_TRUNC(created_date, MONTH) AS som
+            , DATETIME(created_time, "+7") AS created_time
+            , SAFE_CAST(CONCAT("9999", receiver_id) AS INT64)
+        FROM ${source.platinum}.tender_prd_core_tender_orders AS a
+        WHERE 1=1
+            -- AND a.created_date >= "2025-01-01"
+            AND status <> "CANCELLED"
     )
 
     , new_customer AS (
@@ -109,7 +131,7 @@ WITH
             , MIN_BY(som, created_date) AS first_order_som
             , MIN(created_date) AS first_order_date
             , "NEW" AS customer_active_type
-        FROM fact_order
+        FROM fact_order_full
         GROUP BY ALL
     )
 
@@ -119,7 +141,7 @@ WITH
             -- , year_month
             , som
             , LEAD(som) over (PARTITION BY customer_id ORDER BY som DESC) AS before_som
-        FROM fact_order
+        FROM fact_order_full
     )
 
     , active_customer AS (
