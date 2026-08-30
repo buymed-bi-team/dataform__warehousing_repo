@@ -173,7 +173,7 @@ WITH base_unit_selection AS (
                            AND oi.product_id = cv.product_id
                            AND oi.unit = cv.convert_unit
     LEFT JOIN (SELECT * FROM ${source.circa_os}.inventory_allocation 
-        WHERE DATE(updated_at) >= ${when(incremental(), start_date, `'2026-01-01'`)}
+        WHERE DATE(updated_at) >= ${when(incremental(), start_date, `'2024-09-01'`)}
          AND type = 'SALE_ORDERED') al ON oi.id = al.item_ref_id
                                         AND o.client_id = al.client_id
                                         AND o.code = ref_number
@@ -192,7 +192,7 @@ WITH base_unit_selection AS (
         AND oi.unit = ol.unit
 
     WHERE o.status NOT IN ('PENDING', 'CANCELED')
-         AND o.created_date >= ${when(incremental(), start_date, `'2026-01-01'`)}
+         AND o.created_date >= ${when(incremental(), start_date, `'2024-09-01'`)}
 )
 
 ,order_item_with_total AS (
