@@ -1,5 +1,5 @@
 config {
-    type: "table",
+    type: "incremental",
     description: `Circa OS Transaction order item detail
                   PIC: huyen.ngo;
                   model_type: Table;
@@ -13,6 +13,20 @@ config {
     bigquery: {
         partitionBy: "created_date"
     }
+}
+
+
+js {
+    const start_date =
+        ` DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)`
+    const end_date = ` CURRENT_DATE() `
+}
+pre_operations {
+  DELETE
+  FROM
+    ${self()}
+  WHERE
+    created_date >= ${start_date}
 }
 
 WITH base_unit_selection AS (
@@ -70,7 +84,6 @@ WITH base_unit_selection AS (
 
         ,oi.unit
         ,oi.unit_price
-
         ,CASE
             WHEN o.channel = 'O2O'
                 THEN ol.origin_price - ol.price
@@ -82,10 +95,8 @@ WITH base_unit_selection AS (
                 THEN oi.discount_amount + oi.unit_price
             ELSE ol.origin_price
         END AS unit_price_before_discount
-
         ,system_price
         ,oi.lot_date
-
         ,CASE
             WHEN oi.product_id = 1 THEN 1
             ELSE ROUND(
@@ -161,17 +172,15 @@ WITH base_unit_selection AS (
     LEFT JOIN base_unit cv ON o.client_id = cv.client_id
                            AND oi.product_id = cv.product_id
                            AND oi.unit = cv.convert_unit
-    LEFT JOIN ${source.circa_os}.inventory_allocation al ON oi.id = al.item_ref_id
-        AND o.client_id = al.client_id
-        AND o.code = ref_number
-    LEFT JOIN ${source.circa_os}.inventory_location_detail ld ON al.location_detail_id = ld.id
-              AND o.client_id = ld.client_id
-    LEFT JOIN ${source.circa_os}.order_purchase_order po ON ld.doc_code = po.code
-        AND o.client_id = po.client_id
-    LEFT JOIN ${source.circa_os}.entity_owner eo ON po.owner_id = eo.id
-        AND eo.client_id = o.client_id
-    LEFT JOIN ${source.circa_os}.entity_entity e ON o.created_by = e.id
-        AND o.client_id = e.client_id
+    LEFT JOIN (SELECT * FROM ${source.circa_os}.inventory_allocation 
+        WHERE DATE(updated_at) >= ${start_date}
+         AND type = 'SALE_ORDERED') al ON oi.id = al.item_ref_id
+                                        AND o.client_id = al.client_id
+                                        AND o.code = ref_number
+    LEFT JOIN ${source.circa_os}.inventory_location_detail ld ON al.location_detail_id = ld.id AND o.client_id = ld.client_id
+    LEFT JOIN ${source.circa_os}.order_purchase_order po ON ld.doc_code = po.code AND o.client_id = po.client_id
+    LEFT JOIN ${source.circa_os}.entity_owner eo ON po.owner_id = eo.id AND eo.client_id = o.client_id
+    LEFT JOIN ${source.circa_os}.entity_entity e ON o.created_by = e.id AND o.client_id = e.client_id
     LEFT JOIN (
         SELECT DISTINCT deal_code, deal_name, campaign_code, campaign_name, client_id
         FROM ${ref('dim_promotion_event_circa')}
@@ -183,6 +192,7 @@ WITH base_unit_selection AS (
         AND oi.unit = ol.unit
 
     WHERE o.status NOT IN ('PENDING', 'CANCELED')
+         AND o.created_date >= ${start_date}
 )
 
 ,order_item_with_total AS (
@@ -294,8 +304,8 @@ SELECT DISTINCT
 
     ,base_unit_cost_price * cv.convert_rate AS unit_cost_price
     ,cv.convert_rate
-    , c.product_id AS combo_id
-    , p.product_name AS combo_name
+    ,c.product_id AS combo_id
+    ,p.product_name AS combo_name
 FROM final i
 LEFT JOIN ${ref('cos_fact_order')} fo ON i.order_id = fo.order_id
 LEFT JOIN base_unit cv  ON cv.product_id = i.product_id
