@@ -18,8 +18,45 @@ INSERT INTO
     ,productDetails
 )
 
-WITH base_data AS (
-    SELECT *
+WITH base_unit_selection AS (
+    SELECT
+         product_id
+        ,client_id
+        ,base_unit
+        ,ROW_NUMBER() OVER (
+            PARTITION BY product_id, client_id
+            ORDER BY COUNT(*) DESC
+        ) AS rn
+    FROM gold_buymed_vn2.cos_product_convert_base_unit
+    WHERE client_id = 1
+    GROUP BY ALL
+
+)
+,base_unit AS (
+    SELECT
+         a.*
+    FROM gold_buymed_vn2.cos_product_convert_base_unit a
+    LEFT JOIN base_unit_selection b
+        ON a.product_id = b.product_id
+        AND a.client_id = b.client_id
+        AND a.base_unit = b.base_unit
+    WHERE b.rn = 1
+), unit AS (
+	SELECT
+	  DISTINCT product_id
+	  ,JSON_VALUE(unit, '$.is_default') AS is_default
+	  ,JSON_VALUE(unit, '$.unit_name') AS unit_name
+	  ,CAST(JSON_VALUE(unit, '$.value') AS INT64) AS unit_value
+	  
+	FROM
+	 platinum_buymed_vn.circa_online_prd_product_product t,
+	  UNNEST(JSON_EXTRACT_ARRAY(t.retail_units)) AS unit
+	  WHERE JSON_VALUE(unit, '$.is_default') = 'true'
+	         AND JSON_VALUE(unit, '$.status') = 'ACTIVE'
+	)
+
+, base_data AS (
+    SELECT *, json_value(extra_props, '$.unit') AS unit
     FROM platinum_buymed_vn.circa_online_prd_consumer_tracking_events
     WHERE session_id IN (
         SELECT DISTINCT session_id
@@ -31,11 +68,29 @@ WITH base_data AS (
 ),
 add_phone AS (
     SELECT
-        t.* EXCEPT(customer_phone),
-        MAX(customer_phone) OVER (
+        t.* EXCEPT(customer_phone, quantity)
+        , MAX(customer_phone) OVER (
             PARTITION BY session_id
         ) AS customer_phone
+         ,CAST (CASE
+            WHEN t.unit IS NOT NULL
+            THEN t.quantity * COALESCE(bu.convert_rate, 1)
+
+            WHEN t.unit IS NULL
+            THEN SAFE_DIVIDE(
+                t.quantity,
+                u.unit_value
+            )
+        END  AS INT64)
+         AS quantity
     FROM base_data t
+     LEFT JOIN base_unit bu
+        ON t.unit IS NOT NULL
+        AND t.product_id = bu.product_id
+        AND LOWER(t.unit) = LOWER(bu.convert_unit)
+
+    LEFT JOIN unit u ON t.unit IS NULL AND t.product_id = u.product_id
+    WHERE t.product_id IS NOT NULL
 )
 SELECT
      'add-to-cart' AS eventType
@@ -51,5 +106,6 @@ SELECT
     ] AS productDetails
 FROM add_phone
 WHERE event_type = 'add_to_cart'
-    AND product_id IS NOT NULL
+       AND product_id IS NOT NULL
+       --AND customer_phone = '0563902636'
 ORDER BY created_time DESC

@@ -103,6 +103,7 @@ SELECT CASE WHEN o.type = 'ONLINE' THEN DATETIME(ol.created_time, 'Asia/Ho_Chi_M
       , m.gender
 FROM `buymed_circa_v2.order_order` AS o
 LEFT JOIN platinum_buymed_vn.circa_online_prd_order_order ol ON o.reference_order_in_platform = ol.order_code
+LEFT JOIN platinum_buymed_vn.circa_online_prd_consumer_customer cus ON ol.account_id = cus.account_id
 LEFT JOIN `buymed_circa_v2.order_order_item` AS i ON o.id = i.order_id
 LEFT JOIN rt
     ON o.code = rt.order_code
