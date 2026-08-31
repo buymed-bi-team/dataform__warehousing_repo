@@ -129,31 +129,26 @@ WITH base_unit_selection AS (
         ,po.distributor_id
         ,e.name AS employee_name
         ,oi.order_apply_combo_id
-
         ,CASE
             WHEN o.channel <> 'O2O'
                 THEN oi.promotion_event_code
             ELSE ol.deal_code
         END AS promotion_event_code
-
         ,CASE
             WHEN o.channel <> 'O2O'
                 THEN d.deal_name
             ELSE ol.deal_name
         END AS deal_name
-
         ,CASE
             WHEN o.channel <> 'O2O'
                 THEN d.campaign_code
             ELSE ol.campaign_code
         END AS campaign_code
-
         ,CASE
             WHEN o.channel <> 'O2O'
                 THEN d.campaign_name
             ELSE ol.campaign_name
         END AS campaign_name
-
         ,o.client_id
         ,gift_code
         ,tag_list
@@ -163,7 +158,6 @@ WITH base_unit_selection AS (
                 THEN TRUE
             ELSE FALSE
         END AS is_deal1k
-
         ,al.location_detail_id
         ,oi.id AS item_id
 
@@ -247,7 +241,6 @@ SELECT DISTINCT
         ,discount_amount
         ,unit_price_before_discount
     )
-
     ,CASE
         WHEN i.order_apply_combo_id IS NOT NULL
          AND i.order_apply_combo_id <> ''
@@ -265,7 +258,6 @@ SELECT DISTINCT
         )
         ELSE unit_price_before_discount
     END AS unit_price_before_discount
-
     ,CASE
         WHEN i.order_apply_combo_id IS NOT NULL
          AND i.order_apply_combo_id <> ''
@@ -283,7 +275,6 @@ SELECT DISTINCT
         )
         ELSE i.discount_amount
     END AS discount_amount
-
     ,CASE
         WHEN i.order_apply_combo_id IS NOT NULL
          AND i.order_apply_combo_id <> ''
@@ -301,7 +292,6 @@ SELECT DISTINCT
         )
         ELSE unit_price
     END AS unit_price
-
     ,base_unit_cost_price * cv.convert_rate AS unit_cost_price
     ,cv.convert_rate
     ,c.product_id AS combo_id
