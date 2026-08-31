@@ -12,7 +12,7 @@ TRUNCATE TABLE
 INSERT INTO 
 `buymed_circa_recommendation.circa_fact_order_completed`
 (
-  eventType, visitorId, eventTime, purchaseTransaction, productDetails
+  eventType, visitorId, eventTime, purchaseTransaction, productDetails, attributes
 
 )
 
@@ -99,11 +99,36 @@ SELECT CASE WHEN o.type = 'ONLINE' THEN DATETIME(ol.created_time, 'Asia/Ho_Chi_M
       , CASE WHEN o.type = 'ONLINE' THEN ol.customer_phone ELSE CONCAT(0,m.phone_number) END AS customer_phone
       , JSON_VALUE(m.tags, '$[0]') AS tag
       , lo.province_name
-      , p.code
-      , m.gender
+      , p.code AS pos_code
+      , CASE WHEN o.type = 'ONLINE' THEN cus.gender ELSE m.gender END AS gender
+      , CASE
+          WHEN o.type = 'ONLINE' THEN
+            CASE
+              WHEN online_dob IS NULL THEN NULL
+              WHEN online_age < 18 THEN '<18'
+              WHEN online_age BETWEEN 18 AND 27 THEN '18-27'
+              WHEN online_age BETWEEN 28 AND 43 THEN '28-43'
+              WHEN online_age BETWEEN 44 AND 59 THEN '44-59'
+              ELSE '>=60'
+            END
+          ELSE
+            CASE JSON_VALUE(m.tags, '$[0]')
+              WHEN 'UNDER_18'    THEN '<18'
+              WHEN 'GEN_Z'       THEN '18-27'
+              WHEN 'MILLENNIALS' THEN '28-43'
+              WHEN 'GEN_X'       THEN '44-59'
+              WHEN 'OLDER'       THEN '>=60'
+              ELSE NULL
+            END
+        END AS age_group
 FROM `buymed_circa_v2.order_order` AS o
 LEFT JOIN platinum_buymed_vn.circa_online_prd_order_order ol ON o.reference_order_in_platform = ol.order_code
 LEFT JOIN platinum_buymed_vn.circa_online_prd_consumer_customer cus ON ol.account_id = cus.account_id
+LEFT JOIN UNNEST([SAFE_CAST(SUBSTR(JSON_VALUE(cus.extra_props, '$.date_of_birth'), 1, 10) AS DATE)]) AS online_dob
+LEFT JOIN UNNEST([
+    DATE_DIFF(CURRENT_DATE('Asia/Ho_Chi_Minh'), online_dob, YEAR)
+    - IF(FORMAT_DATE('%m%d', online_dob) > FORMAT_DATE('%m%d', CURRENT_DATE('Asia/Ho_Chi_Minh')), 1, 0)
+]) AS online_age
 LEFT JOIN `buymed_circa_v2.order_order_item` AS i ON o.id = i.order_id
 LEFT JOIN rt
     ON o.code = rt.order_code
@@ -143,13 +168,24 @@ SELECT
   IGNORE NULLS
   GROUP BY product_id
 ) AS productDetails
---   ,STRUCT(
---     STRUCT([COALESCE(gender, '')] AS text) AS gender,
---     STRUCT([COALESCE(tag, '')] AS text) AS age_group,
---     STRUCT([COALESCE(province_name, '')] AS text) AS area,
---     STRUCT([COALESCE(code, '')] AS text) AS store_code
+  ,STRUCT(
+    STRUCT([COALESCE(gender, '')] AS text) AS gender
+    ,STRUCT([COALESCE(age_group, '')] AS text) AS age_group
+    ,STRUCT([COALESCE(province_name, '')] AS text) AS area
+    ,STRUCT([COALESCE(pos_code, '')] AS text) AS store_code
+) AS attributes
+--   , STRUCT(
+--   STRUCT([gender]) AS gender,
+--   STRUCT([age_group]) AS age_group,
+--   STRUCT([province_name]) AS area,
+--   STRUCT([pos_code]) AS store_code
 -- ) AS attributes
- 
+
 FROM base_data
 WHERE customer_phone <> '0000000000'
-GROUP BY ALL
+GROUP BY customer_phone
+    ,created_at
+    ,gender
+    ,age_group
+    ,province_name
+    ,pos_code
