@@ -81,7 +81,7 @@ SELECT CASE WHEN o.type = 'ONLINE' THEN DATETIME(ol.created_time, 'Asia/Ho_Chi_M
     , i.quantity * COALESCE(t.convert_rate, 1)  - COALESCE(rt.base_quantity_return, 0) AS base_quantity
     , CASE
         WHEN NULLIF(i.order_apply_combo_id, '') IS NOT NULL
-        THEN ROUND(
+        THEN COALESCE(ROUND(
             SAFE_DIVIDE(
                 (c.combo_price - c.discount_amount)
                 * c.quantity
@@ -93,7 +93,7 @@ SELECT CASE WHEN o.type = 'ONLINE' THEN DATETIME(ol.created_time, 'Asia/Ho_Chi_M
                 ),
                 i.quantity
             )
-        )
+        ), 0)
         ELSE i.unit_price
       END AS unit_price
       , CASE WHEN o.type = 'ONLINE' THEN ol.customer_phone ELSE CONCAT(0,m.phone_number) END AS customer_phone
@@ -121,6 +121,7 @@ LEFT JOIN (SELECT DISTINCT province_code, province_name FROM `gold_buymed_vn2.di
 WHERE  o.status IN ('COMPLETED', 'COMPLETE_SHIPPING')
      AND o.created_date >= DATE_SUB(CURRENT_DATE('Asia/Ho_Chi_Minh'), INTERVAL 1 YEAR)
      AND o.client_id = 1
+     AND i.product_id IS NOT NULL
 )
 SELECT
     "purchase-complete" AS eventType
@@ -149,6 +150,5 @@ SELECT
 -- ) AS attributes
  
 FROM base_data
-WHERE DATE(created_at) >= '2026-08-31'
-      AND customer_phone <> '0000000000'
+WHERE customer_phone <> '0000000000'
 GROUP BY ALL
