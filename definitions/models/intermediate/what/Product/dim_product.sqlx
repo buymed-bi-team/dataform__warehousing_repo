@@ -303,7 +303,11 @@ SELECT
   -- product.brand,
   br.brand,
   sb.sub_brand,
-  JSON_VALUE(product.extra_props, "$.product_category_management") as brand_type,
+  CASE JSON_VALUE(product.extra_props, "$.product_category_management") 
+    WHEN "PORTFOLIO" THEN "BUYMED SELECTED"
+    WHEN "MARKET_PLACE" THEN "HIGH MARGIN"
+    ELSE JSON_VALUE(product.extra_props, "$.product_category_management")
+  END AS brand_type,
   JSON_VALUE(product.extra_props, "$.product_status") as product_status,
   SAFE_CAST(JSON_VALUE(product.extra_props, "$.related_product_id") AS INT64) as related_product_id,
   JSON_VALUE(product.extra_props, "$.status_reason") as status_reason,
