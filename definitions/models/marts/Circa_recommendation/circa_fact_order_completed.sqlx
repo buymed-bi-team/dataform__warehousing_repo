@@ -148,13 +148,15 @@ WHERE  o.status IN ('COMPLETED', 'COMPLETE_SHIPPING')
      AND o.created_date >= DATE_SUB(CURRENT_DATE('Asia/Ho_Chi_Minh'), INTERVAL 1 YEAR)
      AND o.client_id = 1
      AND i.product_id IS NOT NULL
+     AND i.quantity - COALESCE(rt.quantity_return, 0)  > 0 
 )
 SELECT
     "purchase-complete" AS eventType
   , customer_phone AS visitorId
   , FORMAT_TIMESTAMP('%Y-%m-%dT%H:%M:%SZ', created_at) AS eventTime
  , STRUCT(
-        CAST(SUM(quantity * unit_price) AS FLOAT64) AS revenue
+        CASE WHEN CAST(SUM(quantity * unit_price) AS FLOAT64) < 0 then 0  
+             ELSE CAST(SUM(quantity * unit_price) AS FLOAT64) END  AS revenue
       , "VND" AS currencyCode
     ) AS purchaseTransaction
  
