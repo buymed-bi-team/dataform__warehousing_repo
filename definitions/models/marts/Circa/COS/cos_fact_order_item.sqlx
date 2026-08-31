@@ -62,8 +62,7 @@ WITH base_unit_selection AS (
         ,oi.order_id
         ,oi.product_id
         ,oi.sku_code
-        ,al.item_ref_id
-
+        --,al.item_ref_id
         ,COALESCE(
             CASE
                 WHEN oi.product_id = 1 THEN oi.quantity
@@ -115,10 +114,9 @@ WITH base_unit_selection AS (
                 ,6
             )
         END AS base_quantity
-
         ,oi.tax_rate
         ,oi.product_id || '_' || oi.lot_date AS product_lot_date
-        ,oi.sku_code || '_' || oi.lot_date || '_' || oi.tax_rate AS sku_lotdate_vat
+        -- ,oi.sku_code || '_' || oi.lot_date || '_' || oi.tax_rate AS sku_lotdate_vat
         ,al.cost_price_include_tax AS base_unit_cost_price
         ,po.owner_id
         ,eo.seller_code
@@ -152,13 +150,13 @@ WITH base_unit_selection AS (
         ,o.client_id
         ,gift_code
         ,tag_list
-        ,CASE
-            WHEN tag_list LIKE '%deal_1000%'
-             AND unit_price = 1000
-                THEN TRUE
-            ELSE FALSE
-        END AS is_deal1k
-        ,al.location_detail_id
+        -- ,CASE
+        --     WHEN tag_list LIKE '%deal_1000%'
+        --      AND unit_price = 1000
+        --         THEN TRUE
+        --     ELSE FALSE
+        -- END AS is_deal1k
+      --  ,al.location_detail_id
         ,oi.id AS item_id
 
     FROM ${source.circa_os}.order_order o
