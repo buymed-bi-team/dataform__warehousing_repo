@@ -36,6 +36,7 @@ WITH
     roi.updated_at,
     poi.lot_id,
     poi.location_detail_id,
+    poi.location_id,
     poi.doc_code,
     poi.location_type,
     poi.so_thuoc_si,
