@@ -3,7 +3,7 @@ config {
     description: `PIC: Ha.Lekim
     `,
      bigquery: {
-        partitionBy: "updated_date",
+        partitionBy: "date_trunc(updated_date,month)",
         clusterBy: ["type"]
     },
      tags: ["gold_custom_20m"]
