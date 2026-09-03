@@ -38,3 +38,8 @@ FROM ${source.platinum}.marketplace_prd_product_v2_sku_tag AS a
         ON r = c.sales_region_code AND a.sku = c.sku_code
 WHERE
    c.sku_code IS NOT NULL
+UNION  ALL
+SELECT
+    *
+FROM ${ref("dim_sku_tag")}
+WHERE tag_code = 'LNC'
