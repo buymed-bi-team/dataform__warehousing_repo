@@ -85,7 +85,14 @@ WITH
     o.affiliate_tag,
     SUM( total_order_discount_amount) AS voucher_discount,
     SUM( total_loyalty_discount_amount ) AS total_loyalty_discount_amount,
-    SUM( external_discount_amount  ) AS external_discount_amount
+    SUM( 
+      total_item_amount
+      + total_medicine_cutting_fee 
+      + delivery_fee
+      - total_order_discount_amount
+      - total_loyalty_discount_amount
+      - business_amount
+      - total_amount  ) AS external_discount_amount
  FROM
    ${ref("gold_buymed_vn2", "fact_fin_circa_order")} o
   WHERE o.status NOT IN ('RETURNED', 'FAILED_SHIPMENT', 'OUT_OF_STOCK','CANCELED' )
