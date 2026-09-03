@@ -24,7 +24,9 @@ WITH
                 , NULLIF(UPPER(value), "NAN")  AS value
                 , DATE_TRUNC(DATE(submit_at), MONTH ) AS month
             FROM collector.data_prd
-            WHERE DATE(submit_at) >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH) - INTERVAL 3 MONTH
+            WHERE 1=1
+                -- AND DATE(submit_at) >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH) - INTERVAL 3 MONTH
+                AND DATE(submit_at) >= "2025-12-01"
                 AND object = "Customer_PIC"
                 AND type IN ("SALES_TARGET","KAM_PIC", "GROUP")
                 AND submit_id >= 5732

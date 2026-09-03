@@ -96,6 +96,7 @@ SELECT
     WHEN a.month_day = "04-30" THEN "DAY OF NATION REUNIFICATION"
     WHEN a.month_day = "05-01" THEN "INTERNATIONAL WORKERS' DAY"
     WHEN a.month_day = "09-02" THEN "NATIONAL DAY"
+    WHEN a.month_day = "09-01" THEN "NATIONAL DAY"
     WHEN a.Date in ("2024-02-10", "2023-01-22", "2022-02-01", "2021-02-12", "2020-01-25", "2019-02-05") THEN "LUNAR NEW YEAR"
     ELSE "NORMAL"
   END AS holiday
