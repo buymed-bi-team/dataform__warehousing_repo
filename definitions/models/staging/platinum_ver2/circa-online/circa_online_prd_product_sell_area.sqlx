@@ -1,0 +1,51 @@
+
+config {
+  type: "view",
+  schema: "platinum_buymed_vn",
+  name: "circa_online_prd_product_sell_area",
+  description : `
+  PIC: long.nguyen
+  Partition by: created date
+  `,
+  tags:["platinum","circa_online_prd_product_sell_area"]
+}
+
+WITH silver AS (
+  SELECT
+    key, mg_id, code, name, created_time, last_updated_time, created_by_id, updated_by_name, updated_by_id, sell_area_id, created_by_name, province_codes, status, province_names, warehouse_code, synced_at, extra_props, action, ingest_time,
+    CASE
+      WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time, 'Asia/Ho_Chi_Minh'))
+      ELSE DATE('2099-01-01')
+    END created_date,
+    CAST(NULL AS DATETIME) AS platinum_refresh
+  FROM silver_buymed_vn.circa_online_prd_product_sell_area
+  WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 1 DAY
+  QUALIFY ROW_NUMBER() OVER (_window) = 1
+    AND ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 16 HOUR
+  WINDOW _window AS (
+    PARTITION BY mg_id
+    ORDER BY synced_at DESC,
+      IF(action='d',3, IF(action='u',2,1)) DESC,
+      last_updated_time DESC
+  )
+),
+
+platinum AS (
+  SELECT
+    key, mg_id, code, name, created_time, last_updated_time, created_by_id, updated_by_name, updated_by_id, sell_area_id, created_by_name, province_codes, status, province_names, warehouse_code, synced_at, extra_props, action, ingest_time,
+    created_date,
+    platinum_refresh
+  FROM ${ref(`platinum_buymed_vn__stg`, `circa_online_prd_product_sell_area`)}
+)
+
+SELECT p.*
+FROM platinum p
+LEFT JOIN silver s
+  ON p.mg_id = s.mg_id
+WHERE s.mg_id IS NULL
+
+UNION ALL
+
+SELECT s.*
+FROM silver s
+WHERE action <> "d"
