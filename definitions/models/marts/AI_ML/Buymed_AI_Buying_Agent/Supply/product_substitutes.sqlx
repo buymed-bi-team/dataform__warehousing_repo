@@ -24,7 +24,7 @@ SELECT
         ELSE "SAME_ACTIVE_GENERIC "
     END AS relation_type
     , IF(is_manual_add, "CURATED", "RULE_DERIVED") AS source
-    , CURRENT_DATE("+7") AS snapshot_date
+    , CURRENT_DATE() AS snapshot_date
 FROM platinum_buymed_vn.marketplace_prd_product_v2_substitute_product AS a
     LEFT JOIN ${ref("dim_product")} AS b ON a.product_id = b.product_id
     LEFT JOIN ${ref("dim_product")} AS c ON a.substitute_id = c.product_id

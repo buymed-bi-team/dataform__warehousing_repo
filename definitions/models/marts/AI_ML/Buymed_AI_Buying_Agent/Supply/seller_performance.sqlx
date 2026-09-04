@@ -18,7 +18,7 @@ SELECT
     , SAFE_DIVIDE(SUM(IF(o.order_status <> 'CANCEL', outbound_quantity, 0)), SUM(IF(o.order_status <> 'CANCEL', demand_quantity, 0))) AS fill_rate_90d
     , SAFE_DIVIDE(COUNT(DISTINCT IF(o.order_status = 'CANCEL', oi.order_id, NULL)), COUNT(DISTINCT oi.order_id)) AS cancel_rate_90d
     , AVG(DATE_DIFF(DATE(o.delivered_time), DATE(o.created_at), DAY)) AS avg_actual_lead_time_days
-    , CURRENT_DATE("+7") AS snapshot_date
+    , CURRENT_DATE() AS snapshot_date
 FROM ${ref("fact_order_item")} AS oi
     LEFT JOIN  ${ref("fact_order")} AS o ON o.order_id = oi.order_id
     LEFT JOIN ${ref("dim_seller")} AS s ON oi.seller_code = s.supplier_code
