@@ -1,0 +1,91 @@
+config {
+    type: "table",
+    description: `fact_circa_margin_return_item
+                  PIC: ha.lekim; 
+                  model_type: Table ;
+                  source: fact_fin_circa_order_item;
+                  schedule: At minute 30 every hour`,
+    tags:  ["gold_custom_20m"],
+    name: "fact_circa_margin_return_item",
+    columns: {
+    }
+    
+    ,bigquery: {
+        partitionBy: "created_date"
+    }
+}
+select 
+        r.completed_date,
+        r.order_id,
+        ri.* except(completed_date),
+        sum(
+            if(discount_logic_change = 0,
+            unit_price*quantity_po 
+            - (r.discount_amount + r.loyalty_discount_amount + r.external_discount_amount)*item_amount_contribution
+            - voucher_discount_deal_1k,
+            unit_price*quantity_po)) as return_amount,
+        SUM(
+            CASE
+                WHEN ri.owner_name <> 'CIRCA MARKETING' 
+                    AND (ri.gift_code IS NULL OR ri.gift_code = '') 
+                    AND product_id NOT IN (2010834, 2010836, 2010837, 2010838, 2010840) 
+                THEN ri.cost_price_include_tax * ri.base_quantity_po
+                ELSE 0
+                END
+        ) AS cogs_circa_return,
+        SUM(
+            CASE
+                WHEN ri.owner_name <> 'CIRCA MARKETING' 
+                    AND (ri.gift_code IS NULL OR ri.gift_code = '') 
+                    AND product_id NOT IN (2010834, 2010836, 2010837, 2010838, 2010840) 
+                THEN ri.base_unit_cost_price_ts * ri.base_quantity_po
+                ELSE 0
+                END
+        ) AS cogs_buymed_return,
+        SUM(
+            CASE
+                WHEN (ri.owner_name <> 'CIRCA MARKETING' 
+                    AND ri.gift_code IS NOT NULL AND ri.gift_code <> '' 
+                    AND ri.product_id NOT IN (941832, 941878, 1101283, 2003919, 2004189, 2010834, 2010836, 2010837, 2010838, 2010840, 300704)) 
+                OR ( ri.owner_name = 'CIRCA MARKETING' 
+                    AND ri.product_id NOT IN (941832, 941878, 1101283, 2003919, 2004189, 2010834, 2010836, 2010837, 2010838, 2010840, 300704)) 
+                THEN ri.cost_price_include_tax * ri.base_quantity_po
+                ELSE 0
+                END
+        ) AS voucher_gift_circa_return,
+        SUM(
+            CASE
+                WHEN (ri.owner_name <> 'CIRCA MARKETING' 
+                    AND ri.gift_code IS NOT NULL AND ri.gift_code <> '' 
+                    AND ri.product_id NOT IN (941832, 941878, 1101283, 2003919, 2004189, 2010834, 2010836, 2010837, 2010838, 2010840, 300704)) 
+                OR ( ri.owner_name = 'CIRCA MARKETING' 
+                    AND ri.product_id NOT IN (941832, 941878, 1101283, 2003919, 2004189, 2010834, 2010836, 2010837, 2010838, 2010840, 300704)) 
+                THEN ri.base_unit_cost_price_ts * ri.base_quantity_po
+                ELSE 0
+                END
+        ) AS voucher_gift_buymed_return,
+        sum(item_discount_amount*quantity_po) deal_return,
+        coalesce(sum(quantity_po*total_allocated_discount_amount),
+        sum((r.discount_amount + r.loyalty_discount_amount + r.external_discount_amount)*item_amount_contribution + voucher_discount_deal_1k)
+        ) voucher_circa_return,
+        from  ${ref("gold_buymed_vn2","fact_fin_circa_return")} r
+        left join (
+            select ri.*,
+            SAFE_DIVIDE(coalesce(quantity_po*promotion_eligible_amount,quantity_po*unit_price_before_discount,0), 
+            SUM(coalesce(quantity_po*promotion_eligible_amount,quantity_po*unit_price_before_discount,0)) OVER (PARTITION BY return_order_id)) 
+            AS item_amount_contribution,
+            if(is_deal_1k is true, 
+            (unit_price_before_discount - unit_price_after_discount)*quantity_po,
+            0) as voucher_discount_deal_1k,
+            CASE
+                WHEN ri.fulfillment_method = 'SO_THUOCSI' AND cogs_base_unit_ts is not null then cogs_base_unit_ts
+                else ri.cost_price_include_tax
+                END AS base_unit_cost_price_ts
+            from ${ref("gold_buymed_vn2","fact_fin_circa_return_item")} ri
+            LEFT JOIN ${ref("gold_buymed_vn2","circa_cogs_thuocsi_by_po")} p
+                ON ri.doc_code = p.po_code
+                AND ri.product_id = p.product_id
+                GROUP BY ALL) ri
+        on r.return_order_id = ri.return_order_id
+        where r.status = 'COMPLETED'
+        GROUP BY ALL
