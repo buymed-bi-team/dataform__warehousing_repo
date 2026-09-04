@@ -27,7 +27,7 @@ SELECT
     , SAFE_CAST(l.sku_leadtime AS FLOAT64) AS lead_time_days
     , a.sales_region_code AS regions_served
     , IF(a.sku_system_status = 'SUSPENDED', 'SUSPENDED', 'ACTIVE') AS status
-    , CURRENT_DATE("+7") AS snapshot_date
+    , CURRENT_DATE() AS snapshot_date
 FROM ${ref("dim_sku_sales_region_current")} AS a
     LEFT JOIN ${ref("dim_seller")} AS s ON a.seller_code = s.supplier_code
     LEFT JOIN ${ref("dim_inventory_sku")} AS i ON a.sku_key_sales_region_code = i.sku_key_sales_region

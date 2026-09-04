@@ -50,7 +50,7 @@ SELECT
     , start_at
     , end_at
     , IF(IFNULL(max_usage,0) - IFNULL(usage_total,0) < 0,  NULL, max_usage - usage_total) AS remaining_usage
-    , CURRENT_DATE("+7") AS snapshot_date
+    , CURRENT_DATE() AS snapshot_date
 FROM ${ref("dim_voucher")} AS a
     LEFT JOIN ${ref("dim_sku")} AS s ON a.sku_gift = s.sku_code
 WHERE 1=1
