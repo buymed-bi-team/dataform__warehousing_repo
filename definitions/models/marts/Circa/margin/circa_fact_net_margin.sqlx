@@ -73,10 +73,10 @@ WITH final AS (
                 END
         ) AS voucher_gift_circa_return,
         sum(item_discount_amount*quantity_po) deal_return,
-        sum(
-          coalesce(quantity_po*total_allocated_discount_amount,
-          r.discount_amount + r.loyalty_discount_amount + r.external_discount_amount)*item_amount_contribution + voucher_discount_deal_1k
-        ) voucher_circa_return,
+        coalesce(
+          sum(quantity_po*total_allocated_discount_amount),
+          sum((r.discount_amount + r.loyalty_discount_amount + r.external_discount_amount)*item_amount_contribution + voucher_discount_deal_1k)
+          ) voucher_circa_return,
         from  ${ref("gold_buymed_vn2", "fact_fin_circa_return")} r
         left join (
             select *,
