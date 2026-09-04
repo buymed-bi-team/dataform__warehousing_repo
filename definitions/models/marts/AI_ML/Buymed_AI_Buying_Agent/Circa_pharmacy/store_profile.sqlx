@@ -32,7 +32,7 @@ SELECT
   ,province                                                   AS province_code
   ,district                                                   AS district_code
   ,CAST(thuocsi_id AS STRING)                                 AS thuocsi_account_id
-  ,CURRENT_DATE('Asia/Ho_Chi_Minh')                           AS snapshot_date
+  ,CURRENT_DATE()                                             AS snapshot_date
 FROM ${ref("circa_pos_profile")}
 WHERE deleted_at IS NULL
       AND client_id NOT IN (5,6,7)
