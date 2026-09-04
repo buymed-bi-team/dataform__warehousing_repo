@@ -146,7 +146,3 @@ FROM tbl AS a
     LEFT JOIN ${ref('dim_fc_service_area')} AS fc 
         ON a.province_code = fc.service_area_code
         AND fc.area_type = "PROVINCE"
-
-post_operations {
-    ALTER TABLE ${self()} ADD PRIMARY KEY (location_code) NOT ENFORCED;
-}
