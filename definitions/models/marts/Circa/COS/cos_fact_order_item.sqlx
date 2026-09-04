@@ -1,5 +1,5 @@
 config {
-    type: "table",
+    type: "incremental",
     description: `Circa OS Transaction order item detail
                   PIC: huyen.ngo;
                   model_type: Table;
@@ -13,6 +13,20 @@ config {
     bigquery: {
         partitionBy: "created_date"
     }
+}
+
+
+js {
+    const start_date =
+        ` DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)`
+    const end_date = ` CURRENT_DATE() `
+}
+pre_operations {
+  DELETE
+  FROM
+    ${self()}
+  WHERE
+    created_date >= ${start_date}
 }
 
 WITH base_unit_selection AS (
@@ -48,8 +62,7 @@ WITH base_unit_selection AS (
         ,oi.order_id
         ,oi.product_id
         ,oi.sku_code
-        ,al.item_ref_id
-
+        --,al.item_ref_id
         ,COALESCE(
             CASE
                 WHEN oi.product_id = 1 THEN oi.quantity
@@ -70,7 +83,6 @@ WITH base_unit_selection AS (
 
         ,oi.unit
         ,oi.unit_price
-
         ,CASE
             WHEN o.channel = 'O2O'
                 THEN ol.origin_price - ol.price
@@ -82,10 +94,8 @@ WITH base_unit_selection AS (
                 THEN oi.discount_amount + oi.unit_price
             ELSE ol.origin_price
         END AS unit_price_before_discount
-
         ,system_price
         ,oi.lot_date
-
         ,CASE
             WHEN oi.product_id = 1 THEN 1
             ELSE ROUND(
@@ -104,10 +114,9 @@ WITH base_unit_selection AS (
                 ,6
             )
         END AS base_quantity
-
         ,oi.tax_rate
         ,oi.product_id || '_' || oi.lot_date AS product_lot_date
-        ,oi.sku_code || '_' || oi.lot_date || '_' || oi.tax_rate AS sku_lotdate_vat
+        -- ,oi.sku_code || '_' || oi.lot_date || '_' || oi.tax_rate AS sku_lotdate_vat
         ,al.cost_price_include_tax AS base_unit_cost_price
         ,po.owner_id
         ,eo.seller_code
@@ -118,59 +127,52 @@ WITH base_unit_selection AS (
         ,po.distributor_id
         ,e.name AS employee_name
         ,oi.order_apply_combo_id
-
         ,CASE
             WHEN o.channel <> 'O2O'
                 THEN oi.promotion_event_code
             ELSE ol.deal_code
         END AS promotion_event_code
-
         ,CASE
             WHEN o.channel <> 'O2O'
                 THEN d.deal_name
             ELSE ol.deal_name
         END AS deal_name
-
         ,CASE
             WHEN o.channel <> 'O2O'
                 THEN d.campaign_code
             ELSE ol.campaign_code
         END AS campaign_code
-
         ,CASE
             WHEN o.channel <> 'O2O'
                 THEN d.campaign_name
             ELSE ol.campaign_name
         END AS campaign_name
-
         ,o.client_id
         ,gift_code
         ,tag_list
-        ,CASE
-            WHEN tag_list LIKE '%deal_1000%'
-             AND unit_price = 1000
-                THEN TRUE
-            ELSE FALSE
-        END AS is_deal1k
-
-        ,al.location_detail_id
+        -- ,CASE
+        --     WHEN tag_list LIKE '%deal_1000%'
+        --      AND unit_price = 1000
+        --         THEN TRUE
+        --     ELSE FALSE
+        -- END AS is_deal1k
+      --  ,al.location_detail_id
+        ,oi.id AS item_id
 
     FROM ${source.circa_os}.order_order o
     LEFT JOIN ${source.circa_os}.order_order_item oi ON o.id = oi.order_id
     LEFT JOIN base_unit cv ON o.client_id = cv.client_id
                            AND oi.product_id = cv.product_id
                            AND oi.unit = cv.convert_unit
-    LEFT JOIN ${source.circa_os}.inventory_allocation al ON oi.id = al.item_ref_id
-        AND o.client_id = al.client_id
-        AND o.code = ref_number
-    LEFT JOIN ${source.circa_os}.inventory_location_detail ld ON al.location_detail_id = ld.id
-              AND o.client_id = ld.client_id
-    LEFT JOIN ${source.circa_os}.order_purchase_order po ON ld.doc_code = po.code
-        AND o.client_id = po.client_id
-    LEFT JOIN ${source.circa_os}.entity_owner eo ON po.owner_id = eo.id
-        AND eo.client_id = o.client_id
-    LEFT JOIN ${source.circa_os}.entity_entity e ON o.created_by = e.id
-        AND o.client_id = e.client_id
+    LEFT JOIN (SELECT * FROM ${source.circa_os}.inventory_allocation 
+        WHERE DATE(updated_at) >= ${when(incremental(), start_date, `'2024-09-01'`)}
+         AND type = 'SALE_ORDERED') al ON oi.id = al.item_ref_id
+                                        AND o.client_id = al.client_id
+                                        AND o.code = ref_number
+    LEFT JOIN ${source.circa_os}.inventory_location_detail ld ON al.location_detail_id = ld.id AND o.client_id = ld.client_id
+    LEFT JOIN ${source.circa_os}.order_purchase_order po ON ld.doc_code = po.code AND o.client_id = po.client_id
+    LEFT JOIN ${source.circa_os}.entity_owner eo ON po.owner_id = eo.id AND eo.client_id = o.client_id
+    LEFT JOIN ${source.circa_os}.entity_entity e ON o.created_by = e.id AND o.client_id = e.client_id
     LEFT JOIN (
         SELECT DISTINCT deal_code, deal_name, campaign_code, campaign_name, client_id
         FROM ${ref('dim_promotion_event_circa')}
@@ -182,6 +184,7 @@ WITH base_unit_selection AS (
         AND oi.unit = ol.unit
 
     WHERE o.status NOT IN ('PENDING', 'CANCELED')
+         AND o.created_date >= ${when(incremental(), start_date, `'2024-09-01'`)}
 )
 
 ,order_item_with_total AS (
@@ -206,9 +209,10 @@ WITH base_unit_selection AS (
         ,rt.unit
         ,rt.lot_date
         ,rt.sku_code
-        ,rt.quantity AS rt_quantity
-        ,rt.base_quantity AS rt_base_quantity
+        ,SUM(rt.quantity) AS rt_quantity
+        ,SUM(rt.base_quantity) AS rt_base_quantity
     FROM ${source.ref}.cos_return_completed_detail rt
+    GROUP BY ALL
 )
 
 ,final AS (
@@ -235,7 +239,6 @@ SELECT DISTINCT
         ,discount_amount
         ,unit_price_before_discount
     )
-
     ,CASE
         WHEN i.order_apply_combo_id IS NOT NULL
          AND i.order_apply_combo_id <> ''
@@ -253,7 +256,6 @@ SELECT DISTINCT
         )
         ELSE unit_price_before_discount
     END AS unit_price_before_discount
-
     ,CASE
         WHEN i.order_apply_combo_id IS NOT NULL
          AND i.order_apply_combo_id <> ''
@@ -271,7 +273,6 @@ SELECT DISTINCT
         )
         ELSE i.discount_amount
     END AS discount_amount
-
     ,CASE
         WHEN i.order_apply_combo_id IS NOT NULL
          AND i.order_apply_combo_id <> ''
@@ -289,10 +290,10 @@ SELECT DISTINCT
         )
         ELSE unit_price
     END AS unit_price
-
-    ,base_unit_cost_price * convert_rate AS unit_cost_price
-    ,convert_rate
-
+    ,base_unit_cost_price * cv.convert_rate AS unit_cost_price
+    ,cv.convert_rate
+    ,c.product_id AS combo_id
+    ,p.product_name AS combo_name
 FROM final i
 LEFT JOIN ${ref('cos_fact_order')} fo ON i.order_id = fo.order_id
 LEFT JOIN base_unit cv  ON cv.product_id = i.product_id
@@ -300,5 +301,5 @@ LEFT JOIN base_unit cv  ON cv.product_id = i.product_id
                         AND i.client_id = cv.client_id
                     
 LEFT JOIN ${source.circa_os}.order_order_apply_combo c ON i.order_apply_combo_id = c.id
+LEFT JOIN ${ref('cos_dim_product')} p ON c.product_id = p.product_id AND i.client_id = p.client_id 
 WHERE fo.order_id IS NOT NULL
--- 

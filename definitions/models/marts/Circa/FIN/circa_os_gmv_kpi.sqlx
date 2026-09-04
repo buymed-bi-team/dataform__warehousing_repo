@@ -3,170 +3,219 @@ config {
     description: `PIC: Ha.Lekim`,
     tags: ["gold_custom_20m"]
 }
+
 WITH
   dim_calendar AS (
-  SELECT
-    DISTINCT month,
-    week,
-    date
-  FROM ${ref("gold_buymed_vn2", "dim_circa_os_gmv_kpi")} 
-  WHERE  channel = 'OFFLINE' ),
-  gmv AS (
-  SELECT
-    pos_code,
-    pos_name,
-    order_code,
-    dim_calendar.date,
-    dim_calendar.month,
-    dim_calendar.week,
-    SUM(gmv - deal - voucher_circa) AS net_sale
-  FROM  ${ref("gold_buymed_vn2", "circa_fact_net_margin")} f
-  LEFT JOIN  dim_calendar
-  ON f.completed_date = dim_calendar.date
-  WHERE  completed_date >= "2026-01-01"
-    AND channel = 'OFFLINE'
-    AND pos_type = 'COS'
-    AND ((completed_date < "2026-08-01" AND affiliate_tag <> 'AFFILIATE_FS') 
-      OR completed_date >= "2026-08-01")
-  GROUP BY ALL),
-  return AS (
-  SELECT
-    pos_code,
-    pos_name,
-    order_code,
-    dim_calendar.date,
-    dim_calendar.month,
-    dim_calendar.week,
-    COALESCE(SUM(return_amount),0) AS return_amount
-  FROM ${ref("gold_buymed_vn2", "circa_fact_net_margin")} f
-  LEFT JOIN dim_calendar
-  ON f.completed_return_date = dim_calendar.date
-  WHERE
-    completed_return_date >= "2026-01-01"
-    AND channel = 'OFFLINE'
-    AND pos_type = 'COS'
-  GROUP BY ALL ),
+    SELECT
+      DISTINCT month,
+      week,
+      date
+    FROM  ${ref("gold_buymed_vn2", "dim_circa_os_gmv_kpi")}
+    WHERE  channel = 'OFFLINE' ),
+  fact_order AS (
+    SELECT
+      pos_code,
+      pos_name,
+      order_code,
+      affiliate_tag,
+      dim_calendar.date,
+      dim_calendar.month,
+      dim_calendar.week,
+      SUM(gmv) gmv,
+      SUM(gmv - deal - voucher_circa) AS net_sale
+    FROM
+      ${ref("gold_buymed_vn2", "circa_fact_net_margin")} f
+    LEFT JOIN  dim_calendar
+    ON  f.completed_date = dim_calendar.date
+    WHERE
+      completed_date >= "2026-01-01"
+      AND channel = 'OFFLINE'
+      AND pos_type = 'COS'
+      AND ((completed_date < "2026-08-01"
+          AND affiliate_tag <> 'AFFILIATE_FS')
+        OR completed_date >= "2026-08-01")
+    GROUP BY ALL),
+  fact_return AS (
+    SELECT
+      pos_code,
+      pos_name,
+      order_code,
+      dim_calendar.date,
+      dim_calendar.month,
+      dim_calendar.week,
+      COALESCE(SUM(return_amount),0) AS return_amount
+    FROM ${ref("gold_buymed_vn2", "circa_fact_net_margin")} f
+    LEFT JOIN dim_calendar
+    ON f.completed_return_date = dim_calendar.date
+    WHERE
+      completed_return_date >= "2026-01-01"
+      AND channel = 'OFFLINE'
+      AND pos_type = 'COS'
+    GROUP BY ALL ),
   target_by_date AS (
-  SELECT
-    month,
-    week,
-    date,
-    pos_code,
-    pos_name,
-    TARGET,
-    final_target AS custom_week_target,
-  FROM ${ref("gold_buymed_vn2", "dim_circa_os_gmv_kpi")} 
-  WHERE channel = 'OFFLINE' )
-    -- BY MONTH
-    ,
-  month_tb AS (
-  SELECT
-    'MONTH' AS date_type,
-    t.month AS start_date,
-    t.pos_code,
-    t.pos_name,
-    TARGET,
-    net_sale - COALESCE(return_amount,0) AS net_revenue,
-    net_sale,
-    return_amount,
-    no_order,
-  FROM (
     SELECT
       month,
-      pos_code,
-      pos_name,
-      SUM(TARGET) TARGET
-    FROM target_by_date
-    GROUP BY ALL) t
-  LEFT JOIN (
-    SELECT
-      g.month,
-      g.pos_code,
-      COUNT(DISTINCT g.order_code) no_order,
-      SUM(net_sale) net_sale,
-      SUM(return_amount) return_amount
-    FROM gmv g
-    LEFT JOIN return r
-    ON g.month = r.month
-    AND g.pos_code = r.pos_code
-    AND g.order_code = r.order_code
-    GROUP BY ALL ) f
-  ON t.month = f.month
-  AND t.pos_code = f.pos_code )
-    -- BY WEEK
-    ,
-  week_tb AS (
-  SELECT
-    'WEEK' AS date_type,
-    t.week AS start_date,
-    t.pos_code,
-    t.pos_name,
-    TARGET,
-    net_sale - COALESCE(return_amount,0) AS net_revenue,
-    net_sale,
-    return_amount,
-    no_order,
-  FROM (
-    SELECT
       week,
-      pos_code,
-      pos_name,
-      SUM(custom_week_target) TARGET
-    FROM target_by_date
-    GROUP BY ALL) t
-  LEFT JOIN (
-    SELECT
-      g.week,
-      g.pos_code,
-      COUNT(DISTINCT g.order_code) no_order,
-      SUM(net_sale) net_sale,
-      SUM(return_amount) return_amount
-    FROM gmv g
-    LEFT JOIN return r
-    ON g.week = r.week
-    AND g.pos_code = r.pos_code
-    AND g.order_code = r.order_code
-    GROUP BY ALL ) f
-  ON t.week = f.week
-  AND t.pos_code = f.pos_code ),
-  -- by day
-  day_tb AS (
-  SELECT
-    'DAY' AS date_type,
-    t.date AS start_date,
-    t.pos_code,
-    t.pos_name,
-    TARGET,
-    net_sale - COALESCE(return_amount,0) AS net_revenue,
-    net_sale,
-    return_amount,
-    no_order
-  FROM (
-    SELECT
       date,
       pos_code,
       pos_name,
-      SUM(TARGET) TARGET
-    FROM target_by_date
-    GROUP BY ALL) t
-  LEFT JOIN (
-    SELECT
-      g.date,
+      TARGET,
+      final_target AS custom_week_target,
+    FROM ${ref("gold_buymed_vn2", "dim_circa_os_gmv_kpi")}
+    WHERE
+      channel = 'OFFLINE' ),
+  final_target as (
+    select * from (
+    select 'MONTH' date_type,
+    MONTH AS start_date,
+    pos_code,
+    pos_name,
+    sum(target) TARGET
+    from target_by_date
+    group by all)
+    union all 
+    select * from (
+      select 'WEEK' date_type,
+    week AS start_date,
+    pos_code,
+    pos_name,
+    sum(custom_week_target) TARGET
+    from target_by_date
+    group by all)
+    union all 
+    select * from (
+    select 'DAY' date_type,
+    date AS start_date,
+    pos_code,
+    pos_name,
+    sum(target) TARGET
+    from target_by_date
+    group by all 
+    ))
+  ,offline_sale AS 
+    ( select *,
+    net_sale - COALESCE(return_amount,0) as net_revenue 
+    from (
+    SELECT 'MONTH' date_type,
+      g.month AS start_date,
       g.pos_code,
-       COUNT(DISTINCT g.order_code) no_order,
+      COUNT(DISTINCT IF(net_sale - COALESCE(return_amount,0) = 0, NULL, g.order_code)) no_order,
+      SUM(gmv) gmv,
       SUM(net_sale) net_sale,
-      SUM(return_amount) return_amount
-    FROM gmv g
-    LEFT JOIN return r
+      SUM(return_amount) return_amount,
+    from fact_order g
+    LEFT JOIN fact_return r
+    ON g.month = r.month
+      AND g.pos_code = r.pos_code
+      AND g.order_code = r.order_code
+    WHERE affiliate_tag <> 'AFFILIATE_FS'
+    GROUP BY ALL )
+    union all 
+    select *,
+    net_sale - COALESCE(return_amount,0) as net_revenue 
+    from (
+    SELECT 'WEEK' date_type,
+      g.week AS start_date,
+      g.pos_code,
+      COUNT(DISTINCT IF(net_sale - COALESCE(return_amount,0) = 0, NULL, g.order_code)) no_order,
+      SUM(gmv) gmv,
+      SUM(net_sale) net_sale,
+      SUM(return_amount) return_amount,
+    from fact_order g
+    LEFT JOIN fact_return r
+    ON g.week = r.week
+      AND g.pos_code = r.pos_code
+      AND g.order_code = r.order_code
+    WHERE affiliate_tag <> 'AFFILIATE_FS'
+    GROUP BY ALL )
+    UNION ALL 
+    select *,
+    net_sale - COALESCE(return_amount,0) as net_revenue 
+    from (
+    SELECT 'DAY' date_type,
+      g.date AS start_date,
+      g.pos_code,
+      COUNT(DISTINCT IF(net_sale - COALESCE(return_amount,0) = 0, NULL, g.order_code)) no_order,
+      SUM(gmv) gmv,
+      SUM(net_sale) net_sale,
+      SUM(return_amount) return_amount,
+    from fact_order g
+    LEFT JOIN fact_return r
     ON g.date = r.date
-    AND g.pos_code = r.pos_code
-    AND g.order_code = r.order_code
-    GROUP BY ALL ) f
-  ON t.date = f.date
-  AND t.pos_code = f.pos_code )
-SELECT *, safe_divide(net_revenue, no_order) aov FROM month_tb
-UNION ALL
-SELECT *, safe_divide(net_revenue, no_order) aov FROM week_tb
-UNION ALL
-SELECT *, safe_divide(net_revenue, no_order) aov FROM day_tb
-
+      AND g.pos_code = r.pos_code
+      AND g.order_code = r.order_code
+    WHERE affiliate_tag <> 'AFFILIATE_FS'
+    GROUP BY ALL )
+    )
+  , affiliate_sale AS 
+    ( select *,
+    net_sale - COALESCE(return_amount,0) as net_revenue 
+    from (
+    SELECT 'MONTH' date_type,
+      g.month AS start_date,
+      g.pos_code,
+      COUNT(DISTINCT IF(net_sale - COALESCE(return_amount,0) = 0, NULL, g.order_code)) no_order,
+      SUM(gmv) gmv,
+      SUM(net_sale) net_sale,
+      SUM(return_amount) return_amount,
+    from fact_order g
+    LEFT JOIN fact_return r
+    ON g.month = r.month
+      AND g.pos_code = r.pos_code
+      AND g.order_code = r.order_code
+    WHERE affiliate_tag = 'AFFILIATE_FS'
+    GROUP BY ALL )
+    union all 
+    select *,
+    net_sale - COALESCE(return_amount,0) as net_revenue 
+    from (
+    SELECT 'WEEK' date_type,
+      g.week AS start_date,
+      g.pos_code,
+      COUNT(DISTINCT IF(net_sale - COALESCE(return_amount,0) = 0, NULL, g.order_code)) no_order,
+      SUM(gmv) gmv,
+      SUM(net_sale) net_sale,
+      SUM(return_amount) return_amount,
+    from fact_order g
+    LEFT JOIN fact_return r
+    ON g.week = r.week
+      AND g.pos_code = r.pos_code
+      AND g.order_code = r.order_code
+    WHERE affiliate_tag = 'AFFILIATE_FS'
+    GROUP BY ALL )
+    UNION ALL 
+    select *,
+    net_sale - COALESCE(return_amount,0) as net_revenue 
+    from (
+    SELECT 'DAY' date_type,
+      g.date AS start_date,
+      g.pos_code,
+      COUNT(DISTINCT IF(net_sale - COALESCE(return_amount,0) = 0, NULL, g.order_code)) no_order,
+      SUM(gmv) gmv,
+      SUM(net_sale) net_sale,
+      SUM(return_amount) return_amount,
+    from fact_order g
+    LEFT JOIN fact_return r
+    ON g.date = r.date
+      AND g.pos_code = r.pos_code
+      AND g.order_code = r.order_code
+    WHERE affiliate_tag = 'AFFILIATE_FS'
+    GROUP BY ALL )
+    )
+select 
+f.*, 
+o.net_revenue as offline_net_revenue,
+o.no_order as offline_no_order,
+safe_divide(o.net_revenue, o.no_order) as offline_aov ,
+af.net_revenue as affiliate_net_revenue,
+af.no_order as affiliate_no_order,
+safe_divide(af.net_revenue, af.no_order) as affiliate_aov
+from final_target f 
+left join offline_sale o 
+on f.date_type = o.date_type
+and f.start_date = o.start_date
+and f.pos_code = o.pos_code
+left join affiliate_sale af 
+on f.date_type = af.date_type
+and f.start_date = af.start_date
+and f.pos_code = af.pos_code

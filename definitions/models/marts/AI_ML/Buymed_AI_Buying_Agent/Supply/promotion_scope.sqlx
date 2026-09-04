@@ -1,0 +1,41 @@
+config {
+    type: 'incremental',
+    schema: "buying_agent_input",
+    tags: ["AI_Buying_Agent"],
+    uniqueKey: [
+        "promo_id",
+        "target_type", 
+        "target_id",
+        "snapshot_date"
+    ],
+
+    bigquery: {
+        partitionBy: "snapshot_date",
+        clusterBy: ["promo_id", "target_id"]
+    },
+}
+
+SELECT
+    v.voucher_code AS promo_id
+    , "PRODUCT" AS target_type
+    , SAFE_CAST(vp.product_id AS STRING) AS target_id
+    , CURRENT_DATE("+7") AS snapshot_date
+FROM ${ref("dim_voucher_product")} AS vp
+    LEFT JOIN ${ref("dim_voucher")} AS v ON vp.voucher_code = v.voucher_code
+WHERE 1=1
+    AND v.voucher_status = 'ACTIVE'
+    AND v.discount_type IS NOT NULL
+QUALIFY ROW_NUMBER() over(PARTITION BY promo_id, target_type, target_id) = 1
+
+post_operations {
+    IF NOT EXISTS (
+        SELECT 1
+        FROM buying_agent_input.INFORMATION_SCHEMA.TABLE_CONSTRAINTS
+        WHERE table_name = 'promotion_scope'
+        AND constraint_type = 'PRIMARY KEY'
+    ) THEN
+    ALTER TABLE ${self()} 
+        ADD PRIMARY KEY (promo_id, target_type, target_id, snapshot_date) NOT ENFORCED,
+        ADD FOREIGN KEY (promo_id, snapshot_date) REFERENCES ${ref("buying_agent_input",  "promotions")}(promo_id, snapshot_date) NOT ENFORCED;
+    END IF;
+}

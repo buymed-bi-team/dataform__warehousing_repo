@@ -31,8 +31,8 @@ pre_operations {
     ${when(
         incremental(),
         `
-        SET execution_time_checkpoint = (SELECT max(execution_time) - INTERVAL 12 HOUR FROM ${self()});
-        DELETE FROM ${self()} WHERE execution_time >= execution_time_checkpoint;`,
+        SET execution_time_checkpoint = (SELECT max(execution_time) FROM ${self()});
+        --DELETE FROM ${self()} WHERE execution_time >= execution_time_checkpoint;`,
         `SET execution_time_checkpoint = CURRENT_TIMESTAMP() - INTERVAL 4 DAY`
     )}
 }

@@ -361,12 +361,12 @@ SELECT
     flom.no_orders,
     flom.last_purchase,
     flom.first_purchase,
-    JSON_VALUE(customer.gpp, "$.0.public_url") AS gpp_url,
-    JSON_VALUE(customer.licenses, "$.0.public_url") AS license_url,
-    JSON_VALUE(customer.pharmacy_eligibility_license, "$.0.public_url") AS pharmacy_eligibility_url,
-    JSON_VALUE(customer.gdp, "$.0.public_url") AS gdp_url,
-    JSON_VALUE(customer.extra_props, "$.gsp.0.public_url") AS gsp_url,
-    JSON_VALUE(customer.examination_and_treatment_license, "$.0.public_url") AS examination_and_treatment_url,
+    REPLACE(JSON_VALUE(customer.gpp, "$.0.public_url"), 'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS gpp_url,
+    REPLACE(JSON_VALUE(customer.licenses, "$.0.public_url"), 'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS license_url,
+    REPLACE(JSON_VALUE(customer.pharmacy_eligibility_license, "$.0.public_url"), 'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS pharmacy_eligibility_url,
+    REPLACE(JSON_VALUE(customer.gdp, "$.0.public_url"), 'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS gdp_url,
+    REPLACE(JSON_VALUE(customer.extra_props, "$.gsp.0.public_url"), 'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS gsp_url,
+    REPLACE(JSON_VALUE(customer.examination_and_treatment_license, "$.0.public_url"), 'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS examination_and_treatment_url,
     JSON_VALUE(customer.pharmacy_eligibility_license_info, "$.number") AS ddkkdd_license_number,
     FORMAT_DATE("%Y-%m-%d", SAFE.TIMESTAMP(JSON_VALUE(gpp_info, "$.date"))) AS GPP_issued_date
     , FORMAT_DATE("%Y-%m-%d", SAFE.TIMESTAMP(JSON_VALUE(gpp_info, "$.expiry_date"))) AS GPP_expired_date_internal

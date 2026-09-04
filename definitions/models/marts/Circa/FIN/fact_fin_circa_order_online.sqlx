@@ -45,7 +45,7 @@ SELECT DISTINCT
     a.deliver_method, 
     a.payment_status, 
     a.payment_method,
-    cast(json_value(a.extra_props, "$.refund_amount") as int64) refund_amount,
+    coalesce(cast(json_value(a.extra_props, "$.refund_amount") as int64),0) refund_amount,
     json_value(a.extra_props, "$.refund_method") refund_method ,
     json_value(a.extra_props, "$.refund_status") refund_status,
     DATETIME_ADD(a.created_time, INTERVAL 7 HOUR) AS created_at,
@@ -54,14 +54,21 @@ SELECT DISTINCT
     DATE(DATETIME_ADD(a.delivery_date, INTERVAL 7 HOUR)) AS delivery_date,
     DATE(DATETIME_ADD(a.paid_time, INTERVAL 7 HOUR)) AS paid_date,
     json_value(a.extra_props, '$.secondary_pay_method') secondary_pay_method,
-    cast(json_value(a.extra_props, '$.secondary_pay_amount') as int64) secondary_pay_amount,
+    coalesce(cast(json_value(a.extra_props, '$.secondary_pay_amount') as int64),0) secondary_pay_amount,
     date(datetime_add(timestamp(json_value(a.extra_props, '$.cancel_time')), interval 7 hour)) AS cancel_time,
     pos_id,
     b.delivery_carrier_code,
     b.delivery_carrier,
     b.delivery_tracking_number,
     d.fee_amount AS original_delivery_fee,
-    cast( JSON_EXTRACT_SCALAR(a.extra_props, '$.final_cod') as int64) AS final_secondary_cod,
+    -- order has 2 payment methods, one is bussiness_wallet -- > track in wallet_paid_amount
+    -- order has business_wallet as the only payment method --> track total_price as wallet_paid_amount
+    coalesce(cast(JSON_EXTRACT_SCALAR(a.extra_props, '$.wallet_paid_amount') as int64),
+    if(a.payment_method= 'BUSINESS_WALLET' and  json_value(a.extra_props, '$.secondary_pay_method') is null, a.total_price,null),0) AS wallet_paid_amount,
+    -- final_delivery_total_price track final paid_amount of delivered items. wallet_paid_amount and secondary_paid_amount may be recalculatd in this step
+    cast( JSON_EXTRACT_SCALAR(a.extra_props, '$.final_delivery_total_price') as int64) AS final_delivery_total_price,
+    -- final cod received when delivering
+    cast( JSON_EXTRACT_SCALAR(a.extra_props, '$.final_cod') as int64) AS final_cod,
     e.tag as affiliate_tag,
     mdm_ward.name as ward_name,
     mdm_district.name as district_name,

@@ -6,13 +6,6 @@ config {
 }
 WITH
   base_data AS (
-  -- select
-  -- ro.updated_date,
-  -- ro.created_date,
-  -- ro.completed_date,
-  -- ri.*,
-  -- safe_divide(base_quantity_po*cost_price_include_tax, sum(base_quantity_po*cost_price_include_tax) over (partition by ri.return_order_id)) as return_item_amount_distribution
-  -- from (
   SELECT
     ro.return_order_code,
     ro.updated_date,
@@ -28,29 +21,31 @@ WITH
     roi.type,
     ru.unit,
     ru.convert_rate,
-    -- case when roi.received_quantity >0 then roi.received_quantity else roi.quantity end AS quantity_return,
-    -- (case when roi.received_quantity >0 then roi.received_quantity else roi.quantity end)*ru.convert_rate AS base_quantity_return,
     roi.unit_price,
+    safe_divide(roi.voucher_discount_amount,roi.quantity) as voucher_discount_amount,
+    safe_divide(roi.loyalty_discount_amount,roi.quantity) as loyalty_discount_amount,
+    safe_divide(roi.external_discount_amount,roi.quantity) as external_discount_amount,
+    safe_divide(roi.total_allocated_discount_amount,roi.quantity) as total_allocated_discount_amount,
+    safe_divide(roi.promotion_eligible_amount, roi.quantity) as promotion_eligible_amount,
     coalesce(case when system_price = 0 then null else system_price end, 
     case when platform_price = 0 then null else platform_price end,
     case when unit_price = 0 then null else unit_price end) as system_price,
-    CASE WHEN o.channel <> 'O2O' THEN roi.promotion_event_code
-              ELSE ol.promotion_event_code END AS item_discount_code,
-     CASE WHEN o.channel <> 'O2O' THEN roi.discount_amount
-              ELSE ol.discount_amount END AS item_discount_amount,
+    coalesce(ol.promotion_event_code,roi.promotion_event_code) AS item_discount_code,
+    coalesce(ol.discount_amount, roi.discount_amount) AS item_discount_amount,
     CASE WHEN tag_list like '%deal_1000%' AND roi.unit_price = 1000  THEN TRUE ELSE FALSE END AS is_deal_1k,
     roi.updated_at,
     poi.lot_id,
     poi.location_detail_id,
+    poi.location_id,
     poi.doc_code,
     poi.location_type,
     poi.so_thuoc_si,
     poi.fulfillment_method,
     poi.owner_name,
     roi.order_apply_combo_id,
-      cb.combo_price,
-      cb.discount_amount as combo_discount_amount,
-      cb.quantity AS combo_quantity,
+    cb.combo_price,
+    cb.discount_amount as combo_discount_amount,
+    cb.quantity AS combo_quantity,
     (case when roi.received_quantity >0 then roi.received_quantity else roi.quantity end) * SAFE_DIVIDE(poi.base_quantity, SUM(poi.base_quantity) OVER (PARTITION BY roi.id)) quantity_po,
     (case when roi.received_quantity >0 then roi.received_quantity else roi.quantity end)*ru.convert_rate * SAFE_DIVIDE(poi.base_quantity, SUM(poi.base_quantity) OVER (PARTITION BY roi.id)) base_quantity_po,
     poi.base_quantity AS base_qty_allocation,
@@ -112,12 +107,8 @@ SELECT
     ),
     CASE WHEN order_apply_combo_id IS NOT NULL THEN true else false end as is_combo,
   CASE
-    WHEN item_discount_code IS NOT NULL AND order_apply_combo_id IS NULL AND gift_code IS NULL THEN unit_price_before_discount - unit_price_after_discount
-    ELSE 0
-END
-  AS item_discount_amount,
+    WHEN item_discount_code IS NOT NULL AND order_apply_combo_id IS NULL AND gift_code IS NULL THEN item_discount_amount END AS item_discount_amount,
   CASE
     WHEN order_apply_combo_id IS NOT NULL AND gift_code IS NULL THEN unit_price_before_discount - unit_price_after_discount ELSE 0 END AS combo_discount_amount,
-  SAFE_DIVIDE( quantity_po * unit_price_after_discount, SUM( quantity_po * unit_price_after_discount) OVER (PARTITION BY return_order_id)) AS item_amount_contribution
 FROM
   clean_system_price_data

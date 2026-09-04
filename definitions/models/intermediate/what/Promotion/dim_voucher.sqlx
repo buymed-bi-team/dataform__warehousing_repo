@@ -23,11 +23,15 @@ SELECT
     , v.type AS voucher_type
     , v.status AS voucher_status
     , DATE(TIMESTAMP_ADD(v.start_time, INTERVAL 7 HOUR)) AS start_date
+    , TIMESTAMP_ADD(v.start_time, INTERVAL 7 HOUR) AS start_at
     , DATE(TIMESTAMP_ADD(v.end_time, INTERVAL 7 HOUR)) AS end_date
+    , TIMESTAMP_ADD(v.end_time, INTERVAL 7 HOUR) AS end_at
     , v.max_usage
     , v.usage_total
     , SAFE_CAST(JSON_VALUE(r.absolute_discount) AS FLOAT64) AS voucher_discount
     , JSON_VALUE(r.type) AS discount_type
+    , JSON_VALUE(r, "$.gifts.0.sku")  AS sku_gift
+    , JSON_VALUE(r, "$.gifts.0.quantity")  AS gift_quantity
     , CASE
         WHEN JSON_VALUE(r.type) = 'ABSOLUTE' THEN "E-VOUCHER"
         WHEN JSON_VALUE(r.type) = 'GIFT' THEN "GIFT"

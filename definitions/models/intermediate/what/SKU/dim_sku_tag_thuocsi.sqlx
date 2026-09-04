@@ -1,0 +1,45 @@
+config {
+    type: "table", 
+    description: 
+        `
+        Active Tags on Thuocsi;
+        PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.platinum}.marketplace_prd_product_v2_sku_tag,
+            ${source.platinum}.marketplace_prd_product_v2_tag,
+            ${source.ref}.dim_sku_sales_region_current
+        `,
+    tags: ["custom_1h_past5"]
+}
+
+SELECT
+    a.product_id,
+    c.sku_code,
+    a.seller_code,
+    c.sku_key,
+    c.sub_sku_code,
+    c.sales_region_code,
+    CONCAT(c.sku_code,"_",c.sales_region_code) as sku_sales_region_code,
+    t as tag_code,
+    b.name AS tag,
+    COALESCE(b.name, t) AS tag_name,
+    b.tag_id,
+    TIMESTAMP_ADD(a.created_time, INTERVAL 7 HOUR) AS created_time,
+    TIMESTAMP_ADD(a.last_updated_time, INTERVAL 7 HOUR) AS last_updated_time,
+    b.visible
+FROM ${source.platinum}.marketplace_prd_product_v2_sku_tag AS a
+    , UNNEST(JSON_VALUE_ARRAY(a.region_codes)) AS r
+    , UNNEST(JSON_VALUE_ARRAY(a.tags)) AS t
+    LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_tag AS b
+        ON t = b.code
+    LEFT JOIN ${ref("dim_sku_sales_region_current")} c
+        ON r = c.sales_region_code AND a.sku = c.sku_code
+WHERE
+   c.sku_code IS NOT NULL
+UNION  ALL
+SELECT
+    *
+FROM ${ref("dim_sku_tag")}
+WHERE tag_code = 'LNC'

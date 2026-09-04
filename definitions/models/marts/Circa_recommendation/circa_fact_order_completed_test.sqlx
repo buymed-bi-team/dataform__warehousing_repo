@@ -1,0 +1,138 @@
+config {
+    type: 'table',
+    schema: "buymed_circa_recommendation",
+    description: `All active product of web Circa.`
+
+}
+
+
+WITH base_unit_selection AS (
+    SELECT 
+         product_id
+        ,client_id
+        ,base_unit
+        ,ROW_NUMBER() OVER (
+            PARTITION BY product_id, client_id
+            ORDER BY COUNT(*) DESC
+        ) AS rn
+    FROM gold_buymed_vn2.cos_product_convert_base_unit
+    GROUP BY ALL
+)
+,base_unit AS (
+    SELECT
+         a.*
+    FROM gold_buymed_vn2.cos_product_convert_base_unit a
+    LEFT JOIN base_unit_selection b
+        ON a.product_id = b.product_id
+        AND a.client_id = b.client_id
+        AND a.base_unit = b.base_unit
+    WHERE b.rn = 1
+), return_detail AS (
+SELECT o.code
+      , order_code
+       ,i.product_id
+      , i.unit
+      , i.sku_code
+      , i.lot_date
+      , o.client_id
+      , CASE WHEN SUM(received_quantity) > 0 THEN SUM(received_quantity)
+           ELSE SUM(i.quantity) END AS quantity
+FROM `buymed_circa_v2.order_return_order` o  
+LEFT JOIN (SELECT code AS order_code, return_codes  FROM buymed_circa_v2.order_order
+    LEFT JOIN UNNEST(JSON_VALUE_ARRAY(order_return_codes)) AS return_codes
+    WHERE return_codes IS NOT NULL ) r ON o.code = r.return_codes
+LEFT JOIN `buymed_circa_v2.order_return_order_item` i ON o.id = i.return_order_id
+WHERE o.status = 'COMPLETED'
+GROUP BY ALL
+), rt AS (
+SELECT o.order_code
+      , o.product_id
+      , unit
+      , sku_code
+      , lot_date
+      , o.client_id
+      , SUM(quantity) AS quantity_return
+      , SUM( quantity * COALESCE(t.convert_rate, 1) ) AS base_quantity_return
+FROM return_detail o 
+LEFT JOIN base_unit t ON o.client_id = t.client_id AND o.product_id = t.product_id AND LOWER(t.convert_unit) = LOWER(o.unit)
+--WHERE order_code = 'DHC00991602'
+GROUP BY ALL
+), base_order AS (
+SELECT CASE WHEN o.type = 'ONLINE' THEN DATE(DATETIME(ol.created_time, 'Asia/Ho_Chi_Minh')) 
+             ELSE DATE(DATETIME(o.created_at, 'Asia/Ho_Chi_Minh')) END AS created_date
+    ,  o.code AS order_code
+    , o.client_id
+    , o.status 
+    , i.product_id
+    , i.unit
+    , i.sku_code
+    , i.lot_date
+    , i.quantitY
+    , i.quantity * COALESCE(t.convert_rate, 1)  AS base_quantity
+    , CASE
+        WHEN NULLIF(i.order_apply_combo_id, '') IS NOT NULL
+        THEN ROUND(
+            SAFE_DIVIDE(
+                (c.combo_price - c.discount_amount)
+                * c.quantity
+                * SAFE_DIVIDE(
+                    i.system_price * i.quantity,
+                    SUM(i.system_price * i.quantity) OVER (
+                        PARTITION BY o.id, i.order_apply_combo_id
+                    )
+                ),
+                i.quantity
+            )
+        )
+        ELSE i.unit_price
+      END AS unit_price
+FROM `buymed_circa_v2.order_order` AS o
+LEFT JOIN platinum_buymed_vn.circa_online_prd_order_order ol ON o.reference_order_in_platform = ol.order_code
+LEFT JOIN `buymed_circa_v2.order_order_item` AS i ON o.id = i.order_id
+LEFT JOIN base_unit AS t
+    ON o.client_id = t.client_id
+    AND i.product_id = t.product_id
+    AND LOWER(t.convert_unit) = LOWER(i.unit)
+LEFT JOIN `lakehouse-prod-394907.buymed_circa_v2.order_order_apply_combo` AS c
+    ON i.order_apply_combo_id = c.id
+)
+, _order AS (
+    SELECT
+      created_date
+    , order_code
+    , client_id
+    , status
+    , product_id
+    , unit
+    , sku_code
+    , lot_date
+    , SUM(quantity) AS quantity
+    , SUM(base_quantity) AS base_quantity
+    , unit_price
+FROM base_order
+GROUP BY ALL)
+SELECT     i.created_date
+    , i.order_code
+    , i.client_id
+    , i.status
+    , i.product_id
+    , i.unit
+    , i.sku_code
+    , i.lot_date
+    , CASE WHEN SUM(quantity - COALESCE(rt.quantity_return, 0)) < 0 THEN 0
+        ELSE SUM(quantity - COALESCE(rt.quantity_return, 0))  END AS quantity
+    , CASE WHEN SUM(base_quantity  - COALESCE(rt.base_quantity_return, 0)) < 0 THEN 0 
+           ELSE SUM(base_quantity  - COALESCE(rt.base_quantity_return, 0)) END AS base_quantity
+    , unit_price
+ FROM _order i
+LEFT JOIN rt
+    ON i.order_code = rt.order_code
+    AND i.product_id = rt.product_id
+    AND LOWER(i.unit) = LOWER(rt.unit)
+    AND i.sku_code = rt.sku_code
+    AND i.lot_date IS NOT DISTINCT FROM rt.lot_date
+GROUP BY ALL
+
+
+
+

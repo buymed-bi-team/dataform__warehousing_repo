@@ -1,0 +1,47 @@
+config {
+    type: 'incremental',
+    schema: "buying_agent_input",
+    tags: ["AI_Buying_Agent"],
+    uniqueKey: [
+        "product_id",
+        "substitute_product_id", 
+        "snapshot_date"
+    ],
+
+    bigquery: {
+        partitionBy: "snapshot_date",
+        clusterBy: ["product_id", "substitute_product_id"]
+    },
+}
+
+SELECT
+    SAFE_CAST(a.product_id AS STRING) AS product_id
+    , SAFE_CAST(substitute_id  AS STRING) AS substitute_product_id
+    , CASE
+        WHEN b.brand = c.brand AND d.ingredient_id = e.ingredient_id AND d.volume = e.volume AND b.volumes <> c.volumes
+            THEN "PACK_SIZE_VARIANT"
+        WHEN b.brand = c.brand  THEN "SAME_BRAND_VARIANT"
+        ELSE "SAME_ACTIVE_GENERIC "
+    END AS relation_type
+    , IF(is_manual_add, "CURATED", "RULE_DERIVED") AS source
+    , CURRENT_DATE("+7") AS snapshot_date
+FROM platinum_buymed_vn.marketplace_prd_product_v2_substitute_product AS a
+    LEFT JOIN ${ref("dim_product")} AS b ON a.product_id = b.product_id
+    LEFT JOIN ${ref("dim_product")} AS c ON a.substitute_id = c.product_id
+    LEFT JOIN ${ref("dim_product_ingredient")} AS d ON a.product_id = d.product_id AND d.ingredient_level = 1
+    LEFT JOIN ${ref("dim_product_ingredient")} AS e ON a.substitute_id = e.product_id AND e.ingredient_level = 1
+QUALIFY ROW_NUMBER() over(PARTITION BY product_id, substitute_product_id) = 1
+post_operations {
+    IF NOT EXISTS (
+        SELECT 1
+        FROM buying_agent_input.INFORMATION_SCHEMA.TABLE_CONSTRAINTS
+        WHERE table_name = 'product_substitutes'
+        AND constraint_type = 'PRIMARY KEY'
+    ) THEN
+
+    ALTER TABLE ${self()} 
+        ADD PRIMARY KEY (product_id, substitute_product_id, snapshot_date) NOT ENFORCED,
+        ADD FOREIGN KEY (product_id, snapshot_date) REFERENCES ${ref("buying_agent_input",  "product_catalog")}(product_id, snapshot_date) NOT ENFORCED,
+        ADD FOREIGN KEY (substitute_product_id, snapshot_date) REFERENCES ${ref("buying_agent_input",  "product_catalog")}(product_id, snapshot_date) NOT ENFORCED;
+    END IF;
+}

@@ -165,7 +165,8 @@ WITH
       , b.name AS brand
     FROM ${source.platinum}.pim_prd_product_product AS a
       LEFT JOIN ${source.platinum}.pim_prd_product_brand AS b 
-        ON JSON_VALUE(a.extra_props, "$.brand_code") = b.brand_code
+        -- ON JSON_VALUE(a.extra_props, "$.brand_code") = b.brand_code
+        ON a.brand = b.brand_code
   )
 
 
@@ -268,16 +269,26 @@ WITH
         , UNNEST(JSON_VALUE_ARRAY(extra_props, "$.user_types")) AS user_type
         LEFT JOIN (
             SELECT
-                JSON_VALUE(o, "$.value") AS code
+                value AS code
                 , JSON_VALUE(l, "$.label") AS label
-            FROM ${source.platinum}.pim_prd_product_attribute_definitions
-                LEFT JOIN UNNEST(JSON_QUERY_ARRAY(options)) AS o
-                LEFT JOIN UNNEST(JSON_QUERY_ARRAY(o, "$.labels")) AS l
-            WHERE code = "PRODUCT_USER_TYPE"
+            FROM ${source.platinum}.pim_prd_product_attribute_definition_option
+                LEFT JOIN UNNEST(JSON_QUERY_ARRAY(labels)) AS l
+            WHERE attribute_code = "PRODUCT_USER_TYPE"
                 AND JSON_VALUE(l, "$.language") = "vi"
         ) AS a ON a.code = user_type
     WHERE a.code IS NOT NULL
     GROUP BY ALL
+  ),
+
+  pic_brand_seller AS  (
+    SELECT
+        code AS brand
+        , value AS pic_brand_seller
+    FROM ${source.collector}.data_prd
+    WHERE DATE(submit_at) >= "2026-08-19"
+        AND  object = "Product"
+        AND type = "PIC_BRAND_SELLER"
+    QUALIFY ROW_NUMBER() OVER(PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
   )
 
 SELECT
@@ -293,7 +304,11 @@ SELECT
   -- product.brand,
   br.brand,
   sb.sub_brand,
-  JSON_VALUE(product.extra_props, "$.product_category_management") as brand_type,
+  CASE JSON_VALUE(product.extra_props, "$.product_category_management") 
+    WHEN "PORTFOLIO" THEN "BUYMED SELECTED"
+    WHEN "MARKET_PLACE" THEN "HIGH MARGIN"
+    ELSE JSON_VALUE(product.extra_props, "$.product_category_management")
+  END AS brand_type,
   JSON_VALUE(product.extra_props, "$.product_status") as product_status,
   SAFE_CAST(JSON_VALUE(product.extra_props, "$.related_product_id") AS INT64) as related_product_id,
   JSON_VALUE(product.extra_props, "$.status_reason") as status_reason,
@@ -444,7 +459,7 @@ SELECT
   -- JSON_VALUE(product.extra_props, "$.user_type") AS user_type,
   ut.user_type,
   IF(product.product_id IN (1129214,1129202	,1127079	,1160685	,1160792, 825641, 1160581, 237266, 2556, 2006776, 13887, 11376, 7989, 8472, 90132, 4589, 56032, 5287, 212255, 71988, 2000031, 1824, 15102, 4307	), TRUE, FALSE) AS sales_rx_buymed
-
+  , pbs.pic_brand_seller
 
 
 FROM ${source.platinum}.marketplace_prd_product_v2_product AS product
@@ -471,6 +486,7 @@ LEFT JOIN atc3 AS a3 ON a3.product_id = product.product_id
 LEFT JOIN atc4 AS a4 ON a4.product_id = product.product_id
 LEFT JOIN sub_brand AS sb ON sb.product_id = product.product_id
 LEFT JOIN user_type AS ut ON ut.product_id = product.product_id
+LEFT JOIN pic_brand_seller AS  pbs ON LOWER(pbs.brand) = LOWER(br.brand)
 
 WHERE
     LOWER(product.name) NOT LIKE '%(bỏ)%'

@@ -1,0 +1,86 @@
+
+config {
+  type: "incremental",
+  schema: "buying_agent_input",
+  tags: ["AI_Buying_Agent"],
+  uniqueKey: ["store_id","store_sku_id", "snapshot_date"],
+
+  bigquery: {
+    partitionBy: "snapshot_date",
+    clusterBy: ["store_id","store_sku_id", "registration_number", "barcode"]
+  },
+
+  description: "inventory_snapshot | grain: 1 row per store x store_sku | refresh: daily."
+}
+
+
+WITH inv AS (
+  SELECT
+    pos_id                                                           AS store_id
+    ,sku_code                                                        AS store_sku_id
+    ,product_id
+    ,SUM(on_hand_qty)                                                AS on_hand_qty
+    ,SUM(available_qty)                                              AS available_qty
+    ,MIN(expired_date)                                               AS nearest_expiry_date
+    ,SUM(CASE WHEN expired_date IS NOT NULL
+             AND expired_date <= TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 90 DAY)
+        THEN on_hand_qty ELSE 0 END)                                AS qty_expiring_90d
+    ,SAFE_DIVIDE(SUM(cost_price_include_tax * on_hand_qty),
+                NULLIF(SUM(on_hand_qty), 0))                        AS avg_cost_price
+    ,client_id
+  FROM buymed_circa_v2.inventory_location_detail
+  WHERE deleted_at IS NULL
+  GROUP BY ALL
+),
+base_unit_dedup AS (
+  SELECT
+    product_id
+    ,unit           AS base_unit
+  FROM buymed_circa_v2.product_retail_unit
+  WHERE base_unit = TRUE
+  QUALIFY ROW_NUMBER() OVER ( PARTITION BY product_id ORDER BY updated_at DESC
+  ) = 1
+), check AS (
+SELECT
+  inv.store_id
+  ,inv.product_id
+  ,inv.store_sku_id
+  ,p.product_name
+  ,p.barcode
+  ,p.registration_number
+  ,ru.base_unit                                      
+  ,p.ts_convert_rate AS pack_size
+  ,inv.on_hand_qty
+  ,0                           AS reserved_qty         --  fix = 0
+  ,inv.available_qty                                   
+  ,DATE(inv.nearest_expiry_date) AS nearest_expiry_date
+  ,inv.qty_expiring_90d
+  ,inv.avg_cost_price
+  ,CAST(NULL AS DATE)         AS last_stocktake_date  
+  ,CURRENT_DATE('Asia/Ho_Chi_Minh')                           AS snapshot_date
+FROM inv
+LEFT JOIN 
+    (SELECT DISTINCT product_id, product_name, barcode, registration_number, ts_convert_rate FROM `gold_buymed_vn2.cos_dim_product` 
+     QUALIFY ROW_NUMBER() OVER ( PARTITION BY product_id ORDER BY created_at DESC
+  ) = 1)
+    p  ON inv.product_id = p.product_id 
+LEFT JOIN base_unit_dedup ru ON inv.product_id = ru.product_id 
+)
+SELECT * FROM check
+WHERE base_unit IS NOT NULL
+
+  post_operations {
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM `lakehouse-prod-394907.buying_agent_input.INFORMATION_SCHEMA.TABLE_CONSTRAINTS`
+    WHERE table_name = 'inventory_snapshot'
+      AND constraint_type = 'PRIMARY KEY'
+  ) THEN
+
+    ALTER TABLE ${self()}
+    ADD PRIMARY KEY (store_id, store_sku_id,snapshot_date ) NOT ENFORCED;
+
+  END IF;
+
+}

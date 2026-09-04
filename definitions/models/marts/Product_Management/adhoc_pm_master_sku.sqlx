@@ -89,7 +89,7 @@ with
         -- sku,
             market_price_tag_code,
             region_code, 
-            product_id
+            sk.product_id
         from ${source.platinum}.marketplace_prd_product_v2_sku_tag sk
         LEFT JOIN UNNEST(JSON_VALUE_ARRAY(tags)) AS market_price_tag_code
         LEFT JOIN UNNEST(JSON_VALUE_ARRAY(region_codes)) AS region_code

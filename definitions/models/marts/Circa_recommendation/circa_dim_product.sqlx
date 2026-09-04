@@ -15,7 +15,6 @@ INSERT INTO
 (
   id, title, categories, description, languageCode, availability, priceInfo, images
 )
-
 WITH
 t AS (
   SELECT DISTINCT product_id, category_name, category_code
@@ -45,20 +44,23 @@ e AS (
       
 )
 , price AS (
-SELECT
-  DISTINCT product_id
-  --,JSON_VALUE(unit, '$.code') AS code
-  ,JSON_VALUE(unit, '$.is_default') AS is_default
-  ,JSON_VALUE(unit, '$.status') AS web_unit_status
-  --,JSON_VALUE(unit, '$.unit_code') AS unit_code
-  ,JSON_VALUE(unit, '$.unit_name') AS unit_name
-  ,JSON_VALUE(unit, '$.value') AS unit_value
-  ,CAST(JSON_VALUE(unit, '$.price') AS INT64) AS unit_price
-FROM
- platinum_buymed_vn.circa_online_prd_product_product t,
-  UNNEST(JSON_EXTRACT_ARRAY(t.retail_units)) AS unit
-  WHERE JSON_VALUE(unit, '$.is_default') = 'true'
-         AND JSON_VALUE(unit, '$.status') = 'ACTIVE'
+SELECT DISTINCT s.product_id
+                        ,CASE WHEN td.price_type = 'DYNAMIC' THEN pd.auto_sale_price
+                              WHEN td.price_type <> 'DYNAMIC' THEN pd.sale_price ELSE NULL END AS sale_price
+                        , pd.unit
+                        , rt.convert_rate
+        FROM lakehouse-prod-394907.buymed_circa_v2.product_price_sheet_sku_detail AS pd
+        LEFT JOIN lakehouse-prod-394907.buymed_circa_v2.product_price_sheet_sku AS s ON pd.price_sheet_sku_id = s.id
+        LEFT JOIN lakehouse-prod-394907.buymed_circa_v2.product_price_sheet AS ps ON s.price_sheet_id = ps.id
+        LEFT JOIN lakehouse-prod-394907.buymed_circa_v2.product_sku td ON td.product_id = s.product_id AND td.client_id = ps.client_id AND td.sku_code = s.sku_code
+        LEFT JOIN `buymed_circa_v2.product_retail_unit` rt ON lower(pd.unit) = LOWER(rt.unit) AND s.product_id = rt.product_id and td.client_id = rt.client_id
+        WHERE   ps.client_id = 1
+              AND ps.name = 'Bảng giá client 1'
+              AND s.seller_code = 'CIRCA'
+              AND ps.channel = 'OFFLINE'
+              AND rt.base_unit = true
+             -- AND s.product_id = 1110
+              QUALIFY ROW_NUMBER() OVER (PARTITION BY product_id ORDER BY convert_rate DESC ) = 1
          
 )
     SELECT DISTINCT CAST(p.product_id AS STRING) AS id
@@ -91,7 +93,7 @@ FROM
                  ELSE "OUT_OF_STOCK" END AS availability -- stock status
           , STRUCT (
                  'VND' AS currencyCode
-                 , CAST(pr.unit_price AS INT64) AS price
+                 , CASE WHEN sale_price < 0 THEN 0 ELSE CAST(pr.sale_price AS INT64) END AS price
                    ) AS priceInfo
           
           ,ARRAY(
@@ -105,14 +107,12 @@ FROM
     LEFT JOIN gold_buymed_vn2.dim_product tp ON p.product_id = tp.product_id
     LEFT JOIN inventory i ON p.product_id = i.product_id 
     LEFT JOIN inventory_ts f ON p.product_id = f.product_id
-    LEFT JOIN (SELECT * FROM platinum_buymed_vn.circa_online_prd_product_product_filter
-                WHERE status = 'ACTIVE'
-               QUALIFY ROW_NUMBER() OVER (PARTITION BY product_id ORDER BY created_date DESC) = 1) po ON po.product_id = p.product_id 
     LEFT JOIN price pr ON p.product_id = pr.product_id 
     WHERE p.client_id = 1
-          AND po.product_id IS NOT NULL
+         -- AND po.product_id IS NOT NULL
           AND p.name NOT LIKE '%Quà Tặng%'
           AND p.name NOT LIKE '%(hàng khuyến mãi)%'
           AND p.name NOT LIKE '%quà tặng)%'
-
-
+          AND p.product_id IN ( SELECT DISTINCT product_id
+                                FROM `buymed_circa_v2.product_sku` s
+                                WHERE  s.client_id = 1)

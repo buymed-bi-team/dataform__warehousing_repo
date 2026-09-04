@@ -1,0 +1,70 @@
+config {
+    type: 'incremental',
+    schema: "buying_agent_input",
+    tags: ["AI_Buying_Agent"],
+    uniqueKey: [
+        "promo_id",
+        "snapshot_date"
+    ],
+
+    bigquery: {
+        partitionBy: "snapshot_date",
+        clusterBy: ["promo_id", "promo_type", "scope_type"]
+    },
+}
+
+SELECT
+    SAFE_CAST(voucher_id AS STRING) AS promo_id
+    , display_name AS promo_name
+    , CASE
+        WHEN discount_type = "GIFT" THEN "ITEM_GIFT"
+        WHEN (JSON_QUERY(and_conditions, "$.PRODUCT") IS NOT NULL OR JSON_QUERY(and_conditions, "$.PRODUCT_TAG") IS NOT NULL) THEN
+            IF(discount_type = "PERCENTAGE", "ITEM_PCT_OFF", "ITEM_AMOUNT_OFF")
+        WHEN JSON_QUERY(and_conditions, "$.ORDER_VALUE") IS NOT NULL THEN "ORDER_VALUE_VOUCHER"
+    END AS promo_type
+    , CASE
+        WHEN promotion_organizer <> 'ALL' AND  (JSON_QUERY(and_conditions, "$.PRODUCT") IS NULL AND JSON_QUERY(and_conditions, "$.PRODUCT_TAG") IS NULl) THEN "SELLER"
+        WHEN (JSON_QUERY(and_conditions, "$.PRODUCT") IS NOT NULL OR JSON_QUERY(and_conditions, "$.PRODUCT_TAG") IS NOT NULL) THEN "SKU"
+        WHEN promotion_organizer = "ALL" THEN "SITEWIDE"
+        ELSE  "SITEWIDE"
+    END AS scope_type
+    , SAFE_CAST(
+        COALESCE(
+            JSON_VALUE(and_conditions, "$.PRODUCT.and_conditions.0.product_condition.min_quantity")
+            , JSON_VALUE(and_conditions, "$.PRODUCT.or_conditions.0.product_condition.min_quantity")
+            , JSON_VALUE(and_conditions, "$.PRODUCT_TAG.and_conditions.0.product_tag_condition.min_quantity")
+            , JSON_VALUE(and_conditions, "$.PRODUCT_TAG.or_conditions.0.product_tag_condition.min_quantity")
+        ) AS INT64
+      ) AS min_qty
+    , SAFE_CAST(
+        COALESCE(
+            JSON_VALUE(and_conditions, "$.ORDER_VALUE.and_conditions.0.order_condition.min_total_price")
+            , JSON_VALUE(and_conditions, "$.ORDER_VALUE.or_conditions.0.order_condition.min_total_price")
+        ) AS INT64
+      ) AS min_order_value
+    , percentage_discount AS discount_pct
+    , voucher_discount AS discount_amount
+    , max_discount AS discount_cap
+    , SAFE_CAST(s.product_id AS STRING) AS gift_product_id
+    , gift_quantity AS gift_qty
+    , start_at
+    , end_at
+    , IF(IFNULL(max_usage,0) - IFNULL(usage_total,0) < 0,  NULL, max_usage - usage_total) AS remaining_usage
+    , CURRENT_DATE("+7") AS snapshot_date
+FROM ${ref("dim_voucher")} AS a
+    LEFT JOIN ${ref("dim_sku")} AS s ON a.sku_gift = s.sku_code
+WHERE 1=1
+    AND discount_type IS NOT NULL
+    AND voucher_status = "ACTIVE"
+
+post_operations {
+    IF NOT EXISTS (
+        SELECT 1
+        FROM buying_agent_input.INFORMATION_SCHEMA.TABLE_CONSTRAINTS
+        WHERE table_name = 'promotions'
+        AND constraint_type = 'PRIMARY KEY'
+    ) THEN
+    ALTER TABLE ${self()} 
+        ADD PRIMARY KEY (promo_id, snapshot_date) NOT ENFORCED;
+    END IF;
+}

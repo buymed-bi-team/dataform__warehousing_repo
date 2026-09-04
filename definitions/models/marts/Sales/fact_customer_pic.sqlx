@@ -12,27 +12,27 @@ WITH
     cte AS (
         SELECT
             customer_id
-            , customer_group
+            , COALESCE(customer_group1, customer_group) AS customer_group
             , REGEXP_REPLACE(kam_pic, r'@BUYMED.COM', '') AS pic
             , SAFE_CAST(sales_target AS FLOAT64) AS target
             , month
         FROM (
             SELECT
                 SAFE_CAST(SPLIT(code, "_")[SAFE_OFFSET(0)] AS INT64) AS customer_id
-                , REGEXP_REPLACE(code, SPLIT(code, "_")[SAFE_OFFSET(0)]||"_", "") AS customer_group
-                -- , SPLIT(code, "_")[SAFE_OFFSET(1)] AS customer_group
+                , IF(STRPOS(code, "_") > 0, REGEXP_REPLACE(code, SPLIT(code, "_")[SAFE_OFFSET(0)]||"_", ""), NULL) AS customer_group
                 , type
                 , NULLIF(UPPER(value), "NAN")  AS value
                 , DATE_TRUNC(DATE(submit_at), MONTH ) AS month
             FROM collector.data_prd
-            WHERE DATE(submit_at) >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH) - INTERVAL 3 MONTH
+            WHERE 1=1
+                -- AND DATE(submit_at) >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH) - INTERVAL 3 MONTH
+                AND DATE(submit_at) >= "2025-12-01"
                 AND object = "Customer_PIC"
-                AND type IN ("SALES_TARGET","KAM_PIC")
+                AND type IN ("SALES_TARGET","KAM_PIC", "GROUP")
                 AND submit_id >= 5732
-                AND submit_id <> 10205
-            QUALIFY ROW_NUMBER() over (PARTITION BY code, object, type, month ORDER BY submit_id DESC) = 1
+            QUALIFY ROW_NUMBER() over (PARTITION BY customer_id, object, type, month ORDER BY submit_id DESC) = 1
         )
-        PIVOT ( MAX(value) FOR type IN ("SALES_TARGET" AS sales_target, "KAM_PIC" AS kam_pic) )
+        PIVOT ( MAX(value) FOR type IN ("SALES_TARGET" AS sales_target, "KAM_PIC" AS kam_pic, "GROUP" AS customer_group1) )
         WHERE customer_id IS NOT NULL
     ),
 

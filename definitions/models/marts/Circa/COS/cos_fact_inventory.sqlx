@@ -39,7 +39,39 @@ WITH _all AS (
       AND p.id IS NOT NULL
     GROUP BY ALL
 )
-
+, po AS (
+     SELECT   o.code 
+            , o.owner_id
+            , o.sale_order_number
+            , o.fulfillment_method
+            , o.client_id
+            , o.distributor_id
+            , i.product_id
+            , DATETIME(o.stock_at, 'Asia/Ho_Chi_Minh') AS stock_at
+            -- , g.min_stock AS stock_at
+            -- , g.max_stock AS max_stock
+            FROM ${source.circa_os}.order_purchase_order o 
+            LEFT JOIN lakehouse-prod-394907.buymed_circa_v2.order_purchase_order_item i ON o.id = i.purchase_order_id
+            -- LEFT JOIN ( SELECT purchase_order_id
+            --                    , product_id 
+            --                    , MIN (DATE(DATETIME(rc.created_at, 'Asia/Ho_Chi_Minh'))) AS min_stock
+            --                    , MAX (DATE(DATETIME(rc.created_at, 'Asia/Ho_Chi_Minh'))) AS max_stock 
+            --            FROM lakehouse-prod-394907.buymed_circa_v2.order_goods_receipt rc 
+            --            LEFT JOIN lakehouse-prod-394907.buymed_circa_v2.order_goods_receipt_item rci ON rc.id = rci.goods_receipt_id 
+            --            WHERE rc.status = 'COMPLETED'
+            --            GROUP BY ALL
+            --     ) g  ON o.id = g.purchase_order_id AND i.product_id = g.product_id
+             GROUP BY ALL
+)
+, lasted_put AS (
+       SELECT DISTINCT pos_id, product_id, MAX(DATE(DATETIME(put.created_at, 'Asia/Ho_Chi_Minh'))) AS lasted_put, MIN(DATE(DATETIME(put.created_at, 'Asia/Ho_Chi_Minh'))) AS earliest_put
+       FROM buymed_circa_v2.inventory_put_ticket put
+       LEFT JOIN buymed_circa_v2.inventory_put_ticket_item putd ON putd.put_ticket_id = put.id
+       WHERE status <> 'CANCELED'
+           AND quantity > 0
+           AND ref_type <> 'RETURN_ORDER'
+       GROUP BY ALL
+)
 SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
        ,i.*
        ,CONCAT(i.product_id, "_", i.client_id) AS product_client_id
@@ -49,8 +81,12 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
        ,o.sale_order_number AS SO_code
        ,o.distributor_id
        ,o.fulfillment_method
+       ,stock_at
+       ,earliest_put AS min_stock_at
+       ,lasted_put AS lastest_stock_at
+
 FROM _all i 
-LEFT JOIN ${source.circa_os}.order_purchase_order o ON i.doc_code = o.code 
-                                                    AND i.client_id = o.client_id
+LEFT JOIN po o ON i.doc_code = o.code AND i.client_id = o.client_id AND i.product_id = o.product_id
 LEFT JOIN ${source.circa_os}.entity_owner eo  ON o.owner_id = eo.id 
-   AND i.client_id = eo.client_id
+       AND i.client_id = eo.client_id
+LEFT JOIN lasted_put p ON i.product_id = p.product_id AND i.pos_id = p.pos_id

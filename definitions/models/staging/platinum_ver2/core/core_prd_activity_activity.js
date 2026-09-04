@@ -22,7 +22,7 @@ model.createIncremental(
         has_src_created_date : false,
         ingestCutOffInterval : "INTERVAL 1 MONTH",
         ignore_deletion: true,
-        ignore_query: `AND NOT(action ='d' AND created_time < CURRENT_TIMESTAMP - INTERVAL 12 MONTH)`
+        ignore_query: `AND NOT(action ='d' AND DATE(created_time) < DATE(CURRENT_TIMESTAMP) - INTERVAL 12 MONTH)`
     }
 );
 // model.assertUnique(
