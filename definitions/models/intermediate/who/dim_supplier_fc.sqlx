@@ -73,12 +73,6 @@ LEFT JOIN UNNEST(JSON_EXTRACT_ARRAY(dim_supplier.inbound_addresses)) as lt on  d
 QUALIFY ROW_NUMBER() OVER(PARTITION BY supplier_fc_code) = 1
 
 
-post_operations {                
-    ALTER TABLE ${self()} 
-        ADD PRIMARY KEY (supplier_fc_code) NOT ENFORCED,
-        ADD FOREIGN KEY (fc_code) references ${ref(`dim_fc`)}(fc_code) NOT ENFORCED,
-        ADD FOREIGN KEY (supplier_code) references ${ref(`dim_supplier`)}(supplier_code) NOT ENFORCED;
-}
 
 
 /*

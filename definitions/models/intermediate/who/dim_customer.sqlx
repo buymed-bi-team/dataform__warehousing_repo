@@ -403,9 +403,3 @@ LEFT JOIN customer_segment_custom AS csc ON csc.customer_id = customer.customer_
 WHERE customer.name NOT LIKE '%test%'
 AND customer.name NOT LIKE '%TEST%'
 QUALIFY ROW_NUMBER() OVER(PARTITION BY customer_id) = 1
-
-post_operations {
-    ALTER TABLE ${self()} 
-        ADD PRIMARY KEY (customer_id) NOT ENFORCED,
-        ADD FOREIGN KEY (customer_ward_code) references ${ref(`dim_geo_location`)}(location_code) NOT ENFORCED;
-}

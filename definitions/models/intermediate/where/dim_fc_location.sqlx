@@ -132,7 +132,3 @@ SELECT
   END AS location_key
 FROM
   int_fc_location_2 
-
-post_operations {                
-    ALTER TABLE ${self()} ADD PRIMARY KEY (location_fc_code) NOT ENFORCED;
-}

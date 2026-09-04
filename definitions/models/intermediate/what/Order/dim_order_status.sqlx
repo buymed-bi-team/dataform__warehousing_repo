@@ -89,8 +89,3 @@ LEFT JOIN order_WMS b
 --     ON a.order_id = c.order_id
 -- LEFT JOIN stg_order_ACCOUNTING d
 --     ON a.order_id = d.order_id
-
-
-post_operations {                
-  ALTER TABLE ${self()} ADD PRIMARY KEY (order_id) NOT ENFORCED;
-}
