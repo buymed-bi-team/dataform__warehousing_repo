@@ -104,6 +104,3 @@ FROM cte_main as a
 -- WHERE
 --   a.Date in ("2024-02-18") 
 
-post_operations {
-  ALTER TABLE ${self()} ADD PRIMARY KEY (date) NOT ENFORCED;
-}

@@ -114,7 +114,6 @@ LEFT JOIN (
 ) AS l ON l.seller_code = s.code
 post_operations {
     ALTER TABLE ${self()} ALTER COLUMN supplier_type SET DEFAULT "UNKNOWN";
-    ALTER TABLE ${self()} ADD PRIMARY KEY (supplier_code) NOT ENFORCED;
 }
 
 
