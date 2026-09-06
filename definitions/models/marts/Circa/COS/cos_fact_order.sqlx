@@ -148,8 +148,8 @@ SELECT a.*
              WHEN customer_phone_cleaned IS NULL THEN TRUE
              WHEN status NOT IN ('COMPLETED', 'COMPLETE_SHIPPING') THEN FALSE
              WHEN COUNTIF(status IN ('COMPLETED', 'COMPLETE_SHIPPING')) OVER (
-                 PARTITION BY customer_phone_cleaned
-                 ORDER BY created_at, a.order_code, type
+                 PARTITION BY customer_phone_cleaned, type
+                 ORDER BY created_at, a.order_code
              ) = 1 THEN TRUE
              ELSE FALSE
          END AS is_first_channel_order
@@ -157,11 +157,20 @@ SELECT a.*
              WHEN customer_phone_cleaned IS NULL THEN TRUE
              WHEN status NOT IN ('COMPLETED', 'COMPLETE_SHIPPING') THEN FALSE
              WHEN COUNTIF(status IN ('COMPLETED', 'COMPLETE_SHIPPING')) OVER (
-                 PARTITION BY customer_phone_cleaned
-                 ORDER BY created_at, a.order_code, pos_id
+                 PARTITION BY customer_phone_cleaned, pos_id
+                 ORDER BY created_at, a.order_code
              ) = 1 THEN TRUE
              ELSE FALSE
           END AS is_first_pos_order
+          ,CASE
+             WHEN customer_phone_cleaned IS NULL THEN TRUE
+             WHEN status NOT IN ('COMPLETED', 'COMPLETE_SHIPPING') THEN FALSE
+             WHEN COUNTIF(status IN ('COMPLETED', 'COMPLETE_SHIPPING')) OVER (
+                 PARTITION BY customer_phone_cleaned, client_id
+                 ORDER BY created_at, a.order_code
+             ) = 1 THEN TRUE
+             ELSE FALSE
+          END AS is_first_client_order
           ,CASE WHEN c.order_code IS NOT NULL THEN true ELSE false END AS is_have_lost_sales
 FROM map_inf a
 LEFT JOIN clean_phone b ON a.order_code = b.order_code 
