@@ -83,15 +83,15 @@ WITH base_unit_selection AS (
 
         ,oi.unit
         ,oi.unit_price
-        ,CASE
+        ,CASE WHEN promotion_event_code IS NOT NULL AND promotion_event_code <> '' AND oi.discount_amount = 0 THEN system_price - unit_price
             WHEN o.channel = 'O2O'
                 THEN ol.origin_price - ol.price
             ELSE oi.discount_amount
         END AS discount_amount
 
         ,CASE
-            WHEN o.channel <> 'O2O'
-                THEN oi.discount_amount + oi.unit_price
+            WHEN promotion_event_code IS NOT NULL AND promotion_event_code <> '' AND oi.discount_amount = 0 THEN system_price
+            WHEN o.channel <> 'O2O' THEN oi.discount_amount + oi.unit_price
             ELSE ol.origin_price
         END AS unit_price_before_discount
         ,system_price
