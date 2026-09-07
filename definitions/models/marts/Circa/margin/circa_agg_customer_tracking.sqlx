@@ -1,0 +1,40 @@
+config {
+    type: "table",
+    description: `circa_tracking
+                  PIC: huyen.ngo ; 
+                  model_type: Table ;
+                  schedule: Every 20 mins`,
+    tags:  ["gold_custom_20m"],
+    name: "circa_agg_customer_tracking",
+    columns: {
+    }
+  
+}
+
+
+SELECT DISTINCT DATE_TRUNC(o.created_date, month) AS year_month
+                , o.type AS channel
+                , p.name AS pos_name
+                , p.code AS pos_code
+                , p.client_id
+                , COALESCE(customer_phone_cleaned , o.order_code) AS customer 
+                , CASE WHEN customer_phone_cleaned IS NOT NULL THEN 'circa_customer' ELSE 'khách_lẻ' END AS customer_type 
+                , is_first_order
+                , is_first_channel_order
+                , is_first_pos_order
+                , is_first_client_order
+                ,SUM(
+                   CASE
+                      WHEN i.gift_code IS NULL THEN i.unit_price_before_discount * i.quantity_po
+                      ELSE 0
+                   END
+                   ) AS gmv
+FROM ${ref("gold_buymed_vn2", "cos_fact_order")} o 
+LEFT JOIN ${ref("gold_buymed_vn2", "fact_fin_circa_order_item")} i ON o.order_id = i.order_id 
+LEFT JOIN ${ref("gold_buymed_vn2", "circa_pos_profile")} p ON o.pos_id = p.id
+
+WHERE o.status NOT IN ('RETURNED', 'FAILED_SHIPMENT', 'OUT_OF_STOCK','CANCELED' )
+GROUP BY ALL
+ORDER BY year_month DESC
+
+
