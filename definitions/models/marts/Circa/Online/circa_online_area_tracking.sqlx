@@ -5,9 +5,6 @@ config {
     name: "circa_online_area_tracking",
     columns: {
        
-    },
-    bigquery: {
-           partitionBy: "DATE_TRUNC(created_date, MONTH)"
     }
 }
 
