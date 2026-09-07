@@ -48,13 +48,14 @@ WITH
   SELECT
     o.created_date
     , o.completed_date
-    , CASE WHEN i.customer_phone_cleaned IS NULL
-                      OR i.customer_phone_cleaned = ''
-                      OR i.customer_phone_cleaned = '0'
-                      OR i.customer_phone_cleaned = '000000000'
-                      OR i.customer_phone_cleaned = '0000000001'
-                      OR i.customer_phone_cleaned = '000000001'
-                      THEN i.order_code ELSE i.customer_phone_cleaned END AS customer_id
+    -- , CASE WHEN i.customer_phone_cleaned IS NULL
+    --                   OR i.customer_phone_cleaned = ''
+    --                   OR i.customer_phone_cleaned = '0'
+    --                   OR i.customer_phone_cleaned = '000000000'
+    --                   OR i.customer_phone_cleaned = '0000000001'
+    --                   OR i.customer_phone_cleaned = '000000001'
+    --                   THEN i.order_code ELSE i.customer_phone_cleaned END AS customer_id
+    , COALESCE(customer_phone_cleaned , i.order_code) AS customer_id
     ,EXTRACT(HOUR FROM o.created_at) AS created_hour
     ,o.created_at
     ,o.pos_id
@@ -92,22 +93,23 @@ WITH
                OR external_discount_amount > 0 THEN true 
           ELSE false 
      END AS is_have_voucher
-    , CASE
-           WHEN customer_id IS NULL THEN TRUE
-           WHEN ROW_NUMBER() OVER (
-               PARTITION BY customer_id
-               ORDER BY o.created_at 
-           ) = 1 THEN TRUE
-           ELSE FALSE
-      END AS is_first_order
-    , CASE
-           WHEN customer_id IS NULL THEN TRUE
-           WHEN ROW_NUMBER() OVER (
-               PARTITION BY customer_id, channel
-               ORDER BY o.created_at 
-           ) = 1 THEN TRUE
-           ELSE FALSE
-      END AS is_first_channel_order
+    ,CASE
+             WHEN o.status NOT IN ('COMPLETED', 'COMPLETE_SHIPPING') THEN FALSE
+             WHEN COUNTIF(o.status IN ('COMPLETED', 'COMPLETE_SHIPPING')) OVER (
+                 PARTITION BY customer_id
+                 ORDER BY o.created_at
+             ) = 1 THEN TRUE
+             ELSE FALSE
+             END AS is_first_order
+        ,CASE
+             WHEN customer_id IS NULL THEN TRUE
+             WHEN o.status NOT IN ('COMPLETED', 'COMPLETE_SHIPPING') THEN FALSE
+             WHEN COUNTIF(o.status IN ('COMPLETED', 'COMPLETE_SHIPPING')) OVER (
+                 PARTITION BY customer_id, o.channel
+                 ORDER BY o.created_at
+             ) = 1 THEN TRUE
+             ELSE FALSE
+         END AS is_first_channel_order
     ,TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS refresh_at
   FROM fact_order o 
   LEFT JOIN fact_order_item AS i ON i.order_code = o.order_code 
