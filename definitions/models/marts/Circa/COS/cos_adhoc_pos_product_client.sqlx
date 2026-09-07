@@ -119,9 +119,13 @@ WHERE rn = 1
                    ,bu.list_price
                    ,CASE WHEN cost_price > 0 AND market_price > 0 THEN (pd.cost_price - pd.market_price)/ pd.cost_price ELSE NULL END AS gap_ts_market
                    ,CASE WHEN td.price_type = 'DYNAMIC' THEN pd.auto_sale_price
-                         WHEN td.price_type <> 'DYNAMIC' THEN pd.sale_price ELSE NULL END AS final_sale_price
+                         WHEN td.price_type = 'FIXED' THEN bu.list_price
+                         WHEN td.price_type <> 'DYNAMIC' AND td.price_type <> 'FIXED' THEN pd.sale_price 
+                         
+                         ELSE NULL END AS final_sale_price
                    ,CASE WHEN td.price_type = 'DYNAMIC' THEN 'DYNAMIC'
-                         WHEN td.price_type <> 'DYNAMIC' THEN 'MANUAL' END AS price_type
+                         WHEN td.price_type = 'FIXED' THEN 'FIXED' 
+                         WHEN td.price_type <> 'DYNAMIC' AND td.price_type <> 'FIXED' THEN 'MANUAL' END AS price_type
                    ,pd.unit
                    ,bu.base_unit
                    ,bu.convert_rate
