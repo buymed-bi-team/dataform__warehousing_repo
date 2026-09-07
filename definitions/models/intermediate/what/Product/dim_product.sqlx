@@ -289,6 +289,22 @@ WITH
         AND  object = "Product"
         AND type = "PIC_BRAND_SELLER"
     QUALIFY ROW_NUMBER() OVER(PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
+  ),
+
+  _cat2 AS (
+        SELECT
+            product_id
+            , category_name
+        FROM ${ref( "dim_product_category")} 
+        WHERE level = 1
+  ),
+
+  _cat3 AS (
+      SELECT
+          product_id
+          , efficacy_name
+      FROM ${ref( "dim_product_efficacy")} 
+      WHERE efficacy_level = 1
   )
 
 SELECT
@@ -453,6 +469,8 @@ SELECT
         END
       WHEN product.seller_category_code IS NOT NULL THEN "Non-Drug"
   END AS product_category_commercial,
+  c2.category_name AS product_category_2,
+  c3.efficacy_name AS product_category_3,
 
   REGEXP_REPLACE(JSON_VALUE(product.image_urls, "$[0]"), r'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS product_image_url,
   ARRAY_LENGTH(JSON_VALUE_ARRAY(product.image_urls )) AS no_images,
@@ -487,6 +505,8 @@ LEFT JOIN atc4 AS a4 ON a4.product_id = product.product_id
 LEFT JOIN sub_brand AS sb ON sb.product_id = product.product_id
 LEFT JOIN user_type AS ut ON ut.product_id = product.product_id
 LEFT JOIN pic_brand_seller AS  pbs ON LOWER(pbs.brand) = LOWER(br.brand)
+LEFT JOIN _cat2 AS c2 ON c2.product_id = product.product_id
+LEFT JOIN _cat3 AS c3 ON c3.product_id = product.product_id
 
 WHERE
     LOWER(product.name) NOT LIKE '%(bỏ)%'
