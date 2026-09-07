@@ -19,17 +19,17 @@ SELECT
     if(client_id = 1 and affiliate_tag =  'AFFILIATE_FS', 'OFFLINE', o.type) as new_type,
     case 
         when o.channel = 'O2O' THEN oo.created_at 
-        when DATE(o.created_at + INTERVAL 7 hour) = '0001-01-01' then DATETIME_ADD(o.completed_at, INTERVAL 7 hour) 
-        else DATETIME_ADD(o.created_at, INTERVAL 7 hour) 
+        ELSE DATETIME(COALESCE(o.created_at, o.completed_at),  'Asia/Ho_Chi_Minh')
         END  AS created_at,
-    DATE(o.updated_at + INTERVAL 7 hour) AS updated_date,
+    DATE(o.updated_at, 'Asia/Ho_Chi_Minh') AS updated_date,
     case 
         when o.channel = 'O2O' then oo.created_date
-        when DATE(o.created_at + INTERVAL 7 hour) = '0001-01-01' then DATE(o.completed_at + INTERVAL 7 hour) 
-        else DATE(o.created_at + INTERVAL 7 hour) 
+        ELSE DATE(COALESCE(o.created_at, o.completed_at),  'Asia/Ho_Chi_Minh')
         end AS created_date,
-    DATE(coalesce(o.completed_at, o.updated_at) + INTERVAL 7 hour) AS completed_date,
-    coalesce(o.completed_at, o.updated_at) + INTERVAL 7 hour AS completed_at,
+    DATE(coalesce(o.completed_at, o.updated_at), 'Asia/Ho_Chi_Minh') AS completed_date,
+    DATETIME(coalesce(o.completed_at, o.updated_at), 'Asia/Ho_Chi_Minh') AS completed_at,
+    DATE(o.picking_at, 'Asia/Ho_Chi_Minh') AS picking_date,
+    DATETIME(o.picking_at, 'Asia/Ho_Chi_Minh') AS picking_at,
     o.delivery_type,
     COALESCE(oo.payment_method, 
         o.payment_method) payment_method,
