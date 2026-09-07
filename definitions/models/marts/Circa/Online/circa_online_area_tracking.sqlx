@@ -1,0 +1,201 @@
+config {
+    type: "table",
+    description: `PIC: huyen.ngo; model_type: Table ;schedule: At minute 10 every 1 hour.Circa online order item `,
+    tags: ['circa_online'],
+    name: "circa_online_area_tracking",
+    columns: {
+       
+    },
+    bigquery: {
+           partitionBy: "DATE_TRUNC(created_date, MONTH)"
+    }
+}
+
+WITH province_area_map AS (
+SELECT province_code
+      , code AS area
+FROM platinum_buymed_vn.circa_online_prd_product_sell_area
+, UNNEST(JSON_VALUE_ARRAY(province_codes)) AS province_code
+)
+, area_fc_map AS (
+  SELECT * FROM UNNEST([
+    STRUCT('DA_NANG' AS area, 'BD' AS fc_code)  
+    ,STRUCT('HA_NOI', 'HN')
+    ,STRUCT('HO_CHI_MINH', 'BD')
+  ])
+), sell_status AS (
+  SELECT
+    d.product_id
+    , TRIM(area_raw) AS area
+    , unit
+    , d.status
+  FROM `lakehouse-prod-394907.gold_buymed_vn2.dim_product_online` d
+  , UNNEST(SPLIT(d.sell_area, ',')) AS area_raw
+--  WHERE product_id = 2355
+  -- WHERE product_id = 1187416
+ -- WHERE d.sell_area IS NOT NULL AND d.sell_area != ''
+)
+, circa_stock AS (
+  SELECT
+    i.product_id
+    , m.area
+    , SUM(i.available_qty) AS stock_base_qty
+    , ts_unit
+    , ROUND(SAFE_DIVIDE(
+        SUM(i.available_qty),
+        COALESCE(MAX(td.ts_convert_rate), 1)
+      )
+     ) AS ton_circa                                                            
+  FROM gold_buymed_vn2.cos_fact_inventory i
+  LEFT JOIN (
+          SELECT DISTINCT id
+                         , code
+                         , name
+                         , CASE WHEN code = 'POS0087' THEN '62' -- FC Circa – Mỹ Hạnh
+                                WHEN code = 'POS1090' THEN '79' -- Ngọc Vy
+                                WHEN code = 'POS1095' THEN '79' -- Buymed - Nhà thuốc An - HCM
+                                WHEN code = 'POS1094' THEN '79' -- Buymed - Nhà thuốc Bảo Trân - HCM
+                                WHEN code = 'POS1092' THEN '79' -- Buymed - Nhà thuốc Vạn Bảo Tín 9
+                                WHEN code = 'POS1096' THEN '79' -- Nhà thuốc Thiên Ân - HCM=2
+                                WHEN code = 'POS1098' THEN '79' -- Buymed - Nhà thuốc Thiên - HCM
+                                
+                                 ELSE province END AS province
+          FROM gold_buymed_vn2.circa_pos_profile
+   ) p ON i.pos_id = p.id
+  LEFT JOIN province_area_map m ON p.province = m.province_code
+  LEFT JOIN `gold_buymed_vn2.cos_dim_product` td ON i.product_id = td.product_id AND i.client_id = td.client_id
+  WHERE p.code IN (
+             SELECT DISTINCT pos_code FROM platinum_buymed_vn.circa_online_prd_consumer_store_v2
+             WHERE status = 'ACTIVE'
+                  --  AND is_central_hub = true
+                   )
+  GROUP BY ALL
+ 
+)
+, thuocsi_stock AS (
+  SELECT
+    s.product_id
+    , f.area
+    , SUM(s.available_qty) AS ton_thuocsi
+  FROM gold_buymed_vn2.dim_sku_sales_region_current s
+  LEFT JOIN area_fc_map f ON s.fc_code = f.fc_code
+  WHERE s.sku_system_active = true
+  GROUP BY ALL
+)
+,gmv_30d AS (
+  SELECT
+    oi.product_id
+    , m.area
+    -- L30D
+    , SUM(oi.quantity * oi.unit_price_before_discount)
+        - COALESCE(
+            SUM(oi.qty_rt * oi.unit_price_before_discount)
+        , 0) AS gmv_L30D
+    , COUNT(DISTINCT oi.order_code) AS order_L30D
+
+    -- L7D
+    , SUM(
+        CASE
+            WHEN o.created_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 6 DAY)
+            THEN oi.quantity * oi.unit_price_before_discount
+            ELSE 0
+        END
+      )
+      -
+      SUM(
+        CASE
+            WHEN o.created_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 6 DAY)
+            THEN COALESCE(oi.qty_rt, 0) * oi.unit_price_before_discount
+            ELSE 0
+        END
+      ) AS gmv_L7D
+    , COUNT(
+        DISTINCT CASE
+            WHEN o.created_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 6 DAY)
+            THEN oi.order_code
+        END
+      ) AS order_L7D
+
+    -- Yesterday
+    , SUM(
+        CASE
+            WHEN o.created_date = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
+            THEN oi.quantity * oi.unit_price_before_discount
+            ELSE 0
+        END
+      )
+      -
+      SUM(
+        CASE
+            WHEN o.created_date = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
+            THEN COALESCE(oi.qty_rt, 0) * oi.unit_price_before_discount
+            ELSE 0
+        END
+      ) AS gmv_yesterday
+    , COUNT(
+        DISTINCT CASE
+            WHEN o.created_date = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
+            THEN oi.order_code
+        END
+      ) AS order_yesterday
+  FROM gold_buymed_vn2.cos_fact_order o
+  LEFT JOIN gold_buymed_vn2.cos_fact_order_item oi ON o.order_id = oi.order_id
+  LEFT JOIN gold_buymed_vn2.dim_province dp ON o.customer_province = dp.province_name
+  LEFT JOIN province_area_map m ON dp.province_code = m.province_code
+  WHERE o.type = 'ONLINE'
+    AND o.status = 'COMPLETED'
+    AND o.created_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
+  GROUP BY ALL
+), traffic AS (
+  SELECT DISTINCT product_id
+                  ,COUNT (DISTINCT CASE WHEN event_type = 'product_view' THEN mg_id END ) AS cnt_product_view
+                  ,COUNT (DISTINCT CASE WHEN event_type = 'add_to_cart' THEN mg_id END ) AS cnt_add_to_cart
+  FROM platinum_buymed_vn.circa_online_prd_consumer_tracking_events
+  WHERE DATE(created_time) >= DATE_SUB(CURRENT_DATE(), INTERVAL 28 DAY)
+  GROUP BY ALL
+)
+, cancel_stock AS (
+  SELECT
+    oi.product_id
+    , m.area
+    , COUNT(DISTINCT o.order_id) AS order_cancel_stock_L30D
+  FROM `lakehouse-prod-394907.gold_buymed_vn2.circa_online_order` o
+  JOIN `lakehouse-prod-394907.gold_buymed_vn2.circa_online_order_item` oi
+    ON o.order_id = oi.order_id
+  LEFT JOIN province_area_map m ON o.province_code = m.province_code
+  WHERE o.status = 'CANCELED'
+    AND STARTS_WITH(o.cancel_group, '2.')          -- 2. Hàng hóa / Tồn kho
+    AND o.created_date  >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
+    AND oi.created_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
+  GROUP BY ALL
+)
+, base AS (
+  SELECT product_id, area FROM sell_status
+  UNION
+  DISTINCT SELECT product_id, area FROM circa_stock
+  -- UNION DISTINCT SELECT product_id, area FROM thuocsi_stock
+  UNION
+  DISTINCT SELECT product_id, area FROM gmv_30d
+)
+SELECT
+    b.product_id
+  , td.ts_unit AS unit
+  , b.area
+  , COALESCE(ss.status, 'INACTIVE') AS status
+  , COALESCE(cs.ton_circa, 0) AS stock_circa
+  , COALESCE(ts.ton_thuocsi, 0) AS stock_thuocsi
+  , COALESCE(g.gmv_L30D, 0) AS gmv_L30D
+  , COALESCE(g.order_L30D,0) AS order_L30D
+  , COALESCE(g.gmv_L7D, 0) AS gmv_L7D
+  , COALESCE(g.order_L7D,0) AS order_L7D
+  , COALESCE(cx.order_cancel_stock_L30D, 0) AS order_cancel_stock_L30D
+  , t.cnt_product_view
+  , t.cnt_add_to_cart
+FROM base b
+LEFT JOIN sell_status ss  ON b.product_id = ss.product_id AND b.area = ss.area
+LEFT JOIN circa_stock cs   ON b.product_id = cs.product_id AND b.area = cs.area
+LEFT JOIN thuocsi_stock ts ON b.product_id = ts.product_id AND b.area = ts.area
+LEFT JOIN gmv_30d g        ON b.product_id = g.product_id  AND b.area = g.area
+LEFT JOIN traffic t ON b.product_id = t.product_id  
+LEFT JOIN cancel_stock cx  ON b.product_id = cx.product_id AND b.area = cx.area
+LEFT JOIN (SELECT DISTINCT product_id, ts_unit, ts_convert_rate FROM `gold_buymed_vn2.cos_dim_product`) td ON b.product_id = td.product_id
