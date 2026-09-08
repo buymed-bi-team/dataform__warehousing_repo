@@ -29,10 +29,10 @@ pre_operations {
 
 SELECT DISTINCT o.session_id
                 ,o.status -- AI/PHARM/CLOSED
-                ,o.created_at AS session_created_at
-                ,o.created_date AS session_created_date
-                ,o.updated_at AS session_updated_at
-                ,o.last_message_at AS session_last_updated_at
+                ,DATETIME(o.created_at , 'Asia/Ho_Chi_Minh') AS session_created_at
+                ,DATE(DATETIME(o.created_at , 'Asia/Ho_Chi_Minh')) AS session_created_date
+                ,DATETIME(o.updated_at , 'Asia/Ho_Chi_Minh') AS session_updated_at
+                ,DATETIME(o.last_message_at , 'Asia/Ho_Chi_Minh')  AS session_last_updated_at
                 ,o.user_id
                 ,JSON_VALUE(o.customer, '$.name')                                              AS customer_name
                 ,JSON_VALUE(o.customer, '$.address')                                            AS address
