@@ -80,8 +80,8 @@ WITH
   FROM buymed_circa_v2.order_order_item oi
   LEFT JOIN buymed_circa_v2.order_order_apply_combo cb
   ON oi.order_apply_combo_id = cb.id
-  LEFT JOIN buymed_circa_v2.product_retail_unit ru
-  ON oi.unit_id = ru.id
+  left join buymed_circa_v2.product_master_retail_unit ru
+  on oi.product_id = ru.product_id and lower(oi.unit) = lower(ru.unit)
   INNER JOIN ${ref("fact_fin_circa_order")} o 
   ON oi.order_id = o.order_id
   LEFT JOIN  ${ref("fact_fin_circa_online_order_item")} ol 

@@ -51,8 +51,8 @@ with cogs as (
       ON r.id = ri.transfer_request_id
     LEFT JOIN buymed_circa_v2.inventory_transfer_item_detail rid
       ON ri.id = rid.transfer_item_id
-    left join buymed_circa_v2.product_retail_unit ru 
-    on ri.unit_id= ru.id
+    left join buymed_circa_v2.product_master_retail_unit ru
+    on ri.product_id = ru.product_id and lower(ri.unit) = lower(ru.unit)
     LEFT JOIN buymed_circa_v2.inventory_location_detail ild 
     on rid.location_detail_id = ild.id
       where 1=1

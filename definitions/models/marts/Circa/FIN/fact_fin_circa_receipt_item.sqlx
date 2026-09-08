@@ -22,9 +22,9 @@ SELECT
   c.lot_id,
   poi.location_type,
   poi.location_detail_id,
-  pru.convert_rate,
+  ru.convert_rate,
   base_quantity_distribution * c.received_quantity received_quantity,
-  base_quantity_distribution * c.received_quantity * pru.convert_rate  base_quantity,
+  base_quantity_distribution * c.received_quantity * ru.convert_rate  base_quantity,
   poi.base_quantity as base_qty_allocation,
   poi.cost_price_include_tax,
   poi.cost_price_without_tax,
@@ -40,8 +40,8 @@ LEFT JOIN
 ON b.id = c.goods_receipt_item_id
 LEFT JOIN ${ref("fact_fin_circa_inventory_allocation")} poi
     ON c.id = poi.item_ref_id
-LEFT JOIN  `buymed_circa_v2.product_retail_unit` pru
-ON b.unit_id = pru.id
+left join buymed_circa_v2.product_master_retail_unit ru
+ on b.product_id = ru.product_id and lower(b.unit) = lower(ru.unit)
 WHERE
   1=1
 )
