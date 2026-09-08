@@ -70,6 +70,7 @@ SELECT
     oo.delivery_carrier_code,
     oo.delivery_carrier,
     coalesce(oo.affiliate_tag, 'NON AFFILIATE') AS affiliate_tag,
+    oo.affiliate_partner_code,
     oo.province_name,
     oo.district_name,
     oo.ward_name
