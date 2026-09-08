@@ -1,5 +1,5 @@
 config {
-    type: "table",
+    type: "incremental",
     description: `PIC: huyen.ngo; model_type: Table ;schedule: At minute 10 every 1 hour.Circa online order `,
     tags: ['circa-chat'],
     name: "circa_chat_sessions",
@@ -12,6 +12,20 @@ config {
 
     }
 }
+
+js {
+    const start_date =
+        ` DATE_SUB(CURRENT_DATE(), INTERVAL 10 DAY) `
+    const end_date = ` CURRENT_DATE() `
+}
+pre_operations {
+  DELETE
+  FROM
+    ${self()}
+  WHERE
+    session_created_date >= ${start_date}
+}
+
 
 SELECT DISTINCT o.session_id
                 ,o.status -- AI/PHARM/CLOSED
@@ -35,6 +49,7 @@ SELECT DISTINCT o.session_id
                 ,i.created_at AS messages_created_at
 FROM platinum_buymed_vn.circa_chat_chat_sessions o 
 LEFT JOIN platinum_buymed_vn.circa_chat_chat_messages i ON o.session_id = i.session_id
+WHERE o.created_date >=  ${when(incremental(), start_date, `'2026-05-01'`)}
 
 
 
