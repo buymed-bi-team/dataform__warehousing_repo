@@ -2,7 +2,7 @@ config {
     type: "table",
     description: `PIC: Ha.Lekim`,
     bigquery: {
-        partitionBy: "created_date"
+        partitionBy: "date_trunc(created_date,month)"
     },
     tags: ["gold_custom_20m"]
 }
