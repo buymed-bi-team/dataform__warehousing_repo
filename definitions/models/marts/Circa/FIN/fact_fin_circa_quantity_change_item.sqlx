@@ -16,8 +16,6 @@ with clean_data as (
       ia.convert_rate as type_rate,
       ri.product_id,
       ri.lot_id,
-      ri.unit_id,
-      ru.unit,
       ia.doc_code,
       ia.location_detail_id,
       ia.location_type,
@@ -31,8 +29,6 @@ with clean_data as (
       ON r.id = ri.change_quantity_id
     LEFT JOIN ${ref("gold_buymed_vn2","fact_fin_circa_inventory_allocation")} ia
     on ri.id = ia.item_ref_id
-    left join buymed_circa_v2.product_retail_unit ru
-    on ri.unit_id = ru.id
     where 1=1 
     and ri.quantity_change is not null
  )
