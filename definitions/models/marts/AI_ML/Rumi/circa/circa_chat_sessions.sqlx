@@ -7,3 +7,4 @@ config {
 
 SELECT *
 FROM ${ref('gold_buymed_vn2','circa_chat_sessions')}
+WHERE message_count > 0 
