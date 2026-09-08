@@ -21,6 +21,7 @@ WITH fact_order_item AS (
       completed_hour,
       created_hour,
       pos_id,
+      affiliate_pos_id,
       client_id,
       order_code,
       order_id,
@@ -82,6 +83,8 @@ WITH fact_order_item AS (
     a.client_id,
     p.code AS pos_code,
     p.name AS pos_name,
+    p_1.code as affiliate_pos_code,
+    p_1.name as affiliate_pos_name,
   IF
     (p.type = 'FS', 'FS', 'COS') AS pos_type,
     a.order_code,
@@ -123,6 +126,7 @@ WITH fact_order_item AS (
   FROM
     final AS a
   LEFT JOIN ${ref("gold_buymed_vn2", "circa_pos_profile")} AS p ON a.pos_id = p.id
+  LEFT JOIN ${ref("gold_buymed_vn2", "circa_pos_profile")} AS p_1 ON a.affiliate_pos_id = p_1.id
   LEFT JOIN ${ref("gold_buymed_vn2", "cos_dim_product")} AS dim_product 
   on a.product_id = dim_product.product_id 
   and a.client_id = dim_product.client_id
