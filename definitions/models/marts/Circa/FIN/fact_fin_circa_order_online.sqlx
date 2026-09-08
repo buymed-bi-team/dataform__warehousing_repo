@@ -56,7 +56,7 @@ SELECT DISTINCT
     json_value(a.extra_props, '$.secondary_pay_method') secondary_pay_method,
     coalesce(cast(json_value(a.extra_props, '$.secondary_pay_amount') as int64),0) secondary_pay_amount,
     DATE(timestamp(json_value(a.extra_props, '$.cancel_time')),  'Asia/Ho_Chi_Minh') AS cancel_time,
-    pos_id,
+    c.pos_id,
     b.delivery_carrier_code,
     b.delivery_carrier,
     b.delivery_tracking_number,
@@ -71,6 +71,7 @@ SELECT DISTINCT
     cast( JSON_EXTRACT_SCALAR(a.extra_props, '$.final_cod') as int64) AS final_cod,
     e.tag as affiliate_tag,
     JSON_EXTRACT_SCALAR(a.extra_props, '$.affiliate_partner_code') AS affiliate_partner_code,
+    g.pos_id as affiliate_pos_id,
     mdm_ward.name as ward_name,
     mdm_district.name as district_name,
     mdm_province.name as province_name
@@ -81,6 +82,10 @@ left join  pos_order c
 on a.order_code = c.reference_order_in_platform
 LEFT JOIN ${ref("fact_circa_online_transporting")} d on b.delivery_tracking_number = d.tracking_code
 LEFT JOIN affiliate_order e on a.order_code = e.order_code
+LEFT JOIN ${source.platinum}.circa_online_prd_consumer_affiliate_partner f
+ON JSON_EXTRACT_SCALAR(a.extra_props, '$.affiliate_partner_code') = f.code
+LEFT JOIN ${source.platinum}.circa_online_prd_consumer_store_v2 g
+on f.linked_store_id = g.store_id
 LEFT JOIN ${source.circa_os}.mdm_ward on a.ward_code = mdm_ward.code
 LEFT JOIN ${source.circa_os}.mdm_district on a.district_code = mdm_district.code
 LEFT JOIN ${source.circa_os}.mdm_province on a.province_code = mdm_province.code
