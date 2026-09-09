@@ -35,8 +35,8 @@ SELECT DISTINCT
     ,o.source_type
     ,delivery_type
     ,channel
-    ,DATE(DATETIME_ADD(o.created_at, INTERVAL 7 HOUR)) AS created_date
-    ,DATETIME_ADD(o.created_at, INTERVAL 7 HOUR) AS created_at
+    ,DATE(DATETIME(o.created_at, 'Asia/Ho_Chi_Minh')) AS created_date
+    ,DATETIME(o.created_at,'Asia/Ho_Chi_Minh') AS created_at
     ,fulfillment_status
     ,reference_order_in_platform
     ,o.origin_order_id
@@ -46,11 +46,11 @@ SELECT DISTINCT
        , DATETIME(o.updated_at, 'Asia/Ho_Chi_Minh')
      ) AS completed_at
     ,COALESCE(
-         DATE(DATETIME_ADD(o.completed_at, INTERVAL 7 HOUR))
-        ,DATE(DATETIME_ADD(o.updated_at, INTERVAL 7 HOUR))
+         DATE(DATETIME(o.completed_at, 'Asia/Ho_Chi_Minh'))
+        ,DATE(DATETIME(o.updated_at, 'Asia/Ho_Chi_Minh'))
      ) AS completed_date
-    ,DATETIME_ADD(delivery_scheduled_time, INTERVAL 7 HOUR) AS delivery_scheduled_time
-    ,DATETIME_ADD(pre_order_scheduled_time, INTERVAL 7 HOUR) AS pre_order_scheduled_time
+    ,DATETIME(delivery_scheduled_time, 'Asia/Ho_Chi_Minh') AS delivery_scheduled_time
+    ,DATETIME(pre_order_scheduled_time, 'Asia/Ho_Chi_Minh') AS pre_order_scheduled_time
     ,CAST(pre_order_required AS STRING) AS pre_order_required
     ,o.medicine_cutting_fee
     ,STRING_AGG(rt.return_codes, ',') AS return_codes

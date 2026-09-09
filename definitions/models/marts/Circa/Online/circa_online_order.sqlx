@@ -13,6 +13,7 @@ config {
 
     }
 }
+
 WITH created_by AS (
             SELECT DISTINCT order_code, event_name, action_by_name 
             FROM ${source.platinum}.circa_online_prd_order_order_event
@@ -56,14 +57,14 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                      
       ,JSON_VALUE(o.extra_props, '$.delivery_tags')                                  AS delivery_tags
       ,JSON_VALUE(o.extra_props, '$.discount_delivery_fee')                          AS discount_delivery_fee
       ,total_product
-      ,DATETIME_ADD(o.created_time, INTERVAL 7 hour)                                   AS created_time
-      ,DATE(DATETIME_ADD(o.created_time, INTERVAL 7 hour))                             AS created_date
-      ,DATETIME_ADD(o.last_updated_time, INTERVAL 7 hour)                              AS last_updated_time
-      ,DATETIME_ADD(DATETIME(TIMESTAMP(JSON_VALUE(o.extra_props, '$.cancel_time'))),INTERVAL 7 HOUR)    AS cancel_time
+      ,DATETIME(o.created_time, 'Asia/Ho_Chi_Minh')                                   AS created_time
+      ,DATE(DATETIME(o.created_time, 'Asia/Ho_Chi_Minh'))                             AS created_date
+      ,DATETIME(o.last_updated_time, 'Asia/Ho_Chi_Minh')                              AS last_updated_time
+      ,DATETIME(TIMESTAMP(JSON_VALUE(o.extra_props, '$.cancel_time')), 'Asia/Ho_Chi_Minh')    AS cancel_time
       ,canceled_by_user_type
      -- ,DATETIME_ADD(delivery_date, INTERVAL 7 hour)                                  AS delivery_time
-      ,DATETIME_ADD(o.paid_time, INTERVAL 7 hour)                                      AS paid_time
-      ,DATETIME_ADD(o.platinum_refresh, INTERVAL 7 hour)                               AS platinum_refresh
+      ,DATETIME(o.paid_time, 'Asia/Ho_Chi_Minh')                                      AS paid_time
+      ,o.platinum_refresh                           AS platinum_refresh
       ,l.last_status_time
       ,o.type                                                                        AS customer_type
       ,o.status                                                                      AS o2o_status -- DELIVERED/WAIT_TO_DELIVER/WAIT_TO_CONFIRM/CANCEL  
