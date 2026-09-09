@@ -17,6 +17,7 @@ with clean_data as (
       ri.product_id,
       ri.lot_id,
       ri.unit_id,
+      ri.unit_id as unit,
       ia.doc_code,
       ia.location_detail_id,
       ia.location_type,
