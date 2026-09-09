@@ -77,6 +77,7 @@ group by all)
       r.code,
       ri.product_id,
       ri.unit,
+      ri.unit_id,
       rid.quantity,
       rid.received_quantity,
       ru.convert_rate,
