@@ -16,6 +16,7 @@ with clean_data as (
       ia.convert_rate as type_rate,
       ri.product_id,
       ri.lot_id,
+      ri.unit_id,
       ia.doc_code,
       ia.location_detail_id,
       ia.location_type,
