@@ -174,8 +174,9 @@ SELECT
 
     s.use_skus_price,
     IFNULL(SAFE_CAST(JSON_VALUE(s.extra_props, "$.auto_update_status") AS BOOLEAN), FALSE) AS auto_update_status,
-    TO_JSON_STRING(s.tags) AS sku_tags
-
+    TO_JSON_STRING(s.tags) AS sku_tags,
+    NULLIF(ARRAY_TO_STRING(JSON_VALUE_ARRAY(s.extra_props, "$.customer_scope_to_ignore"), ", "), '') AS customer_scope_to_ignore,
+    JSON_VALUE(s.extra_props, "$.is_ignore_customer_scope") AS is_ignore_customer_scope
 FROM cte_full AS cte
     LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_sku AS s
         ON s.mg_id = cte.mg_id

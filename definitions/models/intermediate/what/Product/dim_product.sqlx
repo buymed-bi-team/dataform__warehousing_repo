@@ -478,7 +478,7 @@ SELECT
   ut.user_type,
   IF(product.product_id IN (1129214,1129202	,1127079	,1160685	,1160792, 825641, 1160581, 237266, 2556, 2006776, 13887, 11376, 7989, 8472, 90132, 4589, 56032, 5287, 212255, 71988, 2000031, 1824, 15102, 4307	), TRUE, FALSE) AS sales_rx_buymed
   , pbs.pic_brand_seller
-
+  , product.search_keyword
 
 FROM ${source.platinum}.marketplace_prd_product_v2_product AS product
 LEFT JOIN ${source.platinum}.seller_prd_core_seller AS seller on COALESCE(product.owner, "MEDX") = seller.code
