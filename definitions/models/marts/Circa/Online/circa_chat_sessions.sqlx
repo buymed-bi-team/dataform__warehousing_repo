@@ -38,7 +38,7 @@ SELECT DISTINCT o.session_id
                 ,JSON_VALUE(o.customer, '$.address')                                            AS address
                 ,JSON_VALUE(o.customer, '$.phone')                                              AS phone
                 ,o.message_count
-                ,JSON_VALUE(o.analytics, '$.session_start')  AS session_start
+                ,DATETIME(TIMESTAMP(JSON_VALUE(o.analytics, '$.session_start')) , 'Asia/Ho_Chi_Minh')  AS session_start
                 ,o.last_intent
                 ,o.cart_session_id
                 ,o.conversation_summary
