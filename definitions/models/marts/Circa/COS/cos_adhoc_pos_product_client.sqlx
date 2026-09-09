@@ -123,9 +123,9 @@ WHERE rn = 1
                          WHEN td.price_type <> 'DYNAMIC' AND td.price_type <> 'FIXED' THEN pd.sale_price 
                          
                          ELSE NULL END AS final_sale_price
-                   ,CASE WHEN td.price_type = 'DYNAMIC' THEN 'DYNAMIC'
-                         WHEN td.price_type = 'FIXED' THEN 'FIXED' 
-                         WHEN td.price_type <> 'DYNAMIC' AND td.price_type <> 'FIXED' THEN 'MANUAL' END AS price_type
+                   ,CASE WHEN td.price_type = 'DYNAMIC' THEN 'Giá tự động'
+                         WHEN td.price_type = 'FIXED' THEN 'Giá niêm yết' 
+                         WHEN td.price_type <> 'DYNAMIC' AND td.price_type <> 'FIXED' THEN 'Giá cố định' END AS price_type
                    ,pd.unit
                    ,bu.base_unit
                    ,bu.convert_rate
