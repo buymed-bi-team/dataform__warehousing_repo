@@ -5,6 +5,10 @@ config {
     name: "cos_purchase_order_item",
     columns: {
         
+    },
+
+    bigquery: {
+        partitionBy: "created_date"
     }
 }
 
@@ -79,9 +83,9 @@ LEFT JOIN ${source.circa_os}.inventory_location AS il ON b.location_id = il.id A
 LEFT JOIN ${source.circa_os}.entity_owner AS eo ON a.seller_code = eo.seller_code AND c.client_id = eo.client_id
 LEFT JOIN ${source.circa_os}.entity_distributor AS dis ON c.distributor_id = dis.id AND c.client_id = dis.client_id
 LEFT JOIN ${source.ref}.circa_pos_profile AS p ON c.pos_id = p.id AND c.client_id = p.client_id
-LEFT JOIN ${source.circa_os}.product_retail_unit AS rt ON a.unit = rt.unit
+LEFT JOIN gold_buymed_vn2.circa_dim_retail_unit AS rt ON a.unit = rt.convert_unit
                                                       AND a.product_id = rt.product_id
-                                                      AND c.client_id = rt.client_id
+                                                    --  AND c.client_id = rt.client_id
 WHERE  eo.name NOT LIKE '%TEST%'
   AND p.id IS NOT NULL
 GROUP BY ALL
