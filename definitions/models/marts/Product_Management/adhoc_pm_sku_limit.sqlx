@@ -1,0 +1,27 @@
+config {
+    type: "table", 
+    description: 
+        `PIC: nguyen.tran; 
+        Type: Table; 
+        Refresh Schedule: hourly;
+        Source: 
+            ${source.platinum}.marketplace_prd_product_v2_sku_limit
+        `,
+    tags: ["custom_1h_past5", "PRODUCT_MANAGEMENT"]
+}
+
+SELECT
+    a.sku AS sku_code
+    , a.is_active
+    , a.quantity AS limit_per_day
+    , a.item_code
+    , JSON_VALUE(a.extra_props, "$.segment_code") AS segment_code
+    , COALESCE(s.segment_name, d.name) AS segment_name
+    , JSON_VALUE(a.extra_props, "$.segment_type") AS segment_type
+    , SAFE_CAST(JSON_VALUE(a.extra_props, "$.limit_per_order") AS INT64) AS limit_per_order
+    , b.sales_region_code
+    , b.sku_key_sales_region_code
+FROM ${source.platinum}.marketplace_prd_product_v2_sku_limit AS a
+    LEFT JOIN ${ref("dim_sku_sales_region_current")} AS b ON a.item_code = b.sub_sku_code
+    LEFT JOIN ${source.platinum}.platform_insider_prd_segment_static_segment AS s ON JSON_VALUE(a.extra_props, "$.segment_code") = SAFE_CAST(s.segment_id AS STRING)
+    LEFT JOIN ${source.platinum}.platform_insider_prd_dynamic_segment_dynamic_segment AS d ON JSON_VALUE(a.extra_props, "$.segment_code") = d.code
