@@ -52,4 +52,4 @@ FROM cte AS a
 WHERE 1=1
     AND qc IS NOT NULL
     -- AND a.competitor_unit IS NOT NULL
-QUALIFY ROW_NUMBER() over (PARTITION BY a.product_id, competitor, qc ORDER BY flag DESC, market_price_aft_convert DESC, last_updated_time DESC) = 1
+QUALIFY ROW_NUMBER() over (PARTITION BY a.product_id, competitor, qc ORDER BY flag DESC, last_updated_time DESC, market_price_aft_convert DESC) = 1
