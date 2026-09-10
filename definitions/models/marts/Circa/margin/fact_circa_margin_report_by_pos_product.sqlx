@@ -66,11 +66,9 @@ sum(deal) deal,
 sum(voucher) voucher,
 sum(net_revenue) net_revenue,
 sum(cogs) cogs,
+sum(gmv - cogs) as gross_profit,
 sum(net_revenue - cogs) as profit,
-sum(net_revenue - cogs ) as gross_profit,
-safe_divide(sum(net_revenue - cogs ), sum(net_revenue)) gross_margin,
 sum(voucher_gift) voucher_gift,
 sum(net_revenue - cogs  - voucher_gift) as net_profit,
-safe_divide(sum(net_revenue - cogs  - voucher_gift), sum(net_revenue)) as net_margin
 from final
 group by all
