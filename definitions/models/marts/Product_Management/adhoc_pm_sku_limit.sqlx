@@ -25,3 +25,5 @@ FROM ${source.platinum}.marketplace_prd_product_v2_sku_limit AS a
     LEFT JOIN ${ref("dim_sku_sales_region_current")} AS b ON a.item_code = b.sub_sku_code
     LEFT JOIN ${source.platinum}.platform_insider_prd_segment_static_segment AS s ON JSON_VALUE(a.extra_props, "$.segment_code") = SAFE_CAST(s.segment_id AS STRING)
     LEFT JOIN ${source.platinum}.platform_insider_prd_dynamic_segment_dynamic_segment AS d ON JSON_VALUE(a.extra_props, "$.segment_code") = d.code
+WHERE 1=1
+    AND b.sales_region_code IS NOT NULL
