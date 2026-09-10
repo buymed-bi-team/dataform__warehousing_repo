@@ -30,7 +30,8 @@ SELECT  o.pos_id            AS store_id
        , SUM(base_qty_rt)   AS return_qty
        , p.base_unit        AS unit
        , ROUND(SAFE_DIVIDE(unit_price, COALESCE(convert_rate, 1))) AS unit_price
-       , DATETIME_ADD(o.created_at, INTERVAL -7 HOUR) AS sold_at
+    --    , DATETIME_ADD(o.created_at, INTERVAL -7 HOUR) AS sold_at
+       , TIMESTAMP( DATETIME_SUB(o.created_at, INTERVAL 7 HOUR),'UTC') AS sold_at
        , CASE WHEN base_qty_rt > 0 THEN TRUE ELSE FALSE END AS is_return
        , CURRENT_DATE()                           AS snapshot_date
 FROM ${ref("cos_fact_order_item")} i 
