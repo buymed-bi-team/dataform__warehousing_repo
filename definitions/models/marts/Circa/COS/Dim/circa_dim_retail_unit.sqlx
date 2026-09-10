@@ -1,0 +1,20 @@
+config {
+    type: "table",
+    description: `PIC: huyen.ngo; 
+                  model_type: Table ;
+                  schedule: At minute 15 every 1 hour.
+                  circa_dim_retail_unit`,
+    tags: ["custom_1h_past15"],
+    name: "circa_dim_retail_unit"
+}
+
+
+SELECT DISTINCT product_id 
+               , convert_rate
+               , unit AS convert_unit
+               , base_unit AS is_base_unit
+               , status
+               , buymed_base_unit
+               , sale_allowed
+               , DATETIME(updated_at, 'Asia/Ho_Chi_Minh') AS updated_at
+FROM buymed_circa_v2.product_master_retail_unit
