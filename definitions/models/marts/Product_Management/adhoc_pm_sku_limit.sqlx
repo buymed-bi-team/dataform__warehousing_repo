@@ -18,7 +18,8 @@ SELECT
     , JSON_VALUE(a.extra_props, "$.segment_code") AS segment_code
     , COALESCE(s.segment_name, d.name) AS segment_name
     , JSON_VALUE(a.extra_props, "$.segment_type") AS segment_type
-    , SAFE_CAST(JSON_VALUE(a.extra_props, "$.limit_per_order") AS INT64) AS limit_per_order
+    , COALESCE(SAFE_CAST(JSON_VALUE(a.extra_props, "$.limit_per_order") AS INT64), b.max_quantity_per_order) AS limit_per_order
+    -- , b.max_quantity_per_order AS limit_per_order
     , b.sales_region_code
     , b.sku_key_sales_region_code
 FROM ${source.platinum}.marketplace_prd_product_v2_sku_limit AS a
