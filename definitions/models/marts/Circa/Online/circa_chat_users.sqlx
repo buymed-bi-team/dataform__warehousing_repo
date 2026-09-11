@@ -1,6 +1,9 @@
 config {
     type: "table",
-    description: `PIC: huyen.ngo; model_type: Table ;schedule: At minute 10 every 1 hour.Circa online order `,
+    description: `PIC: huyen.ngo;
+                   model_type: Table 
+                   ;schedule: At minute 10 every 1 hour.
+                    circa_chat_users  `,
     tags: ['circa-chat'],
     name: "circa_chat_users",
     columns: {
