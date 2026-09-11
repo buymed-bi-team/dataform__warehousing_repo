@@ -18,30 +18,7 @@ INSERT INTO
     ,productDetails
 )
 
-WITH base_unit_selection AS (
-    SELECT
-         product_id
-        ,client_id
-        ,base_unit
-        ,ROW_NUMBER() OVER (
-            PARTITION BY product_id, client_id
-            ORDER BY COUNT(*) DESC
-        ) AS rn
-    FROM gold_buymed_vn2.cos_product_convert_base_unit
-    WHERE client_id = 1
-    GROUP BY ALL
-
-)
-,base_unit AS (
-    SELECT
-         a.*
-    FROM gold_buymed_vn2.cos_product_convert_base_unit a
-    LEFT JOIN base_unit_selection b
-        ON a.product_id = b.product_id
-        AND a.client_id = b.client_id
-        AND a.base_unit = b.base_unit
-    WHERE b.rn = 1
-), unit AS (
+WITH unit AS (
 	SELECT
 	  DISTINCT product_id
 	  ,JSON_VALUE(unit, '$.is_default') AS is_default
@@ -84,13 +61,13 @@ add_phone AS (
         END  AS INT64)
          AS quantity
     FROM base_data t
-     LEFT JOIN base_unit bu
+     LEFT JOIN gold_buymed_vn2.circa_dim_retail_unit bu
         ON t.unit IS NOT NULL
         AND t.product_id = bu.product_id
         AND LOWER(t.unit) = LOWER(bu.convert_unit)
 
     LEFT JOIN unit u ON t.unit IS NULL AND t.product_id = u.product_id
-   -- WHERE t.product_id IS NOT NULL
+
 )
 SELECT
      'add-to-cart' AS eventType
