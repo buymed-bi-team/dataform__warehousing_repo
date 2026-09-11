@@ -63,7 +63,7 @@ WITH _order AS(
     LEFT JOIN _order s ON o.order_id = s.id
     -- LEFT JOIN ${source.ref}.cos_fact_order_item i ON o.order_id = i.order_id and o.product_id = i.product_id AND o.unit = i.unit AND o.sku_code = i.sku_code
     LEFT JOIN  ${source.ref}.cos_dim_product td ON o.product_id = td.product_id AND o.client_id = p.client_id
-    LEFT JOIN buymed_circa_v2.product_retail_unit cv ON o.unit = cv.unit AND o.product_id = cv.product_id AND o.client_id = cv.client_id
+    LEFT JOIN gold_buymed_vn2.circa_dim_retail_unit cv ON o.unit = cv.convert_unit AND o.product_id = cv.product_id
     -- LEFT JOIN ${source.circa_os}.order_order sON o.order_id = s.id
     WHERE o.status IS NOT NULL
       AND o.status <> 'DRAFT'
