@@ -33,6 +33,7 @@ WITH fact_order_item AS (
       COALESCE(SUM(gmv),0) gmv,
       COALESCE(SUM(cogs_circa),0) cogs_circa,
       COALESCE(SUM(voucher_discount),0) + COALESCE(SUM(total_loyalty_discount_amount),0) + COALESCE(SUM(deal_1k_amount),0) + COALESCE(SUM(external_discount_amount),0) AS voucher_circa,
+      COALESCE(SUM(order_discount_product),0) as voucher_product,
       COALESCE(SUM(discount_deal),0) AS deal,
       COALESCE(SUM(cogs_mkt_circa),0) AS voucher_gift_circa
     FROM
@@ -111,6 +112,7 @@ WITH fact_order_item AS (
     a.return_amount,
     a.cogs_circa_return,
     a.deal_return,
+    a.voucher_product,
     a.voucher_circa_return,
     a.voucher_gift_circa_return,
     a.net_revenue,
@@ -131,4 +133,4 @@ WITH fact_order_item AS (
   on a.product_id = dim_product.product_id 
   and a.client_id = dim_product.client_id
    WHERE a.client_id NOT IN (5,6,7)
-   and a.created_date >= date_sub(date_trunc(current_date(),month), interval 12 month)
+   and a.created_date >= date_sub(date_trunc(current_date(),month), interval 12 month) 

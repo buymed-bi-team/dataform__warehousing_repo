@@ -53,6 +53,8 @@ WITH
     is_combo, 
     item_discount_amount, 
     combo_discount_amount, 
+    order_discount_order,
+    order_discount_product,
     sum(quantity_po) quantity_po, 
     sum(base_quantity_po) base_quantity_po, 
     SUM(voucher_contribution) voucher_contribution,
@@ -114,7 +116,8 @@ WITH
     o.status,
     o.channel,
     o.affiliate_tag,
-    i.* except(order_code),
+    i.* except(order_code, order_discount_order,
+    order_discount_product),
     SUM(
       CASE
         WHEN i.gift_code IS NULL THEN i.unit_price_before_discount*i.quantity_po
@@ -131,6 +134,8 @@ WITH
       ) AS deal_1k_amount
     ,
     SUM(i.quantity_po*(item_discount_amount + combo_discount_amount)) AS discount_deal,
+    SUM(i.quantity_po*i.order_discount_order) AS order_discount_order,
+    SUM(i.quantity_po*i.order_discount_product) AS order_discount_product,
     SUM(
       CASE
         WHEN (i.owner_name <> 'CIRCA MARKETING' 
@@ -198,7 +203,9 @@ WITH
     o.status,
     o.channel,
     o.affiliate_tag,
-    i.* except(order_code),
+    i.* except(order_code, 
+    order_discount_order,
+    order_discount_product),
     SUM(
       CASE
         WHEN i.gift_code IS NULL THEN i.unit_price_before_discount*i.quantity_po
@@ -215,6 +222,8 @@ WITH
       ) AS deal_1k_amount
     ,
     SUM(i.quantity_po*(item_discount_amount + combo_discount_amount)) AS discount_deal,
+    SUM(i.quantity_po*i.order_discount_order) AS order_discount_order,
+    SUM(i.quantity_po*i.order_discount_product) AS order_discount_product,
    0 AS cogs_mkt_circa,
     SUM( i.cost_price_include_tax * i.base_quantity_po ) AS cogs_circa,
     0 AS cogs_mkt_buymed,
