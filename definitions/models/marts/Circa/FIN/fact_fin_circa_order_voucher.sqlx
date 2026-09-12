@@ -1,0 +1,68 @@
+config {
+    type: "table",
+    description: `PIC: Ha.Lekim
+    type: table
+    split order voucher into 
+      voucher_bill_size as order_discount_order 
+      and custom voucher for custom products as order_discount_product`,
+    tags: ["gold_custom_20m"]
+}
+with main_order_voucher as (
+select 
+order_code, 
+voucher_code,
+voucher_id,
+is_apply_for_all_product,
+discount_amount,
+item_id, 
+cast(JSON_VALUE(item_allocations['items'][item_id], '$.discount_amount') as int64) AS discount_amount_allocation
+from lakehouse-prod-394907.buymed_circa_v2.order_order_voucher oov 
+left join unnest(JSON_KEYS(JSON_QUERY(item_allocations, '$.items'))) as item_id
+left join buymed_circa_v2.promotion_promotion_voucher ppv
+on oov.voucher_code = ppv.code
+and JSON_VALUE(item_allocations['items'][item_id], '$.discount_amount') is not null
+),
+order_voucher_order as (
+  select order_code, m.item_id, product_id, sum(discount_amount_allocation) as order_discount_order 
+  from main_order_voucher m
+  left join (select distinct id as item_id, product_id from buymed_circa_v2.order_order_item) oi
+  on m.item_id = oi.item_id
+  where is_apply_for_all_product is true
+  group by all
+), order_voucher_product as (
+select order_code, item_id, product_id,
+sum(new_discount_amount_allocation) as order_discount_product
+from (
+select order_code, item_id, product_id, voucher_code,
+safe_divide(discount_amount_allocation, sum(discount_amount_allocation) over (partition by order_code, voucher_code)) *  discount_amount as new_discount_amount_allocation
+from 
+(
+select m.order_code, m.item_id, 
+oi.product_id,
+voucher_code,
+discount_amount,
+discount_amount_allocation,
+from main_order_voucher m 
+left join lakehouse-prod-394907.buymed_circa_v2.promotion_apply_for_product vp 
+on m.voucher_id = vp.promotion_voucher_id
+left join (select distinct id as item_id, product_id from buymed_circa_v2.order_order_item) oi
+on m.item_id = oi.item_id
+and vp.product_id = oi.product_id
+where is_apply_for_all_product is false
+group by all
+)
+where product_id is not null)
+group by all)
+, final as (
+select 
+coalesce(a.order_code, b.order_code) order_code,
+coalesce(a.item_id, b.item_id) item_id,
+coalesce(a.product_id, b.product_id) product_id,
+coalesce(order_discount_order,0) order_discount_order,
+coalesce(order_discount_product,0) order_discount_product,
+from order_voucher_order a
+full join order_voucher_product b
+on a.order_code = b.order_code
+and a.item_id = b.item_id
+)
+select * from final
