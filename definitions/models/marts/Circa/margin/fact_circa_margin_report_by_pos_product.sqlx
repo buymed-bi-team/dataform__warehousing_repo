@@ -75,4 +75,5 @@ sum(net_revenue - cogs) as gross_profit,
 sum(voucher_gift) voucher_gift,
 sum(net_revenue - cogs  - voucher_gift) as net_profit,
 from final
+where pos_code not in ( 'POS0084', 'POS0074','POS0076', 'POS0072','POS0010')
 group by all
