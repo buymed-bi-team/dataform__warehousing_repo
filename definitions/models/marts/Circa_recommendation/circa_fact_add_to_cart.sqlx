@@ -59,7 +59,7 @@ WITH unit AS (
             ORDER BY t.created_time
             ROWS BETWEEN UNBOUNDED PRECEDING
                      AND UNBOUNDED FOLLOWING
-        ) AS customer_phone
+        ) AS customer_phone  -- huyen.ngo
 
     FROM platinum_buymed_vn.circa_online_prd_consumer_tracking_events t
     WHERE
@@ -72,9 +72,8 @@ WITH unit AS (
 , final_data AS (
 
     SELECT
-        t.* EXCEPT(quantity),
-
-        CAST(
+        t.* EXCEPT(quantity)
+        , CAST(
             CASE
 
                 WHEN t.unit IS NOT NULL
@@ -91,14 +90,11 @@ WITH unit AS (
 
             END
         AS INT64) AS quantity
-
     FROM base_data t
-    LEFT JOIN gold_buymed_vn2.circa_dim_retail_unit bu
-        ON t.unit IS NOT NULL
+    LEFT JOIN gold_buymed_vn2.circa_dim_retail_unit bu ON t.unit IS NOT NULL
         AND t.product_id = bu.product_id
         AND LOWER(t.unit) = LOWER(bu.convert_unit)
-    LEFT JOIN unit u
-        ON t.unit IS NULL
+    LEFT JOIN unit u ON t.unit IS NULL
         AND t.product_id = u.product_id
 )
 
@@ -106,7 +102,6 @@ SELECT
 
     'add-to-cart' AS eventType
    , customer_phone AS visitorId
-
     ,FORMAT_TIMESTAMP(
         '%Y-%m-%dT%H:%M:%SZ',
         created_time
@@ -119,7 +114,6 @@ SELECT
             quantity AS quantity
         )
     ] AS productDetails
-
 FROM final_data
 WHERE event_type = 'add_to_cart' AND product_id IS NOT NULL
      AND customer_phone IS NOT NULL
