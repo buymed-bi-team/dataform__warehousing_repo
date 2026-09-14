@@ -26,11 +26,11 @@ SELECT
     ,i.description
     ,COALESCE(i.is_medicine, FALSE) AS is_medicine
     ,p.usage
-    ,p.client_id
+    -- ,p.client_id
 --     ,IFNULL(i.is_ingredient_special, FALSE) AS is_ingredient_special
 FROM ${source.circa_os}.product_product AS p
     ,UNNEST(JSON_QUERY_ARRAY(p.ingredients)) AS pi
 LEFT JOIN ${source.circa_os}.product_ingredient AS i ON i.code = REPLACE(JSON_EXTRACT_SCALAR(pi.ingredient_code), ' ', '') AND p.client_id = i.client_id
--- WHERE p.client_id = 1
+WHERE p.client_id = 1
 
 
