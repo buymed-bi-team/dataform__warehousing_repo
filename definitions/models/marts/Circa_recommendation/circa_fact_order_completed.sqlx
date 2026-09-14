@@ -153,12 +153,6 @@ SELECT
     ,STRUCT([COALESCE(province_name, '')] AS text) AS area
     ,STRUCT([COALESCE(pos_code, '')] AS text) AS store_code
 ) AS attributes
---   , STRUCT(
---   STRUCT([gender]) AS gender,
---   STRUCT([age_group]) AS age_group,
---   STRUCT([province_name]) AS area,
---   STRUCT([pos_code]) AS store_code
--- ) AS attributes
 
 FROM base_data
 WHERE customer_phone <> '0000000000'
