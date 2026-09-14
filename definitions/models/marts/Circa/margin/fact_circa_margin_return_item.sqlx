@@ -15,9 +15,7 @@ config {
     }
 }
 select 
-        r.completed_date,
-        r.order_id,
-        ri.* except(completed_date),
+        ri.* except(completed_date, order_discount_product, order_discount_order),
         sum(
             if(discount_logic_change = 0,
             unit_price*quantity_po 
@@ -68,7 +66,8 @@ select
         coalesce(sum(quantity_po*total_allocated_discount_amount),
         sum((r.discount_amount + r.loyalty_discount_amount + r.external_discount_amount)*item_amount_contribution + voucher_discount_deal_1k)
         ) voucher_circa_return,
-        sum(order_discount_product*quantity_po) voucher_product_return
+        sum(order_discount_order*quantity_po) order_discount_order,
+        sum(order_discount_product*quantity_po) order_discount_product
         from  ${ref("gold_buymed_vn2","fact_fin_circa_return")} r
         left join (
             select ri.*,
