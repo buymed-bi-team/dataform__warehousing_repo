@@ -13,6 +13,7 @@ SELECT
     , receiver_full_address
     , o.payment_method
     , o.deliver_method
+    , delivery_tags
     , o.admin_note
     , o.system_note
     , o.is_split_payment
