@@ -5,7 +5,14 @@ config {
     tags: ["custom_1h_past10"]
 }
 WITH
-  base_data AS (
+  fact_order_product as (
+    select distinct order_id,
+    product_id, 
+    order_discount_product
+    from ${ref("fact_fin_circa_order_item")}
+    group by all
+  )
+  , base_data AS (
   SELECT
     ro.return_order_code,
     ro.updated_date,
@@ -96,7 +103,7 @@ clean_data as (
     AS unit_price_after_discount
   FROM
     clean_data )
-SELECT
+  , fact_return_item as (SELECT
   * 
   EXCEPT (
     order_apply_combo_id,
@@ -111,4 +118,11 @@ SELECT
   CASE
     WHEN order_apply_combo_id IS NOT NULL AND gift_code IS NULL THEN unit_price_before_discount - unit_price_after_discount ELSE 0 END AS combo_discount_amount,
 FROM
-  clean_system_price_data
+  clean_system_price_data)
+
+  select r.*,
+  order_discount_product
+  from fact_return_item r
+  left join fact_order_product o
+  on r.return_order_id = o.order_id 
+  and r.product_id = o.product_id

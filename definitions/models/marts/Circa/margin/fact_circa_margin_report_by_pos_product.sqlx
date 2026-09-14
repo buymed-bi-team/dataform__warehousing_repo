@@ -21,6 +21,7 @@ sale_table as (
     sum(gmv) gmv,
     sum(cogs_circa) cogs_circa,
     sum(deal) deal,
+    SUM(voucher_product) voucher_product,
     SUM(voucher_circa) voucher_circa,
     sum(voucher_gift_circa) voucher_gift_circa
   FROM ${ref("gold_buymed_vn2", "circa_fact_net_margin")}
@@ -35,6 +36,7 @@ return_table as (
     product_id,
     sum(return_amount) return_amount,
     sum(deal_return) deal_return,
+    sum(voucher_product_return) voucher_product_return,
     sum(voucher_circa_return) voucher_circa_return,
     sum(cogs_circa_return) cogs_circa_return,
     sum(voucher_gift_circa_return) voucher_gift_circa_return,
@@ -49,6 +51,7 @@ coalesce(gmv,0) gmv,
 coalesce(cogs_circa,0) - coalesce(cogs_circa_return,0) as cogs,
 coalesce(deal,0) - coalesce(deal_return,0)  deal,
 coalesce(voucher_circa,0) - coalesce(voucher_circa_return, 0) as voucher,
+coalesce(voucher_product,0) - coalesce(voucher_product_return, 0) as voucher_product, 
 coalesce(return_amount,0) return_amount,
 coalesce(gmv,0) - coalesce(deal,0) - coalesce(voucher_circa,0) - coalesce(return_amount,0) as net_revenue, 
 coalesce(voucher_gift_circa,0) - coalesce(voucher_gift_circa_return,0) as voucher_gift
@@ -64,6 +67,7 @@ product_id,
 sum(gmv- return_amount) as gmv,
 sum(deal) deal,
 sum(voucher) voucher,
+sum(voucher_product) voucher_product,
 sum(net_revenue) net_revenue,
 sum(cogs) cogs,
 sum(gmv - cogs) as profit,
@@ -71,4 +75,5 @@ sum(net_revenue - cogs) as gross_profit,
 sum(voucher_gift) voucher_gift,
 sum(net_revenue - cogs  - voucher_gift) as net_profit,
 from final
+where pos_code not in ( 'POS0084', 'POS0074','POS0076', 'POS0072','POS0010')
 group by all
