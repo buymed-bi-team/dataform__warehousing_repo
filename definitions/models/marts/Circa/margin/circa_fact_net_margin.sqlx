@@ -53,7 +53,7 @@ WITH fact_order_item AS (
         SUM(voucher_gift_circa_return) AS voucher_gift_circa_return,
         sum(deal_return) deal_return,
         sum(voucher_circa_return) voucher_circa_return,
-        sum(voucher_product_return) voucher_product_return
+        sum(order_discount_product) voucher_product_return
       FROM ${ref("gold_buymed_vn2", "fact_circa_margin_return_item")}
       GROUP BY ALL
     )
