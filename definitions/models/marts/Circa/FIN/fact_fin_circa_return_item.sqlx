@@ -6,9 +6,9 @@ config {
 }
 WITH
   fact_order_product as (
-    select distinct order_id,
+    select order_id,
     product_id, 
-    order_discount_product
+    safe_divide(sum(order_discount_product*quantity_po), sum(quantity_po)) as order_discount_product
     from ${ref("fact_fin_circa_order_item")}
     group by all
   )
@@ -18,6 +18,7 @@ WITH
     ro.updated_date,
     ro.created_date,
     ro.completed_date,
+    ro.order_id,
     roi.return_order_id,
     roi.id AS item_id,
     roi.qr_code,
@@ -124,5 +125,5 @@ FROM
   order_discount_product
   from fact_return_item r
   left join fact_order_product o
-  on r.return_order_id = o.order_id 
+  on r.order_id = o.order_id 
   and r.product_id = o.product_id
