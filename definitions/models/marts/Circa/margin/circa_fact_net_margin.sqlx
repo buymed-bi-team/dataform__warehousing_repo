@@ -33,6 +33,7 @@ WITH fact_order_item AS (
       COALESCE(SUM(gmv),0) gmv,
       COALESCE(SUM(cogs_circa),0) cogs_circa,
       COALESCE(SUM(voucher_discount),0) + COALESCE(SUM(total_loyalty_discount_amount),0) + COALESCE(SUM(deal_1k_amount),0) + COALESCE(SUM(external_discount_amount),0) AS voucher_circa,
+      COALESCE(SUM(order_discount_product),0) as voucher_product,
       COALESCE(SUM(discount_deal),0) AS deal,
       COALESCE(SUM(cogs_mkt_circa),0) AS voucher_gift_circa
     FROM
@@ -51,7 +52,8 @@ WITH fact_order_item AS (
         SUM(cogs_circa_return) as cogs_circa_return,
         SUM(voucher_gift_circa_return) AS voucher_gift_circa_return,
         sum(deal_return) deal_return,
-        sum(voucher_circa_return) voucher_circa_return
+        sum(voucher_circa_return) voucher_circa_return,
+        sum(voucher_product_return) voucher_product_return
       FROM ${ref("gold_buymed_vn2", "fact_circa_margin_return_item")}
       GROUP BY ALL
     )
@@ -63,6 +65,7 @@ WITH fact_order_item AS (
     coalesce(b.deal_return,0) as deal_return,
     coalesce(b.voucher_circa_return,0) as voucher_circa_return,
     coalesce(b.voucher_gift_circa_return,0) as voucher_gift_circa_return,
+    coalesce(b.voucher_product_return,0 ) voucher_product_return,
     a.gmv - a.deal - a.voucher_circa - coalesce(b.return_amount,0) as net_revenue,
     a.gmv - a.deal - a.voucher_circa - coalesce(b.return_amount,0) - a.cogs_circa + coalesce(b.cogs_circa_return,0)
         as gross_profit_circa,
@@ -106,13 +109,15 @@ WITH fact_order_item AS (
     dim_product.cat3,
     dim_product.cat4,
     a.gmv,
-    a.deal, 
+    a.deal,
     a.voucher_circa,
     a.return_amount,
     a.cogs_circa_return,
     a.deal_return,
+    a.voucher_product,
     a.voucher_circa_return,
     a.voucher_gift_circa_return,
+    a.voucher_product_return,
     a.net_revenue,
     a.cogs_circa,
     a.gross_profit_circa,
@@ -131,4 +136,4 @@ WITH fact_order_item AS (
   on a.product_id = dim_product.product_id 
   and a.client_id = dim_product.client_id
    WHERE a.client_id NOT IN (5,6,7)
-   and a.created_date >= date_sub(date_trunc(current_date(),month), interval 12 month)
+   and a.created_date >= date_sub(date_trunc(current_date(),month), interval 12 month) 

@@ -25,6 +25,7 @@ SELECT
     , channel
     , SUM(gmv) gmv
     , SUM(voucher_circa) voucher_circa
+    , SUM(voucher_product) voucher_product
     , SUM(deal) deal
     , SUM(return_amount) return_amount
     , SUM(cogs_circa_return) cogs_circa_return

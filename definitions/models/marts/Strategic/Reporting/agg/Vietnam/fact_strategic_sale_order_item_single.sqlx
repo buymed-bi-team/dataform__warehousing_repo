@@ -64,7 +64,7 @@ WITH
 
   mkp_oi AS (
   SELECT
-    'mkp' || mg_id AS oiid,
+    'mkp' || oi.mg_id AS oiid,
     order_id,
     product_id,
     sku AS sku_code,
@@ -110,7 +110,7 @@ WITH
 
   tender_oi AS (
   SELECT
-    'tender' || mg_id AS oiid,
+    'tender' || oi.mg_id AS oiid,
     oi.order_id,
     oi.product_id,
     dsku.sku_code,

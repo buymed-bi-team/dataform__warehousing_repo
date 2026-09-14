@@ -48,19 +48,8 @@ WITH _all AS (
             , o.distributor_id
             , i.product_id
             , DATETIME(o.stock_at, 'Asia/Ho_Chi_Minh') AS stock_at
-            -- , g.min_stock AS stock_at
-            -- , g.max_stock AS max_stock
             FROM ${source.circa_os}.order_purchase_order o 
             LEFT JOIN lakehouse-prod-394907.buymed_circa_v2.order_purchase_order_item i ON o.id = i.purchase_order_id
-            -- LEFT JOIN ( SELECT purchase_order_id
-            --                    , product_id 
-            --                    , MIN (DATE(DATETIME(rc.created_at, 'Asia/Ho_Chi_Minh'))) AS min_stock
-            --                    , MAX (DATE(DATETIME(rc.created_at, 'Asia/Ho_Chi_Minh'))) AS max_stock 
-            --            FROM lakehouse-prod-394907.buymed_circa_v2.order_goods_receipt rc 
-            --            LEFT JOIN lakehouse-prod-394907.buymed_circa_v2.order_goods_receipt_item rci ON rc.id = rci.goods_receipt_id 
-            --            WHERE rc.status = 'COMPLETED'
-            --            GROUP BY ALL
-            --     ) g  ON o.id = g.purchase_order_id AND i.product_id = g.product_id
              GROUP BY ALL
 )
 , lasted_put AS (
