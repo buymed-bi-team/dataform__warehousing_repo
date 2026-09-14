@@ -8,7 +8,8 @@ WITH
   fact_order_product as (
     select order_id,
     product_id, 
-    safe_divide(sum(order_discount_product*quantity_po), sum(quantity_po)) as order_discount_product
+    safe_divide(sum(order_discount_product*quantity_po), sum(quantity_po)) as order_discount_product,
+    safe_divide(sum(order_discount_order*quantity_po), sum(quantity_po)) as order_discount_order
     from ${ref("fact_fin_circa_order_item")}
     group by all
   )
@@ -122,6 +123,7 @@ FROM
   clean_system_price_data)
 
   select r.*,
+  order_discount_order,
   order_discount_product
   from fact_return_item r
   left join fact_order_product o
