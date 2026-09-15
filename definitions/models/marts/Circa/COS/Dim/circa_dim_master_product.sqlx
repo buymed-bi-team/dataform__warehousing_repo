@@ -78,7 +78,7 @@ WITH  t AS (
     LEFT JOIN t ON p.product_id = t.product_id
     LEFT JOIN e ON p.product_id = e.product_id
     LEFT JOIN gold_buymed_vn2.dim_product tp ON p.product_id = tp.product_id
-    LEFT JOIN lakehouse-prod-394907.gold_buymed_vn2.sku_status_thuocsi ts ON p.product_id = ts.product_id
+    LEFT JOIN gold_buymed_vn2.sku_status_thuocsi ts ON p.product_id = ts.product_id
 )
 , inventory_summary AS (
     SELECT a.product_id
@@ -86,8 +86,8 @@ WITH  t AS (
           ,a.client_id
           ,SUM(a.available_qty) AS available_qty
           ,ep.name AS pos_name
-    FROM lakehouse-prod-394907.gold_buymed_vn2.cos_fact_inventory a
-    LEFT JOIN lakehouse-prod-394907.gold_buymed_vn2.circa_pos_profile ep
+    FROM gold_buymed_vn2.cos_fact_inventory a
+    LEFT JOIN gold_buymed_vn2.circa_pos_profile ep
            ON a.pos_id = ep.id
           AND a.client_id = ep.client_id
           AND ep.actual_status <> 'Inactive'
