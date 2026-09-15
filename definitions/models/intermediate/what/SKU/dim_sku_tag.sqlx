@@ -41,6 +41,7 @@ WITH
         WHERE 
             a.mg_id IS NOT NULL 
             AND c.sku_code IS NOT NULL
+            AND b.tag_id IS NOT NULL
     )
     , cte_2 AS (
         SELECT
@@ -67,7 +68,8 @@ WITH
             LEFT JOIN ${ref("dim_sku_sales_region_current")} c
                 ON r = c.sales_region_code AND a.sku = c.sku_code
         WHERE
-        c.sku_code IS NOT NULL
+            c.sku_code IS NOT NULL
+            AND b.tag_id IS NOT NULL
     )
 SELECT  *
 FROM cte_1
