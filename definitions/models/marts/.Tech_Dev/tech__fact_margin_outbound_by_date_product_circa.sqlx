@@ -1,0 +1,10 @@
+config {
+    type: "view",
+    schema: "buymed_tech",
+    name: "tech__fact_margin_outbound_by_date_product_circa",
+}
+
+select *
+from gold_buymed_vn2.fact_margin_outbound_by_date_product_circa
+ 
+ 
