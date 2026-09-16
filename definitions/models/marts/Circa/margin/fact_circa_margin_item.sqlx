@@ -31,6 +31,7 @@ WITH
       AS item_contribution,
     FROM
     ${ref("gold_buymed_vn2", "fact_fin_circa_order_item")}
+    WHERE CREATED_DATE >= DATE_TRUNC(CURRENT_DATE('Asia/Ho_Chi_Minh'), year)
   )),
   fact_order_item AS (
   SELECT
@@ -61,7 +62,8 @@ WITH
     CASE
       WHEN i.fulfillment_method = 'SO_THUOCSI' AND cogs_base_unit_ts is not null then cogs_base_unit_ts
       else i.cost_price_include_tax
-    END AS base_unit_cost_price_ts
+    END AS base_unit_cost_price_ts,
+    so.created_date as so_order_date,
   FROM
     raw_data i
   LEFT JOIN
@@ -69,6 +71,8 @@ WITH
   ON
     i.doc_code = p.po_code
     AND i.product_id = p.product_id
+  LEFT JOIN lakehouse-prod-394907.gold_buymed_vn2.fact_fin_circa_thuocsi_order so
+  on i.so_thuoc_si = cast(so.order_id as string)
   GROUP BY ALL
 )
     ,
@@ -98,7 +102,8 @@ WITH
       - total_amount  ) AS external_discount_amount
  FROM
    ${ref("gold_buymed_vn2", "fact_fin_circa_order")} o
-  WHERE o.status NOT IN ('RETURNED', 'FAILED_SHIPMENT', 'OUT_OF_STOCK','CANCELED' )
+  WHERE CREATED_DATE >= DATE_TRUNC(CURRENT_DATE('Asia/Ho_Chi_Minh'), year)
+  and o.status NOT IN ('RETURNED', 'FAILED_SHIPMENT', 'OUT_OF_STOCK','CANCELED' )
   GROUP BY
     ALL )
     ,
@@ -116,8 +121,15 @@ WITH
     o.status,
     o.channel,
     o.affiliate_tag,
-    i.* except(order_code, order_discount_order,
-    order_discount_product),
+    i.* except(order_code, 
+    order_discount_order,
+    order_discount_product,
+    quantity_po,
+    base_quantity_po,
+    voucher_contribution),
+    sum(quantity_po) quantity_po, 
+    sum(base_quantity_po) base_quantity_po, 
+    SUM(voucher_contribution) voucher_contribution,
     SUM(
       CASE
         WHEN i.gift_code IS NULL THEN i.unit_price_before_discount*i.quantity_po
@@ -205,7 +217,13 @@ WITH
     o.affiliate_tag,
     i.* except(order_code, 
     order_discount_order,
-    order_discount_product),
+    order_discount_product,
+    quantity_po,
+    base_quantity_po,
+    voucher_contribution),
+    sum(quantity_po) quantity_po, 
+    sum(base_quantity_po) base_quantity_po, 
+    SUM(voucher_contribution) voucher_contribution,
     SUM(
       CASE
         WHEN i.gift_code IS NULL THEN i.unit_price_before_discount*i.quantity_po

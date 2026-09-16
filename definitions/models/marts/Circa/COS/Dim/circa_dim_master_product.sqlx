@@ -1,0 +1,232 @@
+config {
+    type: "table",
+    description: `Dim master product 
+                  PIC: huyen.ngo;
+                  model_type: Table ;
+                  schedule: custom_1h_past20`,
+    tags: ["custom_1h_past20"],
+    name: "circa_dim_master_product",
+    columns: {
+
+    }  
+    ,bigquery: 
+    {
+        partitionBy: "DATE(created_at)"
+    }
+}
+
+WITH  t AS (
+  SELECT DISTINCT product_id, category_name, category_code
+  FROM gold_buymed_vn2.dim_product_category
+  WHERE level = 1
+)
+
+, e AS (
+  SELECT DISTINCT product_id, efficacy_name
+  FROM gold_buymed_vn2.dim_product_efficacy
+  WHERE efficacy_level = 1
+)
+
+,cte_product AS (
+    SELECT DISTINCT p.product_id
+          , p.code AS product_code
+          ,p.name AS product_name
+          ,tp.retail_name
+          ,p.volumes
+          ,p.unit
+          ,p.length
+          ,p.height
+          ,p.weight
+          ,p.width
+          ,is_fragile
+          ,is_frozen
+          ,is_herb
+          ,is_ingredient_special
+          ,is_portable
+          ,tp.origin
+          ,manufacturer_short_name
+          ,tp.registration_number
+          ,tp.product_category_code
+          ,tp.product_category
+          ,t.category_code
+          ,t.category_name AS cat2
+          ,e.efficacy_name AS cat3
+          ,tp.retail_category_name as cat4
+          ,p.dosage_form
+          ,tp.product_report_category
+          ,m.name AS manufacture_name
+          ,is_combo
+          ,is_gift
+          ,is_etc
+          ,ARRAY_TO_STRING(JSON_VALUE_ARRAY(image_urls), ', ') AS image_urls
+          ,price_type
+          ,tp.chronic
+          ,ts.sku_system_status AS thuocsi_product_status
+          ,CASE WHEN ts.sku_system_status IN ( 'LIMIT', 'NORMAL') THEN true
+                ELSE false END AS thuocsi_has_stock
+          ,tp.unit AS thuocsi_unit
+          ,ts.available_qty AS thuocsi_quantity
+          ,tp.brand
+          ,tp.user_type
+          ,DATETIME_ADD(created_at, INTERVAL 7 HOUR)   AS created_at
+          ,CASE WHEN tp.product_id IS NOT NULL THEN true
+                ELSE false END AS is_thuocsi_product
+          ,p.barcode
+          ,tp.brand_type
+    FROM buymed_circa_v2.product_master_product p
+    LEFT JOIN ( SELECT DISTINCT code, name, short_name FROM buymed_circa_v2.product_manufacturer WHERE client_id = 1) m ON p.manufacturer_code = m.code
+    LEFT JOIN t ON p.product_id = t.product_id
+    LEFT JOIN e ON p.product_id = e.product_id
+    LEFT JOIN gold_buymed_vn2.dim_product tp ON p.product_id = tp.product_id
+    LEFT JOIN gold_buymed_vn2.sku_status_thuocsi ts ON p.product_id = ts.product_id
+)
+, inventory_summary AS (
+    SELECT a.product_id
+          ,a.pos_id
+          ,a.client_id
+          ,SUM(a.available_qty) AS available_qty
+          ,ep.name AS pos_name
+    FROM gold_buymed_vn2.cos_fact_inventory a
+    LEFT JOIN gold_buymed_vn2.circa_pos_profile ep
+           ON a.pos_id = ep.id
+          AND a.client_id = ep.client_id
+          AND ep.actual_status <> 'Inactive'
+    WHERE ep.id IS NOT NULL
+    GROUP BY ALL
+)
+, inventory AS (
+    SELECT product_id
+          ,SUM(CASE WHEN client_id = 1 THEN available_qty END) AS cos_available_qty
+          ,COUNT(DISTINCT CASE WHEN client_id = 1 AND available_qty > 0 THEN pos_id END) AS pos_os_have_stock
+          ,COUNT(DISTINCT CASE WHEN client_id <> 1 AND available_qty > 0 THEN pos_id END) AS pos_fs_have_stock
+          ,STRING_AGG(DISTINCT IF(available_qty > 0 AND client_id = 1, pos_name, NULL), ', ') AS stock_available_in_poss
+    FROM inventory_summary
+    GROUP BY ALL
+)
+, ingregients AS (
+    SELECT DISTINCT product_id
+          ,ingredient_name
+          ,description
+          ,volume
+          ,usage
+    FROM `lakehouse-prod-394907.gold_buymed_vn2.cos_dim_product_ingredient`
+ QUALIFY ROW_NUMBER() OVER (PARTITION BY product_id ORDER BY ingredient_level DESC) = 1
+)
+, ts_unit AS (
+    SELECT DISTINCT
+         o.product_id
+        ,o.convert_unit
+        ,convert_rate
+    FROM gold_buymed_vn2.circa_dim_retail_unit o
+    LEFT JOIN (SELECT DISTINCT product_id
+                               ,CASE WHEN unit = 'Tube' THEN  'Tuýp'
+                                 ELSE unit END AS unit
+              FROM gold_buymed_vn2.dim_product ) i  ON o.product_id = i.product_id
+       AND lower(o.convert_unit) = lower(i.unit)
+    WHERE lower(i.unit) IS NOT NULL
+)
+, convert_unit AS (
+     WITH only_all_false AS (  -- lấy những sản phẩm ko có đơn vị được cho phép mua 
+          SELECT
+            product_id
+          FROM buymed_circa_v2.product_retail_unit
+          WHERE client_id = 1
+          GROUP BY product_id
+          HAVING
+            COUNTIF(purchase_allowed = TRUE) = 0
+            AND COUNT(*) > 0
+),filtered AS (
+         SELECT -- thêm convert_rate của những sản phẩm ko có đơn vị được cho phép mua trên 
+            a.product_id
+           ,a.convert_rate
+           ,a.convert_unit
+         FROM gold_buymed_vn2.circa_dim_retail_unit a
+         INNER JOIN only_all_false b USING (product_id)
+         WHERE a.convert_unit IS NOT NULL AND a.convert_unit != ""
+)
+SELECT
+   product_id
+  ,convert_rate
+  ,convert_unit
+FROM filtered
+--WHERE product_id = 1110
+QUALIFY ROW_NUMBER() OVER ( PARTITION BY product_id  ORDER BY convert_rate DESC) = 1
+-- với mỗi sản phẩm, lấy unit có convert_rate lớn nhất 
+
+UNION ALL
+  SELECT a.product_id
+          ,convert_rate
+          ,convert_unit
+    FROM gold_buymed_vn2.circa_dim_retail_unit AS a
+    WHERE (convert_unit IS NOT NULL OR convert_unit <> "")
+          AND product_id NOT IN (SELECT DISTINCT product_id FROM filtered)
+          --and product_id = 84855
+    QUALIFY ROW_NUMBER() OVER(PARTITION BY product_id ORDER BY convert_rate DESC) = 1
+)
+, posm AS (
+
+  SELECT DISTINCT
+      product_id
+FROM buymed_circa_v2.product_assortment_template o 
+LEFT JOIN buymed_circa_v2.product_assortment_template_items i ON o.id = i.assortment_template_id
+WHERE o.id = 'e9a5a24c-8b54-41a3-9b21-2ad63149eb3d'
+      AND i.status = 'ACTIVE'
+
+)
+, product_base_unit AS (
+    SELECT DISTINCT a.product_id
+          ,a.convert_unit AS base_unit
+    FROM gold_buymed_vn2.circa_dim_retail_unit AS a
+    WHERE a.is_base_unit = true 
+    QUALIFY ROW_NUMBER() OVER(PARTITION BY product_id ORDER BY updated_at DESC) = 1
+)
+, tags AS (
+SELECT DISTINCT
+   product_id
+  ,STRING_AGG(tag_name, ', ') AS tag_names
+FROM gold_buymed_vn2.dim_product_tags
+GROUP BY ALL
+
+)
+
+SELECT pd.*
+       , CASE WHEN i.cos_available_qty > 0 THEN "Available" ELSE "Not Available" END AS stock_check
+       , i.pos_os_have_stock
+       , i.stock_available_in_POSs
+       , i.cos_available_qty
+       , ig.ingredient_name
+       , ig.volume
+       , ig.usage
+       , CASE WHEN ts.convert_unit IS NOT NULL THEN ts.convert_unit
+             ELSE cr.convert_unit END AS ts_unit
+       , CASE WHEN ts.convert_unit IS NOT NULL THEN ts.convert_rate
+             WHEN pd.unit = 'combo' or pd.unit = 'Combo' THEN 1
+             ELSE cr.convert_rate END AS ts_convert_rate
+       , CASE WHEN e.product_id IS NOT NULL THEN TRUE ELSE FALSE END AS is_allstore
+       , CASE WHEN tr.product_id IS NOT NULL THEN TRUE ELSE FALSE END AS is_trendy
+       , CASE WHEN posm.product_id IS NOT NULL THEN TRUE ELSE FALSE END AS is_posm
+       , cr.convert_rate
+       ,  CASE WHEN cr.convert_unit IS NOT NULL THEN cr.convert_unit
+            ELSE pd.unit END AS convert_unit
+       , bu.base_unit
+       , po.status as web_status
+       , tags.tag_names
+       , po.sell_area AS sell_area_online
+       , po.daily_limit_quantity
+       , po.daily_limit_unit
+       , po.order_limit_quantity
+       , po.order_limit_unit
+       
+FROM cte_product pd
+LEFT JOIN inventory i ON pd.product_id = i.product_id
+LEFT JOIN ingregients ig ON pd.product_id = ig.product_id
+LEFT JOIN ts_unit ts ON pd.product_id = ts.product_id
+LEFT JOIN convert_unit cr ON pd.product_id = cr.product_id
+LEFT JOIN gold_buymed_vn2.cos_product_essential e ON pd.product_id = e.product_id
+LEFT JOIN gold_buymed_vn2.cos_product_trendy tr ON pd.product_id = tr.product_id
+LEFT JOIN posm ON pd.product_id = posm.product_id
+LEFT JOIN product_base_unit bu ON pd.product_id = bu.product_id 
+LEFT JOIN (SELECT * FROM gold_buymed_vn2.dim_product_online 
+           QUALIFY ROW_NUMBER() OVER (PARTITION BY product_id ORDER BY created_date DESC) = 1) po ON po.product_id = pd.product_id 
+LEFT JOIN tags ON pd.product_id = tags.product_id
+
