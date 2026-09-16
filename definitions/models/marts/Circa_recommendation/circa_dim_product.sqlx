@@ -49,10 +49,10 @@ SELECT DISTINCT s.product_id
                               WHEN td.price_type <> 'DYNAMIC' THEN pd.sale_price ELSE NULL END AS sale_price
                         , pd.unit
                         , rt.convert_rate
-        FROM lakehouse-prod-394907.buymed_circa_v2.product_price_sheet_sku_detail AS pd
-        LEFT JOIN lakehouse-prod-394907.buymed_circa_v2.product_price_sheet_sku AS s ON pd.price_sheet_sku_id = s.id
-        LEFT JOIN lakehouse-prod-394907.buymed_circa_v2.product_price_sheet AS ps ON s.price_sheet_id = ps.id
-        LEFT JOIN lakehouse-prod-394907.buymed_circa_v2.product_sku td ON td.product_id = s.product_id AND td.client_id = ps.client_id AND td.sku_code = s.sku_code
+        FROM buymed_circa_v2.product_price_sheet_sku_detail AS pd
+        LEFT JOIN buymed_circa_v2.product_price_sheet_sku AS s ON pd.price_sheet_sku_id = s.id
+        LEFT JOIN buymed_circa_v2.product_price_sheet AS ps ON s.price_sheet_id = ps.id
+        LEFT JOIN buymed_circa_v2.product_sku td ON td.product_id = s.product_id AND td.client_id = ps.client_id AND td.sku_code = s.sku_code
         LEFT JOIN `buymed_circa_v2.product_retail_unit` rt ON lower(pd.unit) = LOWER(rt.unit) AND s.product_id = rt.product_id and td.client_id = rt.client_id
         WHERE   ps.client_id = 1
               AND ps.name = 'Bảng giá client 1'
