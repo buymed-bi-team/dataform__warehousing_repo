@@ -116,8 +116,15 @@ WITH
     o.status,
     o.channel,
     o.affiliate_tag,
-    i.* except(order_code, order_discount_order,
-    order_discount_product),
+    i.* except(order_code, 
+    order_discount_order,
+    order_discount_product,
+    quantity_po,
+    base_quantity_po,
+    voucher_contribution),
+    sum(quantity_po) quantity_po, 
+    sum(base_quantity_po) base_quantity_po, 
+    SUM(voucher_contribution) voucher_contribution,
     SUM(
       CASE
         WHEN i.gift_code IS NULL THEN i.unit_price_before_discount*i.quantity_po
@@ -205,7 +212,13 @@ WITH
     o.affiliate_tag,
     i.* except(order_code, 
     order_discount_order,
-    order_discount_product),
+    order_discount_product,
+    quantity_po,
+    base_quantity_po,
+    voucher_contribution),
+    sum(quantity_po) quantity_po, 
+    sum(base_quantity_po) base_quantity_po, 
+    SUM(voucher_contribution) voucher_contribution,
     SUM(
       CASE
         WHEN i.gift_code IS NULL THEN i.unit_price_before_discount*i.quantity_po
