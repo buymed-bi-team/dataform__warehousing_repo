@@ -1,7 +1,7 @@
 config {
     type: "incremental",
     description: `PIC: huyen.ngo; model_type: Table ;schedule: At minute 10 every 1 hour.Circa online order `,
-    tags: ['circa-chat'],
+    tags: ['custom_1h_past15'],
     name: "circa_chat_sessions",
     columns: {
 
