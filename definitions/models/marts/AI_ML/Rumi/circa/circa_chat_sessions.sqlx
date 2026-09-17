@@ -5,6 +5,6 @@ config {
     tags: ['AI_CIRCA']
 }
 
-SELECT * EXCEPT(session_created_at, session_created_date)
+SELECT * EXCEPT(session_created_at, session_created_date, session_start)
 FROM ${ref('gold_buymed_vn2','circa_chat_sessions')}
 WHERE message_count > 0 
