@@ -49,7 +49,7 @@ SELECT DISTINCT o.session_id
                 ,DATETIME(i.created_at, 'Asia/Ho_Chi_Minh')  AS messages_created_at
 FROM platinum_buymed_vn.circa_chat_chat_sessions o 
 LEFT JOIN platinum_buymed_vn.circa_chat_chat_messages i ON o.session_id = i.session_id
-WHERE o.created_date >=  ${when(incremental(), start_date, `'2026-05-01'`)}
+WHERE o.created_date >=  ${when(incremental(), start_date, `'2026-02-01'`)}
 
 
 
