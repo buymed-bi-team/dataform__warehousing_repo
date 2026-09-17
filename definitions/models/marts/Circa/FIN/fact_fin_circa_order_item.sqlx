@@ -142,6 +142,7 @@ WITH
 SELECT
   * 
   EXCEPT (
+    client_id,
     order_apply_combo_id,
     combo_price,
     combo_quantity,
