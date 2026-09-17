@@ -47,6 +47,7 @@ SELECT DISTINCT o.session_id
                 ,i.content
                 ,i.content_type --text,...
                 ,DATETIME(i.created_at, 'Asia/Ho_Chi_Minh')  AS messages_created_at
+                ,DATE(DATETIME(i.created_at, 'Asia/Ho_Chi_Minh'))  AS messages_created_date
 FROM platinum_buymed_vn.circa_chat_chat_sessions o 
 LEFT JOIN platinum_buymed_vn.circa_chat_chat_messages i ON o.session_id = i.session_id
 WHERE o.created_date >=  ${when(incremental(), start_date, `'2026-02-01'`)}
