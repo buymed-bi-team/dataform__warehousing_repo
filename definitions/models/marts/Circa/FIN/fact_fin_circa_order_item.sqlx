@@ -51,9 +51,9 @@ WITH
     COALESCE(oi.quantity * poi.base_quantity_distribution, oi.quantity) AS quantity_po,
     COALESCE(oi.quantity*ru.convert_rate * poi.base_quantity_distribution, oi.quantity*ru.convert_rate) AS base_quantity_po,
     oi.unit_price,
-    coalesce(case when system_price = 0 then null else system_price end, 
-    case when platform_price = 0 then null else platform_price end,
-    case when unit_price = 0 then null else unit_price end) as system_price,
+    coalesce(case when system_price <= 0 then null else system_price end, 
+    case when platform_price <= 0 then null else platform_price end,
+    case when unit_price <= 0 then null else unit_price end) as system_price,
     COALESCE(
       CASE WHEN ol.promotion_event_code = '' THEN NULL ELSE ol.promotion_event_code END,
       CASE WHEN oi.promotion_event_code = '' THEN NULL ELSE oi.promotion_event_code END
