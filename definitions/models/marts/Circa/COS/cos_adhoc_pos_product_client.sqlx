@@ -271,7 +271,7 @@ SELECT DISTINCT product_id
 FROM ${ref('dim_promotion_event_circa')} o 
 LEFT JOIN ${ref('dim_promotion_event_item_circa')} i ON o.id = i.promotion_event_id
 WHERE is_expired = FALSE
-     AND is_active = true
+     AND o.is_active = true
      AND o.client_id = 1
     -- AND i.discount_type ='FIXED_PRICE'
     -- AND  product_id = 8742 
