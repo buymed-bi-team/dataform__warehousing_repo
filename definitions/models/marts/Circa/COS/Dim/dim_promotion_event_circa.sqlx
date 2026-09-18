@@ -31,6 +31,7 @@ SELECT o.id
        ,DATE(DATETIME_ADD(o.updated_at, INTERVAL 7 HOUR)) AS updated_date
        ,e.name AS created_by
        ,o.client_id
+       , is_active
        ,limit_per_order -- giới hạn đặt hàng hàng mỗi đơn
        ,is_limit_per_order
        ,is_apply_for_pos 

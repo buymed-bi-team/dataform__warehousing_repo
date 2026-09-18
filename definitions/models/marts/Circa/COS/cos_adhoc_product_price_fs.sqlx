@@ -142,7 +142,7 @@ SELECT DISTINCT product_id
 FROM ${source.ref}.dim_promotion_event_circa o 
 LEFT JOIN ${source.ref}.dim_promotion_event_item_circa i ON o.id = i.promotion_event_id
 WHERE is_expired = FALSE
-     AND is_active = true
+     AND i.is_active = true
      AND o.client_id NOT IN (1,5,6,7)
 QUALIFY ROW_NUMBER() OVER (PARTITION BY client_id, product_id, sku_code ORDER BY created_at DESC) = 1
 ORDER BY o.created_at DESC

@@ -32,6 +32,7 @@ WITH
     FROM
     ${ref("gold_buymed_vn2", "fact_fin_circa_order_item")}
     WHERE CREATED_DATE >= DATE_TRUNC(CURRENT_DATE('Asia/Ho_Chi_Minh'), year)
+    and cost_price_include_tax is not null
   )),
   fact_order_item AS (
   SELECT
@@ -261,4 +262,4 @@ WITH
       union ALL
       select * from cogs_fs
     )
-    select * from final_cogs
+    select * from final_cogs 
