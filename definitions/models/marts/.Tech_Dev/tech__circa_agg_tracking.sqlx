@@ -6,5 +6,6 @@ config {
 
 SELECT *
 FROM ${ref("gold_buymed_vn2", "circa_agg_tracking")} o 
+WHERE  order_code <> 'DHC01184651' -- huyen.ngo hard_code, request by tri.dao
 GROUP BY ALL
  
