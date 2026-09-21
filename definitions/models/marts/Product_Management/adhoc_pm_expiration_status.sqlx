@@ -54,7 +54,7 @@ with cte_date as (
             where created_date >= (select DATE(start_date) from cte_date)
         ) as b on a.ticket_id = b.ticket_id
         where a.status = "COMPLETED"
-            and a.warehouse_code in ("BD", "HN",'DN')
+            and a.warehouse_code in ("BD", "HN")
             and 
                 REGEXP_CONTAINS(
                     COALESCE(JSON_EXTRACT_SCALAR(a.extra_props, '$.inbound_code'), JSON_VALUE(a.extra_props, '$.suggest_reference_codes.0')) 
@@ -95,6 +95,7 @@ with cte_date as (
         where length(JSON_EXTRACT_SCALAR(lot_dates, '$[0].expired_date')) = 10
         -- QUALIFY row_number() over (partition by mg_id order by pg_sync_time desc) = 1
     ) as ld on a.mg_id = ld.mg_id 
+    WHERE b.expired_date_convert >= '2018-01-01'
     -- left join 
     -- (
     --     select mg_id,
