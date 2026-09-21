@@ -190,7 +190,7 @@ WITH
   , chronic AS (
       SELECT
           SAFE_CAST(code AS INT64) AS product_id
-          , IF(UPPER(value) NOT IN ("CHRONIC", "ACUTE"), NULL, value) AS chronic
+          , IF(UPPER(TRIM(value)) NOT IN ("CHRONIC", "ACUTE"), NULL, TRIM(value)) AS chronic
       FROM ${source.collector}.data_prd
       WHERE DATE(submit_at) >= "2025-06-18"
           AND submit_id >= 5539
