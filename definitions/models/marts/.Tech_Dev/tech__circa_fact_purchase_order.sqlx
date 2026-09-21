@@ -4,19 +4,14 @@ config {
     name: "tech__circa_fact_purchase_order",
 }
 
--- SELECT  
---     oi.created_date
---     , oi.po_code
---     , oi.po_status 
---     , fulfillment_method
---     , actual_po_amount_af_rt AS po_amount
---     , oi.pos_code
---     , p.name AS pos_name
---     , oi.client_id
---     , IF(p.type = "FS", "FS", "COS") AS pos_type
--- FROM ${ref("gold_buymed_vn2","cos_purchase_order")} AS oi
---     LEFT JOIN  ${ref("gold_buymed_vn2","circa_pos_profile")}  AS p ON  oi.pos_code = p.code
---     WHERE  p.client_id NOT IN (5,6,7)
+with sale_by_pos_channel as (
+    select completed_date,
+    pos_code,
+    safe_divide(SUM(if(channel = "ONLINE", gmv,0)), SUM(GMV)) as gmv_online_pct,
+    safe_divide(SUM(if(channel = "OFFLINE", gmv,0)), SUM(GMV)) as gmv_offline_pct
+    from  ${ref("gold_buymed_vn2", "circa_fact_net_margin")}
+    group by all
+)
 SELECT 
 a.created_date,
   a.stock_date,
@@ -29,9 +24,14 @@ a.created_date,
   IF(c.type = "FS", "FS", "COS") AS pos_type,
   sum(received_quantity*unit_price) as po_amount,
   sum(case when fulfillment_method = 'SO_THUOCSI' THEN received_quantity*unit_price*0.03 else 0 end) AS rebate,
+  gmv_online_pct, 
+  gmv_offline_pct
 FROM ${ref("gold_buymed_vn2","fact_fin_circa_purchase_order")}  a
 left join ${ref("gold_buymed_vn2","fact_fin_circa_purchase_order_item")} b on a.po_id = b.po_id
 left JOIN ${ref("gold_buymed_vn2","circa_pos_profile")}  c on a.pos_id = c.id 
+left join sale_by_pos_channel d 
+on a.stock_date = d.completed_date
+and c.pos_code = d.pos_code
 WHERE 1=1
   and a.client_id NOT IN (5,6,7)
   and c.code not in ('POS0010', 'POS0004', 'POS0084', 'POS0074', 'POS0024', 'POS0030','POS0076', 'POS0028', 'POS0025')

@@ -190,7 +190,7 @@ WITH
   , chronic AS (
       SELECT
           SAFE_CAST(code AS INT64) AS product_id
-          , IF(UPPER(value) NOT IN ("CHRONIC", "ACUTE"), NULL, value) AS chronic
+          , IF(UPPER(TRIM(value)) NOT IN ("CHRONIC", "ACUTE"), NULL, TRIM(value)) AS chronic
       FROM ${source.collector}.data_prd
       WHERE DATE(submit_at) >= "2025-06-18"
           AND submit_id >= 5539
@@ -198,28 +198,19 @@ WITH
           AND type = "CHRONIC"
       QUALIFY ROW_NUMBER() over (PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
   )
-  
-  
-  -- , essential AS (
-  --     SELECT
-  --         SAFE_CAST(code AS INT64) AS product_id
-  --         , NULLIF(UPPER(value), "NAN") AS essential
-  --     FROM collector.data_prd
-  --     WHERE DATE(submit_at) >= "2025-06-18"
-  --         AND submit_id >= 5539
-  --         AND object = "Product"
-  --         AND type = "ESSENTIAL"
-  --     QUALIFY ROW_NUMBER() over (PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
-  -- )
-  
+    
   
   , cat_lieu AS (
       SELECT
           SAFE_CAST(code AS INT64) AS product_id
-          , NULLIF(UPPER(value), "NAN") AS thuoc_cat_lieu
+          , CASE
+              WHEN TRIM(value) IN ('YES', 'TRUE') THEN true
+              WHEN TRIM(value) IN ('NO', 'FALSE') THEN false
+              ELSE NULL
+          END AS thuoc_cat_lieu
       FROM collector.data_prd
-      WHERE DATE(submit_at) >= "2025-12-30"
-          AND submit_id >= 5900
+      WHERE DATE(submit_at) >= "2026-09-21"
+          AND submit_id >= 10374
           AND object = "Product"
           AND type = "THUOC_CAT_LIEU"
       QUALIFY ROW_NUMBER() over (PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
@@ -345,8 +336,8 @@ SELECT
 
 
   CASE
-      WHEN product.origin IN ('Vietnam', 'VN') THEN 'Vietnam'
-      WHEN product.origin NOT IN ('Vietnam', 'VN') THEN 'International'
+      WHEN product.origin IN ('Vietnam', 'VN', 'Việt Nam', 'Viet Nam') THEN 'Viet Nam'
+      ELSE 'International'
   END AS origin,
   CASE
     WHEN product.origin IN ('Vietnam', 'VN') THEN 'Local'
