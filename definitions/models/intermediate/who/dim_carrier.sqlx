@@ -49,6 +49,7 @@ with cte_dedup_carrier as (
                 when a.carrier_code in ('LANGSON', 'CAOBANG','BACKAN','HAGIANG') then '1PL'
                 when UPPER(a.carrier_name) like 'HUB%' then '1PL'
                 when UPPER(a.carrier_name) like 'NVCT%' then '1PL'
+                when UPPER(a.carrier_name) like 'NV CÔNG TY%' then '1PL'
                 when UPPER(a.carrier_name) like 'KTLS%' then '2PL'
                 else '3PL'
             end	as logistics_type
@@ -58,7 +59,7 @@ with cte_dedup_carrier as (
                     -- OR a.carrier_name = "NVCT Hub VSIP II"
                     OR a.carrier_code in ('LANGSON', 'CAOBANG','BACKAN','HAGIANG')
                     THEN "HUB"
-                WHEN (UPPER(a.carrier_name) LIKE 'NVCT%' OR STRPOS(a.carrier_code, "NVTC") > 0)
+                WHEN (UPPER(a.carrier_name) LIKE 'NVCT%' OR UPPER(a.carrier_name) LIKE 'NV CÔNG TY%' OR STRPOS(a.carrier_code, "NVTC") > 0)
                     AND a.carrier_name NOT IN ("VTP Miền Bắc - PHS", "Viettel Post Miền Bắc")
                     AND a.carrier_code <> "NVCTHUBVINHBAO"
                     THEN "NVCT"
