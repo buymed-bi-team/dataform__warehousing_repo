@@ -110,7 +110,8 @@ with cte_date as (
 -- Step 3: create action column 
 , alert_action as (
     select timestamp_add(current_timestamp(), interval 7 hour) as transformed_at
-        , a.* 
+        , a.* EXCEPT (expired_date_internal)
+        , IF(expired_date_internal > '2018-01-01', expired_date_internal, NULL) AS expired_date_internal
         , case 
             when IFNULL(diff_day, null) is null then null
             when diff_day < 0 then "EXPIRED"
