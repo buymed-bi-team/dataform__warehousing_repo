@@ -336,8 +336,8 @@ SELECT
 
 
   CASE
-      WHEN product.origin IN ('Vietnam', 'VN') THEN 'Vietnam'
-      WHEN product.origin NOT IN ('Vietnam', 'VN') THEN 'International'
+      WHEN product.origin IN ('Vietnam', 'VN', 'Việt Nam', 'Viet Nam') THEN 'Viet Nam'
+      ELSE 'International'
   END AS origin,
   CASE
     WHEN product.origin IN ('Vietnam', 'VN') THEN 'Local'
