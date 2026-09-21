@@ -37,6 +37,8 @@ select
     , json_value(a.reference, "$.code") as pick_ticket_id
     , json_value(a.reference, "$.type") as type
     , json_value(a.extra_props, '$.rf_id') AS rf_id
+    , JSON_VALUE(a.extra_props, '$.extra_data.deliveryOrderCode') AS delivery_order_code
+    , JSON_VALUE(a.extra_props, '$.extra_data.saleOrderCode') AS sale_order_code
     , CASE
         WHEN TO_JSON_STRING(tags) LIKE '%"COLD_BIN"%' THEN "COLD_BIN"
         ELSE "NORMAL_BIN"
