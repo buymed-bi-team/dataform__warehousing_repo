@@ -2,7 +2,7 @@
 config {
     type: "table",
     description: `price_range_cat4 (để tạm) PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every hour`,
-    name: "price_range_cat4",
+    name: "circa_dim_price_range_cat4",
     columns: {
         
     }
