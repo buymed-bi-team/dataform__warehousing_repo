@@ -57,7 +57,7 @@ with
             left join ${ref("dim_sku")} AS s ON b.sku = s.sku_code
         where
             a.status = "COMPLETED"
-            and a.warehouse_code in ("BD", "HN",'DN')
+            and a.warehouse_code in ("BD", "HN")
             and 
                 REGEXP_CONTAINS(
                     COALESCE(JSON_EXTRACT_SCALAR(a.extra_props, '$.inbound_code'), JSON_VALUE(a.extra_props, '$.suggest_reference_codes.0')) 
@@ -76,6 +76,7 @@ with
             a.*,
             DATE_DIFF(expired_date_convert, CURRENT_DATE(), DAY) as diff_day
         FROM merge_sku_to_put_ticket a
+        WHERE a.expired_date_convert >= '2018-01-01'
     )
 
 -- step 4: create logic

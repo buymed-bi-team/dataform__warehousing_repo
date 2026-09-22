@@ -68,3 +68,4 @@ left join (
   where created_date >= (select DATE(start_date_scan) from cte_date) 
 ) pi on p.ticket_id = pi.ticket_id
 where coalesce(end_qc_time, p.end_time) + INTERVAL 7 HOUR >= (select timestamp(start_date) from cte_date)
+    AND pi.scanned_quantity > 0

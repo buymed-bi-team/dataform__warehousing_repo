@@ -95,10 +95,12 @@ select
 from (
   select *
   from ${source.platinum}.warehouse_prd_inbound_pre_inbound_return_order
-  where created_date >= (select DATE(start_date) from cte_date)
+  where created_date >= (select DATE(start_date)  - INTERVAL  1  MONTH from cte_date)
 ) pre
 left join (
   select * 
   from ${source.platinum}.delivery_prd_transporting_shipping_order
   where created_date >= (select DATE(start_date) from cte_date)
 ) as do on pre.shipping_order_code = do.reference_code
+WHERE 1=1
+    AND do.reference_code IS NOT NULL

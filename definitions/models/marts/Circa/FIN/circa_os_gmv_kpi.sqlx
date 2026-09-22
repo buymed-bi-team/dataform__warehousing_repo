@@ -107,12 +107,12 @@ WITH
     ))
   ,offline_sale AS 
     ( select *,
-    net_sale - COALESCE(return_amount,0) as net_revenue 
+    round(net_sale - COALESCE(return_amount,0),0) as net_revenue 
     from (
     SELECT 'MONTH' date_type,
       g.month AS start_date,
       g.pos_code,
-      COUNT(DISTINCT IF(net_sale - COALESCE(return_amount,0) = 0, NULL, g.order_code)) no_order,
+      COUNT(DISTINCT IF(round(net_sale - COALESCE(return_amount,0),0) <= 0, NULL, g.order_code)) no_order,
       SUM(gmv) gmv,
       SUM(net_sale) net_sale,
       SUM(return_amount) return_amount,
@@ -123,12 +123,12 @@ WITH
     GROUP BY ALL )
     union all 
     select *,
-    net_sale - COALESCE(return_amount,0) as net_revenue 
+    round(net_sale - COALESCE(return_amount,0),0) as net_revenue 
     from (
     SELECT 'WEEK' date_type,
       g.week AS start_date,
       g.pos_code,
-      COUNT(DISTINCT IF(net_sale - COALESCE(return_amount,0) = 0, NULL, g.order_code)) no_order,
+      COUNT(DISTINCT IF(round(net_sale - COALESCE(return_amount,0),0) <= 0, NULL, g.order_code)) no_order,
       SUM(gmv) gmv,
       SUM(net_sale) net_sale,
       SUM(return_amount) return_amount,
@@ -139,12 +139,12 @@ WITH
     GROUP BY ALL )
     UNION ALL 
     select *,
-    net_sale - COALESCE(return_amount,0) as net_revenue 
+    round(net_sale - COALESCE(return_amount,0),0) as net_revenue 
     from (
     SELECT 'DAY' date_type,
       g.date AS start_date,
       g.pos_code,
-      COUNT(DISTINCT IF(net_sale - COALESCE(return_amount,0) = 0, NULL, g.order_code)) no_order,
+      COUNT(DISTINCT IF(round(net_sale - COALESCE(return_amount,0),0) <= 0, NULL, g.order_code)) no_order,
       SUM(gmv) gmv,
       SUM(net_sale) net_sale,
       SUM(return_amount) return_amount,
@@ -156,12 +156,12 @@ WITH
     )
   , affiliate_sale AS 
     ( select *,
-    net_sale - COALESCE(return_amount,0) as net_revenue 
+    round(net_sale - COALESCE(return_amount,0),0) as net_revenue 
     from (
     SELECT 'MONTH' date_type,
       g.month AS start_date,
       g.affiliate_pos_code,
-      COUNT(DISTINCT IF(net_sale - COALESCE(return_amount,0) = 0, NULL, g.order_code)) no_order,
+      COUNT(DISTINCT IF(round(net_sale - COALESCE(return_amount,0),0) <= 0, NULL, g.order_code)) no_order,
       SUM(gmv) gmv,
       SUM(net_sale) net_sale,
       SUM(return_amount) return_amount,
@@ -172,12 +172,12 @@ WITH
     GROUP BY ALL )
     union all 
     select *,
-    net_sale - COALESCE(return_amount,0) as net_revenue 
+    round(net_sale - COALESCE(return_amount,0),0) as net_revenue 
     from (
     SELECT 'WEEK' date_type,
       g.week AS start_date,
       g.affiliate_pos_code,
-      COUNT(DISTINCT IF(net_sale - COALESCE(return_amount,0) = 0, NULL, g.order_code)) no_order,
+      COUNT(DISTINCT IF(round(net_sale - COALESCE(return_amount,0),0) <= 0, NULL, g.order_code)) no_order,
       SUM(gmv) gmv,
       SUM(net_sale) net_sale,
       SUM(return_amount) return_amount,
@@ -188,12 +188,12 @@ WITH
     GROUP BY ALL )
     UNION ALL 
     select *,
-    net_sale - COALESCE(return_amount,0) as net_revenue 
+    round(net_sale - COALESCE(return_amount,0),0) as net_revenue 
     from (
     SELECT 'DAY' date_type,
       g.date AS start_date,
       g.affiliate_pos_code,
-      COUNT(DISTINCT IF(net_sale - COALESCE(return_amount,0) = 0, NULL, g.order_code)) no_order,
+      COUNT(DISTINCT IF(round(net_sale - COALESCE(return_amount,0),0) <= 0, NULL, g.order_code)) no_order,
       SUM(gmv) gmv,
       SUM(net_sale) net_sale,
       SUM(return_amount) return_amount,
