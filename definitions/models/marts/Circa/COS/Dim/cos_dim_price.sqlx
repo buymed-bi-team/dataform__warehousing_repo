@@ -44,35 +44,7 @@ WITH product_base_unit AS (
           AND p.actual_status <> "Inactive"
     GROUP BY ALL
 )
--- -- giá vốn gần nhất theo PO
--- , last_purchase AS (
---   SELECT DISTINCT
---      product_id
---     ,seller_code
---     ,unit_price
---     ,unit
---     ,created_at AS latest_order
--- FROM (
---     SELECT
---          i.product_id
---         ,COALESCE(i.unit_price_af_discount, i.unit_price ) AS unit_price
---         ,unit
---         ,o.client_id
---         ,o.created_at
---         ,seller_code
---         ,ROW_NUMBER() OVER (
---              PARTITION BY i.product_id, seller_code
---              ORDER BY o.created_at DESC
---          ) AS rn
---     FROM lakehouse-prod-394907.gold_buymed_vn2.cos_purchase_order o
---     LEFT JOIN lakehouse-prod-394907.gold_buymed_vn2.cos_purchase_order_item i ON o.po_id = i.po_id
---     WHERE o.client_id = 1
---            AND i.received_quantity > 0 
-     
--- )
--- WHERE rn = 1
--- )
--- những sản phẩm có set giá
+
 ,  last_purchase AS (
       SELECT product_id
              , sku_code
@@ -190,6 +162,7 @@ ORDER BY o.created_at DESC
 )
 -- thêm phần giá sau khi áp dụng deal
 SELECT b.* EXCEPT(last_price)
+    , b.last_price AS last_purchase_price
     , p.discount_type
     , p.percent
     , CASE WHEN p.discount_type = 'FIXED_PRICE' AND p.unit = 'combo' THEN  p.discount_value
