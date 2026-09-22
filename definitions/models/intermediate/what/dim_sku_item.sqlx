@@ -201,7 +201,7 @@ cte_sku_fc_agg AS (
     d.avg_demand_l30d,
     d.avg_demand_l15d,
     COALESCE(i.fv_code, a.supplier_code) as fv_vendor_code,
-    IF (i.fv_code IS NULL, "NON-TRADING", "TRADING") as trading_type,
+    IF (COALESCE(i.fv_code, a.supplier_code) IS NULL, "NON-TRADING", "TRADING") as trading_type,
     SAFE_CAST(f.pic_purchase_id AS INT64) as pic_purchase_id,
     f.pic_purchase_name,
     COALESCE(SAFE_CAST(i.cic_account_id AS INT64), f.pic_category_id) as pic_category_id,
