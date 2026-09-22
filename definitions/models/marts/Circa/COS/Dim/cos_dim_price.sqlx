@@ -5,15 +5,16 @@ config {
     tags: ["custom_1h_past15"],
     name: "cos_dim_price",
 }
--- Lấy full unit,chỉ những unit nào còn được active
+-- Lấy full unit 
 WITH product_base_unit AS (
     SELECT DISTINCT o.product_id
                    ,o.unit AS convert_unit
                    ,o.base_unit
                    ,o.convert_rate
                    ,o.sale_allowed
+                   ,o.status
     FROM buymed_circa_v2.product_master_retail_unit o 
-    WHERE status = 'ACTIVE'
+    --WHERE status = 'ACTIVE'
 
 )
 -- performance
