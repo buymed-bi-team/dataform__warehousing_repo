@@ -5,7 +5,6 @@ config {
     tags: ["custom_1h_past15"],
     name: "cos_dim_price",
 }
-
 -- Lấy full unit,chỉ những unit nào còn được active
 WITH product_base_unit AS (
     SELECT DISTINCT o.product_id
@@ -44,35 +43,45 @@ WITH product_base_unit AS (
           AND p.actual_status <> "Inactive"
     GROUP BY ALL
 )
--- giá vốn gần nhất theo PO
-, last_purchase AS (
-  SELECT DISTINCT
-     product_id
-    ,seller_code
-    ,unit_price
-    ,unit
-    ,created_at AS latest_order
-FROM (
-    SELECT
-         i.product_id
-        ,COALESCE(i.unit_price_af_discount, i.unit_price ) AS unit_price
-        ,unit
-        ,o.client_id
-        ,o.created_at
-        ,seller_code
-        ,ROW_NUMBER() OVER (
-             PARTITION BY i.product_id, seller_code
-             ORDER BY o.created_at DESC
-         ) AS rn
-    FROM lakehouse-prod-394907.gold_buymed_vn2.cos_purchase_order o
-    LEFT JOIN lakehouse-prod-394907.gold_buymed_vn2.cos_purchase_order_item i ON o.po_id = i.po_id
-    WHERE o.client_id = 1
-           AND i.received_quantity > 0 
+-- -- giá vốn gần nhất theo PO
+-- , last_purchase AS (
+--   SELECT DISTINCT
+--      product_id
+--     ,seller_code
+--     ,unit_price
+--     ,unit
+--     ,created_at AS latest_order
+-- FROM (
+--     SELECT
+--          i.product_id
+--         ,COALESCE(i.unit_price_af_discount, i.unit_price ) AS unit_price
+--         ,unit
+--         ,o.client_id
+--         ,o.created_at
+--         ,seller_code
+--         ,ROW_NUMBER() OVER (
+--              PARTITION BY i.product_id, seller_code
+--              ORDER BY o.created_at DESC
+--          ) AS rn
+--     FROM lakehouse-prod-394907.gold_buymed_vn2.cos_purchase_order o
+--     LEFT JOIN lakehouse-prod-394907.gold_buymed_vn2.cos_purchase_order_item i ON o.po_id = i.po_id
+--     WHERE o.client_id = 1
+--            AND i.received_quantity > 0 
      
-)
-WHERE rn = 1
-)
+-- )
+-- WHERE rn = 1
+-- )
 -- những sản phẩm có set giá
+,  last_purchase AS (
+      SELECT product_id
+             , sku_code
+             , latest_cost_price_include_tax
+             , latest_doc_code
+             , DATE(DATETIME_ADD(latest_cost_at, INTERVAL 7 HOUR )) AS last_purchase
+      FROM buymed_circa_v2.inventory_chain_cost_price
+      WHERE client_id = 1
+
+)
 , has_price AS (
     SELECT DISTINCT s.product_id
                    ,s.sku_code
@@ -109,7 +118,8 @@ WHERE rn = 1
                    ,pr.web_status
                    ,s.base_unit AS is_base_unit
                    ,p.last_updated_at
-                   ,po.unit_price AS last_price
+                   ,po.latest_cost_price_include_tax AS last_base_unit_price
+                   ,po.latest_cost_price_include_tax * s.convert_rate AS last_price
                    ,p.sale_price
                    ,p.price_type
                    ,CASE WHEN i.on_hand_quantity > 0 THEN "Available" ELSE "Unavailable" END AS have_stock
@@ -122,54 +132,28 @@ WHERE rn = 1
                    ,no_ord_L1M
                    ,GMV_L1M
                    ,ROUND(SAFE_DIVIDE(on_hand_quantity, s.convert_rate)) AS on_hand_quantity
-                   ,ROUND(SAFE_DIVIDE(po.unit_price, s.convert_rate)) AS base_unit_price
     FROM product_base_unit s
     LEFT JOIN has_price p ON s.product_id = p.product_id AND LOWER(s.convert_unit) = LOWER(p.unit)
     LEFT JOIN inventory i ON i.product_id = p.product_id AND p.sku_code = i.sku_code
     LEFT JOIN count_ord co ON i.product_id = co.product_id AND i.seller_code = co.seller_code
-    LEFT JOIN last_purchase po ON i.product_id = po.product_id AND LOWER(s.convert_unit) = LOWER(po.unit) AND i.seller_code = po.seller_code
+    LEFT JOIN last_purchase po ON i.product_id = po.product_id AND i.sku_code = po.sku_code
     LEFT JOIN gold_buymed_vn2.dim_product t ON s.product_id = t.product_id AND LOWER(s.convert_unit) = LOWER(t.unit)
     LEFT JOIN gold_buymed_vn2.circa_dim_master_product pr ON pr.product_id = s.product_id 
     LEFT JOIN competitor_price c ON s.product_id = c.product_id AND LOWER(s.convert_unit) = LOWER(c.unit)
     GROUP BY ALL
 )
--- lấy giá vốn theo base_unit
-,base_price AS (
-    SELECT
-        product_id,
-        seller_code,
-        MAX(base_unit_price) AS base_unit_price
-    FROM combine_unit
-    WHERE last_price IS NOT NULL
-    GROUP BY ALL
-)
--- chia giá vốn cho tất cả unit trong product
-, combine AS (
-SELECT  b.* 
-        , 
-   ROUND( COALESCE(
-        b.last_price,
-        bp.base_unit_price * b.convert_rate
-    )) AS purchase_price
-    , ROUND( COALESCE(
-        b.last_price,
-        bp.base_unit_price * b.convert_rate
-       ) ) AS exp_cost_price
-FROM combine_unit b
-LEFT JOIN base_price bp ON b.product_id = bp.product_id AND b.seller_code = bp.seller_code
-)
--- check các unit trong sản phẩm đã có giá hết chưa
+
 , check_unit_pricing AS (
     SELECT DISTINCT product_id
                    ,COUNT(*) AS total_units
                    ,SUM(CASE WHEN (sale_price IS NULL OR sale_price = 0) THEN 1 ELSE 0 END) AS unset_units
-    FROM combine
+    FROM combine_unit
     GROUP BY ALL
 )
 -- map thêm thông tin hiển thị sản phẩm trên web
 ,_all AS (
     SELECT i.*
-          ,CASE WHEN sale_price > 0 AND exp_cost_price > 0 THEN (sale_price - exp_cost_price)/ sale_price ELSE NULL END AS exp_mar
+          ,CASE WHEN sale_price > 0 AND last_price > 0 THEN (sale_price - last_price)/ sale_price ELSE NULL END AS exp_mar
           ,CASE WHEN cup.unset_units = cup.total_units THEN "not set full"
                 WHEN cup.unset_units > 0 THEN "contain unit not set"
                 ELSE "set full" END AS check_unit_price_set
@@ -177,7 +161,7 @@ LEFT JOIN base_price bp ON b.product_id = bp.product_id AND b.seller_code = bp.s
           ,pro.is_default as is_default_web
           ,pro.web_unit_status
           ,pro.unit_price as unit_price_web
-    FROM combine i
+    FROM combine_unit i
     LEFT JOIN check_unit_pricing cup ON i.product_id = cup.product_id
     LEFT JOIN  gold_buymed_vn2.dim_product_price_online pro ON i.product_id = pro.product_id AND LOWER(i.unit) = LOWER(pro.unit_name)
     WHERE i.sku_code IS NOT NULL
