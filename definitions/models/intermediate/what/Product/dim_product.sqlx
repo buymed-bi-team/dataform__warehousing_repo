@@ -238,19 +238,19 @@ WITH
           AND object = "Product"
           AND type = "ATC3"
       QUALIFY ROW_NUMBER() over (PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
-  )
-
-  , sub_brand AS (
-      SELECT
-          SAFE_CAST(code AS INT64) AS product_id
-          , INITCAP(NULLIF(UPPER(value), "NAN")) AS sub_brand
-      FROM ${source.collector}.data_prd
-      WHERE DATE(submit_at) >= "2025-11-21"
-          AND submit_id >= 5818
-          AND object = "Product"
-          AND type = "SUB_BRAND"
-      QUALIFY ROW_NUMBER() over (PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
   ),
+
+--   , sub_brand AS (
+--       SELECT
+--           SAFE_CAST(code AS INT64) AS product_id
+--           , INITCAP(NULLIF(UPPER(value), "NAN")) AS sub_brand
+--       FROM ${source.collector}.data_prd
+--       WHERE DATE(submit_at) >= "2025-11-21"
+--           AND submit_id >= 5818
+--           AND object = "Product"
+--           AND type = "SUB_BRAND"
+--       QUALIFY ROW_NUMBER() over (PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
+--   ),
 
   user_type AS (
     SELECT
@@ -310,7 +310,7 @@ SELECT
   product.vat,
   -- product.brand,
   br.brand,
-  sb.sub_brand,
+  INITCAP(sb.label) AS sub_brand,
   CASE JSON_VALUE(product.extra_props, "$.product_category_management") 
     WHEN "PORTFOLIO" THEN "BUYMED SELECTED"
     WHEN "MARKET_PLACE" THEN "HIGH MARGIN"
@@ -493,11 +493,20 @@ LEFT JOIN chronic AS chronic ON chronic.product_id = product.product_id
 LEFT JOIN cat_lieu AS cl ON cl.product_id = product.product_id
 LEFT JOIN atc3 AS a3 ON a3.product_id = product.product_id
 LEFT JOIN atc4 AS a4 ON a4.product_id = product.product_id
-LEFT JOIN sub_brand AS sb ON sb.product_id = product.product_id
+-- LEFT JOIN sub_brand AS sb ON sb.product_id = product.product_id
 LEFT JOIN user_type AS ut ON ut.product_id = product.product_id
 LEFT JOIN pic_brand_seller AS  pbs ON LOWER(pbs.brand) = LOWER(br.brand)
 LEFT JOIN _cat2 AS c2 ON c2.product_id = product.product_id
 LEFT JOIN _cat3 AS c3 ON c3.product_id = product.product_id
+LEFT JOIN (
+    SELECT
+        value AS code
+        , JSON_VALUE(l, "$.label") AS label
+    FROM ${source.platinum}.pim_prd_product_attribute_definition_option
+        LEFT JOIN UNNEST(JSON_QUERY_ARRAY(labels)) AS l
+    WHERE attribute_code = "PRODUCT_SUB_BRAND"
+        AND JSON_VALUE(l, "$.language") = "vi"
+) AS sb ON sb.code = JSON_VALUE(product.extra_props, "$.sub_brand")
 
 WHERE
     LOWER(product.name) NOT LIKE '%(bỏ)%'
