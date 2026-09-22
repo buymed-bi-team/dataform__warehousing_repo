@@ -310,7 +310,7 @@ SELECT
   product.vat,
   -- product.brand,
   br.brand,
-  sb.label AS sub_brand,
+  INITCAP(sb.label) AS sub_brand,
   CASE JSON_VALUE(product.extra_props, "$.product_category_management") 
     WHEN "PORTFOLIO" THEN "BUYMED SELECTED"
     WHEN "MARKET_PLACE" THEN "HIGH MARGIN"
