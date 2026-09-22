@@ -1,0 +1,236 @@
+config {
+    type: "table",
+    description: `Tracking price for Circa OS
+             PIC: huyen.ngo; model_type: Table ;schedule: At minute 15 past hour`,
+    tags: ["custom_1h_past15"],
+    name: "cos_dim_price",
+}
+-- Lấy full unit,chỉ những unit nào còn được active
+WITH product_base_unit AS (
+    SELECT DISTINCT o.product_id
+                   ,o.unit AS convert_unit
+                   ,o.base_unit
+                   ,o.convert_rate
+                   ,o.sale_allowed
+    FROM buymed_circa_v2.product_master_retail_unit o 
+    WHERE status = 'ACTIVE'
+
+)
+-- performance
+,count_ord AS (
+    SELECT DISTINCT oi.product_id
+                   ,oi.seller_code
+                   ,MAX(o.created_date) AS latest_ord
+                   ,COUNT(DISTINCT o.order_id) AS no_ord
+                   ,SUM(quantity * unit_price_before_discount) AS GMV
+                   ,COUNT(CASE WHEN o.created_date >= CURRENT_DATE() - INTERVAL 1 MONTH THEN  o.order_id END) AS no_ord_L1M
+                   ,SUM(CASE WHEN o.created_date >= CURRENT_DATE() - INTERVAL 1 MONTH THEN quantity * unit_price_before_discount END ) AS  GMV_L1M
+    FROM gold_buymed_vn2.cos_fact_order o
+    LEFT JOIN gold_buymed_vn2.cos_fact_order_item oi ON o.order_id = oi.order_id
+    WHERE status LIKE "%COMPLETE%"
+         AND o.client_id = 1 
+    GROUP BY ALL
+)
+-- tồn kho
+,inventory AS (
+    SELECT DISTINCT a.product_id
+                   ,SUM(a.on_hand_quantity) AS on_hand_quantity
+                   ,seller_code
+                   ,sku_code
+    FROM gold_buymed_vn2.cos_fact_inventory a
+    LEFT JOIN gold_buymed_vn2.circa_pos_profile p ON a.pos_id = p.id
+    WHERE a.client_id = 1
+          AND p.actual_status <> "Inactive"
+    GROUP BY ALL
+)
+-- -- giá vốn gần nhất theo PO
+-- , last_purchase AS (
+--   SELECT DISTINCT
+--      product_id
+--     ,seller_code
+--     ,unit_price
+--     ,unit
+--     ,created_at AS latest_order
+-- FROM (
+--     SELECT
+--          i.product_id
+--         ,COALESCE(i.unit_price_af_discount, i.unit_price ) AS unit_price
+--         ,unit
+--         ,o.client_id
+--         ,o.created_at
+--         ,seller_code
+--         ,ROW_NUMBER() OVER (
+--              PARTITION BY i.product_id, seller_code
+--              ORDER BY o.created_at DESC
+--          ) AS rn
+--     FROM lakehouse-prod-394907.gold_buymed_vn2.cos_purchase_order o
+--     LEFT JOIN lakehouse-prod-394907.gold_buymed_vn2.cos_purchase_order_item i ON o.po_id = i.po_id
+--     WHERE o.client_id = 1
+--            AND i.received_quantity > 0 
+     
+-- )
+-- WHERE rn = 1
+-- )
+-- những sản phẩm có set giá
+,  last_purchase AS (
+      SELECT product_id
+             , sku_code
+             , latest_cost_price_include_tax
+             , latest_doc_code
+             , DATE(DATETIME_ADD(latest_cost_at, INTERVAL 7 HOUR )) AS last_purchase
+      FROM buymed_circa_v2.inventory_chain_cost_price
+      WHERE client_id = 1
+
+)
+, has_price AS (
+    SELECT DISTINCT s.product_id
+                   ,s.sku_code
+                   ,SPLIT(s.sku_code, '.')[SAFE_OFFSET(0)]  AS seller_code
+                   ,s.price AS sale_price
+                   ,s.source AS price_type
+                   ,s.unit
+                   ,MAX(DATETIME(s.updated_at, "Asia/Ho_Chi_Minh")) AS last_updated_at
+                  
+    FROM buymed_circa_v2.product_sku_price s
+    WHERE s.client_id = 1
+    GROUP BY ALL
+)
+-- giá đối thủ
+, competitor_price AS 
+(
+  SELECT product_id
+        , unit
+        , MAX(CASE WHEN source = 'LongChau' THEN price END) AS Longchau_price
+        , MAX(CASE WHEN source = 'Pharmacity' THEN price  END) AS Pharmacity_price
+  FROM buymed_circa_v2.product_competitor_price
+  WHERE source IN ('LongChau','Pharmacity' )
+  GROUP BY ALL
+)
+-- Join lấy những thông tin cần thiết của bảng giá
+,combine_unit AS (
+    SELECT DISTINCT s.product_id
+                   ,COALESCE(i.seller_code, p.seller_code) AS seller_code
+                   ,COALESCE(i.sku_code, p.sku_code) AS sku_code
+                   ,s.convert_unit AS unit
+                   ,s.convert_rate
+                   ,CASE WHEN t.unit IS NOT NULL THEN TRUE ELSE FALSE END AS is_thuocsi_unit
+                   ,s.sale_allowed
+                   ,pr.web_status
+                   ,s.base_unit AS is_base_unit
+                   ,p.last_updated_at
+                   ,po.latest_cost_price_include_tax AS last_base_unit_price
+                   ,po.latest_cost_price_include_tax * s.convert_rate AS last_price
+                   ,p.sale_price
+                   ,p.price_type
+                   ,CASE WHEN i.on_hand_quantity > 0 THEN "Available" ELSE "Unavailable" END AS have_stock
+                   ,CASE WHEN (p.sale_price IS NULL OR p.sale_price = 0) THEN "Price not set" ELSE "Price set" END AS price_set_check
+                   ,Longchau_price
+                   ,Pharmacity_price
+                   ,no_ord
+                   ,GMV
+                   ,latest_ord
+                   ,no_ord_L1M
+                   ,GMV_L1M
+                   ,ROUND(SAFE_DIVIDE(on_hand_quantity, s.convert_rate)) AS on_hand_quantity
+    FROM product_base_unit s
+    LEFT JOIN has_price p ON s.product_id = p.product_id AND LOWER(s.convert_unit) = LOWER(p.unit)
+    LEFT JOIN inventory i ON i.product_id = p.product_id AND p.sku_code = i.sku_code
+    LEFT JOIN count_ord co ON i.product_id = co.product_id AND i.seller_code = co.seller_code
+    LEFT JOIN last_purchase po ON i.product_id = po.product_id AND i.sku_code = po.sku_code
+    LEFT JOIN gold_buymed_vn2.dim_product t ON s.product_id = t.product_id AND LOWER(s.convert_unit) = LOWER(t.unit)
+    LEFT JOIN gold_buymed_vn2.circa_dim_master_product pr ON pr.product_id = s.product_id 
+    LEFT JOIN competitor_price c ON s.product_id = c.product_id AND LOWER(s.convert_unit) = LOWER(c.unit)
+    GROUP BY ALL
+)
+
+, check_unit_pricing AS (
+    SELECT DISTINCT product_id
+                   ,COUNT(*) AS total_units
+                   ,SUM(CASE WHEN (sale_price IS NULL OR sale_price = 0) THEN 1 ELSE 0 END) AS unset_units
+    FROM combine_unit
+    GROUP BY ALL
+)
+-- map thêm thông tin hiển thị sản phẩm trên web
+,_all AS (
+    SELECT i.*
+          ,CASE WHEN sale_price > 0 AND last_price > 0 THEN (sale_price - last_price)/ sale_price ELSE NULL END AS exp_mar
+          ,CASE WHEN cup.unset_units = cup.total_units THEN "not set full"
+                WHEN cup.unset_units > 0 THEN "contain unit not set"
+                ELSE "set full" END AS check_unit_price_set
+          ,pro.unit_name as web_unit
+          ,pro.is_default as is_default_web
+          ,pro.web_unit_status
+          ,pro.unit_price as unit_price_web
+    FROM combine_unit i
+    LEFT JOIN check_unit_pricing cup ON i.product_id = cup.product_id
+    LEFT JOIN  gold_buymed_vn2.dim_product_price_online pro ON i.product_id = pro.product_id AND LOWER(i.unit) = LOWER(pro.unit_name)
+    WHERE i.sku_code IS NOT NULL
+    GROUP BY ALL
+    
+)
+-- chương trình deal khuyến mãi đang được áp dụng
+, promo AS (
+   
+SELECT DISTINCT product_id
+                ,unit
+                ,o.created_at 
+                ,sku_code
+                ,i.percent
+                ,i.discount_value
+                ,i.specific_price
+                ,i.discount_type --FIXED_PRICE/SPECIFIC_PRICE/PERCENT
+FROM gold_buymed_vn2.dim_promotion_event_circa o 
+LEFT JOIN gold_buymed_vn2.dim_promotion_event_item_circa i ON o.id = i.promotion_event_id
+WHERE is_expired = FALSE
+     AND o.is_active = true
+     AND o.client_id = 1
+QUALIFY ROW_NUMBER() OVER (PARTITION BY product_id, sku_code ORDER BY created_at DESC) = 1
+ORDER BY o.created_at DESC
+)
+-- thêm phần giá sau khi áp dụng deal
+SELECT b.* EXCEPT(last_price)
+    , p.discount_type
+    , p.percent
+    , CASE WHEN p.discount_type = 'FIXED_PRICE' AND p.unit = 'combo' THEN  p.discount_value
+           WHEN p.discount_type = 'FIXED_PRICE'
+            THEN ROUND(
+                     (
+                        p.discount_value
+                        / src.convert_rate
+                        * b.convert_rate
+                    )
+                , 0)
+        END AS discount_value
+    , CASE WHEN p.discount_type = 'SPECIFIC_PRICE'   AND p.unit = 'combo' THEN p.specific_price
+        WHEN p.discount_type = 'SPECIFIC_PRICE'
+            THEN ROUND(
+                    p.specific_price
+                    / src.convert_rate
+                    * b.convert_rate
+                , 0) END AS specific_price
+    ,  CASE WHEN p.discount_type = 'PERCENT' AND p.unit = 'combo' THEN ROUND(b.sale_price * (1 - p.percent / 100), 0)
+         WHEN p.discount_type = 'PERCENT'
+            THEN ROUND(b.sale_price * (1 - p.percent / 100), 0)
+        WHEN p.discount_type = 'FIXED_PRICE' AND p.unit = 'combo' THEN  ROUND( b.sale_price - p.discount_value)
+        WHEN p.discount_type = 'FIXED_PRICE'
+            THEN ROUND(
+                    b.sale_price
+                    - (
+                        p.discount_value
+                        / src.convert_rate
+                        * b.convert_rate
+                    )
+                , 0)
+        WHEN p.discount_type = 'SPECIFIC_PRICE'   AND p.unit = 'combo' THEN p.specific_price
+        WHEN p.discount_type = 'SPECIFIC_PRICE'
+            THEN ROUND(
+                    p.specific_price
+                    / src.convert_rate
+                    * b.convert_rate
+                , 0)
+        ELSE b.sale_price
+      END AS price_af_discount
+FROM _all b
+LEFT JOIN promo p ON b.product_id = p.product_id AND b.sku_code = p.sku_code
+LEFT JOIN _all src ON p.product_id = src.product_id AND p.unit = src.unit AND b.sku_code = p.sku_code AND b.seller_code = src.seller_code
+-- WHERE b.product_id = 1110

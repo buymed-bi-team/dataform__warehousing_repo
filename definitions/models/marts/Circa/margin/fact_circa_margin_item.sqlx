@@ -262,4 +262,4 @@ WITH
       union ALL
       select * from cogs_fs
     )
-    select * from final_cogs 
+    select * from final_cogs where order_code not in ('DHC01195456','DHC01184651')
