@@ -4,7 +4,7 @@ config {
     name: "tech__fact_margin_outbound_by_date_product_circa",
 }
 
-select *
+select * except(customer_name), customer_name as pos_name
 from gold_buymed_vn2.fact_margin_outbound_by_date_product_circa
  
  
