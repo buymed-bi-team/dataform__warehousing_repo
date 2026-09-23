@@ -40,7 +40,7 @@ qualify ROW_NUMBER() over (partition by product_id)= 1)
 , internal_thuocsi as (
     select
     oi.product_id
-    from ${source.gold}.fact_order_item oi
+    from ${source.ref}.fact_order_item oi
     left join ${source.ref}.dim_order o on oi.order_id = o.order_id
     where order_channel = "TENDER"
     Qualify ROW_NUMBER() over (partition by product_id)= 1

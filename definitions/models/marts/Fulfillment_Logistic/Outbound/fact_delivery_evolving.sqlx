@@ -80,26 +80,33 @@ pre_operations {
     )}
 }
 
+WITH
+    final AS (
+        SELECT
+            TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at,
+            so       AS so_code,
+            tpl_code AS tracking_code,
+            status   AS delivery_status,
+            status_name,
+            TIMESTAMP_ADD(action_time, INTERVAL 7 HOUR) AS delivery_ts,
+            hub_code
+        FROM tmp_callback
 
-SELECT
-    TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at,
-    so       AS so_code,
-    tpl_code AS tracking_code,
-    status   AS delivery_status,
-    status_name,
-    TIMESTAMP_ADD(action_time, INTERVAL 7 HOUR) AS delivery_ts,
-    hub_code
-FROM tmp_callback
+        UNION ALL
 
-UNION ALL
+        SELECT
+            TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at,
+            a.so AS so_code,
+            JSON_VALUE(b, "$.tpl_code")    AS tracking_code,
+            JSON_VALUE(b, "$.status")      AS delivery_status,
+            JSON_VALUE(b, "$.status_name") AS status_name,
+            TIMESTAMP_ADD(TIMESTAMP(JSON_VALUE(b, "$.action_time")), INTERVAL 7 HOUR) AS delivery_ts,
+            JSON_VALUE(b, "$.hub_code")    AS hub_code
+        FROM tmp_callback AS a
+            , UNNEST(JSON_EXTRACT_ARRAY(a.logs)) AS b
+    )
 
-SELECT
-    TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at,
-    a.so AS so_code,
-    JSON_VALUE(b, "$.tpl_code")    AS tracking_code,
-    JSON_VALUE(b, "$.status")      AS delivery_status,
-    JSON_VALUE(b, "$.status_name") AS status_name,
-    TIMESTAMP_ADD(TIMESTAMP(JSON_VALUE(b, "$.action_time")), INTERVAL 7 HOUR) AS delivery_ts,
-    JSON_VALUE(b, "$.hub_code")    AS hub_code
-FROM tmp_callback AS a
-    , UNNEST(JSON_EXTRACT_ARRAY(a.logs)) AS b
+SELECT 
+    *
+    , LAG(delivery_status) over (PARTITION BY so_code ORDER BY delivery_ts) as prev_delivery_status
+FROM final

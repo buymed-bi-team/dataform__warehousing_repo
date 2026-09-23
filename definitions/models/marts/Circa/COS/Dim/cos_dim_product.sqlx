@@ -104,6 +104,7 @@ base AS (
           ,CASE WHEN tp.product_id IS NOT NULL THEN true
                 ELSE false END AS is_thuocsi_product
           ,p.barcode
+          ,tp.brand_type
     FROM base p
     LEFT JOIN ${source.circa_os}.product_main_category mc ON p.main_category_code = mc.code AND p.client_id = mc.client_id
     LEFT JOIN ${source.circa_os}.product_manufacturer m ON p.manufacturer_code = m.code AND p.client_id = m.client_id
@@ -212,26 +213,11 @@ UNION ALL
        AND lower(o.convert_unit) = lower(i.unit)
     WHERE lower(i.unit) IS NOT NULL
 )
-,brand_type AS (
-    SELECT p.product_id
-          ,s.brand_type
-    FROM ${ref('dim_product')} p
-    LEFT JOIN ${ref('adhoc_pm_master_sku')} s USING (product_id)
-    WHERE fc_code LIKE "BD"
-    QUALIFY ROW_NUMBER() OVER(PARTITION BY p.product_id ORDER BY s.brand_type DESC) = 1
-)
 ,sub_cat AS (
     SELECT p.product_id
           ,sc.name AS seller_sub_category_name
     FROM `${source.platinum}.marketplace_prd_product_v2_product` p
     LEFT JOIN `${source.platinum}.marketplace_prd_product_v2_seller_sub_category` sc ON p.seller_sub_category_code = sc.code
-)
-,brand_type_add AS (
-    SELECT SAFE_CAST(code AS INT64) AS product_id
-          ,NULLIF(value, "NAN") AS brand_type
-    FROM collector.data_prd
-    WHERE object = 'Product' AND type = 'BRAND_TYPE'
-    QUALIFY ROW_NUMBER() OVER(PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
 )
 ,popular_product AS (
     SELECT SAFE_CAST(code AS INT64) AS product_id
@@ -294,7 +280,7 @@ SELECT DISTINCT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transform
       ,ig.volume
       ,usage
       ,bu.base_unit
-      ,COALESCE(bt.brand_type, ba.brand_type) AS brand_type
+      -- ,COALESCE(bt.brand_type, ba.brand_type) AS brand_type
       ,seller_sub_category_name
       ,pop.popular AS is_popular
       ,CASE WHEN kit.product_id IS NOT NULL THEN TRUE ELSE FALSE END AS is_combo_on_kit
@@ -312,10 +298,10 @@ LEFT JOIN ${source.platinum}.circa_online_prd_product_product AS op ON pd.produc
 LEFT JOIN inventory i ON pd.product_id = i.product_id AND pd.client_id = i.client_id
 LEFT JOIN ingregients ig ON pd.product_id = ig.product_id -- AND pd.client_id = ig.client_id
 LEFT JOIN product_base_unit bu ON pd.product_id = bu.product_id AND pd.client_id = bu.client_id
-LEFT JOIN brand_type bt ON pd.product_id = bt.product_id
+-- LEFT JOIN brand_type bt ON pd.product_id = bt.product_id
 LEFT JOIN convert_unit cr ON pd.product_id = cr.product_id AND pd.client_id = cr.client_id
 LEFT JOIN sub_cat ON pd.product_id = sub_cat.product_id
-LEFT JOIN brand_type_add ba ON pd.product_id = ba.product_id
+-- LEFT JOIN brand_type_add ba ON pd.product_id = ba.product_id
 LEFT JOIN popular_product pop ON pd.product_id = pop.product_id
 LEFT JOIN combo_on_kit kit ON kit.product_id = pd.product_id AND kit.client_id = pd.client_id
 LEFT JOIN (SELECT * FROM ${source.ref}.dim_product_online QUALIFY ROW_NUMBER() OVER (PARTITION BY product_id ORDER BY created_date DESC) = 1) po ON po.product_id = pd.product_id 

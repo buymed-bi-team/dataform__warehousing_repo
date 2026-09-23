@@ -33,7 +33,7 @@ SELECT
       END AS is_prescription
     , product_image_url AS image_url
     , IF(product_status = 'ACTIVE', 'ACTIVE', 'INACTIVE') AS status
-    , CURRENT_DATE("+7") AS snapshot_date
+    , CURRENT_DATE() AS snapshot_date
 FROM ${ref("dim_product")} AS a
     LEFT JOIN ${ref("dim_product_category")} AS b ON a.product_id = b.product_id AND b.level = 1
 WHERE 1=1

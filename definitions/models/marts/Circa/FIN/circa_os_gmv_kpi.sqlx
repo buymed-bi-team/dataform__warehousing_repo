@@ -12,12 +12,11 @@ WITH
       date
     FROM  ${ref("gold_buymed_vn2", "dim_circa_os_gmv_kpi")}
     WHERE  channel = 'OFFLINE' ),
-  fact_order AS (
+  fact_order_offline AS (
     SELECT
       pos_code,
       pos_name,
       order_code,
-      affiliate_tag,
       dim_calendar.date,
       dim_calendar.month,
       dim_calendar.week,
@@ -30,10 +29,26 @@ WITH
     WHERE
       completed_date >= "2026-01-01"
       AND channel = 'OFFLINE'
-      AND pos_type = 'COS'
-      AND ((completed_date < "2026-08-01"
-          AND affiliate_tag <> 'AFFILIATE_FS')
-        OR completed_date >= "2026-08-01")
+    GROUP BY ALL),
+    fact_order_affiliate AS (
+    SELECT
+      affiliate_pos_code,
+      affiliate_pos_name,
+      order_code,
+      dim_calendar.date,
+      dim_calendar.month,
+      dim_calendar.week,
+      SUM(gmv) gmv,
+      SUM(gmv - deal - voucher_circa) AS net_sale
+    FROM
+      ${ref("gold_buymed_vn2", "circa_fact_net_margin")} f
+    LEFT JOIN  dim_calendar
+    ON  f.completed_date = dim_calendar.date
+    WHERE
+      completed_date >= "2026-01-01"
+      AND channel = 'ONLINE'
+      AND affiliate_tag = 'AFFILIATE_FS'
+      AND completed_date >= "2026-08-01"
     GROUP BY ALL),
   fact_return AS (
     SELECT
@@ -49,8 +64,6 @@ WITH
     ON f.completed_return_date = dim_calendar.date
     WHERE
       completed_return_date >= "2026-01-01"
-      AND channel = 'OFFLINE'
-      AND pos_type = 'COS'
     GROUP BY ALL ),
   target_by_date AS (
     SELECT
@@ -94,112 +107,100 @@ WITH
     ))
   ,offline_sale AS 
     ( select *,
-    net_sale - COALESCE(return_amount,0) as net_revenue 
+    round(net_sale - COALESCE(return_amount,0),0) as net_revenue 
     from (
     SELECT 'MONTH' date_type,
       g.month AS start_date,
       g.pos_code,
-      COUNT(DISTINCT IF(net_sale - COALESCE(return_amount,0) = 0, NULL, g.order_code)) no_order,
+      COUNT(DISTINCT IF(round(net_sale - COALESCE(return_amount,0),0) <= 0, NULL, g.order_code)) no_order,
       SUM(gmv) gmv,
       SUM(net_sale) net_sale,
       SUM(return_amount) return_amount,
-    from fact_order g
+    from fact_order_offline g
     LEFT JOIN fact_return r
     ON g.month = r.month
-      AND g.pos_code = r.pos_code
       AND g.order_code = r.order_code
-    WHERE affiliate_tag <> 'AFFILIATE_FS'
     GROUP BY ALL )
     union all 
     select *,
-    net_sale - COALESCE(return_amount,0) as net_revenue 
+    round(net_sale - COALESCE(return_amount,0),0) as net_revenue 
     from (
     SELECT 'WEEK' date_type,
       g.week AS start_date,
       g.pos_code,
-      COUNT(DISTINCT IF(net_sale - COALESCE(return_amount,0) = 0, NULL, g.order_code)) no_order,
+      COUNT(DISTINCT IF(round(net_sale - COALESCE(return_amount,0),0) <= 0, NULL, g.order_code)) no_order,
       SUM(gmv) gmv,
       SUM(net_sale) net_sale,
       SUM(return_amount) return_amount,
-    from fact_order g
+    from fact_order_offline g
     LEFT JOIN fact_return r
     ON g.week = r.week
-      AND g.pos_code = r.pos_code
       AND g.order_code = r.order_code
-    WHERE affiliate_tag <> 'AFFILIATE_FS'
     GROUP BY ALL )
     UNION ALL 
     select *,
-    net_sale - COALESCE(return_amount,0) as net_revenue 
+    round(net_sale - COALESCE(return_amount,0),0) as net_revenue 
     from (
     SELECT 'DAY' date_type,
       g.date AS start_date,
       g.pos_code,
-      COUNT(DISTINCT IF(net_sale - COALESCE(return_amount,0) = 0, NULL, g.order_code)) no_order,
+      COUNT(DISTINCT IF(round(net_sale - COALESCE(return_amount,0),0) <= 0, NULL, g.order_code)) no_order,
       SUM(gmv) gmv,
       SUM(net_sale) net_sale,
       SUM(return_amount) return_amount,
-    from fact_order g
+    from fact_order_offline g
     LEFT JOIN fact_return r
     ON g.date = r.date
-      AND g.pos_code = r.pos_code
       AND g.order_code = r.order_code
-    WHERE affiliate_tag <> 'AFFILIATE_FS'
     GROUP BY ALL )
     )
   , affiliate_sale AS 
     ( select *,
-    net_sale - COALESCE(return_amount,0) as net_revenue 
+    round(net_sale - COALESCE(return_amount,0),0) as net_revenue 
     from (
     SELECT 'MONTH' date_type,
       g.month AS start_date,
-      g.pos_code,
-      COUNT(DISTINCT IF(net_sale - COALESCE(return_amount,0) = 0, NULL, g.order_code)) no_order,
+      g.affiliate_pos_code,
+      COUNT(DISTINCT IF(round(net_sale - COALESCE(return_amount,0),0) <= 0, NULL, g.order_code)) no_order,
       SUM(gmv) gmv,
       SUM(net_sale) net_sale,
       SUM(return_amount) return_amount,
-    from fact_order g
+    from fact_order_affiliate g
     LEFT JOIN fact_return r
     ON g.month = r.month
-      AND g.pos_code = r.pos_code
       AND g.order_code = r.order_code
-    WHERE affiliate_tag = 'AFFILIATE_FS'
     GROUP BY ALL )
     union all 
     select *,
-    net_sale - COALESCE(return_amount,0) as net_revenue 
+    round(net_sale - COALESCE(return_amount,0),0) as net_revenue 
     from (
     SELECT 'WEEK' date_type,
       g.week AS start_date,
-      g.pos_code,
-      COUNT(DISTINCT IF(net_sale - COALESCE(return_amount,0) = 0, NULL, g.order_code)) no_order,
+      g.affiliate_pos_code,
+      COUNT(DISTINCT IF(round(net_sale - COALESCE(return_amount,0),0) <= 0, NULL, g.order_code)) no_order,
       SUM(gmv) gmv,
       SUM(net_sale) net_sale,
       SUM(return_amount) return_amount,
-    from fact_order g
+    from fact_order_affiliate g
     LEFT JOIN fact_return r
     ON g.week = r.week
-      AND g.pos_code = r.pos_code
       AND g.order_code = r.order_code
-    WHERE affiliate_tag = 'AFFILIATE_FS'
     GROUP BY ALL )
     UNION ALL 
     select *,
-    net_sale - COALESCE(return_amount,0) as net_revenue 
+    round(net_sale - COALESCE(return_amount,0),0) as net_revenue 
     from (
     SELECT 'DAY' date_type,
       g.date AS start_date,
-      g.pos_code,
-      COUNT(DISTINCT IF(net_sale - COALESCE(return_amount,0) = 0, NULL, g.order_code)) no_order,
+      g.affiliate_pos_code,
+      COUNT(DISTINCT IF(round(net_sale - COALESCE(return_amount,0),0) <= 0, NULL, g.order_code)) no_order,
       SUM(gmv) gmv,
       SUM(net_sale) net_sale,
       SUM(return_amount) return_amount,
-    from fact_order g
+    from fact_order_affiliate g
     LEFT JOIN fact_return r
     ON g.date = r.date
-      AND g.pos_code = r.pos_code
       AND g.order_code = r.order_code
-    WHERE affiliate_tag = 'AFFILIATE_FS'
     GROUP BY ALL )
     )
 select 
@@ -218,4 +219,4 @@ and f.pos_code = o.pos_code
 left join affiliate_sale af 
 on f.date_type = af.date_type
 and f.start_date = af.start_date
-and f.pos_code = af.pos_code
+and f.pos_code = af.affiliate_pos_code

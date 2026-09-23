@@ -6,7 +6,7 @@ config {
     Partition by: created date
     Cluster by: source, product_id
     `,
-    tags:["platinum","marketplace_prd_promotion"]
+    tags:["platinum","marketplace_prd_product-v2"]
 }
  
 WITH silver AS (

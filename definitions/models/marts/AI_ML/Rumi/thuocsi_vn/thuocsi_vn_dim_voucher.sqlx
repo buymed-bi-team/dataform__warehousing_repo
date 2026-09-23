@@ -13,7 +13,7 @@ WITH
             , p.promotion_name
             , v.short_name
             , IF(v.discount_type = "GIFT", "GIFT", "DISCOUNT") AS promotion_type
-            , system_display
+            , v.system_display
             , v.charge_fee
             , v.promotion_organizer
             , v.start_date

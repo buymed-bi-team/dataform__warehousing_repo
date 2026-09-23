@@ -13,6 +13,8 @@ config {
 WITH return_completed AS (
     SELECT c.id
           ,c.code
+          ,SUM(c.discount_amount) AS discount_amount_return
+          ,COALESCE(SUM(C.voucher_discount_amount), SUM(c.discount_amount - COALESCE(loyalty_discount_amount, 0))) AS voucher_discount_amount_return
           ,SUM(total_amount) AS total_amount
           ,SUM(total_item_amount) AS gmv_return
           ,SUM(total_amount - loyalty_discount_amount) AS rev_return
@@ -46,6 +48,8 @@ WITH return_completed AS (
           SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
           ,o.*
           ,c.id
+          ,SUM(discount_amount_return) AS discount_amount_return
+          ,SUM(voucher_discount_amount_return) AS voucher_discount_amount_return
           ,COALESCE(SUM(c.total_amount), 0) AS total_return_amount
           ,SUM(gmv_return) AS gmv_return
           ,SUM(rev_return) AS rev_return

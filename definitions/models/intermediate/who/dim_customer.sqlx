@@ -178,6 +178,12 @@ customer_segment_custom AS (
     QUALIFY ROW_NUMBER() OVER(PARTITION BY customer_id) = 1
 ),
 
+sohaco_opella_customer AS (
+    SELECT DISTINCT
+      customer_id
+    FROM ${ref("dim_sohaco_opella_customer")}
+),
+
 customer_check_location AS (
     SELECT
         c.* EXCEPT(ward_code, district_code, province_code)
@@ -338,6 +344,7 @@ SELECT
     cb.bank_account_name,
     cb.bank_name,
     IFNULL(csc.opella_segment, "Bot20") AS opella_segment,
+    IF(soc.customer_id IS NOT NULL, true, false) AS sohaco_opella_customer,
 
     CASE
         WHEN REGEXP_CONTAINS(TO_JSON_STRING( customer.tags ), r'\"TOP200\"|\"AMBASSADOR_TOP200\"') THEN 'KAM'
@@ -361,12 +368,54 @@ SELECT
     flom.no_orders,
     flom.last_purchase,
     flom.first_purchase,
-    REPLACE(JSON_VALUE(customer.gpp, "$.0.public_url"), 'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS gpp_url,
-    REPLACE(JSON_VALUE(customer.licenses, "$.0.public_url"), 'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS license_url,
-    REPLACE(JSON_VALUE(customer.pharmacy_eligibility_license, "$.0.public_url"), 'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS pharmacy_eligibility_url,
-    REPLACE(JSON_VALUE(customer.gdp, "$.0.public_url"), 'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS gdp_url,
-    REPLACE(JSON_VALUE(customer.extra_props, "$.gsp.0.public_url"), 'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS gsp_url,
-    REPLACE(JSON_VALUE(customer.examination_and_treatment_license, "$.0.public_url"), 'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS examination_and_treatment_url,
+    -- REPLACE(JSON_VALUE(PARSE_JSON(REGEXP_REPLACE( TO_JSON_STRING(customer.gpp), r',\{\}|\{\},', '')), "$.0.public_url"), 'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS gpp_url,
+    -- REPLACE(JSON_VALUE(PARSE_JSON(REGEXP_REPLACE( TO_JSON_STRING(customer.licenses), r',\{\}|\{\},', '')), "$.0.public_url"), 'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS license_url,
+    -- REPLACE(JSON_VALUE(PARSE_JSON(REGEXP_REPLACE( TO_JSON_STRING(customer.pharmacy_eligibility_license), r',\{\}|\{\},', '')), "$.0.public_url"), 'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS pharmacy_eligibility_url,
+    -- REPLACE(JSON_VALUE(PARSE_JSON(REGEXP_REPLACE( TO_JSON_STRING(customer.gdp), r',\{\}|\{\},', '')), "$.0.public_url"), 'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS gdp_url,
+    -- REPLACE(JSON_VALUE(PARSE_JSON(REGEXP_REPLACE( TO_JSON_STRING(customer.extra_props.gsp), r',\{\}|\{\},', '')), "$.0.public_url"), 'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS gsp_url,
+    -- REPLACE(JSON_VALUE(PARSE_JSON(REGEXP_REPLACE( TO_JSON_STRING(customer.examination_and_treatment_license), r',\{\}|\{\},', '')), "$.0.public_url"), 'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS examination_and_treatment_url,
+    REPLACE((
+        SELECT JSON_VALUE(e.public_url)
+        FROM UNNEST(JSON_QUERY_ARRAY(customer.gpp)) AS e WITH OFFSET AS idx
+        WHERE JSON_VALUE(e.public_url) IS NOT NULL
+        ORDER BY idx
+        LIMIT 1
+    ), 'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS gpp_url,
+    REPLACE((
+        SELECT JSON_VALUE(e.public_url)
+        FROM UNNEST(JSON_QUERY_ARRAY(customer.licenses)) AS e WITH OFFSET AS idx
+        WHERE JSON_VALUE(e.public_url) IS NOT NULL
+        ORDER BY idx
+        LIMIT 1
+    ), 'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS license_url,
+    REPLACE((
+        SELECT JSON_VALUE(e.public_url)
+        FROM UNNEST(JSON_QUERY_ARRAY(customer.pharmacy_eligibility_license)) AS e WITH OFFSET AS idx
+        WHERE JSON_VALUE(e.public_url) IS NOT NULL
+        ORDER BY idx
+        LIMIT 1
+    ), 'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS pharmacy_eligibility_url,
+    REPLACE((
+        SELECT JSON_VALUE(e.public_url)
+        FROM UNNEST(JSON_QUERY_ARRAY(customer.gdp)) AS e WITH OFFSET AS idx
+        WHERE JSON_VALUE(e.public_url) IS NOT NULL
+        ORDER BY idx
+        LIMIT 1
+    ), 'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS gdp_url,
+    REPLACE((
+        SELECT JSON_VALUE(e.public_url)
+        FROM UNNEST(JSON_QUERY_ARRAY(customer.extra_props.gsp)) AS e WITH OFFSET AS idx
+        WHERE JSON_VALUE(e.public_url) IS NOT NULL
+        ORDER BY idx
+        LIMIT 1
+    ), 'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS gsp_url,
+    REPLACE((
+        SELECT JSON_VALUE(e.public_url)
+        FROM UNNEST(JSON_QUERY_ARRAY(customer.examination_and_treatment_license)) AS e WITH OFFSET AS idx
+        WHERE JSON_VALUE(e.public_url) IS NOT NULL
+        ORDER BY idx
+        LIMIT 1
+    ), 'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS examination_and_treatment_url,
     JSON_VALUE(customer.pharmacy_eligibility_license_info, "$.number") AS ddkkdd_license_number,
     FORMAT_DATE("%Y-%m-%d", SAFE.TIMESTAMP(JSON_VALUE(gpp_info, "$.date"))) AS GPP_issued_date
     , FORMAT_DATE("%Y-%m-%d", SAFE.TIMESTAMP(JSON_VALUE(gpp_info, "$.expiry_date"))) AS GPP_expired_date_internal
@@ -399,6 +448,7 @@ LEFT JOIN (
   QUALIFY ROW_NUMBER() OVER(PARTITION BY thuocsi_id) = 1 
 ) AS pos ON pos.thuocsi_id = customer.customer_id
 LEFT JOIN customer_segment_custom AS csc ON csc.customer_id = customer.customer_id
+LEFT JOIN sohaco_opella_customer AS soc ON soc.customer_id = customer.customer_id
 
 WHERE customer.name NOT LIKE '%test%'
 AND customer.name NOT LIKE '%TEST%'

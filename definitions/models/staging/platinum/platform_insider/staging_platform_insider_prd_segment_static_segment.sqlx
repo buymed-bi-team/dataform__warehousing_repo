@@ -1,0 +1,25 @@
+
+
+config {
+    type: "view",
+    name: "platform_insider_prd_segment_static_segment",
+    schema: "platinum_buymed_vn",
+    tags:["platform_insider_prd_segment"]
+}
+
+SELECT
+ * ,
+ CASE 
+    WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time,'Asia/Ho_Chi_Minh'))
+    ELSE "2099-01-01"
+  END AS created_date
+FROM ${source.silver}.platform_insider_prd_segment_static_segment o 
+ QUALIFY ROW_NUMBER() OVER (_window) = 1
+       AND FIRST_VALUE(action) OVER (_window) <> 'd'
+WINDOW
+  _window AS (
+  PARTITION BY
+    mg_id
+  ORDER BY
+    synced_at DESC,
+    last_updated_time DESC)

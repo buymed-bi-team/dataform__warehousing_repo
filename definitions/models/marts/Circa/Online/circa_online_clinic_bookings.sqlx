@@ -19,6 +19,15 @@ SELECT DISTINCT booking_id
                , DATETIME_ADD(o.created_time, INTERVAL 7 HOUR) AS created_time
                , DATE(DATETIME_ADD(o.created_time, INTERVAL 7 HOUR)) AS created_date
                , o.status
+                , CASE o.status
+                      WHEN 'PENDING'   THEN 'Chờ xác nhận'
+                      WHEN 'CONFIRMED' THEN 'Đã xác nhận'
+                      WHEN 'COMPLETED' THEN 'Đã đến khám'
+                      WHEN 'NO_SHOW'   THEN 'Không đến'
+                      WHEN 'REJECTED'  THEN 'Từ chối'
+                      WHEN 'CANCELLED' THEN 'Đã hủy'
+                      ELSE o.status
+                  END AS trang_thai
                --, account_id
                , JSON_VALUE(patient, '$.email') AS patient_email
                , JSON_VALUE(patient, '$.name') AS patient_name

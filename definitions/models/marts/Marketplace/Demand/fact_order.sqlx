@@ -101,10 +101,23 @@ WITH
   delivered_time AS (
     SELECT
         admin_id
+        , MIN(outbound_time) AS outbound_time  
         , MIN(delivered_time) AS delivered_time
     FROM  ${source.platinum}.warehouse_prd_core_delivery_order
     GROUP BY ALL
   ),
+
+  -- outbound as (
+  --     SELECT
+  --         LEFT(reference_code, GREATEST(STRPOS(reference_code, '-') - 1,0)) AS sale_order_code,
+  --         MIN(TIMESTAMP_ADD(TIMESTAMP_SECONDS(CAST(NULLIF(picked_time, 0) AS INT64)), INTERVAL 7 HOUR)) AS outbound_time
+  --     FROM ${source.platinum}.delivery_prd_transporting_shipping_order
+  --     WHERE 1=1
+  --           -- created_date BETWEEN DATE_SUB(DATE_TRUNC(CURRENT_DATE("+7"), MONTH), INTERVAL 15 MONTH) AND  CURRENT_DATE("+7")
+  --         AND reference_code LIKE 'SO%'
+  --         AND type = 'DELIVERY'
+  --     GROUP BY ALL
+  -- ),
 
   fact_order AS(
     SELECT
@@ -176,7 +189,8 @@ WITH
       r.feedback,
       DATETIME(TIMESTAMP(JSON_VALUE(a.extra_props, '$.cancel_time')),'Asia/Ho_Chi_Minh') AS cancel_time,
       DATETIME(TIMESTAMP(JSON_VALUE(a.extra_props, '$.completed_time')),'Asia/Ho_Chi_Minh') AS completed_time,
-      DATETIME(a.outbound_date, 'Asia/Ho_Chi_Minh') AS outbound_time,
+      -- DATETIME(a.outbound_date, 'Asia/Ho_Chi_Minh') AS outbound_time,
+      DATETIME(dt.outbound_time, 'Asia/Ho_Chi_Minh') AS outbound_time,
       JSON_VALUE(a.extra_props, "$.employee_id") AS employee_id,
       --For order which is created by an employee instead of customer (order_assist)
       DATETIME(a.delivery_date,'Asia/Ho_Chi_Minh') AS expected_delivery_time,
@@ -269,6 +283,8 @@ WITH
         ON da.order_id = a.order_id
       LEFT JOIN delivered_time AS dt 
         ON dt.admin_id = a.order_id
+      -- LEFT JOIN outbound AS oo 
+      --   ON oo.sale_order_code = a.sale_order_code
     WHERE
       a.status <> 'REVERTING' 
   ),

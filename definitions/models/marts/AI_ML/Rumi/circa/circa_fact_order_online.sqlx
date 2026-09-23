@@ -7,7 +7,34 @@ config {
 
 
 SELECT 
-   o.* EXCEPT (status, deliver_status, pos_status, price, total_price)
+   o.order_code
+    , o.customer_phone
+    , o.customer_name
+    , receiver_full_address
+    , o.payment_method
+    , o.deliver_method
+    , delivery_tags
+    , o.admin_note
+    , o.system_note
+    , o.is_split_payment
+    , o.wallet_paid_amount
+    , o.secondary_pay_method
+    , o.secondary_pay_amount
+   -- , total_product
+    , o.created_date
+    , o.created_time
+    , canceled_by_user_type
+    , o2o_status AS order_status
+    , assigned_pos_code
+    , assigned_pos_name
+    , tags
+    , affiliate_partner_code
+    , affiliate_partner_type
+    , distance_km
+    , delivery_carrier
+    , province_name
+    , district_name
+    , cancel_group
     -- , price AS or
     , SUM(oi.quantity * oi.price) AS revenue
     , SUM(oi.origin_price * oi.quantity) AS gmv

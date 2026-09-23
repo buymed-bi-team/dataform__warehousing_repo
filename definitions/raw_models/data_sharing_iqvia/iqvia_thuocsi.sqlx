@@ -112,7 +112,7 @@ WHERE 1=1
     AND NOT EXISTS (SELECT 1 FROM ${ref("fact_order")} AS o WHERE o.order_id = ob.order_id AND o.source = "clinic-portal")
     -- AND so.order_id IS NOT NULL
     AND oi.order_id IS NOT NULL
-    AND NOT (p.product_category_commercial = "Rx" AND c.business_scope = "DRUGSTORE" AND p.essential = "ESSENTIAL")
+    AND NOT (p.product_category_commercial = "Rx" AND c.business_scope = "DRUGSTORE" AND p.essential = "NON_ESSENTIAL")
     AND ob.outbound_quantity > 0
     AND COALESCE(c.business_scope, '') NOT IN ("CLINIC", "BEAUTY_SALON", "DENTISTRY")
     AND p.product_report_category <> "RECALLED"

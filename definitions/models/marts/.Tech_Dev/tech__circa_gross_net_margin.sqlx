@@ -25,6 +25,7 @@ SELECT
     , channel
     , SUM(gmv) gmv
     , SUM(voucher_circa) voucher_circa
+    , SUM(voucher_product) voucher_product
     , SUM(deal) deal
     , SUM(return_amount) return_amount
     , SUM(cogs_circa_return) cogs_circa_return
@@ -40,5 +41,6 @@ SELECT
     , refresh_at 
 FROM ${ref("gold_buymed_vn2", "circa_fact_net_margin")} o 
 LEFT JOIN ${ref("gold_buymed_vn2", "circa_dim_entity_client")} e ON o.client_id = e.client_id
+WHERE order_code <> 'DHC01184651' -- huyen.ngo hard_code, request by tri.dao
 GROUP BY ALL
  

@@ -5,12 +5,21 @@ config {
     tags: ["custom_1h_past10"]
 }
 WITH
-  base_data AS (
+  fact_order_product as (
+    select order_id,
+    product_id, 
+    safe_divide(sum(order_discount_product*quantity_po), sum(quantity_po)) as order_discount_product,
+    safe_divide(sum(order_discount_order*quantity_po), sum(quantity_po)) as order_discount_order
+    from ${ref("fact_fin_circa_order_item")}
+    group by all
+  )
+  , base_data AS (
   SELECT
     ro.return_order_code,
     ro.updated_date,
     ro.created_date,
     ro.completed_date,
+    ro.order_id,
     roi.return_order_id,
     roi.id AS item_id,
     roi.qr_code,
@@ -54,8 +63,8 @@ WITH
     FROM buymed_circa_v2.order_return_order_item roi
     LEFT JOIN buymed_circa_v2.order_order_apply_combo cb
     ON roi.order_apply_combo_id = cb.id
-    LEFT JOIN buymed_circa_v2.product_retail_unit ru
-    ON roi.unit_id = ru.id
+    left join buymed_circa_v2.product_master_retail_unit ru
+    on roi.product_id = ru.product_id and lower(roi.unit) = lower(ru.unit)
     INNER JOIN ${ref("fact_fin_circa_return")} ro
     ON roi.return_order_id = ro.return_order_id
     LEFT JOIN buymed_circa_v2.order_return_order_item_detail roid
@@ -96,7 +105,7 @@ clean_data as (
     AS unit_price_after_discount
   FROM
     clean_data )
-SELECT
+  , fact_return_item as (SELECT
   * 
   EXCEPT (
     order_apply_combo_id,
@@ -111,4 +120,12 @@ SELECT
   CASE
     WHEN order_apply_combo_id IS NOT NULL AND gift_code IS NULL THEN unit_price_before_discount - unit_price_after_discount ELSE 0 END AS combo_discount_amount,
 FROM
-  clean_system_price_data
+  clean_system_price_data)
+
+  select r.*,
+  order_discount_order,
+  order_discount_product
+  from fact_return_item r
+  left join fact_order_product o
+  on r.order_id = o.order_id 
+  and r.product_id = o.product_id

@@ -34,8 +34,8 @@ with cte_dedup_carrier as (
             a.mg_id
             , a.carrier_id
             , a.carrier_code
-            , a.carrier_name
-            , a.carrier_internal_name
+            , TRIM(a.carrier_name) AS carrier_name
+            , TRIM(a.carrier_internal_name) AS carrier_internal_name
             , timestamp_add(a.created_time, interval 7 hour) as carrier_created_at
             , timestamp_add(a.last_updated_time, interval 7 hour) as last_updated_at
             , a.active as carrier_system_active
@@ -47,25 +47,26 @@ with cte_dedup_carrier as (
             , case
                 when a.carrier_code IN ('HUBVSIPII', 'HUBBACNINH', 'HUBVSIPII_CHILD', 'HUBBACNINH_HN') THEN 'WAREHOUSE'
                 when a.carrier_code in ('LANGSON', 'CAOBANG','BACKAN','HAGIANG') then '1PL'
-                when a.carrier_code like 'HUB%' then '1PL'
-                when a.carrier_code like 'NVCT%' then '1PL'
-                when a.carrier_code like 'KTLS%' 	then '2PL'
+                when UPPER(TRIM(a.carrier_name)) like 'HUB%' then '1PL'
+                when UPPER(TRIM(a.carrier_name)) like 'NVCT%' then '1PL'
+                when UPPER(TRIM(a.carrier_name)) like 'NV CÔNG TY%' then '1PL'
+                when UPPER(TRIM(a.carrier_name)) like 'KTLS%' then '2PL'
                 else '3PL'
             end	as logistics_type
             , CASE
                 WHEN a.carrier_code IN ('HUBVSIPII', 'HUBBACNINH', 'HUBVSIPII_CHILD', 'HUBBACNINH_HN') THEN 'WAREHOUSE'
-                WHEN STRPOS(a.carrier_code, "HUB") > 0 AND a.carrier_name NOT IN ("Onwheel", "Viettel Post Miền Nam")
-                    -- OR a.carrier_name = "NVCT Hub VSIP II"
+                WHEN UPPER(TRIM(a.carrier_name)) LIKE 'HUB%' AND TRIM(a.carrier_name) NOT IN ("Onwheel", "Viettel Post Miền Nam")
+                    -- OR TRIM(a.carrier_name) = "NVCT Hub VSIP II"
                     OR a.carrier_code in ('LANGSON', 'CAOBANG','BACKAN','HAGIANG')
                     THEN "HUB"
-                WHEN (STRPOS(a.carrier_code, "NVCT") > 0 OR STRPOS(a.carrier_code, "NVTC") > 0)
-                    AND a.carrier_name NOT IN ("VTP Miền Bắc - PHS", "Viettel Post Miền Bắc")
+                WHEN (UPPER(TRIM(a.carrier_name)) LIKE 'NVCT%' OR UPPER(TRIM(a.carrier_name)) LIKE 'NV CÔNG TY%' OR STRPOS(a.carrier_code, "NVTC") > 0)
+                    AND TRIM(a.carrier_name) NOT IN ("VTP Miền Bắc - PHS", "Viettel Post Miền Bắc")
                     AND a.carrier_code <> "NVCTHUBVINHBAO"
                     THEN "NVCT"
-                WHEN STRPOS(a.carrier_name, "KTLS") > 0 THEN "KTLS"
+                WHEN UPPER(TRIM(a.carrier_name)) LIKE 'KTLS%' THEN "KTLS"
             END AS carrier_group
             , a.parent_code
-            , b.carrier_name as parent_carrier_name
+            , TRIM(b.carrier_name) as parent_carrier_name
         from cte_dedup_carrier as a
         left join cte_dedup_carrier as b on a.parent_code = b.carrier_code
     )

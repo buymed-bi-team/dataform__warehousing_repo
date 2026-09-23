@@ -12,29 +12,25 @@ with clean_data as (
       r.status,
       r.code,
       r.reason,
-      case when ri.is_increase is true then 'Increase'
-      when ri.is_increase is false then 'Decrease' end as type,
-      case when ri.is_increase is true then (1)
-      when ri.is_increase is false then (-1)
-      end as type_rate,
+      ia.type,
+      ia.convert_rate as type_rate,
       ri.product_id,
       ri.lot_id,
       ri.unit_id,
-      ru.unit,
-      ild.doc_code,
+      ri.unit_id as unit,
+      ia.doc_code,
+      ia.location_detail_id,
+      ia.location_type,
+      ia.location_name,
       safe_divide(ia.base_quantity, sum(ia.base_quantity) over (partition by ri.id)) * ri.quantity_change as quantity,
       safe_divide(ia.base_quantity, sum(ia.base_quantity) over (partition by ri.id)) * ri.base_quantity_change as base_quantity,
-      ild.cost_price_include_tax,
-      ild.cost_price_without_tax,
-    FROM lakehouse-prod-394907.buymed_circa_v2.inventory_change_quantity r
-    LEFT JOIN lakehouse-prod-394907.buymed_circa_v2.inventory_change_quantity_item ri
+      ia.cost_price_include_tax,
+      ia.cost_price_without_tax,
+    FROM buymed_circa_v2.inventory_change_quantity r
+    LEFT JOIN buymed_circa_v2.inventory_change_quantity_item ri
       ON r.id = ri.change_quantity_id
-    LEFT JOIN buymed_circa_v2.inventory_allocation ia
+    LEFT JOIN ${ref("gold_buymed_vn2","fact_fin_circa_inventory_allocation")} ia
     on ri.id = ia.item_ref_id
-    left join buymed_circa_v2.inventory_location_detail ild
-    on ia.location_detail_id = ild.id
-    left join buymed_circa_v2.product_retail_unit ru
-    on ri.unit_id = ru.id
     where 1=1 
     and ri.quantity_change is not null
  )

@@ -80,7 +80,9 @@ sum(net_revenue - cogs) as profit,
 sum(rebate) rebate,
 sum(net_revenue - cogs + rebate) as gross_profit,
 safe_divide(sum(net_revenue - cogs + rebate), sum(net_revenue)) gross_margin,
+sum(voucher_gift) voucher_gift,
 sum(net_revenue - cogs + rebate - voucher_gift) as net_profit,
 safe_divide(sum(net_revenue - cogs + rebate - voucher_gift), sum(net_revenue)) as net_margin
 from final
+where pos_code not in ( 'POS0084', 'POS0074','POS0076', 'POS0072','POS0010')
 group by all

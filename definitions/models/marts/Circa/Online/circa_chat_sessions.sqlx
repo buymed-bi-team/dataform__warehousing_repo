@@ -1,7 +1,7 @@
 config {
-    type: "table",
+    type: "incremental",
     description: `PIC: huyen.ngo; model_type: Table ;schedule: At minute 10 every 1 hour.Circa online order `,
-    tags: ['circa-chat'],
+    tags: ['custom_1h_past15'],
     name: "circa_chat_sessions",
     columns: {
 
@@ -13,18 +13,32 @@ config {
     }
 }
 
+js {
+    const start_date =
+        ` DATE_SUB(CURRENT_DATE(), INTERVAL 10 DAY) `
+    const end_date = ` CURRENT_DATE() `
+}
+pre_operations {
+  DELETE
+  FROM
+    ${self()}
+  WHERE
+    session_created_date >= ${start_date}
+}
+
+
 SELECT DISTINCT o.session_id
                 ,o.status -- AI/PHARM/CLOSED
-                ,o.created_at AS session_created_at
-                ,o.created_date AS session_created_date
-                ,o.updated_at AS session_updated_at
-                ,o.last_message_at AS session_last_updated_at
+                ,DATETIME(o.created_at , 'Asia/Ho_Chi_Minh') AS session_created_at
+                ,DATE(DATETIME(o.created_at , 'Asia/Ho_Chi_Minh')) AS session_created_date
+                ,DATETIME(o.updated_at , 'Asia/Ho_Chi_Minh') AS session_updated_at
+                ,DATETIME(o.last_message_at , 'Asia/Ho_Chi_Minh')  AS session_last_updated_at
                 ,o.user_id
                 ,JSON_VALUE(o.customer, '$.name')                                              AS customer_name
                 ,JSON_VALUE(o.customer, '$.address')                                            AS address
                 ,JSON_VALUE(o.customer, '$.phone')                                              AS phone
                 ,o.message_count
-                ,JSON_VALUE(o.analytics, '$.session_start')                                     AS session_start
+                ,DATETIME(TIMESTAMP(JSON_VALUE(o.analytics, '$.session_start')) , 'Asia/Ho_Chi_Minh')  AS session_start
                 ,o.last_intent
                 ,o.cart_session_id
                 ,o.conversation_summary
@@ -32,9 +46,11 @@ SELECT DISTINCT o.session_id
                 ,i.sender_type --customer/AI
                 ,i.content
                 ,i.content_type --text,...
-                ,i.created_at AS messages_created_at
+                ,DATETIME(i.created_at, 'Asia/Ho_Chi_Minh')  AS messages_created_at
+                ,DATE(DATETIME(i.created_at, 'Asia/Ho_Chi_Minh'))  AS messages_created_date
 FROM platinum_buymed_vn.circa_chat_chat_sessions o 
 LEFT JOIN platinum_buymed_vn.circa_chat_chat_messages i ON o.session_id = i.session_id
+WHERE o.created_date >=  ${when(incremental(), start_date, `'2026-02-01'`)}
 
 
 

@@ -190,7 +190,7 @@ WITH
   , chronic AS (
       SELECT
           SAFE_CAST(code AS INT64) AS product_id
-          , IF(UPPER(value) NOT IN ("CHRONIC", "ACUTE"), NULL, value) AS chronic
+          , IF(UPPER(TRIM(value)) NOT IN ("CHRONIC", "ACUTE"), NULL, TRIM(value)) AS chronic
       FROM ${source.collector}.data_prd
       WHERE DATE(submit_at) >= "2025-06-18"
           AND submit_id >= 5539
@@ -198,28 +198,19 @@ WITH
           AND type = "CHRONIC"
       QUALIFY ROW_NUMBER() over (PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
   )
-  
-  
-  -- , essential AS (
-  --     SELECT
-  --         SAFE_CAST(code AS INT64) AS product_id
-  --         , NULLIF(UPPER(value), "NAN") AS essential
-  --     FROM collector.data_prd
-  --     WHERE DATE(submit_at) >= "2025-06-18"
-  --         AND submit_id >= 5539
-  --         AND object = "Product"
-  --         AND type = "ESSENTIAL"
-  --     QUALIFY ROW_NUMBER() over (PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
-  -- )
-  
+    
   
   , cat_lieu AS (
       SELECT
           SAFE_CAST(code AS INT64) AS product_id
-          , NULLIF(UPPER(value), "NAN") AS thuoc_cat_lieu
+          , CASE
+              WHEN TRIM(value) IN ('YES', 'TRUE') THEN true
+              WHEN TRIM(value) IN ('NO', 'FALSE') THEN false
+              ELSE NULL
+          END AS thuoc_cat_lieu
       FROM collector.data_prd
-      WHERE DATE(submit_at) >= "2025-12-30"
-          AND submit_id >= 5900
+      WHERE DATE(submit_at) >= "2026-09-21"
+          AND submit_id >= 10374
           AND object = "Product"
           AND type = "THUOC_CAT_LIEU"
       QUALIFY ROW_NUMBER() over (PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
@@ -247,19 +238,19 @@ WITH
           AND object = "Product"
           AND type = "ATC3"
       QUALIFY ROW_NUMBER() over (PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
-  )
-
-  , sub_brand AS (
-      SELECT
-          SAFE_CAST(code AS INT64) AS product_id
-          , INITCAP(NULLIF(UPPER(value), "NAN")) AS sub_brand
-      FROM ${source.collector}.data_prd
-      WHERE DATE(submit_at) >= "2025-11-21"
-          AND submit_id >= 5818
-          AND object = "Product"
-          AND type = "SUB_BRAND"
-      QUALIFY ROW_NUMBER() over (PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
   ),
+
+--   , sub_brand AS (
+--       SELECT
+--           SAFE_CAST(code AS INT64) AS product_id
+--           , INITCAP(NULLIF(UPPER(value), "NAN")) AS sub_brand
+--       FROM ${source.collector}.data_prd
+--       WHERE DATE(submit_at) >= "2025-11-21"
+--           AND submit_id >= 5818
+--           AND object = "Product"
+--           AND type = "SUB_BRAND"
+--       QUALIFY ROW_NUMBER() over (PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
+--   ),
 
   user_type AS (
     SELECT
@@ -289,6 +280,22 @@ WITH
         AND  object = "Product"
         AND type = "PIC_BRAND_SELLER"
     QUALIFY ROW_NUMBER() OVER(PARTITION BY code, object, type ORDER BY submit_id DESC) = 1
+  ),
+
+  _cat2 AS (
+        SELECT
+            product_id
+            , category_name
+        FROM ${ref( "dim_product_category")} 
+        WHERE level = 1
+  ),
+
+  _cat3 AS (
+      SELECT
+          product_id
+          , efficacy_name
+      FROM ${ref( "dim_product_efficacy")} 
+      WHERE efficacy_level = 1
   )
 
 SELECT
@@ -303,7 +310,7 @@ SELECT
   product.vat,
   -- product.brand,
   br.brand,
-  sb.sub_brand,
+  INITCAP(sb.label) AS sub_brand,
   CASE JSON_VALUE(product.extra_props, "$.product_category_management") 
     WHEN "PORTFOLIO" THEN "BUYMED SELECTED"
     WHEN "MARKET_PLACE" THEN "HIGH MARGIN"
@@ -329,8 +336,8 @@ SELECT
 
 
   CASE
-      WHEN product.origin IN ('Vietnam', 'VN') THEN 'Vietnam'
-      WHEN product.origin NOT IN ('Vietnam', 'VN') THEN 'International'
+      WHEN product.origin IN ('Vietnam', 'VN', 'Việt Nam', 'Viet Nam') THEN 'Viet Nam'
+      ELSE 'International'
   END AS origin,
   CASE
     WHEN product.origin IN ('Vietnam', 'VN') THEN 'Local'
@@ -453,6 +460,8 @@ SELECT
         END
       WHEN product.seller_category_code IS NOT NULL THEN "Non-Drug"
   END AS product_category_commercial,
+  c2.category_name AS product_category_2,
+  c3.efficacy_name AS product_category_3,
 
   REGEXP_REPLACE(JSON_VALUE(product.image_urls, "$[0]"), r'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS product_image_url,
   ARRAY_LENGTH(JSON_VALUE_ARRAY(product.image_urls )) AS no_images,
@@ -460,7 +469,7 @@ SELECT
   ut.user_type,
   IF(product.product_id IN (1129214,1129202	,1127079	,1160685	,1160792, 825641, 1160581, 237266, 2556, 2006776, 13887, 11376, 7989, 8472, 90132, 4589, 56032, 5287, 212255, 71988, 2000031, 1824, 15102, 4307	), TRUE, FALSE) AS sales_rx_buymed
   , pbs.pic_brand_seller
-
+  , product.search_keyword
 
 FROM ${source.platinum}.marketplace_prd_product_v2_product AS product
 LEFT JOIN ${source.platinum}.seller_prd_core_seller AS seller on COALESCE(product.owner, "MEDX") = seller.code
@@ -484,9 +493,20 @@ LEFT JOIN chronic AS chronic ON chronic.product_id = product.product_id
 LEFT JOIN cat_lieu AS cl ON cl.product_id = product.product_id
 LEFT JOIN atc3 AS a3 ON a3.product_id = product.product_id
 LEFT JOIN atc4 AS a4 ON a4.product_id = product.product_id
-LEFT JOIN sub_brand AS sb ON sb.product_id = product.product_id
+-- LEFT JOIN sub_brand AS sb ON sb.product_id = product.product_id
 LEFT JOIN user_type AS ut ON ut.product_id = product.product_id
 LEFT JOIN pic_brand_seller AS  pbs ON LOWER(pbs.brand) = LOWER(br.brand)
+LEFT JOIN _cat2 AS c2 ON c2.product_id = product.product_id
+LEFT JOIN _cat3 AS c3 ON c3.product_id = product.product_id
+LEFT JOIN (
+    SELECT
+        value AS code
+        , JSON_VALUE(l, "$.label") AS label
+    FROM ${source.platinum}.pim_prd_product_attribute_definition_option
+        LEFT JOIN UNNEST(JSON_QUERY_ARRAY(labels)) AS l
+    WHERE attribute_code = "PRODUCT_SUB_BRAND"
+        AND JSON_VALUE(l, "$.language") = "vi"
+) AS sb ON sb.code = JSON_VALUE(product.extra_props, "$.sub_brand")
 
 WHERE
     LOWER(product.name) NOT LIKE '%(bỏ)%'

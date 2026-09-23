@@ -4,7 +4,7 @@ config {
   schema: "buying_agent_input",
   tags: ["AI_Buying_Agent"],
   uniqueKey: ["store_id","store_sku_id", "snapshot_date"],
-
+  protected: true,
   bigquery: {
     partitionBy: "snapshot_date",
     clusterBy: ["store_id","store_sku_id", "registration_number", "barcode"]
@@ -57,7 +57,7 @@ SELECT
   ,inv.qty_expiring_90d
   ,inv.avg_cost_price
   ,CAST(NULL AS DATE)         AS last_stocktake_date  
-  ,CURRENT_DATE('Asia/Ho_Chi_Minh')                           AS snapshot_date
+  ,CURRENT_DATE()                           AS snapshot_date
 FROM inv
 LEFT JOIN 
     (SELECT DISTINCT product_id, product_name, barcode, registration_number, ts_convert_rate FROM `gold_buymed_vn2.cos_dim_product` 
