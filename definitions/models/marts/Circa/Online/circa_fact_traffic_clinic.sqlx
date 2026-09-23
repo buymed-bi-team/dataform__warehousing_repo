@@ -4,7 +4,7 @@ config {
                   model_type: incremental ;
                   schedule: At minute 10 every 1 hour.
                   Lượt truy cập vào các trang phòng khám`,
-    tags: ['circa_online'],
+    tags: ['custom_1h_past20'],
     name: "circa_fact_traffic_clinic",
     columns: {
     
