@@ -1,0 +1,58 @@
+config {
+    type: "incremental",
+    description: `PIC: huyen.ngo; 
+                  model_type: incremental ;
+                  schedule: At minute 10 every 1 hour.
+                  Lượt truy cập vào các trang phòng khám`,
+    tags: ['circa_online'],
+    name: "circa_fact_traffic_clinic",
+    columns: {
+    
+       
+    },
+    bigquery: {
+        partitionBy: "event_date"
+
+    }
+}
+
+
+js {
+  const start_date = `DATE_SUB(CURRENT_DATE(), INTERVAL 10 DAY)`;
+  const start_suffix = `FORMAT_DATE('%Y%m%d', DATE_SUB(CURRENT_DATE(), INTERVAL 10 DAY))`;
+  const end_date = `CURRENT_DATE()`;
+}
+
+pre_operations {
+  ${when(
+    incremental(),
+    `
+    DELETE FROM ${self()}
+    WHERE SAFE_CAST(event_date AS DATE) >= ${start_date}
+    `,
+    `SELECT 1`
+  )}
+}
+
+WITH pv AS (
+  SELECT
+    PARSE_DATE('%Y%m%d', event_date) AS event_date,
+    user_pseudo_id,
+    (SELECT value.int_value    FROM UNNEST(event_params) WHERE key = 'ga_session_id') AS ga_session_id,
+    (SELECT value.int_value    FROM UNNEST(event_params) WHERE key = 'entrances')     AS entrances,
+    REGEXP_EXTRACT(
+      (SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'page_location'),
+      r'^https?://(?:www\.)?circa\.vn(/[^?#]*)'
+    ) AS page_path
+  FROM `lakehouse-prod-394907.analytics_460239240.events_*`
+  WHERE  _TABLE_SUFFIX >= ${when(incremental(),start_suffix, "'20260601'") }
+          AND event_name = 'page_view'          -- chỉ đếm lượt xem trang, tránh nhân bản do các event khác
+),
+clinic_pv AS (
+  SELECT
+    *,
+    UPPER(REGEXP_EXTRACT(page_path, r'(?i)-(CLN-\d+)/?$')) AS clinic_code
+  FROM pv
+  WHERE REGEXP_CONTAINS(page_path, r'(?i)^/phong-kham/.+-CLN-\d+/?$')   -- chỉ trang chi tiết phòng khám
+)
+SELECT * FROM clinic_pv
