@@ -17,7 +17,7 @@ SELECT
     , oi.actual_po_item_amount
     , oi.tax_rate
     , oi.unit
-    , oi.unit_price
+    , oi.unit_price_af_discount AS unit_price
     , oi.lot_date
     , oi.item_discount_amt
     , oi.name AS owner_name
