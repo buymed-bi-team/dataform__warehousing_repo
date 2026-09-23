@@ -130,7 +130,7 @@ function createIncremental_query({
         CURRENT_DATETIME() AS platinum_refresh
     FROM ${config.source_schema}.${config.tableName}
     WHERE key IN (SELECT o.key FROM over_tbl o)
-    ${ctx.incremental() ? `AND ingest_time > Ingest_checkpoint - INTERVAL 2 HOUR ${ignore_query}` : `${ignore_query}`}
+    ${ctx.incremental() ? `AND ingest_time > Ingest_checkpoint - INTERVAL 3 HOUR ${ignore_query}` : `${ignore_query}`}
 
     -- For stituation that key is dedup because of manual import
     QUALIFY ROW_NUMBER() OVER(w) = 1
