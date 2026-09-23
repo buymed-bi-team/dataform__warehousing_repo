@@ -90,7 +90,7 @@ pre_operations {
   FROM
     ${source.silver}.core_prd_file_manager_upload_base_64 s
     ${ when(incremental(), 
-      `WHERE s.ingest_time > Ingest_checkpoint - INTERVAL 2 HOUR
+      `WHERE s.ingest_time > Ingest_checkpoint - INTERVAL 3 HOUR
           -- AND s.ingest_time < TEMP_timestamp
           AND s.mg_id IN (SELECT mg_id FROM new_records) `, 
       // `WHERE ingest_time > "2025-01-01" AND ingest_time <= "2025-01-22T13:00:00"` 

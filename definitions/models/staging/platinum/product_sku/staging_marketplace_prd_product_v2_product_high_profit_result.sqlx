@@ -115,5 +115,5 @@ SELECT
 FROM silver_buymed_vn.marketplace_prd_product_v2_product_high_profit_result
 WHERE key IN (SELECT o.key FROM over_tbl o)
 ${when(incremental(),  `
-    AND ingest_time > Ingest_checkpoint - INTERVAL 2 HOUR
+    AND ingest_time > Ingest_checkpoint - INTERVAL 3 HOUR
     ` )}

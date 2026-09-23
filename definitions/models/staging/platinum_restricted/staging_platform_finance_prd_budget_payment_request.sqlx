@@ -116,5 +116,5 @@ SELECT
 FROM silver_buymed_vn_restricted.platform_finance_prd_budget_payment_request
 WHERE key IN (SELECT o.key FROM over_tbl o)
 ${when(incremental(),  `
-    AND ingest_time > Ingest_checkpoint - INTERVAL 2 HOUR
+    AND ingest_time > Ingest_checkpoint - INTERVAL 3 HOUR
     ` )}

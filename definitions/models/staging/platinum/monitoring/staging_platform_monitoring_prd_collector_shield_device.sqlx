@@ -114,5 +114,5 @@ SELECT
 FROM silver_buymed_vn.platform_monitoring_prd_collector_shield_device
 WHERE key IN (SELECT o.key FROM over_tbl o)
 ${when(incremental(),  `
-    AND ingest_time > Ingest_checkpoint - INTERVAL 2 HOUR
+    AND ingest_time > Ingest_checkpoint - INTERVAL 3 HOUR
     ` )}
