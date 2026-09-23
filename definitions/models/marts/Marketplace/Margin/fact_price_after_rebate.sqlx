@@ -53,6 +53,7 @@ SELECT
     TIMESTAMP_ADD(last_updated_time, INTERVAL 7 HOUR) AS last_updated_at,
     TIMESTAMP_ADD(ingest_time, INTERVAL 7 HOUR) AS ingest_at,
     product_id,
+    COALESCE(JSON_VALUE(a.extra_props, "$.seller_code"), "MEDX") AS seller_code,
     vendor_code,
     warehouse_code AS fc_code,
     CASE
