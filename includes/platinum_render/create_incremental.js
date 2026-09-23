@@ -1,23 +1,23 @@
 function createIncremental_preOps({
-    config,
-    ctx,
-    has_src_created_date = false,
-    ingestCutOffInterval = ``,
-    ignore_deletion = false,
-    ignore_query = ``
+  config,
+  ctx,
+  has_src_created_date = false,
+  ingestCutOffInterval = ``,
+  ignore_deletion = false,
+  ignore_query = ``,
 }) {
-    let preOperation = ``;
-    // let ignore_query =``;
-    if (ingestCutOffInterval != ``) {
-        ingestCutOffInterval = `WHERE created_date >= CURRENT_DATE() - ${ingestCutOffInterval}`
-    }
+  let preOperation = ``;
+  // let ignore_query =``;
+  if (ingestCutOffInterval != ``) {
+    ingestCutOffInterval = `WHERE created_date >= CURRENT_DATE() - ${ingestCutOffInterval}`;
+  }
 
-    // if (ignore_deletion == true) {
-    //     ignore_query== ``? ignore_query = `AND NOT (action = 'd' AND ingest_time BETWEEN '2026-04-19 17:00:00' AND '2026-04-26 17:00:00')`: ignore_query = `${ignore_query}`
-    // }
+  // if (ignore_deletion == true) {
+  //     ignore_query== ``? ignore_query = `AND NOT (action = 'd' AND ingest_time BETWEEN '2026-04-19 17:00:00' AND '2026-04-26 17:00:00')`: ignore_query = `${ignore_query}`
+  // }
 
-    if (ctx.incremental()) {
-        preOperation = `
+  if (ctx.incremental()) {
+    preOperation = `
         # Incremental
         DECLARE has_new_data BOOLEAN;
         DECLARE has_delete_data BOOLEAN;
@@ -77,20 +77,19 @@ function createIncremental_preOps({
             ;
         ELSE
             SET Ingest_checkpoint = TIMESTAMP("2099-01-01T00:00:00");
-        END IF ;`
-    }
-    return preOperation
+        END IF ;`;
+  }
+  return preOperation;
 }
 function createIncremental_query({
-    config,
-    ctx,
-    has_src_created_date = false,
-    ingestCutOffInterval = ``,
-    ignore_deletion = false,
-    ignore_query =``
+  config,
+  ctx,
+  has_src_created_date = false,
+  ingestCutOffInterval = ``,
+  ignore_deletion = false,
+  ignore_query = ``,
 }) {
-    
-    const selectQuery = `
+  const selectQuery = `
     WITH over_tbl AS (
         SELECT
             mg_id,
@@ -111,15 +110,19 @@ function createIncremental_query({
                 LIMIT 1
             )[0] action
         FROM ${config.source_schema}.${config.tableName}
-        ${ctx.incremental() ? `
-        WHERE ingest_time > Ingest_checkpoint - INTERVAL 2 HOUR
+        ${
+          ctx.incremental()
+            ? `
+        WHERE ingest_time > Ingest_checkpoint - INTERVAL 3 HOUR
         AND mg_id IN (SELECT n.mg_id FROM new_records n)
         ${ignore_query}
-        ` : `WHERE 1=1 ${ignore_query}`}
+        `
+            : `WHERE 1=1 ${ignore_query}`
+        }
         GROUP BY mg_id HAVING action != "d"
     )
     SELECT
-        * ${has_src_created_date ? `EXCEPT (created_date)` : `` },
+        * ${has_src_created_date ? `EXCEPT (created_date)` : ``},
         CASE
             WHEN ${config.createdTime} IS NOT NULL THEN DATE(DATETIME(${config.createdTime}, 'Asia/Ho_Chi_Minh'))
             ELSE DATE( '2099-01-01' )
@@ -138,52 +141,55 @@ function createIncremental_query({
         --IF (action='d',3, IF (action='u',2,1)) DESC,
         ${config.lastUpdatedTime} DESC
     )
-    `
-    return selectQuery;
+    `;
+  return selectQuery;
 }
 
 function createIncremental({
-    config, // read index
-    tags,
-    assertions = {},
-    has_src_created_date = false,
-    disabled = false,
-    ingestCutOffInterval = ``,
-    ignore_deletion = false,
-    ignore_query =``
+  config, // read index
+  tags,
+  assertions = {},
+  has_src_created_date = false,
+  disabled = false,
+  ingestCutOffInterval = ``,
+  ignore_deletion = false,
+  ignore_query = ``,
 }) {
-    if (ignore_deletion == true) {
-        ignore_query== ``? ignore_query = `AND NOT (action = 'd' AND ingest_time BETWEEN '2026-04-19 17:00:00' AND '2026-04-26 17:00:00')`: ignore_query = `${ignore_query}`
-    }
-    return publish(config.tableName, {
-        type: "incremental",
-        description: config.description,
-        schema: config.target_schema,
-        tags,
-        assertions,
-        disabled,
-        protected: config.is_protected,
-        bigquery: config.bigquery,
-    }).preOps(
-        ctx => createIncremental_preOps({
-            config,
-            ctx,
-            has_src_created_date,
-            ingestCutOffInterval,
-            ignore_deletion,
-            ignore_query
-        })
-    ).query (
-        ctx => createIncremental_query({
-            config,
-            ctx,
-            has_src_created_date,
-            ingestCutOffInterval,
-            ignore_deletion,
-            ignore_query
-        })
+  if (ignore_deletion == true) {
+    ignore_query == ``
+      ? (ignore_query = `AND NOT (action = 'd' AND ingest_time BETWEEN '2026-04-19 17:00:00' AND '2026-04-26 17:00:00')`)
+      : (ignore_query = `${ignore_query}`);
+  }
+  return publish(config.tableName, {
+    type: "incremental",
+    description: config.description,
+    schema: config.target_schema,
+    tags,
+    assertions,
+    disabled,
+    protected: config.is_protected,
+    bigquery: config.bigquery,
+  })
+    .preOps((ctx) =>
+      createIncremental_preOps({
+        config,
+        ctx,
+        has_src_created_date,
+        ingestCutOffInterval,
+        ignore_deletion,
+        ignore_query,
+      }),
     )
+    .query((ctx) =>
+      createIncremental_query({
+        config,
+        ctx,
+        has_src_created_date,
+        ingestCutOffInterval,
+        ignore_deletion,
+        ignore_query,
+      }),
+    );
 }
 
 module.exports = { createIncremental };
-
