@@ -101,7 +101,7 @@ WITH over_tbl AS (
         )[0] action
     FROM silver_buymed_vn.platform_insider_prd_popup_popup_view
     ${when(incremental(),  `
-    WHERE ingest_time > Ingest_checkpoint - INTERVAL 2 HOUR
+    WHERE ingest_time > Ingest_checkpoint - INTERVAL 3 HOUR
     AND mg_id IN (SELECT n.mg_id FROM new_records n)
     ` )}
     GROUP BY mg_id HAVING action != "d"

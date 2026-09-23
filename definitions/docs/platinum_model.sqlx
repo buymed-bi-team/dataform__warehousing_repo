@@ -80,7 +80,7 @@ pre_operations {
                     COUNTIF(action = 'd') > 0, TRUE, FALSE
                 ) AS has_deleted
             FROM ${source.silver}.accounting_prd_invoice_order_invoice
-            WHERE ingest_time > Ingest_checkpoint - INTERVAL 2 HOUR
+            WHERE ingest_time > Ingest_checkpoint - INTERVAL 3 HOUR
         );
 
         IF ( has_new_data = TRUE ) THEN
