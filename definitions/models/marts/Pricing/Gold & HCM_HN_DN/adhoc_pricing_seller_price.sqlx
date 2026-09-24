@@ -27,7 +27,8 @@ with
         FROM ${source.platinum}.marketplace_prd_product_v2_product_fee_config
         WHERE 1=1
             AND location_code IN ('MIENNAM', 'MIENBAC')
-        QUALIFY ROW_NUMBER() over (PARTITION BY product_id, location_code ORDER BY index DESC) = 1 AND DATE(index) <= CURRENT_DATE
+        AND DATE(IFNULL(DATE(SAFE.PARSE_TIMESTAMP("%F %T", from_time_index)), created_date)) <= CURRENT_DATE
+    QUALIFY ROW_NUMBER() over (PARTITION BY product_id, location_code ORDER BY index DESC) = 1
     ),
 
     combo AS (
