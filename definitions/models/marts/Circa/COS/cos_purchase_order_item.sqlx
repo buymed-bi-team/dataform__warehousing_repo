@@ -12,6 +12,7 @@ config {
     }
 }
 
+WITH base_data AS (
 SELECT DISTINCT
         TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                                                               AS transformed_at
        ,DATETIME_ADD(c.created_at, INTERVAL 7 HOUR)                                                                       AS created_at
@@ -26,40 +27,36 @@ SELECT DISTINCT
                 WHEN b.quantity <> 0 THEN b.quantity
                 ELSE b.received_quantity
             END
-        ,a.quantity)                                                                                                      AS quantity
-       ,b.received_quantity
-       ,b.received_quantity - COALESCE(x.quantity,0)                                                                      AS actual_quantity
-       ,b.base_quantity
-       ,(b.received_quantity - COALESCE(x.quantity,0)  )  * rt.convert_rate                                               AS actual_base_quantity
+        ,a.quantity)                                                                                                      AS quantity -- Số lượng đặt 
+       ,b.received_quantity -- số lượng nhận
+       ,b.received_quantity - COALESCE(x.quantity,0)                                                                      AS actual_quantity -- số lượng thực (đã trừ trả hàng)
+       --,b.base_quantity  -- Base_quantity nhận
+       ,(b.received_quantity - COALESCE(x.quantity,0)  )  * rt.convert_rate                                               AS actual_base_quantity -- base_quantity nhận, đã trừ trả hàng
        ,CASE
             WHEN b.tax_rate <= 0 THEN 0
             ELSE b.tax_rate
         END                                                                                                               AS tax_rate
        ,a.unit_price
-       ,ROUND(a.unit_price - coalesce(b.discount_amount/NULLIF(b.received_quantity, 0)))                                  AS unit_price_af_discount
+       ,a.cost_unit_price                                                                                                 AS unit_price_af_discount -- giá sau deal+voucher
        ,a.unit
        ,a.unit_id
-       ,b.received_quantity * a.unit_price                                                                                AS PO_item_amount
-      ,(b.received_quantity - COALESCE(x.quantity,0)  ) * a.unit_price                                                      AS actual_po_item_amount --tiền hàng actual, đã trừ trả hàng, trước khuyến mãi 
+       ,(b.received_quantity - COALESCE(x.quantity,0)  ) * a.unit_price                                                    AS po_item_amount --tiền hàng actual, đã trừ trả hàng, trước khuyến mãi 
+       ,(b.received_quantity - COALESCE(x.quantity,0)  ) * a.cost_unit_price                                               AS actual_po_item_amount --tiền hàng actual, đã trừ trả hàng, trước khuyến mãi 
        ,b.lot_date
-       ,a.product_id || "_" || b.lot_date                                                                                   AS product_lot_date
-       ,a.sku || "_" || b.lot_date || "_" || b.tax_rate                                                                     AS sku_lotdate_vat
+      --  ,a.product_id || "_" || b.lot_date                                                                                   AS product_lot_date
+      --  ,a.sku || "_" || b.lot_date || "_" || b.tax_rate                                                                     AS sku_lotdate_vat
        ,il.location_type
-
-       ,ROUND((b.discount_amount/NULLIF(b.received_quantity, 0)) *  (b.received_quantity - COALESCE(x.quantity,0) ) )        AS item_discount_amt -- tổng số tiền khuyến mãi actual của sản phẩm , đã trừ trả hàng
-       ,c.code || "_" || a.sku || "_" || b.lot_date || "_" || b.tax_rate                                                    AS item_src_po_code
+       ,(a.unit_price - a.cost_unit_price) * (b.received_quantity - COALESCE(x.quantity,0))                                 AS item_discount_amt -- tổng số tiền khuyến mãi actual của sản phẩm , đã trừ trả hàng
+      --  ,c.code || "_" || a.sku || "_" || b.lot_date || "_" || b.tax_rate                                                    AS item_src_po_code
        ,a.seller_code
        ,eo.name
        ,c.distributor_id
-       ,dis.name                                                                                                          AS Vendor  -- 
+       ,dis.name                                                                                                          AS vendor  -- 
        ,c.client_id
        ,CONCAT(a.product_id, "_", c.client_id)                                                                            AS product_client_id
        ,rt.convert_rate
-       ,b.received_quantity * rt.convert_rate                                                                             AS base_qty_received
-       ,c.fulfillment_method                                                                                              AS Channel
-       ,p.code
+       ,c.fulfillment_method                                                                                              AS channel
        ,p.code AS pos_code
-       ,CONCAT(a.product_id, "_", p.code) AS product_pos_code
 FROM ${source.circa_os}.order_purchase_order_item AS a
 LEFT JOIN ${source.circa_os}.order_purchase_order AS c ON a.purchase_order_id = c.id
 LEFT JOIN ${source.circa_os}.order_po_item_detail AS b ON a.id = b.po_item_id
@@ -83,8 +80,12 @@ LEFT JOIN ${source.circa_os}.inventory_location AS il ON b.location_id = il.id A
 LEFT JOIN ${source.circa_os}.entity_owner AS eo ON a.seller_code = eo.seller_code AND c.client_id = eo.client_id
 LEFT JOIN ${source.circa_os}.entity_distributor AS dis ON c.distributor_id = dis.id AND c.client_id = dis.client_id
 LEFT JOIN ${source.ref}.circa_pos_profile AS p ON c.pos_id = p.id AND c.client_id = p.client_id
-LEFT JOIN gold_buymed_vn2.circa_dim_retail_unit AS rt ON a.unit = rt.convert_unit
+LEFT JOIN gold_buymed_vn2.circa_dim_retail_unit AS rt ON LOWER(a.unit) = LOWER(rt.convert_unit)
                                                       AND a.product_id = rt.product_id
                                                     --  AND c.client_id = rt.client_id
 WHERE p.id IS NOT NULL
 GROUP BY ALL
+)
+SELECT *
+       , quantity * COALESCE(convert_rate, 1) AS base_quantity
+FROM base_data
