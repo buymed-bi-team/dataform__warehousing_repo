@@ -28,7 +28,7 @@ with
         WHERE 1=1
             AND location_code IN ('MIENNAM', 'MIENBAC')
         AND DATE(IFNULL(DATE(SAFE.PARSE_TIMESTAMP("%F %T", from_time_index)), created_date)) <= CURRENT_DATE
-    QUALIFY ROW_NUMBER() over (PARTITION BY product_id, location_code ORDER BY index DESC) = 1
+        QUALIFY ROW_NUMBER() over (PARTITION BY product_id, location_code ORDER BY index DESC) = 1
     ),
 
     combo AS (
