@@ -296,6 +296,26 @@ WITH
           , efficacy_name
       FROM ${ref( "dim_product_efficacy")} 
       WHERE efficacy_level = 1
+  ),
+
+  suggested_retail_price AS (
+    SELECT
+      product_id
+      , retail_price
+    FROM ${source.platinum}.marketplace_prd_product_v2_ops_retail_price
+    WHERE province_code = 'ALL' AND region_code = 'ALL'
+    QUALIFY ROW_NUMBER() OVER(PARTITION BY product_id ORDER BY created_time DESC) = 1
+  ),
+
+  substitute_note AS (
+    SELECT
+        SAFE_CAST(code AS INT64) AS product_id
+        , value AS substitute_note
+    FROM collector.data_prd
+    WHERE DATE(submit_at) >= '2026-09-25'
+        AND object = 'Product'
+        AND type = "SUBSTITUTE_NOTE"
+    QUALIFY ROW_NUMBER() OVER (PARTITION BY product_id ORDER BY submit_id DESC) =1
   )
 
 SELECT
@@ -439,6 +459,7 @@ SELECT
   IFNULL(product.is_combo,FALSE) AS is_combo,
   hmp.high_margin,
   COALESCE(rp.retail_price, SAFE_CAST(JSON_VALUE(product.retail_info.retail_ref_price) AS FLOAT64)) AS retail_price,
+  srt.retail_price AS suggested_retail_price,
   op.ownbrand_portfolio,
   chronic.chronic AS chronic,
 --   IF(
@@ -470,7 +491,8 @@ SELECT
   IF(product.product_id IN (1129214,1129202	,1127079	,1160685	,1160792, 825641, 1160581, 237266, 2556, 2006776, 13887, 11376, 7989, 8472, 90132, 4589, 56032, 5287, 212255, 71988, 2000031, 1824, 15102, 4307	), TRUE, FALSE) AS sales_rx_buymed
   , pbs.pic_brand_seller
   , product.search_keyword
-
+  , sn.substitute_note
+  
 FROM ${source.platinum}.marketplace_prd_product_v2_product AS product
 LEFT JOIN ${source.platinum}.seller_prd_core_seller AS seller on COALESCE(product.owner, "MEDX") = seller.code
 LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_seller_category AS seller_category ON seller_category.code = product.seller_category_code
@@ -507,6 +529,8 @@ LEFT JOIN (
     WHERE attribute_code = "PRODUCT_SUB_BRAND"
         AND JSON_VALUE(l, "$.language") = "vi"
 ) AS sb ON sb.code = JSON_VALUE(product.extra_props, "$.sub_brand")
+LEFT JOIN suggested_retail_price AS srt ON srt.product_id = product.product_id
+LEFT JOIN substitute_note AS sn ON sn.product_id = product.product_id
 
 WHERE
     LOWER(product.name) NOT LIKE '%(bỏ)%'
