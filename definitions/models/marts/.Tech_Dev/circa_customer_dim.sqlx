@@ -3,7 +3,7 @@ config {
     description: `circa_customer_dim
                   PIC: huyen.ngo ; 
                   model_type: Table ;
-                  schedule: `
+                  schedule: `, 
     schema: "buymed_tech",
     name: "circa_customer_dim",
 }
