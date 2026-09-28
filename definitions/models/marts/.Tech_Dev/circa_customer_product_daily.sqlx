@@ -23,7 +23,7 @@ WITH item_daily AS (
     AND o.status = 'COMPLETED'
     AND o.type IN ('ONLINE', 'OFFLINE')
     AND o.entity_id IS NOT NULL
-    AND o.entity_id <> '00000000-0000-0000-0000-000000000000'
+    AND o.entity_id NOT IN ( '00000000-0000-0000-0000-000000000000', '00000000-0000-0000-0000-000000000001')
     AND (oi.gift_code = '' OR oi.gift_code IS NULL)
     AND oi.is_service_item = false
     AND oi.seller_code <> 'CIRCA_MKP'
