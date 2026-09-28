@@ -1,0 +1,84 @@
+config {
+    type: "table",
+    description: `circa_customer_order_daily
+                  PIC: huyen.ngo ; 
+                  model_type: Table ;
+                  schedule: `, 
+    schema: "buymed_tech",
+    name: "circa_customer_order_daily",
+}
+
+WITH pos AS (
+  SELECT
+    id
+    , code
+  FROM `buymed_circa_v2.entity_pos_profile`
+  WHERE created_date >= '2000-01-01'
+  QUALIFY ROW_NUMBER() OVER (PARTITION BY id ORDER BY sync_at DESC) = 1
+)
+
+, voucher_order AS (
+  SELECT DISTINCT
+    order_id
+  FROM `buymed_circa_v2.order_order_voucher`
+  WHERE created_date >= '2000-01-01'
+)
+
+, order_daily AS (
+  SELECT
+    o.entity_id                                                         AS customer_id
+    , DATE(COALESCE(o.completed_at, o.created_at), 'Asia/Ho_Chi_Minh')  AS order_date
+    , o.type                                                            AS channel
+    , o.pos_id
+    , o.client_id
+    , COUNT(DISTINCT o.id)                                              AS orders
+    , COUNT(DISTINCT v.order_id)                                        AS orders_with_voucher
+    , SUM(o.total_amount)                                               AS amount
+  FROM `buymed_circa_v2.order_order` o
+  LEFT JOIN voucher_order v ON v.order_id = o.id
+  WHERE o.created_date >= '2000-01-01'
+    AND o.status = 'COMPLETED'
+    AND o.type IN ('ONLINE', 'OFFLINE')
+    AND o.entity_id IS NOT NULL
+  GROUP BY ALL
+)
+
+, return_daily AS (
+
+  SELECT
+    o.entity_id                                                         AS customer_id
+    , DATE(COALESCE(o.completed_at, o.created_at), 'Asia/Ho_Chi_Minh')  AS order_date
+    , o.type                                                            AS channel
+    , o.pos_id
+    , o.client_id
+    , COUNT(DISTINCT r.id)                                              AS returns
+    , SUM(r.total_amount)                                               AS return_amount
+  FROM `buymed_circa_v2.order_return_order` r
+  INNER JOIN `buymed_circa_v2.order_order` o ON  o.id = r.origin_order_id
+                                           AND o.created_date >= '2000-01-01'
+  WHERE r.created_date >= '2000-01-01'
+    AND r.status = 'COMPLETED'
+    AND o.status = 'COMPLETED'
+    AND o.type IN ('ONLINE', 'OFFLINE')
+    AND o.entity_id IS NOT NULL
+  GROUP BY ALL
+)
+
+SELECT
+  od.customer_id                        
+  , od.order_date                       
+  , od.channel                          
+  , p.code                              AS pos_code
+  , od.client_id                        
+  , od.orders                           
+  , od.orders_with_voucher              
+  , od.amount                           
+  , IFNULL(rd.returns, 0)               AS returns
+  , IFNULL(rd.return_amount, 0)         AS return_amount
+FROM order_daily od
+LEFT JOIN return_daily rd ON  rd.customer_id = od.customer_id
+  AND rd.order_date  = od.order_date
+  AND rd.channel     = od.channel
+  AND rd.pos_id      = od.pos_id
+  AND rd.client_id   = od.client_id
+LEFT JOIN pos p ON p.id = od.pos_id
