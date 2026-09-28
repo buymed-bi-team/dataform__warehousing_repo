@@ -5,7 +5,7 @@ config {
         Customer information, address, tax code in the invoice for each order;
         PIC: nguyen.tran; 
         Type: Table; 
-        Refresh Schedule: daily at 8h30, 10h30, 12h30, 15h30, 18h00;
+        Refresh Schedule: Hourly;
         Source: 
             ${source.platinum}.accounting_prd_invoice_order,
             ${source.platinum}.accounting_prd_invoice_order_invoice
@@ -21,9 +21,10 @@ config {
 SELECT
     io.order_id
     , io.customer_request AS invoice_request
-    , io.customer_tax_code
-    , io.customer_name AS invoice_name
-    , io.customer_address AS invoice_address
+    , COALESCE(ioi.buyer_name, io.buyer_name) AS buyer_name
+    , COALESCE(ioi.customer_tax_code, io.customer_tax_code) AS customer_tax_code
+    , COALESCE(ioi.customer_name, io.customer_name) AS invoice_name
+    , COALESCE(ioi.customer_address, io.customer_address) AS invoice_address
     , CASE 
         WHEN io.customer_request = true THEN 'Có lấy hóa đơn'
         WHEN io.customer_request = false THEN 'Không yêu cầu xuất hóa đơn' 
@@ -34,7 +35,8 @@ SELECT
     , TIMESTAMP_ADD( COALESCE(ioi.arising_time, ioi.created_time), interval 7 hour) AS invoice_time
     , ioi.customer_id
     , STRING(JSON_QUERY_ARRAY(ioi.invoice_data)[SAFE_OFFSET(0)].invoice_no) AS invoice_number
-    , REGEXP_REPLACE(STRING(ARRAY_REVERSE(JSON_QUERY_ARRAY(ioi.invoice_data))[SAFE_OFFSET(0)].pdf_url), 'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS invoice_url
+    , REGEXP_REPLACE(STRING(JSON_QUERY_ARRAY(ioi.invoice_data)[SAFE_OFFSET(0)].pdf_url), 'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS invoice_url
+    , SAFE_CAST(COALESCE(JSON_VALUE(ioi.extra_props, '$.is_shadow_invoice'), 'false') AS BOOLEAN) AS is_shadow_invoice
 FROM ${source.platinum}.accounting_prd_invoice_order AS io
     LEFT JOIN ${source.platinum}.accounting_prd_invoice_order_invoice AS ioi
         USING(order_id)
@@ -42,6 +44,6 @@ FROM ${source.platinum}.accounting_prd_invoice_order AS io
         USING(order_id)
 WHERE 1=1
   AND fo.order_status <> "CANCEL"
-  AND io.created_date >= "2024-01-01"
-  AND ioi.created_date >= "2024-01-01"
-  AND DATE(fo.created_at) >= "2024-01-01"
+  AND io.created_date >= "2025-01-01"
+  AND ioi.created_date >= "2025-01-01"
+  AND DATE(fo.created_at) >= "2025-01-01"
