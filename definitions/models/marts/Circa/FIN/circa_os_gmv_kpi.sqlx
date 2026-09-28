@@ -32,8 +32,8 @@ WITH
     GROUP BY ALL),
     fact_order_affiliate AS (
     SELECT
-      affiliate_pos_code,
-      affiliate_pos_name,
+      IF(f.completed_date < "2026-09-01", pos_code, affiliate_pos_code) affiliate_pos_code, -- CHANGE ON SEP
+      IF(f.completed_date < "2026-09-01", pos_name, affiliate_pos_name) affiliate_pos_name, -- CHANGE ON SEP
       order_code,
       dim_calendar.date,
       dim_calendar.month,
