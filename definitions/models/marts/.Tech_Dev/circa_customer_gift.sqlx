@@ -6,6 +6,9 @@ config {
                   schedule: `, 
     schema: "buymed_tech",
     name: "circa_customer_gift",
+    bigquery: {
+        partitionBy: "DATE(first_received_at)"
+    }
 }
 
 WITH gift_receive AS (
@@ -33,6 +36,7 @@ SELECT
   , ARRAY_AGG(gift_item_type IGNORE NULLS ORDER BY order_ts DESC LIMIT 1)[SAFE_OFFSET(0)] AS gift_item_type 
   , TIMESTAMP_ADD(MIN(order_ts), INTERVAL 7 HOUR)                                     AS first_received_at  
   , TIMESTAMP_ADD(MAX(order_ts), INTERVAL 7 HOUR)                                     AS last_received_at   
-  , COUNT(DISTINCT order_id)                                                          AS times_received     
+  , COUNT(DISTINCT order_id)                                                          AS times_received   
+  , DATETIME(CURRENT_TIMESTAMP(),  'Asia/Ho_Chi_Minh') AS refresh_at  
 FROM gift_receive
 GROUP BY ALL

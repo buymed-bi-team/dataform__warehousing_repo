@@ -75,6 +75,7 @@ SELECT
   , od.amount                           
   , IFNULL(rd.returns, 0)               AS returns
   , IFNULL(rd.return_amount, 0)         AS return_amount
+  , DATETIME(CURRENT_TIMESTAMP(),  'Asia/Ho_Chi_Minh') AS refresh_at  
 FROM order_daily od
 LEFT JOIN return_daily rd ON  rd.customer_id = od.customer_id
   AND rd.order_date  = od.order_date

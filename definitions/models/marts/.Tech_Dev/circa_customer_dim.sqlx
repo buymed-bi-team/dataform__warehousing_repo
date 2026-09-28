@@ -71,7 +71,7 @@ SELECT
   , IFNULL(oa.lifetime_orders_offline, 0)                   AS lifetime_orders_offline 
   , IFNULL(ra.lifetime_returns, 0)                          AS lifetime_returns        
   , IFNULL(ra.lifetime_return_amount, 0)                    AS lifetime_return_amount  
-  ,TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS refresh_at
+  , DATETIME(CURRENT_TIMESTAMP(),  'Asia/Ho_Chi_Minh') AS refresh_at
 FROM customer c
 LEFT JOIN order_agg oa ON oa.entity_id = c.customer_id
 LEFT JOIN return_agg ra ON ra.entity_id = c.customer_id
