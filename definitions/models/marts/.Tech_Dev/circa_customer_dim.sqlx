@@ -20,9 +20,8 @@ SELECT
   , c.gender
   , JSON_VALUE_ARRAY(c.tags)        AS tags
 FROM buymed_circa_v2.entity_customer c
-WHERE c.created_date >= '2020-01-01'
-  AND c.deleted_at IS NULL
-QUALIFY ROW_NUMBER() OVER (PARTITION BY c.id ORDER BY c.sync_at DESC) = 1
+WHERE c.deleted_at IS NULL
+QUALIFY ROW_NUMBER() OVER (PARTITION BY c.id ORDER BY c.created_at DESC) = 1
 )
 , order_agg AS (
   SELECT
@@ -34,8 +33,7 @@ QUALIFY ROW_NUMBER() OVER (PARTITION BY c.id ORDER BY c.sync_at DESC) = 1
     , COUNTIF(o.type = 'ONLINE')                   AS lifetime_orders_online
     , COUNTIF(o.type = 'OFFLINE')                  AS lifetime_orders_offline
   FROM buymed_circa_v2.order_order o
-  WHERE o.created_date >= '2000-01-01'         
-    AND o.status = 'COMPLETED'
+  WHERE o.status = 'COMPLETED'
     AND o.type IN ('ONLINE', 'OFFLINE')
     AND o.entity_id NOT IN ( '00000000-0000-0000-0000-000000000000', '00000000-0000-0000-0000-000000000001')
   GROUP BY o.entity_id
@@ -46,8 +44,7 @@ QUALIFY ROW_NUMBER() OVER (PARTITION BY c.id ORDER BY c.sync_at DESC) = 1
     , COUNT(*)             AS lifetime_returns
     , SUM(r.total_amount)  AS lifetime_return_amount
   FROM buymed_circa_v2.order_return_order r
-  WHERE r.created_date >= '2000-01-01'
-    AND r.status = 'COMPLETED'
+  WHERE r.status = 'COMPLETED'
     AND r.entity_id NOT IN ( '00000000-0000-0000-0000-000000000000', '00000000-0000-0000-0000-000000000001')
   GROUP BY r.entity_id
 )
