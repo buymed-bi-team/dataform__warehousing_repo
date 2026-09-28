@@ -37,7 +37,7 @@ QUALIFY ROW_NUMBER() OVER (PARTITION BY c.id ORDER BY c.sync_at DESC) = 1
   WHERE o.created_date >= '2000-01-01'         
     AND o.status = 'COMPLETED'
     AND o.type IN ('ONLINE', 'OFFLINE')
-    AND o.entity_id IS NOT NULL
+    AND o.entity_id NOT IN ( '00000000-0000-0000-0000-000000000000', '00000000-0000-0000-0000-000000000001')
   GROUP BY o.entity_id
 )
 , return_agg AS (
@@ -49,6 +49,7 @@ QUALIFY ROW_NUMBER() OVER (PARTITION BY c.id ORDER BY c.sync_at DESC) = 1
   WHERE r.created_date >= '2000-01-01'
     AND r.status = 'COMPLETED'
     AND r.entity_id IS NOT NULL
+      AND o.entity_id NOT IN ( '00000000-0000-0000-0000-000000000000', '00000000-0000-0000-0000-000000000001')
   GROUP BY r.entity_id
 )
 
