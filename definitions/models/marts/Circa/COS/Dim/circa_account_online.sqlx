@@ -21,6 +21,8 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR)                      
        ,gender
        ,JSON_VALUE(extra_props, '$.registration_device') AS registration_device
        ,JSON_VALUE(extra_props, '$.registration_source') AS registration_source
+       ,DATE(SAFE.PARSE_TIMESTAMP('%Y-%m-%dT%H:%M:%E*SZ'
+                                    ,JSON_VALUE(extra_props, '$.date_of_birth')))      AS date_of_birth
        ,DATETIME_ADD(created_time, INTERVAL 7 HOUR)                                  AS created_time
        ,DATE(DATETIME_ADD(created_time, INTERVAL 7 HOUR))                            AS created_date
        ,DATETIME_ADD(last_updated_time, INTERVAL 7 HOUR)                             AS last_updated_time
