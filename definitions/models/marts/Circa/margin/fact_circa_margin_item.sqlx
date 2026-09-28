@@ -50,6 +50,7 @@ WITH
     doc_code, 
     fulfillment_method, 
     owner_name,
+    i.unit,
     dim_product.base_unit,
     unit_price, 
     is_deal_1k,  
