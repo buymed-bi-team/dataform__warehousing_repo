@@ -6,7 +6,11 @@ config {
                   schedule: `, 
     schema: "buymed_tech",
     name: "circa_customer_dim",
+    bigquery: {
+        partitionBy: "date(customer_created_at)"
+    }
 }
+
 
 WITH customer AS (
 SELECT

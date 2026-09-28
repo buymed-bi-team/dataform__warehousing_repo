@@ -6,6 +6,9 @@ config {
                   schedule: `, 
     schema: "buymed_tech",
     name: "circa_customer_order_daily",
+    bigquery: {
+        partitionBy: "order_date"
+    }
 }
 
 WITH pos AS (
@@ -13,7 +16,6 @@ WITH pos AS (
     id
     , code
   FROM `buymed_circa_v2.entity_pos_profile`
-  WHERE created_date >= '2000-01-01'
   QUALIFY ROW_NUMBER() OVER (PARTITION BY id ORDER BY sync_at DESC) = 1
 )
 
@@ -21,7 +23,6 @@ WITH pos AS (
   SELECT DISTINCT
     order_id
   FROM `buymed_circa_v2.order_order_voucher`
-  WHERE created_date >= '2000-01-01'
 )
 
 , order_daily AS (
@@ -36,11 +37,9 @@ WITH pos AS (
     , SUM(o.total_amount)                                               AS amount
   FROM `buymed_circa_v2.order_order` o
   LEFT JOIN voucher_order v ON v.order_id = o.id
-  WHERE o.created_date >= '2000-01-01'
-    AND o.status = 'COMPLETED'
+  WHERE  o.status = 'COMPLETED'
     AND o.type IN ('ONLINE', 'OFFLINE')
-    AND o.entity_id IS NOT NULL
-     AND o.entity_id <> '00000000-0000-0000-0000-000000000000'
+   AND o.entity_id NOT IN ( '00000000-0000-0000-0000-000000000000', '00000000-0000-0000-0000-000000000001')
   GROUP BY ALL
 )
 
@@ -56,9 +55,8 @@ WITH pos AS (
     , SUM(r.total_amount)                                               AS return_amount
   FROM `buymed_circa_v2.order_return_order` r
   INNER JOIN `buymed_circa_v2.order_order` o ON  o.id = r.origin_order_id
-                                           AND o.created_date >= '2000-01-01'
-  WHERE r.created_date >= '2000-01-01'
-    AND r.status = 'COMPLETED'
+                                          
+  WHERE  r.status = 'COMPLETED'
     AND o.status = 'COMPLETED'
     AND o.type IN ('ONLINE', 'OFFLINE')
     AND o.entity_id IS NOT NULL
