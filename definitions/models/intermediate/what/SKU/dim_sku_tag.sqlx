@@ -44,7 +44,7 @@ WITH
             AND b.tag_id IS NOT NULL
     )
     , cte_2 AS (
-        SELECT
+        SELECT 
             a.product_id,
             c.sku_code,
             a.seller_code,
@@ -70,6 +70,7 @@ WITH
         WHERE
             c.sku_code IS NOT NULL
             AND b.tag_id IS NOT NULL
+        QUALIFY ROW_NUMBER()  OVER(PARTITION BY sku_sales_region_code ORDER BY created_time DESC) = 1
     )
 SELECT  *
 FROM cte_1
