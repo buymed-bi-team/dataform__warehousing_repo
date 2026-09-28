@@ -49,6 +49,7 @@ QUALIFY ROW_NUMBER() OVER (PARTITION BY c.id ORDER BY c.sync_at DESC) = 1
   WHERE r.created_date >= '2000-01-01'
     AND r.status = 'COMPLETED'
     AND r.entity_id IS NOT NULL
+    AND o.entity_id <> '00000000-0000-0000-0000-000000000000'
   GROUP BY r.entity_id
 )
 
