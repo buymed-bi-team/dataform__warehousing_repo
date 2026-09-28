@@ -21,9 +21,10 @@ config {
 SELECT
     io.order_id
     , io.customer_request AS invoice_request
-    , io.customer_tax_code
-    , io.customer_name AS invoice_name
-    , io.customer_address AS invoice_address
+    , ioi.buyer_name
+    , ioi.customer_tax_code
+    , ioi.customer_name AS invoice_name
+    , ioi.customer_address AS invoice_address
     , CASE 
         WHEN io.customer_request = true THEN 'Có lấy hóa đơn'
         WHEN io.customer_request = false THEN 'Không yêu cầu xuất hóa đơn' 
