@@ -1,0 +1,143 @@
+
+config {
+    type: "table",
+    description: `PIC: huyen.ngo; model_type: Table ;schedule: `,
+    tags:["custom_1h_past20"],
+    name: "circa_online_agg_leadtime"
+}
+
+WITH events AS (
+  SELECT DISTINCT
+      order_code
+    , event_name
+    , REGEXP_EXTRACT(event_name, r'^([^/]+)') AS ev_code
+    , action_time
+    , note
+  FROM `lakehouse-prod-394907.platinum_buymed_vn.circa_online_prd_order_order_event`
+  WHERE created_date >= '2026-07-01'
+    AND order_code IS NOT NULL
+)
+-- POS được assign cuối cùng = POS chốt nhận đơn
+, final_pos AS (
+  SELECT
+      order_code
+    , action_time                                                AS t_final_pos_assign
+    , SAFE_CAST(SPLIT(event_name, '/')[SAFE_OFFSET(1)] AS INT64) AS final_store_id
+    , TRIM(SPLIT(note, ',')[SAFE_OFFSET(0)])                     AS final_store_name
+  FROM events
+  WHERE ev_code = 'CREATE_POS_ORDER'
+  QUALIFY ROW_NUMBER() OVER (PARTITION BY order_code ORDER BY action_time DESC) = 1
+)
+, agg AS (
+  SELECT
+      order_code
+    , MIN(IF(ev_code = 'CREATE_ORDER', action_time, NULL)) AS t_created
+      -- Đơn prepaid không có CONFIRM_ORDER -> dùng PROCESS_ORDER (sau RECEIVE_PAYMENT)
+    , COALESCE(MIN(IF(ev_code = 'CONFIRM_ORDER', action_time, NULL)),
+               MIN(IF(event_name = 'PROCESS_ORDER', action_time, NULL))) AS t_confirm
+    , MIN(IF(ev_code = 'BOOK_3PL', action_time, NULL))         AS t_book
+    , MIN(IF(ev_code IN ('3PL_ORDER_DELIVERING', '3PL_ORDER_PICKED'), action_time, NULL)) AS t_pickup
+    , MAX(IF(ev_code IN ('3PL_ORDER_DELIVERED', 'DELIVERED_FROM_DELIVERING', 'DELIVERED_WITH_DELIVERING_EVENT'), action_time, NULL)) AS t_delivered
+    , COUNTIF(ev_code = 'WAIT_FOR_PAYMENT') > 0                    AS is_prepaid
+    , COUNTIF(ev_code = 'CREATE_POS_ORDER')                        AS n_pos_assign
+    , COUNTIF(ev_code = 'OPS_RESET_STORE')                         AS n_reset_store
+    , COUNTIF(event_name = 'PROCESS_ORDER/WAIT_FOR_PURCHASE') > 0  AS has_wait_for_purchase
+    -- các cờ dưới đây chỉ dùng để suy ra gap_reason, không xuất ra PBI
+    , COUNTIF(ev_code = 'BOOK_3PL_FAILED')                         AS n_book_failed
+    , COUNTIF(ev_code = '3PL_ORDER_PICK_FAIL')                     AS n_pick_fail
+    , COUNTIF(ev_code = 'CANCEL_SHIPPING_ORDER')                   AS n_cancel_shipping
+    , COUNTIF(ev_code = '3PL_ORDER_FAIL_TO_DELIVER')               AS n_fail_to_deliver
+    , COUNTIF(ev_code = 'RESET_FAILED_DELIVERY')                   AS n_reset_failed_delivery
+    , COUNTIF(ev_code = 'SKIP_3PL_UPDATE_FINAL_ORDER')             AS n_skip_3pl
+  FROM events
+  GROUP BY order_code
+)
+-- High-water mark (NULL-safe): mỗi mốc >= mốc trước để stage không bị âm
+, hw1 AS (
+  SELECT
+    a.*
+  , p.* EXCEPT(order_code)
+  , GREATEST(a.t_created, a.t_confirm) AS m1
+  FROM agg a
+  LEFT JOIN final_pos p USING (order_code)
+  WHERE DATE(a.t_created, 'Asia/Ho_Chi_Minh') >= '2026-09-01'
+)
+, hw2 AS (SELECT *, GREATEST(COALESCE(m1, t_created), t_final_pos_assign)     AS m2 FROM hw1)
+, hw3 AS (SELECT *, GREATEST(COALESCE(m2, m1, t_created), t_book)             AS m3 FROM hw2)
+, hw4 AS (SELECT *, GREATEST(COALESCE(m3, m2, m1, t_created), t_pickup)       AS m4 FROM hw3)
+, hw5 AS (SELECT *, GREATEST(COALESCE(m4, m3, m2, m1, t_created), t_delivered) AS m5 FROM hw4)
+-- Thời gian nằm ngoài 5 stage. Tính từ GIÂY thô (không từ số đã làm tròn)
+-- nên đơn đủ mốc ra đúng 0, không còn nhiễu làm tròn.
+, gap AS (
+  SELECT
+      *
+    , ROUND(
+        ( TIMESTAMP_DIFF(m5, t_created, SECOND)
+        - IFNULL(TIMESTAMP_DIFF(m1, t_created, SECOND), 0)
+        - IFNULL(TIMESTAMP_DIFF(m2, m1, SECOND), 0)
+        - IFNULL(TIMESTAMP_DIFF(m3, m2, SECOND), 0)
+        - IFNULL(TIMESTAMP_DIFF(m4, m3, SECOND), 0)
+        - IFNULL(TIMESTAMP_DIFF(m5, m4, SECOND), 0)
+        ) / 60, 2) AS s_gap_min
+  FROM hw5
+)
+
+SELECT
+    order_code
+  , DATE(t_created, 'Asia/Ho_Chi_Minh') AS order_created_date
+  , final_store_id
+  , final_store_name
+  , is_prepaid
+  , (n_reset_store > 0 OR n_pos_assign > 1) AS has_reset
+  , has_wait_for_purchase
+  , DATETIME(t_created,   'Asia/Ho_Chi_Minh') AS t_created
+  , DATETIME(t_delivered, 'Asia/Ho_Chi_Minh') AS t_delivered
+  -- Stage durations (phút)
+  , ROUND(TIMESTAMP_DIFF(m1, t_created, SECOND) / 60, 2) AS s1_create_to_confirm_min
+  , ROUND(TIMESTAMP_DIFF(m2, m1, SECOND) / 60, 2)        AS s2_confirm_to_final_pos_min
+  , ROUND(TIMESTAMP_DIFF(m3, m2, SECOND) / 60, 2)        AS s3_final_pos_to_book_min
+  , ROUND(TIMESTAMP_DIFF(m4, m3, SECOND) / 60, 2)        AS s4_book_to_pickup_min
+  , ROUND(TIMESTAMP_DIFF(m5, m4, SECOND) / 60, 2)        AS s5_pickup_to_delivered_min
+  , s_gap_min
+  , CASE
+      WHEN t_delivered IS NULL THEN 'Đơn chưa hoàn tất'
+      WHEN t_confirm          IS NOT NULL
+       AND t_final_pos_assign IS NOT NULL
+       AND t_book             IS NOT NULL
+       AND t_pickup           IS NOT NULL  THEN NULL
+
+      -- Nhánh 1: không book được ĐVVC -> mất s3, s4, s5
+      WHEN t_book IS NULL AND n_book_failed > 0
+        THEN 'Book ĐVVC lỗi – CS đặt xe và chốt đơn thủ công'
+      WHEN t_book IS NULL AND n_skip_3pl > 0
+        THEN 'Không qua ĐVVC – khách nhận tại cửa hàng / giao nội bộ'
+      WHEN t_book IS NULL
+        THEN 'Không có mốc book ĐVVC'
+
+      -- Nhánh 2: book rồi nhưng không có mốc tài xế lấy hàng -> mất s4, s5
+      WHEN t_pickup IS NULL AND n_skip_3pl > 0
+        THEN 'Bỏ qua ĐVVC sau khi book – khách nhận tại cửa hàng / giao nội bộ'
+      WHEN t_pickup IS NULL AND n_cancel_shipping > 0
+        THEN 'Huỷ vận đơn sau khi book – giao ngoài hệ thống ĐVVC'
+      WHEN t_pickup IS NULL AND n_reset_failed_delivery > 0
+        THEN 'Giao thất bại, tạo lại vận đơn – lần giao sau không ghi mốc lấy hàng'
+      WHEN t_pickup IS NULL AND n_fail_to_deliver > 0
+        THEN 'Giao thất bại rồi chốt giao thành công – không ghi mốc lấy hàng'
+      WHEN t_pickup IS NULL AND n_pick_fail > 0
+        THEN 'Tài xế lấy hàng thất bại – không ghi mốc lấy hàng'
+      WHEN t_pickup IS NULL
+        THEN 'Thiếu mốc tài xế lấy hàng'
+
+      -- Nhánh 3: thiếu mốc ở đầu chuỗi
+      WHEN t_confirm IS NULL          THEN 'Thiếu mốc xác nhận đơn'
+      WHEN t_final_pos_assign IS NULL THEN 'Thiếu mốc gán cửa hàng'
+      ELSE 'Chưa xác định'
+    END AS gap_reason
+  , ROUND(TIMESTAMP_DIFF(m5, t_created, SECOND) / 60, 2) AS e2e_min
+FROM gap
+WHERE order_code IN (
+  SELECT DISTINCT order_code
+  FROM ${ref("gold_buymed_vn2", "circa_online_order")}
+  WHERE o2o_status = "DELIVERED"
+)
+ORDER BY t_created

@@ -1,0 +1,77 @@
+config {
+    type: "table",
+    description: `circa_customer_dim
+                  PIC: huyen.ngo ; 
+                  model_type: Table ;
+                  schedule: `, 
+    schema: "buymed_tech",
+    name: "circa_customer_dim",
+}
+
+WITH customer AS (
+SELECT
+  c.id                              AS customer_id
+  , DATETIME(c.created_at , 'Asia/Ho_Chi_Minh')                  AS customer_created_at
+  , c.status
+  , c.is_verified
+  , c.source_type
+  , c.date_of_birth
+  , c.age
+  , c.gender
+  , JSON_VALUE_ARRAY(c.tags)        AS tags
+FROM buymed_circa_v2.entity_customer c
+WHERE c.created_date >= '2020-01-01'
+  AND c.deleted_at IS NULL
+QUALIFY ROW_NUMBER() OVER (PARTITION BY c.id ORDER BY c.sync_at DESC) = 1
+)
+, order_agg AS (
+  SELECT
+    o.entity_id
+    , MIN(COALESCE(o.completed_at, o.created_at))  AS first_order_at
+    , MAX(COALESCE(o.completed_at, o.created_at))  AS last_order_at
+    , COUNT(*)                                     AS lifetime_orders
+    , SUM(o.total_amount + COALESCE(business_amount, 0))                          AS lifetime_amount
+    , COUNTIF(o.type = 'ONLINE')                   AS lifetime_orders_online
+    , COUNTIF(o.type = 'OFFLINE')                  AS lifetime_orders_offline
+  FROM buymed_circa_v2.order_order o
+  WHERE o.created_date >= '2000-01-01'         
+    AND o.status = 'COMPLETED'
+    AND o.type IN ('ONLINE', 'OFFLINE')
+    AND o.entity_id NOT IN ( '00000000-0000-0000-0000-000000000000', '00000000-0000-0000-0000-000000000001')
+  GROUP BY o.entity_id
+)
+, return_agg AS (
+  SELECT
+    r.entity_id
+    , COUNT(*)             AS lifetime_returns
+    , SUM(r.total_amount)  AS lifetime_return_amount
+  FROM buymed_circa_v2.order_return_order r
+  WHERE r.created_date >= '2000-01-01'
+    AND r.status = 'COMPLETED'
+    AND r.entity_id NOT IN ( '00000000-0000-0000-0000-000000000000', '00000000-0000-0000-0000-000000000001')
+  GROUP BY r.entity_id
+)
+
+SELECT
+  c.customer_id                                                      AS customer_id         
+  , c.customer_created_at      
+  , c.status                                                                           
+  , c.is_verified                                                                      
+  , c.source_type                                                                      
+  , c.date_of_birth                                                                    
+  , c.age                                                                              
+  , c.gender                                                                           
+  , c.tags                   
+  , DATETIME(oa.first_order_at , 'Asia/Ho_Chi_Minh')       AS first_order_at           
+  , DATETIME(oa.last_order_at , 'Asia/Ho_Chi_Minh')        AS last_order_at            
+  , IFNULL(oa.lifetime_orders, 0)                           AS lifetime_orders         
+  , IFNULL(oa.lifetime_amount, 0)                           AS lifetime_amount         
+  , IFNULL(oa.lifetime_orders_online, 0)                    AS lifetime_orders_online  
+  , IFNULL(oa.lifetime_orders_offline, 0)                   AS lifetime_orders_offline 
+  , IFNULL(ra.lifetime_returns, 0)                          AS lifetime_returns        
+  , IFNULL(ra.lifetime_return_amount, 0)                    AS lifetime_return_amount  
+  ,TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS refresh_at
+FROM customer c
+LEFT JOIN order_agg oa ON oa.entity_id = c.customer_id
+LEFT JOIN return_agg ra ON ra.entity_id = c.customer_id
+-- WHERE c.customer_id = 'fd4c127a-e909-43b2-b294-1749b7642e82'

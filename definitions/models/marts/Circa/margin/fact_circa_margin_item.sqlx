@@ -32,7 +32,7 @@ WITH
     FROM
     ${ref("gold_buymed_vn2", "fact_fin_circa_order_item")}
     WHERE CREATED_DATE >= DATE_TRUNC(CURRENT_DATE('Asia/Ho_Chi_Minh'), year)
-    and cost_price_include_tax is not null
+    AND NOT (cost_price_include_tax is null and product_id <> 1)
   )),
   fact_order_item AS (
   SELECT

@@ -1,0 +1,8 @@
+config {
+    type: 'view',
+    schema: "buymed_innovation",
+    description: `Customers online of Circa COS.`,
+    tags: ['AI_CIRCA']
+}
+
+SELECT * FROM  ${ref('gold_buymed_vn2', 'circa_account_online')}
