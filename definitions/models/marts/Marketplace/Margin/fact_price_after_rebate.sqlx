@@ -23,7 +23,7 @@ pre_operations {
         incremental(),
         `     
             DELETE FROM ${self()}
-            WHERE rebate_date >=  CURRENT_DATE("+7") - INTERVAL 10 DAY;
+            WHERE rebate_date >=  CURRENT_DATE("+7") - INTERVAL 2 DAY;
         `
         )
     }
@@ -81,10 +81,11 @@ FROM ${ref('platinum_buymed_vn','seller_prd_promotion_log_price_after_rebate')} 
     LEFT JOIN contract_price AS b ON a.contract_price_code = b.contract_price_code
 WHERE
     ${when(incremental(), 
-    `created_date >= CURRENT_DATE("+7") - 11
-    AND COALESCE(SAFE.PARSE_TIMESTAMP("%Y%m%d", version), TIMESTAMP_ADD(created_time, INTERVAL 13 HOUR)) >= TIMESTAMP(CURRENT_DATE("+7") - 10)`
+    `created_date >= CURRENT_DATE("+7") - 3
+    AND COALESCE(SAFE.PARSE_TIMESTAMP("%Y%m%d", version), TIMESTAMP_ADD(created_time, INTERVAL 13 HOUR)) >= TIMESTAMP(CURRENT_DATE("+7") - 2)`
     , `created_date >= '2024-01-01'`
     )}
+    AND COALESCE(JSON_VALUE(a.extra_props, "$.seller_code"), "MEDX") IN ('TAYAU_INT', 'MEDX', 'MEDX_E', 'CIRCA_INT', 'BML_INT')
     AND warehouse_code IN ('BD', 'HN', 'DN')
-QUALIFY ROW_NUMBER() OVER (PARTITION BY product_id, warehouse_code,vendor_code, rebate_date ORDER BY is_fav_vendor DESC, is_active_contract_price DESC, start_time DESC, last_updated_time DESC) = 1
+QUALIFY ROW_NUMBER() OVER (PARTITION BY product_id, warehouse_code,seller_code, vendor_code, rebate_date ORDER BY is_fav_vendor DESC, is_active_contract_price DESC, start_time DESC, last_updated_time DESC) = 1
 
