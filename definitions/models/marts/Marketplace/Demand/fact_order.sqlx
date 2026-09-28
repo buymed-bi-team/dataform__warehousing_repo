@@ -107,6 +107,14 @@ WITH
     GROUP BY ALL
   ),
 
+  shadow_order AS (
+    SELECT
+        parent_order_id
+        , shadow_order_id
+    FROM ${source.platinum}.marketplace_prd_order_v2_shadow_order
+    QUALIFY ROW_NUMBER() OVER(PARTITION BY parent_order_id ORDER BY created_time DESC) = 1
+  ),
+
   -- outbound as (
   --     SELECT
   --         LEFT(reference_code, GREATEST(STRPOS(reference_code, '-') - 1,0)) AS sale_order_code,
@@ -269,7 +277,7 @@ WITH
       ) AS is_on_hold
 
       , da.discount_amount
-
+      , sha.shadow_order_id
     FROM ${source.platinum}.marketplace_prd_order_v2_order AS a
       LEFT JOIN customer_rating r 
         ON a.order_id=r.order_id
@@ -283,6 +291,8 @@ WITH
         ON da.order_id = a.order_id
       LEFT JOIN delivered_time AS dt 
         ON dt.admin_id = a.order_id
+      LEFT JOIN shadow_order AS sha
+        ON sha.parent_order_id = a.order_id
       -- LEFT JOIN outbound AS oo 
       --   ON oo.sale_order_code = a.sale_order_code
     WHERE
