@@ -1,0 +1,38 @@
+config {
+    type: "table",
+    description: `circa_customer_gift
+                  PIC: huyen.ngo ; 
+                  model_type: Table ;
+                  schedule: `, 
+    schema: "buymed_tech",
+    name: "circa_customer_gift",
+}
+
+WITH gift_receive AS (
+  SELECT
+    g.entity_id                                   AS customer_id
+    , g.order_id
+    , COALESCE(o.completed_at, o.created_at)      AS order_ts
+    , g.gift_code
+    , g.gift_id
+    , NULLIF(g.gift_item_type, '')                AS gift_item_type
+  FROM `buymed_circa_v2.order_order_gift` g
+  INNER JOIN `buymed_circa_v2.order_order` o ON  o.id = g.order_id AND o.created_date >= '2000-01-01'
+  WHERE g.created_date >= '2000-01-01'
+    AND g.is_valid = true
+    AND g.is_returned = false
+    AND o.entity_id NOT IN ( '00000000-0000-0000-0000-000000000000', '00000000-0000-0000-0000-000000000001')
+    AND o.status = 'COMPLETED'
+    AND o.type IN ('ONLINE', 'OFFLINE')
+)
+
+SELECT
+  customer_id                                                                       
+  , gift_code                                                                        
+  , ARRAY_AGG(gift_id ORDER BY order_ts DESC LIMIT 1)[OFFSET(0)]                      AS gift_id            
+  , ARRAY_AGG(gift_item_type IGNORE NULLS ORDER BY order_ts DESC LIMIT 1)[SAFE_OFFSET(0)] AS gift_item_type 
+  , TIMESTAMP_ADD(MIN(order_ts), INTERVAL 7 HOUR)                                     AS first_received_at  
+  , TIMESTAMP_ADD(MAX(order_ts), INTERVAL 7 HOUR)                                     AS last_received_at   
+  , COUNT(DISTINCT order_id)                                                          AS times_received     
+FROM gift_receive
+GROUP BY ALL
