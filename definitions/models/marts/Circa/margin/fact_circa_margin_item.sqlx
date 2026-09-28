@@ -16,7 +16,15 @@ config {
 }
 
 WITH
-  raw_data as (
+    dim_product AS (
+        SELECT 
+            product_id, 
+            max(base_unit) base_unit 
+        FROM ${ref("gold_buymed_vn2", "cos_dim_product")} 
+        WHERE client_id = 1
+        group by all
+        )
+  , raw_data as (
     select * except (voucher_contribution),
     coalesce(voucher_contribution, item_contribution) as voucher_contribution
     from (
@@ -43,6 +51,7 @@ WITH
     fulfillment_method, 
     owner_name,
     i.unit,
+    dim_product.base_unit,
     unit_price, 
     is_deal_1k,  
     cost_price_include_tax, 
@@ -65,15 +74,13 @@ WITH
       else i.cost_price_include_tax
     END AS base_unit_cost_price_ts,
     so.created_date as so_order_date,
-  FROM
-    raw_data i
-  LEFT JOIN
-    ${ref("gold_buymed_vn2", "circa_cogs_thuocsi_by_po")} p
-  ON
-    i.doc_code = p.po_code
+  FROM raw_data i
+  LEFT JOIN ${ref("gold_buymed_vn2", "circa_cogs_thuocsi_by_po")} p
+  ON i.doc_code = p.po_code
     AND i.product_id = p.product_id
   LEFT JOIN lakehouse-prod-394907.gold_buymed_vn2.fact_fin_circa_thuocsi_order so
   on i.so_thuoc_si = cast(so.order_id as string)
+  LEFT JOIN dim_product ON i.product_id = dim_product.product_id
   GROUP BY ALL
 )
     ,
