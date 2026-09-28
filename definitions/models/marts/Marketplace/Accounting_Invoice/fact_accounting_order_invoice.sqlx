@@ -36,7 +36,7 @@ SELECT
     , ioi.customer_id
     , STRING(JSON_QUERY_ARRAY(ioi.invoice_data)[SAFE_OFFSET(0)].invoice_no) AS invoice_number
     , REGEXP_REPLACE(STRING(JSON_QUERY_ARRAY(ioi.invoice_data)[SAFE_OFFSET(0)].pdf_url), 'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS invoice_url
-    , COALESCE(JSON_VALUE(ioi.extra_props, '$.is_shadow_invoice'), 'false') AS is_shadow_invoice
+    , SAFE_CAST(COALESCE(JSON_VALUE(ioi.extra_props, '$.is_shadow_invoice'), 'false') AS BOOLEAN) AS is_shadow_invoice
 FROM ${source.platinum}.accounting_prd_invoice_order AS io
     LEFT JOIN ${source.platinum}.accounting_prd_invoice_order_invoice AS ioi
         USING(order_id)
