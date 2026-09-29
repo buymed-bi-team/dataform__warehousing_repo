@@ -5,13 +5,22 @@ config {
     tags: ['AI_CIRCA', "custom_1h_past10"]
 }
 
+WITH base_unit AS (
+  SELECT DISTINCT product_id 
+                  ,convert_unit AS unit
+  FROM ${ref("gold_buymed_vn2", "circa_dim_retail_unit")}
+  WHERE is_base_unit = true 
+  QUALIFY ROW_NUMBER() OVER (PARTITION BY product_id ORDER BY convert_rate DESC) = 1
+
+)
 SELECT 
-        product_id
+        o.product_id
       , sku_code
       , lot_date
       , tax_rate
       , doc_code
       , cost_price_include_tax
+      , b.unit
       , on_hand_quantity
       --, available_qty
       , p.code as pos_code
@@ -31,5 +40,6 @@ SELECT
 FROM ${ref("gold_buymed_vn2", "cos_fact_inventory")} o 
 LEFT JOIN ${source.circa_os}.entity_distributor d on o.distributor_id = d.id AND o.client_id = d.client_id 
 LEFT JOIN ${ref("gold_buymed_vn2", "circa_pos_profile")} p ON o.pos_id = p.id 
+LEFT JOIN base_unit b ON o.product_id = b.product_id 
 WHERE p.id IS NOT NULL
        AND p.actual_status <> 'Inactive' 
