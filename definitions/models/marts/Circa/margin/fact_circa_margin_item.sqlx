@@ -78,7 +78,7 @@ WITH
   LEFT JOIN ${ref("gold_buymed_vn2", "circa_cogs_thuocsi_by_po")} p
   ON i.doc_code = p.po_code
     AND i.product_id = p.product_id
-  LEFT JOIN lakehouse-prod-394907.gold_buymed_vn2.fact_fin_circa_thuocsi_order so
+  LEFT JOIN ${source.platinum}.marketplace_prd_order_v2_order so
   on i.so_thuoc_si = cast(so.order_id as string)
   LEFT JOIN dim_product ON i.product_id = dim_product.product_id
   GROUP BY ALL
