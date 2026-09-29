@@ -5,6 +5,7 @@ config {
                   model_type: Table ;
                   schedule: `, 
     schema: "buymed_tech",
+    tags: ["circa_customer"],
     name: "circa_customer_voucher"
   
 }
