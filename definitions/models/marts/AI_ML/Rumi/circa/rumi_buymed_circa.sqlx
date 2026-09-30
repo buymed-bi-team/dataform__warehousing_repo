@@ -130,6 +130,12 @@ AS (SELECT * FROM  ${ref("buymed_innovation", "circa_dim_product_retail_unit")})
 CREATE OR REPLACE VIEW `rumi_buymed_circa.circa_dim_online_customer`
 AS (SELECT * FROM  ${ref("buymed_innovation", "circa_dim_online_customer")});
 
+
+
+-- circa_fs_fact_product_demand_planning
+CREATE OR REPLACE VIEW `rumi_buymed_circa.circa_fs_fact_product_demand_planning`
+AS (SELECT * FROM  ${ref("buymed_innovation", "circa_fs_fact_product_demand_planning")});
+
 -- -- dim_competitor_price
 -- CREATE OR REPLACE VIEW `rumi_buymed_circa.circa_dim_product_competitor_price`
 -- AS (SELECT * FROM  ${ref("buymed_innovation", "circa_dim_product_competitor_price")});
