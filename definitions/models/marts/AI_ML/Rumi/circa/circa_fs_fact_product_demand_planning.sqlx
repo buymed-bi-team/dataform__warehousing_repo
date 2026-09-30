@@ -1,0 +1,9 @@
+config {
+    type: 'table',
+    schema: "buymed_innovation",
+    description: 'circa_fs_fact_product_demand_planning',
+    tags: ['AI_CIRCA', "custom_1h_past10"]
+}
+
+
+SELECT * FROM gold_buymed_vn2.circa_fs_fact_product_demand_planning
