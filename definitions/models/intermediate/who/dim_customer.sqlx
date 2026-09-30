@@ -378,42 +378,42 @@ SELECT
         SELECT JSON_VALUE(e.public_url)
         FROM UNNEST(JSON_QUERY_ARRAY(customer.gpp)) AS e WITH OFFSET AS idx
         WHERE JSON_VALUE(e.public_url) IS NOT NULL
-        ORDER BY idx
+        ORDER BY idx DESC
         LIMIT 1
     ), 'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS gpp_url,
     REPLACE((
         SELECT JSON_VALUE(e.public_url)
         FROM UNNEST(JSON_QUERY_ARRAY(customer.licenses)) AS e WITH OFFSET AS idx
         WHERE JSON_VALUE(e.public_url) IS NOT NULL
-        ORDER BY idx
+        ORDER BY idx DESC
         LIMIT 1
     ), 'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS license_url,
     REPLACE((
         SELECT JSON_VALUE(e.public_url)
         FROM UNNEST(JSON_QUERY_ARRAY(customer.pharmacy_eligibility_license)) AS e WITH OFFSET AS idx
         WHERE JSON_VALUE(e.public_url) IS NOT NULL
-        ORDER BY idx
+        ORDER BY idx DESC
         LIMIT 1
     ), 'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS pharmacy_eligibility_url,
     REPLACE((
         SELECT JSON_VALUE(e.public_url)
         FROM UNNEST(JSON_QUERY_ARRAY(customer.gdp)) AS e WITH OFFSET AS idx
         WHERE JSON_VALUE(e.public_url) IS NOT NULL
-        ORDER BY idx
+        ORDER BY idx DESC
         LIMIT 1
     ), 'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS gdp_url,
     REPLACE((
         SELECT JSON_VALUE(e.public_url)
         FROM UNNEST(JSON_QUERY_ARRAY(customer.extra_props.gsp)) AS e WITH OFFSET AS idx
         WHERE JSON_VALUE(e.public_url) IS NOT NULL
-        ORDER BY idx
+        ORDER BY idx DESC
         LIMIT 1
     ), 'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS gsp_url,
     REPLACE((
         SELECT JSON_VALUE(e.public_url)
         FROM UNNEST(JSON_QUERY_ARRAY(customer.examination_and_treatment_license)) AS e WITH OFFSET AS idx
         WHERE JSON_VALUE(e.public_url) IS NOT NULL
-        ORDER BY idx
+        ORDER BY idx DESC
         LIMIT 1
     ), 'storage.googleapis.com', 'cdn-gcs.thuocsi.vn') AS examination_and_treatment_url,
     JSON_VALUE(customer.pharmacy_eligibility_license_info, "$.number") AS ddkkdd_license_number,
