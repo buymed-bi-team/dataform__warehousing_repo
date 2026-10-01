@@ -5,7 +5,6 @@ config {
     tags:["custom_1h_past20"],
     name: "circa_online_agg_leadtime"
 }
-
 WITH events AS (
   SELECT DISTINCT
       order_code
@@ -35,6 +34,9 @@ WITH events AS (
       -- Đơn prepaid không có CONFIRM_ORDER -> dùng PROCESS_ORDER (sau RECEIVE_PAYMENT)
     , COALESCE(MIN(IF(ev_code = 'CONFIRM_ORDER', action_time, NULL)),
                MIN(IF(event_name = 'PROCESS_ORDER', action_time, NULL))) AS t_confirm
+      -- Mốc NV thực sự bắt đầu soạn hàng. Lấy MAX vì đơn bị reset store sẽ PROCESSING nhiều lần.
+    , MAX(IF(event_name = 'PROCESS_ORDER/PROCESSING', action_time, NULL))        AS t_processing
+    , MIN(IF(event_name = 'PROCESS_ORDER/WAIT_FOR_PURCHASE', action_time, NULL)) AS t_wait_purchase
     , MIN(IF(ev_code = 'BOOK_3PL', action_time, NULL))         AS t_book
     , MIN(IF(ev_code IN ('3PL_ORDER_DELIVERING', '3PL_ORDER_PICKED'), action_time, NULL)) AS t_pickup
     , MAX(IF(ev_code IN ('3PL_ORDER_DELIVERED', 'DELIVERED_FROM_DELIVERING', 'DELIVERED_WITH_DELIVERING_EVENT'), action_time, NULL)) AS t_delivered
@@ -42,7 +44,6 @@ WITH events AS (
     , COUNTIF(ev_code = 'CREATE_POS_ORDER')                        AS n_pos_assign
     , COUNTIF(ev_code = 'OPS_RESET_STORE')                         AS n_reset_store
     , COUNTIF(event_name = 'PROCESS_ORDER/WAIT_FOR_PURCHASE') > 0  AS has_wait_for_purchase
-    -- các cờ dưới đây chỉ dùng để suy ra gap_reason, không xuất ra PBI
     , COUNTIF(ev_code = 'BOOK_3PL_FAILED')                         AS n_book_failed
     , COUNTIF(ev_code = '3PL_ORDER_PICK_FAIL')                     AS n_pick_fail
     , COUNTIF(ev_code = 'CANCEL_SHIPPING_ORDER')                   AS n_cancel_shipping
@@ -52,7 +53,7 @@ WITH events AS (
   FROM events
   GROUP BY order_code
 )
--- High-water mark (NULL-safe): mỗi mốc >= mốc trước để stage không bị âm
+
 , hw1 AS (
   SELECT
     a.*
@@ -62,22 +63,22 @@ WITH events AS (
   LEFT JOIN final_pos p USING (order_code)
   WHERE DATE(a.t_created, 'Asia/Ho_Chi_Minh') >= '2026-09-01'
 )
-, hw2 AS (SELECT *, GREATEST(COALESCE(m1, t_created), t_final_pos_assign)     AS m2 FROM hw1)
-, hw3 AS (SELECT *, GREATEST(COALESCE(m2, m1, t_created), t_book)             AS m3 FROM hw2)
-, hw4 AS (SELECT *, GREATEST(COALESCE(m3, m2, m1, t_created), t_pickup)       AS m4 FROM hw3)
-, hw5 AS (SELECT *, GREATEST(COALESCE(m4, m3, m2, m1, t_created), t_delivered) AS m5 FROM hw4)
--- Thời gian nằm ngoài 5 stage. Tính từ GIÂY thô (không từ số đã làm tròn)
--- nên đơn đủ mốc ra đúng 0, không còn nhiễu làm tròn.
+, hw2  AS (SELECT *, GREATEST(COALESCE(m1, t_created), t_final_pos_assign)      AS m2  FROM hw1)
+, hw2b AS (SELECT *, GREATEST(COALESCE(m2, m1, t_created), t_processing)        AS m2b FROM hw2)
+, hw3  AS (SELECT *, GREATEST(COALESCE(m2b, m2, m1, t_created), t_book)         AS m3  FROM hw2b)
+, hw4  AS (SELECT *, GREATEST(COALESCE(m3, m2b, m2, m1, t_created), t_pickup)   AS m4  FROM hw3)
+, hw5  AS (SELECT *, GREATEST(COALESCE(m4, m3, m2b, m2, m1, t_created), t_delivered) AS m5 FROM hw4)
 , gap AS (
   SELECT
       *
     , ROUND(
         ( TIMESTAMP_DIFF(m5, t_created, SECOND)
-        - IFNULL(TIMESTAMP_DIFF(m1, t_created, SECOND), 0)
-        - IFNULL(TIMESTAMP_DIFF(m2, m1, SECOND), 0)
-        - IFNULL(TIMESTAMP_DIFF(m3, m2, SECOND), 0)
-        - IFNULL(TIMESTAMP_DIFF(m4, m3, SECOND), 0)
-        - IFNULL(TIMESTAMP_DIFF(m5, m4, SECOND), 0)
+        - IFNULL(TIMESTAMP_DIFF(m1,  t_created, SECOND), 0)
+        - IFNULL(TIMESTAMP_DIFF(m2,  m1,  SECOND), 0)
+        - IFNULL(TIMESTAMP_DIFF(m2b, m2,  SECOND), 0)
+        - IFNULL(TIMESTAMP_DIFF(m3,  m2b, SECOND), 0)
+        - IFNULL(TIMESTAMP_DIFF(m4,  m3,  SECOND), 0)
+        - IFNULL(TIMESTAMP_DIFF(m5,  m4,  SECOND), 0)
         ) / 60, 2) AS s_gap_min
   FROM hw5
 )
@@ -92,21 +93,23 @@ SELECT
   , has_wait_for_purchase
   , DATETIME(t_created,   'Asia/Ho_Chi_Minh') AS t_created
   , DATETIME(t_delivered, 'Asia/Ho_Chi_Minh') AS t_delivered
-  -- Stage durations (phút)
-  , ROUND(TIMESTAMP_DIFF(m1, t_created, SECOND) / 60, 2) AS s1_create_to_confirm_min
-  , ROUND(TIMESTAMP_DIFF(m2, m1, SECOND) / 60, 2)        AS s2_confirm_to_final_pos_min
-  , ROUND(TIMESTAMP_DIFF(m3, m2, SECOND) / 60, 2)        AS s3_final_pos_to_book_min
-  , ROUND(TIMESTAMP_DIFF(m4, m3, SECOND) / 60, 2)        AS s4_book_to_pickup_min
-  , ROUND(TIMESTAMP_DIFF(m5, m4, SECOND) / 60, 2)        AS s5_pickup_to_delivered_min
+  , ROUND(TIMESTAMP_DIFF(m1,  t_created, SECOND) / 60, 2) AS s1_create_to_confirm_min
+  , ROUND(TIMESTAMP_DIFF(m2,  m1,  SECOND) / 60, 2)       AS s2_confirm_to_final_pos_min
+  , ROUND(TIMESTAMP_DIFF(m2b, m2,  SECOND) / 60, 2)       AS s3a_wait_to_process_min  -- đơn nằm chờ (gồm chờ mua hàng)
+  , ROUND(TIMESTAMP_DIFF(m3,  m2b, SECOND) / 60, 2)       AS s3b_process_to_book_min  -- NV soạn & đóng gói
+  , ROUND(TIMESTAMP_DIFF(m4,  m3,  SECOND) / 60, 2)       AS s4_book_to_pickup_min
+  , ROUND(TIMESTAMP_DIFF(m5,  m4,  SECOND) / 60, 2)       AS s5_pickup_to_delivered_min
   , s_gap_min
+  , ROUND(TIMESTAMP_DIFF(m2b, GREATEST(COALESCE(m2, m1, t_created), t_wait_purchase), SECOND) / 60, 2) AS wait_purchase_min
   , CASE
       WHEN t_delivered IS NULL THEN 'Đơn chưa hoàn tất'
       WHEN t_confirm          IS NOT NULL
        AND t_final_pos_assign IS NOT NULL
+       AND t_processing       IS NOT NULL
        AND t_book             IS NOT NULL
        AND t_pickup           IS NOT NULL  THEN NULL
 
-      -- Nhánh 1: không book được ĐVVC -> mất s3, s4, s5
+      -- Nhánh 1: không book được ĐVVC -> mất s3b, s4, s5
       WHEN t_book IS NULL AND n_book_failed > 0
         THEN 'Book ĐVVC lỗi – CS đặt xe và chốt đơn thủ công'
       WHEN t_book IS NULL AND n_skip_3pl > 0
@@ -129,6 +132,7 @@ SELECT
         THEN 'Thiếu mốc tài xế lấy hàng'
 
       -- Nhánh 3: thiếu mốc ở đầu chuỗi
+      WHEN t_processing IS NULL       THEN 'Thiếu mốc bắt đầu soạn hàng'
       WHEN t_confirm IS NULL          THEN 'Thiếu mốc xác nhận đơn'
       WHEN t_final_pos_assign IS NULL THEN 'Thiếu mốc gán cửa hàng'
       ELSE 'Chưa xác định'
