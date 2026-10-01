@@ -103,12 +103,7 @@ WITH fact_order_item AS (
     a.base_unit,
     dim_product.product_name,
     dim_product.brand,
-    CASE 
-      WHEN dim_product.brand_type LIKE '%BRAND%NAME%' THEN 'BRANDNAME'
-      WHEN dim_product.brand_type LIKE '%BRAND%GENERIC%' THEN 'BRAND_GENERIC'
-      WHEN dim_product.brand_type = 'PORTFOLIO' THEN 'BUYMED SELECTED'
-      WHEN dim_product.brand_type = 'MARKET_PLACE' THEN 'HIGH MARGIN'
-    ELSE dim_product.brand_type END AS brand_type,
+    dim_product.brand_type,
     dim_product.product_category,
     dim_product.cat2,
     dim_product.cat3,
