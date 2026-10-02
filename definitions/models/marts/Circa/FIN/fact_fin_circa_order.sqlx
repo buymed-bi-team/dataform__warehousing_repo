@@ -26,8 +26,8 @@ SELECT
         when o.channel = 'O2O' then oo.created_date
         ELSE DATE(COALESCE(o.created_at, o.completed_at),  'Asia/Ho_Chi_Minh')
         end AS created_date,
-    DATE(o.completed_at, 'Asia/Ho_Chi_Minh') AS completed_date,
-    DATETIME(o.completed_at, 'Asia/Ho_Chi_Minh') AS completed_at,
+    DATE(coalesce(o.completed_at, o.updated_at), 'Asia/Ho_Chi_Minh') AS completed_date,
+    DATETIME(coalesce(o.completed_at, o.updated_at), 'Asia/Ho_Chi_Minh') AS completed_at,
     DATE(o.picking_at, 'Asia/Ho_Chi_Minh') AS picking_date,
     DATETIME(o.picking_at, 'Asia/Ho_Chi_Minh') AS picking_at,
     o.delivery_type,
