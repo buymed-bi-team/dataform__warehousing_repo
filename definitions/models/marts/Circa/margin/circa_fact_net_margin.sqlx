@@ -105,7 +105,7 @@ WITH fact_order_item AS (
     dim_product.brand,
     IF(LOWER(dim_product.brand_type) IN (
         'brand_generic',
-        'market_place',
+        'generic',
         'established_brandname',
         'emerging_brandname',
         'highmargin_tier1',
