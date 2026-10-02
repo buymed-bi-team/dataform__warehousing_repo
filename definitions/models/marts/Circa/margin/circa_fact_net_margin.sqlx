@@ -103,7 +103,16 @@ WITH fact_order_item AS (
     a.base_unit,
     dim_product.product_name,
     dim_product.brand,
-    dim_product.brand_type,
+    IF(LOWER(dim_product.brand_type) IN (
+        'brand_generic',
+        'market_place',
+        'established_brandname',
+        'emerging_brandname',
+        'highmargin_tier1',
+        'highmargin_tier2',
+        'highmargin_tier3'
+    ), dim_product.brand_type,
+    NULL) AS brand_type,
     dim_product.product_category,
     dim_product.cat2,
     dim_product.cat3,
