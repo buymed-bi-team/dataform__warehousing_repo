@@ -111,7 +111,7 @@ WITH
  FROM
    ${ref("gold_buymed_vn2", "fact_fin_circa_order")} o
   WHERE CREATED_DATE >= DATE_TRUNC(CURRENT_DATE('Asia/Ho_Chi_Minh'), year)
-  and o.status NOT IN ('RETURNED', 'FAILED_SHIPMENT', 'OUT_OF_STOCK','CANCELED' )
+  and o.status  ='COMPLETED' 
   GROUP BY
     ALL )
     ,
