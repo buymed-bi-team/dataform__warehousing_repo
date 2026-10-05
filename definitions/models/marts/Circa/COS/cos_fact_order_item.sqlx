@@ -92,7 +92,6 @@ WITH cte_os AS (
         END AS base_quantity
         ,oi.tax_rate
         ,oi.product_id || '_' || oi.lot_date AS product_lot_date
-        -- ,oi.sku_code || '_' || oi.lot_date || '_' || oi.tax_rate AS sku_lotdate_vat
         ,al.cost_price_include_tax AS base_unit_cost_price
         ,po.owner_id
         ,eo.seller_code
@@ -275,5 +274,5 @@ LEFT JOIN ${ref('circa_dim_retail_unit')} cv  ON cv.product_id = i.product_id
                         
                     
 LEFT JOIN ${source.circa_os}.order_order_apply_combo c ON i.order_apply_combo_id = c.id
-LEFT JOIN ${ref('cos_dim_product')} p ON c.product_id = p.product_id AND i.client_id = p.client_id 
+LEFT JOIN ${ref('circa_dim_master_product')} p ON c.product_id = p.product_id 
 WHERE fo.order_id IS NOT NULL
