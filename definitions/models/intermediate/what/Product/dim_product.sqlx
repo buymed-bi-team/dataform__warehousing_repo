@@ -159,15 +159,15 @@ WITH
     WHERE region_code = "ALL"
   )
 
-  , brand AS (
-    SELECT
-      product_id
-      , b.name AS brand
-    FROM ${source.platinum}.pim_prd_product_product AS a
-      LEFT JOIN ${source.platinum}.pim_prd_product_brand AS b 
-        -- ON JSON_VALUE(a.extra_props, "$.brand_code") = b.brand_code
-        ON a.brand = b.brand_code
-  )
+  -- , brand AS (
+  --   SELECT
+  --     product_id
+  --     , b.name AS brand
+  --   FROM ${source.platinum}.pim_prd_product_product AS a
+  --     LEFT JOIN ${source.platinum}.pim_prd_product_brand AS b 
+  --       -- ON JSON_VALUE(a.extra_props, "$.brand_code") = b.brand_code
+  --       ON a.brand = b.brand_code
+  -- )
 
 
   , ownbrand_portfolio AS (
@@ -329,12 +329,17 @@ SELECT
   product.seller_category_code as product_category_code,
   product.vat,
   -- product.brand,
-  br.brand,
+  br.name AS brand,
   INITCAP(sb.label) AS sub_brand,
-  CASE JSON_VALUE(product.extra_props, "$.product_category_management") 
-    WHEN "PORTFOLIO" THEN "BUYMED SELECTED"
-    WHEN "MARKET_PLACE" THEN "HIGH MARGIN"
-    ELSE JSON_VALUE(product.extra_props, "$.product_category_management")
+  -- CASE JSON_VALUE(product.extra_props, "$.product_category_management") 
+  --   WHEN "PORTFOLIO" THEN "BUYMED SELECTED"
+  --   WHEN "MARKET_PLACE" THEN "HIGH MARGIN"
+  --   ELSE JSON_VALUE(product.extra_props, "$.product_category_management")
+  -- END AS brand_type,
+  CASE
+    WHEN JSON_VALUE(product.extra_props, "$.product_category_management") IN 
+      ('HIGHMARGIN_TIER1','HIGHMARGIN_TIER2','HIGHMARGIN_TIER3','GENERIC','ESTABLISHED_BRANDNAME','EMERGING_BRANDNAME','BRAND_GENERIC')
+      THEN JSON_VALUE(product.extra_props, "$.product_category_management")
   END AS brand_type,
   JSON_VALUE(product.extra_props, "$.product_status") as product_status,
   SAFE_CAST(JSON_VALUE(product.extra_props, "$.related_product_id") AS INT64) as related_product_id,
@@ -504,11 +509,13 @@ LEFT JOIN ${source.platinum}.pim_prd_product_cat4_categories AS tb1 ON tb1.code 
 LEFT JOIN product_retail_unit AS tb2 ON tb2.product_id = product.product_id
 LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_country_translation_config AS tb3 ON tb3.code = product.origin
 LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_main_category AS tb4 ON tb4.code = product.main_category_code
+LEFT JOIN ${source.platinum}.pim_prd_product_brand AS br ON br.brand_code = product.brand
+  --       -- ON JSON_VALUE(a.extra_props, "$.brand_code") = b.brand_code
 -- LEFT JOIN product_cic AS cic ON cic.product_id = product.product_id
 LEFT JOIN high_margin_product AS hmp ON hmp.product_id = product.product_id
 LEFT JOIN is_ingredient_special AS iis ON iis.product_id = product.product_id
 LEFT JOIN retail_price AS rp ON rp.product_id = product.product_id
-LEFT JOIN brand AS br ON br.product_id = product.product_id
+-- LEFT JOIN brand AS br ON br.product_id = product.product_id
 LEFT JOIN ownbrand_portfolio AS op ON op.product_id = product.product_id
 LEFT JOIN chronic AS chronic ON chronic.product_id = product.product_id
 -- LEFT JOIN essential AS essential ON essential.product_id = product.product_id
@@ -517,7 +524,7 @@ LEFT JOIN atc3 AS a3 ON a3.product_id = product.product_id
 LEFT JOIN atc4 AS a4 ON a4.product_id = product.product_id
 -- LEFT JOIN sub_brand AS sb ON sb.product_id = product.product_id
 LEFT JOIN user_type AS ut ON ut.product_id = product.product_id
-LEFT JOIN pic_brand_seller AS  pbs ON LOWER(pbs.brand) = LOWER(br.brand)
+LEFT JOIN pic_brand_seller AS  pbs ON LOWER(pbs.brand) = LOWER(br.name)
 LEFT JOIN _cat2 AS c2 ON c2.product_id = product.product_id
 LEFT JOIN _cat3 AS c3 ON c3.product_id = product.product_id
 LEFT JOIN (
