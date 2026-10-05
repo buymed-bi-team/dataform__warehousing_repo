@@ -44,8 +44,8 @@ SELECT DISTINCT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transform
       ,requested_quantity -- Số lượng yêu cầu
       ,unit_price
       ,actual_quantity -- số lượng thực tế
-      ,vendor_id
-      ,vendor_name
+      ,i.vendor_id
+      ,i.vendor_name
       ,buymed_sku
       ,i.actual_total_amount -- tổng tiền thực tế
       ,actual_unit_price -- giá thực tế
