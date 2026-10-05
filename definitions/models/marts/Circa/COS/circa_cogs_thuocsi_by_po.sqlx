@@ -15,30 +15,7 @@ config {
     }
 }
 
-WITH base_unit_selection AS (
-    SELECT
-         product_id
-        ,client_id
-        ,base_unit
-        ,ROW_NUMBER() OVER (
-            PARTITION BY product_id, client_id
-            ORDER BY COUNT(*) DESC
-        ) AS rn
-    FROM `lakehouse-prod-394907.gold_buymed_vn2.cos_product_convert_base_unit`
-    GROUP BY ALL
-),
-
-base_unit AS (
-    SELECT
-         a.*
-    FROM `lakehouse-prod-394907.gold_buymed_vn2.cos_product_convert_base_unit` a
-    LEFT JOIN  base_unit_selection b ON a.product_id = b.product_id
-     AND a.client_id  = b.client_id
-     AND a.base_unit  = b.base_unit
-    WHERE b.rn = 1
-),
-
-t AS (
+WITH t AS (
     SELECT
         created_date
         ,i.po_code
@@ -80,12 +57,9 @@ final AS (
         ,t.avg_unit_price
         ,p.avg_unit_cost_price
         ,cv.convert_rate
-        ,cv.base_unit
     FROM t
     LEFT JOIN p ON t.order_id  = p.order_id AND t.product_id = p.product_id
-    LEFT JOIN base_unit cv ON t.client_id  = cv.client_id
-                             AND t.product_id = cv.product_id
-                             AND t.unit       = cv.convert_unit
+    LEFT JOIN ${ref('circa_dim_retail_unit')} cv ON t.product_id = cv.product_id AND t.unit = cv.convert_unit
 )
 
 SELECT

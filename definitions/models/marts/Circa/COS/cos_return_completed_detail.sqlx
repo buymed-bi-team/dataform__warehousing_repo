@@ -32,12 +32,11 @@ GROUP BY ALL
            ,convert_rate
            ,a.unit AS convert_unit
            ,a.base_unit AS is_base_unit
-           ,client_id
-    FROM buymed_circa_v2.product_retail_unit AS a
+    FROM buymed_circa_v2.product_master_retail_unit AS a
 )
 
 SELECT a.*
        , quantity * COALESCE(convert_rate,1) AS base_quantity
 FROM base_data a
-LEFT JOIN cv ON a.client_id = cv.client_id AND a.product_id = cv.product_id AND a.unit = cv.convert_unit
+LEFT JOIN cv ONa.product_id = cv.product_id AND a.unit = cv.convert_unit
 GROUP BY ALL

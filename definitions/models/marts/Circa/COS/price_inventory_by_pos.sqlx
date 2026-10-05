@@ -54,7 +54,6 @@ _all AS (
             END
         END                                                                 AS qty -- lấy stock_qty theo tất cả đơn vị
         ,i.stock_value
-        ,CONCAT(p.product_id, '_', p.client_id)                             AS product_client_id
     FROM price_tbl p
     LEFT JOIN inv_tbl i ON p.product_id = i.product_id  AND p.seller_code = i.seller_code
     LEFT JOIN ${source.ref}.circa_pos_profile pos ON i.pos_id = pos.id
