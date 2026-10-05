@@ -163,7 +163,6 @@ WITH cte_os AS (
 ,order_item_with_total AS (
     SELECT
          i.*
-        ,CONCAT(i.product_id, "_", i.client_id) AS product_client_id
         ,SUM(i.quantity) OVER (
             PARTITION BY
                  i.order_id
