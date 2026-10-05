@@ -36,7 +36,7 @@ WITH
     image AS (
         SELECT
             *
-        FROM ${source.external}.brand_image_link
+        FROM ${ref("brand_image")}
     )
 
 select
