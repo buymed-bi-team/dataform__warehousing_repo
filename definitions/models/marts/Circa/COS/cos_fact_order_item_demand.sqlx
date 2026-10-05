@@ -1,6 +1,9 @@
 config {
     type: "table",
-    description: `Last 13 month| PIC: huyen.ngo; model_type: Table ;schedule: At minute 5 every 2 hours.Circa /cos_order_item_demand `,
+    description: ` PIC: huyen.ngo;
+                   model_type: Table ;
+                   schedule: At minute 5 every 2 hours.
+                   Circa /cos_order_item_demand `,
     tags: ["custom_1h_past15"],
     name: "cos_fact_order_item_demand",
     columns: {
@@ -61,10 +64,8 @@ WITH _order AS(
     FROM ${source.circa_os}.order_order_item_demand o
     LEFT JOIN ${source.ref}.circa_pos_profile p  ON o.pos_id = p.id
     LEFT JOIN _order s ON o.order_id = s.id
-    -- LEFT JOIN ${source.ref}.cos_fact_order_item i ON o.order_id = i.order_id and o.product_id = i.product_id AND o.unit = i.unit AND o.sku_code = i.sku_code
     LEFT JOIN  ${source.ref}.cos_dim_product td ON o.product_id = td.product_id AND o.client_id = p.client_id
     LEFT JOIN gold_buymed_vn2.circa_dim_retail_unit cv ON o.unit = cv.convert_unit AND o.product_id = cv.product_id
-    -- LEFT JOIN ${source.circa_os}.order_order sON o.order_id = s.id
     WHERE o.status IS NOT NULL
       AND o.status <> 'DRAFT'
       AND s.status <> 'CANCELED'
@@ -83,4 +84,4 @@ SELECT a.* EXCEPT(ordered_quantity)
       , ROUND(SAFE_DIVIDE(b.on_hand_quantity, a.convert_rate)) AS current_stock
 FROM base_data a 
 LEFT JOIN stock b ON a.pos_id = b.pos_id AND a.product_id = b.product_id
--- WHERE a.order_code = 'DHC00856092'
+

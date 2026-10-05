@@ -47,8 +47,7 @@ SELECT DISTINCT
             THEN TRUE 
             ELSE FALSE 
         END                                                                       AS is_essential
-        ,td.on_hand_quantity
-       ,CONCAT(o.product_id, "_", o.client_id)                                    AS product_client_id
+      ,td.pos_os_have_stock 
       , o.order_id
       , i.order_code
       , o.status AS demand_status
@@ -56,7 +55,7 @@ SELECT DISTINCT
       ,i.customer_phone
 FROM ${source.circa_os}.order_order_item_demand  o
 LEFT JOIN ${source.ref}.circa_pos_profile p ON o.pos_id = p.id 
-LEFT JOIN ${source.ref}.cos_dim_product td ON o.product_id = td.product_id AND o.client_id = td.client_id
+LEFT JOIN ${source.ref}.circa_dim_master_product td ON o.product_id = td.product_id 
 LEFT JOIN (SELECT DISTINCT product_id from ${source.ref}.cos_product_essential WHERE status = 'ACTIVE') ls ON o.product_id = ls.product_id 
 LEFT JOIN ${source.ref}.cos_fact_order i ON o.order_id = i.order_id AND o.client_id = i.client_id
 WHERE p.id IS NOT NULL
@@ -108,15 +107,15 @@ GROUP BY ALL
 )
 SELECT t.* except (total_amount, unit_price)
        ,t.total_amount AS origin_amount
-       ,p.final_sale_price
-       ,CASE WHEN p.product_id IS NOT NULL AND final_sale_price > 0 THEN final_sale_price
+       ,p.sale_price
+       ,CASE WHEN p.product_id IS NOT NULL AND sale_price > 0 THEN sale_price
              ELSE unit_price END AS price
-       ,CASE WHEN p.product_id IS NOT NULL AND final_sale_price > 0 THEN quantity * final_sale_price
+       ,CASE WHEN p.product_id IS NOT NULL AND sale_price > 0 THEN quantity * sale_price
              ELSE t.total_amount END AS total_amount
       , min_comp
       , c.no_competitor
       , c.competitors
 FROM t
-LEFT JOIN (Select * from  ${source.ref}.cos_adhoc_pos_product_client WHERE seller_code = 'CIRCA') p  ON t.product_id = p.product_id AND lower(t.unit) = lower(p.unit)
+LEFT JOIN (SELECT * from  ${source.ref}.cos_dim_price WHERE seller_code = 'CIRCA') p  ON t.product_id = p.product_id AND lower(t.unit) = lower(p.unit)
 LEFT JOIN competitor c ON t.product_id = c.product_id
 
