@@ -53,7 +53,6 @@ SELECT DISTINCT
        ,c.distributor_id
        ,dis.name                                                                                                          AS vendor  -- 
        ,c.client_id
-       ,CONCAT(a.product_id, "_", c.client_id)                                                                            AS product_client_id
        ,rt.convert_rate
        ,c.fulfillment_method                                                                                              AS channel
        ,p.code AS pos_code
