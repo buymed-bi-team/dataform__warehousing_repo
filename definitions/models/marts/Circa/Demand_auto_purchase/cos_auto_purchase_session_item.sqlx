@@ -18,6 +18,7 @@ SELECT DISTINCT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transform
       ,i.pos_id
       ,pos.name as pos_name
       ,i.status AS product_status
+      ,failure_reason
       ,CASE
             WHEN failure_reason = 'SEARCH_FAILED'      THEN 'Lỗi tìm kiếm'
             WHEN failure_reason = 'NO_SKU_MATCH'       THEN 'Không khớp SKU'
@@ -29,9 +30,12 @@ SELECT DISTINCT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transform
             WHEN failure_reason = 'EXPIRY_NO_COVER'    THEN 'Không bán kịp trước hạn'
             WHEN failure_reason = 'OUT_OF_STOCK'       THEN 'Hết hàng'
             WHEN failure_reason = 'CHECKOUT_FAILED'    THEN 'Lỗi đặt hàng'
+            WHEN failure_reason = 'REPLACED_BY_SUBSTITUTE'    THEN 'Đã mua bằng hàng thay thế'
+            WHEN failure_reason = 'NOT_IN_CART'    THEN 'Không có trong giỏ khi đặt'
+            WHEN failure_reason = 'PAYMENT_FAILED'    THEN 'Không đủ số dư thanh toán'
             WHEN failure_reason IS NULL                THEN NULL
             ELSE failure_reason
-        END AS failure_reason
+        END AS failure_reason_vn
       ,i.found_unit_price --  giá tìm thấy
       ,i.max_allowed_unit_price -- giá tối đa 
       ,channel
