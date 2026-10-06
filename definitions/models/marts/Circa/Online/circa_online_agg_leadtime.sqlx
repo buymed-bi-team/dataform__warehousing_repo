@@ -61,7 +61,7 @@ WITH events AS (
   , GREATEST(a.t_created, a.t_confirm) AS m1
   FROM agg a
   LEFT JOIN final_pos p USING (order_code)
-  WHERE DATE(a.t_created, 'Asia/Ho_Chi_Minh') >= '2026-09-01'
+  WHERE DATE(a.t_created, 'Asia/Ho_Chi_Minh') >= '2026-07-01'
 )
 , hw2  AS (SELECT *, GREATEST(COALESCE(m1, t_created), t_final_pos_assign)      AS m2  FROM hw1)
 , hw2b AS (SELECT *, GREATEST(COALESCE(m2, m1, t_created), t_processing)        AS m2b FROM hw2)
