@@ -19,6 +19,7 @@ WITH sales_price AS (
            WHERE seller_code = 'CIRCA'
 )
 SELECT  TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
+     , i.id AS line_id
       ,session_id
       , DATE(DATETIME_ADD(o.created_at, INTERVAL 7 HOUR)) as created_date
       , i.product_id
