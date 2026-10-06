@@ -24,7 +24,7 @@ SELECT DISTINCT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transform
       , i.product_id
       , JSON_VALUE(demand_source, '$[0].type') AS type_rpo -- Nguồn mua hàng (RPO, Online,FORECAST )
       , JSON_VALUE(demand_source, '$[0].codes[0]') AS rpo_code -- Phiếu RPO 
-      ,i.pos_id
+      , pos.code AS pos_code
       ,pos.name as pos_name
       ,i.status AS product_status
       ,failure_reason
