@@ -18,7 +18,7 @@ WITH sales_price AS (
            FROM ${ref('gold_buymed_vn2','cos_dim_price')}
            WHERE seller_code = 'CIRCA'
 )
-SELECT DISTINCT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
+SELECT  TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
       ,session_id
       , DATE(DATETIME_ADD(o.created_at, INTERVAL 7 HOUR)) as created_date
       , i.product_id
