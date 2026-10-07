@@ -1,0 +1,33 @@
+
+config {
+  type: "view",
+  schema: "platinum_buymed_vn",
+  name: "marketplace_prd_promotion_lucky_wheel_custom",
+  description : `
+  PIC: long.nguyen
+  View only (silver, latest row per mg_id, no platinum join)
+  `,
+  tags:["platinum","marketplace_prd_promotion_lucky_wheel_custom"]
+}
+
+WITH silver AS (
+  SELECT
+    key, mg_id, scopes, banner_web, banner_mobile, banner_mobile_half, image_title_web, image_title_mobile, is_active, levels, start_time, created_time, created_by, name, lucky_wheel_code, priority, province_codes, background_mobile, main_image, main_image_mobile, description, code, main_gif, reward_gif, end_time, background_web, last_updated_time, main_gif_mobile, synced_at, extra_props, action, ingest_time,
+    CASE
+      WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time, 'Asia/Ho_Chi_Minh'))
+      ELSE DATE('2099-01-01')
+    END created_date,
+    CAST(NULL AS DATETIME) AS platinum_refresh
+  FROM silver_buymed_vn.marketplace_prd_promotion_lucky_wheel_custom
+  QUALIFY ROW_NUMBER() OVER (_window) = 1
+  WINDOW _window AS (
+    PARTITION BY mg_id
+    ORDER BY synced_at DESC,
+      IF(action='d',3, IF(action='u',2,1)) DESC,
+      last_updated_time DESC
+  )
+)
+
+SELECT s.*
+FROM silver s
+WHERE action <> "d"
