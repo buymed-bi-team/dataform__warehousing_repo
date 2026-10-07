@@ -7,7 +7,7 @@ config {
   PIC: long.nguyen
   View only (silver, latest row per mg_id, no platinum join)
   `,
-  tags:["platinum","marketplace_prd_cart_checkout_error"]
+  tags:["platinum","marketplace_prd_cart"]
 }
 
 WITH silver AS (
