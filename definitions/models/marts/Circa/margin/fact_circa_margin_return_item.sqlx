@@ -15,6 +15,7 @@ config {
     }
 }
 select 
+        r.pos_id,
         ri.* except(order_discount_product, order_discount_order),
         sum(
             if(discount_logic_change = 0,
