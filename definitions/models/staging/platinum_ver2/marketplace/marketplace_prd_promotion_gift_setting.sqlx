@@ -1,0 +1,33 @@
+
+config {
+  type: "view",
+  schema: "platinum_buymed_vn",
+  name: "marketplace_prd_promotion_gift_setting",
+  description : `
+  PIC: long.nguyen
+  View only (silver, latest row per mg_id, no platinum join)
+  `,
+  tags:["platinum","marketplace_prd_promotion_gift_setting"]
+}
+
+WITH silver AS (
+  SELECT
+    key, mg_id, created_time, customer_gift, last_updated_time, friend_gift, created_by, newbie_gift, friend_gift_des, friend_gift_sub_des, newbie_gift_des, newbie_gift_sub_des, partner_gift, synced_at, extra_props, action, ingest_time,
+    CASE
+      WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time, 'Asia/Ho_Chi_Minh'))
+      ELSE DATE('2099-01-01')
+    END created_date,
+    CAST(NULL AS DATETIME) AS platinum_refresh
+  FROM silver_buymed_vn.marketplace_prd_promotion_gift_setting
+  QUALIFY ROW_NUMBER() OVER (_window) = 1
+  WINDOW _window AS (
+    PARTITION BY mg_id
+    ORDER BY synced_at DESC,
+      IF(action='d',3, IF(action='u',2,1)) DESC,
+      last_updated_time DESC
+  )
+)
+
+SELECT s.*
+FROM silver s
+WHERE action <> "d"
