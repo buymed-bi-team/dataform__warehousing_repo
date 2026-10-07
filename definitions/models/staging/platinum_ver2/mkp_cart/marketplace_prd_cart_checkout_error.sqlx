@@ -1,0 +1,34 @@
+
+config {
+  type: "view",
+  schema: "platinum_buymed_vn",
+  name: "marketplace_prd_cart_checkout_error",
+  description : `
+  PIC: long.nguyen
+  View only (silver, latest row per mg_id, no platinum join)
+  `,
+  tags:["platinum","marketplace_prd_cart_checkout_error"]
+}
+
+WITH silver AS (
+  SELECT
+    key, mg_id, fail_count, error_message, created_time, first_checkout_time, customer_id, cart_id, error_detail, error_code, code, customer_phone, customer_address, account_id, last_checkout_time, last_updated_time, synced_at, extra_props, action, ingest_time,
+    CASE
+      WHEN created_time IS NOT NULL
+        THEN DATE(DATETIME(created_time, 'Asia/Ho_Chi_Minh'))
+      ELSE DATE('2099-01-01')
+    END created_date,
+    CAST(NULL AS DATETIME) AS platinum_refresh
+  FROM silver_buymed_vn.marketplace_prd_cart_checkout_error
+  QUALIFY ROW_NUMBER() OVER (_window) = 1
+  WINDOW _window AS (
+    PARTITION BY mg_id
+    ORDER BY synced_at DESC,
+      IF(action='d',3, IF(action='u',2,1)) DESC,
+      last_updated_time DESC
+  )
+)
+
+SELECT s.*
+FROM silver s
+WHERE action <> "d"
