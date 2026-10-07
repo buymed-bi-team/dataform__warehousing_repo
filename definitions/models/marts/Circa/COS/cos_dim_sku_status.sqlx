@@ -1,7 +1,7 @@
  config {
     type: "table",
     description: `PIC: huyen.ngo; model_type: Table ;schedule: At 10h30`,
-    name: "cos_sku_status",
+    name: "cos_dim_sku_status",
     tags: ["custom_1h_past15"]
 
 }
@@ -25,7 +25,7 @@ WITH base_data AS (
         , p.client_id
     FROM ${source.ref}.cos_fact_inventory v
     LEFT JOIN ${source.ref}.circa_pos_profile p ON v.pos_id = p.id
-    LEFT JOIN ${source.ref}.cos_dim_product td ON v.product_id = td.product_id AND v.client_id = td.client_id
+    LEFT JOIN ${source.ref}.circa_dim_master_product td ON v.product_id = td.product_id 
     WHERE p.type = 'CIRCA'
       AND p.id IS NOT NULL
       AND seller_code NOT IN ('CIRCA_MKP', 'MARKETING')
@@ -68,7 +68,6 @@ WITH base_data AS (
         , c.no_customers
         , c.orders
         , c.GMV
-        , CONCAT(o.product_id, "_", o.client_id) AS product_client_id
         , CASE
               WHEN o.current_stock_by_product > 0 THEN 'NORMAL'
               ELSE 'OOS'

@@ -66,6 +66,7 @@ WITH product_base_unit AS (
                   
     FROM buymed_circa_v2.product_sku_price s
     WHERE s.client_id = 1
+          AND pos_id IS NULL
     GROUP BY ALL
 )
 -- giá đối thủ

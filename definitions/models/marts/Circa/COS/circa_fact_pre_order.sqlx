@@ -4,7 +4,7 @@ config {
                    PIC: huyen.ngo; 
                    model_type: Table ;
                    schedule: At minute 15 every 1 hours.Circa Pre_order `,
-    tags: ["custom_1h_past15"],
+    disabled: true,
     name: "circa_fact_pre_order",
     columns: {
     },
@@ -29,12 +29,11 @@ SELECT o.*
         ,i.po_code
         ,i.owner_name
         ,i.distributor_id
-        ,CONCAT(coalesce(i.product_id, d.product_id), "_",i.client_id) AS product_client_id
  FROM  ${source.ref}.cos_fact_order o 
 LEFT JOIN  ${source.ref}.cos_fact_order_item i ON o.order_id = i.order_id
-LEFT JOIN  ${source.ref}.cos_dim_product p ON i.product_id = p.product_id AND o.client_id = p.client_id
+LEFT JOIN  ${source.ref}.circa_dim_master_product p ON i.product_id = p.product_id 
 LEFT JOIN  ${source.ref}.cos_fact_order_item_demand d on o.order_id = d.order_id
-LEFT JOIN `buymed_circa_v2.product_retail_unit` cv ON d.unit = cv.unit AND d.product_id = cv.product_id AND o.client_id = cv.client_id
+LEFT JOIN buymed_circa_v2.product_retail_unit cv ON d.unit = cv.unit AND d.product_id = cv.product_id AND o.client_id = cv.client_id
 WHERE delivery_scheduled_time IS NOT NULL
 
 GROUP BY ALL
@@ -42,7 +41,7 @@ GROUP BY ALL
       SELECT pos_id
             , product_id
             , SUM(on_hand_quantity) AS on_hand_quantity
-      FROM `gold_buymed_vn2.cos_fact_inventory`
+      FROM gold_buymed_vn2.cos_fact_inventory
   GROUP BY ALL
 )
 SELECT a.*

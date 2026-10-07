@@ -7,7 +7,7 @@ config {
         ${source.ref}.adhoc_pricing_full
         ${source.ref}.cos_adhoc_pos_product`
       ,
-    tags: ["custom_1h_past5"],
+
     name: "compare_price",
     columns: {
         product_id: "NonNull | The unique identifier for each product"
