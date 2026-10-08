@@ -83,6 +83,7 @@ WITH
             , CONCAT(a.sku_code, '_', b.warehouse_code) AS sku_fc_code
             , b.stock_quantity
             , b.available_quantity
+            , SAFE_CAST( JSON_VALUE( b.extra_props, '$.pending_confirm_quantity') AS INT64) AS pending_confirm_quantity
             , b.min_quantity
             , b.status AS sku_status
             , b.product_type
