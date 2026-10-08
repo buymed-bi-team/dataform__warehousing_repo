@@ -5,7 +5,9 @@ config {
                   model_type: Table ;
                   schedule: `, 
     schema: "buymed_tech",
-    name: "circa_customer_voucher",
+    tags: ["circa_customer"],
+    name: "circa_customer_voucher"
+  
 }
 
 WITH voucher_use AS (
@@ -18,9 +20,7 @@ WITH voucher_use AS (
     , v.discount_amount
   FROM `buymed_circa_v2.order_order_voucher` v
   INNER JOIN `buymed_circa_v2.order_order` o ON  o.id = v.order_id
-    AND o.created_date >= '2000-01-01'
-  WHERE v.created_date >= '2000-01-01'
-    AND v.is_valid = true
+  WHERE v.is_valid = true
     AND o.status = 'COMPLETED'
     AND o.type IN ('ONLINE', 'OFFLINE')
     AND o.entity_id IS NOT NULL
@@ -36,6 +36,7 @@ SELECT
   , TIMESTAMP_ADD(MAX(order_ts), INTERVAL 7 HOUR)                       AS last_used_at  
   , COUNT(DISTINCT order_id)                                            AS times_used     
   , SUM(discount_amount)                                                AS discount_amount
+  , DATETIME(CURRENT_TIMESTAMP(),  'Asia/Ho_Chi_Minh') AS refresh_at  
 FROM voucher_use
 GROUP BY ALL
 ORDER BY times_used DESC

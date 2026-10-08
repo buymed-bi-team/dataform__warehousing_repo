@@ -1,19 +1,12 @@
-
-
 config {
     type: "incremental",
-    name: "marketplace_prd_product_v2_product_market_price",
+    name: "marketplace_prd_cart_cart_deleted",
     schema: "platinum_buymed_vn",
-    assertions: {
-        uniqueKey: 'mg_id',
-        // nonNull: ["created_date"]
-    },
     bigquery: {
         partitionBy: "created_date"
     },
-    tags:["platinum_custom_1h_past7","marketplace_prd_product-v2","VN_product"]
+    tags: ["platinum_custom_1h_past7","marketplace_prd_cart"]
 }
-
 
 pre_operations {
   ${
@@ -24,10 +17,9 @@ pre_operations {
         DECLARE has_delete_data BOOLEAN;
         DECLARE Ingest_checkpoint TIMESTAMP;
         DECLARE checkpoint_date ARRAY<date>;
-        DECLARE checkpoint_date_by_mg_id ARRAY<date>;
         
         SET Ingest_checkpoint = (
-            SELECT max(ingest_time)  - INTERVAL 1 HOUR
+            SELECT max(ingest_time)  - INTERVAL 1 HOUR  
             FROM ${self()}
             WHERE created_date >= CURRENT_DATE() - INTERVAL 1 MONTH
         );
@@ -37,7 +29,7 @@ pre_operations {
             );
         END IF;
 
-        SET ( has_new_data, checkpoint_date, checkpoint_date_by_mg_id, has_delete_data ) = (
+        SET ( has_new_data, checkpoint_date, has_delete_data ) = (
             SELECT AS STRUCT
                 IF (
                     COUNT(*) > 0 , TRUE, FALSE
@@ -48,22 +40,22 @@ pre_operations {
                 ARRAY_AGG(
                     DISTINCT IF(created_time is NULL, "2099-01-01" , DATE( DATETIME(created_time,'Asia/Ho_Chi_Minh') ) )
                 ) AS checkpoint_date,
-                ARRAY_AGG(
-                    DISTINCT DATE( DATETIME(silver_buymed_vn.MONGOID_TIMESTAMP(mg_id),'Asia/Ho_Chi_Minh') ) 
-                ) AS checkpoint_date_by_mg_id,
                 COUNTIF( action = 'd' ) > 0 AS has_delete_data
-            FROM silver_buymed_vn.marketplace_prd_product_v2_product_market_price
+            FROM silver_buymed_vn.marketplace_prd_cart_cart_deleted
             WHERE ingest_time > Ingest_checkpoint
         );
 
         CREATE TEMP TABLE new_records AS (
           SELECT DISTINCT mg_id
-          FROM silver_buymed_vn.marketplace_prd_product_v2_product_market_price
+          FROM silver_buymed_vn.marketplace_prd_cart_cart_deleted
           WHERE ingest_time > Ingest_checkpoint
         );
 
         IF ( has_new_data = TRUE ) THEN
             IF (has_delete_data = TRUE) THEN
+              -- if has deleted, then we must get created_date of old data from platinum
+              -- In silver, delete event doesn't store created_time
+              -- So this step is required
               SET checkpoint_date = ARRAY(
                 SELECT DISTINCT created_date
                 FROM ${self()}
@@ -73,9 +65,7 @@ pre_operations {
 
             DELETE FROM ${self()}
             WHERE
-                (created_date IN UNNEST(checkpoint_date)
-                    OR created_date IN UNNEST(checkpoint_date_by_mg_id) 
-                )
+                created_date IN UNNEST(checkpoint_date)
                 AND mg_id IN (SELECT mg_id FROM new_records)
             ;
         ELSE
@@ -103,7 +93,7 @@ WITH over_tbl AS (
                 last_updated_time DESC
             LIMIT 1
         )[0] action
-    FROM silver_buymed_vn.marketplace_prd_product_v2_product_market_price
+    FROM silver_buymed_vn.marketplace_prd_cart_cart_deleted
     ${when(incremental(),  `
     WHERE ingest_time > Ingest_checkpoint - INTERVAL 3 HOUR
     AND mg_id IN (SELECT n.mg_id FROM new_records n)
@@ -117,7 +107,7 @@ SELECT
         ELSE DATE( '2099-01-01' )
     END AS created_date,
     CURRENT_DATETIME() AS platinum_refresh
-FROM silver_buymed_vn.marketplace_prd_product_v2_product_market_price
+FROM silver_buymed_vn.marketplace_prd_cart_cart_deleted
 WHERE key IN (SELECT o.key FROM over_tbl o)
 ${when(incremental(),  `
     AND ingest_time > Ingest_checkpoint - INTERVAL 3 HOUR

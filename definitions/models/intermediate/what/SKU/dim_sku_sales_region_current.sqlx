@@ -106,7 +106,8 @@ SELECT
     fv.vendor_name AS fv_name,
     fv.vendor_type AS sku_trading_by_fv,
     vd.line_manager_combine AS fv_line_manager_code,
-    COALESCE(sv.purchase_status, "Off") AS purchase_status ,
+    sv.purchase_status  AS purchase_status ,
+    -- COALESCE(sv.purchase_status, "Off") AS purchase_status ,
     fv.min_per_step,
     CONCAT(fv.vendor_code,"_",cte.fc_code) AS vendor_fc_code,
     s.status AS sku_system_status,
@@ -152,6 +153,7 @@ SELECT
     s.max_quantity_per_order,
     IF(ins.available_quantity < 0, 0, ins.available_quantity) AS available_qty,
     IF(ins.stock_quantity < 0, 0, ins.stock_quantity) AS stock_qty,
+    IF(ins.pending_confirm_quantity < 0, 0, ins.pending_confirm_quantity) AS pending_confirm_quantity,
     ins.min_quantity,
     ins.product_type,
     CASE

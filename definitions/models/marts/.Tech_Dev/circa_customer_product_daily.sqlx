@@ -5,7 +5,11 @@ config {
                   model_type: Table ;
                   schedule: `, 
     schema: "buymed_tech",
+    tags: ["circa_customer"],
     name: "circa_customer_product_daily",
+    bigquery: {
+        partitionBy: "order_date"
+    }
 }
 
 WITH item_daily AS (
@@ -43,6 +47,7 @@ SELECT
   , p.cat3                      
   , p.cat4                      
   , d.quantity                  
-  , d.amount                    
+  , d.amount 
+  , DATETIME(CURRENT_TIMESTAMP(),  'Asia/Ho_Chi_Minh') AS refresh_at                     
 FROM item_daily d
 LEFT JOIN `gold_buymed_vn2.circa_dim_master_product` p ON p.product_id = d.product_id

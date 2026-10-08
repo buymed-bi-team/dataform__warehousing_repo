@@ -28,7 +28,6 @@ SELECT DISTINCT r.id
               ,rid.unit_price
               ,SUM(rid.quantity * rid.unit_price) AS total_amount_item
               ,r.client_id
-              ,CONCAT(ri.product_id, "_", r.client_id) AS product_client_id
               ,lot_id
               ,lot_date
               ,sku_code
@@ -111,7 +110,6 @@ SELECT trf.id
               ,rcv.unit_price
               ,rcv.total_amount_item
               ,trf.client_id
-              ,trf.product_client_id
               ,trf.lot_id
               ,trf.lot_date
               ,trf.sku_code

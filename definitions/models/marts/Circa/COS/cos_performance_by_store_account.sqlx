@@ -19,7 +19,7 @@ with purchase as
                     ,o.fulfillment_method
                     ,o.Vendor as vendor
                     ,created_date as pur_order_date
-                    ,sum(base_qty_received) as base_purchase_qty
+                    ,sum(actual_base_quantity) as base_purchase_qty
 from ${source.ref}.cos_purchase_order o
 left join ${source.ref}.cos_purchase_order_item oi on o.po_id = oi.po_id
 where store_id = 1

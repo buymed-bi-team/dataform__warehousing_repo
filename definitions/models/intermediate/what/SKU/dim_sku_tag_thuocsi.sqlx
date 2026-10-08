@@ -13,4 +13,4 @@ config {
 SELECT
     *
 FROM ${ref("dim_sku_tag")}
-WHERE tag_code = 'LNC' OR type = 'THUOCSI'
+WHERE tag_code = 'LNC' OR tag_code LIKE '%BENVUNG%' OR type = 'THUOCSI'

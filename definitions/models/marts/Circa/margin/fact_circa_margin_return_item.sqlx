@@ -14,19 +14,59 @@ config {
         partitionBy: "created_date"
     }
 }
+with order_item_distribution AS (
+    SELECT order_id,
+    product_id,
+    doc_code,
+    item_discount_code,
+    cost_price_include_tax,
+    unit,
+    sum(coalesce(voucher_contribution, item_contribution)) as voucher_contribution
+    from (
+    select *,
+      SAFE_DIVIDE(IF(promotion_eligible_amount IS NOT NULL, quantity_po*promotion_eligible_amount,
+      IF(is_drug IS FALSE AND coalesce(is_global_promotion_excluded,FALSE) IS FALSE, quantity_po*unit_price_after_discount,0)),
+        SUM(IF(promotion_eligible_amount IS NOT NULL, quantity_po*promotion_eligible_amount,
+      IF(is_drug IS FALSE AND coalesce(is_global_promotion_excluded,FALSE) IS FALSE, quantity_po*unit_price_after_discount,0))) OVER (PARTITION BY order_id))
+      AS voucher_contribution,
+      SAFE_DIVIDE(quantity_po*unit_price_after_discount,
+        SUM(quantity_po*unit_price_after_discount) OVER (PARTITION BY order_id))
+      AS item_contribution,
+    FROM
+    ${ref("gold_buymed_vn2", "fact_fin_circa_order_item")}
+    WHERE CREATED_DATE >= DATE_TRUNC(CURRENT_DATE('Asia/Ho_Chi_Minh'), year)
+    AND NOT (cost_price_include_tax is null and product_id <> 1))
+    GROUP BY ALL 
+),
+return_item AS (
+    select 
+        ri.*,
+        if(is_deal_1k is true, 
+        (unit_price_before_discount - unit_price_after_discount)*quantity_po,
+        0) as voucher_discount_deal_1k,
+        CASE
+            WHEN ri.fulfillment_method = 'SO_THUOCSI' AND cogs_base_unit_ts is not null then cogs_base_unit_ts
+            else ri.cost_price_include_tax
+        END AS base_unit_cost_price_ts
+    from ${ref("gold_buymed_vn2","fact_fin_circa_return_item")} ri
+    LEFT JOIN ${ref("gold_buymed_vn2","circa_cogs_thuocsi_by_po")} p
+    ON ri.doc_code = p.po_code
+    AND ri.product_id = p.product_id
+    GROUP BY ALL
+)
 select 
+        r.pos_id,
         ri.* except(order_discount_product, order_discount_order),
         sum(
             if(discount_logic_change = 0,
             unit_price*quantity_po 
-            - (r.discount_amount + r.loyalty_discount_amount + r.external_discount_amount)*item_amount_contribution
-            - voucher_discount_deal_1k,
+            - (COALESCE(r.discount_amount,0) + COALESCE(r.loyalty_discount_amount,0) + COALESCE(r.external_discount_amount,0))*o.voucher_contribution,
             unit_price*quantity_po)) as return_amount,
         SUM(
             CASE
                 WHEN ri.owner_name <> 'CIRCA MARKETING' 
                     AND (ri.gift_code IS NULL OR ri.gift_code = '') 
-                    AND product_id NOT IN (2010834, 2010836, 2010837, 2010838, 2010840) 
+                    AND ri.product_id NOT IN (2010834, 2010836, 2010837, 2010838, 2010840) 
                 THEN ri.cost_price_include_tax * ri.base_quantity_po
                 ELSE 0
                 END
@@ -35,7 +75,7 @@ select
             CASE
                 WHEN ri.owner_name <> 'CIRCA MARKETING' 
                     AND (ri.gift_code IS NULL OR ri.gift_code = '') 
-                    AND product_id NOT IN (2010834, 2010836, 2010837, 2010838, 2010840) 
+                    AND ri.product_id NOT IN (2010834, 2010836, 2010837, 2010838, 2010840) 
                 THEN ri.base_unit_cost_price_ts * ri.base_quantity_po
                 ELSE 0
                 END
@@ -64,29 +104,19 @@ select
         ) AS voucher_gift_buymed_return,
         sum(item_discount_amount*quantity_po) deal_return,
         coalesce(sum(quantity_po*total_allocated_discount_amount),
-        sum((r.discount_amount + r.loyalty_discount_amount + r.external_discount_amount)*item_amount_contribution + voucher_discount_deal_1k)
+        sum((COALESCE(r.discount_amount,0) + COALESCE(r.loyalty_discount_amount,0) + COALESCE(r.external_discount_amount,0))*o.voucher_contribution + COALESCE(voucher_discount_deal_1k,0))
         ) voucher_circa_return,
         sum(order_discount_order*quantity_po) order_discount_order,
         sum(order_discount_product*quantity_po) order_discount_product
         from  ${ref("gold_buymed_vn2","fact_fin_circa_return")} r
-        left join (
-            select ri.*,
-            SAFE_DIVIDE(
-                if(promotion_eligible_amount IS NOT NULL,quantity_po*promotion_eligible_amount,quantity_po*unit_price_before_discount), 
-            SUM(if(promotion_eligible_amount IS NOT NULL,quantity_po*promotion_eligible_amount,quantity_po*unit_price_before_discount)) OVER (PARTITION BY return_order_id)) 
-            AS item_amount_contribution,
-            if(is_deal_1k is true, 
-            (unit_price_before_discount - unit_price_after_discount)*quantity_po,
-            0) as voucher_discount_deal_1k,
-            CASE
-                WHEN ri.fulfillment_method = 'SO_THUOCSI' AND cogs_base_unit_ts is not null then cogs_base_unit_ts
-                else ri.cost_price_include_tax
-                END AS base_unit_cost_price_ts
-            from ${ref("gold_buymed_vn2","fact_fin_circa_return_item")} ri
-            LEFT JOIN ${ref("gold_buymed_vn2","circa_cogs_thuocsi_by_po")} p
-                ON ri.doc_code = p.po_code
-                AND ri.product_id = p.product_id
-                GROUP BY ALL) ri
+        left join return_item ri
         on r.return_order_id = ri.return_order_id
+        left join order_item_distribution o 
+        on r.order_id = o.order_id 
+        and ri.product_id = o.product_id 
+        and ri.doc_code = o.doc_code 
+        and coalesce(ri.item_discount_code,'') = coalesce(o.item_discount_code,'')
+        and ri.cost_price_include_tax = o.cost_price_include_tax 
+        and ri.unit = o.unit
         where r.status = 'COMPLETED'
         GROUP BY ALL

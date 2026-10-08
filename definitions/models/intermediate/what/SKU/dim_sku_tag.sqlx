@@ -42,9 +42,10 @@ WITH
             a.mg_id IS NOT NULL 
             AND c.sku_code IS NOT NULL
             AND b.tag_id IS NOT NULL
+            AND t NOT LIKE '%BENVUNG%'
     )
     , cte_2 AS (
-        SELECT
+        SELECT 
             a.product_id,
             c.sku_code,
             a.seller_code,
@@ -70,9 +71,42 @@ WITH
         WHERE
             c.sku_code IS NOT NULL
             AND b.tag_id IS NOT NULL
+        QUALIFY ROW_NUMBER()  OVER(PARTITION BY sku_sales_region_code, tag_code ORDER BY created_time DESC) = 1
+    ),
+
+    cte_3 AS (
+        SELECT
+            a.product_id,
+            c.sku_code,
+            a.seller_code,
+            c.sku_key,
+            c.sub_sku_code,
+            c.sales_region_code,
+            CONCAT(c.sku_code,"_",c.sales_region_code) as sku_sales_region_code,
+            JSON_VALUE(d.tags.0) as tag_code,
+            b.name AS tag,
+            COALESCE(b.name, JSON_VALUE(d.tags.0)) AS tag_name,
+            b.tag_id,
+            TIMESTAMP_ADD(a.created_time, INTERVAL 7 HOUR) AS created_time,
+            TIMESTAMP_ADD(a.last_updated_time, INTERVAL 7 HOUR) AS last_updated_time,
+            b.visible,
+            "THUOCSI" AS type
+        FROM ${source.platinum}.marketplace_prd_product_v2_product_high_profit_result AS a
+            LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_product_high_profit_config AS  d ON a.high_profit_config_code =  d.code
+            LEFT JOIN ${source.platinum}.marketplace_prd_product_v2_tag AS b
+                ON JSON_VALUE(d.tags.0) = b.code
+            LEFT JOIN ${ref("dim_sku_sales_region_current")} c
+                ON a.region_code = c.sales_region_code AND a.sku = c.sku_code
+        WHERE
+            c.sku_code IS NOT NULL
+            AND b.tag_id IS NOT NULL
+        QUALIFY ROW_NUMBER()  OVER(PARTITION BY sku_sales_region_code, tag_code ORDER BY a.created_time DESC) = 1
     )
 SELECT  *
 FROM cte_1
 UNION ALL
 SELECT *
 FROM cte_2
+-- UNION ALL
+-- SELECT *
+-- FROM cte_3

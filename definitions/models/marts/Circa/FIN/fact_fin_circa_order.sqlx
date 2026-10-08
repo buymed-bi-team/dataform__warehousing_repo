@@ -26,8 +26,8 @@ SELECT
         when o.channel = 'O2O' then oo.created_date
         ELSE DATE(COALESCE(o.created_at, o.completed_at),  'Asia/Ho_Chi_Minh')
         end AS created_date,
-    DATE(coalesce(o.completed_at, o.updated_at), 'Asia/Ho_Chi_Minh') AS completed_date,
-    DATETIME(coalesce(o.completed_at, o.updated_at), 'Asia/Ho_Chi_Minh') AS completed_at,
+    DATE(o.completed_at, 'Asia/Ho_Chi_Minh') AS completed_date,
+    DATETIME(o.completed_at, 'Asia/Ho_Chi_Minh') AS completed_at,
     DATE(o.picking_at, 'Asia/Ho_Chi_Minh') AS picking_date,
     DATETIME(o.picking_at, 'Asia/Ho_Chi_Minh') AS picking_at,
     o.delivery_type,
@@ -53,7 +53,7 @@ SELECT
             oo.total_price - oo.wallet_paid_amount,
             total_amount)  as total_amount,
     medicine_cutting_fee total_medicine_cutting_fee,
-    coalesce(oo.total_discount,o.discount_amount) AS total_order_discount_amount,
+    coalesce(oo.total_discount - o.external_discount_amount,o.discount_amount) AS total_order_discount_amount,
     total_item_amount AS total_item_amount,
     loyalty_discount_amount AS total_loyalty_discount_amount,
     o.external_discount_amount,

@@ -36,11 +36,11 @@ pre_operations {
 
 WITH pv AS (
   SELECT
-    PARSE_DATE('%Y%m%d', event_date) AS event_date,
-    user_pseudo_id,
-    (SELECT value.int_value    FROM UNNEST(event_params) WHERE key = 'ga_session_id') AS ga_session_id,
-    (SELECT value.int_value    FROM UNNEST(event_params) WHERE key = 'entrances')     AS entrances,
-    REGEXP_EXTRACT(
+    PARSE_DATE('%Y%m%d', event_date) AS event_date
+    ,user_pseudo_id
+    ,(SELECT value.int_value    FROM UNNEST(event_params) WHERE key = 'ga_session_id') AS ga_session_id
+    ,(SELECT value.int_value    FROM UNNEST(event_params) WHERE key = 'entrances')     AS entrances
+    ,REGEXP_EXTRACT(
       (SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'page_location'),
       r'^https?://(?:www\.)?circa\.vn(/[^?#]*)'
     ) AS page_path

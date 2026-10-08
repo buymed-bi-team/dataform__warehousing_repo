@@ -39,13 +39,18 @@ AS (SELECT * FROM  ${ref("buymed_innovation", "circa_fact_inventory")});
 CREATE OR REPLACE VIEW `rumi_buymed_circa.circa_fact_order_online`
 AS (SELECT * FROM  ${ref("buymed_innovation", "circa_fact_order_online")});
 
--- fact_vision_ai_camera
-CREATE OR REPLACE VIEW `rumi_buymed_circa.circa_fact_vision_ai_camera`
-AS (SELECT * FROM  ${ref("buymed_innovation", "circa_fact_vision_ai_camera")});
+-- -- fact_vision_ai_camera
+-- CREATE OR REPLACE VIEW `rumi_buymed_circa.circa_fact_vision_ai_camera`
+-- AS (SELECT * FROM  ${ref("buymed_innovation", "circa_fact_vision_ai_camera")});
 
--- fact_thuocsi_pricing
-CREATE OR REPLACE VIEW `rumi_buymed_circa.circa_fact_thuocsi_pricing`
-AS (SELECT * FROM  ${ref("buymed_innovation", "circa_fact_thuocsi_pricing")});
+-- fact_thuocsi_pricing_for_circa_os
+CREATE OR REPLACE VIEW `rumi_buymed_circa.circa_os_fact_thuocsi_pricing`
+AS (SELECT * FROM  ${ref("buymed_innovation", "circa_os_fact_thuocsi_pricing")});
+
+
+-- fact_thuocsi_pricing_for_circa_fs
+CREATE OR REPLACE VIEW `rumi_buymed_circa.circa_fs_fact_thuocsi_pricing`
+AS (SELECT * FROM  ${ref("buymed_innovation", "circa_fs_fact_thuocsi_pricing")});
 
 -- fact_thuocsi_product_sku_status
 CREATE OR REPLACE VIEW `rumi_buymed_circa.circa_fact_thuocsi_product_sku_status`
@@ -129,6 +134,12 @@ AS (SELECT * FROM  ${ref("buymed_innovation", "circa_dim_product_retail_unit")})
 -- retail_unit
 CREATE OR REPLACE VIEW `rumi_buymed_circa.circa_dim_online_customer`
 AS (SELECT * FROM  ${ref("buymed_innovation", "circa_dim_online_customer")});
+
+
+
+-- circa_fs_fact_product_demand_planning
+CREATE OR REPLACE VIEW `rumi_buymed_circa.circa_fs_fact_product_demand_planning`
+AS (SELECT * FROM  ${ref("buymed_innovation", "circa_fs_fact_product_demand_planning")});
 
 -- -- dim_competitor_price
 -- CREATE OR REPLACE VIEW `rumi_buymed_circa.circa_dim_product_competitor_price`

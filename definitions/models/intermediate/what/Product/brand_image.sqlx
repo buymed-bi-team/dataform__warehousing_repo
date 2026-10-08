@@ -1,0 +1,9 @@
+config {
+    type: "table"
+
+}
+
+       SELECT
+            *
+        FROM ${source.external}.brand_image_link
+

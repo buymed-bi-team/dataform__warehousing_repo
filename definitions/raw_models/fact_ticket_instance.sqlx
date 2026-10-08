@@ -81,7 +81,12 @@ SELECT
         )
         , "Asia/Ho_Chi_Minh"
     ) AS second_decision_time
-    , status AS ticket_status
+    -- , status AS ticket_status
+    , CASE
+        WHEN status NOT IN ('COMPLETED', 'CANCELLED') AND deadline_time < CURRENT_TIMESTAMP THEN 'OVERDUE'
+        WHEN status = "PICKED" AND TO_JSON_STRING(decision_selecteds) LIKE '%RESPONDED%' THEN 'REPLIED'
+        ELSE status
+    END AS ticket_status
     , JSON_EXTRACT_SCALAR(
         JSON_EXTRACT(decision_selecteds, '$[0]')
         , '$.name'

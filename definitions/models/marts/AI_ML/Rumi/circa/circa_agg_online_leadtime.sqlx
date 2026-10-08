@@ -5,18 +5,64 @@ config {
     tags: ['AI_CIRCA']
 }
 
-WITH t AS (
-SELECT 
-   order_code_platform AS order_code
-  ,group_event AS stage
-  ,MIN(event_name_detail_time) AS start_time
-  ,MAX(event_name_detail_time) AS end_time
-FROM ${ref("circa_online_delivery")}
-WHERE group_event IS NOT NULL
-      AND group_event <> "1. CREATED_ORDER"
-GROUP BY all
+WITH lt AS (
+  SELECT *
+  FROM gold_buymed_vn2.circa_online_agg_leadtime
 )
- SELECT * except(end_time)
-         ,COALESCE(LEAD(start_time) OVER (PARTITION BY order_code ORDER BY stage), end_time) AS end_time
-  FROM t
- ORDER BY order_code DESC, stage
+, o AS (
+  SELECT
+      order_code
+    , delivery_tags
+    , assigned_pos_name
+    , o2o_status
+    , created_time
+  FROM gold_buymed_vn2.circa_online_order
+)
+, j AS (
+  SELECT
+      lt.order_code
+    , o.delivery_tags
+    , o.assigned_pos_name AS pos_name
+    , o.o2o_status        AS status
+    , o.created_time
+    , ROUND(IFNULL(lt.s1_create_to_confirm_min   , 0) / 60, 2) AS wait_confirm
+    , ROUND(IFNULL(lt.s2_confirm_to_final_pos_min, 0) / 60, 2) AS assign_pos
+    , ROUND(IFNULL(lt.s3a_wait_to_process_min    , 0) / 60, 2) AS wait_to_process
+    , ROUND(IFNULL(lt.s3b_process_to_book_min    , 0) / 60, 2) AS pos_packing
+    , ROUND(IFNULL(lt.s4_book_to_pickup_min      , 0) / 60, 2) AS book_deliver
+    , ROUND(IFNULL(lt.s5_pickup_to_delivered_min , 0) / 60, 2) AS delivery
+    , ROUND(IFNULL(lt.s_gap_min                  , 0) / 60, 2) AS other_gap
+    , lt.gap_reason
+    , ROUND(lt.e2e_min / 60, 2) AS E2E
+    , CASE o.delivery_tags
+        WHEN '1. giao-30ph' THEN 0.5
+        WHEN '2. giao-2h'   THEN 2
+        WHEN '3. giao-24h'  THEN 24
+        WHEN '4. giao-96h'  THEN 96
+      END * 1.1 AS sla_limit_h
+  FROM lt
+  LEFT JOIN o USING (order_code)
+)
+
+SELECT
+    order_code
+  , delivery_tags
+  , pos_name
+  , status
+  , created_time
+  , wait_confirm
+  , assign_pos
+  , wait_to_process
+  , pos_packing
+  , book_deliver
+  , delivery
+  , other_gap
+  , gap_reason
+  , E2E
+  , CASE
+      WHEN sla_limit_h IS NULL THEN 'Không xác định tag'
+      WHEN E2E <= sla_limit_h  THEN 'Đúng hạn'
+      ELSE 'Trễ hạn'
+    END AS sla_status
+FROM j
+ORDER BY created_time
