@@ -10,7 +10,7 @@ config {
 }
 js {
     const start_date =
-      ` DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH)`
+      ` DATE_SUB(CURRENT_DATE('Asia/Ho_Chi_Minh'), INTERVAL 1 MONTH)`
 }
 pre_operations {
   DELETE
