@@ -13,11 +13,14 @@ js {
       ` DATE_SUB(CURRENT_DATE('Asia/Ho_Chi_Minh'), INTERVAL 1 MONTH)`
 }
 pre_operations {
-  DELETE
+  ${when(incremental() ,
+  `DELETE
   FROM
     ${self()}
   WHERE
-    created_date >= ${start_date}
+    created_date >= ${start_date}`
+    )
+  }
 }
 
 WITH
@@ -72,7 +75,7 @@ WITH
   LEFT JOIN buymed_circa_v2.entity_pos_profile p
   ON l.pos_id = p.id
   where ia.deleted_at is null
-  AND ia.created_date >= ${start_date}
+   ${when( incremental(), `AND ia.created_date >= ${start_date}`)}
     )
 select * from raw_allocation
 
