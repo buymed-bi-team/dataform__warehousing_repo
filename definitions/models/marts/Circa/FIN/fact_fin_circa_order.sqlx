@@ -79,7 +79,7 @@ FROM ${source.circa_os}.order_order o
 LEFT JOIN ${source.circa_os}.entity_customer e
 on o.entity_id = e.id
 LEFT JOIN (select distinct id, email, name  from ${source.circa_os}.entity_entity) ee
-on o.updated_by = ee.id
+on o.created_by = ee.id
 LEFT JOIN (
   SELECT
     order_code,
