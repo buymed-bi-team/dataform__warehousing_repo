@@ -5,7 +5,7 @@ config {
     split order voucher into 
       voucher_bill_size as order_discount_order 
       and custom voucher for custom products as order_discount_product`,
-    tags: ["gold_custom_20m"]
+    tags: ["gold_custom_20m", "custom_1h_past10_out_of_office"]
 }
 with main_order_voucher as (
 select 

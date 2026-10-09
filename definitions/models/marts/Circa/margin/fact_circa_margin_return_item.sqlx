@@ -5,7 +5,7 @@ config {
                   model_type: Table ;
                   source: fact_fin_circa_order_item;
                   schedule: At minute 30 every hour`,
-    tags:  ["gold_custom_20m"],
+    tags:  ["gold_custom_20m", "custom_1h_past10_out_of_office"],
     name: "fact_circa_margin_return_item",
     columns: {
     }
