@@ -30,11 +30,7 @@ WITH
     l.location_type,
     l.name AS location_name,
     ild.doc_code,
-    CASE
-      WHEN (JSON_VALUE(so, '$') IS NULL OR JSON_VALUE(so, '$') = '') THEN NULL
-      ELSE JSON_VALUE(so, '$')
-  END
-    AS so_thuoc_si,
+    po.sale_order_number AS so_thuoc_si,
     CASE
       WHEN ia.type = 'COMPLETED_PUT_RETURN_ORDER' AND l.location_type = 'SALES' THEN (1)
       WHEN ia.type = 'COMPLETED_RETURN_ORDER'
@@ -57,8 +53,6 @@ WITH
   ON ia.location_id = l.id
   LEFT JOIN buymed_circa_v2.inventory_location_detail ild
   ON ia.location_detail_id = ild.id
-  LEFT JOIN UNNEST(JSON_EXTRACT_ARRAY(ild.sale_order_numbers)) AS so
-  ON TRUE
   LEFT JOIN buymed_circa_v2.order_purchase_order po
   ON ild.doc_code = po.code
   LEFT JOIN buymed_circa_v2.entity_owner do 
