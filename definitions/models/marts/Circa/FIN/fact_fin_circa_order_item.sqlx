@@ -11,7 +11,7 @@ config {
 js {
     const start_date =
       //  `date(2024, 01, 01)`
-      ` DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)`
+      ` DATE_SUB(CURRENT_DATE('Asia/Ho_Chi_Minh'), INTERVAL 1 MONTH)`
     const end_date = ` CURRENT_DATE() `
 }
 pre_operations {
@@ -91,7 +91,7 @@ WITH
   LEFT JOIN (
   select * 
   from ${ref("fact_fin_circa_inventory_allocation")} 
-  where updated_date >= ${start_date}
+  where created_date >= ${start_date}
   and type = 'SALE_ORDERED') poi
   ON oi.id = poi.item_ref_id
   LEFT JOIN ${ref("fact_fin_circa_order_voucher")} ov 

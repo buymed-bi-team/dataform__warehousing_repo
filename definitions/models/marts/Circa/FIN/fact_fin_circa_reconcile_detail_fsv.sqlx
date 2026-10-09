@@ -8,7 +8,7 @@ config {
 }
 
 js {
-    const start_time = 'DATE(CURRENT_DATE() - 30)'
+    const start_time = `DATE_SUB(CURRENT_DATE('Asia/Ho_Chi_Minh'), INTERVAL 1 MONTH)`
   //const start_time = "'2024-01-01'"
 }
 pre_operations {
