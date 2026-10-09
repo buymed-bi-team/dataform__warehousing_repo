@@ -1,7 +1,7 @@
 config {
   type: "table",
   description: "Quantity in Wait to Confirm Order",
-  tags: ["gold_custom_20m"],
+  tags: ["gold_custom_20m", "custom_1h_past10_out_of_office"],
   bigquery: {
     partitionBy: "created_date"
   }

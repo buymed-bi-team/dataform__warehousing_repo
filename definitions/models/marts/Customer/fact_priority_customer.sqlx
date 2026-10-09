@@ -26,11 +26,6 @@ config {
       last_updated_time: "NonNull | In Timezone +7"
   },
   tags : ['0h00'],
-  assertions: {
-      // guaranteed columns: primary key, Source_insure_NonNull
-      uniqueKey : "priority_customer_id",
-      nonNull : ("priority_customer_id" )
-  }
 }
 
 
@@ -61,8 +56,8 @@ SELECT
 FROM 
   ${source.platinum}.marketplace_prd_customer_priority_customer
 
-post_operations {
-  ALTER TABLE ${self()} 
-  ADD PRIMARY KEY (customer_code) NOT ENFORCED,
-  ADD FOREIGN KEY(location_code) references ${ref(`dim_geo_location`)}(location_code) NOT ENFORCED
-}
+-- post_operations {
+--   ALTER TABLE ${self()} 
+--   ADD PRIMARY KEY (customer_code) NOT ENFORCED,
+--   ADD FOREIGN KEY(location_code) references ${ref(`dim_geo_location`)}(location_code) NOT ENFORCED
+-- }

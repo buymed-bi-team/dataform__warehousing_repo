@@ -12,7 +12,7 @@ config {
             ${source.ref}.adhoc_pricing_seller_price,
             ${source.ref}.adhoc_pricing_price_after_rebate
         `,
-    tags: ["gold_custom_20m", "PRICING"],
+    tags: ["gold_custom_20m", "custom_1h_past10_out_of_office", "PRICING"],
 
     columns: {
         purchase_price: "The unit price in the latest PO (purchase order)",
