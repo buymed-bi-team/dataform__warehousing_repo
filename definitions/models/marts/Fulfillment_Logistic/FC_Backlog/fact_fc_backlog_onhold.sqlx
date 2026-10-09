@@ -2,7 +2,7 @@ config {
   type: "table",
   name: "fact_fc_backlog_onhold",
   dependencies: ["dim_province", "fact_fc_picking_rule"],
-  tags: ["gold_custom_20m", "FC_BACKLOG"]
+  tags: ["gold_custom_20m", "custom_1h_past10_out_of_office", "FC_BACKLOG"]
 }
 
 WITH cte_date AS (

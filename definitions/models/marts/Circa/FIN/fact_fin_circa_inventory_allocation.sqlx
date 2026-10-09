@@ -6,7 +6,7 @@ config {
         partitionBy: "date_trunc(updated_date,month)",
         clusterBy: ["type"]
     },
-     tags: ["gold_custom_20m"]
+     tags: ["gold_custom_20m", "custom_1h_past10_out_of_office"]
 }
 
 WITH

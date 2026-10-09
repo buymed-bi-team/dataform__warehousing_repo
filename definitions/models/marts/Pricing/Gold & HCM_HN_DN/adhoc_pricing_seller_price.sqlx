@@ -14,7 +14,7 @@ config {
             ${source.ref}.adhoc_pricing_promotion_price,
             ${source.platinum}.marketplace_prd_product_v2_product_fee_config
         `,
-    tags: ["gold_custom_20m", "PRICING"],
+    tags: ["gold_custom_20m", "custom_1h_past10_out_of_office", "PRICING"],
 }
 
 -- step 1: get some fee to calculate seller_received_value

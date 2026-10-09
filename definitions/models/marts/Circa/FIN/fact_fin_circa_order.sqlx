@@ -4,7 +4,7 @@ config {
     bigquery: {
         partitionBy: "date_trunc(created_date,month)"
     },
-    tags: ["gold_custom_20m"]
+    tags: ["gold_custom_20m", "custom_1h_past10_out_of_office"]
 }
 
 SELECT 
