@@ -1,0 +1,15 @@
+config {
+    type: "view",
+    schema: "buymed_tech",
+}
+
+SELECT
+    entity_id
+    , order_code
+    , TIMESTAMP(completed_at) AS completed_at
+    , type
+FROM ${ref("cos_fact_order")}
+WHERE DATE(created_at) >= '2026-10-01'
+    AND type IN ('ONLINE', 'OFFLINE')
+    AND status = 'COMPLETED'
+ 
