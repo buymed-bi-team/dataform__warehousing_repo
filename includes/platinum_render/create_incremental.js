@@ -42,7 +42,7 @@ function createIncremental_preOps({
             ${ignore_query}
         );
 
-        SET ( has_new_data, checkpoint_date, has_delete_data, mg_id_list ) = (
+        SET ( has_new_data, checkpoint_date, has_delete_data ) = (
             SELECT AS STRUCT
                 IF (
                     COUNT(1) > 0 , TRUE, FALSE
