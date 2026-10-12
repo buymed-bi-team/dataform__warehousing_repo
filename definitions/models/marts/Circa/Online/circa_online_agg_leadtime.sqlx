@@ -143,5 +143,8 @@ WHERE order_code IN (
   SELECT DISTINCT order_code
   FROM ${ref("gold_buymed_vn2", "circa_online_order")}
   WHERE o2o_status = "DELIVERED"
+       AND tags NOT LIKE '%SCHEDULED_DELIVERY%'
+       AND tags NOT LIKE '%DELIVER_AT_STORE%'
+
 )
 ORDER BY t_created
