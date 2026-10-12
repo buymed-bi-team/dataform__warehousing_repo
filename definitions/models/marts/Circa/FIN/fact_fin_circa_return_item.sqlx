@@ -69,7 +69,7 @@ WITH
       MAX(convert_rate) convert_rate
       FROM buymed_circa_v2.product_master_retail_unit
       GROUP BY ALL) ru
-    on roi.product_id = ru.product_id and lower(roi.unit) = lower(ru.unit)
+    on roi.product_id = ru.product_id and regexp_replace(lower(roi.unit),"[()]","") = lower(ru.unit)
     INNER JOIN ${ref("fact_fin_circa_return")} ro
     ON roi.return_order_id = ro.return_order_id
     LEFT JOIN buymed_circa_v2.order_return_order_item_detail roid
