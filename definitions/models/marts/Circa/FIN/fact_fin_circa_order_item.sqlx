@@ -25,16 +25,7 @@ pre_operations {
 }
 
 WITH
-  product_master_retail_unit as (
-    SELECT 
-      product_id, 
-      master_unit_code, 
-      MAX(convert_rate) convert_rate
-    FROM buymed_circa_v2.product_master_retail_unit
-    WHERE status = 'ACTIVE'
-    GROUP BY ALL
-  ) 
-  , base_data AS (
+  base_data AS (
   SELECT
     o.updated_date,
     oi.created_date,
@@ -93,10 +84,8 @@ WITH
   FROM buymed_circa_v2.order_order_item oi
   LEFT JOIN buymed_circa_v2.order_order_apply_combo cb
   ON oi.order_apply_combo_id = cb.id
-  LEFT JOIN buymed_circa_v2.product_retail_unit pru 
-  ON oi.unit_id = pru.id
-  LEFT JOIN product_master_retail_unit ru
-  on oi.product_id = ru.product_id and pru.master_unit_code = ru.master_unit_code
+  LEFT JOIN buymed_circa_v2.product_master_retail_unit ru
+  on oi.product_id = ru.product_id and regexp_replace(lower(oi.unit),"[()]","") = regexp_replace(lower(ru.unit),"[()]","")
   INNER JOIN ${ref("fact_fin_circa_order")} o 
   ON oi.order_id = o.order_id
   LEFT JOIN  ${ref("fact_fin_circa_online_order_item")} ol 
