@@ -104,13 +104,15 @@ WITH
   LEFT JOIN (
   select * 
   from ${ref("fact_fin_circa_inventory_allocation")} 
-  where created_date >= ${start_date}
+  WHERE 1=1
+  ${when(incremental (), `AND created_date >= ${start_date}`)}
   and type = 'SALE_ORDERED') poi
   ON oi.id = poi.item_ref_id
   LEFT JOIN ${ref("fact_fin_circa_order_voucher")} ov 
   on o.order_code = ov.order_code 
   and oi.id = ov.item_id
-  ${when(incremental (), `where oi.created_date >= ${start_date}`)}
+  WHERE 1=1
+  ${when(incremental (), `AND oi.created_date >= ${start_date}`)}
   )
   , clean_data as (
     select * except (combo_price, combo_discount_amount, origin_price, price),
