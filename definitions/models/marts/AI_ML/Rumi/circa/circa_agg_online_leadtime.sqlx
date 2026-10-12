@@ -37,8 +37,9 @@ WITH lt AS (
     , CASE o.delivery_tags
         WHEN '1. giao-30ph' THEN 0.5
         WHEN '2. giao-2h'   THEN 2
-        WHEN '3. giao-24h'  THEN 24
-        WHEN '4. giao-96h'  THEN 96
+        WHEN '3. giao-4h' THEN 4
+        WHEN '4. giao-24h'  THEN 24
+        WHEN '5. giao-96h'  THEN 96
       END * 1.1 AS sla_limit_h
   FROM lt
   LEFT JOIN o USING (order_code)
