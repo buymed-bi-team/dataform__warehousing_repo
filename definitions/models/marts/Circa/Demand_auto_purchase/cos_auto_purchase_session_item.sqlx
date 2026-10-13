@@ -44,6 +44,7 @@ SELECT  TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
             WHEN failure_reason = 'REPLACED_BY_SUBSTITUTE'    THEN 'Đã mua bằng hàng thay thế'
             WHEN failure_reason = 'NOT_IN_CART'    THEN 'Không có trong giỏ khi đặt'
             WHEN failure_reason = 'PAYMENT_FAILED'    THEN 'Không đủ số dư thanh toán'
+            WHEN failure_reason = 'ACCOUNT_UNUSABLE'    THEN 'Không đủ số dư thanh toán'
             WHEN failure_reason IS NULL                THEN NULL
             ELSE failure_reason
         END AS failure_reason_vn
