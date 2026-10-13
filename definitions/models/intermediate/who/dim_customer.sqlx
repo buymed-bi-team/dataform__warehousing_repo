@@ -167,7 +167,7 @@ SELECT
     customer.email AS customer_email,
     customer.status AS customer_status,
     customer.phone AS customer_phone,
-    customer.mst,
+    customer.tax_code AS mst,
     customer.status AS user_system_status,
     
 
@@ -300,6 +300,7 @@ SELECT
         ELSE "RETAIL_B"
     END  AS customer_tag_sub_group,
     IFNULL(SAFE_CAST(JSON_VALUE(customer.extra_props, "$.is_skip_sync_level") AS BOOLEAN), FALSE) AS is_skip_sync_level,
+    SAFE_CAST(JSON_VALUE(customer.extra_props, "$.is_verify") AS BOOLEAN) AS is_verify,
     flom.ordered_amount,
     flom.no_orders,
     flom.last_purchase,
