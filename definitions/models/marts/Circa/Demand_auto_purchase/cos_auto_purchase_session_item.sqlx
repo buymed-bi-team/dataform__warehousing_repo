@@ -23,7 +23,8 @@ SELECT  TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
       ,session_id
       , DATE(DATETIME_ADD(o.created_at, INTERVAL 7 HOUR)) as created_date
       , i.product_id
-      , JSON_VALUE(demand_source, '$[0].type') AS type_rpo -- Nguồn mua hàng (RPO, Online,FORECAST )
+      , CASE WHEN JSON_VALUE(demand_source, '$[0].type') IS NULL THEN 'FORECAST' 
+            ELSE JSON_VALUE(demand_source, '$[0].type') END AS type_rpo -- Nguồn mua hàng (RPO, Online,FORECAST )
       , JSON_VALUE(demand_source, '$[0].codes[0]') AS rpo_code -- Phiếu RPO 
       , pos.code AS pos_code
       ,pos.name as pos_name
