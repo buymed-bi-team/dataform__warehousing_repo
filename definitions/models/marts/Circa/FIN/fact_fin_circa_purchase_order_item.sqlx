@@ -23,7 +23,7 @@ SELECT
   poi.unit,
   ru.convert_rate,
   poi.unit_price,
-  poi.cost_unit_price,
+  poi.unit_price - coalesce(poi.discount_amount,0) as cost_unit_price,
   poi.discount_amount,
   poid.lot_id,
   poid.lot_date,
