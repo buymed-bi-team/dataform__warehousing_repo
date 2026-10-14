@@ -53,7 +53,7 @@ WITH
         , SUM(IF (channel IN ("MARKETPLACE", "CIRCA"), 1, 0)) AS no_orders_thuocsi
     FROM ${ref('fact_order')}
     WHERE order_status <> 'CANCEL'
-      AND channel IN ("MARKETPLACE", "CIRCA")
+      -- AND channel IN ("MARKETPLACE", "CIRCA")
     GROUP BY ALL
   ),
 
