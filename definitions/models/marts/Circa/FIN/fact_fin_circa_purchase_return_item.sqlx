@@ -86,7 +86,7 @@ left join (
   select 
 po_code, product_id, 
 max(unit_price) unit_price,
-max(unit_price - safe_divide(discount_amount, received_quantity)) unit_price_after_discount,
+max(unit_price - cost_unit_price) unit_price_after_discount,
 from 
 ${ref("fact_fin_circa_purchase_order_item")}
 group by all
