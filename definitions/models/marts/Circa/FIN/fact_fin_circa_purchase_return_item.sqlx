@@ -78,8 +78,8 @@ WHERE
   group by all
 )
 select r.*  except(discount_amount, unit_price),
-o.unit_price,
-o.cost_unit_price,
+o.base_unit_price,
+o.cost_base_unit_price,
 if(rc.po_code is not null, 1, 0 ) completed_return
  from return_item r
 left join (
