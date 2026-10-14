@@ -8,7 +8,7 @@ config {
      tags: ["8h30"]
 }
 js {
-   const end_time = `DATETIME(date(current_date()), '01:20:00')`
+   const end_time = `DATETIME(date(current_date('Asia/Ho_Chi_Minh')), '01:20:00')`
 }
 -- only keep that end day of month
 pre_operations {

@@ -4,7 +4,7 @@ config {
     bigquery: {
         partitionBy: "date_trunc(created_date,month)"
     },
-    tags: ["gold_custom_20m"]
+    tags: ["gold_custom_20m", "custom_1h_past10_out_of_office"]
 }
 
 SELECT 
@@ -53,7 +53,7 @@ SELECT
             oo.total_price - oo.wallet_paid_amount,
             total_amount)  as total_amount,
     medicine_cutting_fee total_medicine_cutting_fee,
-    coalesce(oo.total_discount,o.discount_amount) AS total_order_discount_amount,
+    coalesce(oo.total_discount - o.external_discount_amount,o.discount_amount) AS total_order_discount_amount,
     total_item_amount AS total_item_amount,
     loyalty_discount_amount AS total_loyalty_discount_amount,
     o.external_discount_amount,
@@ -79,7 +79,7 @@ FROM ${source.circa_os}.order_order o
 LEFT JOIN ${source.circa_os}.entity_customer e
 on o.entity_id = e.id
 LEFT JOIN (select distinct id, email, name  from ${source.circa_os}.entity_entity) ee
-on o.updated_by = ee.id
+on o.created_by = ee.id
 LEFT JOIN (
   SELECT
     order_code,

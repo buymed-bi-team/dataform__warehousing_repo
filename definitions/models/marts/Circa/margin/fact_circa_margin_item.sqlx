@@ -5,7 +5,7 @@ config {
                   model_type: Table ;
                   source: fact_fin_circa_order_item;
                   schedule: At minute 30 every hour`,
-    tags:  ["gold_custom_20m"],
+    tags:  ["gold_custom_20m", "custom_1h_past10_out_of_office"],
     name: "fact_circa_margin_item",
     columns: {
     }
@@ -269,4 +269,6 @@ WITH
       union ALL
       select * from cogs_fs
     )
-    select * from final_cogs where order_code not in ('DHC01195456','DHC01184651')
+    select * from final_cogs 
+    -- MKT order excl. ref from Fin Circa Group
+    where order_code not in ('DHC01195456','DHC01184651','DHC01243673')

@@ -30,7 +30,7 @@ WITH high_margin AS (
 ),
 
 sku_sr AS (SELECT
-    s.sku_created_at,
+    COALESCE(sc.sku_created_at, TIMESTAMP(s.sku_created_at)) AS sku_created_at,
     s.sku_code,
     s.product_id,
     s.product_name,

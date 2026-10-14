@@ -1,0 +1,9 @@
+config {
+    type: "view",
+    schema: "buymed_tech",
+    name: "tech__circa_growth_staff_customer",
+}
+
+SELECT *
+FROM gold_buymed_vn2.dim_circa_growth_staff_customer
+ 

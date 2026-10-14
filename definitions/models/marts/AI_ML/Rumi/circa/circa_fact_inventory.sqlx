@@ -30,7 +30,7 @@ SELECT
       , location_name
       , o.client_id
       , product_pos_code
-      , product_client_id
+      -- , product_client_id
       , owner_name
       , o.seller_code AS owner_code
       , SO_code AS so_code

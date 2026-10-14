@@ -38,6 +38,7 @@ SELECT
   rpoi.product_id,
   rpoi.sku,
   rpoi.unit,
+  ru.convert_rate,
   rpoi.unit_price,
   rpoi.updated_at,
   rpoid.lot_id,
@@ -78,15 +79,15 @@ WHERE
   group by all
 )
 select r.*  except(discount_amount, unit_price),
-o.unit_price,
-o.unit_price_after_discount,
+o.base_unit_price * convert_rate as unit_price,
+o.base_unit_price_after_discount * convert_rate as unit_price_after_discount,
 if(rc.po_code is not null, 1, 0 ) completed_return
  from return_item r
 left join (
   select 
 po_code, product_id, 
-max(unit_price) unit_price,
-max(unit_price - safe_divide(discount_amount, received_quantity)) unit_price_after_discount,
+safe_divide(sum(unit_price*received_quantity), sum(received_base_quantity)) base_unit_price,
+safe_divide(sum(unit_price_after_discount*received_quantity), sum(received_base_quantity)) base_unit_price_after_discount,
 from 
 ${ref("fact_fin_circa_purchase_order_item")}
 group by all

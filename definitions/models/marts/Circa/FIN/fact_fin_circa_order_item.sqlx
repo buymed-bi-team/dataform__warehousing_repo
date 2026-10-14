@@ -6,20 +6,22 @@ config {
     bigquery: {
         partitionBy: "created_date"
     },
-    tags: ["gold_custom_20m"]
+    tags: ["gold_custom_20m", "custom_1h_past10_out_of_office"]
 }
 js {
     const start_date =
-      //  `date(2024, 01, 01)`
-      ` DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)`
+      //  `date(2026, 09, 01)`
+      ` DATE_SUB(CURRENT_DATE('Asia/Ho_Chi_Minh'), INTERVAL 1 MONTH)`
     const end_date = ` CURRENT_DATE() `
 }
 pre_operations {
-  DELETE
+  ${when(incremental(),
+  `DELETE
   FROM
     ${self()}
   WHERE
-    created_date >= ${start_date}
+    created_date >= ${start_date}`
+  )}
 }
 
 WITH
@@ -45,7 +47,7 @@ WITH
     cb.combo_price,
     cb.discount_amount AS combo_discount_amount,
     cb.quantity AS combo_quantity,
-    ru.unit,
+    oi.unit,
     CASE WHEN gift_code = '' THEN NULL ELSE gift_code END AS gift_code,
     ru.convert_rate,
     COALESCE(oi.quantity * poi.base_quantity_distribution, oi.quantity) AS quantity_po,
@@ -82,8 +84,13 @@ WITH
   FROM buymed_circa_v2.order_order_item oi
   LEFT JOIN buymed_circa_v2.order_order_apply_combo cb
   ON oi.order_apply_combo_id = cb.id
-  left join buymed_circa_v2.product_master_retail_unit ru
-  on oi.product_id = ru.product_id and lower(oi.unit) = lower(ru.unit)
+  LEFT JOIN (
+    SELECT product_id, 
+    regexp_replace(lower(unit),"[()]","") unit,
+    MAX(convert_rate) convert_rate
+    FROM buymed_circa_v2.product_master_retail_unit
+    GROUP BY ALL) ru
+  on oi.product_id = ru.product_id and regexp_replace(lower(oi.unit),"[()]","") = lower(ru.unit)
   INNER JOIN ${ref("fact_fin_circa_order")} o 
   ON oi.order_id = o.order_id
   LEFT JOIN  ${ref("fact_fin_circa_online_order_item")} ol 
@@ -91,13 +98,15 @@ WITH
   LEFT JOIN (
   select * 
   from ${ref("fact_fin_circa_inventory_allocation")} 
-  where updated_date >= ${start_date}
+  WHERE 1=1
+  ${when(incremental (), `AND created_date >= ${start_date}`)}
   and type = 'SALE_ORDERED') poi
   ON oi.id = poi.item_ref_id
   LEFT JOIN ${ref("fact_fin_circa_order_voucher")} ov 
   on o.order_code = ov.order_code 
   and oi.id = ov.item_id
-  where oi.created_date >= ${start_date}
+  WHERE 1=1
+  ${when(incremental (), `AND oi.created_date >= ${start_date}`)}
   )
   , clean_data as (
     select * except (combo_price, combo_discount_amount, origin_price, price),

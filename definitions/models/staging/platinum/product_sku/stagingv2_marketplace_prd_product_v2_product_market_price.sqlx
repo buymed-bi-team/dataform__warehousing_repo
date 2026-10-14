@@ -24,9 +24,10 @@ pre_operations {
         DECLARE has_delete_data BOOLEAN;
         DECLARE Ingest_checkpoint TIMESTAMP;
         DECLARE checkpoint_date ARRAY<date>;
+        DECLARE checkpoint_date_by_mg_id ARRAY<date>;
         
         SET Ingest_checkpoint = (
-            SELECT max(ingest_time)  - INTERVAL 1 HOUR  
+            SELECT max(ingest_time)  - INTERVAL 1 HOUR
             FROM ${self()}
             WHERE created_date >= CURRENT_DATE() - INTERVAL 1 MONTH
         );
@@ -36,7 +37,7 @@ pre_operations {
             );
         END IF;
 
-        SET ( has_new_data, checkpoint_date, has_delete_data ) = (
+        SET ( has_new_data, checkpoint_date, checkpoint_date_by_mg_id, has_delete_data ) = (
             SELECT AS STRUCT
                 IF (
                     COUNT(*) > 0 , TRUE, FALSE
@@ -47,6 +48,9 @@ pre_operations {
                 ARRAY_AGG(
                     DISTINCT IF(created_time is NULL, "2099-01-01" , DATE( DATETIME(created_time,'Asia/Ho_Chi_Minh') ) )
                 ) AS checkpoint_date,
+                ARRAY_AGG(
+                    DISTINCT DATE( DATETIME(silver_buymed_vn.MONGOID_TIMESTAMP(mg_id),'Asia/Ho_Chi_Minh') ) 
+                ) AS checkpoint_date_by_mg_id,
                 COUNTIF( action = 'd' ) > 0 AS has_delete_data
             FROM silver_buymed_vn.marketplace_prd_product_v2_product_market_price
             WHERE ingest_time > Ingest_checkpoint
@@ -69,7 +73,9 @@ pre_operations {
 
             DELETE FROM ${self()}
             WHERE
-                created_date IN UNNEST(checkpoint_date)
+                (created_date IN UNNEST(checkpoint_date)
+                    OR created_date IN UNNEST(checkpoint_date_by_mg_id) 
+                )
                 AND mg_id IN (SELECT mg_id FROM new_records)
             ;
         ELSE

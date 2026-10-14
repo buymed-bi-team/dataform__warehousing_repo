@@ -21,7 +21,7 @@ config {
             ${source.ref}.dim_sku_location
 
         `,
-    tags: ["gold_custom_20m", "PRODUCT_SKU_SR"],
+    tags: ["gold_custom_20m", "custom_1h_past10_out_of_office", "PRODUCT_SKU_SR"],
     columns: {
         sku_created_at                 : "The time ItemCode was created",
         sku_approved_at                : "The time ItemCode was approved",
@@ -153,6 +153,7 @@ SELECT
     s.max_quantity_per_order,
     IF(ins.available_quantity < 0, 0, ins.available_quantity) AS available_qty,
     IF(ins.stock_quantity < 0, 0, ins.stock_quantity) AS stock_qty,
+    IF(ins.pending_confirm_quantity < 0, 0, ins.pending_confirm_quantity) AS pending_confirm_quantity,
     ins.min_quantity,
     ins.product_type,
     CASE
