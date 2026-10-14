@@ -24,7 +24,7 @@ SELECT
   ru.convert_rate,
   poi.unit_price,
   poi.unit_price - COALESCE(safe_divide(poi.discount_amount, poi.quantity),0) as cost_unit_price,
-  safe_divide(poi.discount_amount, poi.quantity) * poid.quantity as discount_amount,
+  safe_divide(poi.discount_amount, poi.quantity) * poid.received_quantity as discount_amount,
   poid.lot_id,
   poid.lot_date,
   poid.tax_rate,
