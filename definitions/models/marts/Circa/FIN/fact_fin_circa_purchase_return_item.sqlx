@@ -38,6 +38,7 @@ SELECT
   rpoi.product_id,
   rpoi.sku,
   rpoi.unit,
+  ru.convert_rate,
   rpoi.unit_price,
   rpoi.updated_at,
   rpoid.lot_id,
