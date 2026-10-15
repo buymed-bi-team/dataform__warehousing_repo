@@ -19,12 +19,13 @@ WITH item_daily AS (
     , oi.product_id
     , oi.sku_code
     , SUM(oi.quantity)                                                  AS quantity
+    , SUM (oi.quantity * cv.convert_rate)                               AS base_quantity
     , SUM(oi.amount)                                                    AS amount
   FROM `buymed_circa_v2.order_order_item` oi
   INNER JOIN `buymed_circa_v2.order_order` o ON  o.id = oi.order_id
                                              AND o.created_date >= '2000-01-01'
-  WHERE oi.created_date >= '2000-01-01'
-    AND o.status = 'COMPLETED'
+  LEFT JOIN gold_buymed_vn2.circa_dim_retail_unit cv ON oi.product_id = cv.product_id AND LOWER(oi.unit) = LOWER(cv.convert_unit)
+  WHERE o.status = 'COMPLETED'
     AND o.type IN ('ONLINE', 'OFFLINE')
     AND o.entity_id IS NOT NULL
     AND o.entity_id NOT IN ( '00000000-0000-0000-0000-000000000000', '00000000-0000-0000-0000-000000000001')
@@ -46,7 +47,8 @@ SELECT
   , p.cat2                      
   , p.cat3                      
   , p.cat4                      
-  , d.quantity                  
+  , d.quantity        
+  , d.base_quantity          
   , d.amount 
   , DATETIME(CURRENT_TIMESTAMP(),  'Asia/Ho_Chi_Minh') AS refresh_at                     
 FROM item_daily d
