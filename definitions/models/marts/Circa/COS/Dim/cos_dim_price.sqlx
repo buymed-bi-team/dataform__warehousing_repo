@@ -134,10 +134,22 @@ WITH product_base_unit AS (
           ,pro.unit_name as web_unit
           ,pro.is_default as is_default_web
           ,pro.web_unit_status
-          ,pro.unit_price as unit_price_web
+          ,  CASE WHEN fs.product_id IS NOT NULL THEN ROUND(pro.unit_price * fs.total_pct_discount)
+                  ELSE pro.discount_price END AS unit_price_web
     FROM combine_unit i
     LEFT JOIN check_unit_pricing cup ON i.product_id = cup.product_id
     LEFT JOIN  gold_buymed_vn2.dim_product_price_online pro ON i.product_id = pro.product_id AND LOWER(i.unit) = LOWER(pro.unit_name)
+    LEFT JOIN (
+              SELECT
+                      product_id
+                      --, fs.extra_pct                AS flash_sale_extra_pct
+                      , total_pct_discount
+                      --, fs.display_web_price
+        FROM gold_buymed_vn2.circa_fact_flash_sales  
+        WHERE date =  CURRENT_DATE('Asia/Ho_Chi_Minh') 
+         AND EXTRACT(HOUR FROM CURRENT_DATETIME('Asia/Ho_Chi_Minh'))>= start_hour
+         AND EXTRACT(HOUR FROM CURRENT_DATETIME('Asia/Ho_Chi_Minh')) <  end_hour
+    )  AS fs ON i.product_id = fs.product_id
     WHERE i.sku_code IS NOT NULL
     GROUP BY ALL
     
@@ -161,6 +173,7 @@ WHERE is_expired = FALSE
 QUALIFY ROW_NUMBER() OVER (PARTITION BY product_id, sku_code ORDER BY created_at DESC) = 1
 ORDER BY o.created_at DESC
 )
+
 -- thêm phần giá sau khi áp dụng deal
 SELECT b.* EXCEPT(last_price)
     , b.last_price AS last_purchase_price
@@ -208,4 +221,5 @@ SELECT b.* EXCEPT(last_price)
 FROM _all b
 LEFT JOIN promo p ON b.product_id = p.product_id AND b.sku_code = p.sku_code
 LEFT JOIN _all src ON p.product_id = src.product_id AND p.unit = src.unit AND b.sku_code = p.sku_code AND b.seller_code = src.seller_code
+
 -- WHERE b.product_id = 1110
