@@ -45,4 +45,3 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
        ,DATETIME_ADD(last_updated_time, INTERVAL 7 HOUR) AS last_updated_time
        ,DATE(DATETIME_ADD(synced_at, INTERVAL 7 HOUR)) AS synced_at
 FROM base_data
-WHERE product_id = 2010351
