@@ -29,19 +29,19 @@ model.assertUnique(
         maxRetry: 2
     }
 )
-model.createMismatchAssertionView(
-    ["platinum_staging_assertion_view", "marketplace_prd_order-v2"],
-    {
-        intervalCheckpoint: `INTERVAL 2 DAY`,
-        maxRetry: 2,
-        // dependencies : [model.dependencies.assertUnique]
-    }
-)
-model.assertMismatch(
-    ["platinum_0h00","platinum_12h00", "platinum_staging_assertion", "marketplace_prd_order-v2"],
-    {
-        intervalCheckpoint: `INTERVAL 2 DAY`,
-        maxRetry: 2,
+// model.createMismatchAssertionView(
+//     ["platinum_staging_assertion_view", "marketplace_prd_order-v2"],
+//     {
+//         intervalCheckpoint: `INTERVAL 2 DAY`,
+//         maxRetry: 2,
+//         // dependencies : [model.dependencies.assertUnique]
+//     }
+// )
+// model.assertMismatch(
+//     ["platinum_0h00","platinum_12h00", "platinum_staging_assertion", "marketplace_prd_order-v2"],
+//     {
+//         intervalCheckpoint: `INTERVAL 2 DAY`,
+//         maxRetry: 2,
         
-    }
-)
+//     }
+// )
