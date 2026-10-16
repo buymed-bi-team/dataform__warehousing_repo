@@ -99,5 +99,5 @@ SELECT *
            WHEN latest_date_order_range = "60D" THEN "4:No-Demand 60D"
            WHEN latest_date_order_range = "90D" THEN "5:No-Demand 90D"
            WHEN latest_date_order_range = "> 90D" THEN "6:No-Demand > 90D"
-       END AS stock_aging_type
+       END AS demand_type
 FROM add_order_range
