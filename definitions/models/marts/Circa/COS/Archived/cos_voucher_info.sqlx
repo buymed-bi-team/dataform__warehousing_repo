@@ -3,7 +3,7 @@ config {
     description: `PIC: huyen.ngo;
                   model_type: Table ;
                   schedule: At minute 15 past hour.Circa voucher - chứa tất cả các voucher, được tạo ra từ đâ, thuộc campaign nào, đã sử dụng hay chưa, sử dụng trong đơn hàng nào `,
-    tags: ["custom_1h_past15"],
+   // tags: ["custom_1h_past15"],
     name: "cos_voucher_info",
     columns: {
         
