@@ -16,13 +16,11 @@ WITH price_tbl AS (
          product_id
         ,unit
         ,convert_rate
-        ,sale_unit_price
+        ,sale_price
         ,price_set_check
         ,is_base_unit
         ,seller_code
-        ,client_id
-    FROM ${source.ref}.cos_adhoc_pos_product_client
-    WHERE client_id = 1
+    FROM ${source.ref}.cos_dim_price
 ),
 inv_tbl AS (
     SELECT
@@ -40,12 +38,12 @@ _all AS (
          p.product_id
         ,p.unit
         ,is_base_unit
-        ,p.sale_unit_price
+        ,p.sale_price
         ,price_set_check
         ,i.pos_id
         ,pos.name AS pos_name
         ,p.seller_code
-        ,CONCAT(p.seller_code, '_', p.client_id)                           AS seller_client_id
+       -- ,CONCAT(p.seller_code, '_', p.client_id)                           AS seller_client_id
         ,CASE 
             WHEN p.is_base_unit = TRUE THEN i.qty
             ELSE i.qty / CASE 
