@@ -1,0 +1,87 @@
+config {
+    type: "view",
+    schema: "platinum_buymed_vn",
+    name: "circa_online_prd_order_sale_order",
+    description : `
+    Partition by: created date
+    `,
+    tags:["platinum","circa-online_prd_order"]
+}
+ 
+  WITH silver AS (
+    SELECT
+      key, mg_id, order_code, expired_time, currency, price, pick_latitude, sender_name, status, receiver_phone_number, cod, pick_address, sender_phone_number, order_id, sale_order_code, account_id, receiver_id, receiver_code, total_product, pick_province_code, location, store_id, consumer_id, pick_district_code, pick_ward_code, sale_order_id, receiver_shipping_address, payment_method, deliver_method, total_price, created_time, customer_name, province_code, last_updated_time, customer_phone, receiver_name, receiver_address_type, district_code, ward_code, tags, pick_longitude, pos_process_at, pos_status, deliver_status, delivery_carrier, delivery_carrier_code, delivery_tracking_number, reference_code, synced_at, extra_props, action, ingest_time,
+      
+        CASE
+            WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time, 'Asia/Ho_Chi_Minh'))
+            ELSE DATE( '2099-01-01' )
+        END
+     created_date,
+      CAST(null as datetime) 
+    FROM silver_buymed_vn.circa_online_prd_order_sale_order
+    WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 1 DAY
+    QUALIFY ROW_NUMBER() OVER (_window) = 1 
+          WINDOW _window AS (
+          PARTITION BY mg_id
+          ORDER BY synced_at DESC
+          ,last_updated_time DESC)
+  )
+  , platinum AS (
+    SELECT 
+      key, mg_id, order_code, expired_time, currency, price, pick_latitude, sender_name, status, receiver_phone_number, cod, pick_address, sender_phone_number, order_id, sale_order_code, account_id, receiver_id, receiver_code, total_product, pick_province_code, location, store_id, consumer_id, pick_district_code, pick_ward_code, sale_order_id, receiver_shipping_address, payment_method, deliver_method, total_price, created_time, customer_name, province_code, last_updated_time, customer_phone, receiver_name, receiver_address_type, district_code, ward_code, tags, pick_longitude, pos_process_at, pos_status, deliver_status, delivery_carrier, delivery_carrier_code, delivery_tracking_number, reference_code, synced_at, extra_props, action, ingest_time,
+      created_date,
+      platinum_refresh
+    FROM ${ref(`platinum_buymed_vn__stg`, `circa_online_prd_order_sale_order`)}
+  )
+SELECT p.*
+FROM platinum p
+WHERE NOT EXISTS (SELECT 1 FROM silver s WHERE s.mg_id = p.mg_id)
+
+  UNION ALL 
+
+  SELECT s.*
+  FROM silver s
+  WHERE action <> "d"
+--   WITH over_tbl AS (
+--         SELECT
+--             mg_id,
+--             ARRAY_AGG(
+--                 key 
+--                 ORDER BY
+--                     synced_at DESC,
+--                     IF (action='d',3, IF (action='u',2,1)) DESC,
+--                     last_updated_time DESC
+--                 LIMIT 1
+--             )[0] key ,
+--             ARRAY_AGG(
+--                 action 
+--                 ORDER BY
+--                     synced_at DESC,
+--                     IF (action='d',3, IF (action='u',2,1)) DESC,
+--                     last_updated_time DESC
+--                 LIMIT 1
+--             )[0] action
+--         FROM ${source.silver}.circa_online_prd_order_sale_order
+        
+--         GROUP BY mg_id HAVING action != "d"
+--     )
+--     SELECT
+--         * ,
+--         CASE
+--             WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time, 'Asia/Ho_Chi_Minh'))
+--             ELSE DATE( '2099-01-01' )
+--         END AS created_date,
+--         CURRENT_DATETIME() AS platinum_refresh
+--     FROM ${source.silver}.circa_online_prd_order_sale_order
+--     WHERE key IN (SELECT o.key FROM over_tbl o)
+    
+
+--     -- For stituation that key is dedup because of manual import
+--     QUALIFY ROW_NUMBER() OVER(w) = 1
+--     WINDOW w AS (
+--         PARTITION BY mg_id
+--         ORDER BY synced_at desc,
+--             synced_at DESC,
+--         IF (action='d',3, IF (action='u',2,1)) DESC,
+--         last_updated_time DESC
+--     )
