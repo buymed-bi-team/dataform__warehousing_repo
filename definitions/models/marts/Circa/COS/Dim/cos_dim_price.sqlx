@@ -137,7 +137,7 @@ WITH product_base_unit AS (
           ,flash_sale_extra_pct
           ,total_pct_discount
           ,  CASE WHEN fs.product_id IS NOT NULL THEN ROUND(pro.unit_price * (1-fs.total_pct_discount))
-                  ELSE pro.discount_price END AS unit_price_web
+                  ELSE pro.price_af_discount END AS unit_price_web
     FROM combine_unit i
     LEFT JOIN check_unit_pricing cup ON i.product_id = cup.product_id
     LEFT JOIN  gold_buymed_vn2.dim_product_price_online pro ON i.product_id = pro.product_id AND LOWER(i.unit) = LOWER(pro.unit_name)
