@@ -39,6 +39,7 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
        ,unit_value
        ,unit_price
        ,discount_price
+       ,COALESCE(discount_price, unit_price) AS price_af_discount
        ,updated_by_id
        ,updated_by_name
        ,DATETIME_ADD(created_time, INTERVAL 7 HOUR) AS created_time
