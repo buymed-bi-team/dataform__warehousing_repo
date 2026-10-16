@@ -22,7 +22,8 @@ SELECT
   ,JSON_VALUE(unit, '$.unit_code') AS unit_code
   ,JSON_VALUE(unit, '$.unit_name') AS unit_name
   ,JSON_VALUE(unit, '$.value') AS unit_value
-  ,JSON_VALUE(unit, '$.price') AS unit_price
+  ,CAST(JSON_VALUE(unit, '$.price') AS INT64) AS unit_price
+  ,CAST(JSON_VALUE(unit, '$.discount_price') AS INT64) AS discount_price
 FROM
  platinum_buymed_vn.circa_online_prd_product_product t,
   UNNEST(JSON_EXTRACT_ARRAY(t.retail_units)) AS unit
@@ -37,6 +38,8 @@ SELECT TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at
        ,web_unit_status
        ,unit_value
        ,unit_price
+       ,discount_price
+       ,COALESCE(discount_price, unit_price) AS price_af_discount
        ,updated_by_id
        ,updated_by_name
        ,DATETIME_ADD(created_time, INTERVAL 7 HOUR) AS created_time

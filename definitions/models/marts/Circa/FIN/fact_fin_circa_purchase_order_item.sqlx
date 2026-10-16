@@ -18,17 +18,20 @@ SELECT
   poi.id as item_id,
   poi.product_id,
   poi.sku,
+  poi.thuocsi_seller_code,
+  poi.seller_code,
   poi.unit,
   ru.convert_rate,
   poi.unit_price,
+  poi.unit_price - COALESCE(safe_divide(poi.discount_amount, poi.quantity),0) as unit_price_after_discount,
+  safe_divide(poi.discount_amount, poi.quantity) * poid.received_quantity as discount_amount,
   poid.lot_id,
   poid.lot_date,
   poid.tax_rate,
   poid.quantity,
   poid.received_quantity,
-  poid.discount_amount,
   poid.received_quantity*ru.convert_rate as received_base_quantity,
-  safe_divide(poid.received_quantity, sum(poid.received_quantity) over (partition by po.po_id, poi.id)) as base_quantity_lot_dist
+  safe_divide(poid.received_quantity, sum(poid.received_quantity) over (partition by po.po_id, poi.id)) as base_quantity_lot_dist,
 FROM ${ref("fact_fin_circa_purchase_order")} po
 LEFT JOIN  buymed_circa_v2.order_purchase_order_item poi
 ON po.po_id = poi.purchase_order_id

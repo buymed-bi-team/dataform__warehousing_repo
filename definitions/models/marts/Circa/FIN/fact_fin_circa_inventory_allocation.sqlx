@@ -1,17 +1,32 @@
 config {
-    type: "table",
+    type: "incremental",
     description: `PIC: Ha.Lekim
     `,
      bigquery: {
-        partitionBy: "date_trunc(updated_date,month)",
+        partitionBy: "date_trunc(created_date,month)",
         clusterBy: ["type"]
     },
-     tags: ["gold_custom_20m", "custom_1h_past10_out_of_office"]
+     tags: ["gold_custom_20m", "custom_1h_past10_out_of_office","23h30","5h30"]
+}
+js {
+    const start_date =
+      ` DATE_SUB(CURRENT_DATE('Asia/Ho_Chi_Minh'), INTERVAL 1 MONTH)`
+}
+pre_operations {
+  ${when(incremental() ,
+  `DELETE
+  FROM
+    ${self()}
+  WHERE
+    created_date >= ${start_date}`
+    )
+  }
 }
 
 WITH
   raw_allocation AS (
     select 
+    ia.created_date,
     date(DATETIME_ADD(ia.updated_at, INTERVAL 7 hour)) updated_date,
     DATETIME_ADD(ia.updated_at, INTERVAL 7 hour) updated_at,
     ia.id,
@@ -30,11 +45,7 @@ WITH
     l.location_type,
     l.name AS location_name,
     ild.doc_code,
-    CASE
-      WHEN (JSON_VALUE(so, '$') IS NULL OR JSON_VALUE(so, '$') = '') THEN NULL
-      ELSE JSON_VALUE(so, '$')
-  END
-    AS so_thuoc_si,
+    po.sale_order_number AS so_thuoc_si,
     CASE
       WHEN ia.type = 'COMPLETED_PUT_RETURN_ORDER' AND l.location_type = 'SALES' THEN (1)
       WHEN ia.type = 'COMPLETED_RETURN_ORDER'
@@ -49,7 +60,7 @@ WITH
       'RETURN_PURCHASE_ORDER',
       'GOODS_RETURN_RECEIPT',
       'CHANGE_QUANTITY_DECREASE') THEN (-1)
-  END AS convert_rate,
+    END AS convert_rate,
     ia.base_quantity,
     SAFE_DIVIDE( ia.base_quantity, SUM(base_quantity) OVER (PARTITION BY ia.type, ia.ref_number, ia.item_ref_id)) AS base_quantity_distribution,
   FROM `buymed_circa_v2.inventory_allocation` ia
@@ -57,8 +68,6 @@ WITH
   ON ia.location_id = l.id
   LEFT JOIN buymed_circa_v2.inventory_location_detail ild
   ON ia.location_detail_id = ild.id
-  LEFT JOIN UNNEST(JSON_EXTRACT_ARRAY(ild.sale_order_numbers)) AS so
-  ON TRUE
   LEFT JOIN buymed_circa_v2.order_purchase_order po
   ON ild.doc_code = po.code
   LEFT JOIN buymed_circa_v2.entity_owner do 
@@ -66,6 +75,7 @@ WITH
   LEFT JOIN buymed_circa_v2.entity_pos_profile p
   ON l.pos_id = p.id
   where ia.deleted_at is null
+   ${when( incremental(), `AND ia.created_date >= ${start_date}`)}
     )
 select * from raw_allocation
 

@@ -35,6 +35,12 @@ pre_operations {
             );
         END IF;
 
+        CREATE TEMP TABLE new_records AS (
+          SELECT DISTINCT mg_id
+          FROM silver_buymed_vn.platform_insider_prd_communication_user_token
+          WHERE ingest_time > Ingest_checkpoint
+        );
+
         SET ( has_new_data, checkpoint_date, has_delete_data ) = (
             SELECT AS STRUCT
                 IF (
@@ -51,12 +57,7 @@ pre_operations {
             WHERE ingest_time > Ingest_checkpoint
         );
 
-        CREATE TEMP TABLE new_records AS (
-          SELECT DISTINCT mg_id
-          FROM silver_buymed_vn.platform_insider_prd_communication_user_token
-          WHERE ingest_time > Ingest_checkpoint
-        );
-
+        
         IF ( has_new_data = TRUE ) THEN
             IF (has_delete_data = TRUE) THEN
               -- if has deleted, then we must get created_date of old data from platinum

@@ -23,6 +23,7 @@ function createIncremental_preOps({
         DECLARE has_delete_data BOOLEAN;
         DECLARE Ingest_checkpoint TIMESTAMP;
         DECLARE checkpoint_date ARRAY<date>;
+        DECLARE mg_id_list ARRAY<STRING>;
         
         SET Ingest_checkpoint = (
             SELECT max(ingest_time)  - INTERVAL 1 HOUR  FROM ${ctx.self()}
@@ -33,6 +34,13 @@ function createIncremental_preOps({
                 SELECT max(ingest_time)  - INTERVAL 1 HOUR  FROM ${ctx.self()}
             );
         END IF;
+
+        CREATE TEMP TABLE new_records AS (
+            SELECT DISTINCT mg_id
+            FROM ${config.source_schema}.${config.tableName}
+            WHERE ingest_time > Ingest_checkpoint
+            ${ignore_query}
+        );
 
         SET ( has_new_data, checkpoint_date, has_delete_data ) = (
             SELECT AS STRUCT
@@ -45,18 +53,19 @@ function createIncremental_preOps({
                 ARRAY_AGG(
                     DISTINCT IF(${config.createdTime} is NULL, "2099-01-01" , DATE( DATETIME(${config.createdTime},'Asia/Ho_Chi_Minh') ) )
                 ) AS checkpoint_date,
-                COUNTIF( action = 'd' ) > 0 AS has_delete_data
+                COUNTIF( action = 'd' ) > 0 AS has_delete_data,
+                --ARRAY_AGG(DISTINCT mg_id) AS mg_id_list
             FROM ${config.source_schema}.${config.tableName}
             WHERE ingest_time > Ingest_checkpoint
                 ${ignore_query}
         );
 
-        CREATE TEMP TABLE new_records AS (
-          SELECT DISTINCT mg_id
-          FROM ${config.source_schema}.${config.tableName}
-          WHERE ingest_time > Ingest_checkpoint
-            ${ignore_query}
-        );
+        -- CREATE TEMP TABLE new_records AS (
+        -- SELECT DISTINCT mg_id
+        -- FROM ${config.source_schema}.${config.tableName}
+        -- WHERE ingest_time > Ingest_checkpoint
+        -- ${ignore_query}
+        -- );
 
         IF ( has_new_data = TRUE ) THEN
             IF (has_delete_data = TRUE) THEN
@@ -114,7 +123,7 @@ function createIncremental_query({
           ctx.incremental()
             ? `
         WHERE ingest_time > Ingest_checkpoint - INTERVAL 3 HOUR
-        AND mg_id IN (SELECT n.mg_id FROM new_records n)
+        AND mg_id IN (SELECT mg_id FROM new_records)
         ${ignore_query}
         `
             : `WHERE 1=1 ${ignore_query}`

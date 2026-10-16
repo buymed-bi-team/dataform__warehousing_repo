@@ -2,7 +2,7 @@ config {
     type: 'incremental',
     schema: "buymed_innovation",
     description: `All orders item in the Vietnam marketplace (including tender orders).`,
-    tags: ['AI_THUOCSI_VN', "innovation_10m"],
+    tags: ['AI_THUOCSI_VN', "innovation_20m", "Weekend"],
     //uniqueKey: ["order_id", "mg_id"],
     bigquery: {
         partitionBy: "DATE(created_time)",
