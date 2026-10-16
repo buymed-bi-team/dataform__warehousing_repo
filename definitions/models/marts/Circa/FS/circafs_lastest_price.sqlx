@@ -67,7 +67,7 @@ SELECT
           WHEN config_fc = 'MIENBAC' THEN 'HN' 
           END AS fc_code
 FROM sku_circa
-LEFT JOIN ${source.ref}.cos_product_convert_base_unit r ON sku_circa.product_id = r.product_id
+LEFT JOIN ${source.ref}.circa_dim_retail_unit r ON sku_circa.product_id = r.product_id
                                                        AND sku_circa.unit = r.convert_unit
-                                                       AND sku_circa.client_id = r.client_id
+                                                    
                                                     
