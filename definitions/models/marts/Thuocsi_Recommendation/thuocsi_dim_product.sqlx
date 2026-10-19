@@ -2,7 +2,7 @@ config {
     type: 'table',
     schema: "buymed_thuocsi_recommendation",
     description: `All active product of web Thuocsi.`,
-    tags: [ "custom_1h_past10"]
+    tags: [ "custom_1h_past10", "THUOCSI_RECOMMENDATION"]
 }
 
 WITH 

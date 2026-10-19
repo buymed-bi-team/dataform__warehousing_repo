@@ -2,11 +2,7 @@ config {
     type: 'table',
     schema: "buymed_thuocsi_recommendation",
     description: `Add to Cart Event on web Thuocsi.`,
-    tags: [ "custom_1h_past10"],
-    bigquery: {
-        partitionBy: "DATE(eventTime)",
-        clusterBy: ["visitorId", "productDetails.product.id"]
-    }
+    tags: [ "custom_1h_past10", "THUOCSI_RECOMMENDATION"],
 }
 
 SELECT
