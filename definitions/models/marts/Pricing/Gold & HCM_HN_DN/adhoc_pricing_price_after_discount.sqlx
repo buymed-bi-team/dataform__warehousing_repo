@@ -25,26 +25,13 @@ WITH
     area AS (
         SELECT
             voucher_code
-            -- , COALESCE(
-                ,CASE
-                    WHEN b LIKE "%MIENBAC%" THEN "MIENBAC"
-                    -- WHEN b LIKE "%MB_ADM%" THEN "MIENBAC"
-                    -- WHEN b LIKE "%113RVDTCV2U1%"THEN "MIENBAC"
-                    -- WHEN b LIKE "%01%" THEN "MIENBAC"
-                    WHEN b LIKE "%MIENNAM%" THEN "MIENNAM"
-                    -- WHEN b LIKE "%MN_ADM%" THEN "MIENNAM"
-                    -- WHEN b LIKE "%107TQTAR1Y7G%" THEN "MIENNAM"
-                    -- WHEN b LIKE "%79%" THEN "MIENNAM"
-                    -- WHEN b LIKE "%MIENTRUNG%" THEN "MIENTRUNG"
-                    -- WHEN b LIKE "%MT_ADM%" THEN "MIENTRUNG"
-                    -- WHEN b LIKE "%528UQP72U1Y%" THEN "MIENTRUNG"
-                    -- WHEN b LIKE "%48%" THEN "MIENTRUNG"
-                    WHEN b = "00" THEN "00"
-                    WHEN b IS NULL THEN "00"
-                    ELSE c.sales_region_code
-                END
-                -- "00")
-               AS area_code
+            ,CASE
+                WHEN b LIKE "%MIENBAC%" THEN "MIENBAC"
+                WHEN b LIKE "%MIENNAM%" THEN "MIENNAM"
+                WHEN b = "00" THEN "00"
+                WHEN b IS NULL THEN "00"
+                ELSE c.sales_region_code
+            END AS area_code
         FROM ${ref('dim_voucher')}
             , UNNEST(JSON_QUERY_ARRAY(scopes)) AS a
             LEFT JOIN UNNEST(JSON_VALUE_ARRAY(a, "$.area_codes")) AS b
@@ -60,7 +47,7 @@ WITH
             , b.voucher_discount
             , b.percentage_discount
             , a.min_sku_quantity
-            , SAFE_DIVIDE(b.voucher_discount, a.min_sku_quantity) AS avg_discount
+            , SAFE_DIVIDE(COALESCE(b.voucher_discount, b.max_discount), a.min_sku_quantity) AS avg_discount
             , IFNULL(mov,0) AS mov1
             , discount_type
             , c.area_code
@@ -71,21 +58,11 @@ WITH
             LEFT JOIN area AS c USING(voucher_code)
         WHERE
             b.voucher_status = "ACTIVE"
-            -- AND b.discount_type = "ABSOLUTE"
             AND b.is_specific
             AND b.all_customer
             AND c.area_code IS NOT NULL
         QUALIFY ROW_NUMBER() over (PARTITION BY product_id, a.seller_code, area_code ORDER BY mov1, a.min_sku_quantity, voucher_discount DESC, max_discount DESC ) = 1
     ),
-
-    -- discount_value AS (
-    --     SELECT
-    --         a.*
-    --         , b.area_code
-    --     FROM voucher AS a
-    --         LEFT JOIN area AS b USING(voucher_code)
-    --     WHERE b.area_code IS NOT NULL
-    -- ),
 
     final_price AS (
         SELECT
@@ -116,13 +93,18 @@ SELECT
     , a.deal_price
     , sku_final_price
     , charge_fee
+    , IF(
+        discount_type = "ABSOLUTE",
+        c.avg_discount,
+        ROUND(LEAST(a.sku_final_price * SAFE_CAST(c.percentage_discount AS FLOAT64) / 100, c.avg_discount), -2)
+    ) AS  product_voucher_discount
     , ROUND(
         a.sku_final_price - ROUND(a.sku_final_price * 0.005, -2)   - ROUND(a.sku_final_price * 0.00256, -2)  
             - IFNULL(
                 IF(
                     discount_type = "ABSOLUTE",
                     c.avg_discount,
-                    ROUND(a.sku_final_price * SAFE_CAST(c.percentage_discount AS FLOAT64) / 100, -2)
+                    ROUND(LEAST(a.sku_final_price * SAFE_CAST(c.percentage_discount AS FLOAT64) / 100, c.avg_discount), -2)
                 )
               , 0)
         , -2
@@ -136,7 +118,7 @@ SELECT
                 IF(
                     discount_type = "ABSOLUTE",
                     c.avg_discount,
-                    ROUND(a.sku_final_price * SAFE_CAST(c.percentage_discount AS FLOAT64) / 100, -2)
+                    ROUND(LEAST(a.sku_final_price * SAFE_CAST(c.percentage_discount AS FLOAT64) / 100, c.avg_discount), -2)
                 )
             , 0
             )
