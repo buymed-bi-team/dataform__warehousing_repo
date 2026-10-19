@@ -74,7 +74,7 @@ LEFT JOIN purchase d ON a.date =d.created_date
                         AND a.product_id = d.product_id 
                         -- AND EXTRACT(HOUR FROM d.event_time) >= a.start_hour
                         -- AND EXTRACT(HOUR FROM d.event_time) < a.end_hour
-LEFT JOIN (SELECT DISTINCT product_id, product_name FROM gold_buymed_vn2.cos_dim_product WHERE client_id = 1) p ON a.product_id = p.product_id
+LEFT JOIN gold_buymed_vn2.circa_dim_master_product p ON a.product_id = p.product_id
 LEFT JOIN latest_product_price pr ON a.product_id = pr.product_id 
 WHERE a.product_id IS NOT NULL
       AND a.in_final = true

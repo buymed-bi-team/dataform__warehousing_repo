@@ -60,7 +60,7 @@ FROM platinum_buymed_vn.circa_online_prd_product_sell_area
           FROM gold_buymed_vn2.circa_pos_profile
    ) p ON i.pos_id = p.id
   LEFT JOIN province_area_map m ON p.province = m.province_code
-  LEFT JOIN `gold_buymed_vn2.cos_dim_product` td ON i.product_id = td.product_id AND i.client_id = td.client_id
+  LEFT JOIN gold_buymed_vn2.circa_dim_master_product td ON i.product_id = td.product_id
   WHERE p.code IN (
              SELECT DISTINCT pos_code FROM platinum_buymed_vn.circa_online_prd_consumer_store_v2
              WHERE status = 'ACTIVE'
@@ -195,4 +195,4 @@ LEFT JOIN thuocsi_stock ts ON b.product_id = ts.product_id AND b.area = ts.area
 LEFT JOIN gmv_30d g        ON b.product_id = g.product_id  AND b.area = g.area
 LEFT JOIN traffic t ON b.product_id = t.product_id  
 LEFT JOIN cancel_stock cx  ON b.product_id = cx.product_id AND b.area = cx.area
-LEFT JOIN (SELECT DISTINCT product_id, ts_unit, ts_convert_rate FROM `gold_buymed_vn2.cos_dim_product`) td ON b.product_id = td.product_id
+LEFT JOIN (SELECT DISTINCT product_id, ts_unit, ts_convert_rate FROM gold_buymed_vn2.circa_dim_master_product) td ON b.product_id = td.product_id
