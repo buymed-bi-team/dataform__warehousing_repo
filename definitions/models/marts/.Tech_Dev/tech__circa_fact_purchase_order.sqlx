@@ -2,6 +2,7 @@ config {
     type: "view",
     schema: "buymed_tech",
     name: "tech__circa_fact_purchase_order",
+    tags: ["TECH_DEV"]
 }
 
 with sale_by_pos_channel as (

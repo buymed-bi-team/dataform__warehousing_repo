@@ -2,6 +2,7 @@ config {
     type: "view",
     schema: "buymed_tech",
     name: "tech__circa_growth_staff_customer",
+    tags: ["TECH_DEV"]
 }
 
 SELECT *
