@@ -6,8 +6,7 @@ config {
 }
 
 SELECT 
-  client_id
-  , product_id
+    product_id
   , product_name
   , NULLIF(product_category, "Thuốc (Chưa phân loại)") AS product_category
   , cat2
@@ -16,11 +15,11 @@ SELECT
   , volumes
   , a.unit
   , manufacture_name
-  , CONCAT(client_id, "_", product_id) AS product_id_key
+  , product_id AS product_id_key
   , is_allstore AS is_essential
   , is_allstore
   , brand
-  , CASE WHEN client_id = 1 THEN web_status END AS status_online
-  , CASE WHEN client_id = 1 THEN sell_area_online END AS sell_area_online
-FROM ${ref('gold_buymed_vn2', 'cos_dim_product')} AS a
-QUALIFY ROW_NUMBER() OVER(PARTITION BY product_id_key) = 1
+  ,  web_status AS status_online
+  ,  sell_area_online 
+FROM ${ref('gold_buymed_vn2', 'circa_dim_master_product')} AS a
+QUALIFY ROW_NUMBER() OVER(PARTITION BY product_id) = 1
