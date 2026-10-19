@@ -1,6 +1,7 @@
 config {
     type: "view",
     schema: "buymed_tech",
+    tags: ["TECH_DEV"]
 }
 
 WITH 

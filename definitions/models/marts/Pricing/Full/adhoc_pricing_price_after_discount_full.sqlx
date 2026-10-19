@@ -37,7 +37,7 @@ WITH
             , b.voucher_discount
             , b.percentage_discount
             , a.min_sku_quantity
-            , SAFE_DIVIDE(b.voucher_discount, a.min_sku_quantity) AS avg_discount
+            , SAFE_DIVIDE(COALESCE(b.voucher_discount, b.max_discount), a.min_sku_quantity) AS avg_discount
             , IFNULL(mov,0) AS mov1
             , discount_type
             , c.area_code
@@ -89,7 +89,7 @@ SELECT
         IF(
             discount_type = "ABSOLUTE",
             c.avg_discount,
-            ROUND(a.sku_final_price * SAFE_CAST(c.percentage_discount AS FLOAT64) / 100,-2)
+            ROUND(LEAST(a.sku_final_price * SAFE_CAST(c.percentage_discount AS FLOAT64) / 100, c.avg_discount), -2)
         )
         , 0
      ) AS product_voucher_discount
@@ -99,7 +99,7 @@ SELECT
                 IF(
                     discount_type = "ABSOLUTE",
                     c.avg_discount,
-                    ROUND(a.sku_final_price * SAFE_CAST(c.percentage_discount AS FLOAT64) / 100,-2)
+                    ROUND(LEAST(a.sku_final_price * SAFE_CAST(c.percentage_discount AS FLOAT64) / 100, c.avg_discount), -2)
                 )
               , 0)
         , -2
@@ -110,7 +110,7 @@ SELECT
                 IF(
                     discount_type = "ABSOLUTE",
                     c.avg_discount,
-                    ROUND(a.sku_final_price * SAFE_CAST(c.percentage_discount AS FLOAT64) / 100,-2)
+                    ROUND(LEAST(a.sku_final_price * SAFE_CAST(c.percentage_discount AS FLOAT64) / 100, c.avg_discount), -2)
                 )
               , 0)
         , -2
@@ -121,7 +121,7 @@ SELECT
                 IF(
                     discount_type = "ABSOLUTE",
                     c.avg_discount,
-                    ROUND(a.sku_final_price * SAFE_CAST(c.percentage_discount AS FLOAT64) / 100,-2)
+                    ROUND(LEAST(a.sku_final_price * SAFE_CAST(c.percentage_discount AS FLOAT64) / 100, c.avg_discount), -2)
                 )
               , 0)
         , -2
@@ -132,7 +132,7 @@ SELECT
                 IF(
                     discount_type = "ABSOLUTE",
                     c.avg_discount,
-                    ROUND(a.sku_final_price * SAFE_CAST(c.percentage_discount AS FLOAT64) / 100,-2)
+                    ROUND(LEAST(a.sku_final_price * SAFE_CAST(c.percentage_discount AS FLOAT64) / 100, c.avg_discount), -2)
                 )
               , 0)
         , -2
@@ -143,7 +143,7 @@ SELECT
                 IF(
                     discount_type = "ABSOLUTE",
                     c.avg_discount,
-                    ROUND(a.sku_final_price * SAFE_CAST(c.percentage_discount AS FLOAT64) / 100,-2)
+                    ROUND(LEAST(a.sku_final_price * SAFE_CAST(c.percentage_discount AS FLOAT64) / 100, c.avg_discount), -2)
                 )
               , 0)
         , -2
