@@ -29,7 +29,7 @@ pre_operations {
     created_date >= ${start_date}
 }
 
-WITH cte_os AS (
+WITH base_data AS (
     SELECT 
          COALESCE(
             DATE(DATETIME_ADD(o.completed_at, INTERVAL 7 HOUR))
@@ -158,6 +158,14 @@ WITH cte_os AS (
 
     WHERE o.status NOT IN ('PENDING', 'CANCELED')
          AND o.created_date >= ${when(incremental(), start_date, `'2024-09-01'`)}
+)
+, cte_os AS (
+    SELECT
+    * EXCEPT(quantity, base_quantity)
+    ,SUM(quantity) AS quantity
+    ,SUM(base_quantity) AS base_quantity
+FROM base_data
+GROUP BY ALL
 )
 
 ,order_item_with_total AS (
