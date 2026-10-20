@@ -13,12 +13,15 @@ config {
 
     }
 }
-  
+
+WITH customer_base AS ( 
 SELECT
      o.customer_phone_cleaned
     ,MAX(NULLIF(NULLIF(o.gender, 'UNKNOWN'), '')) AS gender
     ,MAX(o.title) AS title
     ,COUNT(DISTINCT o.order_code) AS total_orders
+    ,MIN(o.created_date) AS first_order
+    ,MAX(o.created_date) AS last_order
     ,MAX(o.customer_name) AS customer_name
     -- Offline
     ,COUNT(DISTINCT IF(o.type = 'OFFLINE', o.order_code, NULL)) AS cnt_offline
@@ -53,3 +56,21 @@ WHERE o.status IN ('COMPLETED', 'COMPLETE_SHIPPING')
         AND o.customer_phone_cleaned IS NOT NULL
 GROUP BY o.customer_phone_cleaned
 ORDER BY cnt_online DESC
+)
+
+SELECT
+     cb.*
+    ,ROUND(SAFE_DIVIDE(cb.gmv, cb.total_orders)) AS aov
+    ,ROUND(SAFE_DIVIDE(
+        DATE_DIFF(DATE(cb.last_order), DATE(cb.first_order), DAY)
+        ,cb.total_orders - 1
+     )) AS avg_days_between_orders
+    ,SAFE_DIVIDE(
+        cb.total_orders
+        ,DATE_DIFF(DATE(cb.last_order), DATE(cb.first_order), MONTH) + 1
+    ) AS orders_per_month
+    ,DATE_DIFF(CURRENT_DATE('Asia/Ho_Chi_Minh'), DATE(cb.last_order), DAY) AS recency_days
+    ,ROUND(cb.gmv - cb.cogs) AS ltv_gross_profit
+FROM customer_base cb
+WHERE customer_phone_cleaned = '0563902636'
+ORDER BY cb.cnt_online DESC
