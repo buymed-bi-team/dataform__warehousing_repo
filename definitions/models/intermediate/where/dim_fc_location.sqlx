@@ -89,7 +89,8 @@ int_fc_location AS (
         ELSE NULL
       END AS location_number_key,
       a.parent_order,
-      json_value_array( a.parent_order )[offset(array_length(json_value_array( a.parent_order )) - 1)] as parent_location_code
+      json_value_array( a.parent_order )[offset(array_length(json_value_array( a.parent_order )) - 1)] as parent_location_code,
+      a.tags
   FROM cte_main m
   LEFT JOIN dedup_inventory_location a
     ON m.warehouse_code = a.warehouse_code AND m.location_code = a.code
