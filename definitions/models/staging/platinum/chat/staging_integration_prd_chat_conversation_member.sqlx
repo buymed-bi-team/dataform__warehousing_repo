@@ -33,6 +33,12 @@ pre_operations {
             );
         END IF;
 
+        CREATE TEMP TABLE new_records AS (
+          SELECT DISTINCT mg_id
+          FROM silver_buymed_vn.integration_prd_chat_conversation_member
+          WHERE ingest_time > Ingest_checkpoint
+        );
+
         SET ( has_new_data, checkpoint_date, has_delete_data ) = (
             SELECT AS STRUCT
                 IF (
@@ -49,11 +55,7 @@ pre_operations {
             WHERE ingest_time > Ingest_checkpoint
         );
 
-        CREATE TEMP TABLE new_records AS (
-          SELECT DISTINCT mg_id
-          FROM silver_buymed_vn.integration_prd_chat_conversation_member
-          WHERE ingest_time > Ingest_checkpoint
-        );
+        
 
         IF ( has_new_data = TRUE ) THEN
             IF (has_delete_data = TRUE) THEN
