@@ -1,0 +1,55 @@
+config {
+    type: "table",
+    description: `PIC: huyen.ngo; 
+                  model_type: Table ;
+                  schedule: At minute 10 every hour.Circa OS Transaction order`,
+    tags: ["custom_1h_past10"],
+    name: "circa_agg_customer",
+    columns: {
+        order_id: "NonNull |" + docs.order_id
+       
+    },
+    bigquery: {
+
+    }
+}
+  
+SELECT
+     o.customer_phone_cleaned
+    ,MAX(NULLIF(NULLIF(o.gender, 'UNKNOWN'), '')) AS gender
+    ,MAX(o.title) AS title
+    ,COUNT(DISTINCT o.order_code) AS total_orders
+    ,MAX(o.customer_name) AS customer_name
+    -- Offline
+    ,COUNT(DISTINCT IF(o.type = 'OFFLINE', o.order_code, NULL)) AS cnt_offline
+    ,MIN(IF(o.type = 'OFFLINE', o.created_date, NULL)) AS first_offline
+    ,MAX(IF(o.type = 'OFFLINE', o.created_date, NULL)) AS last_offline
+    -- Online
+    ,COUNT(DISTINCT IF(o.type = 'ONLINE', o.order_code, NULL)) AS cnt_online
+    ,MIN(IF(o.type = 'ONLINE', o.created_date, NULL)) AS first_online
+    ,MAX(IF(o.type = 'ONLINE', o.created_date, NULL)) AS last_online
+    -- GMV & COGS
+    ,SUM(
+        IF(
+            o.completed_date IS NOT NULL
+            AND o.status IN ('COMPLETED', 'COMPLETED_SHIPPING'),
+            oi.unit_price_before_discount * (oi.quantity - COALESCE(oi.qty_rt, 0)),
+            0
+        )
+    ) AS gmv
+
+    ,SUM(
+        IF(
+            o.completed_date IS NOT NULL
+            AND o.status IN ('COMPLETED', 'COMPLETED_SHIPPING'),
+            oi.unit_cost_price * (oi.quantity - COALESCE(oi.qty_rt, 0)),
+            0
+        )
+    ) AS cogs
+
+FROM ${ref('gold_buymed_vn2','cos_fact_order')} o
+LEFT JOIN  ${ref('gold_buymed_vn2','cos_fact_order_item')} oi ON o.order_id = oi.order_id
+WHERE o.status IN ('COMPLETED', 'COMPLETE_SHIPPING')
+        AND o.customer_phone_cleaned IS NOT NULL
+GROUP BY o.customer_phone_cleaned
+ORDER BY cnt_online DESC
