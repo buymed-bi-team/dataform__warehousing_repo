@@ -1,0 +1,94 @@
+config {
+    type: 'table',
+    schema: "buymed_thuocsi_recommendation",
+    description: `All active product of web Thuocsi.`,
+    tags: [ "custom_1h_past10", "THUOCSI_RECOMMENDATION"]
+}
+
+WITH 
+    _cat2 AS (
+        SELECT
+            product_id
+            , category_name
+        FROM ${ref("gold_buymed_vn2", "dim_product_category")} 
+        WHERE level = 1
+    ),
+
+    _cat3 AS (
+        SELECT
+            product_id
+            , efficacy_name
+        FROM ${ref("gold_buymed_vn2", "dim_product_efficacy")} 
+        WHERE efficacy_level = 1
+    ),
+
+    _price AS (
+        SELECT
+            a.product_id
+            , MIN(a.price_after_discount_level1) AS price
+        FROM ${ref("gold_buymed_vn2", "adhoc_pricing_full")} AS a
+            LEFT JOIN ${ref("gold_buymed_vn2", "dim_sku_sales_region_current")} AS b ON a.sku_key_sales_region_code = b.sku_key_sales_region_code
+        WHERE 1=1
+            AND b.sku_system_status IN ('NORMAL', 'LIMIT')
+            AND b.sku_system_active
+            AND customer_level IN ('LEVEL_SILVER', 'LEVEL_GOLD', 'LEVEL_PLATINUM', 'LEVEL_DIAMOND')
+        GROUP BY 1
+    ),
+
+    _inventory  AS (
+        SELECT
+            a.product_id
+            , SUM(a.available_quantity) AS available_quantity
+        FROM ${ref("gold_buymed_vn2", "dim_inventory_sku")}  AS a
+            LEFT JOIN ${ref("gold_buymed_vn2", "dim_sku_sales_region_current")} AS b ON a.sku_key_sales_region = b.sku_key_sales_region_code
+        WHERE 1=1
+            AND b.sku_system_status IN ('NORMAL', 'LIMIT')
+            AND b.sku_system_active
+        GROUP BY ALL
+    )
+
+SELECT
+    SAFE_CAST(p.product_id AS STRING) AS id
+    , p.product_name AS title
+    , IF(
+        p.product_category_code = 'AQFV2U'
+        , ARRAY[
+            CONCAT(
+                COALESCE(p.product_category,'Unknown'),
+                ' > ',
+                COALESCE(c2.category_name,'Unknown'),
+                ' > ',
+                COALESCE(c3.efficacy_name,'Unknown')
+           )
+        ]
+        ,  ARRAY[
+               CONCAT(
+                    COALESCE(p.product_category,'Unknown'),
+                    ' > ',
+                    COALESCE(c2.category_name,'Unknown'),
+                    ' > ',
+                    COALESCE(p.retail_category_name,'Unknown')
+               )
+           ]
+      ) AS categories
+    , p.retail_name AS description
+    , 'vi' AS languageCode
+    , IF(inv.available_quantity >0, 'IN_STOCK', 'OUT_OF_STOCK') AS availability
+    , STRUCT('VND' AS  currencyCode, SAFE_CAST( prc.price AS INT64) AS price) AS priceInfo
+    , pp.images
+FROM ${ref("gold_buymed_vn2","dim_product")} AS p
+    LEFT JOIN _cat2 AS c2 ON p.product_id = c2.product_id
+    LEFT JOIN _cat3 AS c3 ON p.product_id = c3.product_id
+    LEFT JOIN _price AS prc ON p.product_id = prc.product_id
+    LEFT JOIN _inventory AS inv ON p.product_id = inv.product_id
+    LEFT JOIN (
+        SELECT
+            product_id
+            , ARRAY(
+                SELECT AS STRUCT
+                    url AS uri
+                FROM UNNEST(JSON_VALUE_ARRAY(image_urls)) AS url
+              ) AS images
+        FROM platinum_buymed_vn.marketplace_prd_product_v2_product
+    ) AS pp ON p.product_id = pp.product_id
+WHERE p.product_status = 'ACTIVE'

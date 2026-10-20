@@ -1,0 +1,30 @@
+config {
+    type: 'table',
+    schema: "buymed_thuocsi_recommendation",
+    description: `Purchase Event on web Thuocsi.`,
+    tags: [ "custom_1h_past10", "THUOCSI_RECOMMENDATION"],
+}
+
+SELECT
+    'PURCHASE_COMPLETE' AS eventType
+    , a.customer_id AS visitorId
+    , FORMAT_TIMESTAMP('%Y-%m-%dT%H:%M:%SZ', a.created_at) AS eventTime
+    , STRUCT(
+        SAFE_CAST(SUM(a.sales_price * a.demand_quantity) AS INT64) AS revenue
+        , 'VND' AS currencyCode
+    ) AS purchaseTransaction
+    , STRUCT(
+        STRUCT( SAFE_CAST( a.product_id AS STRING) AS id) AS product
+        , SUM(a.demand_quantity) AS quantity
+    ) AS productDetails
+    ,STRUCT(
+        STRUCT([COALESCE(province_name, '')] AS text) AS area
+    ) AS attributes
+FROM  ${ref("gold_buymed_vn2", "fact_order_item")} AS a
+    LEFT JOIN ${ref("gold_buymed_vn2", "fact_order")} AS b ON a.order_id = b.order_id
+    LEFT JOIN ${ref("gold_buymed_vn2", "dim_geo_location")} AS c ON c.location_code = b.shipping_ward_code
+WHERE 1=1
+    AND DATE(b.created_at) >= DATE_TRUNC(CURRENT_DATE("+7"), MONTH) - INTERVAL 12 MONTH
+    AND b.order_status <> 'CANCEL'
+    AND b.channel <> 'TENDER'
+GROUP BY 1,2,3, a.product_id, c.province_name

@@ -10,7 +10,7 @@ config {
 
 WITH base_data AS (
     SELECT DISTINCT product_id
-    FROM gold_buymed_vn2.cos_dim_product
+    FROM gold_buymed_vn2.circa_dim_master_product
 ),
 
 

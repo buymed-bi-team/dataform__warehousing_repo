@@ -2,6 +2,7 @@ config {
     type: "view",
     schema: "buymed_tech",
     name: "tech__circa_gross_net_margin",
+    tags: ["TECH_DEV"]
 }
 
 SELECT 

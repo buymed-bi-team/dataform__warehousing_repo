@@ -5,7 +5,8 @@ config {
         PIC: nguyen.tran; 
         Type: View; 
         `,
-    schema: "buymed_tech"
+    schema: "buymed_tech",
+    tags: ["TECH_DEV"]
 }
 
 SELECT *

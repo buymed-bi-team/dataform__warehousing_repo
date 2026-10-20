@@ -205,8 +205,8 @@ SELECT
     , a.net_profit_buymed
     , SAFE_DIVIDE(a.net_profit_circa, a.gmv) AS net_margin_circa
     , SAFE_DIVIDE(a.net_profit_buymed, a.gmv) AS net_margin_buymed
-    , CONCAT(a.client_id, "_", a.product_id) AS product_id_key
-    , CONCAT(a.order_code, CONCAT(a.client_id, "_", a.product_id)) AS order_product_unit_key
+    , a.product_id AS product_id_key
+    , CONCAT(a.order_code, a.product_id)  AS order_product_unit_key
 FROM final AS a
 LEFT JOIN ${ref("gold_buymed_vn2", "circa_pos_profile")} AS p ON a.pos_id = p.id
 WHERE p.type = 'CIRCA'
