@@ -35,5 +35,6 @@ SELECT DISTINCT booking_id
                , JSON_VALUE(preferred_time, '$.date') AS preferred_date
                , JSON_VALUE(preferred_time, '$.slot') AS preferred_slot
                , i.name AS clinic_name
+               , JSON_VALUE(o.extra_props, '$.referral_source') AS referral_source
 FROM platinum_buymed_vn.circa_online_prd_consumer_clinic_bookings o 
 LEFT JOIN platinum_buymed_vn.circa_online_prd_consumer_clinics i ON o.clinic_code = i.code

@@ -59,7 +59,6 @@ SELECT a.*
       , COUNT(b.mg_id) AS product_view 
       , COUNT(b.mg_id) AS cnt_add_to_cart
       , COUNT(DISTINCT d.order_code) AS purchase
-      , extra_pct
       , ROUND(pr.deal_price * (1 - a.extra_pct / 100), -2) AS display_web_price
       , ROUND(1 - ROUND(pr.deal_price * (1 - a.extra_pct / 100), -2) / pr.sale_price, 4) AS total_pct_discount
 FROM product a 
@@ -75,7 +74,7 @@ LEFT JOIN purchase d ON a.date =d.created_date
                         AND a.product_id = d.product_id 
                         -- AND EXTRACT(HOUR FROM d.event_time) >= a.start_hour
                         -- AND EXTRACT(HOUR FROM d.event_time) < a.end_hour
-LEFT JOIN (SELECT DISTINCT product_id, product_name FROM gold_buymed_vn2.cos_dim_product WHERE client_id = 1) p ON a.product_id = p.product_id
+LEFT JOIN gold_buymed_vn2.circa_dim_master_product p ON a.product_id = p.product_id
 LEFT JOIN latest_product_price pr ON a.product_id = pr.product_id 
 WHERE a.product_id IS NOT NULL
       AND a.in_final = true

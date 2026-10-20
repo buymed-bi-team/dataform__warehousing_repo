@@ -134,15 +134,17 @@ WITH product_base_unit AS (
           ,pro.unit_name as web_unit
           ,pro.is_default as is_default_web
           ,pro.web_unit_status
-          ,  CASE WHEN fs.product_id IS NOT NULL THEN ROUND(pro.unit_price * fs.total_pct_discount)
-                  ELSE pro.discount_price END AS unit_price_web
+          ,SAFE_DIVIDE(flash_sale_extra_pct, 100) AS flash_sale_extra_pct
+          ,total_pct_discount
+          ,  CASE WHEN fs.product_id IS NOT NULL THEN ROUND(pro.unit_price * (1-fs.total_pct_discount))
+                  ELSE pro.price_af_discount END AS unit_price_web
     FROM combine_unit i
     LEFT JOIN check_unit_pricing cup ON i.product_id = cup.product_id
     LEFT JOIN  gold_buymed_vn2.dim_product_price_online pro ON i.product_id = pro.product_id AND LOWER(i.unit) = LOWER(pro.unit_name)
     LEFT JOIN (
               SELECT
                       product_id
-                      --, fs.extra_pct                AS flash_sale_extra_pct
+                      , extra_pct                AS flash_sale_extra_pct
                       , total_pct_discount
                       --, fs.display_web_price
         FROM gold_buymed_vn2.circa_fact_flash_sales  

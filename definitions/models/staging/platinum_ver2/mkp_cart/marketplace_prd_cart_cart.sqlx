@@ -1,0 +1,45 @@
+config {
+    type: "view",
+    schema: "platinum_buymed_vn",
+    name: "marketplace_prd_cart_cart",
+    description : `
+    Partition by: created date
+    `,
+    tags:["platinum","marketplace_prd_cart"]
+}
+
+  WITH silver AS (
+    SELECT
+      key, mg_id, customer_id, flatten_location, system_display, cart_id, ward_code, delivery_method, region_codes, redeem_code, ref_cart_item, total_quantity, last_updated_time, account_id, source, customer_email, customer_region_code, payment_method, delivery_date, redeem_code_map, customer_order_index, cart_no, customer_code, customer_ward_code, district_code, province_code, region_code, total_item, last_action_time, customer_phone, customer_shipping_address, customer_scope, customer_address_code, sale_region_codes, status, invoice, created_time, customer_name, customer_district_code, customer_province_code, price, sub_price, total_fee, total_price, discount, note, is_refuse_split_order, synced_at, extra_props, action, ingest_time,
+      
+        CASE
+            WHEN created_time IS NOT NULL THEN DATE(DATETIME(created_time, 'Asia/Ho_Chi_Minh'))
+            ELSE DATE( '2099-01-01' )
+        END
+     created_date
+    FROM silver_buymed_vn.marketplace_prd_cart_cart
+    WHERE ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 1 DAY
+    QUALIFY ROW_NUMBER() OVER (_window) = 1 
+          AND ingest_time >= CURRENT_TIMESTAMP() - INTERVAL 16 HOUR
+          WINDOW _window AS (
+          PARTITION BY mg_id
+          ORDER BY synced_at DESC
+          ,last_updated_time DESC)
+  ), platinum AS (
+    SELECT 
+      key, mg_id, customer_id, flatten_location, system_display, cart_id, ward_code, delivery_method, region_codes, redeem_code, ref_cart_item, total_quantity, last_updated_time, account_id, source, customer_email, customer_region_code, payment_method, delivery_date, redeem_code_map, customer_order_index, cart_no, customer_code, customer_ward_code, district_code, province_code, region_code, total_item, last_action_time, customer_phone, customer_shipping_address, customer_scope, customer_address_code, sale_region_codes, status, invoice, created_time, customer_name, customer_district_code, customer_province_code, price, sub_price, total_fee, total_price, discount, note, is_refuse_split_order, synced_at, extra_props, action, ingest_time,
+      created_date
+    FROM ${ref(`platinum_buymed_vn__stg`, `marketplace_prd_cart_cart`)}
+  )
+
+  SELECT p.*
+  FROM platinum p
+  LEFT JOIN silver s 
+      ON p.mg_id = s.mg_id 
+  WHERE s.mg_id is null 
+
+  UNION ALL 
+
+  SELECT s.*
+  FROM silver s
+  WHERE action <> "d"

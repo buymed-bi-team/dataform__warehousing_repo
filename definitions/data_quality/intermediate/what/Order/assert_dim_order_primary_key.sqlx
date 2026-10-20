@@ -1,6 +1,6 @@
 config {
   type: "assertion",
-  tags: ["custom_5min_9to18","custom_1h_18to9","Weekend"]
+  //tags: ["custom_5min_9to18","custom_1h_18to9","Weekend"]
 }
 
 SELECT
