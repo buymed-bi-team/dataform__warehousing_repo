@@ -72,5 +72,5 @@ SELECT
     ,DATE_DIFF(CURRENT_DATE('Asia/Ho_Chi_Minh'), DATE(cb.last_order), DAY) AS recency_days
     ,ROUND(cb.gmv - cb.cogs) AS ltv_gross_profit
 FROM customer_base cb
-WHERE customer_phone_cleaned = '0563902636'
+--WHERE customer_phone_cleaned = '0563902636'
 ORDER BY cb.cnt_online DESC
