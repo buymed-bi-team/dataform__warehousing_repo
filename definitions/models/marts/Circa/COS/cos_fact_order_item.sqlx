@@ -60,14 +60,15 @@ WITH base_data AS (
         ,oi.unit
         ,oi.unit_price
         ,CASE WHEN promotion_event_code IS NOT NULL AND promotion_event_code <> '' AND oi.discount_amount = 0 THEN system_price - unit_price
-            WHEN o.channel = 'O2O'
-                THEN ol.origin_price - ol.price
+            WHEN o.channel = 'O2O' AND ol.origin_price IS NULL THEN oi.origin_price - unit_price
+            WHEN o.channel = 'O2O' AND ol.origin_price IS NOT NULL THEN ol.origin_price - ol.price
             ELSE oi.discount_amount
         END AS discount_amount
 
         ,CASE
             WHEN promotion_event_code IS NOT NULL AND promotion_event_code <> '' AND oi.discount_amount = 0 THEN system_price
             WHEN o.channel <> 'O2O' THEN oi.discount_amount + oi.unit_price
+            WHEN o.channel = 'O2O' AND ol.origin_price IS NULL THEN oi.origin_price
             ELSE ol.origin_price
         END AS unit_price_before_discount
         ,system_price
@@ -125,13 +126,6 @@ WITH base_data AS (
         ,o.client_id
         ,gift_code
         ,tag_list
-        -- ,CASE
-        --     WHEN tag_list LIKE '%deal_1000%'
-        --      AND unit_price = 1000
-        --         THEN TRUE
-        --     ELSE FALSE
-        -- END AS is_deal1k
-      --  ,al.location_detail_id
         ,oi.id AS item_id
 
     FROM ${source.circa_os}.order_order o
