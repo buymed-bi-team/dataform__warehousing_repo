@@ -148,7 +148,7 @@ cte_combo_item as (
     , event_source
     , event_screen
     , block_code
-    , IF(item_type <>'GIFT', seller_price - promotion_amount, 0) AS combo_seller_revenue
+    , IF(item_type <>'GIFT', seller_price - IFNULL(promotion_amount,0), 0) AS combo_seller_revenue
     , SAFE_CAST( JSON_VALUE( bom.seller_revenue ) AS INT64 ) AS bom_seller_revenue
     , sku_level AS combo_sku_level
     , JSON_VALUE( bom.sku_level ) AS bom_sku_level
@@ -266,8 +266,8 @@ cte_normal_item as (
     , event_screen
     , block_code
     , vat
-    , IF(item_type <>'GIFT', seller_price - promotion_amount, 0) AS combo_seller_revenue
-    , IF(item_type <>'GIFT', seller_price - promotion_amount, 0) AS seller_revenue
+    , IF(item_type <>'GIFT', seller_price - IFNULL(promotion_amount,0), 0) AS combo_seller_revenue
+    , IF(item_type <>'GIFT', seller_price - IFNULL(promotion_amount,0), 0) AS seller_revenue
     , sku_level AS combo_sku_level
     , sku_level
     , created_date
