@@ -8,6 +8,11 @@ config {
 CREATE OR REPLACE VIEW `rumi_buymed_th.thuocsi_tha_fact_order_item`
 AS (SELECT * FROM  ${ref("buymed_innovation", "thuocsi_tha_fact_order_item")});
 
+-- fact_order_item_cancelled
+
+CREATE OR REPLACE VIEW `rumi_buymed_th.thuocsi_tha_fact_order_item_cancelled`
+AS (SELECT * FROM  ${ref("buymed_innovation", "thuocsi_tha_fact_order_item_cancelled")});
+
 -- fact_order_voucher
 
 CREATE OR REPLACE VIEW `rumi_buymed_th.thuocsi_tha_fact_order_voucher`

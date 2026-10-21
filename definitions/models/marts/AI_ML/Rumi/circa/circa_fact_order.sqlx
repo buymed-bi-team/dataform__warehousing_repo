@@ -1,7 +1,7 @@
 config {
     type: 'table',
     schema: "buymed_innovation",
-    description: `All orders item of Circa.`,
+    description: `All cancelled orders item of Circa.`,
     tags: ['AI_CIRCA', "custom_1h_past10"],
     bigquery: {
         partitionBy: "DATE(order_completed_at)",
