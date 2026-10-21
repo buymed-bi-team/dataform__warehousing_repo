@@ -43,7 +43,7 @@ WITH  t AS (
           ,is_herb
           ,is_ingredient_special
           ,is_portable
-          ,tp.origin
+          ,p.origin
           ,manufacturer_short_name
           ,tp.registration_number
           ,tp.product_category_code
@@ -110,7 +110,7 @@ WITH  t AS (
           ,volume
           ,usage
     FROM `lakehouse-prod-394907.gold_buymed_vn2.cos_dim_product_ingredient`
- QUALIFY ROW_NUMBER() OVER (PARTITION BY product_id ORDER BY ingredient_level DESC) = 1
+ QUALIFY ROW_NUMBER() OVER (PARTITION BY product_id ORDER BY ingredient_level ) = 1
 )
 , ts_unit AS (
     SELECT DISTINCT
