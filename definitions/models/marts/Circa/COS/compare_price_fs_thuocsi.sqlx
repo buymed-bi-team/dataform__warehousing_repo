@@ -8,7 +8,7 @@ config {
 
 SELECT
     o.*
-    , r.base_unit
+    , r.is_base_unit AS base_unit
     , t.* EXCEPT(product_id, fc_code)
     , ROUND(t.min_price_thuocsi / convert_rate) AS min_base_unit_price_thuocsi
     , CASE
@@ -23,17 +23,16 @@ FROM ${ref('circafs_lastest_price')} o
 LEFT JOIN ${ref('thuocsi_price_fs')} t
     ON o.product_id = t.product_id
     AND o.fc_code = t.fc_code
-LEFT JOIN ${source.ref}.cos_product_convert_base_unit r
+LEFT JOIN ${source.ref}.circa_dim_retail_unit r
     ON o.product_id = r.product_id
     AND o.unit = r.convert_unit
-    AND o.client_id = r.client_id
 WHERE o.unit = LOWER(t.thuocsi_unit)
 
 UNION ALL
 
 SELECT
     o.*
-    , r.base_unit
+    , r.is_base_unit AS base_unit
     , t.* EXCEPT(product_id, fc_code)
     , ROUND(t.min_price_thuocsi / convert_rate) AS min_base_unit_price_thuocsi
     , CASE
@@ -48,8 +47,7 @@ FROM ${ref('circafs_lastest_price')} o
 LEFT JOIN ${ref('thuocsi_price_fs')} t
     ON o.product_id = t.product_id
     AND o.fc_code = t.fc_code
-LEFT JOIN ${source.ref}.cos_product_convert_base_unit r
+LEFT JOIN ${source.ref}.circa_dim_retail_unit r
     ON o.product_id = r.product_id
     AND LOWER(t.thuocsi_unit) = LOWER(r.convert_unit)
-    AND o.client_id = r.client_id
 WHERE o.unit <> LOWER(t.thuocsi_unit)

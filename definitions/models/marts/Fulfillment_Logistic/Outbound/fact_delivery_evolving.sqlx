@@ -40,7 +40,7 @@ pre_operations {
                 MAX(created_date)
             FROM platinum_buymed_vn.integration_prd_tpl_callback_callback
             WHERE created_date >= DATE_TRUNC(DATE_SUB(CURRENT_DATE(), INTERVAL 7 MONTH), MONTH)
-            AND last_updated_time >= TIMESTAMP_TRUNC(CURRENT_TIMESTAMP, HOUR) - INTERVAL 7 HOUR
+            AND last_updated_time >= TIMESTAMP_TRUNC(CURRENT_TIMESTAMP, HOUR) - INTERVAL 10 HOUR
         );
 
         IF ARRAY_LENGTH(new_records) = 0 THEN
@@ -49,38 +49,28 @@ pre_operations {
                 
         DELETE FROM ${self()}
         WHERE so_code IN UNNEST(new_records);
-
-        CREATE TEMP TABLE tmp_callback AS
-        SELECT
-            so,
-            action_time,
-            tpl_code,
-            status,
-            status_name,
-            logs,
-            hub_code
-        FROM platinum_buymed_vn.integration_prd_tpl_callback_callback
-        WHERE created_date BETWEEN checkpoint_min_dt AND checkpoint_max_dt
-        AND so IN UNNEST(new_records)
-        ;
-
-        `,
-        `CREATE TEMP TABLE tmp_callback AS
-        SELECT
-            so,
-            action_time,
-            tpl_code,
-            status,
-            status_name,
-            logs,
-            hub_code
-        FROM platinum_buymed_vn.integration_prd_tpl_callback_callback
-        WHERE created_date >= DATE_TRUNC(DATE_SUB(CURRENT_DATE(), INTERVAL 7 MONTH), MONTH);`
-
+        `
     )}
 }
 
 WITH
+    tmp_callback AS (
+        SELECT
+            so,
+            action_time,
+            tpl_code,
+            status,
+            status_name,
+            logs,
+            hub_code
+        FROM platinum_buymed_vn.integration_prd_tpl_callback_callback
+        WHERE ${
+            when(incremental(),
+            `created_date BETWEEN checkpoint_min_dt AND checkpoint_max_dt
+            AND so IN UNNEST(new_records)`,
+            `created_date >= DATE_TRUNC(DATE_SUB(CURRENT_DATE(), INTERVAL 7 MONTH), MONTH)`
+        )}
+    ),
     final AS (
         SELECT
             TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 HOUR) AS transformed_at,

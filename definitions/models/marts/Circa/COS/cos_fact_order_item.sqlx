@@ -29,7 +29,7 @@ pre_operations {
     created_date >= ${start_date}
 }
 
-WITH cte_os AS (
+WITH base_data AS (
     SELECT 
          COALESCE(
             DATE(DATETIME_ADD(o.completed_at, INTERVAL 7 HOUR))
@@ -60,14 +60,15 @@ WITH cte_os AS (
         ,oi.unit
         ,oi.unit_price
         ,CASE WHEN promotion_event_code IS NOT NULL AND promotion_event_code <> '' AND oi.discount_amount = 0 THEN system_price - unit_price
-            WHEN o.channel = 'O2O'
-                THEN ol.origin_price - ol.price
+            WHEN o.channel = 'O2O' AND ol.origin_price IS NULL THEN oi.origin_price - unit_price
+            WHEN o.channel = 'O2O' AND ol.origin_price IS NOT NULL THEN ol.origin_price - ol.price
             ELSE oi.discount_amount
         END AS discount_amount
 
         ,CASE
             WHEN promotion_event_code IS NOT NULL AND promotion_event_code <> '' AND oi.discount_amount = 0 THEN system_price
             WHEN o.channel <> 'O2O' THEN oi.discount_amount + oi.unit_price
+            WHEN o.channel = 'O2O' AND ol.origin_price IS NULL THEN oi.origin_price
             ELSE ol.origin_price
         END AS unit_price_before_discount
         ,system_price
@@ -125,13 +126,6 @@ WITH cte_os AS (
         ,o.client_id
         ,gift_code
         ,tag_list
-        -- ,CASE
-        --     WHEN tag_list LIKE '%deal_1000%'
-        --      AND unit_price = 1000
-        --         THEN TRUE
-        --     ELSE FALSE
-        -- END AS is_deal1k
-      --  ,al.location_detail_id
         ,oi.id AS item_id
 
     FROM ${source.circa_os}.order_order o
@@ -158,6 +152,14 @@ WITH cte_os AS (
 
     WHERE o.status NOT IN ('PENDING', 'CANCELED')
          AND o.created_date >= ${when(incremental(), start_date, `'2024-09-01'`)}
+)
+, cte_os AS (
+    SELECT
+    * EXCEPT(quantity, base_quantity)
+    ,SUM(quantity) AS quantity
+    ,SUM(base_quantity) AS base_quantity
+FROM base_data
+GROUP BY ALL
 )
 
 ,order_item_with_total AS (
@@ -268,10 +270,7 @@ SELECT DISTINCT
     ,p.product_name AS combo_name
 FROM final i
 LEFT JOIN ${ref('cos_fact_order')} fo ON i.order_id = fo.order_id
-LEFT JOIN ${ref('circa_dim_retail_unit')} cv  ON cv.product_id = i.product_id
-                        AND cv.convert_unit = i.unit
-                        
-                    
+LEFT JOIN ${ref('circa_dim_retail_unit')} cv  ON cv.product_id = i.product_id AND cv.convert_unit = i.unit
 LEFT JOIN ${source.circa_os}.order_order_apply_combo c ON i.order_apply_combo_id = c.id
 LEFT JOIN ${ref('circa_dim_master_product')} p ON c.product_id = p.product_id 
 WHERE fo.order_id IS NOT NULL

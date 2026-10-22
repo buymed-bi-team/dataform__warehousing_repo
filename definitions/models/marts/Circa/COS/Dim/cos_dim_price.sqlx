@@ -134,7 +134,7 @@ WITH product_base_unit AS (
           ,pro.unit_name as web_unit
           ,pro.is_default as is_default_web
           ,pro.web_unit_status
-          ,flash_sale_extra_pct
+          ,SAFE_DIVIDE(flash_sale_extra_pct, 100) AS flash_sale_extra_pct
           ,total_pct_discount
           ,  CASE WHEN fs.product_id IS NOT NULL THEN ROUND(pro.unit_price * (1-fs.total_pct_discount))
                   ELSE pro.price_af_discount END AS unit_price_web

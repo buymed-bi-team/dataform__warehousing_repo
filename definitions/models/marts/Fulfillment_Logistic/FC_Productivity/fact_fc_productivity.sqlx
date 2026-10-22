@@ -1,7 +1,7 @@
 config {
     type: "table",
     name: "fact_fc_productivity",
-    tags: ['custom_1h_past5']
+    tags: ['custom_1h_past5', '6h10', '23h30']
 }
 
 select

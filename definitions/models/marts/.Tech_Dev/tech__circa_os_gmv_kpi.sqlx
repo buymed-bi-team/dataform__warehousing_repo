@@ -2,6 +2,7 @@ config {
     type: "view",
     schema: "buymed_tech",
     name: "tech__circa_os_gmv_kpi",
+    tags: ["TECH_DEV"]
 }
 
 select * 

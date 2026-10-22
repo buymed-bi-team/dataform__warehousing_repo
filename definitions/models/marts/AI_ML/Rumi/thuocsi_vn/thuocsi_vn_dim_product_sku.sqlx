@@ -116,6 +116,7 @@ SELECT
     , s.brand_type
     , p.chronic
     , p.essential
+    , p.product_status
 FROM ${ref('gold_buymed_vn2', 'dim_sku_sales_region_full')} AS s
     LEFT JOIN ${ref('gold_buymed_vn2', 'dim_product')} AS p ON s.product_id = p.product_id
     LEFT JOIN _cat2 AS c2 ON s.product_id = c2.product_id

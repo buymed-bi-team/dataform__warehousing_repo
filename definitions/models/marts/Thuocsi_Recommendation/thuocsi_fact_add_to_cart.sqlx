@@ -1,0 +1,23 @@
+config {
+    type: 'table',
+    schema: "buymed_thuocsi_recommendation",
+    description: `Add to Cart Event on web Thuocsi.`,
+    tags: [ "custom_1h_past10", "THUOCSI_RECOMMENDATION"],
+}
+
+SELECT
+    event AS eventType
+    , customer_id AS visitorId
+    , FORMAT_TIMESTAMP('%Y-%m-%dT%H:%M:%SZ', created_time ) AS eventTime
+    , ARRAY [
+        STRUCT(
+            STRUCT(
+                product_id AS id
+            ) AS product,
+            current_quantity AS quantity
+        )
+    ] AS productDetails
+FROM  ${ref("gold_buymed_vn2", "fact_user_event_tracking")}
+WHERE 1=1
+    AND event  = 'ADD_TO_CART'
+    AND DATE(created_time) >= CURRENT_DATE("+7") - 30
